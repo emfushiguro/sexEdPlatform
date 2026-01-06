@@ -34,8 +34,9 @@ class QuizDailyLimit extends Model
 
     public static function getRemainingAttempts(User $user): int
     {
+        // Premium users have unlimited attempts
         if ($user->isPremium()) {
-            return PHP_INT_MAX; // unlimited
+            return PHP_INT_MAX;
         }
 
         $today = Carbon::today();
@@ -49,8 +50,9 @@ class QuizDailyLimit extends Model
 
     public static function incrementAttempts(User $user): void
     {
+        // Don't increment for premium users
         if ($user->isPremium()) {
-            return; // no limits for premium
+            return;
         }
 
         $today = Carbon::today();

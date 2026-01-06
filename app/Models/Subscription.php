@@ -20,8 +20,8 @@ class Subscription extends Model
     protected function casts(): array
     {
         return [
-            'start_date' => 'date',
-            'end_date' => 'date',
+            'start_date' => 'datetime',
+            'end_date' => 'datetime',
         ];
     }
 
@@ -54,7 +54,7 @@ class Subscription extends Model
     public function isActive(): bool
     {
         return $this->status === 'active' && 
-               ($this->end_date === null || $this->end_date->isFuture());
+               ($this->end_date === null || $this->end_date->isAfter(now()));
     }
 
     public function isPremium(): bool

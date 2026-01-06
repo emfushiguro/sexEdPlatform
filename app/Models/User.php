@@ -148,7 +148,7 @@ class User extends Authenticatable
 
     public function isPremium(): bool
     {
-        return $this->subscription?->plan === 'premium' && $this->subscription?->status === 'active';
+        return $this->subscription?->isPremium() ?? false;
     }
 
     public function isAdmin(): bool
