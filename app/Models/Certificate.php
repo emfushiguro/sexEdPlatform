@@ -1,0 +1,58 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+
+class Certificate extends Model
+{
+    protected $fillable = [
+        'user_id',
+        'module_id',
+        'certificate_number',
+        'issued_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'issued_at' => 'datetime',
+        ];
+    }
+
+    // Relationships
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function module()
+    {
+        return $this->belongsTo(Module::class);
+    }
+
+    // Boot method
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($certificate) {
+            if (empty($certificate->certificate_number)) {
+                $certificate->certificate_number = static::generateCertificateNumber();
+            }
+            if (empty($certificate->issued_at)) {
+                $certificate->issued_at = now();
+            }
+        });
+    }
+
+    // Helper Methods
+
+    public static function generateCertificateNumber(): string
+    {
+        return 'CERT-' . strtoupper(Str::random(12));
+    }
+}

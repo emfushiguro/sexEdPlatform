@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class RewardLog extends Model
+{
+    protected $fillable = [
+        'user_id',
+        'achievement_id',
+        'earned_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'earned_at' => 'datetime',
+        ];
+    }
+
+    // Relationships
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function achievement()
+    {
+        return $this->belongsTo(Achievement::class);
+    }
+}
