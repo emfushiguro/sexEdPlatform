@@ -52,6 +52,11 @@ class Clinic extends Model
         return $query->where('approval_status', 'approved');
     }
 
+    public function scopePending($query)
+    {
+        return $query->where('approval_status', 'pending');
+    }
+
     public function scopeVerified($query)
     {
         return $query->where('verified', true);

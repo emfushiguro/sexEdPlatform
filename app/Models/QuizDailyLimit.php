@@ -9,15 +9,16 @@ class QuizDailyLimit extends Model
 {
     protected $fillable = [
         'user_id',
-        'quiz_date',
-        'attempts_used',
+        'quiz_id',
+        'attempts',
+        'date',
     ];
 
     protected function casts(): array
     {
         return [
-            'quiz_date' => 'date',
-            'attempts_used' => 'integer',
+            'date' => 'date',
+            'attempts' => 'integer',
         ];
     }
 
@@ -30,25 +31,40 @@ class QuizDailyLimit extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function quiz()
+    {
+        return $this->belongsTo(Quiz::class);
+    }
+
     // Helper Methods
 
-    public static function getRemainingAttempts(User $user): int
+    public static function getRemainingAttempts(User $user, ?int $quizId = null): int
     {
         // Premium users have unlimited attempts
         if ($user->isPremium()) {
             return PHP_INT_MAX;
         }
 
+        // If no quiz specified, count total attempts today across all quizzes
         $today = Carbon::today();
-        $limit = static::firstOrCreate(
-            ['user_id' => $user->id, 'quiz_date' => $today],
-            ['attempts_used' => 0]
-        );
-
-        return max(0, static::MAX_FREE_ATTEMPTS - $limit->attempts_used);
+        
+        if ($quizId) {
+            // Get attempts for specific quiz
+            $limit = static::firstOrCreate(
+                ['user_id' => $user->id, 'quiz_id' => $quizId, 'date' => $today],
+                ['attempts' => 0]
+            );
+            return max(0, static::MAX_FREE_ATTEMPTS - $limit->attempts);
+        } else {
+            // Get total attempts today
+            $totalAttempts = static::where('user_id', $user->id)
+                ->where('date', $today)
+                ->sum('attempts');
+            return max(0, static::MAX_FREE_ATTEMPTS - $totalAttempts);
+        }
     }
 
-    public static function incrementAttempts(User $user): void
+    public static function incrementAttempts(User $user, int $quizId): void
     {
         // Don't increment for premium users
         if ($user->isPremium()) {
@@ -57,10 +73,10 @@ class QuizDailyLimit extends Model
 
         $today = Carbon::today();
         $limit = static::firstOrCreate(
-            ['user_id' => $user->id, 'quiz_date' => $today],
-            ['attempts_used' => 0]
+            ['user_id' => $user->id, 'quiz_id' => $quizId, 'date' => $today],
+            ['attempts' => 0]
         );
 
-        $limit->increment('attempts_used');
+        $limit->increment('attempts');
     }
 }

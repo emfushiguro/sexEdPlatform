@@ -9,7 +9,7 @@ class UserGamification extends Model
 {
     protected $fillable = [
         'user_id',
-        'level',
+        'level',    
         'score',
         'streak_count',
         'last_act_at',

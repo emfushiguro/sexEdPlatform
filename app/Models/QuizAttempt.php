@@ -20,6 +20,7 @@ class QuizAttempt extends Model
         return [
             'score' => 'integer',
             'passed' => 'boolean',
+            'answers' => 'array',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
         ];

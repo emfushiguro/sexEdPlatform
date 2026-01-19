@@ -13,10 +13,14 @@ class Module extends Model
         'title',
         'description',
         'thumbnail',
+        'grade_level',
+        'difficulty_level',
         'order',
         'duration_minutes',
         'is_published',
         'is_premium',
+        'final_quiz_id',
+        'certificate_pass_score',
     ];
 
     protected function casts(): array
@@ -26,6 +30,7 @@ class Module extends Model
             'duration_minutes' => 'integer',
             'is_published' => 'boolean',
             'is_premium' => 'boolean',
+            'certificate_pass_score' => 'integer',
         ];
     }
 
@@ -39,6 +44,11 @@ class Module extends Model
     public function quizzes()
     {
         return $this->hasMany(Quiz::class);
+    }
+
+    public function finalQuiz()
+    {
+        return $this->belongsTo(Quiz::class, 'final_quiz_id');
     }
 
     public function enrollments()
@@ -81,5 +91,31 @@ class Module extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy('order');
+    }
+
+    /**
+     * Scope to filter modules appropriate for user's grade level
+     */
+    public function scopeForGradeLevel($query, $gradeLevel)
+    {
+        // Grade level hierarchy
+        $gradeLevels = [
+            'grade_4_up' => 1,
+            'grade_6_up' => 2,
+            'grade_8_up' => 3,
+            'grade_10_up' => 4,
+            'adult_18_plus' => 5,
+        ];
+
+        $userGradeValue = $gradeLevels[$gradeLevel] ?? 1;
+
+        // Return modules that are equal to or lower than the user's grade level
+        return $query->where(function ($q) use ($gradeLevels, $userGradeValue) {
+            foreach ($gradeLevels as $level => $value) {
+                if ($value <= $userGradeValue) {
+                    $q->orWhere('grade_level', $level);
+                }
+            }
+        });
     }
 }

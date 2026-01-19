@@ -12,6 +12,8 @@ class UserProgress extends Model
         'lesson_id',
         'completed',
         'progress_percentage',
+        'completed_lessons_count',
+        'last_accessed_at',
         'completed_at',
     ];
 
@@ -20,6 +22,8 @@ class UserProgress extends Model
         return [
             'completed' => 'boolean',
             'progress_percentage' => 'integer',
+            'completed_lessons_count' => 'integer',
+            'last_accessed_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
     }

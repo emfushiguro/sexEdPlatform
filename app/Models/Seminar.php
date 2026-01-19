@@ -10,13 +10,15 @@ class Seminar extends Model
         'title',
         'description',
         'location',
-        'scheduled_at',
+        'schedule',
+        'is_premium',
     ];
 
     protected function casts(): array
     {
         return [
-            'scheduled_at' => 'datetime',
+            'schedule' => 'datetime',
+            'is_premium' => 'boolean',
         ];
     }
 
@@ -43,11 +45,16 @@ class Seminar extends Model
 
     public function scopeUpcoming($query)
     {
-        return $query->where('scheduled_at', '>', now());
+        return $query->where('schedule', '>', now());
     }
 
     public function scopePast($query)
     {
-        return $query->where('scheduled_at', '<=', now());
+        return $query->where('schedule', '<=', now());
+    }
+
+    public function scopePremium($query)
+    {
+        return $query->where('is_premium', true);
     }
 }

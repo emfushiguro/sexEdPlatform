@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\AdminAuthController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
@@ -17,10 +18,16 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
-    Route::get('login', [AuthenticatedSessionController::class, 'create'])
+    // Login route for form submission (kept for learner login form)
+    Route::post('login', [AuthenticatedSessionController::class, 'store'])
         ->name('login');
 
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    // Secure admin login (hidden route with hash for security)
+    Route::get('secure-panel-access', [AdminAuthController::class, 'showLoginForm'])
+        ->name('admin.login');
+    
+    Route::post('secure-panel-access', [AdminAuthController::class, 'login'])
+        ->name('admin.login.submit');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
@@ -56,4 +63,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+    
+    // Admin logout
+    Route::post('admin/logout', [AdminAuthController::class, 'logout'])
+        ->name('admin.logout');
 });

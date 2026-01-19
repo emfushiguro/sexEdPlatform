@@ -37,7 +37,7 @@ class ActivityLog extends Model
     public static function log(string $activityType, ?string $description = null, ?array $metadata = null): void
     {
         static::create([
-            'user_id' => auth()->id(),
+            'user_id' => auth()->check() ? auth()->id() : null,
             'activity_type' => $activityType,
             'description' => $description,
             'metadata' => $metadata,

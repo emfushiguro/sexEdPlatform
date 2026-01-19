@@ -18,7 +18,8 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
         'password',
         'role',
@@ -50,11 +51,30 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Boot the model and auto-create gamification record.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (User $user) {
+            $user->gamification()->create([
+                'level' => 1,
+                'score' => 0,
+                'streak_count' => 0,
+            ]);
+        });
+    }
+
     // Relationships
 
     public function profile()
     {
         return $this->hasOne(UserProfile::class);
+    }
+
+    public function learnerProfile()
+    {
+        return $this->hasOne(LearnerProfile::class);
     }
 
     public function subscription()
@@ -93,6 +113,12 @@ class User extends Authenticatable
     }
 
     public function userProgress()
+    {
+        return $this->hasMany(UserProgress::class);
+    }
+
+    // Alias for userProgress (for cleaner syntax)
+    public function progress()
     {
         return $this->hasMany(UserProgress::class);
     }
@@ -169,6 +195,26 @@ class User extends Authenticatable
     public function isOrganization(): bool
     {
         return $this->role === 'organization';
+    }
+
+    /**
+     * Get user's full name
+     */
+    public function getFullNameAttribute(): string
+    {
+        return trim("{$this->first_name} {$this->last_name}");
+    }
+
+    /**
+     * Check if learner profile is completed
+     */
+    public function hasCompletedProfile(): bool
+    {
+        if (!$this->isLearner()) {
+            return true;
+        }
+
+        return $this->learnerProfile?->isCompleted() ?? false;
     }
 
     public function isLearner(): bool
