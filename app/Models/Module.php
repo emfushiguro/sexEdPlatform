@@ -13,7 +13,9 @@ class Module extends Model
         'title',
         'description',
         'thumbnail',
-        'grade_level',
+        'min_age',
+        'max_age',
+        'age_specific_content',
         'difficulty_level',
         'order',
         'duration_minutes',
@@ -21,16 +23,22 @@ class Module extends Model
         'is_premium',
         'final_quiz_id',
         'certificate_pass_score',
+        'publish_at',
+        'publish_status',
     ];
 
     protected function casts(): array
     {
         return [
+            'min_age' => 'integer',
+            'max_age' => 'integer',
+            'age_specific_content' => 'array',
             'order' => 'integer',
             'duration_minutes' => 'integer',
             'is_published' => 'boolean',
             'is_premium' => 'boolean',
             'certificate_pass_score' => 'integer',
+            'publish_at' => 'datetime',
         ];
     }
 
@@ -94,28 +102,57 @@ class Module extends Model
     }
 
     /**
-     * Scope to filter modules appropriate for user's grade level
+     * Scope to filter modules appropriate for user's age
      */
-    public function scopeForGradeLevel($query, $gradeLevel)
+    public function scopeForAge($query, int $age)
     {
-        // Grade level hierarchy
-        $gradeLevels = [
-            'grade_4_up' => 1,
-            'grade_6_up' => 2,
-            'grade_8_up' => 3,
-            'grade_10_up' => 4,
-            'adult_18_plus' => 5,
+        return $query->where('min_age', '<=', $age)
+                     ->where('max_age', '>=', $age);
+    }
+
+    /**
+     * Scope to filter modules for age bracket
+     */
+    public function scopeForAgeBracket($query, string $ageBracket)
+    {
+        $ageRanges = [
+            'kids' => [5, 12],
+            'teens' => [13, 17],
+            'adults' => [18, 100],
         ];
 
-        $userGradeValue = $gradeLevels[$gradeLevel] ?? 1;
+        if (!isset($ageRanges[$ageBracket])) {
+            return $query;
+        }
 
-        // Return modules that are equal to or lower than the user's grade level
-        return $query->where(function ($q) use ($gradeLevels, $userGradeValue) {
-            foreach ($gradeLevels as $level => $value) {
-                if ($value <= $userGradeValue) {
-                    $q->orWhere('grade_level', $level);
-                }
-            }
+        [$minAge, $maxAge] = $ageRanges[$ageBracket];
+
+        // Return modules that overlap with the age bracket
+        return $query->where(function ($q) use ($minAge, $maxAge) {
+            $q->where(function ($subQ) use ($minAge, $maxAge) {
+                $subQ->where('min_age', '<=', $maxAge)
+                     ->where('max_age', '>=', $minAge);
+            });
         });
+    }
+
+    /**
+     * Check if module is appropriate for a specific age
+     */
+    public function isAppropriateForAge(int $age): bool
+    {
+        return $age >= $this->min_age && $age <= $this->max_age;
+    }
+
+    /**
+     * Get age-specific content for a given age bracket
+     */
+    public function getContentForAgeBracket(string $ageBracket): ?array
+    {
+        if (!$this->age_specific_content) {
+            return null;
+        }
+
+        return $this->age_specific_content[$ageBracket] ?? null;
     }
 }

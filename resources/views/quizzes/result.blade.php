@@ -13,6 +13,42 @@
                 </div>
             @endif
 
+            <!-- Gamification Status Bar -->
+            <div class="bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg p-4 mb-6 text-white shadow-lg">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-sm font-semibold opacity-90">Your Progress</h3>
+                        <div class="flex items-center gap-4 mt-1">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                </svg>
+                                <span class="font-bold text-lg">{{ auth()->user()->gamification->total_points ?? 0 }} Points</span>
+                            </div>
+                            <div class="h-6 w-px bg-white opacity-30"></div>
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                                </svg>
+                                @php
+                                    $remainingAttempts = \App\Models\QuizDailyLimit::getRemainingAttempts(auth()->user(), $attempt->quiz->id);
+                                @endphp
+                                @if(auth()->user()->isPremium())
+                                    <span class="font-bold">∞ Unlimited Attempts</span>
+                                @else
+                                    <span class="font-bold">{{ $remainingAttempts }} Attempts Left Today</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    @if(!auth()->user()->isPremium())
+                        <a href="{{ route('subscription.upgrade') }}" class="bg-white text-purple-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition">
+                            Upgrade to Premium
+                        </a>
+                    @endif
+                </div>
+            </div>
+
             <!-- Results Card -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-8">
@@ -26,7 +62,7 @@
                             {{ $attempt->passed ? '🎉 You Passed!' : '💪 Keep Trying!' }}
                         </h3>
                         <p class="text-gray-600">
-                            You got {{ collect($attempt->answers)->where('is_correct', true)->count() }} out of {{ count($attempt->answers) }} questions correct
+                            You got {{ $attempt->answers ? collect($attempt->answers)->where('is_correct', true)->count() : 0 }} out of {{ $attempt->answers ? count($attempt->answers) : 0 }} questions correct
                         </p>
                         <p class="text-sm text-gray-500 mt-2">
                             Passing score: {{ $attempt->quiz->passing_score }}%
@@ -36,32 +72,52 @@
                     <!-- Stats -->
                     <div class="grid grid-cols-3 gap-4 mb-8">
                         <div class="text-center p-4 bg-blue-50 rounded-lg">
-                            <div class="text-2xl font-bold text-blue-600">{{ count($attempt->answers) }}</div>
+                            <div class="text-2xl font-bold text-blue-600">{{ $attempt->answers ? count($attempt->answers) : 0 }}</div>
                             <div class="text-sm text-gray-600">Total Questions</div>
                         </div>
                         <div class="text-center p-4 bg-green-50 rounded-lg">
-                            <div class="text-2xl font-bold text-green-600">{{ collect($attempt->answers)->where('is_correct', true)->count() }}</div>
+                            <div class="text-2xl font-bold text-green-600">{{ $attempt->answers ? collect($attempt->answers)->where('is_correct', true)->count() : 0 }}</div>
                             <div class="text-sm text-gray-600">Correct</div>
                         </div>
                         <div class="text-center p-4 bg-red-50 rounded-lg">
-                            <div class="text-2xl font-bold text-red-600">{{ collect($attempt->answers)->where('is_correct', false)->count() }}</div>
+                            <div class="text-2xl font-bold text-red-600">{{ $attempt->answers ? collect($attempt->answers)->where('is_correct', false)->count() : 0 }}</div>
                             <div class="text-sm text-gray-600">Incorrect</div>
                         </div>
                     </div>
 
                     <!-- Actions -->
                     <div class="flex gap-4">
-                        <a href="{{ route('learner.modules.index') }}" 
+                        <a href="{{ route('dashboard') }}" 
                            class="flex-1 text-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition">
-                            Back to Modules
+                            Back to Dashboard
                         </a>
                         @if(!$attempt->passed)
-                            <a href="{{ route('quizzes.start', $attempt->quiz) }}" 
-                               class="flex-1 text-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
-                                Try Again
-                            </a>
+                            @php
+                                $canRetry = auth()->user()->isPremium() || $remainingAttempts > 0;
+                            @endphp
+                            @if($canRetry)
+                                <a href="{{ route('quizzes.show', $attempt->quiz) }}" 
+                                   class="flex-1 text-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
+                                    Try Again
+                                </a>
+                            @else
+                                <button disabled
+                                   class="flex-1 text-center px-6 py-3 bg-gray-400 text-white font-semibold rounded-lg cursor-not-allowed">
+                                    Daily Limit Reached
+                                </button>
+                            @endif
                         @endif
                     </div>
+
+                    @if(!$attempt->passed && !$canRetry)
+                        <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <p class="text-sm text-yellow-800 text-center">
+                                <strong>Daily limit reached!</strong> 
+                                <a href="{{ route('subscription.upgrade') }}" class="underline font-semibold">Upgrade to Premium</a> 
+                                for unlimited quiz attempts.
+                            </p>
+                        </div>
+                    @endif
                 </div>
             </div>
 

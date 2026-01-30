@@ -36,17 +36,41 @@ class LessonController extends Controller
     {
         $validated = $request->validated();
         
-        // Handle video URL parsing
-        if ($validated['content_type'] === 'video' && !empty($validated['video_url'])) {
-            $videoData = VideoEmbedHelper::parseVideoUrl($validated['video_url']);
-            $validated['video_provider'] = $videoData['provider'];
-            $validated['video_id'] = $videoData['video_id'];
-            unset($validated['video_url']); // Remove temporary field
+        // Handle video - both URL and file upload
+        if ($validated['content_type'] === 'video') {
+            if ($request->hasFile('video_file')) {
+                // Store uploaded video file
+                $validated['video_file_path'] = $request->file('video_file')->store('videos', 'public');
+                $validated['video_provider'] = 'local';
+            } elseif (!empty($validated['video_url'])) {
+                // Parse external video URL
+                $videoData = VideoEmbedHelper::parseVideoUrl($validated['video_url']);
+                $validated['video_provider'] = $videoData['provider'];
+                $validated['video_id'] = $videoData['video_id'];
+            }
+            unset($validated['video_url']);
+        }
+        
+        // Handle image attachments for text lessons
+        if ($request->hasFile('image_attachments')) {
+            $imagePaths = [];
+            foreach ($request->file('image_attachments') as $image) {
+                $imagePaths[] = $image->store('lesson-images', 'public');
+            }
+            $validated['image_attachments'] = $imagePaths;
         }
         
         // Handle worksheet file upload
         if ($request->hasFile('worksheet_file')) {
             $validated['file_path'] = $request->file('worksheet_file')->store('worksheets', 'public');
+        }
+        
+        // Handle interactive configuration
+        if ($validated['content_type'] === 'interactive' && $request->filled('interactive_type')) {
+            $validated['interactive_config'] = [
+                'type' => $request->input('interactive_type'),
+                'settings' => $request->input('interactive_config', []),
+            ];
         }
         
         // Auto-increment order if not provided
@@ -59,7 +83,7 @@ class LessonController extends Controller
 
         Lesson::create($validated);
 
-        return redirect()->route('admin.modules.show', $validated['module_id'])
+        return redirect()->route('admin.lessons.index')
             ->with('success', 'Lesson created successfully!');
     }
 
@@ -79,12 +103,41 @@ class LessonController extends Controller
     {
         $validated = $request->validated();
         
-        // Handle video URL parsing
-        if ($validated['content_type'] === 'video' && !empty($validated['video_url'])) {
-            $videoData = VideoEmbedHelper::parseVideoUrl($validated['video_url']);
-            $validated['video_provider'] = $videoData['provider'];
-            $validated['video_id'] = $videoData['video_id'];
+        // Handle video - both URL and file upload
+        if ($validated['content_type'] === 'video') {
+            if ($request->hasFile('video_file')) {
+                // Delete old video file if exists
+                if ($lesson->video_file_path) {
+                    Storage::disk('public')->delete($lesson->video_file_path);
+                }
+                $validated['video_file_path'] = $request->file('video_file')->store('videos', 'public');
+                $validated['video_provider'] = 'local';
+                // Clear external video data
+                $validated['video_id'] = null;
+            } elseif (!empty($validated['video_url'])) {
+                // Parse external video URL
+                $videoData = VideoEmbedHelper::parseVideoUrl($validated['video_url']);
+                $validated['video_provider'] = $videoData['provider'];
+                $validated['video_id'] = $videoData['video_id'];
+                // Clear local video file
+                $validated['video_file_path'] = null;
+            }
             unset($validated['video_url']);
+        }
+        
+        // Handle image attachments
+        if ($request->hasFile('image_attachments')) {
+            // Delete old images
+            if ($lesson->image_attachments) {
+                foreach ($lesson->image_attachments as $oldImage) {
+                    Storage::disk('public')->delete($oldImage);
+                }
+            }
+            $imagePaths = [];
+            foreach ($request->file('image_attachments') as $image) {
+                $imagePaths[] = $image->store('lesson-images', 'public');
+            }
+            $validated['image_attachments'] = $imagePaths;
         }
         
         // Handle worksheet file upload
@@ -96,12 +149,20 @@ class LessonController extends Controller
             $validated['file_path'] = $request->file('worksheet_file')->store('worksheets', 'public');
         }
         
+        // Handle interactive configuration
+        if ($validated['content_type'] === 'interactive' && $request->filled('interactive_type')) {
+            $validated['interactive_config'] = [
+                'type' => $request->input('interactive_type'),
+                'settings' => $request->input('interactive_config', []),
+            ];
+        }
+        
         // Set published status
         $validated['is_published'] = $request->has('is_published');
 
         $lesson->update($validated);
 
-        return redirect()->route('admin.modules.show', $lesson->module_id)
+        return redirect()->route('admin.lessons.index')
             ->with('success', 'Lesson updated successfully!');
     }
 

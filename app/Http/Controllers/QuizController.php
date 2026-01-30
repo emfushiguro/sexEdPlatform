@@ -11,33 +11,12 @@ use Illuminate\Support\Facades\DB;
 class QuizController extends Controller
 {
     /**
-     * Show quiz start page
+     * Show quiz start page (redirects to start method)
      */
     public function show(Quiz $quiz)
     {
-        $user = auth()->user();
-        $quiz->load(['questions.options', 'module', 'lesson']);
-
-        // Check enrollment
-        $moduleId = $quiz->module_id ?? $quiz->lesson?->module_id;
-        $isEnrolled = $user->moduleEnrollments()->where('module_id', $moduleId)->exists();
-
-        if (!$isEnrolled) {
-            return redirect()->route('modules.show', $moduleId)
-                ->with('error', 'You must enroll in the module first.');
-        }
-
-        // Check remaining attempts for free users
-        $remainingAttempts = QuizDailyLimit::getRemainingAttempts($user, $quiz->id);
-        
-        // Get user's previous attempts for this quiz
-        $previousAttempts = $user->quizAttempts()
-            ->where('quiz_id', $quiz->id)
-            ->latest()
-            ->take(5)
-            ->get();
-
-        return view('quizzes.show', compact('quiz', 'remainingAttempts', 'previousAttempts'));
+        // Redirect to start method which handles the quiz taking page
+        return $this->start($quiz);
     }
 
     /**

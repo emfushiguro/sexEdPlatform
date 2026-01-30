@@ -45,23 +45,27 @@ class DashboardController extends Controller
         $user = auth()->user();
         $learnerProfile = $user->learnerProfile;
 
-        // age_range already contains the grade level
-        $gradeLevel = $learnerProfile->age_range;
+        // Get age and age bracket
+        $age = $learnerProfile->getAge();
+        $ageBracket = $learnerProfile->getAgeBracket();
 
-        // Get enrolled modules
+        // Get enrolled modules (exclude deleted modules)
         $enrolledModules = $user->moduleEnrollments()
             ->with(['module' => function($query) {
                 $query->withCount('lessons');
             }])
             ->latest()
             ->take(6)
-            ->get();
+            ->get()
+            ->filter(function($enrollment) {
+                return $enrollment->module !== null;
+            });
 
         // Calculate progress for enrolled modules
         $progressData = [];
         foreach ($enrolledModules as $enrollment) {
             $module = $enrollment->module;
-            $totalLessons = $module->lessons_count;
+            $totalLessons = $module->lessons_count ?? 0;
             $completedLessons = UserProgress::where('user_id', $user->id)
                 ->where('module_id', $module->id)
                 ->where('completed', true)
@@ -76,9 +80,9 @@ class DashboardController extends Controller
             ];
         }
 
-        // Get recommended modules (published, grade-appropriate, not enrolled)
+        // Get recommended modules (published, age-appropriate, not enrolled)
         $recommendedModules = Module::where('is_published', true)
-            ->forGradeLevel($gradeLevel)
+            ->forAge($age)
             ->whereNotIn('id', $enrolledModules->pluck('module_id'))
             ->withCount('lessons')
             ->orderBy('order')
@@ -88,6 +92,8 @@ class DashboardController extends Controller
         $data = [
             'user' => $user,
             'learnerProfile' => $learnerProfile,
+            'age' => $age,
+            'ageBracket' => $ageBracket,
             'enrolledModules' => $enrolledModules,
             'progressData' => $progressData,
             'recommendedModules' => $recommendedModules,
@@ -99,7 +105,13 @@ class DashboardController extends Controller
             'upcomingSeminars' => Seminar::where('schedule', '>', now())->latest()->take(5)->get(),
         ];
 
-        return view('dashboards.learner', $data);
+        // Route to age-appropriate dashboard view
+        return match($ageBracket) {
+            'kids' => view('dashboards.kids', $data),
+            'teens' => view('dashboards.teens', $data),
+            'adults' => view('dashboards.adults', $data),
+            default => view('dashboards.learner', $data), // fallback
+        };
     }
 
     private function counselorDashboard()

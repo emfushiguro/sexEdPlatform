@@ -31,7 +31,9 @@ class SubscriptionController extends Controller
                 ->with('info', 'You already have an active premium subscription.');
         }
 
-        return view('subscriptions.upgrade');
+        $currentSubscription = $user->subscription;
+
+        return view('subscriptions.upgrade', compact('currentSubscription'));
     }
 
     /**

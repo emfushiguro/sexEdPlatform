@@ -10,6 +10,7 @@ use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
+use App\Http\Controllers\Api\LocationController;
 use Illuminate\Support\Facades\Route;
 
 // Homepage - Learner Login (redirect to dashboard if already logged in)
@@ -20,10 +21,6 @@ Route::get('/', function () {
     return view('auth.learner-login');
 })->name('home');
 
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified', 'profile.completed'])
-    ->name('dashboard');
-
 // Profile completion routes (auth but no profile.completed middleware)
 Route::middleware('auth')->group(function () {
     Route::get('/profile/complete', [ProfileCompletionController::class, 'show'])->name('profile.complete');
@@ -33,6 +30,9 @@ Route::middleware('auth')->group(function () {
 // Certificate verification (public routes)
 Route::get('/certificates/verify', [CertificateController::class, 'verifyForm'])->name('certificates.verify-form');
 Route::post('/certificates/verify', [CertificateController::class, 'verify'])->name('certificates.verify');
+
+// API route for loading barangays by city
+Route::get('/api/barangays/{cityCode}', [LocationController::class, 'getBarangays']);
 
 Route::middleware('auth')->group(function () {
     // Profile routes
@@ -124,9 +124,14 @@ Route::middleware('auth')->group(function () {
         });
     });
 
+    // Learner Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware(['role:learner', 'profile.completed'])
+        ->name('dashboard');
+
     // Admin routes (role-based access)
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
-        // Dashboard
+        // Admin Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
         
         // User Management

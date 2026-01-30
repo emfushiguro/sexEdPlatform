@@ -1,10 +1,18 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Edit Lesson</h2>
-            <a href="{{ route('admin.modules.show', $lesson->module_id) }}" class="text-sm text-gray-600 hover:text-gray-900">
-                ← Back to Module
+        <x-breadcrumb :items="[
+            ['label' => 'Dashboard', 'url' => route('admin.dashboard')],
+            ['label' => 'Lessons', 'url' => route('admin.lessons.index')],
+            ['label' => 'Edit']
+        ]" />
+        
+        <div class="flex items-center space-x-3 mt-4">
+            <a href="{{ route('admin.lessons.index') }}" class="text-gray-600 hover:text-gray-900">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
             </a>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Edit Lesson</h2>
         </div>
     </x-slot>
 

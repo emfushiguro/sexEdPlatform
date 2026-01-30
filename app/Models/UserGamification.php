@@ -11,6 +11,7 @@ class UserGamification extends Model
         'user_id',
         'level',    
         'score',
+        'total_points',
         'streak_count',
         'last_act_at',
     ];
@@ -20,6 +21,7 @@ class UserGamification extends Model
         return [
             'level' => 'integer',
             'score' => 'integer',
+            'total_points' => 'integer',
             'streak_count' => 'integer',
             'last_act_at' => 'datetime',
         ];
@@ -37,6 +39,7 @@ class UserGamification extends Model
     public function addPoints(int $points): void
     {
         $this->increment('score', $points);
+        $this->increment('total_points', $points);
         $this->updateLevel();
     }
 

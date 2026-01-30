@@ -44,22 +44,34 @@ class LessonRequest extends FormRequest
             ],
             'content_type' => 'required|in:text,video,worksheet,interactive',
             
-            // Text content rules
-            'text_content' => 'required_if:content_type,text,interactive|nullable|string|max:50000',
+            // Description/instructions field (optional for all types)
+            'description' => 'nullable|string|max:5000',
             
-            // Video rules - enhanced security
+            // Text content rules (now nullable to allow TinyMCE empty state)
+            'text_content' => 'nullable|string|max:50000',
+            
+            // Image attachments for text lessons
+            'image_attachments.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB per image
+            
+            // Video rules - support both URL and file upload
             'video_url' => [
-                'required_if:content_type,video',
                 'nullable',
+                'required_if:content_type,video',
+                'required_without:video_file',
                 'url',
-                'regex:/^https:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/.*$/', // Only allow YouTube/Vimeo
+                'regex:/^https:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/.*$/',
             ],
+            'video_file' => 'nullable|required_if:content_type,video|required_without:video_url|file|mimes:mp4,avi,mov,wmv|max:102400', // 100MB max
             
-            // Worksheet rules - strict file validation
-            'worksheet_file' => 'nullable|file|mimes:pdf,doc,docx|max:10240', // 10MB max
+            // Worksheet rules
+            'worksheet_file' => 'nullable|required_if:content_type,worksheet|file|mimes:pdf,doc,docx|max:10240', // 10MB max
+            
+            // Interactive lesson configuration
+            'interactive_type' => 'nullable|in:picture_comparison,body_parts,drag_drop,matching',
+            'interactive_config' => 'nullable|array',
             
             // Common fields
-            'duration' => 'required|integer|min:1|max:300', // Max 5 hours
+            'duration' => 'required|integer|min:1|max:300',
             'order' => 'nullable|integer|min:0|max:1000',
             'is_published' => 'boolean',
         ];

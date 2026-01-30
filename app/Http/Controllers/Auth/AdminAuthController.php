@@ -40,9 +40,8 @@ class AdminAuthController extends Controller
 
         // Attempt authentication
         $credentials = $request->only('email', 'password');
-        $remember = $request->filled('remember');
 
-        if (Auth::attempt($credentials, $remember)) {
+        if (Auth::attempt($credentials, false)) {
             $user = Auth::user();
 
             // Verify user has admin role

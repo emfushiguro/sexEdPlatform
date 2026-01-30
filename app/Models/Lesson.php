@@ -12,9 +12,14 @@ class Lesson extends Model
         'title',
         'content_type',
         'text_content',
+        'description',
         'video_provider',
         'video_id',
+        'video_file_path',
         'file_path',
+        'image_attachments',
+        'slideshow_data',
+        'interactive_config',
         'order',
         'duration',
         'is_published',
@@ -26,6 +31,9 @@ class Lesson extends Model
             'order' => 'integer',
             'duration' => 'integer',
             'is_published' => 'boolean',
+            'image_attachments' => 'array',
+            'slideshow_data' => 'array',
+            'interactive_config' => 'array',
         ];
     }
 

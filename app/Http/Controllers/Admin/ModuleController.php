@@ -26,18 +26,43 @@ class ModuleController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'thumbnail' => 'nullable|image|max:2048',
-            'grade_level' => 'required|in:grade_4_up,grade_6_up,grade_8_up,grade_10_up,adult_18_plus',
-            'difficulty_level' => 'required|in:beginner,intermediate,advanced',
+            'age_bracket' => 'required|in:kids,teens,adults',
             'duration_minutes' => 'required|integer|min:1',
             'order' => 'nullable|integer|min:0',
-            'is_published' => 'boolean',
+            'publish_type' => 'required|in:draft,publish_now,schedule',
+            'publish_at' => 'nullable|required_if:publish_type,schedule|date|after:now',
         ]);
 
         if ($request->hasFile('thumbnail')) {
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
         }
 
-        $validated['is_published'] = $request->has('is_published');
+        // Set age range based on bracket
+        $ageBrackets = [
+            'kids' => ['min_age' => 5, 'max_age' => 12],
+            'teens' => ['min_age' => 13, 'max_age' => 17],
+            'adults' => ['min_age' => 18, 'max_age' => 100],
+        ];
+        
+        $validated['min_age'] = $ageBrackets[$validated['age_bracket']]['min_age'];
+        $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
+        unset($validated['age_bracket']);
+
+        // Handle publishing status
+        if ($validated['publish_type'] === 'publish_now') {
+            $validated['is_published'] = true;
+            $validated['publish_status'] = 'published';
+            $validated['publish_at'] = now();
+        } elseif ($validated['publish_type'] === 'schedule') {
+            $validated['is_published'] = false;
+            $validated['publish_status'] = 'scheduled';
+        } else {
+            $validated['is_published'] = false;
+            $validated['publish_status'] = 'draft';
+            $validated['publish_at'] = null;
+        }
+        unset($validated['publish_type']);
+
         $validated['order'] = $validated['order'] ?? Module::max('order') + 1;
 
         Module::create($validated);
@@ -63,18 +88,42 @@ class ModuleController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'thumbnail' => 'nullable|image|max:2048',
-            'grade_level' => 'required|in:grade_4_up,grade_6_up,grade_8_up,grade_10_up,adult_18_plus',
-            'difficulty_level' => 'required|in:beginner,intermediate,advanced',
+            'age_bracket' => 'required|in:kids,teens,adults',
             'duration_minutes' => 'required|integer|min:1',
             'order' => 'nullable|integer|min:0',
-            'is_published' => 'boolean',
+            'publish_type' => 'required|in:draft,publish_now,schedule',
+            'publish_at' => 'nullable|required_if:publish_type,schedule|date|after:now',
         ]);
 
         if ($request->hasFile('thumbnail')) {
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
         }
 
-        $validated['is_published'] = $request->has('is_published');
+        // Set age range based on bracket
+        $ageBrackets = [
+            'kids' => ['min_age' => 5, 'max_age' => 12],
+            'teens' => ['min_age' => 13, 'max_age' => 17],
+            'adults' => ['min_age' => 18, 'max_age' => 100],
+        ];
+        
+        $validated['min_age'] = $ageBrackets[$validated['age_bracket']]['min_age'];
+        $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
+        unset($validated['age_bracket']);
+
+        // Handle publishing status
+        if ($validated['publish_type'] === 'publish_now') {
+            $validated['is_published'] = true;
+            $validated['publish_status'] = 'published';
+            $validated['publish_at'] = now();
+        } elseif ($validated['publish_type'] === 'schedule') {
+            $validated['is_published'] = false;
+            $validated['publish_status'] = 'scheduled';
+        } else {
+            $validated['is_published'] = false;
+            $validated['publish_status'] = 'draft';
+            $validated['publish_at'] = null;
+        }
+        unset($validated['publish_type']);
 
         $module->update($validated);
 

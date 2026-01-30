@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 class ModuleController extends Controller
 {
     /**
-     * Display all published modules filtered by learner's grade level
+     * Display all published modules filtered by learner's age
      */
     public function index()
     {
@@ -24,15 +24,14 @@ class ModuleController extends Controller
                 ->with('error', 'Please complete your profile to access modules.');
         }
 
-        // The age_range field already contains the grade level (grade_4_up, grade_6_up, etc.)
-        $gradeLevel = $learnerProfile->age_range;
+        // Get learner's age
+        $learnerAge = $learnerProfile->getAge();
         
-        // Get published modules appropriate for grade level
+        // Get published modules appropriate for learner's age
         $modules = Module::where('is_published', true)
-            ->where(function ($query) use ($gradeLevel) {
-                // Show all modules at or below learner's grade level
-                $query->whereIn('grade_level', $this->getAccessibleGradeLevels($gradeLevel))
-                      ->orWhereNull('grade_level'); // Include modules without grade restriction
+            ->where(function ($query) use ($learnerAge) {
+                $query->where('min_age', '<=', $learnerAge)
+                      ->where('max_age', '>=', $learnerAge);
             })
             ->withCount('lessons')
             ->with(['lessons' => function ($query) {
@@ -82,9 +81,9 @@ class ModuleController extends Controller
             abort(404);
         }
 
-        // Security: Check grade level access (age_range is already the grade level)
-        $gradeLevel = $learnerProfile->age_range;
-        if (!$this->canAccessModule($module, $gradeLevel)) {
+        // Security: Check age-based access
+        $learnerAge = $learnerProfile->getAge();
+        if (!$this->canAccessModule($module, $learnerAge)) {
             return redirect()->route('learner.modules.index')
                 ->with('error', 'This module is not available for your age group.');
         }
@@ -163,9 +162,9 @@ class ModuleController extends Controller
             abort(404);
         }
 
-        // age_range is already the grade level
-        $gradeLevel = $user->learnerProfile->age_range;
-        if (!$this->canAccessModule($module, $gradeLevel)) {
+        // Check age-based access
+        $learnerAge = $user->learnerProfile->getAge();
+        if (!$this->canAccessModule($module, $learnerAge)) {
             return back()->with('error', 'This module is not available for your age group.');
         }
 
@@ -185,48 +184,11 @@ class ModuleController extends Controller
     }
 
     /**
-     * Get all grade levels accessible to a learner
+     * Check if learner can access module based on age
      */
-    private function getAccessibleGradeLevels(string $learnerGradeLevel): array
+    private function canAccessModule(Module $module, int $learnerAge): bool
     {
-        $allLevels = ['grade_4_up', 'grade_6_up', 'grade_8_up', 'grade_10_up', 'adult_18_plus'];
-        $gradeHierarchy = [
-            'grade_4_up' => 1,
-            'grade_6_up' => 2,
-            'grade_8_up' => 3,
-            'grade_10_up' => 4,
-            'adult_18_plus' => 5,
-        ];
-
-        $learnerLevel = $gradeHierarchy[$learnerGradeLevel] ?? 1;
-        
-        // Return all levels at or below learner's level
-        return array_filter($allLevels, function ($level) use ($gradeHierarchy, $learnerLevel) {
-            return ($gradeHierarchy[$level] ?? 1) <= $learnerLevel;
-        });
-    }
-
-    /**
-     * Check if learner can access module based on grade level
-     */
-    private function canAccessModule(Module $module, string $learnerGradeLevel): bool
-    {
-        if (!$module->grade_level) {
-            return true; // No restriction
-        }
-
-        $gradeHierarchy = [
-            'grade_4_up' => 1,
-            'grade_6_up' => 2,
-            'grade_8_up' => 3,
-            'grade_10_up' => 4,
-            'adult_18_plus' => 5,
-        ];
-
-        $moduleLevel = $gradeHierarchy[$module->grade_level] ?? 1;
-        $learnerLevel = $gradeHierarchy[$learnerGradeLevel] ?? 1;
-
-        // Learners can access content at or below their level
-        return $learnerLevel >= $moduleLevel;
+        // Check if learner's age falls within module's age range
+        return $learnerAge >= $module->min_age && $learnerAge <= $module->max_age;
     }
 }

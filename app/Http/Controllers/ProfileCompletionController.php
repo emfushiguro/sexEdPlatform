@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileCompletionRequest;
 use App\Models\LearnerProfile;
+use Schoolees\Psgc\Models\City;
+use Schoolees\Psgc\Models\Barangay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -23,20 +25,48 @@ class ProfileCompletionController extends Controller
         }
 
         $learnerProfile = $user->learnerProfile;
+        
+        // Get Cavite cities/municipalities (province_code: 402100000)
+        $cities = City::where('province_code', '402100000')
+            ->orderBy('name')
+            ->get();
+        
+        // If editing and has city, load barangays
+        $barangays = [];
+        if ($learnerProfile && $learnerProfile->city_code) {
+            $barangays = Barangay::where('city_code', $learnerProfile->city_code)
+                ->orderBy('name')
+                ->get();
+        }
 
-        return view('profile.complete', compact('learnerProfile'));
+        return view('profile.complete', compact('learnerProfile', 'cities', 'barangays'));
     }
 
     /**
      * Store the completed profile.
      */
-    public function store(ProfileCompletionRequest $request)
+    public function store(Request $request)
     {
         $user = Auth::user();
-        $validated = $request->validated();
+        
+        // Validate the request
+        $validated = $request->validate([
+            'username' => 'required|string|min:3|max:30|regex:/^[a-z0-9_-]+$/|unique:learner_profiles,username',
+            'birthdate' => 'required|date|before:-5 years',
+            'gender' => 'nullable|in:male,female,prefer_not_to_say',
+            'city_code' => 'required|string|exists:cities,code',
+            'barangay_code' => 'required|string|exists:barangays,code',
+            'bio' => 'nullable|string|max:500',
+        ]);
+        
+        // Get city and barangay names for display purposes
+        $city = City::where('code', $validated['city_code'])->first();
+        $barangay = Barangay::where('code', $validated['barangay_code'])->first();
+        
+        $validated['barangay'] = $barangay->name;
 
         // Create or update learner profile
-        $user->learnerProfile()->updateOrCreate(
+        $learnerProfile = $user->learnerProfile()->updateOrCreate(
             ['user_id' => $user->id],
             $validated
         );

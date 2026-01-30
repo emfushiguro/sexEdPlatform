@@ -1,8 +1,21 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Create New User') }}
-        </h2>
+        <x-breadcrumb :items="[
+            ['label' => 'Dashboard', 'url' => route('admin.dashboard')],
+            ['label' => 'Users', 'url' => route('admin.users.index')],
+            ['label' => 'Create']
+        ]" />
+        
+        <div class="flex items-center space-x-3 mt-4">
+            <a href="{{ route('admin.users.index') }}" class="text-gray-600 hover:text-gray-900">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+            </a>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ __('Create New User') }}
+            </h2>
+        </div>
     </x-slot>
 
     <div class="py-12">
