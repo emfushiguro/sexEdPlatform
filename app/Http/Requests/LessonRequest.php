@@ -34,47 +34,63 @@ class LessonRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'module_id' => 'required|exists:modules,id',
             'title' => [
                 'required',
                 'string',
                 'max:255',
-                'regex:/^[a-zA-Z0-9\s\-:,.()]+$/', // Only allow safe characters
+                'min:3',
             ],
             'content_type' => 'required|in:text,video,worksheet,interactive',
             
             // Description/instructions field (optional for all types)
             'description' => 'nullable|string|max:5000',
             
-            // Text content rules (now nullable to allow TinyMCE empty state)
-            'text_content' => 'nullable|string|max:50000',
-            
-            // Image attachments for text lessons
-            'image_attachments.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB per image
-            
-            // Video rules - support both URL and file upload
-            'video_url' => [
-                'nullable',
-                'required_if:content_type,video',
-                'required_without:video_file',
-                'url',
-                'regex:/^https:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/.*$/',
-            ],
-            'video_file' => 'nullable|required_if:content_type,video|required_without:video_url|file|mimes:mp4,avi,mov,wmv|max:102400', // 100MB max
-            
-            // Worksheet rules
-            'worksheet_file' => 'nullable|required_if:content_type,worksheet|file|mimes:pdf,doc,docx|max:10240', // 10MB max
-            
-            // Interactive lesson configuration
-            'interactive_type' => 'nullable|in:picture_comparison,body_parts,drag_drop,matching',
-            'interactive_config' => 'nullable|array',
-            
             // Common fields
             'duration' => 'required|integer|min:1|max:300',
             'order' => 'nullable|integer|min:0|max:1000',
-            'is_published' => 'boolean',
+            'is_published' => 'nullable|boolean',
         ];
+
+        // Content-type specific rules
+        $contentType = $this->input('content_type');
+
+        switch ($contentType) {
+            case 'text':
+                $rules['text_content'] = 'required|string|min:10|max:50000';
+                $rules['image_attachments'] = 'nullable|array';
+                $rules['image_attachments.*'] = 'image|mimes:jpeg,png,jpg,gif,webp|max:5120'; // 5MB
+                break;
+
+            case 'video':
+                // Either URL OR file must be provided, but not required_if both
+                $rules['video_url'] = [
+                    'nullable',
+                    'url',
+                    'regex:/^https:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/.*$/',
+                    function ($attribute, $value, $fail) {
+                        if (empty($value) && !$this->hasFile('video_file')) {
+                            $fail('Either a video URL or uploaded file is required.');
+                        }
+                    },
+                ];
+                $rules['video_file'] = 'nullable|file|mimes:mp4,avi,mov,wmv,webm|max:102400'; // 100MB
+                break;
+
+            case 'worksheet':
+                $rules['text_content'] = 'nullable|string|max:50000'; // Instructions optional
+                $rules['worksheet_file'] = 'required|file|mimes:pdf,doc,docx|max:10240'; // 10MB
+                break;
+
+            case 'interactive':
+                $rules['text_content'] = 'required|string|min:10|max:50000'; // Instructions required
+                $rules['interactive_type'] = 'required|in:picture_comparison,body_parts,drag_drop,matching,feelings_matching,touch_scenarios,hygiene_sequence,privacy_zones';
+                $rules['interactive_config'] = 'nullable|array';
+                break;
+        }
+
+        return $rules;
     }
 
     /**
@@ -83,14 +99,36 @@ class LessonRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'title.regex' => 'Title contains invalid characters. Only letters, numbers, spaces, and basic punctuation allowed.',
-            'video_url.required_if' => 'Video URL is required for video lessons.',
-            'video_url.regex' => 'Only YouTube and Vimeo videos are supported.',
-            'text_content.required_if' => 'Content is required for this lesson type.',
+            'title.required' => 'Lesson title is required.',
+            'title.min' => 'Lesson title must be at least 3 characters.',
+            'title.max' => 'Lesson title cannot exceed 255 characters.',
+            
+            'content_type.required' => 'Please select a lesson type.',
+            'content_type.in' => 'Invalid lesson type selected.',
+            
+            'text_content.required' => 'Lesson content is required.',
+            'text_content.min' => 'Content must be at least 10 characters.',
             'text_content.max' => 'Content cannot exceed 50,000 characters.',
+            
+            'video_url.regex' => 'Only YouTube and Vimeo videos are supported. Please provide a valid video URL.',
+            'video_file.max' => 'Video file size cannot exceed 100MB.',
+            'video_file.mimes' => 'Video must be in MP4, AVI, MOV, WMV, or WEBM format.',
+            
+            'worksheet_file.required' => 'Worksheet file is required for worksheet lessons.',
+            'worksheet_file.max' => 'Worksheet file size cannot exceed 10MB.',
+            'worksheet_file.mimes' => 'Worksheet must be a PDF, DOC, or DOCX file.',
+            
+            'image_attachments.*.max' => 'Each image cannot exceed 5MB.',
+            'image_attachments.*.mimes' => 'Images must be JPEG, PNG, GIF, or WEBP format.',
+            
+            'interactive_type.required' => 'Please select an interactive activity type.',
+            'interactive_type.in' => 'Invalid interactive activity type.',
+            
+            'duration.required' => 'Lesson duration is required.',
+            'duration.min' => 'Duration must be at least 1 minute.',
             'duration.max' => 'Duration cannot exceed 5 hours (300 minutes).',
-            'worksheet_file.max' => 'File size cannot exceed 10MB.',
-            'order.max' => 'Order value is too large.',
+            
+            'order.max' => 'Order value cannot exceed 1000.',
         ];
     }
 

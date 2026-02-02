@@ -27,19 +27,36 @@
                             <h1 class="text-2xl font-bold mb-4">{{ $lesson->title }}</h1>
                             
                             <!-- Video Content -->
-                            @if($lesson->content_type === 'video' && $lesson->video_embed_url)
-                                <div class="aspect-video bg-black rounded-lg overflow-hidden mb-6">
-                                    <iframe 
-                                        src="{{ $lesson->video_embed_url }}" 
-                                        class="w-full h-full"
-                                        frameborder="0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                        allowfullscreen>
-                                    </iframe>
-                                </div>
-                                @if($lesson->text_content)
-                                    <div class="prose max-w-none">
-                                        {!! nl2br(e($lesson->text_content)) !!}
+                            @if($lesson->content_type === 'video')
+                                @if($lesson->video_embed_url)
+                                    <!-- Embedded Video (YouTube/Vimeo) -->
+                                    <div class="aspect-video bg-black rounded-lg overflow-hidden mb-6">
+                                        <iframe 
+                                            src="{{ $lesson->video_embed_url }}" 
+                                            class="w-full h-full"
+                                            frameborder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                            allowfullscreen>
+                                        </iframe>
+                                    </div>
+                                @elseif($lesson->video_file_path)
+                                    <!-- Uploaded Video File -->
+                                    <div class="aspect-video bg-black rounded-lg overflow-hidden mb-6">
+                                        <video class="w-full h-full" controls>
+                                            <source src="{{ asset('storage/' . $lesson->video_file_path) }}" type="video/mp4">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                @else
+                                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mb-6">
+                                        <p class="text-yellow-800">No video available for this lesson yet.</p>
+                                    </div>
+                                @endif
+                                
+                                @if($lesson->description)
+                                    <div class="prose max-w-none mb-4">
+                                        <h3 class="text-lg font-semibold mb-3">About this video:</h3>
+                                        <p>{!! nl2br(e($lesson->description)) !!}</p>
                                     </div>
                                 @endif
                             @endif
@@ -48,11 +65,20 @@
                             @if($lesson->content_type === 'text')
                                 @if($lesson->text_content)
                                     <div class="prose max-w-none mb-6">
-                                        {!! nl2br(e($lesson->text_content)) !!}
+                                        {!! $lesson->text_content !!}
                                     </div>
                                 @else
                                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
                                         <p class="text-yellow-800">No text content available for this lesson yet.</p>
+                                    </div>
+                                @endif
+                                
+                                <!-- Display Image Attachments -->
+                                @if($lesson->image_attachments && is_array($lesson->image_attachments))
+                                    <div class="mt-6 grid grid-cols-2 gap-4">
+                                        @foreach($lesson->image_attachments as $image)
+                                            <img src="{{ asset('storage/' . $image) }}" alt="Lesson image" class="rounded-lg shadow-md w-full">
+                                        @endforeach
                                     </div>
                                 @endif
                             @endif
@@ -87,7 +113,7 @@
                                 @if($lesson->text_content)
                                     <div class="prose max-w-none">
                                         <h3 class="text-lg font-semibold mb-3">Instructions:</h3>
-                                        {!! nl2br(e($lesson->text_content)) !!}
+                                        {!! $lesson->text_content !!}
                                     </div>
                                 @endif
                             @endif
@@ -109,7 +135,7 @@
                                 @if($lesson->text_content)
                                     <div class="prose max-w-none">
                                         <h3 class="text-lg font-semibold mb-3">Activity Instructions:</h3>
-                                        {!! nl2br(e($lesson->text_content)) !!}
+                                        {!! $lesson->text_content !!}
                                     </div>
                                 @endif
                                 @if(!$lesson->video_embed_url && !$lesson->text_content)

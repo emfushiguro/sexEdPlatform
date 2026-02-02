@@ -241,10 +241,14 @@
     </script>
 
     <!-- TinyMCE Rich Text Editor (Community/Open Source) -->
-    <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js" referrerpolicy="origin"></script>
+    <script src="{{ asset('build/tinymce/tinymce.min.js') }}"></script>
     <script>
         tinymce.init({
             selector: '#textContentEditor',
+            base_url: '{{ asset('build/tinymce') }}',
+            suffix: '.min',
+            license_key: 'gpl',
+            promotion: false,
             height: 400,
             menubar: false,
             plugins: [

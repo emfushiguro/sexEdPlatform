@@ -26,7 +26,8 @@ class ProfileCompletionController extends Controller
 
         $learnerProfile = $user->learnerProfile;
         
-        // Get Cavite cities/municipalities (province_code: 402100000)
+        // Get Cavite cities/municipalities
+        // Cavite province code: 402100000 (PSGC format)
         $cities = City::where('province_code', '402100000')
             ->orderBy('name')
             ->get();

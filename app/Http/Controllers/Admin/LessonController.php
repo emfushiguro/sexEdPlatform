@@ -34,22 +34,27 @@ class LessonController extends Controller
 
     public function store(LessonRequest $request)
     {
-        $validated = $request->validated();
-        
-        // Handle video - both URL and file upload
-        if ($validated['content_type'] === 'video') {
-            if ($request->hasFile('video_file')) {
-                // Store uploaded video file
-                $validated['video_file_path'] = $request->file('video_file')->store('videos', 'public');
-                $validated['video_provider'] = 'local';
-            } elseif (!empty($validated['video_url'])) {
-                // Parse external video URL
-                $videoData = VideoEmbedHelper::parseVideoUrl($validated['video_url']);
-                $validated['video_provider'] = $videoData['provider'];
-                $validated['video_id'] = $videoData['video_id'];
+        try {
+            $validated = $request->validated();
+            
+            // Handle video - both URL and file upload
+            if ($validated['content_type'] === 'video') {
+                if ($request->hasFile('video_file')) {
+                    // Store uploaded video file
+                    $validated['video_file_path'] = $request->file('video_file')->store('videos', 'public');
+                    $validated['video_provider'] = 'local';
+                    // Clear URL field if it exists
+                    $validated['video_url'] = null;
+                    $validated['video_id'] = null;
+                } elseif (!empty($validated['video_url'])) {
+                    // Parse external video URL
+                    $videoData = VideoEmbedHelper::parseVideoUrl($validated['video_url']);
+                    $validated['video_provider'] = $videoData['provider'];
+                    $validated['video_id'] = $videoData['video_id'];
+                    $validated['video_file_path'] = null;
+                }
+                unset($validated['video_url']); // Remove video_url from fillable data
             }
-            unset($validated['video_url']);
-        }
         
         // Handle image attachments for text lessons
         if ($request->hasFile('image_attachments')) {
@@ -80,11 +85,40 @@ class LessonController extends Controller
         
         // Set published status
         $validated['is_published'] = $request->has('is_published');
+        
+        // Clean up unneeded fields before creating
+        unset($validated['video_file']); // Remove file object, we only store path
 
-        Lesson::create($validated);
+        $lesson = Lesson::create($validated);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Lesson created successfully!',
+                'lesson' => $lesson,
+                'redirect' => route('admin.lessons.index')
+            ]);
+        }
 
         return redirect()->route('admin.lessons.index')
             ->with('success', 'Lesson created successfully!');
+        
+        } catch (\Exception $e) {
+            \Log::error('Lesson creation failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create lesson: ' . $e->getMessage()
+                ], 422);
+            }
+            
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to create lesson: ' . $e->getMessage()]);
+        }
     }
 
     public function show(Lesson $lesson)
