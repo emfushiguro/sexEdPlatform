@@ -96,9 +96,49 @@ class Lesson extends Model
         return $this->hasMany(Quiz::class);
     }
 
+    public function topics()
+    {
+        return $this->hasMany(LessonTopic::class)->orderBy('order');
+    }
+
     public function userProgress()
     {
         return $this->hasMany(UserProgress::class);
+    }
+
+    /**
+     * Get lesson completion percentage for a user based on topics.
+     */
+    public function getTopicCompletionPercentage($userId): int
+    {
+        $totalTopics = $this->topics()->count();
+        
+        if ($totalTopics === 0) {
+            return 0;
+        }
+
+        $completedTopics = $this->topics()
+            ->whereHas('progress', function ($query) use ($userId) {
+                $query->where('user_id', $userId)
+                      ->where('completed', true);
+            })
+            ->count();
+
+        return (int) (($completedTopics / $totalTopics) * 100);
+    }
+
+    /**
+     * Check if all topics are completed by user.
+     */
+    public function allTopicsCompletedBy($userId): bool
+    {
+        $totalTopics = $this->topics()->count();
+        
+        if ($totalTopics === 0) {
+            return true; // No topics means lesson is accessible
+        }
+
+        return $this->getTopicCompletionPercentage($userId) === 100;
     }
 
     // Scopes

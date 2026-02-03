@@ -73,13 +73,247 @@
                                     </div>
                                 @endif
                                 
-                                <!-- Display Image Attachments -->
-                                @if($lesson->image_attachments && is_array($lesson->image_attachments))
-                                    <div class="mt-6 grid grid-cols-2 gap-4">
-                                        @foreach($lesson->image_attachments as $image)
-                                            <img src="{{ asset('storage/' . $image) }}" alt="Lesson image" class="rounded-lg shadow-md w-full">
-                                        @endforeach
-                                    </div>
+                                <!-- Display Image Attachments - None, Gallery, or Slideshow Mode -->
+                                @if($lesson->image_attachments && is_array($lesson->image_attachments) && count($lesson->image_attachments) > 0)
+                                    @php
+                                        $slideshowData = $lesson->slideshow_data;
+                                        $displayMode = is_array($slideshowData) && isset($slideshowData['mode']) ? $slideshowData['mode'] : 'none';
+                                        $transition = $slideshowData['transition'] ?? 'fade';
+                                    @endphp
+
+                                    @if($displayMode === 'slideshow')
+                                        <!-- SLIDESHOW MODE -->
+                                        <div class="mt-8" x-data="{
+                                            currentSlide: 0,
+                                            totalSlides: {{ count($lesson->image_attachments) }},
+                                            transition: '{{ $transition }}',
+                                            prevSlide() {
+                                                this.currentSlide = this.currentSlide === 0 ? this.totalSlides - 1 : this.currentSlide - 1;
+                                            },
+                                            nextSlide() {
+                                                this.currentSlide = this.currentSlide === this.totalSlides - 1 ? 0 : this.currentSlide + 1;
+                                            },
+                                            goToSlide(index) {
+                                                this.currentSlide = index;
+                                            }
+                                        }">
+                                            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-lg p-6">
+                                                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/>
+                                                    </svg>
+                                                    Image Slideshow
+                                                </h3>
+
+                                                <!-- Main Image Display -->
+                                                <div class="relative bg-white rounded-lg shadow-md overflow-hidden">
+                                                    <div class="relative aspect-video bg-gray-100">
+                                                        @foreach($lesson->image_attachments as $index => $imageData)
+                                                            @php
+                                                                $imagePath = is_array($imageData) ? $imageData['path'] : $imageData;
+                                                                $caption = is_array($imageData) ? ($imageData['caption'] ?? null) : null;
+                                                            @endphp
+                                                            <div x-show="currentSlide === {{ $index }}"
+                                                                 x-transition:enter="transition ease-out duration-300"
+                                                                 x-transition:enter-start="opacity-0 {{ $transition === 'slide' ? 'translate-x-full' : '' }}"
+                                                                 x-transition:enter-end="opacity-100 {{ $transition === 'slide' ? 'translate-x-0' : '' }}"
+                                                                 x-transition:leave="transition ease-in duration-300"
+                                                                 x-transition:leave-start="opacity-100"
+                                                                 x-transition:leave-end="opacity-0"
+                                                                 class="absolute inset-0 flex flex-col">
+                                                                <div class="flex-1 flex items-center justify-center p-4">
+                                                                    <img src="{{ asset('storage/' . $imagePath) }}" 
+                                                                         alt="Slide {{ $index + 1 }}"
+                                                                         class="max-w-full max-h-full object-contain">
+                                                                </div>
+                                                                
+                                                                <!-- Caption directly below image -->\n                                                                @if($caption)
+                                                                    <div class="bg-blue-50 px-4 py-3 border-t border-blue-100">
+                                                                        <p class="text-sm text-gray-700 text-center">
+                                                                            {{ $caption }}
+                                                                        </p>
+                                                                    </div>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+
+                                                        <!-- Previous Button - More Visible -->
+                                                        <button @click="prevSlide" 
+                                                                class="absolute left-4 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 z-20">
+                                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                                                            </svg>
+                                                        </button>
+                                                        
+                                                        <!-- Next Button - More Visible -->
+                                                        <button @click="nextSlide"
+                                                                class="absolute right-4 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 z-20">
+                                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                                            </svg>
+                                                        </button>
+
+                                                        <!-- Slide Counter -->
+                                                        <div class="absolute top-4 right-4 bg-gray-900/80 text-white px-3 py-1 rounded-full text-sm font-medium z-10">
+                                                            <span x-text="currentSlide + 1"></span> / <span x-text="totalSlides"></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Thumbnail Strip -->
+                                                <div class="flex gap-2 overflow-x-auto pb-2 mt-4">
+                                                    @foreach($lesson->image_attachments as $index => $imageData)
+                                                        @php
+                                                            $imagePath = is_array($imageData) ? $imageData['path'] : $imageData;
+                                                        @endphp
+                                                        <button @click="goToSlide({{ $index }})"
+                                                                :class="currentSlide === {{ $index }} ? 'ring-2 ring-blue-500 opacity-100' : 'opacity-50 hover:opacity-75'"
+                                                                class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden transition">
+                                                            <img src="{{ asset('storage/' . $imagePath) }}" 
+                                                                 alt="Thumbnail {{ $index + 1 }}"
+                                                                 class="w-full h-full object-cover">
+                                                        </button>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @elseif($displayMode === 'gallery')
+                                        <!-- GALLERY MODE -->
+                                        <div class="mt-8" x-data="{ 
+                                            lightboxOpen: false, 
+                                            currentImage: 0,
+                                            images: {{ json_encode(array_map(function($img) { 
+                                                return is_array($img) ? $img : ['path' => $img, 'caption' => null]; 
+                                            }, $lesson->image_attachments)) }},
+                                            openLightbox(index) {
+                                                this.currentImage = index;
+                                                this.lightboxOpen = true;
+                                            },
+                                            closeLightbox() {
+                                                this.lightboxOpen = false;
+                                            },
+                                            nextImage() {
+                                                this.currentImage = (this.currentImage + 1) % this.images.length;
+                                            },
+                                            prevImage() {
+                                                this.currentImage = this.currentImage === 0 ? this.images.length - 1 : this.currentImage - 1;
+                                            }
+                                        }">
+                                            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                                <svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/>
+                                                </svg>
+                                                Image Gallery
+                                            </h3>
+
+                                            <!-- Image Grid -->
+                                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                @foreach($lesson->image_attachments as $index => $imageData)
+                                                    @php
+                                                        $imagePath = is_array($imageData) ? $imageData['path'] : $imageData;
+                                                        $caption = is_array($imageData) ? ($imageData['caption'] ?? null) : null;
+                                                    @endphp
+                                                    <div @click="openLightbox({{ $index }})" 
+                                                         class="group relative cursor-pointer overflow-hidden rounded-lg shadow-md hover:shadow-xl transition">
+                                                        <img src="{{ asset('storage/' . $imagePath) }}" 
+                                                             alt="Image {{ $index + 1 }}" 
+                                                             class="w-full h-48 object-cover group-hover:scale-110 transition duration-300">
+                                                        
+                                                        <!-- Overlay on hover -->
+                                                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center">
+                                                            <svg class="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/>
+                                                            </svg>
+                                                        </div>
+
+                                                        @if($caption)
+                                                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/75 to-transparent p-3">
+                                                                <p class="text-white text-xs line-clamp-2">{{ $caption }}</p>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+
+                                            <!-- Lightbox Modal -->
+                                            <div x-show="lightboxOpen" 
+                                                 x-cloak
+                                                 @keydown.escape.window="closeLightbox"
+                                                 @keydown.arrow-right.window="nextImage"
+                                                 @keydown.arrow-left.window="prevImage"
+                                                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4">
+                                                
+                                                <!-- Close Button - Top Right -->
+                                                <button @click="closeLightbox" 
+                                                        class="absolute top-6 right-6 bg-white/20 hover:bg-white/30 text-white rounded-full p-3 transition-all hover:scale-110 z-50">
+                                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+
+                                                <!-- Image Container -->
+                                                <div class="max-w-6xl w-full px-16">
+                                                    <img :src="'{{ asset('storage') }}/' + images[currentImage].path" 
+                                                         :alt="'Image ' + (currentImage + 1)"
+                                                         class="max-h-[85vh] w-full object-contain rounded-lg shadow-2xl">
+                                                    
+                                                    <!-- Caption in Lightbox -->
+                                                    <div x-show="images[currentImage].caption" 
+                                                         class="mt-4 text-center">
+                                                        <p class="text-white text-base" x-text="images[currentImage].caption"></p>
+                                                    </div>
+
+                                                    <!-- Image Counter -->
+                                                    <div class="mt-3 text-center text-white/90 text-sm font-medium">
+                                                        Image <span x-text="currentImage + 1"></span> of <span x-text="images.length"></span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Navigation Buttons - Fixed Position -->
+                                                <button @click="prevImage" 
+                                                        class="fixed left-6 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-all hover:scale-110 z-50">
+                                                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                                                    </svg>
+                                                </button>
+                                                <button @click="nextImage"
+                                                        class="fixed right-6 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-all hover:scale-110 z-50">
+                                                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <!-- SIMPLE/NONE MODE - Just display images -->
+                                        <div class="mt-8">
+                                            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                                <svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/>
+                                                </svg>
+                                                Images
+                                            </h3>
+
+                                            <div class="space-y-6">
+                                                @foreach($lesson->image_attachments as $index => $imageData)
+                                                    @php
+                                                        $imagePath = is_array($imageData) ? $imageData['path'] : $imageData;
+                                                        $caption = is_array($imageData) ? ($imageData['caption'] ?? null) : null;
+                                                    @endphp
+                                                    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                                                        <img src="{{ asset('storage/' . $imagePath) }}" 
+                                                             alt="Image {{ $index + 1 }}" 
+                                                             class="w-full h-auto">
+                                                        @if($caption)
+                                                            <div class="bg-gray-50 px-4 py-3 border-t">
+                                                                <p class="text-sm text-gray-700">{{ $caption }}</p>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
                                 @endif
                             @endif
 

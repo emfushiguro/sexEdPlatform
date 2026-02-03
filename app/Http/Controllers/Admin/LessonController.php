@@ -29,7 +29,8 @@ class LessonController extends Controller
     public function create()
     {
         $modules = Module::all();
-        return view('admin.lessons.create', compact('modules'));
+        $quizzes = Quiz::select('id', 'title')->get();
+        return view('admin.lessons.create', compact('modules', 'quizzes'));
     }
 
     public function store(LessonRequest $request)
@@ -59,10 +60,39 @@ class LessonController extends Controller
         // Handle image attachments for text lessons
         if ($request->hasFile('image_attachments')) {
             $imagePaths = [];
-            foreach ($request->file('image_attachments') as $image) {
-                $imagePaths[] = $image->store('lesson-images', 'public');
+            $captions = $request->input('image_captions', []);
+            
+            foreach ($request->file('image_attachments') as $index => $image) {
+                $path = $image->store('lesson-images', 'public');
+                $imagePaths[] = [
+                    'path' => $path,
+                    'caption' => $captions[$index] ?? null,
+                    'original_name' => $image->getClientOriginalName(),
+                ];
             }
             $validated['image_attachments'] = $imagePaths;
+            
+            // Handle slideshow configuration
+            $displayMode = $request->input('image_display_mode', 'none');
+            if ($displayMode === 'slideshow') {
+                $validated['slideshow_data'] = [
+                    'enabled' => true,
+                    'mode' => 'slideshow',
+                    'transition' => $request->input('slideshow_transition', 'fade'),
+                    'auto_play' => false,
+                    'show_thumbnails' => true,
+                ];
+            } elseif ($displayMode === 'gallery') {
+                $validated['slideshow_data'] = [
+                    'enabled' => false,
+                    'mode' => 'gallery',
+                ];
+            } else {
+                $validated['slideshow_data'] = [
+                    'enabled' => false,
+                    'mode' => 'none',
+                ];
+            }
         }
         
         // Handle worksheet file upload
@@ -90,6 +120,25 @@ class LessonController extends Controller
         unset($validated['video_file']); // Remove file object, we only store path
 
         $lesson = Lesson::create($validated);
+
+        // Handle lesson topics if provided
+        if ($request->filled('topics_json')) {
+            $topicsData = json_decode($request->input('topics_json'), true);
+            
+            if (is_array($topicsData)) {
+                foreach ($topicsData as $topicData) {
+                    $lesson->topics()->create([
+                        'title' => $topicData['title'] ?? '',
+                        'type' => $topicData['type'] ?? 'text',
+                        'content' => $topicData['content'] ?? null,
+                        'quiz_id' => $topicData['quiz_id'] ?? null,
+                        'duration' => $topicData['duration'] ?? null,
+                        'is_prerequisite' => $topicData['is_prerequisite'] ?? false,
+                        'order' => $topicData['order'] ?? 0,
+                    ]);
+                }
+            }
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([

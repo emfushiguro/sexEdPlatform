@@ -50,100 +50,98 @@
                             @error('module_id')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
+                        <!-- Hidden field: content_type always 'text' since content is in topics -->
+                        <input type="hidden" name="content_type" value="text">
+
                         <!-- Lesson Title -->
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Lesson Title *</label>
                             <input type="text" name="title" value="{{ old('title') }}" required
-                                placeholder="e.g., Understanding Puberty Changes"
+                                placeholder="e.g., Understanding Anatomy: Get to know body parts [25 min]"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <p class="mt-1 text-xs text-gray-500">💡 Create a descriptive lesson title (topics will contain the actual content)</p>
                             @error('title')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
-                        <!-- Lesson Type -->
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Lesson Type *</label>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <label class="lesson-type-card relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm hover:border-blue-500 transition-all">
-                                    <input type="radio" name="content_type" value="text" 
-                                        {{ old('content_type', 'text') === 'text' ? 'checked' : '' }}
-                                        class="absolute opacity-0">
-                                    <div class="flex flex-1 flex-col pointer-events-none">
-                                        <span class="text-2xl mb-2">📄</span>
-                                        <span class="block text-sm font-medium text-gray-900">Text</span>
-                                        <span class="text-xs text-gray-500">Rich content</span>
-                                    </div>
-                                </label>
-
-                                <label class="lesson-type-card relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm hover:border-blue-500 transition-all">
-                                    <input type="radio" name="content_type" value="video" 
-                                        {{ old('content_type') === 'video' ? 'checked' : '' }}
-                                        class="absolute opacity-0">
-                                    <div class="flex flex-1 flex-col pointer-events-none">
-                                        <span class="text-2xl mb-2">🎥</span>
-                                        <span class="block text-sm font-medium text-gray-900">Video</span>
-                                        <span class="text-xs text-gray-500">Upload/Link</span>
-                                    </div>
-                                </label>
-
-                                <label class="lesson-type-card relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm hover:border-blue-500 transition-all">
-                                    <input type="radio" name="content_type" value="worksheet" 
-                                        {{ old('content_type') === 'worksheet' ? 'checked' : '' }}
-                                        class="absolute opacity-0">
-                                    <div class="flex flex-1 flex-col pointer-events-none">
-                                        <span class="text-2xl mb-2">📋</span>
-                                        <span class="block text-sm font-medium text-gray-900">Worksheet</span>
-                                        <span class="text-xs text-gray-500">PDF/Docs</span>
-                                    </div>
-                                </label>
-
-                                <label class="lesson-type-card relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm hover:border-blue-500 transition-all">
-                                    <input type="radio" name="content_type" value="interactive" 
-                                        {{ old('content_type') === 'interactive' ? 'checked' : '' }}
-                                        class="absolute opacity-0">
-                                    <div class="flex flex-1 flex-col pointer-events-none">
-                                        <span class="text-2xl mb-2">🎮</span>
-                                        <span class="block text-sm font-medium text-gray-900">Interactive</span>
-                                        <span class="text-xs text-gray-500">Activities</span>
-                                    </div>
-                                </label>
-                            </div>
-                            @error('content_type')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        <!-- Info Box -->
+                        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p class="text-sm text-blue-800">
+                                <strong>ℹ️ New Lesson Structure:</strong> Lessons are now containers. Add videos, texts, quizzes, and interactive activities as <strong>Topics</strong> below. Learners will complete topics sequentially before moving to the next lesson.
+                            </p>
                         </div>
 
-                        <!-- Description/Instructions (for all types) -->
+                        <!-- Hidden placeholder for old lesson type cards (removed) -->
+                        <div class="hidden">
+                        </div>
+
+                        <!-- Description -->
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Description/Instructions
-                                <span class="text-xs text-gray-500 font-normal">(Optional - context for learners)</span>
+                                Lesson Description
+                                <span class="text-xs text-gray-500 font-normal">(Optional)</span>
                             </label>
                             <textarea name="description" rows="3"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                placeholder="Add instructions, context, or learning objectives...">{{ old('description') }}</textarea>
-                            <p class="mt-1 text-xs text-gray-500">This will appear above the main content to guide learners</p>
+                                placeholder="Brief overview of what learners will learn in this lesson...">{{ old('description') }}</textarea>
+                            <p class="mt-1 text-xs text-gray-500">Appears in the module overview</p>
                             @error('description')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
-                        <!-- TEXT LESSON CONTENT -->
-                        <div id="textContent" class="content-section">
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Lesson Content *</label>
-                                <textarea id="textEditor" name="text_content_text" rows="15"
-                                    class="w-full rounded-md border-gray-300 shadow-sm">{{ old('text_content') }}</textarea>
-                                <p class="mt-1 text-xs text-gray-500">Use the editor to format text, add headings, lists, and more</p>
-                                @error('text_content')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                            </div>
-
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Image Attachments (Optional)</label>
-                                <input type="file" name="image_attachments[]" accept="image/*" multiple
-                                    class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                                <p class="mt-1 text-xs text-gray-500">Add diagrams, illustrations, or photos (JPEG, PNG, GIF - max 5MB each)</p>
-                                @error('image_attachments.*')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                            </div>
+                        <!-- Hidden placeholder for removed content sections -->
+                        <div class="hidden">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Display Mode</label>
+                                    <select name="image_display_mode" id="imageDisplayMode" onchange="toggleSlideshowSettings()"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="none">📷 Simple (Just show images)</option>
+                                        <option value="gallery">🖼️ Gallery (Grid with lightbox)</option>
+                                        <option value="slideshow">🎬 Slideshow (Carousel with controls)</option>
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">Choose how images will be displayed to learners</p>
+                                    
+                                    <!-- Slideshow Settings (shown only when slideshow is selected) -->
+                                    <div id="slideshowSettings" class="mt-3 hidden">
+                                        <label class="block text-xs font-medium text-gray-600 mb-2">Transition Effect</label>
+                                        <select name="slideshow_transition" class="text-sm rounded border-gray-300">
+                                            <option value="fade">Fade</option>
+                                            <option value="slide">Slide</option>
+                                        </select>
+                                        <p class="mt-1 text-xs text-gray-500">✨ Choose animation between images</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Image Upload -->
+                                <div class="mb-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Upload Images</label>
+                                    <div class="flex gap-2">
+                                        <input type="file" name="image_attachments[]" accept="image/*" multiple
+                                            id="imageUpload" onchange="addImages(event)"
+                                            class="hidden">
+                                        <button type="button" onclick="document.getElementById('imageUpload').click()"
+                                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                            </svg>
+                                            Choose Images
+                                        </button>
+                                        <button type="button" onclick="addMoreImages()"
+                                            id="addMoreBtn" class="hidden px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition flex items-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                            </svg>
+                                            Add More Images
+                                        </button>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500">Add diagrams, illustrations, or photos (JPEG, PNG, GIF - max 5MB each)</p>
+                                    @error('image_attachments.*')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                </div>
+                                
+                                <!-- Image Preview Container -->
+                                <div id="imagePreviewContainer" class="mt-4 hidden">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Image Previews & Captions</h4>
                         </div>
 
-                        <!-- VIDEO LESSON CONTENT -->
-                        <div id="videoContent" class="content-section hidden">
+                        <!-- Removed old content sections (now in topics) -->
+                        <div class="hidden">
                             <div class="mb-6">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Video Source *</label>
                                 <select name="video_source" id="video_source_select" onchange="toggleVideoSource()"
@@ -189,39 +187,26 @@
                                 @error('worksheet_file')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                             </div>
                         </div>
+                        </div>
 
-                        <!-- INTERACTIVE LESSON CONTENT -->
-                        <div id="interactiveContent" class="content-section hidden">
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Activity Type *</label>
-                                <select name="interactive_type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="">Select Activity Type</option>
-                                    <option value="body_parts">Body Parts Identification</option>
-                                    <option value="feelings_matching">Feelings & Emotions Matching</option>
-                                    <option value="touch_scenarios">Good Touch / Bad Touch Scenarios</option>
-                                    <option value="hygiene_sequence">Personal Hygiene Sequence</option>
-                                    <option value="privacy_zones">Privacy Zones Coloring</option>
-                                    <option value="picture_comparison">Picture Comparison (Spot Differences)</option>
-                                    <option value="drag_drop">Drag & Drop Matching</option>
-                                    <option value="matching">Match Pairs Game</option>
-                                </select>
-                                <p class="mt-1 text-xs text-gray-500">🎮 Choose an interactive activity for hands-on learning (Especially designed for ages 5-12)</p>
-                                @error('interactive_type')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        <!-- Lesson Topics/Sections -->
+                        <div class="mb-6 p-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Lesson Topics / Sections</h3>
+                                    <p class="text-sm text-gray-600">Break down your lesson into organized topics that learners must complete sequentially</p>
+                                </div>
+                                <button type="button" onclick="addTopic()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                    </svg>
+                                    Add Topic
+                                </button>
                             </div>
 
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Activity Instructions *</label>
-                                <textarea name="text_content_interactive" rows="8"
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    placeholder="Add detailed instructions for the activity...&#10;&#10;Example:&#10;- Objective: Help children identify private body parts&#10;- Instructions: Click on the body parts that are private&#10;- Success criteria: Correctly identify all 3 private zones">{{ old('text_content') }}</textarea>
-                                <p class="mt-1 text-xs text-gray-500">Explain how to complete the activity and what learners should achieve</p>
-                                @error('text_content')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                            </div>
-
-                            <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                <p class="text-sm text-blue-800">
-                                    <strong>📝 Development Note:</strong> Interactive activities framework is in place. You can create lessons now, and the interactive functionality will be fully implemented in the next update. Currently stores instructions and activity type configuration.
-                                </p>
+                            <div id="topicsList" class="space-y-3">
+                                <!-- Topics will be added here dynamically -->
+                                <p class="text-sm text-gray-500 italic text-center py-8" id="emptyTopicsMessage">No topics added yet. Click "Add Topic" to create sections for this lesson.</p>
                             </div>
                         </div>
 
@@ -360,6 +345,16 @@
             }
             
             this.appendChild(hiddenInput);
+            
+            // Collect image captions and add them to form
+            const captionInputs = document.querySelectorAll('.caption-input');
+            captionInputs.forEach((input, index) => {
+                const captionField = document.createElement('input');
+                captionField.type = 'hidden';
+                captionField.name = 'image_captions[]';
+                captionField.value = input.value || '';
+                this.appendChild(captionField);
+            });
             
             // Show loading indicator
             const submitBtn = document.getElementById('submitBtn');
@@ -511,5 +506,309 @@
             updateContentFields();
             toggleVideoSource();
         });
+
+        // Toggle slideshow settings visibility
+        function toggleSlideshowSettings() {
+            const displayMode = document.getElementById('imageDisplayMode');
+            const settingsDiv = document.getElementById('slideshowSettings');
+            
+            if (displayMode && displayMode.value === 'slideshow') {
+                settingsDiv.classList.remove('hidden');
+            } else {
+                settingsDiv.classList.add('hidden');
+            }
+        }
+
+        // Image management - Facebook-style incremental upload
+        let selectedFiles = [];
+        let fileCounter = 0;
+
+        function addImages(event) {
+            const files = Array.from(event.target.files);
+            files.forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    selectedFiles.push({ id: fileCounter++, file: file });
+                }
+            });
+            updateImagePreviews();
+            document.getElementById('addMoreBtn').classList.remove('hidden');
+        }
+
+        function addMoreImages() {
+            document.getElementById('imageUpload').click();
+        }
+
+        function removeImage(id) {
+            selectedFiles = selectedFiles.filter(item => item.id !== id);
+            updateImagePreviews();
+            if (selectedFiles.length === 0) {
+                document.getElementById('addMoreBtn').classList.add('hidden');
+            }
+        }
+
+        function updateImagePreviews() {
+            const container = document.getElementById('imagePreviewContainer');
+            const previews = document.getElementById('imagePreviews');
+            
+            if (selectedFiles.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+            
+            previews.innerHTML = '';
+            container.classList.remove('hidden');
+            
+            selectedFiles.forEach((item, index) => {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const previewCard = document.createElement('div');
+                    previewCard.className = 'border border-gray-200 rounded-lg p-3 bg-white relative';
+                    previewCard.innerHTML = `
+                        <button type="button" onclick="removeImage(${item.id})" 
+                            class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition z-10">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                        <div class="relative mb-2">
+                            <img src="${e.target.result}" alt="Preview" 
+                                class="w-full h-32 object-cover rounded">
+                            <div class="absolute top-1 left-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                                #${index + 1}
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <p class="text-xs text-gray-600 truncate" title="${item.file.name}">
+                                📁 ${item.file.name}
+                            </p>
+                            <input type="text" class="caption-input" data-index="${index}" 
+                                placeholder="Caption (optional)"
+                                class="w-full text-xs border-gray-300 rounded focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                    `;
+                    previews.appendChild(previewCard);
+                };
+                
+                reader.readAsDataURL(item.file);
+            });
+            
+            // Update the actual file input for form submission
+            updateFileInput();
+        }
+
+        function updateFileInput() {
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(item => {
+                dataTransfer.items.add(item.file);
+            });
+            document.getElementById('imageUpload').files = dataTransfer.files;
+        }
+
+        // ========================================
+        // LESSON TOPICS MANAGEMENT
+        // ========================================
+        
+        let topicCounter = 0;
+        let topics = [];
+
+        function addTopic() {
+            topicCounter++;
+            const topicId = topicCounter;
+            
+            const topic = {
+                id: topicId,
+                title: '',
+                type: 'text',
+                content: '',
+                quiz_id: '',
+                duration: '',
+                is_prerequisite: false,
+                order: topics.length
+            };
+            
+            topics.push(topic);
+            renderTopics();
+        }
+
+        function removeTopic(topicId) {
+            if (confirm('Are you sure you want to remove this topic?')) {
+                topics = topics.filter(t => t.id !== topicId);
+                // Reorder remaining topics
+                topics.forEach((t, index) => {
+                    t.order = index;
+                });
+                renderTopics();
+            }
+        }
+
+        function updateTopicField(topicId, field, value) {
+            const topic = topics.find(t => t.id === topicId);
+            if (topic) {
+                topic[field] = value;
+            }
+        }
+
+        function moveTopicUp(topicId) {
+            const index = topics.findIndex(t => t.id === topicId);
+            if (index > 0) {
+                [topics[index], topics[index - 1]] = [topics[index - 1], topics[index]];
+                topics.forEach((t, i) => t.order = i);
+                renderTopics();
+            }
+        }
+
+        function moveTopicDown(topicId) {
+            const index = topics.findIndex(t => t.id === topicId);
+            if (index < topics.length - 1) {
+                [topics[index], topics[index + 1]] = [topics[index + 1], topics[index]];
+                topics.forEach((t, i) => t.order = i);
+                renderTopics();
+            }
+        }
+
+        function renderTopics() {
+            const container = document.getElementById('topicsList');
+            const emptyMessage = document.getElementById('emptyTopicsMessage');
+            
+            if (topics.length === 0) {
+                emptyMessage.classList.remove('hidden');
+                container.innerHTML = '';
+                container.appendChild(emptyMessage);
+                return;
+            }
+            
+            emptyMessage.classList.add('hidden');
+            container.innerHTML = '';
+            
+            topics.forEach((topic, index) => {
+                const topicCard = document.createElement('div');
+                topicCard.className = 'bg-white border-2 border-gray-200 rounded-lg p-4';
+                topicCard.innerHTML = `
+                    <div class="flex items-start gap-4">
+                        <!-- Order Controls -->
+                        <div class="flex flex-col gap-1 pt-1">
+                            <button type="button" onclick="moveTopicUp(${topic.id})" 
+                                ${index === 0 ? 'disabled' : ''}
+                                class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                                </svg>
+                            </button>
+                            <button type="button" onclick="moveTopicDown(${topic.id})" 
+                                ${index === topics.length - 1 ? 'disabled' : ''}
+                                class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Topic Number Badge -->
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold text-sm">
+                            ${index + 1}
+                        </div>
+
+                        <!-- Topic Fields -->
+                        <div class="flex-1 space-y-3">
+                            <!-- Title & Type Row -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Topic Title *</label>
+                                    <input type="text" 
+                                        value="${topic.title}"
+                                        onchange="updateTopicField(${topic.id}, 'title', this.value)"
+                                        placeholder="e.g., Video: Anatomy of a person with a vulva"
+                                        class="w-full text-sm border-gray-300 rounded focus:border-blue-500 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Type *</label>
+                                    <select 
+                                        onchange="updateTopicField(${topic.id}, 'type', this.value); renderTopics();"
+                                        class="w-full text-sm border-gray-300 rounded focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="text" ${topic.type === 'text' ? 'selected' : ''}>📝 Text</option>
+                                        <option value="video" ${topic.type === 'video' ? 'selected' : ''}>🎥 Video</option>
+                                        <option value="quiz" ${topic.type === 'quiz' ? 'selected' : ''}>❓ Quiz</option>
+                                        <option value="interactive" ${topic.type === 'interactive' ? 'selected' : ''}>🎮 Interactive</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Content Field (dynamic based on type) -->
+                            <div>
+                                ${topic.type === 'video' ? `
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Video URL (YouTube/Vimeo) *</label>
+                                    <input type="url" 
+                                        value="${topic.content}"
+                                        onchange="updateTopicField(${topic.id}, 'content', this.value)"
+                                        placeholder="https://www.youtube.com/watch?v=..."
+                                        class="w-full text-sm border-gray-300 rounded focus:border-blue-500 focus:ring-blue-500">
+                                ` : topic.type === 'quiz' ? `
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Quiz (select from existing)</label>
+                                    <select 
+                                        onchange="updateTopicField(${topic.id}, 'quiz_id', this.value)"
+                                        class="w-full text-sm border-gray-300 rounded focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="">Select a quiz...</option>
+                                        @foreach($quizzes ?? [] as $quiz)
+                                            <option value="{{ $quiz->id }}" ${topic.quiz_id == '{{ $quiz->id }}' ? 'selected' : ''}>{{ $quiz->title }}</option>
+                                        @endforeach
+                                    </select>
+                                ` : `
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Content / Instructions</label>
+                                    <textarea 
+                                        onchange="updateTopicField(${topic.id}, 'content', this.value)"
+                                        rows="2"
+                                        placeholder="Add content or instructions for this topic..."
+                                        class="w-full text-sm border-gray-300 rounded focus:border-blue-500 focus:ring-blue-500">${topic.content}</textarea>
+                                `}
+                            </div>
+
+                            <!-- Duration & Prerequisites Row -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                                    <input type="number" 
+                                        value="${topic.duration}"
+                                        onchange="updateTopicField(${topic.id}, 'duration', this.value)"
+                                        min="1"
+                                        placeholder="e.g., 3"
+                                        class="w-full text-sm border-gray-300 rounded focus:border-blue-500 focus:ring-blue-500">
+                                </div>
+                                <div class="flex items-end pb-2">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" 
+                                            ${topic.is_prerequisite ? 'checked' : ''}
+                                            onchange="updateTopicField(${topic.id}, 'is_prerequisite', this.checked)"
+                                            class="rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-xs font-medium text-gray-700">Mark as PREREQUISITE</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Remove Button -->
+                        <button type="button" onclick="removeTopic(${topic.id})" 
+                            class="flex-shrink-0 text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(topicCard);
+            });
+        }
+
+        // Add topics to form submission
+        const originalSubmitHandler = document.getElementById('lessonForm').onsubmit;
+        document.getElementById('lessonForm').addEventListener('submit', function(e) {
+            // Add topics as JSON to form
+            const topicsInput = document.createElement('input');
+            topicsInput.type = 'hidden';
+            topicsInput.name = 'topics_json';
+            topicsInput.value = JSON.stringify(topics);
+            this.appendChild(topicsInput);
+        });
+
     </script>
 </x-app-layout>

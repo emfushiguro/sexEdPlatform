@@ -85,6 +85,17 @@ class LessonController extends Controller
                 ->first();
         }
 
+        // Get lesson topics with progress
+        $lessonTopics = $lesson->topics()->ordered()->get();
+        $completedTopicIds = [];
+        if ($lessonTopics->count() > 0) {
+            $completedTopicIds = \App\Models\LessonTopicProgress::where('user_id', $user->id)
+                ->whereIn('lesson_topic_id', $lessonTopics->pluck('id'))
+                ->where('completed', true)
+                ->pluck('lesson_topic_id')
+                ->toArray();
+        }
+
         return view('learner.lessons.show', compact(
             'lesson',
             'module',
@@ -94,7 +105,9 @@ class LessonController extends Controller
             'isLessonCompleted',
             'completedLessonIds',
             'lessonQuiz',
-            'quizAttempt'
+            'quizAttempt',
+            'lessonTopics',
+            'completedTopicIds'
         ));
     }
 

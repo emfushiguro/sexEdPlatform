@@ -61,6 +61,10 @@ class LessonRequest extends FormRequest
                 $rules['text_content'] = 'required|string|min:10|max:50000';
                 $rules['image_attachments'] = 'nullable|array';
                 $rules['image_attachments.*'] = 'image|mimes:jpeg,png,jpg,gif,webp|max:5120'; // 5MB
+                $rules['image_captions'] = 'nullable|array';
+                $rules['image_captions.*'] = 'nullable|string|max:255';
+                $rules['image_display_mode'] = 'nullable|in:none,gallery,slideshow';
+                $rules['slideshow_transition'] = 'nullable|in:fade,slide';
                 break;
 
             case 'video':

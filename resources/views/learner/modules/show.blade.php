@@ -60,59 +60,163 @@
                             @if($lessons->isEmpty())
                                 <p class="text-gray-500 text-center py-8">No lessons available yet.</p>
                             @else
-                                <div class="space-y-2">
+                                <div class="space-y-2" x-data="{ expandedLesson: null }">
                                     @foreach($lessons as $index => $lesson)
                                         @php
                                             $isCompleted = in_array($lesson->id, $completedLessonIds);
+                                            $topics = $lesson->topics()->ordered()->get();
+                                            $topicsCount = $topics->count();
+                                            $completedTopicsCount = 0;
+                                            if ($topicsCount > 0) {
+                                                $completedTopicsCount = \App\Models\LessonTopicProgress::where('user_id', auth()->id())
+                                                    ->whereIn('lesson_topic_id', $topics->pluck('id'))
+                                                    ->where('completed', true)
+                                                    ->count();
+                                            }
                                         @endphp
-                                        <div class="border rounded-lg p-4 hover:bg-gray-50 transition {{ $isEnrolled ? 'cursor-pointer' : '' }}"
-                                             @if($isEnrolled) onclick="window.location='{{ route('learner.lessons.show', $lesson) }}'" @endif>
-                                            <div class="flex items-center justify-between">
-                                                <div class="flex items-center gap-4 flex-1">
-                                                    @if($isCompleted)
-                                                        <div class="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white">
-                                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        <div class="border rounded-lg overflow-hidden">
+                                            <!-- Lesson Header -->
+                                            <div class="p-4 hover:bg-gray-50 transition {{ $isEnrolled ? 'cursor-pointer' : '' }}"
+                                                 @if($topicsCount > 0 && $isEnrolled)
+                                                     @click="expandedLesson = expandedLesson === {{ $lesson->id }} ? null : {{ $lesson->id }}"
+                                                 @elseif($isEnrolled)
+                                                     onclick="window.location='{{ route('learner.lessons.show', $lesson) }}'"
+                                                 @endif>
+                                                <div class="flex items-center justify-between">
+                                                    <div class="flex items-center gap-4 flex-1">
+                                                        @if($isCompleted)
+                                                            <div class="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white">
+                                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                                                </svg>
+                                                            </div>
+                                                        @else
+                                                            <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold text-sm">
+                                                                {{ $index + 1 }}
+                                                            </div>
+                                                        @endif
+                                                        
+                                                        <div class="flex-1">
+                                                            <div class="flex items-center gap-2">
+                                                                @if($lesson->content_type === 'video')
+                                                                    <span class="text-xl">🎥</span>
+                                                                @elseif($lesson->content_type === 'text')
+                                                                    <span class="text-xl">📄</span>
+                                                                @elseif($lesson->content_type === 'worksheet')
+                                                                    <span class="text-xl">📋</span>
+                                                                @else
+                                                                    <span class="text-xl">🎮</span>
+                                                                @endif
+                                                                <h4 class="font-medium text-gray-900">{{ $lesson->title }}</h4>
+                                                            </div>
+                                                            <div class="flex items-center gap-3 mt-1">
+                                                                @if($topicsCount > 0)
+                                                                    <span class="text-sm font-semibold {{ $completedTopicsCount === $topicsCount ? 'text-green-600' : 'text-blue-600' }}">
+                                                                        {{ $completedTopicsCount }}/{{ $topicsCount }} complete
+                                                                    </span>
+                                                                @else
+                                                                    <p class="text-sm text-gray-500">
+                                                                        {{ $lesson->duration }} min · {{ ucfirst(str_replace('_', ' ', $lesson->content_type)) }}
+                                                                    </p>
+                                                                @endif
+                                                                @if($isCompleted && $topicsCount === 0)
+                                                                    <span class="text-xs text-green-600 font-semibold">✓ Completed</span>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="flex items-center gap-2">
+                                                        @if(!$isEnrolled)
+                                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                                                             </svg>
-                                                        </div>
-                                                    @else
-                                                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold text-sm">
-                                                            {{ $index + 1 }}
-                                                        </div>
-                                                    @endif
-                                                    
-                                                    <div class="flex-1">
-                                                        <div class="flex items-center gap-2">
-                                                            @if($lesson->content_type === 'video')
-                                                                <span class="text-xl">🎥</span>
-                                                            @elseif($lesson->content_type === 'text')
-                                                                <span class="text-xl">📄</span>
-                                                            @elseif($lesson->content_type === 'worksheet')
-                                                                <span class="text-xl">📋</span>
-                                                            @else
-                                                                <span class="text-xl">🎮</span>
-                                                            @endif
-                                                            <h4 class="font-medium text-gray-900">{{ $lesson->title }}</h4>
-                                                            @if($isCompleted)
-                                                                <span class="text-xs text-green-600 font-semibold">Completed</span>
-                                                            @endif
-                                                        </div>
-                                                        <p class="text-sm text-gray-500 mt-1">
-                                                            {{ $lesson->duration }} min · {{ ucfirst(str_replace('_', ' ', $lesson->content_type)) }}
-                                                        </p>
+                                                        @elseif($topicsCount > 0)
+                                                            <svg class="w-5 h-5 text-gray-400 transition-transform" 
+                                                                 :class="expandedLesson === {{ $lesson->id }} ? 'rotate-180' : ''"
+                                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                            </svg>
+                                                        @else
+                                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                                            </svg>
+                                                        @endif
                                                     </div>
                                                 </div>
-
-                                                @if(!$isEnrolled)
-                                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                                                    </svg>
-                                                @else
-                                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                                    </svg>
-                                                @endif
                                             </div>
+
+                                            <!-- Topics/Sections (Collapsible) -->
+                                            @if($topicsCount > 0)
+                                                <div x-show="expandedLesson === {{ $lesson->id }}"
+                                                     x-transition:enter="transition ease-out duration-200"
+                                                     x-transition:enter-start="opacity-0 -translate-y-2"
+                                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                                     class="bg-gray-50 border-t"
+                                                     style="display: none;">
+                                                    <div class="py-2">
+                                                        @foreach($topics as $topic)
+                                                            @php
+                                                                $isTopicCompleted = \App\Models\LessonTopicProgress::where('user_id', auth()->id())
+                                                                    ->where('lesson_topic_id', $topic->id)
+                                                                    ->where('completed', true)
+                                                                    ->exists();
+                                                            @endphp
+                                                            <a href="{{ route('learner.lessons.show', $lesson) }}#topic-{{ $topic->id }}" 
+                                                               class="flex items-start gap-3 px-6 py-3 hover:bg-white transition group">
+                                                                <!-- Completion Circle -->
+                                                                <div class="flex-shrink-0 mt-1">
+                                                                    @if($isTopicCompleted)
+                                                                        <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                                                            <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                                                            </svg>
+                                                                        </div>
+                                                                    @else
+                                                                        <div class="w-5 h-5 border-2 border-gray-300 rounded-full group-hover:border-blue-500"></div>
+                                                                    @endif
+                                                                </div>
+
+                                                                <!-- Topic Content -->
+                                                                <div class="flex-1 min-w-0">
+                                                                    <div class="flex items-start justify-between gap-2">
+                                                                        <div class="flex-1">
+                                                                            <h5 class="text-sm font-medium text-gray-900 group-hover:text-blue-600">
+                                                                                {{ $topic->title }}
+                                                                            </h5>
+                                                                            <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                                                                @if($topic->type === 'video')
+                                                                                    <span class="flex items-center gap-1">
+                                                                                        🎥 VIDEO
+                                                                                    </span>
+                                                                                @elseif($topic->type === 'text')
+                                                                                    <span class="flex items-center gap-1">
+                                                                                        📄 TEXT
+                                                                                    </span>
+                                                                                @elseif($topic->type === 'quiz')
+                                                                                    <span class="flex items-center gap-1">
+                                                                                        ❓ QUIZ
+                                                                                    </span>
+                                                                                @else
+                                                                                    <span class="flex items-center gap-1">
+                                                                                        🎮 INTERACTIVE
+                                                                                    </span>
+                                                                                @endif
+                                                                                @if($topic->duration)
+                                                                                    <span>· {{ $topic->duration }} MIN</span>
+                                                                                @endif
+                                                                                @if($topic->is_prerequisite)
+                                                                                    <span class="text-red-600 font-semibold">· PREREQUISITE</span>
+                                                                                @endif
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </a>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
