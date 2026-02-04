@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Schoolees\Psgc\Models\Barangay;
+use App\Models\Barangay;
 use Illuminate\Http\Request;
 
 class LocationController extends Controller
@@ -16,10 +16,14 @@ class LocationController extends Controller
      */
     public function getBarangays($cityCode)
     {
-        $barangays = Barangay::where('city_code', $cityCode)
-            ->orderBy('name')
-            ->get(['code', 'name']);
-
-        return response()->json($barangays);
+        $barangays = Barangay::forCityCode($cityCode);
+        
+        return response()->json($barangays->map(function ($barangay) {
+            return [
+                'code' => $barangay->code,
+                'name' => $barangay->name,
+                'id' => $barangay->id
+            ];
+        }));
     }
 }

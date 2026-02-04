@@ -106,9 +106,9 @@
                             <div class="font-semibold text-gray-900">Approve Counselors</div>
                             <div class="text-sm text-gray-600">Review pending counselor applications</div>
                         </a>
-                        <a href="#" class="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
-                            <div class="font-semibold text-gray-900">Approve Clinics</div>
-                            <div class="text-sm text-gray-600">Review pending clinic registrations</div>
+                        <a href="{{ route('admin.clinics.index') }}" class="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                            <div class="font-semibold text-gray-900">Manage Clinics</div>
+                            <div class="text-sm text-gray-600">Review and manage health centers</div>
                         </a>
                         <a href="{{ route('admin.modules.index') }}" class="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
                             <div class="font-semibold text-gray-900">Manage Modules</div>

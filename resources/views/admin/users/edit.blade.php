@@ -63,6 +63,17 @@
                             </select>
                         </div>
 
+                        <!-- Operating Hours -->
+                        <div class="mb-4">
+                            <label for="operating_hours" class="block text-sm font-medium text-gray-700">Operating Hours</label>
+                            <select name="operating_hours" id="operating_hours" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Select...</option>
+                                <option value="Mon to Fri 8:00 AM - 5:00 PM" {{ old('operating_hours', $user->operating_hours ?? '') == 'Mon to Fri 8:00 AM - 5:00 PM' ? 'selected' : '' }}>Mon to Fri 8:00 AM - 5:00 PM</option>
+                                <option value="Mon to Sat 8:00 AM - 5:00 PM" {{ old('operating_hours', $user->operating_hours ?? '') == 'Mon to Sat 8:00 AM - 5:00 PM' ? 'selected' : '' }}>Mon to Sat 8:00 AM - 5:00 PM</option>
+                                <option value="24/7" {{ old('operating_hours', $user->operating_hours ?? '') == '24/7' ? 'selected' : '' }}>24/7</option>
+                            </select>
+                        </div>
+
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700">Status</label>
                             <select name="status" required

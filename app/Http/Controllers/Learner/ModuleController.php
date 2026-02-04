@@ -5,190 +5,60 @@ namespace App\Http\Controllers\Learner;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
-use App\Models\UserProgress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ModuleController extends Controller
 {
-    /**
-     * Display all published modules filtered by learner's age
-     */
     public function index()
     {
         $user = Auth::user();
-        $learnerProfile = $user->learnerProfile;
+        $userProfile = $user->learnerProfile;
         
-        if (!$learnerProfile) {
-            return redirect()->route('profile.complete')
-                ->with('error', 'Please complete your profile to access modules.');
-        }
-
-        // Get learner's age
-        $learnerAge = $learnerProfile->getAge();
+        // Get age-appropriate modules
+        $ageBracket = $userProfile ? $userProfile->age_bracket : 'adults';
         
-        // Get published modules appropriate for learner's age
         $modules = Module::where('is_published', true)
-            ->where(function ($query) use ($learnerAge) {
-                $query->where('min_age', '<=', $learnerAge)
-                      ->where('max_age', '>=', $learnerAge);
-            })
+            ->where('age_bracket', $ageBracket)
             ->withCount('lessons')
-            ->with(['lessons' => function ($query) {
-                $query->where('is_published', true)->orderBy('order');
-            }])
             ->orderBy('order')
             ->get();
-
-        // Get user's enrollments
+            
         $enrolledModuleIds = $user->moduleEnrollments()->pluck('module_id')->toArray();
         
-        // Calculate progress for each module
-        $progress = [];
-        foreach ($modules as $module) {
-            $totalLessons = $module->lessons->count();
-            $completedLessons = UserProgress::where('user_id', $user->id)
-                ->where('module_id', $module->id)
-                ->where('completed', true)
-                ->count();
-            
-            if ($totalLessons > 0) {
-                $progressPercentage = ($completedLessons / $totalLessons) * 100;
-            } else {
-                $progressPercentage = 0;
-            }
-            
-            $progress[$module->id] = (object)[
-                'progress_percentage' => round($progressPercentage),
-                'completed_lessons' => $completedLessons,
-                'total_lessons' => $totalLessons,
-            ];
-        }
-
-        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'progress'));
+        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'ageBracket'));
     }
-
-    /**
-     * Display a specific module with its lessons
-     */
+    
     public function show(Module $module)
     {
         $user = Auth::user();
-        $learnerProfile = $user->learnerProfile;
-
-        // Security: Check if module is published
-        if (!$module->is_published) {
-            abort(404);
-        }
-
-        // Security: Check age-based access
-        $learnerAge = $learnerProfile->getAge();
-        if (!$this->canAccessModule($module, $learnerAge)) {
-            return redirect()->route('learner.modules.index')
-                ->with('error', 'This module is not available for your age group.');
-        }
-
-        // Get published lessons only
-        $lessons = $module->lessons()
-            ->where('is_published', true)
-            ->orderBy('order')
-            ->get();
-
-        // Check enrollment status
-        $isEnrolled = $user->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->exists();
-
-        // Calculate progress
-        $totalLessons = $lessons->count();
-        $completedLessons = UserProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->where('completed', true)
-            ->count();
+        $enrollment = $user->moduleEnrollments()->where('module_id', $module->id)->first();
         
-        $progressPercentage = $totalLessons > 0 ? ($completedLessons / $totalLessons) * 100 : 0;
+        $module->load(['lessons' => function($query) {
+            $query->where('is_published', true)->orderBy('order');
+        }]);
         
-        $progress = (object)[
-            'progress_percentage' => round($progressPercentage),
-            'completed_lessons' => $completedLessons,
-            'total_lessons' => $totalLessons,
-        ];
-
-        // Get completed lesson IDs for UI
-        $completedLessonIds = UserProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->where('completed', true)
-            ->pluck('lesson_id')
-            ->toArray();
-
-        // Get quizzes for this module
-        $moduleQuizzes = $module->quizzes()->where('is_active', true)->get();
-        
-        // Get lesson quizzes
-        $lessonQuizzes = [];
-        foreach ($lessons as $lesson) {
-            if ($lesson->quiz && $lesson->quiz->is_active) {
-                $lessonQuizzes[$lesson->id] = $lesson->quiz;
-            }
-        }
-        
-        // Get user's quiz attempts
-        $quizAttempts = $user->quizAttempts()
-            ->whereIn('quiz_id', $moduleQuizzes->pluck('id')->merge(collect($lessonQuizzes)->pluck('id')))
-            ->get()
-            ->groupBy('quiz_id');
-
-        return view('learner.modules.show', compact(
-            'module', 
-            'lessons', 
-            'isEnrolled', 
-            'progress', 
-            'completedLessonIds',
-            'moduleQuizzes',
-            'lessonQuizzes',
-            'quizAttempts'
-        ));
+        return view('learner.modules.show', compact('module', 'enrollment'));
     }
-
-    /**
-     * Enroll in a module
-     */
-    public function enroll(Module $module)
+    
+    public function enroll(Request $request, Module $module)
     {
         $user = Auth::user();
-
-        // Security checks
-        if (!$module->is_published) {
-            abort(404);
-        }
-
-        // Check age-based access
-        $learnerAge = $user->learnerProfile->getAge();
-        if (!$this->canAccessModule($module, $learnerAge)) {
-            return back()->with('error', 'This module is not available for your age group.');
-        }
-
+        
         // Check if already enrolled
         if ($user->moduleEnrollments()->where('module_id', $module->id)->exists()) {
-            return back()->with('info', 'You are already enrolled in this module.');
+            return redirect()->back()->with('info', 'You are already enrolled in this module.');
         }
-
+        
         // Create enrollment
         ModuleEnrollment::create([
             'user_id' => $user->id,
             'module_id' => $module->id,
+            'enrolled_at' => now(),
+            'status' => 'active'
         ]);
-
+        
         return redirect()->route('learner.modules.show', $module)
             ->with('success', 'Successfully enrolled in module!');
-    }
-
-    /**
-     * Check if learner can access module based on age
-     */
-    private function canAccessModule(Module $module, int $learnerAge): bool
-    {
-        // Check if learner's age falls within module's age range
-        return $learnerAge >= $module->min_age && $learnerAge <= $module->max_age;
     }
 }

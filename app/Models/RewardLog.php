@@ -9,6 +9,8 @@ class RewardLog extends Model
     protected $fillable = [
         'user_id',
         'achievement_id',
+        'type',
+        'reason',
         'earned_at',
     ];
 

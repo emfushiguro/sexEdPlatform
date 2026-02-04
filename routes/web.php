@@ -14,9 +14,19 @@ use App\Http\Controllers\Api\LocationController;
 use Illuminate\Support\Facades\Route;
 
 // Homepage - Learner Login (redirect to dashboard if already logged in)
+use Illuminate\Support\Facades\Auth;
+
 Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect()->route('dashboard');
+    if (Auth::check()) {
+        $user = Auth::user();
+        if ($user->hasRole('admin')) {
+            return redirect()->route('admin.dashboard');
+        } elseif ($user->hasRole('learner')) {
+            return redirect()->route('dashboard');
+        } else {
+            Auth::logout();
+            return redirect()->route('home')->withErrors(['email' => 'User does not have the right roles.']);
+        }
     }
     return view('auth.learner-login');
 })->name('home');
@@ -128,7 +138,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware(['role:learner', 'profile.completed'])
         ->name('dashboard');
+});
 
+// Health Centers - Public routes (accessible to authenticated users)
+Route::middleware('auth')->prefix('health-centers')->name('health-centers.')->group(function () {
+    Route::get('/', [App\Http\Controllers\HealthCenterController::class, 'index'])->name('index');
+    Route::get('/{clinic}', [App\Http\Controllers\HealthCenterController::class, 'show'])->name('show');
+});
+
+Route::middleware('auth')->group(function () {
     // Admin routes (role-based access)
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         // Admin Dashboard
@@ -151,6 +169,16 @@ Route::middleware('auth')->group(function () {
             ->name('quizzes.add-question');
         Route::post('quizzes/{quiz}/store-question', [\App\Http\Controllers\Admin\QuizManagementController::class, 'storeQuestion'])
             ->name('quizzes.store-question');
+
+        // Clinic Management
+        Route::resource('clinics', \App\Http\Controllers\Admin\ClinicController::class);
+        Route::get('clinics/analytics', [\App\Http\Controllers\Admin\ClinicController::class, 'analytics'])->name('clinics.analytics');
+        Route::patch('clinics/{clinic}/approve', [\App\Http\Controllers\Admin\ClinicController::class, 'approve'])->name('clinics.approve');
+        Route::patch('clinics/{clinic}/reject', [\App\Http\Controllers\Admin\ClinicController::class, 'reject'])->name('clinics.reject');
+        Route::patch('clinics/{clinic}/toggle-active', [\App\Http\Controllers\Admin\ClinicController::class, 'toggleActive'])->name('clinics.toggle-active');
+        Route::patch('clinics/{clinic}/toggle-verified', [\App\Http\Controllers\Admin\ClinicController::class, 'toggleVerified'])->name('clinics.toggle-verified');
+        Route::post('clinics/bulk-approve', [\App\Http\Controllers\Admin\ClinicController::class, 'bulkApprove'])->name('clinics.bulk-approve');
+        Route::post('clinics/bulk-reject', [\App\Http\Controllers\Admin\ClinicController::class, 'bulkReject'])->name('clinics.bulk-reject');
     });
 });
 

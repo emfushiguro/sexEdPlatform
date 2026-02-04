@@ -18,7 +18,11 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('contact_info')->nullable();
             $table->string('location')->nullable();
+            $table->boolean('verified')->default(false);
             $table->timestamps();
+
+            $table->index('user_id');
+            $table->index('verified');
         });
     }
 

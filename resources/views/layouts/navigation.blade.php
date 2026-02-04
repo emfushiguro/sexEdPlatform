@@ -15,6 +15,18 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    
+                    <!-- Health Centers for all authenticated users -->
+                    <x-nav-link :href="route('health-centers.index')" :active="request()->routeIs('health-centers.*')">
+                        {{ __('Health Centers') }}
+                    </x-nav-link>
+
+                    <!-- Admin Navigation -->
+                    @if(auth()->user()->role === 'admin')
+                    <x-nav-link :href="route('admin.clinics.index')" :active="request()->routeIs('admin.clinics.*')">
+                        {{ __('Manage Clinics') }}
+                    </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -70,6 +82,18 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            
+            <!-- Health Centers for mobile -->
+            <x-responsive-nav-link :href="route('health-centers.index')" :active="request()->routeIs('health-centers.*')">
+                {{ __('Health Centers') }}
+            </x-responsive-nav-link>
+
+            <!-- Admin Navigation for mobile -->
+            @if(auth()->user()->role === 'admin')
+            <x-responsive-nav-link :href="route('admin.clinics.index')" :active="request()->routeIs('admin.clinics.*')">
+                {{ __('Manage Clinics') }}
+            </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

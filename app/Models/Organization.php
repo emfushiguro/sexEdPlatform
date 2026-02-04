@@ -9,9 +9,9 @@ class Organization extends Model
     protected $fillable = [
         'user_id',
         'name',
-        'contact_info',
         'description',
-        'address',
+        'contact_info',
+        'location',
         'verified',
     ];
 

@@ -9,8 +9,8 @@ class Achievement extends Model
     protected $fillable = [
         'title',
         'description',
-        'icon',
-        'requirement',
+        'badge_icon',
+        'points',
     ];
 
     // Relationships

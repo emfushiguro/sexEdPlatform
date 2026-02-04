@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Auth;
+
 
 class UserController extends Controller
 {
@@ -70,6 +72,9 @@ class UserController extends Controller
             'status' => $validated['status'],
             'verified' => true,
             'email_verified_at' => now(),
+            // Optionally set first_name/last_name if you want to keep them in sync
+            'first_name' => $validated['name'],
+            'last_name' => '',
         ]);
 
         // Assign role using Spatie
@@ -129,16 +134,13 @@ class UserController extends Controller
             ->with('success', 'User updated successfully!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+
     public function destroy(User $user)
     {
         // Prevent self-deletion
-        if ($user->id === auth()->id()) {
-            return redirect()->back()
-                ->with('error', 'You cannot delete your own account!');
-        }
+        if ($user->id === Auth::id()) {
+         redirect()->back()->with('error', 'You cannot delete your own account!');
+}
 
         $user->delete();
 

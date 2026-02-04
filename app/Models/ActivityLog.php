@@ -6,8 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class ActivityLog extends Model
 {
-    const UPDATED_AT = null; // Only use created_at
-
     protected $fillable = [
         'user_id',
         'activity_type',
@@ -21,7 +19,6 @@ class ActivityLog extends Model
     {
         return [
             'metadata' => 'array',
-            'created_at' => 'datetime',
         ];
     }
 
@@ -32,17 +29,15 @@ class ActivityLog extends Model
         return $this->belongsTo(User::class);
     }
 
-    // Helper Methods
+    // Scopes
 
-    public static function log(string $activityType, ?string $description = null, ?array $metadata = null): void
+    public function scopeByUser($query, $userId)
     {
-        static::create([
-            'user_id' => auth()->check() ? auth()->id() : null,
-            'activity_type' => $activityType,
-            'description' => $description,
-            'metadata' => $metadata,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopeByType($query, $type)
+    {
+        return $query->where('activity_type', $type);
     }
 }

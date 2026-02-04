@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileCompletionRequest;
 use App\Models\LearnerProfile;
-use Schoolees\Psgc\Models\City;
-use Schoolees\Psgc\Models\Barangay;
+use App\Models\City;
+use App\Models\Barangay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -26,17 +26,13 @@ class ProfileCompletionController extends Controller
 
         $learnerProfile = $user->learnerProfile;
         
-        // Get Cavite cities/municipalities (province_code: 402100000)
-        $cities = City::where('province_code', '402100000')
-            ->orderBy('name')
-            ->get();
+        // Get Cavite cities/municipalities
+        $cities = City::caviteCities();
         
         // If editing and has city, load barangays
         $barangays = [];
         if ($learnerProfile && $learnerProfile->city_code) {
-            $barangays = Barangay::where('city_code', $learnerProfile->city_code)
-                ->orderBy('name')
-                ->get();
+            $barangays = Barangay::forCityCode($learnerProfile->city_code);
         }
 
         return view('profile.complete', compact('learnerProfile', 'cities', 'barangays'));
@@ -60,9 +56,10 @@ class ProfileCompletionController extends Controller
         ]);
         
         // Get city and barangay names for display purposes
-        $city = City::where('code', $validated['city_code'])->first();
-        $barangay = Barangay::where('code', $validated['barangay_code'])->first();
+        $city = City::findByCode($validated['city_code']);
+        $barangay = Barangay::findByCode($validated['barangay_code']);
         
+        $validated['city'] = $city->name;
         $validated['barangay'] = $barangay->name;
 
         // Create or update learner profile
