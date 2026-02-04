@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
+use App\Models\LessonTopic;
 use App\Models\UserProgress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -96,6 +97,36 @@ class LessonController extends Controller
                 ->toArray();
         }
 
+        // Determine current topic (allow navigation via URL parameter)
+        $currentTopic = null;
+        $currentTopicIndex = 0;
+        
+        if ($lessonTopics->count() > 0) {
+            // Check if specific topic requested via URL
+            $requestedTopicIndex = request()->query('topic');
+            
+            if ($requestedTopicIndex !== null && isset($lessonTopics[$requestedTopicIndex])) {
+                // Show requested topic
+                $currentTopic = $lessonTopics[$requestedTopicIndex];
+                $currentTopicIndex = $requestedTopicIndex;
+            } else {
+                // Find first incomplete topic, or show first topic if all complete
+                foreach ($lessonTopics as $index => $topic) {
+                    if (!in_array($topic->id, $completedTopicIds)) {
+                        $currentTopic = $topic;
+                        $currentTopicIndex = $index;
+                        break;
+                    }
+                }
+                
+                // If all topics are completed, show the last one
+                if (!$currentTopic) {
+                    $currentTopic = $lessonTopics->last();
+                    $currentTopicIndex = $lessonTopics->count() - 1;
+                }
+            }
+        }
+
         return view('learner.lessons.show', compact(
             'lesson',
             'module',
@@ -107,7 +138,9 @@ class LessonController extends Controller
             'lessonQuiz',
             'quizAttempt',
             'lessonTopics',
-            'completedTopicIds'
+            'completedTopicIds',
+            'currentTopic',
+            'currentTopicIndex'
         ));
     }
 
@@ -160,5 +193,63 @@ class LessonController extends Controller
         }
 
         return back()->with('success', 'Lesson completed! You earned 10 points! 🎉');
+    }
+
+    /**
+     * Mark a lesson topic as completed
+     */
+    public function completeTopic(LessonTopic $topic)
+    {
+        $user = Auth::user();
+        $lesson = $topic->lesson;
+        $module = $lesson->module;
+
+        // Security checks
+        if (!$lesson->is_published || !$module->is_published) {
+            abort(404);
+        }
+
+        $isEnrolled = $user->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->exists();
+
+        if (!$isEnrolled) {
+            return back()->with('error', 'You are not enrolled in this module.');
+        }
+
+        // Mark topic as completed
+        $topic->markCompleted($user->id);
+
+        // Award points (5 points per topic)
+        $gamification = $user->gamification;
+        if ($gamification) {
+            $gamification->addPoints(5);
+        }
+
+        // Check if all topics are completed to auto-complete lesson
+        $allTopics = $lesson->topics()->ordered()->get();
+        $completedCount = \App\Models\LessonTopicProgress::where('user_id', $user->id)
+            ->whereIn('lesson_topic_id', $allTopics->pluck('id'))
+            ->where('completed', true)
+            ->count();
+
+        if ($completedCount === $allTopics->count()) {
+            // Mark lesson as completed
+            UserProgress::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'lesson_id' => $lesson->id,
+                ],
+                [
+                    'module_id' => $module->id,
+                    'completed' => true,
+                    'progress_percentage' => 100,
+                    'completed_at' => now(),
+                ]
+            );
+        }
+
+        return redirect()->route('learner.lessons.show', $lesson)
+            ->with('success', 'Topic completed! +5 points ✓');
     }
 }

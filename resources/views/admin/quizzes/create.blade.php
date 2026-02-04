@@ -53,7 +53,9 @@
                                 <option value="">Select Lesson (Optional)</option>
                                 @foreach($modules as $module)
                                     @foreach($module->lessons as $lesson)
-                                    <option value="{{ $lesson->id }}">{{ $module->title }} - {{ $lesson->title }}</option>
+                                    <option value="{{ $lesson->id }}" {{ (old('lesson_id') ?? $lessonId ?? '') == $lesson->id ? 'selected' : '' }}>
+                                        {{ $module->title }} - {{ $lesson->title }}
+                                    </option>
                                     @endforeach
                                 @endforeach
                             </select>

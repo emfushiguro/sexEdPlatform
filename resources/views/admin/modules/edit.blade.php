@@ -73,73 +73,21 @@
                         </div>
 
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
-                            <input type="number" name="duration_minutes" value="{{ old('duration_minutes', $module->duration_minutes) }}" required min="1"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            @error('duration_minutes')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            <label class="block text-sm font-medium text-gray-700">Duration</label>
+                            <div class="mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-600">
+                                {{ $module->lessons()->sum('duration') ?? 0 }} minutes (auto-calculated from lessons)
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">Duration is automatically calculated based on lesson durations</p>
                         </div>
-
-                        @php
-                            // Determine current publish type
-                            $currentPublishType = 'draft';
-                            if ($module->publish_status === 'published') {
-                                $currentPublishType = 'publish_now';
-                            } elseif ($module->publish_status === 'scheduled') {
-                                $currentPublishType = 'schedule';
-                            }
-                        @endphp
 
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-3">Publishing Options</label>
-                            <div class="space-y-3">
-                                <label class="flex items-start">
-                                    <input type="radio" name="publish_type" value="draft" {{ old('publish_type', $currentPublishType) === 'draft' ? 'checked' : '' }}
-                                        class="mt-1 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        onchange="toggleScheduleFields()">
-                                    <div class="ml-3">
-                                        <span class="text-sm font-medium text-gray-700">Save as Draft</span>
-                                        <p class="text-xs text-gray-500">Save without publishing - you can publish later</p>
-                                    </div>
-                                </label>
-                                
-                                <label class="flex items-start">
-                                    <input type="radio" name="publish_type" value="publish_now" {{ old('publish_type', $currentPublishType) === 'publish_now' ? 'checked' : '' }}
-                                        class="mt-1 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        onchange="toggleScheduleFields()">
-                                    <div class="ml-3">
-                                        <span class="text-sm font-medium text-gray-700">Publish Immediately</span>
-                                        <p class="text-xs text-gray-500">Make this module available to learners right away</p>
-                                    </div>
-                                </label>
-                                
-                                <label class="flex items-start">
-                                    <input type="radio" name="publish_type" value="schedule" {{ old('publish_type', $currentPublishType) === 'schedule' ? 'checked' : '' }}
-                                        class="mt-1 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        onchange="toggleScheduleFields()">
-                                    <div class="ml-3">
-                                        <span class="text-sm font-medium text-gray-700">Schedule Publishing</span>
-                                        <p class="text-xs text-gray-500">Set a specific date and time to publish</p>
-                                    </div>
-                                </label>
-
-                                <div id="schedule_fields" class="ml-6 mt-3 {{ old('publish_type', $currentPublishType) === 'schedule' ? '' : 'hidden' }}">
-                                    <label class="block text-sm font-medium text-gray-700">Publish Date & Time</label>
-                                    <input type="datetime-local" name="publish_at" 
-                                        value="{{ old('publish_at', $module->publish_at ? $module->publish_at->format('Y-m-d\TH:i') : '') }}"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <p class="mt-1 text-xs text-gray-500">Module will automatically publish at this date and time</p>
-                                    @error('publish_at')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                                </div>
-                            </div>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="is_published" value="1" {{ old('is_published', $module->is_published) ? 'checked' : '' }}
+                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2 text-sm font-medium text-gray-700">Published</span>
+                            </label>
+                            <p class="mt-1 text-xs text-gray-500">Check to make this module visible to learners</p>
                         </div>
-
-                        <script>
-                            function toggleScheduleFields() {
-                                const scheduleFields = document.getElementById('schedule_fields');
-                                const scheduleRadio = document.querySelector('input[name="publish_type"][value="schedule"]');
-                                scheduleFields.classList.toggle('hidden', !scheduleRadio.checked);
-                            }
-                        </script>
 
                         <div class="flex items-center justify-end gap-4">
                             <a href="{{ route('admin.modules.index') }}" class="text-gray-600 hover:text-gray-900">Cancel</a>

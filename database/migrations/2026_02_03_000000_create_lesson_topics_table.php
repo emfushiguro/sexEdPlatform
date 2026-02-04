@@ -15,29 +15,29 @@ return new class extends Migration
             $table->id();
             $table->foreignId('lesson_id')->constrained()->onDelete('cascade');
             $table->string('title');
-            $table->enum('type', ['video', 'text', 'quiz', 'interactive', 'worksheet'])->default('text');
-            
-            // Text content fields
-            $table->longText('text_content')->nullable();
-            $table->json('image_attachments')->nullable(); // For text lessons with images
-            $table->json('slideshow_data')->nullable(); // Gallery/slideshow settings
+            $table->enum('type', ['video', 'text', 'worksheet', 'quiz', 'interactive'])->default('text');
             
             // Video fields
             $table->string('video_provider')->nullable(); // youtube, vimeo, local
             $table->string('video_id')->nullable();
-            $table->string('video_file_path')->nullable(); // For uploaded videos
+            $table->string('video_file_path')->nullable();
             
-            // Worksheet fields
-            $table->string('file_path')->nullable(); // For downloadable files
+            // Text content
+            $table->longText('text_content')->nullable();
             
-            // Interactive fields
-            $table->json('interactive_config')->nullable();
+            // Worksheet/File
+            $table->string('file_path')->nullable();
             
-            // Quiz relationship
+            // Quiz reference
             $table->foreignId('quiz_id')->nullable()->constrained()->onDelete('set null');
             
-            // Common fields
-            $table->text('description')->nullable();
+            // Interactive activity
+            $table->json('interactive_config')->nullable();
+            
+            // Image attachments for text
+            $table->json('image_attachments')->nullable();
+            $table->json('slideshow_data')->nullable();
+            
             $table->integer('duration')->nullable()->comment('Duration in minutes');
             $table->boolean('is_prerequisite')->default(false);
             $table->integer('order')->default(0);

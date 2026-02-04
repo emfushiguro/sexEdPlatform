@@ -15,16 +15,15 @@ class LessonTopic extends Model
         'lesson_id',
         'title',
         'type',
-        'text_content',
-        'image_attachments',
-        'slideshow_data',
         'video_provider',
         'video_id',
         'video_file_path',
+        'text_content',
         'file_path',
-        'interactive_config',
         'quiz_id',
-        'description',
+        'interactive_config',
+        'image_attachments',
+        'slideshow_data',
         'duration',
         'is_prerequisite',
         'order',
@@ -34,9 +33,9 @@ class LessonTopic extends Model
         'is_prerequisite' => 'boolean',
         'duration' => 'integer',
         'order' => 'integer',
+        'interactive_config' => 'array',
         'image_attachments' => 'array',
         'slideshow_data' => 'array',
-        'interactive_config' => 'array',
     ];
 
     /**
@@ -94,5 +93,29 @@ class LessonTopic extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy('order');
+    }
+
+    /**
+     * Get the video embed URL for video topics.
+     */
+    public function getVideoEmbedUrlAttribute(): ?string
+    {
+        if ($this->type !== 'video' || !$this->video_provider || !$this->video_id) {
+            return null;
+        }
+
+        return \App\Helpers\VideoEmbedHelper::getEmbedUrl($this->video_provider, $this->video_id);
+    }
+
+    /**
+     * Get video thumbnail URL for video topics.
+     */
+    public function getVideoThumbnailAttribute(): ?string
+    {
+        if ($this->type !== 'video' || !$this->video_provider || !$this->video_id) {
+            return null;
+        }
+
+        return \App\Helpers\VideoEmbedHelper::getThumbnailUrl($this->video_provider, $this->video_id);
     }
 }

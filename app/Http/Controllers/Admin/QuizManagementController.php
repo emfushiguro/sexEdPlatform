@@ -28,10 +28,12 @@ class QuizManagementController extends Controller
         return view('admin.quizzes.index', compact('quizzes', 'modules'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $modules = Module::with('lessons')->get();
-        return view('admin.quizzes.create', compact('modules'));
+        $lessonId = $request->query('lesson_id');
+        
+        return view('admin.quizzes.create', compact('modules', 'lessonId'));
     }
 
     public function store(Request $request)

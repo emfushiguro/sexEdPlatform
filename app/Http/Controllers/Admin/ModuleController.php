@@ -27,10 +27,8 @@ class ModuleController extends Controller
             'description' => 'required|string',
             'thumbnail' => 'nullable|image|max:2048',
             'age_bracket' => 'required|in:kids,teens,adults',
-            'duration_minutes' => 'required|integer|min:1',
             'order' => 'nullable|integer|min:0',
-            'publish_type' => 'required|in:draft,publish_now,schedule',
-            'publish_at' => 'nullable|required_if:publish_type,schedule|date|after:now',
+            'is_published' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('thumbnail')) {
@@ -48,20 +46,11 @@ class ModuleController extends Controller
         $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
         unset($validated['age_bracket']);
 
-        // Handle publishing status
-        if ($validated['publish_type'] === 'publish_now') {
-            $validated['is_published'] = true;
-            $validated['publish_status'] = 'published';
-            $validated['publish_at'] = now();
-        } elseif ($validated['publish_type'] === 'schedule') {
-            $validated['is_published'] = false;
-            $validated['publish_status'] = 'scheduled';
-        } else {
-            $validated['is_published'] = false;
-            $validated['publish_status'] = 'draft';
-            $validated['publish_at'] = null;
-        }
-        unset($validated['publish_type']);
+        // Set publishing status
+        $validated['is_published'] = $request->has('is_published');
+        
+        // Duration will be auto-calculated from lessons
+        $validated['duration_minutes'] = 0;
 
         $validated['order'] = $validated['order'] ?? Module::max('order') + 1;
 
@@ -89,10 +78,8 @@ class ModuleController extends Controller
             'description' => 'required|string',
             'thumbnail' => 'nullable|image|max:2048',
             'age_bracket' => 'required|in:kids,teens,adults',
-            'duration_minutes' => 'required|integer|min:1',
             'order' => 'nullable|integer|min:0',
-            'publish_type' => 'required|in:draft,publish_now,schedule',
-            'publish_at' => 'nullable|required_if:publish_type,schedule|date|after:now',
+            'is_published' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('thumbnail')) {
@@ -110,20 +97,12 @@ class ModuleController extends Controller
         $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
         unset($validated['age_bracket']);
 
-        // Handle publishing status
-        if ($validated['publish_type'] === 'publish_now') {
-            $validated['is_published'] = true;
-            $validated['publish_status'] = 'published';
-            $validated['publish_at'] = now();
-        } elseif ($validated['publish_type'] === 'schedule') {
-            $validated['is_published'] = false;
-            $validated['publish_status'] = 'scheduled';
-        } else {
-            $validated['is_published'] = false;
-            $validated['publish_status'] = 'draft';
-            $validated['publish_at'] = null;
-        }
-        unset($validated['publish_type']);
+        // Set publishing status
+        $validated['is_published'] = $request->has('is_published');
+        
+        // Duration is auto-calculated, but update it now
+        $module->duration_minutes = $module->lessons()->sum('duration');
+        $module->save();
 
         $module->update($validated);
 

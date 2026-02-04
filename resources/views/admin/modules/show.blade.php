@@ -133,7 +133,7 @@
                                                     </button>
                                                 </form>
                                             @endif
-
+                                            <a href="{{ route('admin.lessons.show', $lesson) }}" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">View</a>
                                             <a href="{{ route('admin.lessons.edit', $lesson) }}" class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm">Edit</a>
                                             <form action="{{ route('admin.lessons.destroy', $lesson) }}" method="POST" class="inline">
                                                 @csrf

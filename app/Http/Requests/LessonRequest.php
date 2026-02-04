@@ -42,56 +42,57 @@ class LessonRequest extends FormRequest
                 'max:255',
                 'min:3',
             ],
-            'content_type' => 'required|in:text,video,worksheet,interactive',
+            'content_type' => 'nullable|in:text,video,worksheet,interactive',
             
             // Description/instructions field (optional for all types)
             'description' => 'nullable|string|max:5000',
             
             // Common fields
-            'duration' => 'required|integer|min:1|max:300',
+            'duration' => 'nullable|integer|min:1|max:300',
             'order' => 'nullable|integer|min:0|max:1000',
             'is_published' => 'nullable|boolean',
+            
+            // Topics JSON (for new topic-based system)
+            'topics_json' => 'nullable|json',
         ];
 
-        // Content-type specific rules
-        $contentType = $this->input('content_type');
+        // Content-type specific rules (for legacy lessons without topics)
+        $contentType = $this->input('content_type', 'text');
 
-        switch ($contentType) {
-            case 'text':
-                $rules['text_content'] = 'required|string|min:10|max:50000';
-                $rules['image_attachments'] = 'nullable|array';
-                $rules['image_attachments.*'] = 'image|mimes:jpeg,png,jpg,gif,webp|max:5120'; // 5MB
-                $rules['image_captions'] = 'nullable|array';
-                $rules['image_captions.*'] = 'nullable|string|max:255';
-                $rules['image_display_mode'] = 'nullable|in:none,gallery,slideshow';
-                $rules['slideshow_transition'] = 'nullable|in:fade,slide';
-                break;
+        // Only apply content validation if not using topics
+        if (!$this->filled('topics_json')) {
+            switch ($contentType) {
+                case 'text':
+                    $rules['text_content'] = 'nullable|string|max:50000';
+                    $rules['image_attachments'] = 'nullable|array';
+                    $rules['image_attachments.*'] = 'image|mimes:jpeg,png,jpg,gif,webp|max:5120'; // 5MB
+                    $rules['image_captions'] = 'nullable|array';
+                    $rules['image_captions.*'] = 'nullable|string|max:255';
+                    $rules['image_display_mode'] = 'nullable|in:none,gallery,slideshow';
+                    $rules['slideshow_transition'] = 'nullable|in:fade,slide';
+                    break;
 
-            case 'video':
-                // Either URL OR file must be provided, but not required_if both
-                $rules['video_url'] = [
-                    'nullable',
-                    'url',
-                    'regex:/^https:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/.*$/',
-                    function ($attribute, $value, $fail) {
-                        if (empty($value) && !$this->hasFile('video_file')) {
-                            $fail('Either a video URL or uploaded file is required.');
-                        }
-                    },
-                ];
-                $rules['video_file'] = 'nullable|file|mimes:mp4,avi,mov,wmv,webm|max:102400'; // 100MB
-                break;
+                case 'video':
+                    // Either URL OR file is optional for container lessons
+                    $rules['video_url'] = [
+                        'nullable',
+                        'url',
+                        'regex:/^https:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/.*$/',
+                    ];
+                    $rules['video_file'] = 'nullable|file|mimes:mp4,avi,mov,wmv,flv,webm|max:102400'; // 100MB
+                    break;
 
-            case 'worksheet':
-                $rules['text_content'] = 'nullable|string|max:50000'; // Instructions optional
-                $rules['worksheet_file'] = 'required|file|mimes:pdf,doc,docx|max:10240'; // 10MB
-                break;
+                case 'worksheet':
+                    $rules['text_content'] = 'nullable|string|max:50000';
+                    $rules['worksheet_file'] = 'nullable|file|mimes:pdf,doc,docx|max:10240'; // 10MB
+                    break;
 
-            case 'interactive':
-                $rules['text_content'] = 'required|string|min:10|max:50000'; // Instructions required
-                $rules['interactive_type'] = 'required|in:picture_comparison,body_parts,drag_drop,matching,feelings_matching,touch_scenarios,hygiene_sequence,privacy_zones';
-                $rules['interactive_config'] = 'nullable|array';
-                break;
+                case 'interactive':
+                    $rules['interactive_type'] = 'nullable|string|in:body_parts,feelings_matching,touch_scenarios,hygiene_sequence,privacy_zones,picture_comparison,drag_drop,matching';
+                    $rules['text_content'] = 'nullable|string|max:10000';
+                    $rules['interactive_config'] = 'nullable|array';
+                    break;
+            }
         }
 
         return $rules;
@@ -107,28 +108,22 @@ class LessonRequest extends FormRequest
             'title.min' => 'Lesson title must be at least 3 characters.',
             'title.max' => 'Lesson title cannot exceed 255 characters.',
             
-            'content_type.required' => 'Please select a lesson type.',
             'content_type.in' => 'Invalid lesson type selected.',
             
-            'text_content.required' => 'Lesson content is required.',
-            'text_content.min' => 'Content must be at least 10 characters.',
             'text_content.max' => 'Content cannot exceed 50,000 characters.',
             
             'video_url.regex' => 'Only YouTube and Vimeo videos are supported. Please provide a valid video URL.',
             'video_file.max' => 'Video file size cannot exceed 100MB.',
             'video_file.mimes' => 'Video must be in MP4, AVI, MOV, WMV, or WEBM format.',
             
-            'worksheet_file.required' => 'Worksheet file is required for worksheet lessons.',
             'worksheet_file.max' => 'Worksheet file size cannot exceed 10MB.',
             'worksheet_file.mimes' => 'Worksheet must be a PDF, DOC, or DOCX file.',
             
             'image_attachments.*.max' => 'Each image cannot exceed 5MB.',
             'image_attachments.*.mimes' => 'Images must be JPEG, PNG, GIF, or WEBP format.',
             
-            'interactive_type.required' => 'Please select an interactive activity type.',
             'interactive_type.in' => 'Invalid interactive activity type.',
             
-            'duration.required' => 'Lesson duration is required.',
             'duration.min' => 'Duration must be at least 1 minute.',
             'duration.max' => 'Duration cannot exceed 5 hours (300 minutes).',
             

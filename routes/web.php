@@ -94,6 +94,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/lessons/{lesson}', [LearnerLessonController::class, 'show'])->name('lessons.show');
         Route::post('/lessons/{lesson}/complete', [LearnerLessonController::class, 'complete'])->name('lessons.complete');
         
+        // Topic completion
+        Route::post('/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('topics.complete');
+        
         // Certificates (Premium only)
         Route::middleware('premium')->group(function () {
             Route::get('/certificates', [\App\Http\Controllers\Learner\CertificateController::class, 'index'])->name('certificates.index');
@@ -144,6 +147,22 @@ Route::middleware('auth')->group(function () {
         Route::resource('lessons', \App\Http\Controllers\Admin\LessonController::class);
         Route::patch('lessons/{lesson}/move', [\App\Http\Controllers\Admin\LessonController::class, 'move'])
             ->name('lessons.move');
+        
+        // Topic Management (Lesson Topics)
+        Route::get('topics/create', [\App\Http\Controllers\Admin\TopicController::class, 'create'])
+            ->name('topics.create');
+        Route::post('topics', [\App\Http\Controllers\Admin\TopicController::class, 'store'])
+            ->name('topics.store');
+        Route::get('topics/{topic}/edit', [\App\Http\Controllers\Admin\TopicController::class, 'edit'])
+            ->name('topics.edit');
+        Route::put('topics/{topic}', [\App\Http\Controllers\Admin\TopicController::class, 'update'])
+            ->name('topics.update');
+        Route::delete('topics/{topic}', [\App\Http\Controllers\Admin\TopicController::class, 'destroy'])
+            ->name('topics.destroy');
+        
+        // Image upload for TinyMCE
+        Route::post('upload/image', [\App\Http\Controllers\Admin\TopicController::class, 'uploadImage'])
+            ->name('upload.image');
         
         // Quiz Management
         Route::resource('quizzes', \App\Http\Controllers\Admin\QuizManagementController::class);

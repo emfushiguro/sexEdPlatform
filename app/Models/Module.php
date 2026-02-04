@@ -23,8 +23,6 @@ class Module extends Model
         'is_premium',
         'final_quiz_id',
         'certificate_pass_score',
-        'publish_at',
-        'publish_status',
     ];
 
     protected function casts(): array
@@ -38,7 +36,6 @@ class Module extends Model
             'is_published' => 'boolean',
             'is_premium' => 'boolean',
             'certificate_pass_score' => 'integer',
-            'publish_at' => 'datetime',
         ];
     }
 

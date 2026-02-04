@@ -55,7 +55,7 @@
 
                         <!-- Lessons List -->
                         <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4">Course Curriculum</h3>
+                            <h3 class="text-lg font-semibold mb-4">Module Curriculum</h3>
                             
                             @if($lessons->isEmpty())
                                 <p class="text-gray-500 text-center py-8">No lessons available yet.</p>
