@@ -7,11 +7,13 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\ModuleController;
+use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
 use App\Http\Controllers\Api\LocationController;
 use Illuminate\Support\Facades\Route;
+
 
 // Homepage - Learner Login (redirect to dashboard if already logged in)
 use Illuminate\Support\Facades\Auth;
@@ -171,14 +173,14 @@ Route::middleware('auth')->group(function () {
             ->name('quizzes.store-question');
 
         // Clinic Management
-        Route::resource('clinics', \App\Http\Controllers\Admin\ClinicController::class);
-        Route::get('clinics/analytics', [\App\Http\Controllers\Admin\ClinicController::class, 'analytics'])->name('clinics.analytics');
-        Route::patch('clinics/{clinic}/approve', [\App\Http\Controllers\Admin\ClinicController::class, 'approve'])->name('clinics.approve');
-        Route::patch('clinics/{clinic}/reject', [\App\Http\Controllers\Admin\ClinicController::class, 'reject'])->name('clinics.reject');
-        Route::patch('clinics/{clinic}/toggle-active', [\App\Http\Controllers\Admin\ClinicController::class, 'toggleActive'])->name('clinics.toggle-active');
-        Route::patch('clinics/{clinic}/toggle-verified', [\App\Http\Controllers\Admin\ClinicController::class, 'toggleVerified'])->name('clinics.toggle-verified');
-        Route::post('clinics/bulk-approve', [\App\Http\Controllers\Admin\ClinicController::class, 'bulkApprove'])->name('clinics.bulk-approve');
-        Route::post('clinics/bulk-reject', [\App\Http\Controllers\Admin\ClinicController::class, 'bulkReject'])->name('clinics.bulk-reject');
+        Route::resource('clinics', ClinicController::class);
+        Route::get('clinics/analytics', [ClinicController::class, 'analytics'])->name('clinics.analytics');
+        Route::patch('clinics/{clinic}/approve', [ClinicController::class, 'approve'])->name('clinics.approve');
+        Route::patch('clinics/{clinic}/reject', [ClinicController::class, 'reject'])->name('clinics.reject');
+        Route::patch('clinics/{clinic}/toggle-active', [ClinicController::class, 'toggleActive'])->name('clinics.toggle-active');
+        Route::patch('clinics/{clinic}/toggle-verified', [ClinicController::class, 'toggleVerified'])->name('clinics.toggle-verified');
+        Route::post('clinics/bulk-approve', [ClinicController::class, 'bulkApprove'])->name('clinics.bulk-approve');
+        Route::post('clinics/bulk-reject', [ClinicController::class, 'bulkReject'])->name('clinics.bulk-reject');
     });
 });
 
