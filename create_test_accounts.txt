@@ -1,0 +1,21 @@
+php artisan tinker
+
+// Create Instructor Account
+$instructor = App\Models\User::create([
+    'name' => 'Jane Smith',
+    'email' => 'instructor@test.com',
+    'password' => bcrypt('password123')
+]);
+$instructor->assignRole('instructor');
+echo "Instructor created: instructor@test.com\n";
+
+// Create Learner Account  
+$learner = App\Models\User::create([
+    'name' => 'John Doe',
+    'email' => 'learner@test.com',
+    'password' => bcrypt('password123')
+]);
+$learner->assignRole('learner');
+echo "Learner created: learner@test.com\n";
+
+echo "\nBoth accounts use password: password123\n";

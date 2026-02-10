@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\AdminAuthController;
+use App\Http\Controllers\Auth\InstructorAuthController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
@@ -18,9 +19,20 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
-    // Login route for form submission (kept for learner login form)
+    // Learner login (homepage)
+    Route::get('/', function () {
+        return view('auth.learner-login');
+    })->name('learner.login');
+    
     Route::post('login', [AuthenticatedSessionController::class, 'store'])
         ->name('login');
+
+    // Instructor login (separate portal)
+    Route::get('instructor/login', [InstructorAuthController::class, 'showLoginForm'])
+        ->name('instructor.login');
+    
+    Route::post('instructor/login', [InstructorAuthController::class, 'login'])
+        ->name('instructor.login.submit');
 
     // Secure admin login (hidden route with hash for security)
     Route::get('secure-panel-access', [AdminAuthController::class, 'showLoginForm'])
@@ -63,6 +75,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+    
+    // Instructor logout
+    Route::post('instructor/logout', [InstructorAuthController::class, 'logout'])
+        ->name('instructor.logout');
     
     // Admin logout
     Route::post('admin/logout', [AdminAuthController::class, 'logout'])

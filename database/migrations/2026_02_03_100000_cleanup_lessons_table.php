@@ -13,10 +13,12 @@ return new class extends Migration
     {
         Schema::table('lessons', function (Blueprint $table) {
             // Remove old content-related columns (content now in lesson_topics)
-            $table->dropColumn([
-                'content',
-                'video_url',
-            ]);
+            if (Schema::hasColumn('lessons', 'content')) {
+                $table->dropColumn('content');
+            }
+            if (Schema::hasColumn('lessons', 'video_url')) {
+                $table->dropColumn('video_url');
+            }
             
             // Add columns that should be in lessons
             if (!Schema::hasColumn('lessons', 'description')) {

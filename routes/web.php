@@ -13,13 +13,8 @@ use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
 use App\Http\Controllers\Api\LocationController;
 use Illuminate\Support\Facades\Route;
 
-// Homepage - Learner Login (redirect to dashboard if already logged in)
-Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect()->route('dashboard');
-    }
-    return view('auth.learner-login');
-})->name('home');
+// Homepage redirects to appropriate dashboard if logged in, otherwise shows learner login
+// The actual learner login route is defined in routes/auth.php
 
 // Profile completion routes (auth but no profile.completed middleware)
 Route::middleware('auth')->group(function () {
@@ -132,44 +127,55 @@ Route::middleware('auth')->group(function () {
         ->middleware(['role:learner', 'profile.completed'])
         ->name('dashboard');
 
-    // Admin routes (role-based access)
-    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
-        // Admin Dashboard
-        Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+    // Instructor routes (Content Management)
+    Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
+        // Instructor Dashboard
+        Route::get('/dashboard', [\App\Http\Controllers\Instructor\DashboardController::class, 'index'])->name('dashboard');
         
-        // User Management
-        Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+        // User Management (Learners only)
+        Route::resource('users', \App\Http\Controllers\Instructor\UserController::class);
         
         // Module Management
-        Route::resource('modules', \App\Http\Controllers\Admin\ModuleController::class);
+        Route::resource('modules', \App\Http\Controllers\Instructor\ModuleController::class);
         
         // Lesson Management
-        Route::resource('lessons', \App\Http\Controllers\Admin\LessonController::class);
-        Route::patch('lessons/{lesson}/move', [\App\Http\Controllers\Admin\LessonController::class, 'move'])
+        Route::resource('lessons', \App\Http\Controllers\Instructor\LessonController::class);
+        Route::patch('lessons/{lesson}/move', [\App\Http\Controllers\Instructor\LessonController::class, 'move'])
             ->name('lessons.move');
         
         // Topic Management (Lesson Topics)
-        Route::get('topics/create', [\App\Http\Controllers\Admin\TopicController::class, 'create'])
+        Route::get('topics/create', [\App\Http\Controllers\Instructor\TopicController::class, 'create'])
             ->name('topics.create');
-        Route::post('topics', [\App\Http\Controllers\Admin\TopicController::class, 'store'])
+        Route::post('topics', [\App\Http\Controllers\Instructor\TopicController::class, 'store'])
             ->name('topics.store');
-        Route::get('topics/{topic}/edit', [\App\Http\Controllers\Admin\TopicController::class, 'edit'])
+        Route::get('topics/{topic}/edit', [\App\Http\Controllers\Instructor\TopicController::class, 'edit'])
             ->name('topics.edit');
-        Route::put('topics/{topic}', [\App\Http\Controllers\Admin\TopicController::class, 'update'])
+        Route::put('topics/{topic}', [\App\Http\Controllers\Instructor\TopicController::class, 'update'])
             ->name('topics.update');
-        Route::delete('topics/{topic}', [\App\Http\Controllers\Admin\TopicController::class, 'destroy'])
+        Route::delete('topics/{topic}', [\App\Http\Controllers\Instructor\TopicController::class, 'destroy'])
             ->name('topics.destroy');
         
         // Image upload for TinyMCE
-        Route::post('upload/image', [\App\Http\Controllers\Admin\TopicController::class, 'uploadImage'])
+        Route::post('upload/image', [\App\Http\Controllers\Instructor\TopicController::class, 'uploadImage'])
             ->name('upload.image');
         
         // Quiz Management
-        Route::resource('quizzes', \App\Http\Controllers\Admin\QuizManagementController::class);
-        Route::get('quizzes/{quiz}/add-question', [\App\Http\Controllers\Admin\QuizManagementController::class, 'addQuestion'])
+        Route::resource('quizzes', \App\Http\Controllers\Instructor\QuizManagementController::class);
+        Route::get('quizzes/{quiz}/add-question', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'addQuestion'])
             ->name('quizzes.add-question');
-        Route::post('quizzes/{quiz}/store-question', [\App\Http\Controllers\Admin\QuizManagementController::class, 'storeQuestion'])
+        Route::post('quizzes/{quiz}/store-question', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'storeQuestion'])
             ->name('quizzes.store-question');
+    });
+
+    // Admin routes (System Management) - TODO: To be built
+    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::get('/dashboard', function() {
+            return view('admin.dashboard');
+        })->name('dashboard');
+        
+        // TODO: Subscription management routes
+        // TODO: User management routes  
+        // TODO: Platform settings routes
     });
 });
 
