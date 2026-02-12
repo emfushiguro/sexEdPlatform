@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\AdminAuthController;
 use App\Http\Controllers\Auth\InstructorAuthController;
+use App\Http\Controllers\Auth\ParentRegistrationController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
@@ -18,6 +19,16 @@ Route::middleware('guest')->group(function () {
         ->name('register');
 
     Route::post('register', [RegisteredUserController::class, 'store']);
+
+    // Parent registration routes
+    Route::get('parent-registration-required', [ParentRegistrationController::class, 'requiredPage'])
+        ->name('parent.registration.required');
+    
+    Route::get('parent/register', [ParentRegistrationController::class, 'create'])
+        ->name('parent.register');
+    
+    Route::post('parent/register', [ParentRegistrationController::class, 'store'])
+        ->name('parent.register.store');
 
     // Learner login (homepage)
     Route::get('/', function () {
@@ -83,4 +94,15 @@ Route::middleware('auth')->group(function () {
     // Admin logout
     Route::post('admin/logout', [AdminAuthController::class, 'logout'])
         ->name('admin.logout');
+
+    // Parent routes (verified emails only)
+    Route::middleware('verified')->group(function () {
+        Route::get('parent/create-child', [ParentRegistrationController::class, 'createChildForm'])
+            ->name('parent.create-child');
+        
+        Route::post('parent/create-child', [ParentRegistrationController::class, 'storeChild']);
+        
+        Route::get('parent/children', [ParentRegistrationController::class, 'childrenIndex'])
+            ->name('parent.children.index');
+    });
 });

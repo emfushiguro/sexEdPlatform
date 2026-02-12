@@ -22,6 +22,7 @@ class RegisterRequest extends FormRequest
     {
         $this->merge([
             'first_name' => trim($this->first_name),
+            'middle_initial' => $this->middle_initial ? strtoupper(trim($this->middle_initial)) : null,
             'last_name' => trim($this->last_name),
             'email' => strtolower(trim($this->email)),
         ]);
@@ -36,13 +37,22 @@ class RegisterRequest extends FormRequest
     {
         return [
             'first_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
+            'middle_initial' => ['nullable', 'string', 'max:10', 'regex:/^[a-zA-Z.]+$/'],
             'last_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
+            'suffix' => ['nullable', 'string', 'in:Jr.,Sr.,II,III,IV,V'],
+            'birthdate' => [
+                'required',
+                'date',
+                'before:today',
+                'after:' . now()->subYears(100)->format('Y-m-d'),
+            ],
             'email' => [
                 'required',
                 'string',
                 'email:rfc,dns',
                 'max:255',
                 'unique:users,email',
+                'ends_with:@gmail.com', // Gmail only for now
             ],
             'password' => [
                 'required',
@@ -63,9 +73,15 @@ class RegisterRequest extends FormRequest
     {
         return [
             'first_name.regex' => 'First name can only contain letters and spaces.',
+            'middle_initial.regex' => 'Middle initial can only contain letters and periods.',
             'last_name.regex' => 'Last name can only contain letters and spaces.',
-            'email.email' => 'Please enter a valid email address.',
+            'suffix.in' => 'Please select a valid suffix.',
+            'birthdate.required' => 'Birth date is required.',
+            'birthdate.before' => 'Birth date must be before today.',
+            'birthdate.after' => 'Invalid birth date. Must be within the last 100 years.',
+            'email.email' => 'Please enter a valid Gmail address.',
             'email.unique' => 'This email address is already registered.',
+            'email.ends_with' => 'Only Gmail addresses (@gmail.com) are accepted for registration.',
         ];
     }
 }

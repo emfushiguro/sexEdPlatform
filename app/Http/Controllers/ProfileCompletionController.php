@@ -26,7 +26,7 @@ class ProfileCompletionController extends Controller
 
         $learnerProfile = $user->learnerProfile;
         
-        // Get Cavite cities/municipalities
+        // Get Cavite cities/municipalities only
         // Cavite province code: 402100000 (PSGC format)
         $cities = City::where('province_code', '402100000')
             ->orderBy('name')
@@ -45,20 +45,26 @@ class ProfileCompletionController extends Controller
 
     /**
      * Store the completed profile.
+     * Note: Birthdate is already set during registration, so we don't collect it here.
      */
     public function store(Request $request)
     {
         $user = Auth::user();
         
-        // Validate the request
+        // Validate the request (removed birthdate and grade_level - using age brackets instead)
         $validated = $request->validate([
             'username' => 'required|string|min:3|max:30|regex:/^[a-z0-9_-]+$/|unique:learner_profiles,username',
-            'birthdate' => 'required|date|before:-5 years',
             'gender' => 'nullable|in:male,female,prefer_not_to_say',
             'city_code' => 'required|string|exists:cities,code',
             'barangay_code' => 'required|string|exists:barangays,code',
             'bio' => 'nullable|string|max:500',
         ]);
+        
+        // Automatically set Cavite province code
+        $validated['province_code'] = '402100000';
+        
+        // Copy birthdate from User model (stored during registration)
+        $validated['birthdate'] = $user->birthdate;
         
         // Get city and barangay names for display purposes
         $city = City::where('code', $validated['city_code'])->first();

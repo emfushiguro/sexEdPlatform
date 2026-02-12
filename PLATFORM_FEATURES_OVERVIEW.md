@@ -1,20 +1,17 @@
 # Sex Education Platform - Features Overview
 
-**Purpose:** This document provides a simple, non-technical overview of all platform features organized by user role.
 
----
+3 Three User Roles
 
-## 🎭 Three User Roles
-
-### 1. **Admin** (System Manager)
+1. Admin (System Manager)
 **Who:** Platform administrator who manages the entire system
 **Access:** Full system control and settings
 
-### 2. **Instructor** (Teacher/Content Creator)
+2. Instructor (Teacher/Content Creator)
 **Who:** Educators who create and manage educational content
 **Access:** Content creation and learner management
 
-### 3. **Learner** (Student)
+3. Learner (Student)
 **Who:** End users who take courses and learn
 **Access:** Learning materials and progress tracking
 
@@ -24,8 +21,8 @@
 
 ### Subscription Plan Management
 **What it does:**
-- Create different subscription tiers (Free, Basic, Premium, Enterprise)
-- Set pricing for monthly, quarterly, and yearly billing
+- Create different subscription tiers (Free, Basic, Premium, Organization)
+- Set pricing for monthly and yearly billing
 - Define what each plan includes (features and limits)
 - Control how many modules and learners each plan allows
 - Activate or deactivate plans

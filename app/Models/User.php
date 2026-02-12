@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Carbon\Carbon;
+use App\Notifications\CustomVerifyEmail;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable, SoftDeletes, HasRoles;
 
@@ -20,8 +23,12 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'first_name',
+        'middle_initial',
         'last_name',
+        'suffix',
         'email',
+        'birthdate',
+        'age',
         'password',
         'role',
         'status',
@@ -49,6 +56,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'verified' => 'boolean',
+            'birthdate' => 'date',
         ];
     }
 
@@ -64,6 +72,16 @@ class User extends Authenticatable
                 'streak_count' => 0,
             ]);
         });
+    }
+
+    /**
+     * Send the email verification notification using custom template.
+     *
+     * @return void
+     */
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new CustomVerifyEmail);
     }
 
     // Relationships
@@ -203,7 +221,76 @@ class User extends Authenticatable
      */
     public function getFullNameAttribute(): string
     {
-        return trim("{$this->first_name} {$this->last_name}");
+        $name = trim("{$this->first_name}");
+        
+        if ($this->middle_initial) {
+            $name .= " {$this->middle_initial}.";
+        }
+        
+        $name .= " {$this->last_name}";
+        
+        if ($this->suffix) {
+            $name .= " {$this->suffix}";
+        }
+        
+        return $name;
+    }
+
+    /**
+     * Calculate age from birthdate
+     */
+    public function calculateAge(): ?int
+    {
+        if (!$this->birthdate) {
+            return null;
+        }
+        
+        return Carbon::parse($this->birthdate)->age;
+    }
+
+    /**
+     * Check if user is under 13 (requires parental consent)
+     */
+    public function requiresParentalConsent(): bool
+    {
+        return $this->calculateAge() < 13;
+    }
+
+    /**
+     * Check if user is 18+ (can be a parent)
+     */
+    public function canBeParent(): bool
+    {
+        return $this->calculateAge() >= 18;
+    }
+
+    /**
+     * Check if user is a parent with children
+     */
+    public function isParent(): bool
+    {
+        return $this->children()->exists();
+    }
+
+    /**
+     * Get parent-child relationships where user is parent
+     */
+    public function children()
+    {
+        return $this->belongsToMany(User::class, 'parent_child_accounts', 'parent_user_id', 'child_user_id')
+            ->withPivot(['can_view_progress', 'can_view_quiz_answers', 'can_approve_content', 'relationship_verified_at'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get parent of this user (if they are a child)
+     */
+    public function parent()
+    {
+        return $this->belongsToMany(User::class, 'parent_child_accounts', 'child_user_id', 'parent_user_id')
+            ->withPivot(['can_view_progress', 'can_view_quiz_answers', 'can_approve_content', 'relationship_verified_at'])
+            ->withTimestamps()
+            ->first();
     }
 
     /**

@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Route;
 // Homepage redirects to appropriate dashboard if logged in, otherwise shows learner login
 // The actual learner login route is defined in routes/auth.php
 
+// Public pages
+Route::view('/privacy', 'legal.privacy')->name('privacy');
+Route::view('/terms', 'legal.terms')->name('terms');
+
 // Profile completion routes (auth but no profile.completed middleware)
 Route::middleware('auth')->group(function () {
     Route::get('/profile/complete', [ProfileCompletionController::class, 'show'])->name('profile.complete');
@@ -26,7 +30,8 @@ Route::middleware('auth')->group(function () {
 Route::get('/certificates/verify', [CertificateController::class, 'verifyForm'])->name('certificates.verify-form');
 Route::post('/certificates/verify', [CertificateController::class, 'verify'])->name('certificates.verify');
 
-// API route for loading barangays by city
+// API routes for location data
+Route::get('/api/cities/{provinceCode}', [LocationController::class, 'getCities']);
 Route::get('/api/barangays/{cityCode}', [LocationController::class, 'getBarangays']);
 
 Route::middleware('auth')->group(function () {

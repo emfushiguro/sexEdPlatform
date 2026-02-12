@@ -8,8 +8,25 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     <div class="mb-6">
-                        <h3 class="text-lg font-semibold text-gray-900">Welcome, {{ Auth::user()->first_name }}!</h3>
-                        <p class="mt-2 text-sm text-gray-600">Please complete your profile to start learning. All fields marked with * are required.</p>
+                        <h3 class="text-lg font-semibold text-gray-900">Welcome, {{ Auth::user()->full_name }}!</h3>
+                        <p class="mt-2 text-sm text-gray-600">Just a couple more details to start learning. All fields marked with * are required.</p>
+                        
+                        @if(Auth::user()->email_verified_at)
+                            <div class="mt-3 bg-green-50 border-l-4 border-green-500 p-3">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-green-800">
+                                            <strong>Email verified:</strong> {{ Auth::user()->email }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
                     <form method="POST" action="{{ route('profile.store') }}">
@@ -25,16 +42,6 @@
                             @error('username')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
-                        <!-- Birthdate -->
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">Birthdate *</label>
-                            <input type="date" name="birthdate" value="{{ old('birthdate', $learnerProfile?->birthdate?->format('Y-m-d')) }}" required
-                                max="{{ date('Y-m-d', strtotime('-5 years')) }}"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <p class="mt-1 text-xs text-gray-500">You must be at least 5 years old to use the platform</p>
-                            @error('birthdate')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                        </div>
-
                         <!-- Gender -->
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700">Gender</label>
@@ -47,7 +54,7 @@
                             @error('gender')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
-                        <!-- Municipality -->
+                        <!-- Municipality/City (Cavite only) -->
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700">Municipality/City (Cavite) *</label>
                             <select name="city_code" id="city_code" required 
