@@ -15,6 +15,24 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+
+                    @if(Auth::user()->hasRole('instructor'))
+                        <x-nav-link :href="route('instructor.modules.index')" :active="request()->routeIs('instructor.modules.*')">
+                            {{ __('Modules') }}
+                        </x-nav-link>
+
+                        @php
+                            $pendingCount = \App\Models\ModuleEnrollment::pending()->count();
+                        @endphp
+                        <x-nav-link :href="route('instructor.enrollments.index')" :active="request()->routeIs('instructor.enrollments.*')">
+                            <span>{{ __('Enrollment Requests') }}</span>
+                            @if($pendingCount > 0)
+                                <span class="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                                    {{ $pendingCount }}
+                                </span>
+                            @endif
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 

@@ -58,6 +58,31 @@
                             @error('age_bracket')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-3">Enrollment Mode <span class="text-red-500">*</span></label>
+                            <div class="space-y-3">
+                                <label class="flex items-start p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                                    <input type="radio" name="enrollment_mode" value="auto" 
+                                        {{ old('enrollment_mode', 'auto') === 'auto' ? 'checked' : '' }}
+                                        class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                    <div class="ml-3">
+                                        <span class="font-medium text-gray-900">Open Enrollment (Auto-approve)</span>
+                                        <p class="text-sm text-gray-500">Learners can enroll immediately and access module content right away</p>
+                                    </div>
+                                </label>
+                                <label class="flex items-start p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                                    <input type="radio" name="enrollment_mode" value="manual" 
+                                        {{ old('enrollment_mode') === 'manual' ? 'checked' : '' }}
+                                        class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
+                                    <div class="ml-3">
+                                        <span class="font-medium text-gray-900">Manual Approval (Gated Access)</span>
+                                        <p class="text-sm text-gray-500">You must review and approve each enrollment request before learners can access content</p>
+                                    </div>
+                                </label>
+                            </div>
+                            @error('enrollment_mode')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        </div>
+
                         <div class="flex items-center justify-end gap-4 mt-6">
                             <button type="submit" name="action" value="draft" 
                                 class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded transition">

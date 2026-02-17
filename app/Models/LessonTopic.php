@@ -20,6 +20,7 @@ class LessonTopic extends Model
         'video_file_path',
         'text_content',
         'file_path',
+        'worksheet_files',
         'quiz_id',
         'interactive_config',
         'image_attachments',
@@ -36,6 +37,7 @@ class LessonTopic extends Model
         'interactive_config' => 'array',
         'image_attachments' => 'array',
         'slideshow_data' => 'array',
+        'worksheet_files' => 'array',
     ];
 
     /**

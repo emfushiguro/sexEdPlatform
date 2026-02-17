@@ -77,8 +77,8 @@
                                 </p>
 
                                 <div class="flex items-center justify-between text-sm text-gray-500 mb-4">
-                                    <span>📚 {{ $module->lessons_count }} lessons</span>
-                                    <span>⏱️ {{ $module->duration_minutes }} min</span>
+                                    <span> {{ $module->lessons_count }} lessons</span>
+                                    <span> {{ $module->duration_minutes }} min</span>
                                 </div>
 
                                 <!-- Progress Bar (if enrolled) -->

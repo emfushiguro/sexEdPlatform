@@ -95,9 +95,12 @@ class ModuleController extends Controller
             ->get();
 
         // Check enrollment status
-        $isEnrolled = $user->moduleEnrollments()
+        $enrollment = $user->moduleEnrollments()
             ->where('module_id', $module->id)
-            ->exists();
+            ->first();
+
+        $isEnrolled = $enrollment && $enrollment->status === 'approved';
+        $enrollmentStatus = $enrollment ? $enrollment->status : null;
 
         // Calculate progress
         $totalLessons = $lessons->count();
@@ -142,6 +145,7 @@ class ModuleController extends Controller
             'module', 
             'lessons', 
             'isEnrolled', 
+            'enrollmentStatus',
             'progress', 
             'completedLessonIds',
             'moduleQuizzes',
@@ -168,15 +172,41 @@ class ModuleController extends Controller
             return back()->with('error', 'This module is not available for your age group.');
         }
 
-        // Check if already enrolled
-        if ($user->moduleEnrollments()->where('module_id', $module->id)->exists()) {
-            return back()->with('info', 'You are already enrolled in this module.');
+        // Check if already enrolled or has pending request
+        $existingEnrollment = $user->moduleEnrollments()->where('module_id', $module->id)->first();
+        
+        if ($existingEnrollment) {
+            if ($existingEnrollment->status === 'pending') {
+                return back()->with('info', 'Your enrollment request is pending instructor approval.');
+            }
+            if ($existingEnrollment->status === 'approved') {
+                return back()->with('info', 'You are already enrolled in this module.');
+            }
+            if ($existingEnrollment->status === 'rejected') {
+                return back()->with('error', 'Your enrollment request was rejected by the instructor.');
+            }
         }
 
-        // Create enrollment
+        // Check enrollment mode
+        if ($module->enrollment_mode === 'manual') {
+            // Manual approval - create pending enrollment
+            ModuleEnrollment::create([
+                'user_id' => $user->id,
+                'module_id' => $module->id,
+                'status' => 'pending',
+                'enrolled_at' => null,
+            ]);
+
+            return redirect()->route('learner.modules.show', $module)
+                ->with('success', 'Enrollment request submitted! Waiting for instructor approval.');
+        }
+
+        // Auto approval - create approved enrollment
         ModuleEnrollment::create([
             'user_id' => $user->id,
             'module_id' => $module->id,
+            'status' => 'approved',
+            'enrolled_at' => now(),
         ]);
 
         return redirect()->route('learner.modules.show', $module)

@@ -152,6 +152,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Certificate::class);
     }
 
+    public function achievements()
+    {
+        return $this->belongsToMany(Achievement::class, 'rewards_logs')
+            ->withPivot('earned_at')
+            ->withTimestamps();
+    }
+
     public function quizAttempts()
     {
         return $this->hasMany(QuizAttempt::class);

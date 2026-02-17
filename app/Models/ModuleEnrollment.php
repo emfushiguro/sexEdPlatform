@@ -9,6 +9,7 @@ class ModuleEnrollment extends Model
     protected $fillable = [
         'user_id',
         'module_id',
+        'status',
         'enrolled_at',
         'completed_at',
         'completion_percentage',
@@ -17,6 +18,7 @@ class ModuleEnrollment extends Model
     protected function casts(): array
     {
         return [
+            'status' => 'string',
             'enrolled_at' => 'datetime',
             'completed_at' => 'datetime',
             'completion_percentage' => 'integer',
@@ -45,6 +47,21 @@ class ModuleEnrollment extends Model
     public function scopeInProgress($query)
     {
         return $query->whereNull('completed_at')->where('completion_percentage', '>', 0);
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
     }
 
     // Helper Methods

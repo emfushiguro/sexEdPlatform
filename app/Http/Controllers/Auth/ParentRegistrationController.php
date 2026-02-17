@@ -93,17 +93,11 @@ class ParentRegistrationController extends Controller
         // Assign learner role (parent is also a learner who can take courses)
         $parent->assignRole('learner');
 
-        // Create/update learner profile and mark as parent account
-        $parent->learnerProfile()->updateOrCreate(
-            ['user_id' => $parent->id],
-            [
-                'is_parent_account' => true,
-                'birthdate' => $parent->birthdate,
-            ]
-        );
-
         // Fire registered event (triggers email verification)
         event(new Registered($parent));
+
+        // Store session flag to identify parent account during profile completion
+        session(['is_parent_registration' => true]);
 
         // Log the parent in
         Auth::login($parent);
@@ -129,7 +123,23 @@ class ParentRegistrationController extends Controller
             abort(403, 'You must be 18 or older to create a child account.');
         }
 
-        return view('auth.create-child-account');
+        // Get parent's profile for location auto-fill
+        $parentProfile = auth()->user()->learnerProfile;
+        
+        // Get Cavite cities for dropdown
+        $cities = \Schoolees\Psgc\Models\City::where('province_code', '402100000')
+            ->orderBy('name')
+            ->get();
+        
+        // Get barangays for parent's city
+        $barangays = [];
+        if ($parentProfile && $parentProfile->city_code) {
+            $barangays = \Schoolees\Psgc\Models\Barangay::where('city_code', $parentProfile->city_code)
+                ->orderBy('name')
+                ->get();
+        }
+
+        return view('auth.create-child-account', compact('parentProfile', 'cities', 'barangays'));
     }
 
     /**
@@ -159,14 +169,10 @@ class ParentRegistrationController extends Controller
                 'before:today',
                 'after:' . now()->subYears(18)->format('Y-m-d'), // Must be under 18
             ],
-            'email' => [
-                'nullable',
-                'string',
-                'email:rfc,dns',
-                'max:255',
-                'unique:users,email',
-            ],
-            'username' => ['required', 'string', 'max:50', 'unique:users,email', 'regex:/^[a-zA-Z0-9_]+$/'],
+            'username' => ['required', 'string', 'min:3', 'max:30', 'unique:learner_profiles,username', 'regex:/^[a-z0-9_-]+$/'],
+            'gender' => ['required', 'in:male,female,prefer_not_to_say'],
+            'city_code' => ['required', 'string', 'exists:cities,code'],
+            'barangay_code' => ['required', 'string', 'exists:barangays,code'],
             'password' => [
                 'required',
                 'confirmed',
@@ -185,6 +191,13 @@ class ParentRegistrationController extends Controller
             ])->withInput();
         }
 
+        // Get parent's location for child to inherit (same household)
+        $parent = auth()->user();
+        $parentProfile = $parent->learnerProfile;
+        
+        // Get barangay name
+        $barangay = \Schoolees\Psgc\Models\Barangay::where('code', $validated['barangay_code'])->first();
+        
         // Create child account
         $child = User::create([
             'name' => trim($validated['first_name'] . ' ' . $validated['last_name']),
@@ -192,7 +205,7 @@ class ParentRegistrationController extends Controller
             'middle_initial' => $validated['middle_initial'] ?? null,
             'last_name' => $validated['last_name'],
             'suffix' => $validated['suffix'] ?? null,
-            'email' => $validated['email'] ?: $validated['username'] . '@child.sexed-platform.local',
+            'email' => $validated['username'] . '@child.sexed-platform.local',
             'birthdate' => $validated['birthdate'],
             'age' => $age,
             'password' => Hash::make($validated['password']),
@@ -202,27 +215,30 @@ class ParentRegistrationController extends Controller
         // Assign learner role
         $child->assignRole('learner');
 
-        // Create/update learner profile and mark as requiring parental consent
-        $child->learnerProfile()->updateOrCreate(
-            ['user_id' => $child->id],
-            [
-                'requires_parental_consent' => true,
-                'birthdate' => $child->birthdate,
-            ]
-        );
+        // Create COMPLETE learner profile (no profile completion needed)
+        $child->learnerProfile()->create([
+            'username' => $validated['username'],
+            'birthdate' => $child->birthdate,
+            'gender' => $validated['gender'],
+            'city_code' => $validated['city_code'],
+            'barangay_code' => $validated['barangay_code'],
+            'barangay' => $barangay->name,
+            'province_code' => '402100000', // Cavite
+            'requires_parental_consent' => true,
+        ]);
 
-        // Create parent-child relationship
+        // Create parent-child relationship (monitoring always enabled for safety)
         ParentChildAccount::create([
             'parent_user_id' => auth()->id(),
             'child_user_id' => $child->id,
-            'can_view_progress' => true,
-            'can_view_quiz_answers' => true,
-            'can_approve_content' => false, // Can be enabled later
+            'can_view_progress' => true, // Always ON for COPPA compliance
+            'can_view_quiz_answers' => true, // Always ON for safety monitoring
+            'can_approve_content' => false, // Future feature
             'relationship_verified_at' => now(),
         ]);
 
         return redirect()->route('parent.children.index')
-            ->with('success', "Child account created successfully! Login credentials: Username/Email: {$child->email}");
+            ->with('success', "Child account created successfully! Username: {$validated['username']} | Password: (as you set) | Your child can now log in and start learning!");
     }
 
     /**

@@ -143,6 +143,18 @@ Route::middleware('auth')->group(function () {
         // Module Management
         Route::resource('modules', \App\Http\Controllers\Instructor\ModuleController::class);
         
+        // Enrollment Management
+        Route::get('enrollments', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'index'])
+            ->name('enrollments.index');
+        Route::get('enrollments/{enrollment}', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'show'])
+            ->name('enrollments.show');
+        Route::patch('enrollments/{enrollment}/approve', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'approve'])
+            ->name('enrollments.approve');
+        Route::patch('enrollments/{enrollment}/reject', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'reject'])
+            ->name('enrollments.reject');
+        Route::get('modules/{module}/enrollments', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'moduleEnrollments'])
+            ->name('modules.enrollments');
+        
         // Lesson Management
         Route::resource('lessons', \App\Http\Controllers\Instructor\LessonController::class);
         Route::patch('lessons/{lesson}/move', [\App\Http\Controllers\Instructor\LessonController::class, 'move'])
@@ -155,6 +167,8 @@ Route::middleware('auth')->group(function () {
             ->name('topics.store');
         Route::get('topics/{topic}/edit', [\App\Http\Controllers\Instructor\TopicController::class, 'edit'])
             ->name('topics.edit');
+        Route::get('topics/{topic}/preview', [\App\Http\Controllers\Instructor\TopicController::class, 'preview'])
+            ->name('topics.preview');
         Route::put('topics/{topic}', [\App\Http\Controllers\Instructor\TopicController::class, 'update'])
             ->name('topics.update');
         Route::delete('topics/{topic}', [\App\Http\Controllers\Instructor\TopicController::class, 'destroy'])

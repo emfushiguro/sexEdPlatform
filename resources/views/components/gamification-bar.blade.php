@@ -31,7 +31,7 @@
                         <span class="text-white font-bold text-lg">{{ $level }}</span>
                     </div>
                     <div class="absolute -bottom-1 -right-1 bg-yellow-400 rounded-full w-5 h-5 flex items-center justify-center">
-                        <span class="text-xs">🏆</span>
+                        <span class="text-xs"></span>
                     </div>
                 </div>
                 <div class="text-white">
@@ -47,7 +47,7 @@
 
             <!-- Points Section -->
             <div class="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-                <span class="text-2xl">⭐</span>
+                <span class="text-2xl"></span>
                 <div class="text-white">
                     <p class="text-xs opacity-80">Total Points</p>
                     <p class="text-lg font-bold">{{ number_format($totalPoints) }}</p>
@@ -56,7 +56,7 @@
 
             <!-- Streak Section -->
             <div class="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-                <span class="text-2xl">🔥</span>
+                <span class="text-2xl"></span>
                 <div class="text-white">
                     <p class="text-xs opacity-80">Day Streak</p>
                     <p class="text-lg font-bold">{{ $streak }} {{ $streak === 1 ? 'day' : 'days' }}</p>
@@ -65,7 +65,7 @@
 
             <!-- Quiz Attempts Section -->
             <div class="flex items-center space-x-2 {{ $isPremium ? 'bg-gradient-to-r from-yellow-400 to-orange-500' : 'bg-white/10' }} backdrop-blur-sm rounded-full px-4 py-2">
-                <span class="text-2xl">{{ $isPremium ? '👑' : '🎯' }}</span>
+                <span class="text-2xl">{{ $isPremium ? '' : '' }}</span>
                 <div class="{{ $isPremium ? 'text-gray-900' : 'text-white' }}">
                     <p class="text-xs {{ $isPremium ? 'opacity-80' : 'opacity-80' }}">
                         {{ $isPremium ? 'Premium' : 'Quiz Attempts' }}
@@ -84,7 +84,7 @@
             @if(!$isPremium)
             <a href="{{ route('subscription.upgrade') }}" 
                class="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-gray-900 font-bold px-5 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2">
-                <span>👑</span>
+                <span></span>
                 <span>Go PRO</span>
             </a>
             @endif

@@ -15,7 +15,7 @@
                     <h1 class="text-3xl font-bold text-gray-900">Create Child Account</h1>
                     <p class="mt-2 text-sm text-gray-600">Add a learning account for your child</p>
                 </div>
-                <a href="{{ route('parent.children') }}" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                <a href="{{ route('parent.children.index') }}" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
                     ← Back to My Children
                 </a>
             </div>
@@ -70,6 +70,7 @@
                       x-data="{
                           birthdate: '',
                           age: null,
+                          cityCode: '{{ old('city_code', $parentProfile?->city_code) }}',
                           calculateAge() {
                               if (!this.birthdate) {
                                   this.age = null;
@@ -83,8 +84,19 @@
                                   age--;
                               }
                               this.age = age;
+                          },
+                          async loadBarangays() {
+                              if (!this.cityCode) return;
+                              const response = await fetch(`/api/barangays/${this.cityCode}`);
+                              const barangays = await response.json();
+                              const select = document.getElementById('barangay_code');
+                              select.innerHTML = '<option value=\"\">Select barangay</option>';
+                              barangays.forEach(b => {
+                                  select.innerHTML += `<option value=\"${b.code}\">${b.name}</option>`;
+                              });
                           }
-                      }">
+                      }"
+                      x-init="if (cityCode) loadBarangays()">
                     @csrf
 
                     <!-- Child's Personal Information -->
@@ -201,6 +213,74 @@
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
+
+                        <!-- Gender -->
+                        <div class="mt-4">
+                            <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">
+                                Gender <span class="text-red-500">*</span>
+                            </label>
+                            <select id="gender" name="gender" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">Select gender</option>
+                                <option value="male" {{ old('gender') === 'male' ? 'selected' : '' }}>Male</option>
+                                <option value="female" {{ old('gender') === 'female' ? 'selected' : '' }}>Female</option>
+                                <option value="prefer_not_to_say" {{ old('gender') === 'prefer_not_to_say' ? 'selected' : '' }}>Prefer not to say</option>
+                            </select>
+                            @error('gender')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Child's Location (Same Household as Parent) -->
+                    <div class="mb-6 pt-6 border-t border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Location (Same Household)</h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            📍 Your child lives with you, so we'll use your home address.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Municipality/City -->
+                            <div>
+                                <label for="city_code" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Municipality/City (Cavite) <span class="text-red-500">*</span>
+                                </label>
+                                <select id="city_code" name="city_code" required
+                                        x-model="cityCode" @change="loadBarangays()"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">Select municipality/city</option>
+                                    @foreach($cities as $city)
+                                        <option value="{{ $city->code }}" {{ old('city_code', $parentProfile?->city_code) === $city->code ? 'selected' : '' }}>
+                                            {{ $city->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('city_code')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Barangay -->
+                            <div>
+                                <label for="barangay_code" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Barangay <span class="text-red-500">*</span>
+                                </label>
+                                <select id="barangay_code" name="barangay_code" required
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">Select municipality first</option>
+                                    @if($parentProfile && $parentProfile->city_code && count($barangays) > 0)
+                                        @foreach($barangays as $barangay)
+                                            <option value="{{ $barangay->code }}" {{ old('barangay_code', $parentProfile?->barangay_code) === $barangay->code ? 'selected' : '' }}>
+                                                {{ $barangay->name }}
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                @error('barangay_code')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Account Credentials Section -->
@@ -214,9 +294,14 @@
                             </label>
                             <input id="username" name="username" type="text" required 
                                    value="{{ old('username') }}"
+                                   pattern="[a-z0-9_-]+"
+                                   minlength="3"
+                                   maxlength="30"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                    placeholder="maria_santos123">
-                            <p class="mt-1 text-xs text-gray-500">This will be used to log in. Make it easy for your child to remember.</p>
+                            <p class="mt-1 text-xs text-gray-500">
+                                <strong>Important:</strong> This will be used to log in. Use lowercase letters, numbers, underscores, and hyphens only. Make it easy for your child to remember!
+                            </p>
                             @error('username')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -265,37 +350,46 @@
                         </div>
                     </div>
 
-                    <!-- Monitoring Permissions -->
+                    <!-- Monitoring Permissions (Always Enabled for Safety) -->
                     <div class="mb-6 pt-6 border-t border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Your Monitoring Permissions</h3>
-                        <div class="space-y-3">
-                            <label class="flex items-start">
-                                <input type="checkbox" name="can_view_progress" value="1" checked
-                                       class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                <span class="ml-3 text-sm text-gray-700">
-                                    <strong>View Learning Progress</strong> - See module completions, lesson views, and overall progress
-                                </span>
-                            </label>
-                            <label class="flex items-start">
-                                <input type="checkbox" name="can_view_quiz_answers" value="1" checked
-                                       class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                <span class="ml-3 text-sm text-gray-700">
-                                    <strong>View Quiz Answers</strong> - See quiz attempts, selected answers, and scores
-                                </span>
-                            </label>
-                            <label class="flex items-start">
-                                <input type="checkbox" name="can_approve_content" value="1"
-                                       class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                <span class="ml-3 text-sm text-gray-700">
-                                    <strong>Approve Content Access</strong> - Require your approval before child can access certain modules (coming soon)
-                                </span>
-                            </label>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">🔒 Your Parental Monitoring Access</h3>
+                        <p class="text-sm text-gray-600 mb-4">
+                            For your child's safety and COPPA compliance, you will have the following access:
+                        </p>
+                        <div class="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">View Learning Progress</p>
+                                    <p class="text-xs text-gray-600">See module completions, lesson views, and overall progress</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">View Quiz Answers</p>
+                                    <p class="text-xs text-gray-600">See quiz attempts, selected answers, and scores</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 mr-3 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Content Approval (Coming Soon)</p>
+                                    <p class="text-xs text-gray-500">Require your approval before child can access certain modules</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Submit Button -->
                     <div class="flex items-center justify-between pt-6 border-t border-gray-200">
-                        <a href="{{ route('parent.children') }}" class="text-gray-600 hover:text-gray-700">Cancel</a>
+                        <a href="{{ route('parent.children.index') }}" class="text-gray-600 hover:text-gray-700">Cancel</a>
                         <button type="submit" 
                                 class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150">
                             Create Child Account

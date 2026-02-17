@@ -21,12 +21,16 @@ class LearnerProfile extends Model
         'bio',
         'avatar_path',
         'about',
+        'is_parent_account',
+        'requires_parental_consent',
     ];
 
     protected $casts = [
         'birthdate' => 'date',
         'gender' => 'string',
         'username_changed_at' => 'datetime',
+        'is_parent_account' => 'boolean',
+        'requires_parental_consent' => 'boolean',
     ];
 
     protected $hidden = [];
@@ -50,9 +54,17 @@ class LearnerProfile extends Model
     /**
      * Get barangay location.
      */
-    public function barangayLocation(): BelongsTo
+    public function barangay(): BelongsTo
     {
         return $this->belongsTo(\Schoolees\Psgc\Models\Barangay::class, 'barangay_code', 'code');
+    }
+
+    /**
+     * Alias for barangay relationship (backward compatibility).
+     */
+    public function barangayLocation(): BelongsTo
+    {
+        return $this->barangay();
     }
 
     /**

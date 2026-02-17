@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Module;
+use App\Models\ModuleEnrollment;
 use App\Models\User;
 use App\Models\Quiz;
 use App\Models\Certificate;
@@ -20,6 +21,7 @@ class DashboardController extends Controller
             'published_modules' => Module::where('is_published', true)->count(),
             'total_quizzes' => Quiz::count(),
             'total_certificates' => Certificate::count(),
+            'pending_enrollments' => ModuleEnrollment::pending()->count(),
             'premium_users' => User::role('learner')
                 ->whereHas('subscriptions', function ($q) {
                     $q->where('status', 'active')

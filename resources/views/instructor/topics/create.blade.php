@@ -20,6 +20,18 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
+    <!-- Display All Errors -->
+    @if ($errors->any())
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">Oops! There were some errors:</strong>
+            <ul class="mt-2 list-disc list-inside">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
         <div class="bg-white rounded-lg p-8 flex flex-col items-center">
@@ -75,6 +87,28 @@
                 @error('duration')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
+            </div>
+
+            <!-- Prerequisite Checkbox -->
+            <div class="mb-6">
+                <label class="flex items-start gap-3 cursor-pointer group">
+                    <input 
+                        type="checkbox" 
+                        name="is_prerequisite" 
+                        id="is_prerequisite" 
+                        value="1"
+                        {{ old('is_prerequisite', true) ? 'checked' : '' }}
+                        class="w-5 h-5 mt-0.5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer transition-all hover:border-blue-400"
+                    >
+                    <div class="flex-1">
+                        <span class="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            Mark as Prerequisite Topic
+                        </span>
+                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                            If checked, learners must complete this topic before proceeding to the next prerequisite topic in sequence
+                        </p>
+                    </div>
+                </label>
             </div>
 
             <!-- Topic Type Selection -->
@@ -183,8 +217,11 @@
                     id="video_url" 
                     value="{{ old('video_url') }}"
                     placeholder="https://www.youtube.com/watch?v=..."
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('video_url') border-red-500 @enderror"
                 >
+                @error('video_url')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
                 <p class="mt-1 text-sm text-gray-500">Supports YouTube and Vimeo URLs</p>
             </div>
 
@@ -212,6 +249,9 @@
                         </div>
                     </label>
                 </div>
+                @error('video_file')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Video Description/Instructions -->
@@ -247,12 +287,12 @@
                 >{{ old('text_content') }}</textarea>
             </div>
 
-            <!-- Image Attachments with Preview -->
+            <!-- Image Attachments with Drag & Drop -->
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Image Attachments (Optional)
                 </label>
-                <div class="relative">
+                <div class="relative" id="imageDropZone">
                     <input 
                         type="file" 
                         name="image_attachments[]" 
@@ -260,15 +300,16 @@
                         accept="image/*"
                         multiple
                         class="hidden"
-                        onchange="previewImages(this)"
+                        onchange="renderImagePreviewsFromInput()"
                     >
-                    <label for="image_attachments" class="flex items-center justify-center w-full px-6 py-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition">
+                    <label for="image_attachments" class="flex items-center justify-center w-full px-6 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition drop-zone">
                         <div class="text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                             </svg>
                             <p class="mt-2 text-sm text-gray-600"><span class="font-semibold text-blue-600">Click to upload</span> or drag and drop</p>
-                            <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 2MB (Max 5 images)</p>
+                            <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 2MB each (Multiple images supported)</p>
+                            <p class="text-xs text-blue-500 mt-1 font-medium">📸 Both Gallery & Slideshow views available to learners</p>
                         </div>
                     </label>
                 </div>
@@ -276,42 +317,40 @@
                 <!-- Image Previews Container -->
                 <div id="imagePreviews" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
             </div>
-
-            <!-- Image Display Mode Dropdown -->
-            <div class="mb-6">
-                <label for="image_display_mode" class="block text-sm font-medium text-gray-700 mb-2">
-                    Image Display Mode
-                </label>
-                <select
-                    name="image_display_mode"
-                    id="image_display_mode"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                    <option value="none" {{ old('image_display_mode') === 'none' || !old('image_display_mode') ? 'selected' : '' }}>None (Inline with text)</option>
-                    <option value="gallery" {{ old('image_display_mode') === 'gallery' ? 'selected' : '' }}>Gallery</option>
-                    <option value="slideshow" {{ old('image_display_mode') === 'slideshow' ? 'selected' : '' }}>Slideshow</option>
-                </select>
-                <p class="mt-1 text-sm text-gray-500">Choose how images will be displayed to learners</p>
-            </div>
         </div>
 
         <!-- Worksheet Content -->
         <div id="worksheetContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Worksheet Content</h2>
 
-            <!-- File Upload -->
+            <!-- File Upload with Drag & Drop (Multiple Files) -->
             <div class="mb-6">
-                <label for="worksheet_file" class="block text-sm font-medium text-gray-700 mb-2">
-                    Worksheet File <span class="text-red-500">*</span>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Worksheet Files <span class="text-red-500">*</span>
                 </label>
-                <input 
-                    type="file" 
-                    name="worksheet_file" 
-                    id="worksheet_file" 
-                    accept=".pdf,.doc,.docx"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                <p class="mt-1 text-sm text-gray-500">Supported formats: PDF, DOC, DOCX (Max: 10MB)</p>
+                <div class="relative" id="worksheetDropZone">
+                    <input 
+                        type="file" 
+                        name="worksheet_files[]" 
+                        id="worksheet_files" 
+                        accept=".pdf,.doc,.docx"
+                        multiple
+                        class="hidden"
+                        onchange="handleWorksheetSelection(this.files, false)"
+                    >
+                    <label for="worksheet_files" class="flex items-center justify-center w-full px-6 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-500 hover:bg-green-50 transition worksheet-drop-zone">
+                        <div class="text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                            <p class="mt-2 text-sm text-gray-600"><span class="font-semibold text-green-600">Click to upload</span> or drag and drop</p>
+                            <p class="text-xs text-gray-500 mt-1">PDF, DOC, DOCX up to 10MB each (Multiple files supported)</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Worksheet Previews -->
+                <div id="worksheetPreviews" class="mt-4 space-y-2"></div>
             </div>
 
             <!-- Instructions -->
@@ -366,20 +405,33 @@
         </div>
 
         <!-- Form Actions -->
-        <div class="flex justify-end gap-4">
-            <a 
-                href="{{ route('instructor.lessons.show', $lesson) }}" 
-                class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-            >
-                Cancel
-            </a>
+        <div class="flex justify-between items-center">
             <button 
-                type="submit" 
-                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                id="submitButton"
+                type="button"
+                onclick="previewTopic()"
+                class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
             >
-                Create Topic
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+                Preview Topic
             </button>
+            <div class="flex gap-4">
+                <a 
+                    href="{{ route('instructor.lessons.show', $lesson) }}" 
+                    class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                    Cancel
+                </a>
+                <button 
+                    type="submit" 
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    id="submitButton"
+                >
+                    Create Topic
+                </button>
+            </div>
         </div>
     </form>
 
@@ -395,10 +447,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const submitButton = document.getElementById('submitButton');
 
     form.addEventListener('submit', function(e) {
+        console.log('Form submitting...');
+        console.log('Total images:', selectedImages.length, 'Excluded:', excludedImageIndices.size);
+        
+        // Sync TinyMCE content before submission
+        if (tinymce.get('text_content')) {
+            tinymce.get('text_content').save();
+        }
+        
+        // Add hidden inputs for excluded indices
+        excludedImageIndices.forEach(index => {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'excluded_image_indices[]';
+            hiddenInput.value = index;
+            form.appendChild(hiddenInput);
+        });
+        
         // Show loading overlay
         loadingOverlay.classList.remove('hidden');
         submitButton.disabled = true;
         submitButton.innerHTML = '<svg class=\"animate-spin -ml-1 mr-3 h-5 w-5 text-white inline\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle><path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\"></path></svg> Creating...';
+        
+        // Let the form submit naturally
     });
     
     // Initialize TinyMCE with image upload
@@ -525,44 +596,424 @@ function updateFileName(input, elementId) {
     }
 }
 
-// Preview images with captions
-function previewImages(input) {
+// Image handling - track excluded indices instead of manipulating FileList
+let selectedImages = [];
+let excludedImageIndices = new Set(); // Track which images user wants to remove
+
+// Drag and Drop functionality
+function setupDragAndDrop() {
+    const dropZone = document.getElementById('imageDropZone');
+    const dropZoneLabel = dropZone.querySelector('.drop-zone');
+    const fileInput = document.getElementById('image_attachments');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZoneLabel.classList.add('border-blue-500', 'bg-blue-100');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZoneLabel.classList.remove('border-blue-500', 'bg-blue-100');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+        const dt = e.dataTransfer;
+        fileInput.files = dt.files;
+        excludedImageIndices.clear(); // Reset exclusions
+        renderImagePreviewsFromInput();
+    }, false);
+}
+
+// Render previews from file input
+function renderImagePreviewsFromInput() {
+    const fileInput = document.getElementById('image_attachments');
+    const files = fileInput.files;
+    selectedImages = Array.from(files);
+    
+    console.log('Rendering previews, file count:', files.length, 'Excluded:', excludedImageIndices.size);
+    
     const container = document.getElementById('imagePreviews');
     container.innerHTML = '';
 
-    if (input.files) {
-        Array.from(input.files).forEach((file, index) => {
-            const reader = new FileReader();
+    let displayedCount = 0; // Track how many images we've actually displayed
+    
+    Array.from(files).forEach((file, index) => {
+        // Skip excluded images
+        if (excludedImageIndices.has(index)) {
+            return;
+        }
+        
+        displayedCount++; // Increment for each displayed image
+        const currentDisplayCount = displayedCount; // Capture current value in closure
+        const isPrimary = currentDisplayCount === 1; // First displayed image is primary
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const previewCard = document.createElement('div');
+            previewCard.className = 'relative border-2 border-gray-300 rounded-lg overflow-hidden transition-all hover:border-blue-500';
+            previewCard.dataset.index = index;
             
-            reader.onload = function(e) {
-                const previewCard = document.createElement('div');
-                previewCard.className = 'relative border-2 border-gray-300 rounded-lg overflow-hidden';
-                
-                previewCard.innerHTML = `
-                    <div class="relative">
-                        <img src="${e.target.result}" alt="Preview ${index + 1}" class="w-full h-40 object-cover">
-                        <div class="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">
-                            #${index + 1}
+            previewCard.innerHTML = `
+                <div class="relative group">
+                    <img src="${e.target.result}" alt="Preview ${currentDisplayCount}" class="w-full h-40 object-cover">
+                    <div class="absolute top-2 left-2 ${isPrimary ? 'bg-green-600' : 'bg-blue-600'} text-white text-xs font-bold px-2 py-1 rounded shadow-md z-10">
+                        #${currentDisplayCount}${isPrimary ? ' (Primary)' : ''}
+                    </div>
+                    <button 
+                        type="button"
+                        onclick="markImageForRemoval(${index})"
+                        class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-700 shadow-lg z-20 transition-transform hover:scale-110"
+                        title="Remove image"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-2">
+                    <input 
+                        type="text" 
+                        name="image_captions_${index}" 
+                        data-caption-index="${index}"
+                        placeholder="Caption for image ${currentDisplayCount}${isPrimary ? ' (will be shown as primary)' : ''}"
+                        class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                        value=""
+                    >
+                    <p class="text-xs text-gray-500 mt-1 truncate" title="${file.name}">${file.name}</p>
+                </div>
+            `;
+            
+            container.appendChild(previewCard);
+        };
+        
+        reader.readAsDataURL(file);
+    });
+    
+    updateAddMoreButton();
+}
+
+// Mark image for removal (don't manipulate FileList - just hide it)
+function markImageForRemoval(index) {
+    excludedImageIndices.add(index);
+    console.log('Marked image', index, 'for removal. Excluded count:', excludedImageIndices.size);
+    renderImagePreviewsFromInput();
+}
+
+// Update "Add More Images" button visibility
+function updateAddMoreButton() {
+    const fileInput = document.getElementById('image_attachments');
+    const activeImageCount = fileInput.files.length - excludedImageIndices.size;
+    let addMoreBtn = document.getElementById('addMoreImagesBtn');
+    
+    if (activeImageCount > 0) {
+        if (!addMoreBtn) {
+            addMoreBtn = document.createElement('button');
+            addMoreBtn.id = 'addMoreImagesBtn';
+            addMoreBtn.type = 'button';
+            addMoreBtn.className = 'mt-4 w-full px-4 py-3 border-2 border-dashed border-blue-400 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors font-medium flex items-center justify-center gap-2';
+            addMoreBtn.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Add More Images
+            `;
+            addMoreBtn.onclick = function() {
+                alert('To add more images, please use the main "Click to upload" button above and select all images again.');
+            };
+            document.getElementById('imagePreviews').after(addMoreBtn);
+        }
+    } else {
+        if (addMoreBtn) {
+            addMoreBtn.remove();
+        }
+    }
+}
+
+// Preview topic functionality
+function previewTopic() {
+    const type = document.querySelector('input[name="type"]:checked')?.value;
+    const title = document.getElementById('title').value;
+    const duration = document.getElementById('duration').value;
+    
+    if (!type) {
+        alert('Please select a topic type first.');
+        return;
+    }
+    
+    if (!title) {
+        alert('Please enter a topic title first.');
+        return;
+    }
+    
+    let content = '';
+    
+    if (type === 'video') {
+        const videoSource = document.getElementById('video_source').value;
+        const videoUrl = document.getElementById('video_url').value;
+        const videoFile = document.getElementById('video_file').files[0];
+        const videoDesc = document.getElementById('video_description').value;
+        
+        if (videoSource === 'url' && videoUrl) {
+            content = `<div class="space-y-4">
+                <div class="aspect-w-16 aspect-h-9 bg-gray-900 rounded-lg flex items-center justify-center">
+                    <p class="text-white">Video Preview: ${videoUrl}</p>
+                </div>
+                ${videoDesc ? `<div class="prose max-w-none text-sm">${videoDesc}</div>` : ''}
+            </div>`;
+        } else if (videoSource === 'upload' && videoFile) {
+            content = `<div class="space-y-4">
+                <div class="aspect-w-16 aspect-h-9 bg-gray-900 rounded-lg flex items-center justify-center">
+                    <p class="text-white">Uploaded Video: ${videoFile.name}</p>
+                </div>
+                ${videoDesc ? `<div class="prose max-w-none text-sm">${videoDesc}</div>` : ''}
+            </div>`;
+        } else {
+            content = '<p class="text-gray-500">No video source selected</p>';
+        }
+    } else if (type === 'text') {
+        const textContent = tinymce.get('text_content')?.getContent() || '';
+        content = textContent ? `<div class="prose max-w-none">${textContent}</div>` : '<p class="text-gray-500">No content added yet</p>';
+        
+        if (selectedImages.length > 0) {
+            content += `<div class="mt-4"><p class="text-sm font-semibold text-gray-700 mb-2">${selectedImages.length} image(s) attached</p></div>`;
+        }
+    } else if (type === 'worksheet') {
+        const worksheetFile = document.getElementById('worksheet_file').files[0];
+        const instructions = document.getElementById('worksheet_instructions').value;
+        content = `<div class="space-y-4">
+            ${worksheetFile ? `<p class="text-sm"><strong>File:</strong> ${worksheetFile.name}</p>` : '<p class="text-gray-500">No file uploaded</p>'}
+            ${instructions ? `<div class="prose max-w-none text-sm">${instructions.replace(/\n/g, '<br>')}</div>` : ''}
+        </div>`;
+    } else if (type === 'interactive') {
+        const interactiveType = document.getElementById('interactive_type').value;
+        const instructions = document.getElementById('interactive_instructions').value;
+        content = `<div class="space-y-4">
+            <p class="text-sm"><strong>Activity Type:</strong> ${interactiveType || 'Not selected'}</p>
+            ${instructions ? `<div class="prose max-w-none text-sm">${instructions.replace(/\n/g, '<br>')}</div>` : ''}
+        </div>`;
+    }
+    
+    const isPrerequisite = document.getElementById('is_prerequisite').checked;
+    
+    // Create preview modal
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h3 class="text-xl font-semibold text-gray-900">Topic Preview</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="mb-4 pb-4 border-b border-gray-200">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h4 class="text-2xl font-bold text-gray-900">${title}</h4>
+                            <div class="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    ${duration} minutes
+                                </span>
+                                <span class="px-2 py-1 rounded text-xs font-medium ${type === 'video' ? 'bg-purple-100 text-purple-800' : type === 'text' ? 'bg-blue-100 text-blue-800' : type === 'worksheet' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}">
+                                    ${type.charAt(0).toUpperCase() + type.slice(1)}
+                                </span>
+                                ${isPrerequisite ? '<span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">Required</span>' : '<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">Optional</span>'}
+                            </div>
                         </div>
                     </div>
-                    <div class="p-2">
-                        <input 
-                            type="text" 
-                            name="image_captions[]" 
-                            placeholder="Caption for image ${index + 1}"
-                            class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                            value=""
-                        >
-                        <p class="text-xs text-gray-500 mt-1 truncate">${file.name}</p>
-                    </div>
-                `;
-                
-                container.appendChild(previewCard);
-            };
-            
-            reader.readAsDataURL(file);
-        });
+                </div>
+                <div class="prose max-w-none">
+                    ${content}
+                </div>
+            </div>
+            <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end">
+                <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Close Preview
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Initialize drag and drop on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setupDragAndDrop();
+    setupWorksheetDragAndDrop();
+});
+
+// Worksheet handling
+let selectedWorksheets = [];
+
+function setupWorksheetDragAndDrop() {
+    const dropZone = document.getElementById('worksheetDropZone');
+    const dropZoneLabel = dropZone.querySelector('.worksheet-drop-zone');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaultsWorksheet, false);
+    });
+
+    function preventDefaultsWorksheet(e) {
+        e.preventDefault();
+        e.stopPropagation();
     }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZoneLabel.classList.add('border-green-500', 'bg-green-100');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZoneLabel.classList.remove('border-green-500', 'bg-green-100');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+        const files = e.dataTransfer.files;
+        handleWorksheetSelection(files, false);
+    }, false);
+}
+
+function handleWorksheetSelection(files, append = false) {
+    if (!append) {
+        selectedWorksheets = [];
+    }
+    
+    const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (files && files.length > 0) {
+        Array.from(files).forEach((file) => {
+            if (allowedTypes.includes(file.type)) {
+                selectedWorksheets.push(file);
+            } else {
+                alert(`File "${file.name}" is not a valid format (PDF, DOC, or DOCX)`);
+            }
+        });
+        
+        updateWorksheetInput();
+        renderWorksheetPreviews();
+    }
+}
+
+function renderWorksheetPreviews() {
+    const container = document.getElementById('worksheetPreviews');
+    container.innerHTML = '';
+    
+    if (selectedWorksheets.length === 0) {
+        document.getElementById('worksheetDropZone').querySelector('.worksheet-drop-zone').classList.remove('hidden');
+        return;
+    }
+    
+    document.getElementById('worksheetDropZone').querySelector('.worksheet-drop-zone').classList.add('hidden');
+    
+    selectedWorksheets.forEach((file, index) => {
+        const previewCard = document.createElement('div');
+        previewCard.className = 'flex items-center gap-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg';
+        
+        previewCard.innerHTML = `
+            <div class="flex-shrink-0">
+                <svg class="w-10 h-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900">${file.name}</p>
+                <p class="text-xs text-gray-500">${formatFileSize(file.size)}</p>
+            </div>
+            <button 
+                type="button"
+                onclick="removeWorksheet(${index})"
+                class="flex-shrink-0 text-red-600 hover:text-red-800 font-medium text-sm"
+            >
+                Remove
+            </button>
+        `;
+        
+        container.appendChild(previewCard);
+    });
+    
+    updateAddMoreWorksheetButton();
+}
+
+function updateAddMoreWorksheetButton() {
+    let addMoreBtn = document.getElementById('addMoreWorksheetsBtn');
+    
+    if (selectedWorksheets.length > 0) {
+        if (!addMoreBtn) {
+            addMoreBtn = document.createElement('button');
+            addMoreBtn.id = 'addMoreWorksheetsBtn';
+            addMoreBtn.type = 'button';
+            addMoreBtn.className = 'mt-2 w-full px-4 py-3 border-2 border-dashed border-green-400 rounded-lg text-green-600 hover:bg-green-50 transition-colors font-medium flex items-center justify-center gap-2';
+            addMoreBtn.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Add More Files
+            `;
+            addMoreBtn.onclick = function() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.pdf,.doc,.docx';
+                input.multiple = true;
+                input.onchange = function() {
+                    handleWorksheetSelection(this.files, true);
+                };
+                input.click();
+            };
+            document.getElementById('worksheetPreviews').after(addMoreBtn);
+        }
+    } else {
+        if (addMoreBtn) {
+            addMoreBtn.remove();
+        }
+    }
+}
+
+function removeWorksheet(index) {
+    selectedWorksheets.splice(index, 1);
+    updateWorksheetInput();
+    renderWorksheetPreviews();
+}
+
+function updateWorksheetInput() {
+    const dataTransfer = new DataTransfer();
+    selectedWorksheets.forEach(file => {
+        dataTransfer.items.add(file);
+    });
+    document.getElementById('worksheet_files').files = dataTransfer.files;
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 </script>
 </x-app-layout>

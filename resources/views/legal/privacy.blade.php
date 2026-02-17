@@ -14,7 +14,7 @@
                 <div class="flex items-center justify-between">
                     <h1 class="text-2xl font-bold text-gray-900">Privacy Policy</h1>
                     <a href="{{ route('register') }}" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                        ← Back to Registration
+                    ← Back to Registration
                     </a>
                 </div>
                 <p class="mt-2 text-sm text-gray-600">Last Updated: {{ now()->format('F d, Y') }}</p>

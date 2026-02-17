@@ -21,6 +21,7 @@ class Module extends Model
         'duration_minutes',
         'is_published',
         'is_premium',
+        'enrollment_mode',
         'final_quiz_id',
         'certificate_pass_score',
     ];
@@ -35,6 +36,7 @@ class Module extends Model
             'duration_minutes' => 'integer',
             'is_published' => 'boolean',
             'is_premium' => 'boolean',
+            'enrollment_mode' => 'string',
             'certificate_pass_score' => 'integer',
         ];
     }

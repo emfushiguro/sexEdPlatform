@@ -100,7 +100,8 @@ Route::middleware('auth')->group(function () {
         Route::get('parent/create-child', [ParentRegistrationController::class, 'createChildForm'])
             ->name('parent.create-child');
         
-        Route::post('parent/create-child', [ParentRegistrationController::class, 'storeChild']);
+        Route::post('parent/create-child', [ParentRegistrationController::class, 'storeChild'])
+            ->name('parent.create-child.store');
         
         Route::get('parent/children', [ParentRegistrationController::class, 'childrenIndex'])
             ->name('parent.children.index');

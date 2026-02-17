@@ -130,7 +130,7 @@
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 @if($topic->is_prerequisite)
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                                        Required
+                                                        Prerequisite
                                                     </span>
                                                 @else
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
@@ -140,6 +140,10 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <div class="flex items-center justify-end gap-2">
+                                                    <button onclick="previewTopicModal({{ $topic->id }})" 
+                                                        class="text-purple-600 hover:text-purple-900 font-medium">
+                                                        Preview
+                                                    </button>
                                                     <a href="{{ route('instructor.topics.edit', $topic) }}" 
                                                         class="text-blue-600 hover:text-blue-900">Edit</a>
                                                     <form action="{{ route('instructor.topics.destroy', $topic) }}" method="POST" 
@@ -218,4 +222,149 @@
 
         </div>
     </div>
+
+    <!-- Topic Preview Modal -->
+    <div id="topicPreviewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-gray-900">Topic Preview</h3>
+                <button onclick="closePreviewModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="previewContent" class="mt-4">
+                <div class="flex justify-center items-center py-12">
+                    <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @push('scripts')
+    <script>
+        function previewTopicModal(topicId) {
+            const modal = document.getElementById('topicPreviewModal');
+            const previewContent = document.getElementById('previewContent');
+            modal.classList.remove('hidden');
+            
+            // Show loading state
+            previewContent.innerHTML = `
+                <div class="flex justify-center items-center py-12">
+                    <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            `;
+            
+            // Fetch topic data
+            fetch(`/instructor/topics/${topicId}/preview`)
+                .then(response => response.json())
+                .then(data => {
+                    previewContent.innerHTML = renderTopicPreview(data);
+                })
+                .catch(error => {
+                    previewContent.innerHTML = `
+                        <div class="text-center py-12">
+                            <svg class="mx-auto h-12 w-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">Error loading preview</h3>
+                            <p class="mt-1 text-sm text-gray-500">${error.message}</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function closePreviewModal() {
+            document.getElementById('topicPreviewModal').classList.add('hidden');
+        }
+
+        function renderTopicPreview(topic) {
+            let content = `
+                <div class="space-y-4">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="text-xl font-semibold text-gray-900">${topic.title}</h4>
+                        <div class="flex gap-4 mt-2">
+                            <span class="px-3 py-1 text-xs font-semibold rounded-full ${getTypeColor(topic.type)}">${capitalizeFirst(topic.type)}</span>
+                            <span class="text-sm text-gray-600">Duration: ${topic.duration} min</span>
+                            ${topic.is_prerequisite ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">Prerequisite</span>' : ''}
+                        </div>
+                    </div>
+            `;
+
+            // Render based on type
+            if (topic.type === 'video') {
+                if (topic.video_url) {
+                    content += `<div class="aspect-video bg-black rounded-lg overflow-hidden">
+                        <iframe src="${topic.video_url}" class="w-full h-full" allowfullscreen></iframe>
+                    </div>`;
+                } else if (topic.video_file_path) {
+                    content += `<video controls class="w-full rounded-lg">
+                        <source src="/storage/${topic.video_file_path}" type="video/mp4">
+                    </video>`;
+                }
+                if (topic.video_description) {
+                    content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-lg">${topic.video_description}</div>`;
+                }
+            } else if (topic.type === 'text') {
+                content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-lg">${topic.text_content || ''}</div>`;
+                if (topic.image_attachments && topic.image_attachments.length > 0) {
+                    content += `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">`;
+                    topic.image_attachments.forEach(img => {
+                        content += `<img src="/storage/${img.path}" alt="${img.caption || ''}" class="rounded-lg w-full h-48 object-cover">`;
+                    });
+                    content += `</div>`;
+                }
+            } else if (topic.type === 'worksheet') {
+                content += `<div class="flex items-center gap-4 p-4 bg-blue-50 rounded-lg">
+                    <svg class="w-12 h-12 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                    </svg>
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-900">Worksheet File</p>
+                        <a href="/storage/${topic.worksheet_file_path}" target="_blank" class="text-blue-600 hover:underline text-sm">Download/View</a>
+                    </div>
+                </div>`;
+                if (topic.worksheet_instructions) {
+                    content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-lg">${topic.worksheet_instructions}</div>`;
+                }
+            } else if (topic.type === 'interactive') {
+                content += `<div class="p-4 bg-orange-50 rounded-lg">
+                    <p class="text-sm text-gray-700">Interactive activity type: ${topic.interactive_type || 'Not specified'}</p>
+                </div>`;
+            }
+
+            content += `</div>`;
+            return content;
+        }
+
+        function getTypeColor(type) {
+            const colors = {
+                'video': 'bg-red-100 text-red-800',
+                'text': 'bg-blue-100 text-blue-800',
+                'worksheet': 'bg-green-100 text-green-800',
+                'quiz': 'bg-purple-100 text-purple-800',
+                'interactive': 'bg-orange-100 text-orange-800'
+            };
+            return colors[type] || 'bg-gray-100 text-gray-800';
+        }
+
+        function capitalizeFirst(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('topicPreviewModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePreviewModal();
+            }
+        });
+    </script>
+    @endpush
 </x-app-layout>

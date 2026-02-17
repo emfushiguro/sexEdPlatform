@@ -27,7 +27,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'email' => ['required', 'string'], // Accept email OR username
             'password' => ['required', 'string'],
         ];
     }
@@ -41,7 +41,32 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $loginField = $this->input('email');
+        $password = $this->input('password');
+        
+        // Detect if input is email or username
+        $credentials = [];
+        
+        if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
+            // Input is email format - regular email login
+            $credentials = ['email' => $loginField, 'password' => $password];
+        } else {
+            // Input is username format - find user by learner_profile username
+            $learnerProfile = \App\Models\LearnerProfile::where('username', $loginField)->first();
+            
+            if (!$learnerProfile) {
+                RateLimiter::hit($this->throttleKey());
+                
+                throw ValidationException::withMessages([
+                    'email' => 'These credentials do not match our records.',
+                ]);
+            }
+            
+            // Login with user ID
+            $credentials = ['id' => $learnerProfile->user_id, 'password' => $password];
+        }
+
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

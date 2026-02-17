@@ -53,7 +53,14 @@ class ProfileCompletionController extends Controller
         
         // Validate the request (removed birthdate and grade_level - using age brackets instead)
         $validated = $request->validate([
-            'username' => 'required|string|min:3|max:30|regex:/^[a-z0-9_-]+$/|unique:learner_profiles,username',
+            'username' => [
+                'required',
+                'string',
+                'min:3',
+                'max:30',
+                'regex:/^[a-z0-9_-]+$/',
+                Rule::unique('learner_profiles', 'username')->ignore($user->learnerProfile?->id),
+            ],
             'gender' => 'nullable|in:male,female,prefer_not_to_say',
             'city_code' => 'required|string|exists:cities,code',
             'barangay_code' => 'required|string|exists:barangays,code',
@@ -66,6 +73,13 @@ class ProfileCompletionController extends Controller
         // Copy birthdate from User model (stored during registration)
         $validated['birthdate'] = $user->birthdate;
         
+        // Check if this is a parent account registration
+        $isParentRegistration = session('is_parent_registration', false);
+        if ($isParentRegistration) {
+            $validated['is_parent_account'] = true;
+            session()->forget('is_parent_registration');
+        }
+        
         // Get city and barangay names for display purposes
         $city = City::where('code', $validated['city_code'])->first();
         $barangay = Barangay::where('code', $validated['barangay_code'])->first();
@@ -77,6 +91,12 @@ class ProfileCompletionController extends Controller
             ['user_id' => $user->id],
             $validated
         );
+
+        // If parent account, redirect to child account creation
+        if ($learnerProfile->is_parent_account) {
+            return redirect()->route('parent.create-child')
+                ->with('success', 'Profile completed! Now create an account for your child.');
+        }
 
         return redirect()->route('dashboard')
             ->with('success', 'Profile completed successfully! Welcome to the learning platform.');

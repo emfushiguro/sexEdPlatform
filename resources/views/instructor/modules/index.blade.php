@@ -30,6 +30,27 @@
             </div>
             @endif
 
+            @php
+                $pendingCount = \App\Models\ModuleEnrollment::pending()->count();
+            @endphp
+            @if($pendingCount > 0)
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-yellow-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                            <p class="text-sm text-yellow-700">
+                                <span class="font-medium">{{ $pendingCount }}</span> enrollment {{ $pendingCount === 1 ? 'request' : 'requests' }} waiting for your review
+                            </p>
+                        </div>
+                        <a href="{{ route('instructor.enrollments.index') }}" class="text-sm font-medium text-yellow-700 hover:text-yellow-800">
+                            Review Now →
+                        </a>
+                    </div>
+                </div>
+            @endif
+
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     <table class="min-w-full divide-y divide-gray-200">

@@ -55,7 +55,9 @@ class LessonController extends Controller
 
         $lesson = Lesson::create($validated);
 
-        return redirect()->route('admin.lessons.show', $lesson)
+        return redirect()->route('instructor.lessons.show', $lesson)
+
+        
             ->with('success', 'Lesson created successfully! Now add topics to this lesson.');
     }
 
@@ -89,7 +91,7 @@ class LessonController extends Controller
         $module->duration_minutes = $module->lessons()->sum('duration');
         $module->save();
 
-        return redirect()->route('admin.lessons.show', $lesson)
+        return redirect()->route('instructor.lessons.show', $lesson)
             ->with('success', 'Lesson updated successfully!');
     }
 
@@ -98,7 +100,7 @@ class LessonController extends Controller
         $moduleId = $lesson->module_id;
         $lesson->delete();
 
-        return redirect()->route('admin.modules.show', $moduleId)
+        return redirect()->route('instructor.modules.show', $moduleId)
             ->with('success', 'Lesson deleted successfully!');
     }
 

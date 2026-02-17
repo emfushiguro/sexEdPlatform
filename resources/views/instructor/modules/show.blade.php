@@ -41,10 +41,6 @@
                             <p class="text-gray-600 mb-4">{{ $module->description }}</p>
                             
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div class="bg-blue-50 p-3 rounded">
-                                    <div class="text-sm text-blue-600">Difficulty</div>
-                                    <div class="font-semibold text-blue-900">{{ ucfirst($module->difficulty_level) }}</div>
-                                </div>
                                 <div class="bg-green-50 p-3 rounded">
                                     <div class="text-sm text-green-600">Duration</div>
                                     <div class="font-semibold text-green-900">{{ $module->duration_minutes }} min</div>

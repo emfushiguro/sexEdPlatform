@@ -295,10 +295,16 @@
                                 </p>
                             </div>
 
-                            <a href="{{ route('learner.lessons.show', $lessons->first()) }}" 
-                               class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg mb-3">
-                                {{ ($progress->progress_percentage ?? 0) > 0 ? 'Continue Learning' : 'Start Learning' }}
-                            </a>
+                            @if($lessons->isNotEmpty())
+                                <a href="{{ route('learner.lessons.show', ['lesson' => $lessons->first()->id]) }}" 
+                                   class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg mb-3">
+                                    {{ ($progress->progress_percentage ?? 0) > 0 ? 'Continue Learning' : 'Start Learning' }}
+                                </a>
+                            @else
+                                <div class="block w-full text-center bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg mb-3 cursor-not-allowed">
+                                    No Lessons Available
+                                </div>
+                            @endif
 
                             <!-- Certificate Section (Premium) -->
                             @if(Auth::user()->isPremium())
@@ -348,15 +354,53 @@
                                     </div>
                                 @endif
                             @endif
+                        @elseif($enrollmentStatus === 'pending')
+                            <!-- Pending Approval Status -->
+                            <div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-4">
+                                <div class="flex items-center justify-center mb-2">
+                                    <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <p class="text-sm font-semibold text-yellow-800 text-center mb-1">
+                                    Enrollment Pending
+                                </p>
+                                <p class="text-xs text-yellow-700 text-center">
+                                    Your enrollment request is waiting for instructor approval. You'll be notified once approved.
+                                </p>
+                            </div>
+                        @elseif($enrollmentStatus === 'rejected')
+                            <!-- Rejected Status -->
+                            <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
+                                <div class="flex items-center justify-center mb-2">
+                                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <p class="text-sm font-semibold text-red-800 text-center mb-1">
+                                    Enrollment Rejected
+                                </p>
+                                <p class="text-xs text-red-700 text-center">
+                                    Your enrollment request was not approved by the instructor.
+                                </p>
+                            </div>
                         @else
                             <!-- Enroll Button -->
                             <form method="POST" action="{{ route('learner.modules.enroll', $module) }}">
                                 @csrf
                                 <button type="submit" 
                                         class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg mb-4">
-                                    Enroll Now - Free
+                                    {{ $module->enrollment_mode === 'manual' ? 'Request Enrollment' : 'Enroll Now - Free' }}
                                 </button>
                             </form>
+
+                            @if($module->enrollment_mode === 'manual')
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                                    <p class="text-xs text-blue-800 text-center">
+                                        ℹ️ This module requires instructor approval before you can access the content.
+                                    </p>
+                                </div>
+                            @endif
 
                             <div class="text-sm text-gray-600 space-y-2">
                                 <p class="flex items-center gap-2">

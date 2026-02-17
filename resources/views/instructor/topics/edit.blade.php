@@ -66,6 +66,28 @@
                 @enderror
             </div>
 
+            <!-- Prerequisite Checkbox -->
+            <div class="mb-6">
+                <label class="flex items-start gap-3 cursor-pointer group">
+                    <input 
+                        type="checkbox" 
+                        name="is_prerequisite" 
+                        id="is_prerequisite" 
+                        value="1"
+                        {{ old('is_prerequisite', $topic->is_prerequisite) ? 'checked' : '' }}
+                        class="w-5 h-5 mt-0.5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer transition-all hover:border-blue-400"
+                    >
+                    <div class="flex-1">
+                        <span class="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            Mark as Prerequisite Topic
+                        </span>
+                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                            If checked, learners must complete this topic before proceeding to the next prerequisite topic in sequence
+                        </p>
+                    </div>
+                </label>
+            </div>
+
             <!-- Topic Type Selection -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-4">
@@ -271,7 +293,7 @@
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         @foreach($topic->image_attachments as $index => $image)
                             <div class="relative group">
-                                <img src="{{ Storage::url($image) }}" alt="Image {{ $index + 1 }}" class="w-full h-32 object-cover rounded-lg border border-gray-300">
+                                <img src="{{ Storage::url($image['path']) }}" alt="Image {{ $index + 1 }}" class="w-full h-32 object-cover rounded-lg border border-gray-300">
                                 <div class="absolute top-2 right-2">
                                     <label class="flex items-center space-x-1 bg-white rounded px-2 py-1 shadow-sm">
                                         <input 
@@ -303,62 +325,7 @@
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                 <p class="mt-1 text-sm text-gray-500">Max 5 images. Supported: JPG, PNG, GIF</p>
-            </div>
-
-            <!-- Image Display Mode -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-3">Image Display Mode</label>
-                @php
-                    $currentDisplayMode = old('image_display_mode', $topic->slideshow_data['enabled'] ?? false ? 'slideshow' : ($topic->image_attachments && count($topic->image_attachments) > 0 ? 'gallery' : 'none'));
-                @endphp
-                <div class="flex space-x-4">
-                    <label class="flex items-center space-x-2">
-                        <input 
-                            type="radio" 
-                            name="image_display_mode" 
-                            value="none" 
-                            class="text-blue-600 focus:ring-blue-500"
-                            {{ $currentDisplayMode === 'none' ? 'checked' : '' }}
-                        >
-                        <span class="text-sm text-gray-700">None</span>
-                    </label>
-                    <label class="flex items-center space-x-2">
-                        <input 
-                            type="radio" 
-                            name="image_display_mode" 
-                            value="gallery" 
-                            class="text-blue-600 focus:ring-blue-500"
-                            {{ $currentDisplayMode === 'gallery' ? 'checked' : '' }}
-                        >
-                        <span class="text-sm text-gray-700">Gallery</span>
-                    </label>
-                    <label class="flex items-center space-x-2">
-                        <input 
-                            type="radio" 
-                            name="image_display_mode" 
-                            value="slideshow" 
-                            class="text-blue-600 focus:ring-blue-500 slideshow-radio"
-                            {{ $currentDisplayMode === 'slideshow' ? 'checked' : '' }}
-                        >
-                        <span class="text-sm text-gray-700">Slideshow</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Slideshow Settings -->
-            <div id="slideshowSettings" class="mb-6 hidden">
-                <label for="slideshow_transition" class="block text-sm font-medium text-gray-700 mb-2">
-                    Transition Type
-                </label>
-                <select 
-                    name="slideshow_transition" 
-                    id="slideshow_transition"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                    <option value="fade" {{ old('slideshow_transition', $topic->slideshow_data['transition'] ?? 'fade') === 'fade' ? 'selected' : '' }}>Fade</option>
-                    <option value="slide" {{ old('slideshow_transition', $topic->slideshow_data['transition'] ?? 'fade') === 'slide' ? 'selected' : '' }}>Slide</option>
-                    <option value="zoom" {{ old('slideshow_transition', $topic->slideshow_data['transition'] ?? 'fade') === 'zoom' ? 'selected' : '' }}>Zoom</option>
-                </select>
+                <p class="mt-1 text-xs text-blue-500 font-medium">📸 Both Gallery & Slideshow views available to learners</p>
             </div>
         </div>
 

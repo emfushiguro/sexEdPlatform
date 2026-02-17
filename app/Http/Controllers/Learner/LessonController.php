@@ -97,6 +97,23 @@ class LessonController extends Controller
                 ->toArray();
         }
 
+        // Calculate locked topics based on prerequisite dependencies
+        $lockedTopicIds = [];
+        foreach ($lessonTopics as $index => $topic) {
+            if ($topic->is_prerequisite) {
+                // Prerequisite topics must be completed sequentially
+                // Lock if any previous prerequisite topics are not completed
+                for ($i = 0; $i < $index; $i++) {
+                    $previousTopic = $lessonTopics[$i];
+                    if ($previousTopic->is_prerequisite && !in_array($previousTopic->id, $completedTopicIds)) {
+                        $lockedTopicIds[] = $topic->id;
+                        break;
+                    }
+                }
+            }
+            // Optional topics (is_prerequisite = false) are always accessible
+        }
+
         // Determine current topic (allow navigation via URL parameter)
         $currentTopic = null;
         $currentTopicIndex = 0;
@@ -106,23 +123,49 @@ class LessonController extends Controller
             $requestedTopicIndex = request()->query('topic');
             
             if ($requestedTopicIndex !== null && isset($lessonTopics[$requestedTopicIndex])) {
-                // Show requested topic
-                $currentTopic = $lessonTopics[$requestedTopicIndex];
-                $currentTopicIndex = $requestedTopicIndex;
-            } else {
-                // Find first incomplete topic, or show first topic if all complete
+                $requestedTopic = $lessonTopics[$requestedTopicIndex];
+                
+                // Only allow access if topic is not locked
+                if (!in_array($requestedTopic->id, $lockedTopicIds)) {
+                    $currentTopic = $requestedTopic;
+                    $currentTopicIndex = $requestedTopicIndex;
+                } else {
+                    // Redirect to first unlocked topic with error message
+                    foreach ($lessonTopics as $index => $topic) {
+                        if (!in_array($topic->id, $lockedTopicIds)) {
+                            return redirect()->route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $index])
+                                ->with('error', 'Please complete the required prerequisite topics first.');
+                        }
+                    }
+                }
+            }
+            
+            // If no topic specified or requested was locked, find appropriate topic
+            if (!$currentTopic) {
+                // Find first incomplete unlocked topic
                 foreach ($lessonTopics as $index => $topic) {
-                    if (!in_array($topic->id, $completedTopicIds)) {
+                    if (!in_array($topic->id, $completedTopicIds) && !in_array($topic->id, $lockedTopicIds)) {
                         $currentTopic = $topic;
                         $currentTopicIndex = $index;
                         break;
                     }
                 }
                 
-                // If all topics are completed, show the last one
+                // If all unlocked topics are completed, show the last completed unlocked topic
                 if (!$currentTopic) {
-                    $currentTopic = $lessonTopics->last();
-                    $currentTopicIndex = $lessonTopics->count() - 1;
+                    for ($i = $lessonTopics->count() - 1; $i >= 0; $i--) {
+                        if (!in_array($lessonTopics[$i]->id, $lockedTopicIds)) {
+                            $currentTopic = $lessonTopics[$i];
+                            $currentTopicIndex = $i;
+                            break;
+                        }
+                    }
+                }
+                
+                // Fallback to first topic if nothing found
+                if (!$currentTopic) {
+                    $currentTopic = $lessonTopics->first();
+                    $currentTopicIndex = 0;
                 }
             }
         }
@@ -139,6 +182,7 @@ class LessonController extends Controller
             'quizAttempt',
             'lessonTopics',
             'completedTopicIds',
+            'lockedTopicIds',
             'currentTopic',
             'currentTopicIndex'
         ));
@@ -247,6 +291,14 @@ class LessonController extends Controller
                     'completed_at' => now(),
                 ]
             );
+        }
+
+        // Check if we should navigate to next topic
+        $nextTopicIndex = request()->input('next_topic_index');
+        if ($nextTopicIndex !== null) {
+            // Redirect to next topic
+            return redirect()->route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $nextTopicIndex])
+                ->with('success', 'Topic completed! +5 points ✓');
         }
 
         return redirect()->route('learner.lessons.show', $lesson)

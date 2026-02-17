@@ -35,17 +35,20 @@ class ModuleController extends Controller
     {
         $module->load(['lessons.quiz', 'attachments']);
 
-        // Check if user has enrolled
-        $isEnrolled = auth()->check() 
-            ? auth()->user()->moduleEnrollments()->where('module_id', $module->id)->exists()
-            : false;
+        // Check enrollment status
+        $enrollment = auth()->check() 
+            ? auth()->user()->moduleEnrollments()->where('module_id', $module->id)->first()
+            : null;
+
+        $isEnrolled = $enrollment && $enrollment->status === 'approved';
+        $enrollmentStatus = $enrollment ? $enrollment->status : null;
 
         // Get user progress if enrolled
         $progress = $isEnrolled 
             ? auth()->user()->progress()->where('module_id', $module->id)->first()
             : null;
 
-        return view('modules.show', compact('module', 'isEnrolled', 'progress'));
+        return view('modules.show', compact('module', 'isEnrolled', 'enrollmentStatus', 'progress'));
     }
 
     /**
@@ -55,23 +58,46 @@ class ModuleController extends Controller
     {
         $user = auth()->user();
 
-        // Check if already enrolled
-        if ($user->moduleEnrollments()->where('module_id', $module->id)->exists()) {
-            return redirect()->route('modules.show', $module)
-                ->with('info', 'You are already enrolled in this module.');
+        // Check if already enrolled or has pending request
+        $existingEnrollment = $user->moduleEnrollments()->where('module_id', $module->id)->first();
+        
+        if ($existingEnrollment) {
+            if ($existingEnrollment->status === 'pending') {
+                return redirect()->route('modules.show', $module)
+                    ->with('info', 'Your enrollment request is pending instructor approval.');
+            }
+            if ($existingEnrollment->status === 'approved') {
+                return redirect()->route('modules.show', $module)
+                    ->with('info', 'You are already enrolled in this module.');
+            }
+            if ($existingEnrollment->status === 'rejected') {
+                return redirect()->route('modules.show', $module)
+                    ->with('error', 'Your enrollment request was rejected by the instructor.');
+            }
         }
 
-        // Create enrollment
+        // Check enrollment mode
+        if ($module->enrollment_mode === 'manual') {
+            // Manual approval - create pending enrollment
+            $user->moduleEnrollments()->create([
+                'module_id' => $module->id,
+                'status' => 'pending',
+                'enrolled_at' => null,
+            ]);
+
+            return redirect()->route('modules.show', $module)
+                ->with('success', 'Enrollment request submitted! Waiting for instructor approval.');
+        }
+
+        // Auto approval - create approved enrollment
         $user->moduleEnrollments()->create([
             'module_id' => $module->id,
+            'status' => 'approved',
             'enrolled_at' => now(),
         ]);
 
-        // Create initial progress tracking
-        $user->progress()->create([
-            'module_id' => $module->id,
-            'status' => 'in_progress',
-        ]);
+        // Note: UserProgress is tracked per-lesson, not per-module.
+        // Progress records will be created as the user accesses lessons.
 
         return redirect()->route('modules.show', $module)
             ->with('success', 'Successfully enrolled in module!');

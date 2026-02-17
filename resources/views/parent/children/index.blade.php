@@ -196,13 +196,6 @@
                         </div>
                     @endforeach
                 </div>
-
-                <!-- Pagination (if needed in future) -->
-                @if($children->hasPages())
-                    <div class="mt-6">
-                        {{ $children->links() }}
-                    </div>
-                @endif
             @endif
         </div>
 

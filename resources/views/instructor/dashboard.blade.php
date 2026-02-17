@@ -75,6 +75,27 @@
                     </div>
                 </div>
 
+                <!-- Pending Enrollment Requests -->
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition cursor-pointer"
+                     onclick="window.location='{{ route('instructor.enrollments.index') }}'">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Pending Requests</p>
+                                <p class="text-3xl font-bold text-red-600">{{ $stats['pending_enrollments'] }}</p>
+                                @if($stats['pending_enrollments'] > 0)
+                                    <p class="text-xs text-red-500 mt-1">Needs review →</p>
+                                @endif
+                            </div>
+                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Certificates Issued -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">

@@ -27,6 +27,7 @@ class ModuleController extends Controller
             'description' => 'required|string',
             'thumbnail' => 'nullable|image|max:2048',
             'age_bracket' => 'required|in:kids,teens,adults',
+            'enrollment_mode' => 'required|in:auto,manual',
             'order' => 'nullable|integer|min:0',
         ]);
 
@@ -59,7 +60,7 @@ class ModuleController extends Controller
             ? 'Module created and published successfully!' 
             : 'Module saved as draft successfully!';
 
-        return redirect()->route('admin.modules.index')
+        return redirect()->route('instructor.modules.index')
             ->with('success', $message);
     }
 
@@ -81,6 +82,7 @@ class ModuleController extends Controller
             'description' => 'required|string',
             'thumbnail' => 'nullable|image|max:2048',
             'age_bracket' => 'required|in:kids,teens,adults',
+            'enrollment_mode' => 'required|in:auto,manual',
             'order' => 'nullable|integer|min:0',
             'is_published' => 'nullable|boolean',
         ]);
@@ -109,7 +111,7 @@ class ModuleController extends Controller
 
         $module->update($validated);
 
-        return redirect()->route('admin.modules.index')
+        return redirect()->route('instructor.modules.index')
             ->with('success', 'Module updated successfully!');
     }
 
@@ -117,7 +119,7 @@ class ModuleController extends Controller
     {
         $module->delete();
 
-        return redirect()->route('admin.modules.index')
+        return redirect()->route('instructor.modules.index')
             ->with('success', 'Module deleted successfully!');
     }
 }
