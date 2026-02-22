@@ -152,12 +152,19 @@
                                                 <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">True/False</span>
                                             @elseif($question->question_type === 'multiple_select')
                                                 <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">Multiple Select</span>
+                                            @elseif($question->question_type === 'fill_blank_text')
+                                                <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded">Fill in the Blanks (Text)</span>
+                                            @elseif($question->question_type === 'fill_blank_select')
+                                                <span class="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded">Fill in the Blanks (Word Selection)</span>
+                                            @elseif($question->question_type === 'identification')
+                                                <span class="px-2 py-1 text-xs font-medium bg-pink-100 text-pink-700 rounded">Identification</span>
                                             @endif
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Options Review -->
+                                @if(in_array($question->question_type, ['multiple_choice', 'true_false', 'multiple_select']))
                                 <div class="space-y-2 ml-11">
                                     @foreach($question->options as $option)
                                         @php
@@ -200,6 +207,49 @@
                                         </div>
                                     @endforeach
                                 </div>
+                                @elseif(in_array($question->question_type, ['fill_blank_text', 'fill_blank_select', 'identification']))
+                                <div class="ml-11 space-y-3">
+                                    @if($question->question_type === 'identification' && isset($answer['image_url']))
+                                    <div class="mb-3">
+                                        <img src="{{ $answer['image_url'] }}" alt="Question image" class="max-w-sm rounded-lg border shadow-sm">
+                                    </div>
+                                    @endif
+                                    
+                                    <div class="p-4 bg-white border-2 {{ $isCorrect ? 'border-green-400' : 'border-red-400' }} rounded-lg">
+                                        <div class="mb-2">
+                                            <span class="text-sm font-semibold text-gray-700">Your Answer:</span>
+                                            <div class="mt-1">
+                                                @if(is_array($answer['selected'] ?? null))
+                                                    @foreach($answer['selected'] as $ans)
+                                                        <span class="inline-block px-2 py-1 text-sm bg-blue-100 text-blue-800 rounded mr-1 mb-1">{{ $ans }}</span>
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-sm text-gray-900">{{ $answer['selected'] ?? 'No answer' }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <span class="text-sm font-semibold text-green-700">Correct Answer{{ count($answer['correct'] ?? []) > 1 ? 's' : '' }}:</span>
+                                            <div class="mt-1">
+                                                @if(is_array($answer['correct'] ?? null))
+                                                    @foreach($answer['correct'] as $correct)
+                                                        <span class="inline-block px-2 py-1 text-sm bg-green-100 text-green-800 rounded mr-1 mb-1">{{ $correct }}</span>
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-sm text-green-900">{{ $answer['correct'] ?? 'N/A' }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        
+                                        @if(isset($answer['case_sensitive']) && $answer['case_sensitive'])
+                                        <div class="mt-2 text-xs text-red-600">
+                                            ⚠ This question was case-sensitive
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endif
                             </div>
                         @endforeach
                     </div>

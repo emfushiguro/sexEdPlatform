@@ -12,6 +12,10 @@ class QuizQuestion extends Model
         'question_type',
         'points',
         'order',
+        'acceptable_answers',
+        'case_sensitive',
+        'word_bank',
+        'image_path',
     ];
 
     protected function casts(): array
@@ -19,6 +23,8 @@ class QuizQuestion extends Model
         return [
             'points' => 'integer',
             'order' => 'integer',
+            'case_sensitive' => 'boolean',
+            'word_bank' => 'array',
         ];
     }
 

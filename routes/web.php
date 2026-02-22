@@ -184,6 +184,28 @@ Route::middleware('auth')->group(function () {
             ->name('quizzes.add-question');
         Route::post('quizzes/{quiz}/store-question', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'storeQuestion'])
             ->name('quizzes.store-question');
+        Route::get('quizzes/{quiz}/questions/{question}/edit', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'editQuestion'])
+            ->name('quizzes.edit-question');
+        Route::put('quizzes/{quiz}/questions/{question}', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'updateQuestion'])
+            ->name('quizzes.update-question');
+        Route::delete('quizzes/{quiz}/questions/{question}', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'deleteQuestion'])
+            ->name('quizzes.delete-question');
+        
+        // CSV Import
+        Route::get('quizzes/{quiz}/import/template', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'downloadTemplate'])
+            ->name('quizzes.import.template');
+        Route::post('quizzes/{quiz}/import/preview', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'previewImport'])
+            ->name('quizzes.import.preview');
+        Route::post('quizzes/{quiz}/import/confirm', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'confirmImport'])
+            ->name('quizzes.import.confirm');
+        
+        // Image Library
+        Route::get('image-library', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'index'])
+            ->name('image-library.index');
+        Route::post('image-library/upload', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'upload'])
+            ->name('image-library.upload');
+        Route::delete('image-library/{filename}', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'delete'])
+            ->name('image-library.delete');
     });
 
     // Admin routes (System Management) - TODO: To be built

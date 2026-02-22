@@ -94,9 +94,10 @@
                               barangays.forEach(b => {
                                   select.innerHTML += `<option value=\"${b.code}\">${b.name}</option>`;
                               });
-                          }
-                      }"
+                            }
                       x-init="if (cityCode) loadBarangays()">
+                        }
+                    }"
                     @csrf
 
                     <!-- Child's Personal Information -->

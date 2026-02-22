@@ -53,7 +53,9 @@
                                                 <span class="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
                                                     {{ $index + 1 }}
                                                 </span>
-                                                <h4 class="text-lg font-semibold text-gray-900">{{ $question->question_text }}</h4>
+                                                @if(!in_array($question->question_type, ['fill_blank_text', 'fill_blank_select']))
+                                                    <h4 class="text-lg font-semibold text-gray-900">{{ $question->question_text }}</h4>
+                                                @endif
                                             </div>
                                             <div class="flex gap-2 ml-11">
                                                 @if($question->question_type === 'multiple_choice')
@@ -62,13 +64,22 @@
                                                     <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">True/False</span>
                                                 @elseif($question->question_type === 'multiple_select')
                                                     <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">Multiple Select</span>
+                                                @elseif($question->question_type === 'fill_blank_text')
+                                                    <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded">Fill in the Blanks</span>
+                                                @elseif($question->question_type === 'fill_blank_select')
+                                                    <span class="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded">Fill in the Blanks (Word Selection)</span>
+                                                @elseif($question->question_type === 'identification')
+                                                    <span class="px-2 py-1 text-xs font-medium bg-pink-100 text-pink-700 rounded">Identification</span>
                                                 @endif
                                                 <span class="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded">{{ $question->points }} {{ $question->points === 1 ? 'point' : 'points' }}</span>
+                                                @if($question->case_sensitive)
+                                                    <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded border border-red-300">⚠ Case Sensitive</span>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- Options -->
+                                    <!-- Answer Input Area -->
                                     <div class="space-y-3 ml-11">
                                         @if($question->question_type === 'multiple_select')
                                             <!-- Multiple Select - Checkboxes -->
@@ -82,8 +93,128 @@
                                                     <span class="ml-3 text-gray-800">{{ $option->option_text }}</span>
                                                 </label>
                                             @endforeach
+                                        @elseif($question->question_type === 'fill_blank_text')
+                                            <!-- Fill in the Blanks (Text Input) -->
+                                            <div class="space-y-3">
+                                                @php
+                                                    $parts = explode('_____', $question->question_text);
+                                                    $blankCount = count($parts) - 1;
+                                                @endphp
+                                                
+                                                @if($blankCount > 0)
+                                                    <div class="p-4 bg-white border border-gray-300 rounded-lg">
+                                                        <p class="text-gray-700 mb-4 leading-relaxed">
+                                                            @foreach($parts as $index => $part)
+                                                                {{ $part }}
+                                                                @if($index < $blankCount)
+                                                                    <input 
+                                                                        type="text" 
+                                                                        name="answers[{{ $question->id }}][]"
+                                                                        required
+                                                                        class="inline-block mx-1 px-3 py-1 border-2 border-blue-400 rounded focus:border-blue-600 focus:ring-2 focus:ring-blue-200 min-w-[150px]"
+                                                                        placeholder="Blank {{ $index + 1 }}"
+                                                                        autocomplete="off">
+                                                                @endif
+                                                            @endforeach
+                                                        </p>
+                                                    </div>
+                                                @else
+                                                    <!-- Fallback: Single text input if no _____ found -->
+                                                    <p class="text-gray-700 mb-3 font-medium">{{ $question->question_text }}</p>
+                                                    <input 
+                                                        type="text" 
+                                                        name="answers[{{ $question->id }}]"
+                                                        required
+                                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+                                                        placeholder="Your answer"
+                                                        autocomplete="off">
+                                                @endif
+                                            </div>
+                                        @elseif($question->question_type === 'fill_blank_select')
+                                            <!-- Fill in the Blanks (Word Selection) - SoloLearn Style -->
+                                            @php
+                                                $parts = explode('_____', $question->question_text);
+                                                $blankCount = count($parts) - 1;
+                                                $shuffledWords = collect($question->word_bank)->shuffle()->values()->all();
+                                            @endphp
+                                            
+                                            <div x-data="{
+                                                wordBank: {{ json_encode($shuffledWords) }},
+                                                selectedWords: Array({{ $blankCount }}).fill(null),
+                                                currentBlankIndex: 0,
+                                                
+                                                selectWord(wordIndex) {
+                                                    // Find the first empty blank
+                                                    let blankIndex = this.selectedWords.findIndex(val => val === null);
+                                                    if (blankIndex === -1) return; // All blanks filled
+                                                    
+                                                    // Set the word for this blank
+                                                    this.selectedWords[blankIndex] = wordIndex;
+                                                },
+                                                
+                                                removeWord(blankIndex) {
+                                                    this.selectedWords[blankIndex] = null;
+                                                },
+                                                
+                                                isUsed(wordIndex) {
+                                                    return this.selectedWords.includes(wordIndex);
+                                                }
+                                            }" class="space-y-4">
+                                                <!-- Question with clickable blanks -->
+                                                <div class="p-4 bg-white border border-gray-300 rounded-lg">
+                                                    <p class="text-gray-700 leading-relaxed flex flex-wrap items-center gap-2">
+                                                        @foreach($parts as $index => $part)
+                                                            <span>{{ $part }}</span>
+                                                            @if($index < $blankCount)
+                                                                <span 
+                                                                    @click="removeWord({{ $index }})"
+                                                                    x-text="selectedWords[{{ $index }}] !== null ? wordBank[selectedWords[{{ $index }}]] : ''"
+                                                                    class="inline-block px-4 py-2 min-w-[120px] border-2 border-dashed rounded-lg text-center font-medium cursor-pointer transition-all"
+                                                                    :class="selectedWords[{{ $index }}] === null ? 'border-gray-300 bg-gray-50 text-gray-400' : 'border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100'">
+                                                                    <span x-show="selectedWords[{{ $index }}] === null" class="text-gray-400">Click word below</span>
+                                                                </span>
+                                                                <input type="hidden" :name="`answers[{{ $question->id }}][${{{ $index }}}]`" :value="selectedWords[{{ $index }}] !== null ? wordBank[selectedWords[{{ $index }}]] : ''">
+                                                            @endif
+                                                        @endforeach
+                                                    </p>
+                                                </div>
+                                                
+                                                <!-- Word Bank Chips -->
+                                                <div>
+                                                    <p class="text-sm text-gray-600 mb-2">Select words to fill the blanks:</p>
+                                                    <div class="flex flex-wrap gap-2">
+                                                        <template x-for="(word, wordIndex) in wordBank" :key="wordIndex">
+                                                            <button 
+                                                                type="button"
+                                                                @click="selectWord(wordIndex, 0)"
+                                                                x-show="!isUsed(wordIndex)"
+                                                                x-text="word"
+                                                                class="px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm bg-white text-gray-700 border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-50">
+                                                            </button>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @elseif($question->question_type === 'identification')
+                                            <!-- Identification - Image + Text Input -->
+                                            <div class="space-y-4">
+                                                @if($question->image_path)
+                                                    <div class="flex justify-center">
+                                                        <img src="{{ asset('storage/' . $question->image_path) }}" 
+                                                             alt="Identification question image" 
+                                                             class="max-w-full max-h-64 rounded-lg border-2 border-gray-300 object-contain">
+                                                    </div>
+                                                @endif
+                                                <input 
+                                                    type="text" 
+                                                    name="answers[{{ $question->id }}]"
+                                                    required
+                                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+                                                    placeholder="Your answer"
+                                                    autocomplete="off">
+                                            </div>
                                         @else
-                                            <!-- Single Select - Radio Buttons -->
+                                            <!-- Single Select - Radio Buttons (multiple_choice, true_false) -->
                                             @foreach($question->options as $option)
                                                 <label class="flex items-center p-3 bg-white border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition">
                                                     <input type="radio" 

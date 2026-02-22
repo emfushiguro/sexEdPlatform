@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Add Question to: {{ $quiz->title }}
+                Edit Question: {{ $quiz->title }}
             </h2>
             <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="text-sm text-gray-600 hover:text-gray-900">
                 ← Back to Quiz
@@ -32,8 +32,9 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('instructor.quizzes.store-question', $quiz) }}" id="questionForm" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('instructor.quizzes.update-question', ['quiz' => $quiz, 'question' => $question]) }}" id="questionForm" enctype="multipart/form-data">
                         @csrf
+                        @method('PUT')
 
                         <!-- Question Text -->
                         <div class="mb-6">
@@ -47,7 +48,8 @@
                                     onclick="insertBlank()"
                                     style="display: none;"
                                     class="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded transition">
-                                    Insert Blank (_____)</button>
+                                    Insert Blank (_____)
+                                </button>
                             </div>
                             <textarea 
                                 id="question_text" 
@@ -56,7 +58,7 @@
                                 required
                                 oninput="updateBlankCount()"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                placeholder="Enter your question here...">{{ old('question_text') }}</textarea>
+                                placeholder="Enter your question here...">{{ old('question_text', $question->question_text) }}</textarea>
                             <div id="blankCountHint" style="display: none;" class="mt-1 text-xs">
                                 <span class="text-blue-600 font-medium">Blanks detected: <span id="blankCount">0</span></span>
                                 <span class="text-gray-500 ml-3">Use <code class="px-1 bg-gray-100 rounded">_____</code> (5 underscores) to create blanks</span>
@@ -78,22 +80,22 @@
                                 onchange="updateQuestionType()"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 <option value="">Select question type...</option>
-                                <option value="multiple_choice" {{ old('question_type') === 'multiple_choice' ? 'selected' : '' }}>
+                                <option value="multiple_choice" {{ old('question_type', $question->question_type) === 'multiple_choice' ? 'selected' : '' }}>
                                     Multiple Choice (Single Answer)
                                 </option>
-                                <option value="true_false" {{ old('question_type') === 'true_false' ? 'selected' : '' }}>
+                                <option value="true_false" {{ old('question_type', $question->question_type) === 'true_false' ? 'selected' : '' }}>
                                     True/False
                                 </option>
-                                <option value="multiple_select" {{ old('question_type') === 'multiple_select' ? 'selected' : '' }}>
+                                <option value="multiple_select" {{ old('question_type', $question->question_type) === 'multiple_select' ? 'selected' : '' }}>
                                     Multiple Select (Multiple Answers)
                                 </option>
-                                <option value="fill_blank_text" {{ old('question_type') === 'fill_blank_text' ? 'selected' : '' }}>
+                                <option value="fill_blank_text" {{ old('question_type', $question->question_type) === 'fill_blank_text' ? 'selected' : '' }}>
                                     Fill in the Blanks (Text Input)
                                 </option>
-                                <option value="fill_blank_select" {{ old('question_type') === 'fill_blank_select' ? 'selected' : '' }}>
+                                <option value="fill_blank_select" {{ old('question_type', $question->question_type) === 'fill_blank_select' ? 'selected' : '' }}>
                                     Fill in the Blanks (Word Selection)
                                 </option>
-                                <option value="identification" {{ old('question_type') === 'identification' ? 'selected' : '' }}>
+                                <option value="identification" {{ old('question_type', $question->question_type) === 'identification' ? 'selected' : '' }}>
                                     Identification
                                 </option>
                             </select>
@@ -112,7 +114,7 @@
                                 id="points" 
                                 name="points" 
                                 min="1" 
-                                value="{{ old('points', 1) }}"
+                                value="{{ old('points', $question->points) }}"
                                 required
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             @error('points')
@@ -246,7 +248,7 @@
                             </a>
                             <button type="submit" 
                                     class="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
-                                Add Question
+                                Update Question
                             </button>
                         </div>
                     </form>
@@ -441,9 +443,57 @@
             document.getElementById('blankCount').textContent = blankCount;
         }
 
-        // Initialize if there's an old value
-        @if(old('question_type'))
-            updateQuestionType();
+        // Initialize if there's an old value or editing existing question
+        @if(old('question_type') || isset($question))
+            questionType = '{{ old('question_type', $question->question_type ?? '') }}';
+            
+            if (questionType) {
+                updateQuestionType();
+                
+                // Pre-populate existing data
+                @if(isset($question))
+                    @if(in_array($question->question_type, ['multiple_choice', 'true_false', 'multiple_select']))
+                        // Pre-populate options
+                        @foreach($question->options as $option)
+                            addOption('{{ $option->option_text }}', {{ $question->question_type === 'true_false' ? 'true' : 'false' }});
+                        @endforeach
+                        
+                        // Set correct options
+                        setTimeout(() => {
+                            @foreach($question->options as $index => $option)
+                                @if($option->is_correct)
+                                    const checkbox{{ $index }} = document.querySelector('{{ $question->question_type === "multiple_select" ? "input[type=checkbox]" : "input[type=radio]" }}[name="correct_options[]"][value="{{ $index }}"]');
+                                    if (checkbox{{ $index }}) checkbox{{ $index }}.checked = true;
+                                @endif
+                            @endforeach
+                        }, 100);
+                    @elseif(in_array($question->question_type, ['fill_blank_text', 'identification']))
+                        // Pre-populate acceptable answers
+                        @if($question->acceptable_answers)
+                            @foreach(explode('|', $question->acceptable_answers) as $answer)
+                                addAcceptableAnswer('{{ trim($answer) }}');
+                            @endforeach
+                        @endif
+                        
+                        // Set case sensitive
+                        @if($question->case_sensitive)
+                            document.getElementById('case_sensitive').checked = true;
+                        @endif
+                    @elseif($question->question_type === 'fill_blank_select')
+                        // Pre-populate word bank
+                        @if($question->word_bank)
+                            document.getElementById('word_bank').value = '{{ implode(", ", $question->word_bank) }}';
+                        @endif
+                        
+                        // Pre-populate correct answers
+                        @if($question->acceptable_answers)
+                            @foreach(explode('|', $question->acceptable_answers) as $answer)
+                                addWordBankAnswer('{{ trim($answer) }}');
+                            @endforeach
+                        @endif
+                    @endif
+                @endif
+            }
         @endif
     </script>
 </x-app-layout>
