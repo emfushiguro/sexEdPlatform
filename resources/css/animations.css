@@ -1,0 +1,141 @@
+/**
+ * Custom Animations & Transitions
+ * Sex Ed Platform - Front-End Enhancement
+ */
+
+/* Smooth transitions for all interactive elements */
+@layer utilities {
+    .transition-smooth {
+        @apply transition-all duration-300 ease-in-out;
+    }
+    
+    .transition-fast {
+        @apply transition-all duration-150 ease-in-out;
+    }
+    
+    .transition-slow {
+        @apply transition-all duration-500 ease-in-out;
+    }
+}
+
+/* Hover lift effect */
+@layer utilities {
+    .hover-lift {
+        @apply transition-transform duration-200 ease-out;
+    }
+    
+    .hover-lift:hover {
+        @apply -translate-y-1 shadow-lg;
+    }
+    
+    .hover-lift-sm:hover {
+        @apply -translate-y-0.5 shadow-md;
+    }
+}
+
+/* Pulse effect for notifications */
+@layer utilities {
+    .pulse-notification {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+}
+
+/* Shimmer loading effect */
+@layer utilities {
+    .shimmer {
+        background: linear-gradient(
+            90deg,
+            #f0f0f0 0%,
+            #e0e0e0 50%,
+            #f0f0f0 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+    }
+    
+    @keyframes shimmer {
+        0% {
+            background-position: -200% 0;
+        }
+        100% {
+            background-position: 200% 0;
+        }
+    }
+}
+
+/* Gradient animation */
+@layer utilities {
+    .gradient-animate {
+        background-size: 200% 200%;
+        animation: gradient-shift 3s ease infinite;
+    }
+    
+    @keyframes gradient-shift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+}
+
+/* Fade in on scroll */
+@layer utilities {
+    .fade-in-scroll {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+    
+    .fade-in-scroll.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Button press effect */
+@layer utilities {
+    .btn-press {
+        @apply active:scale-95 transition-transform duration-100;
+    }
+}
+
+/* Rotate on hover */
+@layer utilities {
+    .rotate-on-hover {
+        @apply transition-transform duration-300 ease-in-out;
+    }
+    
+    .rotate-on-hover:hover {
+        @apply rotate-6;
+    }
+}
+
+/* Bounce attention */
+@keyframes bounce-attention {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@layer utilities {
+    .bounce-attention {
+        animation: bounce-attention 1s ease-in-out infinite;
+    }
+}
+
+/* Glow effect */
+@layer utilities {
+    .glow-hover {
+        @apply transition-shadow duration-300;
+    }
+    
+    .glow-hover:hover {
+        @apply shadow-glow-purple;
+    }
+}
+
+/* Slide reveal */
+@layer utilities {
+    .slide-reveal {
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+    }
+}

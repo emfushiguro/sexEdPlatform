@@ -1,0 +1,225 @@
+/**
+ * Reusable Component Styles
+ * Sex Ed Platform - Front-End Enhancement
+ */
+
+/* Card Variants */
+@layer components {
+    .card {
+        @apply bg-white rounded-lg shadow-soft overflow-hidden;
+    }
+    
+    .card-hover {
+        @apply card hover-lift cursor-pointer;
+    }
+    
+    .card-gradient {
+        @apply bg-gradient-to-br from-brand-purple-500 to-brand-blue-500 text-white rounded-lg shadow-medium overflow-hidden;
+    }
+    
+    .card-glass {
+        @apply bg-white/80 backdrop-blur-md rounded-lg shadow-soft border border-gray-200/50;
+    }
+}
+
+/* Button Variants */
+@layer components {
+    .btn {
+        @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-smooth btn-press focus:outline-none focus:ring-2 focus:ring-offset-2;
+    }
+    
+    .btn-primary {
+        @apply btn bg-brand-purple-600 text-white hover:bg-brand-purple-700 focus:ring-brand-purple-500 shadow-sm hover:shadow-md;
+    }
+    
+    .btn-secondary {
+        @apply btn bg-brand-blue-600 text-white hover:bg-brand-blue-700 focus:ring-brand-blue-500 shadow-sm hover:shadow-md;
+    }
+    
+    .btn-success {
+        @apply btn bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 shadow-sm hover:shadow-md;
+    }
+    
+    .btn-danger {
+        @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm hover:shadow-md;
+    }
+    
+    .btn-outline {
+        @apply btn bg-transparent border-2 border-brand-purple-600 text-brand-purple-600 hover:bg-brand-purple-50 focus:ring-brand-purple-500;
+    }
+    
+    .btn-ghost {
+        @apply btn bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500;
+    }
+    
+    .btn-sm {
+        @apply px-3 py-1.5 text-sm;
+    }
+    
+    .btn-lg {
+        @apply px-6 py-3 text-lg;
+    }
+    
+    .btn-xl {
+        @apply px-8 py-4 text-xl;
+    }
+}
+
+/* Badge Variants */
+@layer components {
+    .badge {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
+    
+    .badge-primary {
+        @apply badge bg-brand-purple-100 text-brand-purple-800;
+    }
+    
+    .badge-success {
+        @apply badge bg-green-100 text-green-800;
+    }
+    
+    .badge-warning {
+        @apply badge bg-yellow-100 text-yellow-800;
+    }
+    
+    .badge-danger {
+        @apply badge bg-red-100 text-red-800;
+    }
+    
+    .badge-info {
+        @apply badge bg-brand-blue-100 text-brand-blue-800;
+    }
+    
+    .badge-outline {
+        @apply badge border-2 bg-transparent;
+    }
+}
+
+/* Input Styles */
+@layer components {
+    .input {
+        @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-purple-500 focus:ring-brand-purple-500 transition-smooth;
+    }
+    
+    .input-error {
+        @apply input border-red-300 focus:border-red-500 focus:ring-red-500;
+    }
+    
+    .input-success {
+        @apply input border-green-300 focus:border-green-500 focus:ring-green-500;
+    }
+}
+
+/* Alert Styles */
+@layer components {
+    .alert {
+        @apply rounded-lg p-4 mb-4;
+    }
+    
+    .alert-success {
+        @apply alert bg-green-50 border-l-4 border-green-500 text-green-800;
+    }
+    
+    .alert-error {
+        @apply alert bg-red-50 border-l-4 border-red-500 text-red-800;
+    }
+    
+    .alert-warning {
+        @apply alert bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800;
+    }
+    
+    .alert-info {
+        @apply alert bg-blue-50 border-l-4 border-blue-500 text-blue-800;
+    }
+}
+
+/* Skeleton Loaders */
+@layer components {
+    .skeleton {
+        @apply shimmer rounded bg-gray-200 animate-pulse;
+    }
+    
+    .skeleton-text {
+        @apply skeleton h-4 mb-2;
+    }
+    
+    .skeleton-title {
+        @apply skeleton h-6 mb-3;
+    }
+    
+    .skeleton-avatar {
+        @apply skeleton rounded-full;
+    }
+    
+    .skeleton-card {
+        @apply skeleton h-48;
+    }
+}
+
+/* Progress Bar */
+@layer components {
+    .progress-bar {
+        @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden;
+    }
+    
+    .progress-fill {
+        @apply h-full bg-gradient-to-r from-brand-purple-500 to-brand-blue-500 transition-all duration-500 ease-out;
+    }
+}
+
+/* Tooltip */
+@layer components {
+    .tooltip {
+        @apply absolute invisible group-hover:visible bg-gray-900 text-white text-xs rounded py-1 px-2 z-50 transition-opacity duration-200;
+    }
+}
+
+/* Stats Card */
+@layer components {
+    .stat-card {
+        @apply card p-6;
+    }
+    
+    .stat-value {
+        @apply text-3xl font-bold;
+    }
+    
+    .stat-label {
+        @apply text-sm text-gray-600 mt-1;
+    }
+    
+    .stat-icon {
+        @apply w-12 h-12 rounded-full flex items-center justify-center;
+    }
+}
+
+/* Divider */
+@layer components {
+    .divider {
+        @apply border-t border-gray-200 my-4;
+    }
+    
+    .divider-vertical {
+        @apply border-l border-gray-200 mx-4;
+    }
+}
+
+/* Empty State */
+@layer components {
+    .empty-state {
+        @apply text-center py-12;
+    }
+    
+    .empty-state-icon {
+        @apply mx-auto h-12 w-12 text-gray-400 mb-4;
+    }
+    
+    .empty-state-title {
+        @apply text-lg font-medium text-gray-900 mb-2;
+    }
+    
+    .empty-state-description {
+        @apply text-sm text-gray-500;
+    }
+}
