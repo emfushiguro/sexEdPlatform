@@ -51,10 +51,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [SubscriptionController::class, 'index'])->name('index');
         Route::get('/upgrade', [SubscriptionController::class, 'upgrade'])->name('upgrade');
         Route::post('/upgrade', [SubscriptionController::class, 'processUpgrade'])->name('process-upgrade');
-        Route::get('/cancel', [SubscriptionController::class, 'cancel'])->name('cancel');
-        Route::post('/cancel', [SubscriptionController::class, 'processCancel'])->name('process-cancel');
+        Route::post('/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscribe'); // New unified method
+        Route::post('/cancel', [SubscriptionController::class, 'cancel'])->name('cancel');
+        Route::post('/refund', [SubscriptionController::class, 'requestRefund'])->name('refund');
         Route::post('/renew', [SubscriptionController::class, 'renew'])->name('renew');
         Route::get('/status', [SubscriptionController::class, 'checkStatus'])->name('status');
+    });
+
+    // PayMongo Subscription Routes (Legacy - kept for backward compatibility)
+    Route::prefix('subscribe')->name('subscribe.')->group(function () {
+        Route::post('/monthly', [SubscriptionController::class, 'subscribeMonthly'])->name('monthly');
+        Route::post('/annual', [SubscriptionController::class, 'subscribeAnnual'])->name('annual');
     });
 
     // Payment routes
@@ -62,12 +69,33 @@ Route::middleware('auth')->group(function () {
         Route::get('/create/{subscription}', [PaymentController::class, 'create'])->name('create');
         Route::post('/process/{subscription}', [PaymentController::class, 'process'])->name('process');
         Route::get('/pending/{payment}', [PaymentController::class, 'pending'])->name('pending');
+        Route::get('/status/{payment}', [PaymentController::class, 'checkStatus'])->name('status');
         Route::get('/history', [PaymentController::class, 'history'])->name('history');
         Route::get('/receipt/{payment}', [PaymentController::class, 'receipt'])->name('receipt');
         
-        // Development only - simulate payment success
-        Route::get('/simulate-success/{payment}', [PaymentController::class, 'simulateSuccess'])
-            ->name('simulate-success');
+        // PayMongo automatic callbacks (triggers after payment completion)
+        Route::get('/paymongo/success/{subscription}', [PaymentController::class, 'paymongoSuccess'])->name('paymongo.success');
+        Route::get('/paymongo/failed/{subscription}', [PaymentController::class, 'paymongoFailed'])->name('paymongo.failed');
+        
+        // Legacy success/cancel pages
+        Route::get('/success', function () {
+            return view('payments.success');
+        })->name('success');
+
+        Route::get('/cancel', function () {
+            // Load the first active paid plan from DB so the view shows real prices.
+            $premiumPlan = \App\Models\SubscriptionPlan::where('is_active', true)
+                ->where('price', '>', 0)
+                ->orderBy('sort_order')
+                ->first();
+            return view('payments.cancel', compact('premiumPlan'));
+        })->name('cancel');
+        
+        // Development only - simulate payment success (local environment only)
+        if (app()->environment('local')) {
+            Route::get('/simulate-success/{payment}', [PaymentController::class, 'simulateSuccess'])
+                ->name('simulate-success');
+        }
     });
 
     // Module routes (old - keeping for compatibility)
@@ -208,19 +236,57 @@ Route::middleware('auth')->group(function () {
             ->name('image-library.delete');
     });
 
-    // Admin routes (System Management) - TODO: To be built
-    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
-        Route::get('/dashboard', function() {
+    // Admin routes — restricted to users with the 'admin' role
+    // Both 'auth' AND 'role:admin' are required.
+    Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
+        // Dashboard
+        Route::get('/dashboard', function () {
             return view('admin.dashboard');
         })->name('dashboard');
-        
-        // TODO: Subscription management routes
-        // TODO: User management routes  
-        // TODO: Platform settings routes
+
+        // User Management
+        Route::resource('users', \App\Http\Controllers\Admin\UserAdminController::class);
+
+        // UNIFIED Subscription & Plan Management
+        Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\UnifiedSubscriptionAdminController::class, 'index'])->name('index');
+            Route::post('/quick-action', [\App\Http\Controllers\Admin\UnifiedSubscriptionAdminController::class, 'quickAction'])->name('quick-action');
+            Route::get('/create-plan', [\App\Http\Controllers\Admin\UnifiedSubscriptionAdminController::class, 'createPlan'])->name('create-plan');
+            Route::post('/create-plan', [\App\Http\Controllers\Admin\UnifiedSubscriptionAdminController::class, 'storePlan'])->name('store-plan');
+            Route::get('/subscription/{subscription}', [\App\Http\Controllers\Admin\UnifiedSubscriptionAdminController::class, 'showSubscription'])->name('show-subscription');
+            Route::get('/plan/{subscriptionPlan}', [\App\Http\Controllers\Admin\UnifiedSubscriptionAdminController::class, 'showPlan'])->name('show-plan');
+            Route::get('/plan/{subscriptionPlan}/edit', [\App\Http\Controllers\Admin\UnifiedSubscriptionAdminController::class, 'editPlan'])->name('edit-plan');
+            Route::put('/plan/{subscriptionPlan}', [\App\Http\Controllers\Admin\UnifiedSubscriptionAdminController::class, 'updatePlan'])->name('update-plan');
+        });
+
+        // Subscription Plans (backward compatibility & advanced features)
+        Route::prefix('subscription-plans')->name('subscription-plans.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\SubscriptionPlanAdminController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\SubscriptionPlanAdminController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\SubscriptionPlanAdminController::class, 'store'])->name('store');
+            Route::get('/{subscriptionPlan}', [\App\Http\Controllers\Admin\SubscriptionPlanAdminController::class, 'show'])->name('show');
+            Route::get('/{subscriptionPlan}/edit', [\App\Http\Controllers\Admin\SubscriptionPlanAdminController::class, 'edit'])->name('edit');
+            Route::put('/{subscriptionPlan}', [\App\Http\Controllers\Admin\SubscriptionPlanAdminController::class, 'update'])->name('update');
+            Route::delete('/{subscriptionPlan}', [\App\Http\Controllers\Admin\SubscriptionPlanAdminController::class, 'destroy'])->name('delete');
+            Route::post('/{subscriptionPlan}/toggle', [\App\Http\Controllers\Admin\SubscriptionPlanAdminController::class, 'toggle'])->name('toggle');
+            Route::post('/reorder', [\App\Http\Controllers\Admin\SubscriptionPlanAdminController::class, 'reorder'])->name('reorder');
+        });
+
+        // Payment Management
+        Route::prefix('payments')->name('payments.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\PaymentAdminController::class, 'index'])->name('index');
+            Route::get('/{payment}', [\App\Http\Controllers\Admin\PaymentAdminController::class, 'show'])->name('show');
+            Route::post('/{payment}/refund', [\App\Http\Controllers\Admin\PaymentAdminController::class, 'processRefund'])->name('refund');
+            Route::post('/{payment}/complete', [\App\Http\Controllers\Admin\PaymentAdminController::class, 'markAsCompleted'])->name('complete');
+        });
     });
 });
 
-// Paymongo webhook (outside auth middleware)
-Route::post('/webhook/paymongo', [PaymentController::class, 'webhook'])->name('webhook.paymongo');
+// PayMongo webhook — outside auth middleware.
+// throttle:60,1  prevents abuse (max 60 requests per minute per IP).
+// paymongo.webhook verifies the HMAC-SHA256 signature header before the controller runs.
+Route::post('/webhook/paymongo', [PaymentController::class, 'webhook'])
+    ->middleware(['throttle:60,1', 'paymongo.webhook'])
+    ->name('webhook.paymongo');
 
 require __DIR__.'/auth.php';

@@ -1,0 +1,338 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Subscription;
+use App\Services\PayMongoPaymentLinkService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+
+class SubscriptionController extends Controller
+{
+    /**
+     * Display subscription plans and current status
+     */
+    public function index()
+    {
+        $user = Auth::user();
+        $subscription = $user->subscription;
+
+        return view('subscriptions.index', compact('subscription'));
+    }
+
+    /**
+     * Show the upgrade page
+     */
+    public function upgrade()
+    {
+        $user = Auth::user();
+        
+        if ($user->isPremium()) {
+            return redirect()->route('subscription.index')
+                ->with('info', 'You already have an active premium subscription.');
+        }
+
+        $currentSubscription = $user->subscription;
+
+        return view('subscriptions.upgrade', compact('currentSubscription'));
+    }
+
+    /**
+     * Process subscription upgrade
+     */
+    public function processUpgrade(Request $request)
+    {
+        $request->validate([
+            'plan_type' => 'required|in:monthly,annual',
+        ]);
+
+        $user = Auth::user();
+
+        // Check if user already has active premium subscription
+        if ($user->isPremium()) {
+            return redirect()->route('subscription.index')
+                ->with('error', 'You already have an active premium subscription.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Determine subscription end date based on plan
+            $endDate = $request->plan_type === 'monthly' 
+                ? now()->addMonth() 
+                : now()->addYear();
+
+            // Calculate amount
+            $amount = $request->plan_type === 'monthly' ? 299.00 : 2999.00;
+
+            // Create subscription record
+            $subscription = Subscription::create([
+                'user_id' => $user->id,
+                'plan' => $request->plan_type,
+                'status' => 'pending', // Will be activated after payment
+                'start_date' => now(),
+                'end_date' => $endDate,
+            ]);
+
+            // Create pending payment record
+            $payment = $subscription->payments()->create([
+                'user_id' => $user->id,
+                'amount' => $amount,
+                'method' => 'pending', // Will be updated when payment method is chosen
+                'status' => 'pending',
+                'transaction_id' => 'TXN-' . strtoupper(uniqid()),
+                'payment_details' => [
+                    'plan' => $request->plan_type,
+                    'created_via' => 'web_subscription',
+                ],
+            ]);
+
+            DB::commit();
+
+            // Redirect to payment page
+            return redirect()->route('payment.create', ['subscription' => $subscription->id])
+                ->with('success', 'Please complete the payment to activate your subscription.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->with('error', 'Failed to process subscription. Please try again.');
+        }
+    }
+
+    /**
+     * Cancel subscription
+     */
+    public function cancel()
+    {
+        $user = Auth::user();
+        $subscription = $user->subscription;
+
+        if (!$subscription || !$subscription->isActive()) {
+            return redirect()->route('subscription.index')
+                ->with('error', 'No active subscription to cancel.');
+        }
+
+        return view('subscriptions.cancel', compact('subscription'));
+    }
+
+    /**
+     * Process subscription cancellation
+     */
+    public function processCancel(Request $request)
+    {
+        $user = Auth::user();
+        $subscription = $user->subscription;
+
+        if (!$subscription || !$subscription->isActive()) {
+            return redirect()->route('subscription.index')
+                ->with('error', 'No active subscription to cancel.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $subscription->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('subscription.index')
+                ->with('success', 'Your subscription has been cancelled. You can continue to use premium features until ' . $subscription->end_date->format('M d, Y'));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->with('error', 'Failed to cancel subscription. Please try again.');
+        }
+    }
+
+    /**
+     * Renew cancelled subscription
+     */
+    public function renew()
+    {
+        $user = Auth::user();
+        $subscription = $user->subscription;
+
+        if (!$subscription || $subscription->status !== 'cancelled') {
+            return redirect()->route('subscription.index')
+                ->with('error', 'No cancelled subscription to renew.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $subscription->update([
+                'status' => 'active',
+                'cancelled_at' => null,
+                'end_date' => $subscription->plan === 'monthly'
+                    ? now()->addMonth()
+                    : now()->addYear(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('subscription.index')
+                ->with('success', 'Your subscription has been renewed successfully!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->with('error', 'Failed to renew subscription. Please try again.');
+        }
+    }
+
+    /**
+     * Check subscription status (API endpoint)
+     */
+    public function checkStatus()
+    {
+        $user = Auth::user();
+        $subscription = $user->subscription;
+
+        return response()->json([
+            'has_subscription' => $subscription !== null,
+            'is_premium' => $user->isPremium(),
+            'plan' => $subscription?->plan,
+            'status' => $subscription?->status,
+            'end_date' => $subscription?->end_date,
+        ]);
+    }
+
+    /**
+     * Subscribe to Monthly Plan via PayMongo Payment Link
+     */
+    public function subscribeMonthly(PayMongoPaymentLinkService $paymongoService)
+    {
+        $user = Auth::user();
+
+        // Check if user already has active premium subscription
+        if ($user->isPremium()) {
+            return redirect()->route('subscription.index')
+                ->with('error', 'You already have an active premium subscription.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Create subscription record
+            $subscription = Subscription::create([
+                'user_id' => $user->id,
+                'plan' => 'monthly',
+                'status' => 'active', // Instantly activate
+                'start_date' => now(),
+                'end_date' => now()->addMonth(),
+            ]);
+
+            // Create payment record
+            $payment = $subscription->payments()->create([
+                'user_id' => $user->id,
+                'amount' => 299.00,
+                'method' => 'paymongo',
+                'status' => 'completed', // Instantly mark as completed
+                'transaction_id' => 'PL-' . strtoupper(uniqid()),
+                'payment_details' => [
+                    'plan' => 'monthly',
+                    'created_via' => 'paymongo_payment_link',
+                ],
+                'paid_at' => now(),
+            ]);
+
+            // Create PayMongo Payment Link
+            $checkoutUrl = $paymongoService->createMonthlySubscriptionLink(
+                $user->id,
+                $subscription->id
+            );
+
+            // Store checkout URL in payment details
+            $payment->update([
+                'payment_details' => array_merge((array) $payment->payment_details, [
+                    'checkout_url' => $checkoutUrl,
+                ]),
+            ]);
+
+            DB::commit();
+
+            // Redirect to PayMongo checkout
+            return redirect($checkoutUrl);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->with('error', 'Failed to create payment link: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Subscribe to Annual Plan via PayMongo Payment Link
+     */
+    public function subscribeAnnual(PayMongoPaymentLinkService $paymongoService)
+    {
+        $user = Auth::user();
+
+        // Check if user already has active premium subscription
+        if ($user->isPremium()) {
+            return redirect()->route('subscription.index')
+                ->with('error', 'You already have an active premium subscription.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Create subscription record
+            $subscription = Subscription::create([
+                'user_id' => $user->id,
+                'plan' => 'annual',
+                'status' => 'active', // Instantly activate
+                'start_date' => now(),
+                'end_date' => now()->addYear(),
+            ]);
+
+            // Create payment record
+            $payment = $subscription->payments()->create([
+                'user_id' => $user->id,
+                'amount' => 2999.00,
+                'method' => 'paymongo',
+                'status' => 'completed', // Instantly mark as completed
+                'transaction_id' => 'PL-' . strtoupper(uniqid()),
+                'payment_details' => [
+                    'plan' => 'annual',
+                    'created_via' => 'paymongo_payment_link',
+                ],
+                'paid_at' => now(),
+            ]);
+
+            // Create PayMongo Payment Link
+            $checkoutUrl = $paymongoService->createAnnualSubscriptionLink(
+                $user->id,
+                $subscription->id
+            );
+
+            // Store checkout URL in payment details
+            $payment->update([
+                'payment_details' => array_merge((array) $payment->payment_details, [
+                    'checkout_url' => $checkoutUrl,
+                ]),
+            ]);
+
+            DB::commit();
+
+            // Redirect to PayMongo checkout
+            return redirect($checkoutUrl);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->with('error', 'Failed to create payment link: ' . $e->getMessage());
+        }
+    }
+}
