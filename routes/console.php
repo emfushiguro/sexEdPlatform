@@ -10,3 +10,12 @@ Artisan::command('inspire', function () {
 
 // Schedule automatic module publishing
 Schedule::command('modules:publish-scheduled')->everyMinute();
+
+// Schedule subscription expiration check - runs every minute for short-duration test plans
+Schedule::command('subscriptions:expire')->everyMinute();
+
+// Schedule subscription renewals and dunning - runs hourly
+Schedule::command('subscriptions:process-renewals')->hourly();
+
+// Schedule analytics report - runs weekly on Mondays
+Schedule::command('analytics:generate-report weekly')->weeklyOn(1, '8:00');

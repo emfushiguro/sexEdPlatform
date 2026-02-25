@@ -56,7 +56,7 @@ class QuizManagementController extends Controller
 
         Quiz::create($validated);
 
-        return redirect()->route('admin.quizzes.index')
+        return redirect()->route('instructor.quizzes.index')
             ->with('success', 'Quiz created successfully! Now add questions to it.');
     }
 
@@ -91,7 +91,7 @@ class QuizManagementController extends Controller
 
         $quiz->update($validated);
 
-        return redirect()->route('admin.quizzes.index')
+        return redirect()->route('instrutor.quizzes.index')
             ->with('success', 'Quiz updated successfully!');
     }
 
@@ -99,7 +99,7 @@ class QuizManagementController extends Controller
     {
         $quiz->delete();
 
-        return redirect()->route('admin.quizzes.index')
+        return redirect()->route('instructor.quizzes.index')
             ->with('success', 'Quiz deleted successfully!');
     }
 
@@ -143,7 +143,7 @@ class QuizManagementController extends Controller
 
             DB::commit();
 
-            return redirect()->route('admin.quizzes.show', $quiz)
+            return redirect()->route('instructor.quizzes.show', $quiz)
                 ->with('success', 'Question added successfully!');
 
         } catch (\Exception $e) {
