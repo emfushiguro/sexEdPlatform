@@ -1,144 +1,247 @@
 /**
  * Toast Notification System
- * Wrapper for Toastify.js with custom styling
+ * Enhanced wrapper for Toastify.js with custom styling, icons, and animations
  */
 
 import Toastify from 'toastify-js';
 
-// Toast configuration defaults
+// Track active toasts for stacking
+let activeToasts = 0;
+const maxToasts = 5;
+const toastOffset = 70; // pixels between stacked toasts
+
+// Toast configuration defaults (NO duration here - set per toast type)
 const defaultConfig = {
-    duration: 3000,
     gravity: "top",
     position: "right",
     stopOnFocus: true,
     close: true,
-    style: {
-        borderRadius: "8px",
-        fontFamily: "Figtree, sans-serif",
-    }
+    escapeMarkup: false, // Allow HTML for icons
+    className: 'custom-toast',
+    offset: { y: 0 }, // Dynamic offset for stacking
+    onClick: function() {}, // Keyboard support
+    callback: function() {
+        activeToasts--;
+        if (activeToasts < 0) activeToasts = 0;
+    },
 };
+
+// Icon templates with better styling
+const icons = {
+    success: '<svg class="toast-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+    error: '<svg class="toast-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+    warning: '<svg class="toast-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+    info: '<svg class="toast-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+    primary: '<svg class="toast-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>',
+};
+
+// Calculate offset for stacked toasts
+function getToastOffset() {
+    return { y: activeToasts * toastOffset };
+}
+
+// Keyboard support - dismiss all toasts on ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+        const toasts = document.querySelectorAll('.toastify');
+        toasts.forEach(toast => {
+            const closeBtn = toast.querySelector('.toast-close');
+            if (closeBtn) closeBtn.click();
+        });
+    }
+});
 
 // Success Toast
 export function showSuccess(message, options = {}) {
-    Toastify({
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    
+    const duration = 4000; // 4 seconds - enough time to read success message
+    const { duration: _, ...userOptions } = options; // Ignore user duration
+    
+    const config = {
         ...defaultConfig,
-        text: message,
-        style: {
-            ...defaultConfig.style,
-            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-        },
-        ...options
-    }).showToast();
+        ...userOptions,  // User options WITHOUT duration
+        duration: duration,  // Our controlled duration
+        text: `<div class="toast-content"><span class="toast-icon-wrapper">${icons.success}</span><span class="toast-message">${message}</span></div>`,
+        offset: getToastOffset(),
+        className: 'custom-toast toast-success',
+        ariaLive: 'polite',
+    };
+       
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
 }
 
 // Error Toast
 export function showError(message, options = {}) {
-    Toastify({
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    
+    const duration = 4000; 
+    const { duration: _, ...userOptions } = options; 
+    
+    const config = {
         ...defaultConfig,
-        text: message,
-        duration: 4000, // Longer for errors
-        style: {
-            ...defaultConfig.style,
-            background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-        },
-        ...options
-    }).showToast();
+        ...userOptions,  // User options WITHOUT duration
+        duration: duration,  // Our controlled duration
+        text: `<div class="toast-content"><span class="toast-icon-wrapper">${icons.error}</span><span class="toast-message">${message}</span></div>`,
+        offset: getToastOffset(),
+        className: 'custom-toast toast-error',
+        ariaLive: 'assertive',
+    };
+    
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
 }
 
 // Warning Toast
 export function showWarning(message, options = {}) {
-    Toastify({
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    
+    const duration = 4000; // 5 seconds - warnings need attention
+    const { duration: _, ...userOptions } = options; // Ignore user duration
+    
+    const config = {
         ...defaultConfig,
-        text: message,
-        style: {
-            ...defaultConfig.style,
-            background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-        },
-        ...options
-    }).showToast();
+        ...userOptions,  // User options WITHOUT duration
+        duration: duration,  // Our controlled duration
+        text: `<div class="toast-content"><span class="toast-icon-wrapper">${icons.warning}</span><span class="toast-message">${message}</span></div>`,
+        offset: getToastOffset(),
+        className: 'custom-toast toast-warning',
+        ariaLive: 'polite',
+    };
+    
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
 }
 
 // Info Toast
 export function showInfo(message, options = {}) {
-    Toastify({
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    
+    const duration = 4000; // 4 seconds - standard info message duration
+    const { duration: _, ...userOptions } = options; // Ignore user duration
+    
+    const config = {
         ...defaultConfig,
-        text: message,
-        style: {
-            ...defaultConfig.style,
-            background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-        },
-        ...options
-    }).showToast();
+        ...userOptions,  // User options WITHOUT duration
+        duration: duration,  // Our controlled duration
+        text: `<div class="toast-content"><span class="toast-icon-wrapper">${icons.info}</span><span class="toast-message">${message}</span></div>`,
+        offset: getToastOffset(),
+        className: 'custom-toast toast-info',
+        ariaLive: 'polite',
+    };
+    
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
 }
 
 // Primary/Purple Toast (for gamification)
 export function showPrimary(message, options = {}) {
-    Toastify({
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    
+    const duration = 4000; // 4 seconds - standard duration
+    const { duration: _, ...userOptions } = options; // Ignore user duration
+    
+    const config = {
         ...defaultConfig,
-        text: message,
-        style: {
-            ...defaultConfig.style,
-            background: "linear-gradient(135deg, #a855f7 0%, #9333ea 100%)",
-        },
-        ...options
-    }).showToast();
+        ...userOptions,  // User options WITHOUT duration
+        duration: duration,  // Our controlled duration
+        text: `<div class="toast-content"><span class="toast-icon-wrapper">${icons.primary}</span><span class="toast-message">${message}</span></div>`,
+        offset: getToastOffset(),
+        className: 'custom-toast toast-primary',
+        ariaLive: 'polite',
+    };
+    
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
 }
 
 // Achievement Toast (special styling for gamification)
 export function showAchievement(message, options = {}) {
-    Toastify({
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    
+    const achievementIcon = '<svg class="toast-icon toast-icon-large" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>';
+    const duration = 7000; // 7 seconds - achievements deserve celebration time
+    const { duration: _, ...userOptions } = options; // Ignore user duration
+    
+    const config = {
         ...defaultConfig,
-        text: `🎉 ${message}`,
-        duration: 5000,
+        ...userOptions,  // User options WITHOUT duration
+        duration: duration,  // Our controlled duration
+        text: `<div class="toast-content toast-content-large"><span class="toast-icon-wrapper toast-icon-celebration">${achievementIcon}</span><span class="toast-message">${message}</span></div>`,
         gravity: "top",
         position: "center",
-        style: {
-            ...defaultConfig.style,
-            background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
-            fontSize: "16px",
-            fontWeight: "600",
-            padding: "16px 24px",
-        },
-        ...options
-    }).showToast();
+        offset: getToastOffset(),
+        className: 'custom-toast toast-achievement',
+        ariaLive: 'polite',
+    };
+    
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
 }
 
 // Level Up Toast
 export function showLevelUp(level, options = {}) {
-    Toastify({
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    
+    const levelIcon = '<svg class="toast-icon toast-icon-large" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>';
+    const duration = 8000; // 8 seconds - big milestone celebration
+    const { duration: _, ...userOptions } = options; // Ignore user duration
+    
+    const config = {
         ...defaultConfig,
-        text: `🚀 Level Up! You're now Level ${level}!`,
-        duration: 6000,
+        ...userOptions,  // User options WITHOUT duration
+        duration: duration,  // Our controlled duration
+        text: `<div class="toast-content toast-content-large"><span class="toast-icon-wrapper toast-icon-celebration">${levelIcon}</span><span class="toast-message">Level Up! You're now Level ${level}!</span></div>`,
         gravity: "top",
         position: "center",
-        style: {
-            ...defaultConfig.style,
-            background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
-            fontSize: "18px",
-            fontWeight: "700",
-            padding: "20px 30px",
-            boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
-        },
-        ...options
-    }).showToast();
+        offset: getToastOffset(),
+        className: 'custom-toast toast-level-up',
+        ariaLive: 'polite',
+    };
+    
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
 }
 
 // XP Gained Toast
 export function showXPGained(xp, options = {}) {
-    Toastify({
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    
+    const xpIcon = '<svg class="toast-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7L12 12L22 7L12 2Z"></path><path d="M2 17L12 22L22 17"></path><path d="M2 12L12 17L22 12"></path></svg>';
+    const duration = 3000; // 3 seconds - short but readable for frequent XP gains
+    const { duration: _, ...userOptions } = options; // Ignore user duration
+    
+    const config = {
         ...defaultConfig,
-        text: `+${xp} XP`,
-        duration: 2000,
+        ...userOptions,  // User options WITHOUT duration
+        duration: duration,  // Our controlled duration
+        text: `<div class="toast-content toast-content-compact"><span class="toast-icon-wrapper">${xpIcon}</span><span class="toast-message">+${xp} XP</span></div>`,
         gravity: "top",
         position: "right",
-        style: {
-            ...defaultConfig.style,
-            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-            fontSize: "14px",
-            fontWeight: "600",
-        },
-        ...options
-    }).showToast();
+        offset: getToastOffset(),
+        className: 'custom-toast toast-xp',
+        ariaLive: 'polite',
+    };
+    
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
 }
 
 // Custom Toast (full control)
@@ -154,6 +257,29 @@ export function showToast(message, type = 'info', options = {}) {
 
     const toastFunction = toastFunctions[type] || showInfo;
     toastFunction(message, options);
+}
+
+// Add progress bar to toast for visual feedback
+function addProgressBar(toastElement, duration) {
+    if (!toastElement || !duration) {
+        console.warn('addProgressBar missing element or duration:', { toastElement: !!toastElement, duration });
+        return;
+    }
+    
+    console.log('Adding progress bar with duration:', duration, 'ms');
+    
+    const progressBar = document.createElement('div');
+    progressBar.className = 'toast-progress';
+    toastElement.appendChild(progressBar);
+    
+    // Force reflow to ensure initial state is registered
+    progressBar.offsetHeight;
+    
+    // Animate progress bar from 100% to 0%
+    requestAnimationFrame(() => {
+        progressBar.style.width = '0%';
+        progressBar.style.transition = `width ${duration}ms linear`;
+    });
 }
 
 // Make available globally

@@ -8,8 +8,9 @@
         <title>{{ config('app.name', 'Laravel') }}</title>
 
         <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -26,5 +27,61 @@
                 {{ $slot }}
             </div>
         </div>
+
+        <!-- Toast Notifications -->
+        @stack('scripts')
+        
+        <!-- Global Toast Notification Handler -->
+        <script>
+            console.log('Guest layout JavaScript is running');
+            console.log('window.toast available?', typeof window.toast);
+            
+            // Function to wait for toast to be available
+            function waitForToast(callback, maxAttempts = 50) {
+                let attempts = 0;
+                const interval = setInterval(() => {
+                    attempts++;
+                    console.log('Checking for toast... attempt', attempts, 'window.toast:', typeof window.toast);
+                    if (typeof window.toast !== 'undefined') {
+                        clearInterval(interval);
+                        console.log('Toast loaded! Executing callback...');
+                        callback();
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        console.error('Toast notification system failed to load after', maxAttempts, 'attempts');
+                    }
+                }, 100);
+            }
+
+            // Wait for toast, then show messages
+            waitForToast(function() {
+                @if(session('success'))
+                    console.log('Showing success toast');
+                    window.toast.success("{{ addslashes(session('success')) }}");
+                @endif
+
+                @if($errors->any())
+                    console.log('Showing error toasts');
+                    @foreach($errors->all() as $error)
+                        window.toast.error("{{ addslashes($error) }}");
+                    @endforeach
+                @endif
+
+                @if(session('status'))
+                    console.log('Showing status toast');
+                    window.toast.info("{{ addslashes(session('status')) }}");
+                @endif
+
+                @if(session('info'))
+                    console.log('Showing info toast');
+                    window.toast.info("{{ addslashes(session('info')) }}");
+                @endif
+
+                @if(session('warning'))
+                    console.log('Showing warning toast');
+                    window.toast.warning("{{ addslashes(session('warning')) }}");
+                @endif
+            });
+        </script>
     </body>
 </html>

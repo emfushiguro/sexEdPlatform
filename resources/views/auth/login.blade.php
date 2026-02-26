@@ -1,6 +1,8 @@
 <x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+    <!-- Session Status (hidden since we use toasts) -->
+    <div style="display: none;">
+        <x-auth-session-status class="mb-4" :status="session('status')" />
+    </div>
 
     <form method="POST" action="{{ route('login') }}">
         @csrf
@@ -9,7 +11,7 @@
         <div>
             <x-input-label for="email" :value="__('Email')" />
             <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+            <!-- Hide inline errors, use toasts instead -->
         </div>
 
         <!-- Password -->
@@ -20,8 +22,7 @@
                             type="password"
                             name="password"
                             required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+            <!-- Hide inline errors, use toasts instead -->
         </div>
 
         <!-- Remember Me -->
@@ -44,4 +45,6 @@
             </x-primary-button>
         </div>
     </form>
+
+    {{-- Toast notifications are now handled globally in guest layout --}}
 </x-guest-layout>

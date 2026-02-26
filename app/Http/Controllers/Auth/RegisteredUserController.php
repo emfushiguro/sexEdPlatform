@@ -38,8 +38,13 @@ class RegisteredUserController extends Controller
 
         // Check if user is under 13 (requires parental consent)
         if ($age < 13) {
+            // Store child data in persistent session (not flash) so it survives through parent registration and email verification
+            session([
+                'pending_child_registration' => $validated,
+                'child_registration_timestamp' => now()->timestamp,
+            ]);
+            
             return redirect()->route('parent.registration.required')
-                ->with('child_data', $validated)
                 ->with('info', 'Children under 13 require a parent or guardian to create their account.');
         }
 

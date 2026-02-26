@@ -13,7 +13,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Poppins', 'Figtree', ...defaultTheme.fontFamily.sans],
             },
             colors: {
                 // Custom brand colors for Sex Ed Platform
@@ -24,11 +24,15 @@ export default {
                         200: '#e9d5ff',
                         300: '#d8b4fe',
                         400: '#c084fc',
-                        500: '#a855f7', // Primary purple
+                        500: '#a855f7',
                         600: '#9333ea',
                         700: '#7e22ce',
                         800: '#6b21a8',
                         900: '#581c87',
+                        // Exact colors from Figma design
+                        primary: '#6D2994',  // Main brand purple
+                        dark: '#3C1255',     // Gradient dark end
+                        light: '#8B4DAF',    // Lighter shade for hover
                     },
                     blue: {
                         50: '#eff6ff',

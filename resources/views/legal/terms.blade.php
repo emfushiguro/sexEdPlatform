@@ -29,7 +29,7 @@
                 <section>
                     <h2 class="text-xl font-semibold text-gray-900 mb-4">1. Introduction</h2>
                     <p class="text-gray-700 leading-relaxed">
-                        Welcome to {{ config('app.name') }}. By accessing or using our platform, you agree to be bound by these Terms of Service. 
+                        Welcome to Sex Education Learning Platform. By accessing or using our platform, you agree to be bound by these Terms of Service. 
                         This platform is designed to provide age-appropriate sexual education and health information to learners of all ages.
                     </p>
                 </section>
@@ -165,7 +165,7 @@
                     <h2 class="text-xl font-semibold text-gray-900 mb-4">9. Limitation of Liability</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
-                            {{ config('app.name') }} is provided "as is" for educational purposes. We are not liable for:
+                            Sex Education Learning Platform is provided "as is" for educational purposes. We are not liable for:
                         </p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
                             <li>Any damages arising from your use of the platform</li>
@@ -210,7 +210,7 @@
                         </p>
                         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-3">
                             <p class="font-medium text-gray-900">{{ config('app.name') }} Support</p>
-                            <p class="text-gray-600 text-sm mt-1">Email: support@example.com</p>
+                            <p class="text-gray-600 text-sm mt-1">sexeducation@platform.com</p>
                         </div>
                     </div>
                 </section>

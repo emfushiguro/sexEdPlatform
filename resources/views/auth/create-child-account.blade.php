@@ -25,6 +25,27 @@
         <div class="max-w-3xl mx-auto">
             <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-8">
                 
+                <!-- Completing Registration Banner (if child data exists) -->
+                @if(isset($childData))
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-800 font-semibold">
+                                Completing registration for: {{ $childData['first_name'] ?? '' }} {{ $childData['last_name'] ?? '' }}
+                            </p>
+                            <p class="text-xs text-blue-700 mt-1">
+                                We've pre-filled the information from their registration attempt. You can review and complete the setup below.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+                
                 <!-- Parent Info Banner -->
                 <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
                     <div class="flex">
@@ -68,9 +89,9 @@
                 <!-- Form -->
                 <form method="POST" action="{{ route('parent.create-child.store') }}"
                       x-data="{
-                          birthdate: '',
+                          birthdate: '{{ old('birthdate', $childData['birthdate_formatted'] ?? '') }}',
                           age: null,
-                          cityCode: '{{ old('city_code', $parentProfile?->city_code) }}',
+                          cityCode: '{{ old('city_code', $parentProfile?->city_code ?? '') }}',
                           calculateAge() {
                               if (!this.birthdate) {
                                   this.age = null;
@@ -87,17 +108,27 @@
                           },
                           async loadBarangays() {
                               if (!this.cityCode) return;
-                              const response = await fetch(`/api/barangays/${this.cityCode}`);
+                              const response = await fetch('/api/barangays/' + this.cityCode);
                               const barangays = await response.json();
                               const select = document.getElementById('barangay_code');
-                              select.innerHTML = '<option value=\"\">Select barangay</option>';
+                              select.innerHTML = '<option value=&quot;&quot;>Select barangay</option>';
                               barangays.forEach(b => {
-                                  select.innerHTML += `<option value=\"${b.code}\">${b.name}</option>`;
+                                  const option = document.createElement('option');
+                                  option.value = b.code;
+                                  option.textContent = b.name;
+                                  select.appendChild(option);
                               });
-                            }
-                      x-init="if (cityCode) loadBarangays()">
-                        }
-                    }"
+                              // Reselect the barangay if it was pre-filled
+                              const barangayCode = '{{ old('barangay_code', $parentProfile?->barangay_code ?? '') }}';
+                              if (barangayCode) {
+                                  select.value = barangayCode;
+                              }
+                          }
+                      }"
+                      x-init="
+                          calculateAge(); 
+                          if (cityCode) loadBarangays();
+                      ">
                     @csrf
 
                     <!-- Child's Personal Information -->
@@ -111,9 +142,12 @@
                                     First Name <span class="text-red-500">*</span>
                                 </label>
                                 <input id="first_name" name="first_name" type="text" required 
-                                       value="{{ old('first_name') }}"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       value="{{ old('first_name', $childData['first_name'] ?? '') }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}"
                                        placeholder="Maria">
+                                @if(isset($childData))
+                                    <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
+                                @endif
                                 @error('first_name')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -125,10 +159,13 @@
                                     Middle Initial
                                 </label>
                                 <input id="middle_initial" name="middle_initial" type="text" 
-                                       value="{{ old('middle_initial') }}"
+                                       value="{{ old('middle_initial', $childData['middle_initial'] ?? '') }}"
                                        maxlength="10"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) && !empty($childData['middle_initial']) ? 'bg-blue-50' : '' }}"
                                        placeholder="C.">
+                                @if(isset($childData) && !empty($childData['middle_initial']))
+                                    <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
+                                @endif
                                 @error('middle_initial')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -140,9 +177,12 @@
                                     Last Name <span class="text-red-500">*</span>
                                 </label>
                                 <input id="last_name" name="last_name" type="text" required 
-                                       value="{{ old('last_name') }}"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       value="{{ old('last_name', $childData['last_name'] ?? '') }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}"
                                        placeholder="Santos">
+                                @if(isset($childData))
+                                    <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
+                                @endif
                                 @error('last_name')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -154,15 +194,18 @@
                                     Suffix
                                 </label>
                                 <select id="suffix" name="suffix"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) && !empty($childData['suffix']) ? 'bg-blue-50' : '' }}">
                                     <option value="">None</option>
-                                    <option value="Jr." {{ old('suffix') == 'Jr.' ? 'selected' : '' }}>Jr.</option>
-                                    <option value="Sr." {{ old('suffix') == 'Sr.' ? 'selected' : '' }}>Sr.</option>
-                                    <option value="II" {{ old('suffix') == 'II' ? 'selected' : '' }}>II</option>
-                                    <option value="III" {{ old('suffix') == 'III' ? 'selected' : '' }}>III</option>
-                                    <option value="IV" {{ old('suffix') == 'IV' ? 'selected' : '' }}>IV</option>
-                                    <option value="V" {{ old('suffix') == 'V' ? 'selected' : '' }}>V</option>
+                                    <option value="Jr." {{ old('suffix', $childData['suffix'] ?? '') == 'Jr.' ? 'selected' : '' }}>Jr.</option>
+                                    <option value="Sr." {{ old('suffix', $childData['suffix'] ?? '') == 'Sr.' ? 'selected' : '' }}>Sr.</option>
+                                    <option value="II" {{ old('suffix', $childData['suffix'] ?? '') == 'II' ? 'selected' : '' }}>II</option>
+                                    <option value="III" {{ old('suffix', $childData['suffix'] ?? '') == 'III' ? 'selected' : '' }}>III</option>
+                                    <option value="IV" {{ old('suffix', $childData['suffix'] ?? '') == 'IV' ? 'selected' : '' }}>IV</option>
+                                    <option value="V" {{ old('suffix', $childData['suffix'] ?? '') == 'V' ? 'selected' : '' }}>V</option>
                                 </select>
+                                @if(isset($childData) && !empty($childData['suffix']))
+                                    <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
+                                @endif
                                 @error('suffix')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -175,12 +218,17 @@
                                 Birthdate <span class="text-red-500">*</span>
                             </label>
                             <input id="birthdate" name="birthdate" type="date" required 
-                                   value="{{ old('birthdate') }}"
                                    x-model="birthdate"
                                    @change="calculateAge()"
                                    min="{{ now()->subYears(18)->format('Y-m-d') }}"
                                    max="{{ now()->subYears(5)->format('Y-m-d') }}"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}">
+                            
+                            @if(isset($childData))
+                                <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
+                            @else
+                                <p class="mt-1 text-xs text-gray-500">Child must be 5-17 years old to use this platform</p>
+                            @endif
                             
                             <!-- Age Display -->
                             <div x-show="age !== null" class="mt-2">
@@ -221,12 +269,15 @@
                                 Gender <span class="text-red-500">*</span>
                             </label>
                             <select id="gender" name="gender" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) && !empty($childData['gender']) ? 'bg-blue-50' : '' }}">
                                 <option value="">Select gender</option>
-                                <option value="male" {{ old('gender') === 'male' ? 'selected' : '' }}>Male</option>
-                                <option value="female" {{ old('gender') === 'female' ? 'selected' : '' }}>Female</option>
-                                <option value="prefer_not_to_say" {{ old('gender') === 'prefer_not_to_say' ? 'selected' : '' }}>Prefer not to say</option>
+                                <option value="male" {{ old('gender', $childData['gender'] ?? '') === 'male' ? 'selected' : '' }}>Male</option>
+                                <option value="female" {{ old('gender', $childData['gender'] ?? '') === 'female' ? 'selected' : '' }}>Female</option>
+                                <option value="prefer_not_to_say" {{ old('gender', $childData['gender'] ?? '') === 'prefer_not_to_say' ? 'selected' : '' }}>Prefer not to say</option>
                             </select>
+                            @if(isset($childData) && !empty($childData['gender']))
+                                <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
+                            @endif
                             @error('gender')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -236,9 +287,20 @@
                     <!-- Child's Location (Same Household as Parent) -->
                     <div class="mb-6 pt-6 border-t border-gray-200">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Location (Same Household)</h3>
-                        <p class="text-sm text-gray-600 mb-4">
-                            📍 Your child lives with you, so we'll use your home address.
-                        </p>
+                        
+                        @if($parentProfile && $parentProfile->city_code)
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                                <p class="text-sm text-purple-800">
+                                     <strong>Auto-filled from your profile:</strong> Your child lives with you, so we're using your home address.
+                                </p>
+                            </div>
+                        @else
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                <p class="text-sm text-blue-800">
+                                    <strong>Select your home address:</strong> Your child lives with you in the same household.
+                                </p>
+                            </div>
+                        @endif
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Municipality/City -->
@@ -248,14 +310,17 @@
                                 </label>
                                 <select id="city_code" name="city_code" required
                                         x-model="cityCode" @change="loadBarangays()"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ $parentProfile && $parentProfile->city_code ? 'bg-purple-50' : '' }}">
                                     <option value="">Select municipality/city</option>
                                     @foreach($cities as $city)
-                                        <option value="{{ $city->code }}" {{ old('city_code', $parentProfile?->city_code) === $city->code ? 'selected' : '' }}>
+                                        <option value="{{ $city->code }}">
                                             {{ $city->name }}
                                         </option>
                                     @endforeach
                                 </select>
+                                @if($parentProfile && $parentProfile->city_code)
+                                    <p class="mt-1 text-xs text-purple-600">✓ Auto-filled from your profile ({{ $parentProfile->city_code }})</p>
+                                @endif
                                 @error('city_code')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -267,16 +332,19 @@
                                     Barangay <span class="text-red-500">*</span>
                                 </label>
                                 <select id="barangay_code" name="barangay_code" required
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ $parentProfile && $parentProfile->barangay_code ? 'bg-purple-50' : '' }}">
                                     <option value="">Select municipality first</option>
                                     @if($parentProfile && $parentProfile->city_code && count($barangays) > 0)
                                         @foreach($barangays as $barangay)
-                                            <option value="{{ $barangay->code }}" {{ old('barangay_code', $parentProfile?->barangay_code) === $barangay->code ? 'selected' : '' }}>
+                                            <option value="{{ $barangay->code }}" {{ (string)old('barangay_code', $parentProfile?->barangay_code ?? '') == (string)$barangay->code ? 'selected' : '' }}>
                                                 {{ $barangay->name }}
                                             </option>
                                         @endforeach
                                     @endif
                                 </select>
+                                @if($parentProfile && $parentProfile->barangay_code)
+                                    <p class="mt-1 text-xs text-purple-600">✓ Auto-filled from your profile</p>
+                                @endif
                                 @error('barangay_code')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -306,6 +374,27 @@
                             @error('username')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
+                        </div>
+                        
+                        <!-- Email Information Box -->
+                        <div class="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 mr-2 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-semibold text-blue-900 mb-1">📧 About Email Address</p>
+                                    <p class="text-xs text-blue-800">
+                                        @if(str_ends_with(strtolower(auth()->user()->email), '@gmail.com'))
+                                            Your child's account will use a Gmail+ address linked to your email: 
+                                            <span class="font-mono bg-white px-2 py-0.5 rounded border border-blue-300">{{ explode('@', auth()->user()->email)[0] }}+[username]@gmail.com</span>
+                                            <br><span class="text-blue-700 mt-1 block">All emails will be delivered to your inbox: <strong>{{ auth()->user()->email }}</strong></span>
+                                        @else
+                                            Your child's account will be assigned a unique email address. All notifications will be sent to your email: <strong>{{ auth()->user()->email }}</strong>
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Password -->
@@ -353,7 +442,7 @@
 
                     <!-- Monitoring Permissions (Always Enabled for Safety) -->
                     <div class="mb-6 pt-6 border-t border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">🔒 Your Parental Monitoring Access</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Your Parental Monitoring Access</h3>
                         <p class="text-sm text-gray-600 mb-4">
                             For your child's safety and COPPA compliance, you will have the following access:
                         </p>

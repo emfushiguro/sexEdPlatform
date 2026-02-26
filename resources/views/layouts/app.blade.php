@@ -37,5 +37,49 @@
                 {{ $slot }}
             </main>
         </div>
+
+        <!-- Toast Notifications -->
+        @stack('scripts')
+        <script>
+            // Function to wait for toast to be available
+            function waitForToast(callback, maxAttempts = 50) {
+                let attempts = 0;
+                const interval = setInterval(() => {
+                    attempts++;
+                    if (typeof window.toast !== 'undefined') {
+                        clearInterval(interval);
+                        callback();
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        console.error('Toast notification system failed to load');
+                    }
+                }, 100); // Check every 100ms
+            }
+
+            // Wait for toast to be available, then show messages
+            waitForToast(function() {
+                // Show success message if present
+                @if(session('success'))
+                    window.toast.success("{{ addslashes(session('success')) }}");
+                @endif
+
+                // Show error messages
+                @if($errors->any())
+                    @foreach($errors->all() as $error)
+                        window.toast.error("{{ addslashes($error) }}");
+                    @endforeach
+                @endif
+
+                // Show info message if present
+                @if(session('info'))
+                    window.toast.info("{{ addslashes(session('info')) }}");
+                @endif
+
+                // Show warning message if present
+                @if(session('warning'))
+                    window.toast.warning("{{ addslashes(session('warning')) }}");
+                @endif
+            });
+        </script>
     </body>
 </html>

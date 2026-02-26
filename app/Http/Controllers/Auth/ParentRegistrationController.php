@@ -123,15 +123,45 @@ class ParentRegistrationController extends Controller
             abort(403, 'You must be 18 or older to create a child account.');
         }
 
-        // Get parent's profile for location auto-fill
+        // Get parent's profile for location auto-fill (if completed)
         $parentProfile = auth()->user()->learnerProfile;
+        
+        // Retrieve pending child registration data from session (if exists)
+        $childData = session('pending_child_registration');
+        $childTimestamp = session('child_registration_timestamp');
+        
+        // Check if child data is still valid (within 24 hours)
+        if ($childData && $childTimestamp) {
+            $hoursElapsed = (now()->timestamp - $childTimestamp) / 3600;
+            if ($hoursElapsed > 24) {
+                // Data too old, clear it
+                session()->forget(['pending_child_registration', 'child_registration_timestamp']);
+                $childData = null;
+            }
+        }
+        
+        // Format birthdate for date input (YYYY-MM-DD) if childData exists
+        if ($childData && isset($childData['birthdate'])) {
+            $childData['birthdate_formatted'] = Carbon::parse($childData['birthdate'])->format('Y-m-d');
+        }
+        
+        // Generate Gmail+ email suggestion for child
+        $parentEmail = auth()->user()->email;
+        $suggestedEmail = null;
+        if ($childData && preg_match('/^(.+)@gmail\.com$/i', $parentEmail, $matches)) {
+            // Extract first name for email pattern
+            $childFirstName = strtolower(preg_replace('/[^a-z0-9]/', '', $childData['first_name'] ?? ''));
+            if ($childFirstName) {
+                $suggestedEmail = $matches[1] . '+' . $childFirstName . '@gmail.com';
+            }
+        }
         
         // Get Cavite cities for dropdown
         $cities = \Schoolees\Psgc\Models\City::where('province_code', '402100000')
             ->orderBy('name')
             ->get();
         
-        // Get barangays for parent's city
+        // Get barangays for parent's city (only if parent has profile)
         $barangays = [];
         if ($parentProfile && $parentProfile->city_code) {
             $barangays = \Schoolees\Psgc\Models\Barangay::where('city_code', $parentProfile->city_code)
@@ -139,7 +169,7 @@ class ParentRegistrationController extends Controller
                 ->get();
         }
 
-        return view('auth.create-child-account', compact('parentProfile', 'cities', 'barangays'));
+        return view('auth.create-child-account', compact('parentProfile', 'cities', 'barangays', 'childData', 'suggestedEmail'));
     }
 
     /**
@@ -198,6 +228,15 @@ class ParentRegistrationController extends Controller
         // Get barangay name
         $barangay = \Schoolees\Psgc\Models\Barangay::where('code', $validated['barangay_code'])->first();
         
+        // Generate child email using Gmail+ addressing pattern if parent uses Gmail
+        $parentEmail = $parent->email;
+        $childEmail = $validated['username'] . '@child.sexed-platform.local'; // Fallback
+        
+        if (preg_match('/^(.+)@gmail\.com$/i', $parentEmail, $matches)) {
+            // Parent uses Gmail - use Gmail+ addressing (e.g., parent@gmail.com -> parent+maria@gmail.com)
+            $childEmail = $matches[1] . '+' . $validated['username'] . '@gmail.com';
+        }
+        
         // Create child account
         $child = User::create([
             'name' => trim($validated['first_name'] . ' ' . $validated['last_name']),
@@ -205,11 +244,11 @@ class ParentRegistrationController extends Controller
             'middle_initial' => $validated['middle_initial'] ?? null,
             'last_name' => $validated['last_name'],
             'suffix' => $validated['suffix'] ?? null,
-            'email' => $validated['username'] . '@child.sexed-platform.local',
+            'email' => $childEmail,
             'birthdate' => $validated['birthdate'],
             'age' => $age,
             'password' => Hash::make($validated['password']),
-            'email_verified_at' => now(), // Auto-verify child accounts
+            'email_verified_at' => now(), // Auto-verify child accounts (parent already verified)
         ]);
 
         // Assign learner role
@@ -236,6 +275,9 @@ class ParentRegistrationController extends Controller
             'can_approve_content' => false, // Future feature
             'relationship_verified_at' => now(),
         ]);
+        
+        // Clear pending child registration data from session (process complete)
+        session()->forget(['pending_child_registration', 'child_registration_timestamp']);
 
         return redirect()->route('parent.children.index')
             ->with('success', "Child account created successfully! Username: {$validated['username']} | Password: (as you set) | Your child can now log in and start learning!");
