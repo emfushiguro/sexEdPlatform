@@ -87,7 +87,7 @@
                                 </div>
                                 <p class="text-xs opacity-75 mt-1">{{ $gamification->score % 100 }}/100 to Level {{ $gamification->level + 1 }}</p>
                             </div>
-                            <div class="text-4xl opacity-30">🎯</div>
+                            <div class="text-4xl opacity-30"></div>
                         </div>
                     </div>
                 </div>

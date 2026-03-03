@@ -186,8 +186,8 @@
 
             <!-- Back to Dashboard -->
             <div class="text-center">
-                <a href="{{ route('dashboard') }}" class="text-blue-600 hover:text-blue-800">
-                    ← Back to Dashboard
+                <a href="{{ route('learner.modules.index') }}" class="text-blue-600 hover:text-blue-800">
+                    ← Back to Modules
                 </a>
             </div>
         </div>

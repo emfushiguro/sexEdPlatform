@@ -19,9 +19,17 @@
             [x-cloak] { display: none !important; }
         </style>
     </head>
-    <body class="font-sans antialiased">
+    <body class="font-sans antialiased" x-data>
         <div class="min-h-screen bg-gray-100">
-            @include('layouts.navigation')
+            @auth
+                @if(Auth::user()->hasRole('learner') || Auth::user()->hasRole('parent'))
+                    @include('layouts.learner-navigation')
+                @else
+                    @include('layouts.navigation')
+                @endif
+            @else
+                @include('layouts.navigation')
+            @endauth
 
             <!-- Page Heading -->
             @isset($header)
@@ -64,6 +72,10 @@
                 @endif
 
                 // Show error messages
+                @if(session('error'))
+                    window.toast.error("{{ addslashes(session('error')) }}");
+                @endif
+
                 @if($errors->any())
                     @foreach($errors->all() as $error)
                         window.toast.error("{{ addslashes($error) }}");

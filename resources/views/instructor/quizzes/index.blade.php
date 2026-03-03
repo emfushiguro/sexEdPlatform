@@ -14,16 +14,18 @@
                 </a>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">Quiz Management</h2>
             </div>
-            <a href="{{ route('instructor.quizzes.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Create New Quiz</a>
+            <button @click="$store.modals.openQuizModal()" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Create New Quiz
+            </button>
         </div>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            @if(session('success'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{{ session('success') }}</div>
-            @endif
-
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
                     <form method="GET" class="flex gap-4">
@@ -46,7 +48,6 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Module/Lesson</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Passing Score</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Limit</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                             </tr>
                         </thead>
@@ -65,7 +66,6 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4">{{ $quiz->passing_score }}%</td>
-                                <td class="px-6 py-4">{{ $quiz->time_limit ? $quiz->time_limit . ' min' : 'No limit' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
                                     <a href="{{ route('instructor.quizzes.edit', $quiz) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
@@ -78,7 +78,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">No quizzes found</td>
+                                <td colspan="4" class="px-6 py-4 text-center text-gray-500">No quizzes found</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -87,5 +87,8 @@
                 </div>
             </div>
         </div>
+
+        <!-- Quiz Creation Modal -->
+        @include('instructor.quizzes.partials.quiz-modal')
     </div>
 </x-app-layout>

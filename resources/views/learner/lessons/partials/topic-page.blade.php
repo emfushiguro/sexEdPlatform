@@ -438,68 +438,118 @@
             </div>
 
             <!-- Navigation Buttons -->
-            <div class="flex gap-2">
-                @if($currentTopicIndex > 0)
-                    <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $currentTopicIndex - 1]) }}" 
-                       class="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                        </svg>
-                        Previous
-                    </a>
-                @endif
-
-                @if($currentTopicIndex < $lessonTopics->count() - 1)
-                    @if(in_array($currentTopic->id, $completedTopicIds))
-                        <!-- Already completed, just navigate -->
-                        <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $currentTopicIndex + 1]) }}" 
-                           class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition flex items-center gap-2">
-                            Next
+            <div class="mt-8 flex items-center justify-between border-t pt-6">
+                <div>
+                    @if($currentTopicIndex > 0)
+                        <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $currentTopicIndex - 1]) }}" 
+                           class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
+                            Previous
                         </a>
-                    @else
-                        <!-- Not completed, mark as complete then navigate -->
-                        <form id="complete-and-next-form" action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline">
-                            @csrf
-                            <input type="hidden" name="next_topic_index" value="{{ $currentTopicIndex + 1 }}">
-                            <button type="submit" 
-                                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition flex items-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                Complete & Next
+                    @endif
+                </div>
+
+                <div>
+                    @if($currentTopicIndex < $lessonTopics->count() - 1)
+                        {{-- Not last topic - show next topic button --}}
+                        @if(in_array($currentTopic->id, $completedTopicIds))
+                            <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $currentTopicIndex + 1]) }}" 
+                               class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition flex items-center gap-2">
+                                Next
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                 </svg>
-                            </button>
-                        </form>
-                    @endif
-                @else
-                    @if(!in_array($currentTopic->id, $completedTopicIds))
-                        <!-- Last topic, just mark as complete -->
-                        <form action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" 
-                                    class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition flex items-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                Complete Lesson
-                            </button>
-                        </form>
+                            </a>
+                        @else
+                            <form id="complete-and-next-form" action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline">
+                                @csrf
+                                <input type="hidden" name="next_topic_index" value="{{ $currentTopicIndex + 1 }}">
+                                <button type="submit" 
+                                        class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Complete & Next
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        @endif
                     @else
-                        <a href="{{ route('learner.modules.show', $lesson->module_id) }}" 
-                           class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            Back to Module
-                        </a>
+                        {{-- Last topic in lesson --}}
+                        @if($lessonQuiz && count($completedTopicIds) >= $lessonTopics->count())
+                            {{-- Has lesson quiz and all topics completed - show quiz button --}}
+                            @if(!in_array($currentTopic->id, $completedTopicIds))
+                                <form action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline" id="complete-then-quiz-form">
+                                    @csrf
+                                    <button type="submit" 
+                                            class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition flex items-center gap-2"
+                                            onclick="event.preventDefault(); 
+                                                     fetch(this.form.action, { method: 'POST', body: new FormData(this.form), headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'} })
+                                                     .then(() => window.location.href = '{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1]) }}');">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Complete & Take Quiz
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            @else
+                                <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1]) }}" 
+                                   class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition flex items-center gap-2">
+                                    Next: Take Quiz
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                    </svg>
+                                </a>
+                            @endif
+                        @else
+                            {{-- No lesson quiz - check for next lesson or module quiz --}}
+                            @if(!in_array($currentTopic->id, $completedTopicIds))
+                                <form action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit" 
+                                            class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition flex items-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Complete Topic
+                                    </button>
+                                </form>
+                            @else
+                                {{-- Check if this is last lesson in module and module has quiz --}}
+                                @php
+                                    $module = $lesson->module;
+                                    $isLastLesson = $module->lessons->sortBy('order')->last()->id === $lesson->id;
+                                    $moduleQuiz = $module->quiz;
+                                @endphp
+                                
+                                @if($isLastLesson && $moduleQuiz)
+                                    <a href="{{ route('learner.quizzes.take', $moduleQuiz->id) }}" 
+                                       class="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg transition flex items-center gap-2">
+                                        Take Module Quiz
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                        </svg>
+                                    </a>
+                                @else
+                                    <a href="{{ route('learner.modules.show', $lesson->module_id) }}" 
+                                       class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition flex items-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Back to Module
+                                    </a>
+                                @endif
+                            @endif
+                        @endif
                     @endif
-                @endif
-            </div>
+                </div>
         </div>
     </div>
 </div>

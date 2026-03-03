@@ -106,6 +106,29 @@ class RolePermissionSeeder extends Seeder
             'view certificates',
         ]);
 
+        // Instructor Role - Content Management
+        $instructorRole = Role::create(['name' => 'instructor']);
+        $instructorRole->givePermissionTo([
+            'view modules',
+            'create modules',
+            'edit modules',
+            'delete modules',
+            'publish modules',
+            'view lessons',
+            'create lessons',
+            'edit lessons',
+            'delete lessons',
+            'view quizzes',
+            'create quizzes',
+            'edit quizzes',
+            'delete quizzes',
+            'view quiz results',
+            'view users',
+            'edit users',
+            'view analytics',
+            'view activity logs',
+        ]);
+
         // Counselor Role
         $counselorRole = Role::create(['name' => 'counselor']);
         $counselorRole->givePermissionTo([

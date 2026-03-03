@@ -67,13 +67,13 @@
                             <p class="text-sm text-gray-500 mt-1">Manage the content sections for this lesson</p>
                         </div>
                         <div class="flex gap-3">
-                            <a href="{{ route('instructor.quizzes.create', ['lesson_id' => $lesson->id]) }}" 
+                            <button @click="$store.modals.openQuizModal()" 
                                 class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                                 </svg>
                                 Create Quiz
-                            </a>
+                            </button>
                             <a href="{{ route('instructor.topics.create', ['lesson' => $lesson->id]) }}" 
                                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,59 +166,60 @@
 
             <!-- Quiz Section -->
             @php
-                $lessonQuiz = $lesson->quizzes()->where('is_active', true)->first();
+                $lessonQuizzes = $lesson->quizzes()->with('questions')->latest()->get();
             @endphp
-            @if($lessonQuiz)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <div class="flex items-center justify-between mb-4">
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Lesson Quiz</h3>
-                                <p class="text-sm text-gray-500 mt-1">Quiz linked to this lesson</p>
+                                <h3 class="text-lg font-semibold text-gray-900">Lesson Quizzes</h3>
+                                <p class="text-sm text-gray-500 mt-1">Quizzes linked to this lesson</p>
                             </div>
-                            <a href="{{ route('instructor.quizzes.edit', $lessonQuiz) }}" 
-                                class="text-blue-600 hover:text-blue-900 text-sm font-medium">
-                                Edit Quiz
-                            </a>
+                            <button @click="$store.modals.openQuizModal()"
+                                class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                                Add Quiz
+                            </button>
                         </div>
-                        
-                        <div class="bg-purple-50 border-l-4 border-purple-500 p-4 rounded">
-                            <div class="flex items-start gap-4">
-                                <div class="flex-shrink-0">
-                                    <svg class="w-8 h-8 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                                        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                                <div class="flex-1">
-                                    <h4 class="font-semibold text-purple-900 mb-1">{{ $lessonQuiz->title }}</h4>
-                                    <p class="text-sm text-purple-700 mb-3">{{ $lessonQuiz->description }}</p>
-                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                        <div class="bg-white rounded p-2">
-                                            <span class="text-gray-500">Questions:</span>
-                                            <span class="font-semibold text-gray-900 ml-1">{{ $lessonQuiz->questions->count() }}</span>
+
+                        @if($lessonQuizzes->isEmpty())
+                            <div class="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                                <svg class="mx-auto w-10 h-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                                <p class="text-sm text-gray-500">No quizzes yet. Click <strong>Add Quiz</strong> to create one.</p>
+                            </div>
+                        @else
+                            <div class="divide-y divide-gray-100">
+                                @foreach($lessonQuizzes as $lq)
+                                    <div class="flex items-center justify-between py-3">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <div class="shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                                <svg class="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                                                    <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-medium text-gray-900 truncate">{{ $lq->title }}</p>
+                                                <p class="text-xs text-gray-500">{{ $lq->questions->count() }} questions &bull; {{ $lq->passing_score }}% passing</p>
+                                            </div>
                                         </div>
-                                        <div class="bg-white rounded p-2">
-                                            <span class="text-gray-500">Time Limit:</span>
-                                            <span class="font-semibold text-gray-900 ml-1">{{ $lessonQuiz->time_limit ?? 'None' }} min</span>
-                                        </div>
-                                        <div class="bg-white rounded p-2">
-                                            <span class="text-gray-500">Passing Score:</span>
-                                            <span class="font-semibold text-gray-900 ml-1">{{ $lessonQuiz->passing_score }}%</span>
-                                        </div>
-                                        <div class="bg-white rounded p-2">
-                                            <span class="text-gray-500">Status:</span>
-                                            <span class="font-semibold {{ $lessonQuiz->is_active ? 'text-green-600' : 'text-red-600' }} ml-1">
-                                                {{ $lessonQuiz->is_active ? 'Active' : 'Inactive' }}
+                                        <div class="flex items-center gap-3 shrink-0 ml-4">
+                                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full {{ $lq->is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
+                                                {{ $lq->is_active ? 'Active' : 'Inactive' }}
                                             </span>
+                                            <a href="{{ route('instructor.quizzes.show', $lq) }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">View</a>
+                                            <a href="{{ route('instructor.quizzes.edit', $lq) }}" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Edit</a>
                                         </div>
                                     </div>
-                                </div>
+                                @endforeach
                             </div>
-                        </div>
+                        @endif
                     </div>
                 </div>
-            @endif
 
         </div>
     </div>
@@ -367,4 +368,7 @@
         });
     </script>
     @endpush
+
+    <!-- Quiz Creation Modal -->
+    @include('instructor.lessons.partials.quiz-modal')
 </x-app-layout>

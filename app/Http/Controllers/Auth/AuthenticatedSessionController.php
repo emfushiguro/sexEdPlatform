@@ -41,8 +41,17 @@ class AuthenticatedSessionController extends Controller
 
         // Add success message
         $userName = Auth::user()->first_name ?? Auth::user()->name;
-        
-        return redirect()->intended(route('dashboard', absolute: false))
+
+        // Role-based redirect after login
+        $user = Auth::user();
+
+        if ($user->hasRole('instructor')) {
+            return redirect()->intended(route('instructor.dashboard'))
+                ->with('success', "Welcome back, {$userName}!");
+        }
+
+        // Learner (default)
+        return redirect()->intended(route('learner.dashboard'))
             ->with('success', "Welcome back, {$userName}!");
     }
 

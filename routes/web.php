@@ -10,6 +10,7 @@ use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
+use App\Http\Controllers\Learner\DashboardController as LearnerDashboardController;
 use App\Http\Controllers\Api\LocationController;
 use Illuminate\Support\Facades\Route;
 
@@ -85,6 +86,9 @@ Route::middleware('auth')->group(function () {
 
     // Learner routes - new clean implementation
     Route::prefix('learn')->name('learner.')->middleware('profile.completed')->group(function () {
+        // Dashboard
+        Route::get('/dashboard', [LearnerDashboardController::class, 'index'])->name('dashboard');
+
         // Module browsing and enrollment
         Route::get('/modules', [LearnerModuleController::class, 'index'])->name('modules.index');
         Route::get('/modules/{module}', [LearnerModuleController::class, 'show'])->name('modules.show');
@@ -126,11 +130,6 @@ Route::middleware('auth')->group(function () {
             Route::get('/{certificate}/download', [CertificateController::class, 'download'])->name('download');
         });
     });
-
-    // Learner Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])
-        ->middleware(['role:learner', 'profile.completed'])
-        ->name('dashboard');
 
     // Instructor routes (Content Management)
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {

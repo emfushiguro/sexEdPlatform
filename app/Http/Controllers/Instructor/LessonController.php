@@ -64,7 +64,8 @@ class LessonController extends Controller
     public function show(Lesson $lesson)
     {
         $lesson->load('module');
-        return view('instructor.lessons.show', compact('lesson'));
+        $modules = Module::with('lessons')->get();
+        return view('instructor.lessons.show', compact('lesson', 'modules'));
     }
 
     public function edit(Lesson $lesson)

@@ -87,9 +87,9 @@
 
                     <!-- Actions -->
                     <div class="flex gap-4">
-                        <a href="{{ route('dashboard') }}" 
+                        <a href="{{ route('learner.modules.index') }}" 
                            class="flex-1 text-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition">
-                            Back to Dashboard
+                            Back to Modules
                         </a>
                         @if(!$attempt->passed)
                             @php

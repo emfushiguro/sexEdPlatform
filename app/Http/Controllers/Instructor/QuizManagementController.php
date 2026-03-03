@@ -23,7 +23,7 @@ class QuizManagementController extends Controller
         }
 
         $quizzes = $query->latest()->paginate(15);
-        $modules = Module::all();
+        $modules = Module::with('lessons')->get();
 
         return view('instructor.quizzes.index', compact('quizzes', 'modules'));
     }
@@ -44,20 +44,25 @@ class QuizManagementController extends Controller
             'module_id' => 'nullable|exists:modules,id',
             'lesson_id' => 'nullable|exists:lessons,id',
             'passing_score' => 'required|integer|min:0|max:100',
-            'time_limit' => 'nullable|integer|min:1',
         ]);
+
+        // Set null defaults for optional fields
+        $validated['module_id'] = $validated['module_id'] ?? null;
+        $validated['lesson_id'] = $validated['lesson_id'] ?? null;
 
         // Ensure at least one of module_id or lesson_id is provided
         if (!$validated['module_id'] && !$validated['lesson_id']) {
-            return back()->withErrors(['module_id' => 'Please select either a module or a lesson.']);
+            return back()->withErrors(['module_id' => 'Please select either a module or a lesson.'])->withInput();
         }
 
         $validated['slug'] = Str::slug($validated['title']);
+        $validated['time_limit'] = null;
+        $validated['is_active'] = true;
 
-        Quiz::create($validated);
+        $quiz = Quiz::create($validated);
 
-        return redirect()->route('instructor.quizzes.index')
-            ->with('success', 'Quiz created successfully! Now add questions to it.');
+        return redirect()->route('instructor.quizzes.show', $quiz->id)
+            ->with('success', 'Quiz created! Now add questions below.');
     }
 
     public function show(Quiz $quiz)
@@ -80,14 +85,18 @@ class QuizManagementController extends Controller
             'module_id' => 'nullable|exists:modules,id',
             'lesson_id' => 'nullable|exists:lessons,id',
             'passing_score' => 'required|integer|min:0|max:100',
-            'time_limit' => 'nullable|integer|min:1',
         ]);
 
+        // Set null defaults for optional fields
+        $validated['module_id'] = $validated['module_id'] ?? null;
+        $validated['lesson_id'] = $validated['lesson_id'] ?? null;
+
         if (!$validated['module_id'] && !$validated['lesson_id']) {
-            return back()->withErrors(['module_id' => 'Please select either a module or a lesson.']);
+            return back()->withErrors(['module_id' => 'Please select either a module or a lesson.'])->withInput();
         }
 
         $validated['slug'] = Str::slug($validated['title']);
+        $validated['time_limit'] = null;
 
         $quiz->update($validated);
 
