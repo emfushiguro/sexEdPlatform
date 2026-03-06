@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +24,7 @@ class Payment extends Model
     protected function casts(): array
     {
         return [
+            'status' => PaymentStatus::class,
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
             'payment_details' => 'array',
@@ -67,35 +69,35 @@ class Payment extends Model
 
     public function scopeCompleted($query)
     {
-        return $query->where('status', 'completed');
+        return $query->where('status', PaymentStatus::Completed);
     }
 
     public function scopePending($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('status', PaymentStatus::Pending);
     }
 
     // Helper Methods
 
     public function isPending(): bool
     {
-        return $this->status === 'pending';
+        return $this->status === PaymentStatus::Pending;
     }
 
     public function isCompleted(): bool
     {
-        return $this->status === 'completed';
+        return $this->status === PaymentStatus::Completed;
     }
 
     public function isFailed(): bool
     {
-        return $this->status === 'failed';
+        return $this->status === PaymentStatus::Failed;
     }
 
     public function markAsCompleted(string $transactionId = null): void
     {
         $this->update([
-            'status' => 'completed',
+            'status' => PaymentStatus::Completed,
             'paid_at' => now(),
             'transaction_id' => $transactionId ?? $this->transaction_id,
         ]);
@@ -104,7 +106,7 @@ class Payment extends Model
     public function markAsFailed(): void
     {
         $this->update([
-            'status' => 'failed',
+            'status' => PaymentStatus::Failed,
         ]);
     }
 }

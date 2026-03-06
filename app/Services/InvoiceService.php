@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PaymentStatus;
 use App\Models\Payment;
 use App\Models\Invoice;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +20,7 @@ class InvoiceService
             'subtotal' => $payment->amount,
             'tax_amount' => 0, // Add tax calculation if needed
             'total_amount' => $payment->amount,
-            'status' => $payment->status === 'completed' ? 'paid' : 'pending',
+            'status' => $payment->status === PaymentStatus::Completed ? 'paid' : 'pending',
             'items' => [
                 [
                     'description' => $this->getSubscriptionDescription($payment),

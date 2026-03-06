@@ -1,91 +1,76 @@
 @extends('layouts.admin')
-
+@section('title', 'Create User')
+@section('page-title', 'Create User')
 @section('content')
-<div class="container mx-auto py-8 max-w-2xl">
-    <div class="flex items-center mb-6">
-        <a href="{{ route('admin.users.index') }}" class="text-gray-600 hover:text-gray-900 mr-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-            </svg>
-        </a>
-        <h1 class="text-2xl font-bold">Create New User</h1>
-    </div>
 
-    @if($errors->any())
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-        <ul class="list-disc list-inside">
-            @foreach($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
+<div class="mb-5">
+    <a href="{{ route('admin.users.index') }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to Users
+    </a>
+</div>
 
-    <div class="bg-white rounded shadow p-6">
-        <form method="POST" action="{{ route('admin.users.store') }}">
+@if($errors->any())
+<div class="mb-5 rounded-xl bg-error-50 border border-error-200 dark:bg-error-500/10 dark:border-error-500/20 px-4 py-3">
+    <ul class="list-disc list-inside text-sm text-error-700 dark:text-error-400 space-y-1">
+        @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+    </ul>
+</div>
+@endif
+
+<div class="max-w-2xl">
+    <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">New User Details</h3>
+        </div>
+        <form method="POST" action="{{ route('admin.users.store') }}" class="p-6 space-y-5">
             @csrf
-
-            <!-- Name -->
-            <div class="mb-4">
-                <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                <input type="text" name="name" id="name" value="{{ old('name') }}" 
-                    class="w-full border rounded px-3 py-2 focus:ring focus:border-blue-400" required>
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Full Name</label>
+                <input type="text" name="name" id="name" value="{{ old('name') }}" required
+                       class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
             </div>
-
-            <!-- Email -->
-            <div class="mb-4">
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                <input type="email" name="email" id="email" value="{{ old('email') }}" 
-                    class="w-full border rounded px-3 py-2 focus:ring focus:border-blue-400" required>
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email Address</label>
+                <input type="email" name="email" id="email" value="{{ old('email') }}" required
+                       class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
             </div>
-
-            <!-- Password -->
-            <div class="mb-4">
-                <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                <input type="password" name="password" id="password" 
-                    class="w-full border rounded px-3 py-2 focus:ring focus:border-blue-400" required>
-                <p class="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
+                <input type="password" name="password" id="password" required
+                       class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
+                <p class="mt-1 text-xs text-gray-400">Minimum 8 characters</p>
             </div>
-
-            <!-- Password Confirmation -->
-            <div class="mb-4">
-                <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
-                <input type="password" name="password_confirmation" id="password_confirmation" 
-                    class="w-full border rounded px-3 py-2 focus:ring focus:border-blue-400" required>
+            <div>
+                <label for="password_confirmation" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Confirm Password</label>
+                <input type="password" name="password_confirmation" id="password_confirmation" required
+                       class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
             </div>
-
-            <!-- Role -->
-            <div class="mb-4">
-                <label for="role" class="block text-sm font-medium text-gray-700 mb-2">Role</label>
-                <select name="role" id="role" class="w-full border rounded px-3 py-2 focus:ring focus:border-blue-400" required>
-                    <option value="">Select Role</option>
-                    <option value="learner" {{ old('role') == 'learner' ? 'selected' : '' }}>Learner</option>
-                    <option value="instructor" {{ old('role') == 'instructor' ? 'selected' : '' }}>Instructor</option>
-                    <option value="counselor" {{ old('role') == 'counselor' ? 'selected' : '' }}>Counselor</option>
-                    <option value="clinic" {{ old('role') == 'clinic' ? 'selected' : '' }}>Clinic</option>
-                    <option value="organization" {{ old('role') == 'organization' ? 'selected' : '' }}>Organization</option>
-                    <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Admin</option>
-                </select>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Role</label>
+                    <select name="role" id="role" required class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                        <option value="">Select Role</option>
+                        <option value="learner" @selected(old('role')=='learner')>Learner</option>
+                        <option value="instructor" @selected(old('role')=='instructor')>Instructor</option>
+                        <option value="counselor" @selected(old('role')=='counselor')>Counselor</option>
+                        <option value="clinic" @selected(old('role')=='clinic')>Clinic</option>
+                        <option value="organization" @selected(old('role')=='organization')>Organization</option>
+                        <option value="admin" @selected(old('role')=='admin')>Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Status</label>
+                    <select name="status" id="status" required class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                        <option value="active" @selected(old('status')=='active')>Active</option>
+                        <option value="inactive" @selected(old('status')=='inactive')>Inactive</option>
+                        <option value="suspended" @selected(old('status')=='suspended')>Suspended</option>
+                    </select>
+                </div>
             </div>
-
-            <!-- Status -->
-            <div class="mb-6">
-                <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select name="status" id="status" class="w-full border rounded px-3 py-2 focus:ring focus:border-blue-400" required>
-                    <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
-                    <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                    <option value="suspended" {{ old('status') == 'suspended' ? 'selected' : '' }}>Suspended</option>
-                </select>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex gap-3">
-                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded shadow font-semibold">
-                    Create User
-                </button>
-                <a href="{{ route('admin.users.index') }}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded shadow font-semibold">
-                    Cancel
-                </a>
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <a href="{{ route('admin.users.index') }}" class="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">Cancel</a>
+                <button type="submit" class="px-6 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium shadow-theme-xs transition-colors">Create User</button>
             </div>
         </form>
     </div>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\UserProgress;
@@ -99,7 +100,7 @@ class ModuleController extends Controller
             ->where('module_id', $module->id)
             ->first();
 
-        $isEnrolled = $enrollment && $enrollment->status === 'approved';
+        $isEnrolled = $enrollment && $enrollment->status === EnrollmentStatus::Approved;
         $enrollmentStatus = $enrollment ? $enrollment->status : null;
 
         // Calculate progress
@@ -176,13 +177,13 @@ class ModuleController extends Controller
         $existingEnrollment = $user->moduleEnrollments()->where('module_id', $module->id)->first();
         
         if ($existingEnrollment) {
-            if ($existingEnrollment->status === 'pending') {
+            if ($existingEnrollment->status === EnrollmentStatus::Pending) {
                 return back()->with('info', 'Your enrollment request is pending instructor approval.');
             }
-            if ($existingEnrollment->status === 'approved') {
+            if ($existingEnrollment->status === EnrollmentStatus::Approved) {
                 return back()->with('info', 'You are already enrolled in this module.');
             }
-            if ($existingEnrollment->status === 'rejected') {
+            if ($existingEnrollment->status === EnrollmentStatus::Rejected) {
                 return back()->with('error', 'Your enrollment request was rejected by the instructor.');
             }
         }
@@ -193,7 +194,7 @@ class ModuleController extends Controller
             ModuleEnrollment::create([
                 'user_id' => $user->id,
                 'module_id' => $module->id,
-                'status' => 'pending',
+                'status' => EnrollmentStatus::Pending,
                 'enrolled_at' => null,
             ]);
 
@@ -205,7 +206,7 @@ class ModuleController extends Controller
         ModuleEnrollment::create([
             'user_id' => $user->id,
             'module_id' => $module->id,
-            'status' => 'approved',
+            'status' => EnrollmentStatus::Approved,
             'enrolled_at' => now(),
         ]);
 

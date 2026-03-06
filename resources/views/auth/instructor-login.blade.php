@@ -52,7 +52,7 @@
         <div class="mt-6 pt-6 border-t border-gray-200 text-center">
             <p class="text-sm text-gray-600">
                 Are you a learner?
-                <a href="{{ route('learner.login') }}" class="font-medium text-indigo-600 hover:text-indigo-500">
+                <a href="{{ route('login') }}" class="font-medium text-indigo-600 hover:text-indigo-500">
                     Go to Learner Login
                 </a>
             </p>

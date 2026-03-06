@@ -2,15 +2,23 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Services\RefundService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PaymentAdminController extends Controller
 {
+    public function __construct(
+        protected RefundService $refundService,
+        protected SubscriptionService $subscriptionService
+    ) {}
+
     public function index(Request $request)
     {
         $query = Payment::with(['user', 'subscription']);
@@ -45,10 +53,10 @@ class PaymentAdminController extends Controller
         
         // Payment statistics
         $stats = [
-            'total_revenue' => Payment::where('status', 'completed')->sum('amount'),
-            'completed' => Payment::where('status', 'completed')->count(),
-            'failed' => Payment::where('status', 'failed')->count(),
-            'refunded' => Payment::where('status', 'refunded')->count(),
+            'total_revenue' => Payment::where('status', PaymentStatus::Completed)->sum('amount'),
+            'completed' => Payment::where('status', PaymentStatus::Completed)->count(),
+            'failed' => Payment::where('status', PaymentStatus::Failed)->count(),
+            'refunded' => Payment::where('status', PaymentStatus::Refunded)->count(),
         ];
         
         return view('admin.payments.index', compact('payments', 'stats'));
@@ -62,57 +70,43 @@ class PaymentAdminController extends Controller
 
     public function processRefund(Request $request, Payment $payment)
     {
-        if ($payment->status != 'completed') {
-            return back()->with('error', 'Only completed payments can be refunded');
-        }
-
-        // Check 3-day refund policy
-        if ($payment->paid_at && $payment->paid_at->diffInDays(now()) > 3) {
-            return back()->with('error', 'Refund period (3 days) has expired');
+        if ($payment->status !== PaymentStatus::Completed) {
+            return back()->with('error', 'Only completed payments can be refunded.');
         }
 
         $request->validate([
-            'reason' => 'required|string|max:255',
+            'reason' => 'required|string|max:500',
         ]);
 
-        DB::beginTransaction();
         try {
-            // 1. Mark payment as refunded
-            $payment->update([
-                'status' => 'refunded',
-                'payment_details' => array_merge($payment->payment_details ?? [], [
-                    'refund_reason' => $request->reason,
-                    'refunded_at' => now()->toDateTimeString(),
-                    'refunded_by_admin' => \Illuminate\Support\Facades\Auth::id(),
-                ]),
-            ]);
+            // bypassTimeLimit: true — admins can refund beyond the 3-day user window
+            $refund = $this->refundService->processRefund(
+                payment: $payment,
+                amount: null,          // full refund
+                reason: $request->reason,
+                adminNotes: 'Refund initiated by admin: ' . Auth::user()->name,
+                bypassTimeLimit: true
+            );
 
-            // 2. Immediately deactivate subscription
-            if ($payment->subscription) {
-                $payment->subscription->update([
-                    'status' => 'cancelled',
-                    'end_date' => now(),
-                    'cancelled_at' => now(),
-                    'cancellation_reason' => 'Payment refunded: ' . $request->reason,
-                    'auto_renew' => false,
-                ]);
+            $statusMsg = match ($refund->status) {
+                'completed'         => 'Refund processed successfully via PayMongo. Subscription deactivated.',
+                'manual_processing' => 'Refund has been logged for manual processing (no PayMongo payment ID found). Please process the refund directly in your PayMongo dashboard.',
+                default             => 'Refund recorded with status: ' . $refund->status,
+            };
 
-                    Log::info('Subscription deactivated due to refund', [
-                        'payment_id' => $payment->id,
-                            'subscription_id' => optional($payment->subscription)->id,
-                    'user_id' => $payment->user_id,
-                    'reason' => $request->reason,
-                ]);
-            }
+            return redirect()->route('admin.payments.show', $payment)
+                ->with('success', $statusMsg);
 
-            DB::commit();
-
-            return redirect()->route('admin.payments.index')
-                ->with('success', 'Payment refunded and subscription deactivated immediately');
-
+        } catch (\RuntimeException $e) {
+            // Duplicate refund or business rule violation
+            return back()->with('error', $e->getMessage());
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Refund processing error', ['error' => $e->getMessage()]);
+            Log::error('Admin refund failed', [
+                'payment_id' => $payment->id,
+                'error'      => $e->getMessage(),
+            ]);
             return back()->with('error', 'Refund failed: ' . $e->getMessage());
         }
     }
@@ -124,7 +118,7 @@ class PaymentAdminController extends Controller
      */
     public function markAsCompleted(Payment $payment)
     {
-        if ($payment->status === 'completed') {
+        if ($payment->status === PaymentStatus::Completed) {
             return back()->with('info', 'Payment is already completed');
         }
 
@@ -132,7 +126,7 @@ class PaymentAdminController extends Controller
             // Marking payment as completed triggers PaymentObserver which calls
             // SubscriptionService::activate() automatically.
             $payment->update([
-                'status'  => 'completed',
+                'status'  => PaymentStatus::Completed,
                 'paid_at' => now(),
                 'payment_details' => array_merge($payment->payment_details ?? [], [
                     'manually_completed_by_admin' => true,

@@ -240,6 +240,59 @@ class PayMongoPaymentLinkService
     }
 
     /**
+     * Resolve the actual PayMongo payment object ID (pay_xxxxx) from a payment link.
+     *
+     * The PayMongo Refunds API requires an actual payment object ID, not a link ID.
+     * Payment links store their completed payments in data.attributes.payments[].
+     * This method fetches the link and returns the first payment's ID.
+     *
+     * @param string $linkId  Payment Link ID (link_xxxxx)
+     * @return string|null    PayMongo payment object ID (pay_xxxxx) or null if not found
+     */
+    public function getActualPaymentIdFromLink(string $linkId): ?string
+    {
+        try {
+            $response = Http::withBasicAuth($this->secretKey, '')
+                ->get("{$this->apiBaseUrl}/links/{$linkId}");
+
+            if (!$response->successful()) {
+                Log::warning('PayMongo: Could not retrieve link to resolve payment ID', [
+                    'link_id' => $linkId,
+                    'status'  => $response->status(),
+                ]);
+                return null;
+            }
+
+            $data     = $response->json();
+            $payments = $data['data']['attributes']['payments'] ?? [];
+
+            if (empty($payments)) {
+                Log::warning('PayMongo: Link has no associated payments yet', [
+                    'link_id' => $linkId,
+                ]);
+                return null;
+            }
+
+            // Return the ID of the first (and usually only) payment object
+            $paymentId = $payments[0]['id'] ?? null;
+
+            Log::info('PayMongo: Resolved actual payment ID from link', [
+                'link_id'    => $linkId,
+                'payment_id' => $paymentId,
+            ]);
+
+            return $paymentId;
+
+        } catch (\Exception $e) {
+            Log::error('PayMongo: Failed to resolve payment ID from link', [
+                'link_id' => $linkId,
+                'error'   => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
      * Archive (disable) a Payment Link
      *
      * @param string $linkId Payment Link ID

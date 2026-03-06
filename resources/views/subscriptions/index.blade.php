@@ -18,7 +18,7 @@
             @endforeach
 
                     {{-- Pending payment warning --}}
-            @if($subscription && $subscription->status === 'pending')
+            @if($subscription && $subscription->status === \App\Enums\SubscriptionStatus::Pending)
                 <div class="mb-5 bg-amber-50 border border-amber-300 rounded-xl p-4 flex gap-3">
                     <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
                     <div>
@@ -28,7 +28,7 @@
                 </div>
             @endif
 
-            @if($subscription && in_array($subscription->status, ['active', 'trialing', 'cancelled', 'past_due', 'pending']))
+            @if($subscription && in_array($subscription->status->value, ['active', 'trialing', 'cancelled', 'past_due', 'pending']))
                 @php
                     $planModel = $subscription->relationLoaded('plan') ? $subscription->getRelation('plan') : $subscription->plan;
                     $daysLeft  = $subscription->end_date ? max(0, (int) ceil(now()->floatDiffInDays($subscription->end_date))) : null;
@@ -36,7 +36,7 @@
                         ? max(1, $subscription->start_date->diffInDays($subscription->end_date))
                         : null;
                     $progress  = ($daysLeft !== null && $totalDays) ? min(100, round(($daysLeft / $totalDays) * 100)) : null;
-                    $statusColor = match($subscription->status) {
+                    $statusColor = match($subscription->status->value) {
                         'active'    => ['bg' => 'bg-green-100', 'text' => 'text-green-700', 'dot' => 'bg-green-500'],
                         'trialing'  => ['bg' => 'bg-blue-100',  'text' => 'text-blue-700',  'dot' => 'bg-blue-500'],
                         'cancelled' => ['bg' => 'bg-gray-100',  'text' => 'text-gray-600',  'dot' => 'bg-gray-400'],
@@ -71,7 +71,7 @@
                         @endif
                         @if($subscription->end_date)
                             <div>
-                                <p class="text-xs text-gray-400 mb-0.5">{{ $subscription->status === 'cancelled' ? 'Access until' : 'Renews' }}</p>
+                                <p class="text-xs text-gray-400 mb-0.5">{{ $subscription->isCancelled() ? 'Access until' : 'Renews' }}</p>
                                 <p class="text-sm font-medium text-gray-800">{{ $subscription->end_date->format('M d, Y') }}</p>
                             </div>
                         @endif
@@ -152,7 +152,7 @@
                                         <li class="flex items-center gap-2.5">
                                             <input type="checkbox" checked disabled
                                                    class="w-4 h-4 rounded border-gray-300 accent-blue-500 cursor-default">
-                                            <span class="text-blue-600">{{ $planModel->trial_days }}-day free trial</span>
+                                            <span class="text-blue-600">{{ $planModel->trial_days }}-Day Access</span>
                                         </li>
                                     @endif
                                 @endif

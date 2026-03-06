@@ -1,233 +1,483 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Choose Your Plan') }}
-        </h2>
-    </x-slot>
+    {{-- Dark Hero Banner --}}
+    <div style="background:linear-gradient(160deg,#0d1117 0%,#1a1f3c 50%,#0d1117 100%);" class="text-white py-14 px-4 text-center border-b border-gray-800">
+        <p class="text-indigo-400 text-sm font-semibold uppercase tracking-widest mb-3">Choose your plan</p>
+        <h1 class="text-4xl font-extrabold tracking-tight mb-3">Unlock more lessons, practice &amp; Hearts</h1>
+        <p class="text-gray-400 text-lg max-w-xl mx-auto">Start for free. Upgrade any time to unlock the full learning experience.</p>
+        @if(!auth()->user()->isPremium())
+            <div class="inline-flex items-center gap-2 mt-5 bg-white/5 border border-white/10 text-gray-300 text-sm px-4 py-2 rounded-full">
+                <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                Free plan: limited to <strong class="mx-1 text-white">{{ \App\Models\QuizDailyLimit::MAX_FREE_ATTEMPTS }} quiz attempts</strong> per day
+            </div>
+        @endif
+    </div>
 
-    <div class="py-12 bg-gray-50 min-h-screen">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+    <div style="background:#0d1117;min-height:100vh;" class="pb-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {{-- Flash Messages --}}
-            @if(session('error'))
-                <div class="mb-6 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                    {{ session('error') }}
-                </div>
-            @endif
-            @if(session('success'))
-                <div class="mb-6 bg-green-50 border border-green-300 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            {{-- Page Heading --}}
-            <div class="text-center mb-10">
-                <h1 class="text-4xl font-bold text-gray-900 mb-3">Choose a plan</h1>
-                <p class="text-gray-500 text-lg">Start for free. Upgrade anytime.</p>
-                @if(!auth()->user()->isPremium())
-                    <div class="inline-flex items-center gap-2 mt-4 bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-full">
-                        <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-                        Free plan: limited to <strong class="mx-1">{{ \App\Models\QuizDailyLimit::MAX_FREE_ATTEMPTS }} quiz attempts</strong> per day
-                    </div>
+            <div class="pt-6">
+                @if(session('error'))
+                    <div class="mb-4 rounded-xl px-4 py-3 text-sm text-red-300 border border-red-800" style="background:rgba(127,29,29,0.3);">{{ session('error') }}</div>
+                @endif
+                @if(session('success'))
+                    <div class="mb-4 rounded-xl px-4 py-3 text-sm text-green-300 border border-green-800" style="background:rgba(20,83,45,0.3);">{{ session('success') }}</div>
                 @endif
             </div>
 
-            {{-- Plans Grid --}}
             @php
+                $featureLabelMap = config('subscription_features.labels', []);
+                $hidden = config('subscription_features.hidden', ['test_mode','duration_minutes','age_based_content_filtering']);
+
+                if (!function_exists('flattenFeatureLabels')) {
+                    function flattenFeatureLabels(array $features, array $labelMap, array $hidden = []): array {
+                        $out = [];
+                        foreach ($features as $group => $value) {
+                            if (is_array($value)) {
+                                foreach ($value as $key => $v) {
+                                    if (in_array($key, $hidden)) continue;
+                                    if ($v === true || (is_numeric($v) && $v > 0) || (is_string($v) && in_array($v, ['unlimited','full','advanced','priority']))) {
+                                        $out[$key] = $labelMap[$key] ?? ucwords(str_replace('_', ' ', $key));
+                                    }
+                                }
+                            } elseif (is_string($group) && ($value === true || $value === 1)) {
+                                if (!in_array($group, $hidden)) {
+                                    $out[$group] = $labelMap[$group] ?? ucwords(str_replace('_', ' ', $group));
+                                }
+                            } elseif (is_int($group) && is_string($value)) {
+                                if (!in_array($value, $hidden)) {
+                                    $out[$value] = $labelMap[$value] ?? ucwords(str_replace('_', ' ', $value));
+                                }
+                            }
+                        }
+                        return $out;
+                    }
+                }
+
                 $visiblePlans = collect($availablePlans ?? [])->filter(fn($p) => is_object($p));
-                $planCount = $visiblePlans->count();
+                $planCount    = $visiblePlans->count();
+                $gridCols     = $planCount >= 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : ($planCount === 3 ? 'sm:grid-cols-2 lg:grid-cols-3' : ($planCount === 2 ? 'sm:grid-cols-2' : ''));
                 $featuredUsed = false;
             @endphp
-            <div class="grid grid-cols-1 md:grid-cols-{{ min($planCount, 3) }} gap-6 items-stretch">
 
+            {{-- ─── Plan Cards ── --}}
+            <div class="grid grid-cols-1 {{ $gridCols }} gap-x-7 gap-y-7 items-stretch justify-items-center pt-12">
                 @forelse($visiblePlans as $plan)
                     @php
                         $isCurrentPlan = isset($currentPlanId) && $plan->id === $currentPlanId;
                         $isActive      = $hasActiveSubscription ?? false;
-                        $isFeatured    = !$plan->isFree() && !$plan->hasFeature('test_mode');
-                        $showFeatured  = $isFeatured && !$featuredUsed;
-                        if ($showFeatured) $featuredUsed = true;
+                        $lowerName     = strtolower($plan->name);
+                        $isFree        = $plan->isFree();
+                        $isPlus        = str_contains($lowerName, 'plus') || str_contains($lowerName, 'max');
+                        $isAnnual      = str_contains($lowerName, 'annual') || str_contains($lowerName, 'yearly');
+                        $isMonthly     = str_contains($lowerName, 'month');
+
+                        // First non-free non-plus annual plan gets MOST POPULAR
+                        $isFeatured = !$isFree && !$isPlus && $isAnnual && !$featuredUsed;
+                        if ($isFeatured) $featuredUsed = true;
+
+                        $billingNote  = $isAnnual ? 'Billed annually' : ($isMonthly ? 'Billed monthly' : null);
+                        $rawFeatures  = is_array($plan->features) ? $plan->features : [];
+                        $flatFeatures = flattenFeatureLabels($rawFeatures, $featureLabelMap, $hidden);
+
+                        $trialLabel = null;
+                        if ($plan->trial_days > 0) {
+                            if ($plan->trial_days >= 365)      $trialLabel = $plan->trial_days . '-Day Access (Annual)';
+                            elseif ($plan->trial_days >= 28)   $trialLabel = $plan->trial_days . '-Day Access (Monthly)';
+                            else                               $trialLabel = $plan->trial_days . '-Day Access';
+                        }
+
+                        // Card appearance
+                        if ($isFree) {
+                            $cardBg    = 'background:#161b2e;border:1px solid #2d3748;';
+                            $accentClr = '#4b5563';
+                            $tierBadge = '';
+                            $checkClr  = '#9ca3af';
+                            $btnStyle  = 'background:#1f2937;color:#6b7280;cursor:not-allowed;';
+                            $btnText   = 'Free — always';
+                        } elseif ($isPlus) {
+                            $cardBg    = 'background:#12082a;border:2px solid #7c3aed;';
+                            $accentClr = '#7c3aed';
+                            $tierBadge = '<span style="background:#7c3aed;color:#fff;font-size:0.6rem;font-weight:800;padding:2px 10px;border-radius:20px;letter-spacing:.06em;">MAX</span>';
+                            $checkClr  = '#c4b5fd';
+                            $btnStyle  = 'background:linear-gradient(90deg,#7c3aed,#6d28d9);color:#fff;';
+                            $btnText   = 'Choose Plan';
+                        } elseif ($isFeatured) {
+                            $cardBg    = 'background:#0e1f45;border:2px solid #3b82f6;';
+                            $accentClr = '#3b82f6';
+                            $tierBadge = '<span style="background:#f59e0b;color:#78350f;font-size:0.6rem;font-weight:800;padding:2px 10px;border-radius:20px;letter-spacing:.06em;">POPULAR</span>';
+                            $checkClr  = '#60a5fa';
+                            $btnStyle  = 'background:linear-gradient(90deg,#2563eb,#1d4ed8);color:#fff;';
+                            $btnText   = 'Choose Plan';
+                        } else {
+                            $cardBg    = 'background:#0e1a36;border:1px solid #1e40af;';
+                            $accentClr = '#22d3ee';
+                            $tierBadge = '<span style="background:#1d4ed8;color:#bfdbfe;font-size:0.6rem;font-weight:800;padding:2px 10px;border-radius:20px;letter-spacing:.06em;">PRO</span>';
+                            $checkClr  = '#22d3ee';
+                            $btnStyle  = 'background:linear-gradient(90deg,#06b6d4,#0891b2);color:#fff;';
+                            $btnText   = 'Choose Plan';
+                        }
                     @endphp
 
-                    <div class="relative rounded-2xl flex flex-col
-                        {{ $isCurrentPlan
-                            ? 'bg-white border-2 border-blue-500 shadow-lg'
-                            : ($showFeatured
-                                ? 'bg-gray-900 text-white shadow-2xl'
-                                : 'bg-white border border-gray-200 shadow-sm') }}">
+                    {{-- ── Card ── --}}
+                    <div class="relative w-full max-w-[250px] rounded-xl flex flex-col overflow-hidden shadow-2xl" style="{{ $cardBg }}">
 
-                        {{-- Top badge --}}
-                        @if($isCurrentPlan)
-                            <div class="absolute -top-3 left-1/2 -translate-x-1/2">
-                                <span class="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow">Your plan</span>
+                        {{-- Colored top accent bar --}}
+                        <div style="height:4px;background:{{ $accentClr }};"></div>
+
+                        {{-- Popular / current badge --}}
+                        @if($isFeatured)
+                            <div class="absolute top-3 right-3 z-10">
+                                <span class="text-xs font-black px-3 py-1 rounded-full" style="background:#f59e0b;color:#78350f;">★ POPULAR</span>
                             </div>
-                        @elseif($showFeatured)
-                            <div class="absolute -top-3 left-1/2 -translate-x-1/2">
-                                <span class="bg-white text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow border border-gray-200">Most popular</span>
+                        @elseif($isPlus)
+                            <div class="absolute top-3 right-3 z-10">
+                                <span class="text-xs font-black px-3 py-1 rounded-full" style="background:#7c3aed;color:#fff;">⭐ ALL ACCESS</span>
                             </div>
-                        @elseif($plan->hasFeature('test_mode'))
-                            <div class="absolute -top-3 left-1/2 -translate-x-1/2">
-                                <span class="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow">Test mode</span>
+                        @elseif($isCurrentPlan)
+                            <div class="absolute top-3 right-3 z-10">
+                                <span class="text-xs font-black px-3 py-1 rounded-full bg-indigo-600 text-white">✓ Your plan</span>
                             </div>
                         @endif
 
-                        <div class="p-8 flex flex-col flex-1">
+                        <div class="p-3 flex flex-col flex-1">
 
-                            {{-- Plan name & description --}}
-                            <div class="mb-6">
-                                <h2 class="text-xl font-bold {{ $showFeatured ? 'text-white' : 'text-gray-900' }} mb-1">{{ $plan->name }}</h2>
-                                @if($plan->description)
-                                    <p class="text-sm {{ $showFeatured ? 'text-gray-400' : 'text-gray-500' }}">{{ $plan->description }}</p>
-                                @endif
+                            {{-- Plan name + badge --}}
+                            <div class="flex items-center gap-1 mb-1 flex-wrap">
+                                <h2 class="text-lg font-black text-white">{{ $plan->name }}</h2>
+                                @if(!$isFree) {!! $tierBadge !!} @endif
                             </div>
 
-                            {{-- Pricing --}}
-                            <div class="mb-6">
-                                @if($plan->isFree())
-                                    <div class="flex items-baseline gap-1">
-                                        <span class="text-5xl font-bold text-gray-900">₱0</span>
-                                    </div>
-                                @else
-                                    <div class="flex items-baseline gap-1">
-                                        <span class="text-5xl font-bold {{ $showFeatured ? 'text-white' : 'text-gray-900' }}">
-                                            ₱{{ number_format($plan->price, 0) }}
-                                        </span>
-                                        <span class="{{ $showFeatured ? 'text-gray-400' : 'text-gray-500' }} text-sm">/ month</span>
-                                    </div>
-                                @endif
-                            </div>
+                            @if($plan->description)
+                                <p class="text-[11px] leading-relaxed mb-3" style="color:#94a3b8;">{{ $plan->description }}</p>
+                            @else
+                                <div class="mb-5"></div>
+                            @endif
 
-                            {{-- CTA Button --}}
-                            <div class="mb-8">
-                                @if($plan->isFree())
-                                    <button disabled class="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-gray-100 text-gray-400 cursor-not-allowed">
-                                        Your current plan
-                                    </button>
-
-                                @elseif($isCurrentPlan)
-                                    <button disabled class="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-blue-50 text-blue-700 border border-blue-300 cursor-default">
-                                        ✓ Current plan
-                                    </button>
-
-                                @elseif($isActive)
-                                    <button disabled class="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-gray-100 text-gray-400 cursor-not-allowed"
-                                        title="Cancel your current plan to switch.">
-                                        Cancel plan to switch
-                                    </button>
-                                    <p class="text-center text-xs text-gray-400 mt-2">
-                                        <a href="{{ route('subscription.index') }}" class="underline hover:opacity-80">Manage subscription →</a>
-                                    </p>
-
-                                @elseif($plan->hasFeature('test_mode'))
-                                    <form action="{{ route('subscription.subscribe') }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                                        <button type="submit" class="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-yellow-400 hover:bg-yellow-500 text-yellow-900 transition">
-                                            🧪 Start test ({{ $plan->getFeatureValue('duration_minutes', 10) }} min)
-                                        </button>
-                                    </form>
-
-                                @else
-                                    <form action="{{ route('subscription.subscribe') }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-                                        <button type="submit" class="w-full py-3 px-4 rounded-xl text-sm font-semibold transition
-                                            {{ $showFeatured ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-900 text-white hover:bg-gray-800' }}">
-                                            Subscribe
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
+                            {{-- Price block --}}
+                            @if($isFree)
+                                <div class="flex items-end gap-1 mb-1">
+                                    <span class="text-3xl font-black text-white leading-none">0</span>
+                                    <span class="text-lg font-bold mb-1" style="color:{{ $accentClr }};">₱</span>
+                                </div>
+                                <p class="text-[11px] mb-4" style="color:#6b7280;">Always free · No card needed</p>
+                            @else
+                                <div class="flex items-end gap-1 mb-1">
+                                    <span class="text-3xl font-black text-white leading-none">{{ number_format($plan->price, 0) }}</span>
+                                    <span class="text-lg font-bold mb-1" style="color:{{ $accentClr }};">₱</span>
+                                </div>
+                                <p class="text-[11px] mb-4" style="color:#6b7280;">{{ $billingNote ?? 'One-time' }}</p>
+                            @endif
 
                             {{-- Divider --}}
-                            <div class="border-t {{ $showFeatured ? 'border-gray-700' : 'border-gray-100' }} mb-6"></div>
+                            <div class="border-t mb-5" style="border-color:rgba(255,255,255,0.07);"></div>
 
-                            {{-- Features --}}
-                            @php
-                                $featureLabels = [
-                                    'unlimited_quizzes'          => 'Unlimited quiz attempts',
-                                    'certificates'               => 'Completion certificates',
-                                    'priority_support'           => 'Priority support',
-                                    'downloadable_content'       => 'Downloadable resources',
-                                    'downloadable_resources'     => 'Downloadable resources',
-                                    'consultations'              => 'Live consultations',
-                                    'offline_access'             => 'Offline access',
-                                    'progress_analytics'         => 'Progress analytics',
-                                    'all_modules'                => 'Access to all modules',
-                                    'admin_dashboard'            => 'Admin dashboard',
-                                    'progress_tracking'          => 'Progress tracking',
-                                    'bulk_enrollment'            => 'Bulk enrollment',
-                                    'custom_branding'            => 'Custom branding',
-                                    'api_access'                 => 'API access',
-                                    'dedicated_account_manager'  => 'Dedicated account manager',
-                                    'custom_reporting'           => 'Custom reporting',
-                                ];
-                                $planFeatures = is_array($plan->features) ? $plan->features : [];
-                                $hidden = ['test_mode', 'duration_minutes'];
-                                $displayFeatures = array_filter($planFeatures, fn($f) => !in_array($f, $hidden));
-                            @endphp
-                            <ul class="space-y-2.5 flex-1 text-sm">
-                                @if($plan->isFree())
-                                    <li class="flex items-center gap-2.5">
-                                        <svg class="w-4 h-4 flex-shrink-0 {{ $showFeatured ? 'text-green-400' : 'text-green-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                        <span class="{{ $showFeatured ? 'text-gray-300' : 'text-gray-700' }}">3 quiz attempts per day</span>
-                                    </li>
-                                    <li class="flex items-center gap-2.5">
-                                        <svg class="w-4 h-4 flex-shrink-0 {{ $showFeatured ? 'text-green-400' : 'text-green-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                        <span class="{{ $showFeatured ? 'text-gray-300' : 'text-gray-700' }}">Limited module access</span>
-                                    </li>
-                                @else
-                                    @foreach($displayFeatures as $feat)
-                                        <li class="flex items-center gap-2.5">
-                                            <svg class="w-4 h-4 flex-shrink-0 {{ $showFeatured ? 'text-green-400' : 'text-green-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                            </svg>
-                                            <span class="{{ $showFeatured ? 'text-gray-300' : 'text-gray-700' }}">
-                                                {{ $featureLabels[$feat] ?? ucwords(str_replace('_', ' ', $feat)) }}
-                                            </span>
+                            {{-- Feature list — checkmarks on LEFT --}}
+                            <ul class="flex-1 space-y-1.5 mb-4">
+                                @if($isFree)
+                                    @foreach(['3 quiz attempts / day','Limited module access'] as $feat)
+                                        <li class="flex items-center gap-2">
+                                            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="{{ $checkClr }}" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            <span class="text-xs" style="color:#94a3b8;">{{ $feat }}</span>
                                         </li>
                                     @endforeach
-                                    @if($plan->trial_days > 0)
-                                        <li class="flex items-center gap-2.5">
-                                            <svg class="w-4 h-4 flex-shrink-0 {{ $showFeatured ? 'text-blue-400' : 'text-blue-500' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                            </svg>
-                                            <span class="{{ $showFeatured ? 'text-blue-300' : 'text-blue-600' }}">
-                                                {{ $plan->trial_days }}-day free trial
-                                            </span>
+                                @else
+                                    @if($trialLabel)
+                                        <li class="flex items-center gap-2">
+                                            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="#fcd34d" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            <span class="text-xs font-semibold" style="color:#fcd34d;">{{ $trialLabel }}</span>
                                         </li>
                                     @endif
-                                    @if(empty($displayFeatures) && $plan->trial_days == 0)
-                                        <li class="flex items-center gap-2.5 text-gray-400 italic">
-                                            Basic access included
+                                    @forelse($flatFeatures as $key => $label)
+                                        <li class="flex items-center gap-2">
+                                            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="{{ $checkClr }}" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            <span class="text-xs text-gray-200">{{ $label }}</span>
                                         </li>
-                                    @endif
+                                    @empty
+                                        @if(!$trialLabel)
+                                            <li class="text-[11px] italic" style="color:#6b7280;">Full premium access</li>
+                                        @endif
+                                    @endforelse
                                 @endif
                             </ul>
 
+                            {{-- CTA pinned to bottom --}}
+                            <div class="mt-auto">
+                                @if($isFree)
+                                    <button disabled class="w-full py-2 rounded-lg text-xs font-bold tracking-wide" style="{{ $btnStyle }}">{{ $btnText }}</button>
+                                @elseif($isCurrentPlan)
+                                    <button disabled class="w-full py-2 rounded-lg text-xs font-bold border" style="background:transparent;color:#818cf8;border-color:#4f46e5;cursor:default;">✓ Current Plan</button>
+                                @elseif($isActive)
+                                    <button disabled class="w-full py-2 rounded-lg text-xs font-bold" style="background:#1f2937;color:#6b7280;cursor:not-allowed;">Cancel plan to switch</button>
+                                    <p class="text-center text-[11px] mt-1" style="color:#6b7280;">
+                                        <a href="{{ route('subscription.index') }}" class="underline hover:text-gray-300">Manage subscription →</a>
+                                    </p>
+                                @else
+                                    <form action="{{ route('subscription.subscribe') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                                        <button type="submit" class="w-full py-2 rounded-lg text-xs font-bold tracking-wide transition hover:opacity-90 shadow-lg" style="{{ $btnStyle }}">
+                                            {{ $btnText }}
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+
                         </div>
                     </div>
-
                 @empty
-                    <div class="col-span-3 text-center py-16">
-                        <svg class="mx-auto w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                        <p class="text-gray-500 text-lg font-medium mb-1">No plans available</p>
-                        <p class="text-gray-400 text-sm">Contact the administrator to set up subscription plans.</p>
+                    <div class="col-span-4 text-center py-16">
+                        <p class="text-gray-500 text-lg">No plans available. Contact administrator.</p>
                     </div>
                 @endforelse
             </div>
 
-            <p class="text-center text-xs text-gray-400 mt-10">
-                All plans include access to our core sexual health education content. Cancel anytime.
-                <a href="{{ route('dashboard') }}" class="ml-3 text-gray-500 underline hover:text-gray-700">← Back to dashboard</a>
-            </p>
+            {{-- ─── Feature Comparison Table ── --}}
+            @if($visiblePlans->count() > 1)
+            @php
+                // ── Rows definition ──────────────────────────────────────────
+                $comparisonGroups = [
+                    '📚 Learning' => [
+                        ['label' => 'Standard Module Access',    'key' => 'full_course_access',    'free' => 'limited'],
+                        ['label' => 'Offline Access',            'key' => 'offline_access',        'free' => false],
+                        ['label' => 'Expert Video Sessions',     'key' => 'expert_video_sessions', 'free' => false],
+                        ['label' => 'Exclusive / Bonus Content', 'key' => 'exclusive_content',     'free' => false],
+                    ],
+                    '📝 Assessment' => [
+                        ['label' => 'Unlimited Quiz Attempts',      'key' => 'unlimited_quizzes',           'free' => false],
+                        ['label' => 'Completion Certificates',      'key' => 'certificates',                'free' => false],
+                        ['label' => 'Advanced Progress Analytics',  'key' => 'advanced_analytics',          'free' => false],
+                    ],
+                    '💬 Content & Community' => [
+                        ['label' => 'Downloadable Materials',       'key' => 'downloadable_materials',      'free' => false],
+                        ['label' => 'Anonymous Q&A with Educators', 'key' => 'anonymous_qa',                'free' => false],
+                        ['label' => 'Private Community Discussion', 'key' => 'private_community',           'free' => false],
+                    ],
+                    '🎧 Support & Experience' => [
+                        ['label' => 'Priority Support',             'key' => 'priority_support',            'free' => false],
+                        ['label' => 'Ad-Free Experience',           'key' => 'ad_free',                     'free' => false],
+                    ],
+                    '🚀 Premium Plus Exclusive' => [
+                        ['label' => 'Appointment Booking',          'key' => 'appointment_booking',         'free' => false],
+                        ['label' => 'AI Chatbot Assistant',         'key' => 'ai_chatbot',                  'free' => false],
+                    ],
+                ];
 
+                // ── Build feature key sets per plan ──────────────────────────
+                $planFeatureKeys = [];
+                foreach ($visiblePlans as $plan) {
+                    $flat = [];
+                    if (is_array($plan->features)) {
+                        foreach ($plan->features as $group => $value) {
+                            if (is_array($value)) {
+                                foreach ($value as $k => $v) {
+                                    if ($v === true || (is_numeric($v) && $v > 0) || (is_string($v) && in_array($v, ['unlimited','full','advanced','priority']))) {
+                                        $flat[] = $k;
+                                    }
+                                }
+                            } elseif ($value === true) {
+                                $flat[] = $group;
+                            } elseif (is_int($group) && is_string($value)) {
+                                $flat[] = $value;
+                            }
+                        }
+                    }
+                    $planFeatureKeys[$plan->id] = $flat;
+                }
+
+                // ── Build 3 comparison columns: Free | Premium | Premium Plus ─
+                // Free plan
+                $freePlan     = $visiblePlans->first(fn($p) => $p->isFree());
+                // Premium = pick the annual plan (or monthly if no annual)
+                $premiumPlan  = $visiblePlans
+                    ->filter(fn($p) => !$p->isFree() && !str_contains(strtolower($p->name),'plus') && !str_contains(strtolower($p->name),'max'))
+                    ->sortByDesc(fn($p) => str_contains(strtolower($p->name),'annual') ? 1 : 0)
+                    ->first();
+                // Find monthly plan price for the subtext
+                $premiumMonthly = $visiblePlans
+                    ->filter(fn($p) => !$p->isFree() && str_contains(strtolower($p->name),'month'))
+                    ->first();
+                $premiumAnnual  = $visiblePlans
+                    ->filter(fn($p) => !$p->isFree() && (str_contains(strtolower($p->name),'annual')||str_contains(strtolower($p->name),'year')))
+                    ->first();
+                // Premium Plus
+                $plusPlan     = $visiblePlans
+                    ->filter(fn($p) => str_contains(strtolower($p->name),'plus') || str_contains(strtolower($p->name),'max'))
+                    ->first();
+
+                $tableCols = array_filter([
+                    'free'    => $freePlan,
+                    'premium' => $premiumPlan,
+                    'plus'    => $plusPlan,
+                ]);
+            @endphp
+
+            @if(!empty($tableCols))
+            <div class="mt-20">
+                <h2 class="text-3xl font-black text-center text-white mb-2">Compare all features</h2>
+                <p class="text-center text-gray-500 text-sm mb-10">Premium Monthly &amp; Annual share the same features — only the billing changes.</p>
+
+                <div class="rounded-2xl overflow-hidden border border-gray-800" style="background:#161b2e;">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                {{-- Column headers --}}
+                                <tr style="background:#0d1117;border-bottom:2px solid #1e2a45;">
+                                    <th class="text-left py-6 px-6 font-semibold text-gray-500 w-5/12"></th>
+
+                                    {{-- Free --}}
+                                    @if($freePlan)
+                                    <th class="py-6 px-6 text-center">
+                                        <div class="text-lg font-black text-gray-400">Free</div>
+                                        <div class="text-2xl font-black text-white mt-1">₱0</div>
+                                        <div class="text-xs text-gray-600 mt-0.5">Forever</div>
+                                    </th>
+                                    @endif
+
+                                    {{-- Premium --}}
+                                    @if($premiumPlan)
+                                    <th class="py-6 px-6 text-center relative">
+                                        <div class="inline-flex items-center gap-1.5 mb-2">
+                                            <span class="text-lg font-black" style="color:#22d3ee;">Premium</span>
+                                            <span class="text-xs font-bold px-2 py-0.5 rounded" style="background:#1d4ed8;color:#bfdbfe;">PRO</span>
+                                        </div>
+                                        {{-- Pricing options --}}
+                                        <div class="flex flex-col gap-1 items-center mt-1">
+                                            @if($premiumMonthly)
+                                                <div class="text-xs px-3 py-1.5 rounded-lg w-full text-center" style="background:#1a2744;border:1px solid #1e40af;">
+                                                    <span class="font-black text-white">₱{{ number_format($premiumMonthly->price, 0) }}</span>
+                                                    <span class="text-gray-400">/mo</span>
+                                                    <div class="text-gray-600" style="font-size:0.65rem;">Billed monthly</div>
+                                                </div>
+                                            @endif
+                                            @if($premiumAnnual)
+                                                <div class="text-xs px-3 py-1.5 rounded-lg w-full text-center" style="background:#1a2744;border:1px solid #f59e0b;">
+                                                    <span class="font-black" style="color:#fbbf24;">₱{{ number_format($premiumAnnual->price, 0) }}</span>
+                                                    <span class="text-gray-400">/yr</span>
+                                                    <div style="color:#f59e0b;font-size:0.65rem;">★ Best value</div>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </th>
+                                    @endif
+
+                                    {{-- Premium Plus --}}
+                                    @if($plusPlan)
+                                    <th class="py-6 px-6 text-center">
+                                        <div class="inline-flex items-center gap-1.5 mb-2">
+                                            <span class="text-lg font-black" style="color:#a78bfa;">Premium Plus</span>
+                                            <span class="text-xs font-bold px-2 py-0.5 rounded" style="background:#7c3aed;color:#fff;">MAX</span>
+                                        </div>
+                                        <div class="text-2xl font-black text-white mt-1">₱{{ number_format($plusPlan->price, 0) }}</div>
+                                        <div class="text-xs text-gray-500 mt-0.5">Billed annually</div>
+                                        <div class="inline-block mt-2 text-xs font-bold px-3 py-1 rounded-full" style="background:rgba(124,58,237,0.25);color:#c4b5fd;border:1px solid #7c3aed;">All features included</div>
+                                    </th>
+                                    @endif
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($comparisonGroups as $groupLabel => $rows)
+                                    {{-- Group header row --}}
+                                    <tr style="background:#0d1117;">
+                                        <td colspan="{{ count($tableCols) + 1 }}" class="px-6 pt-5 pb-2">
+                                            <span class="text-xs font-bold uppercase tracking-widest" style="color:#4b5563;">{{ $groupLabel }}</span>
+                                        </td>
+                                    </tr>
+                                    {{-- Feature rows --}}
+                                    @foreach($rows as $i => $row)
+                                        @php
+                                            $isPlusExclusive = $groupLabel === '🚀 Premium Plus Exclusive';
+                                        @endphp
+                                        <tr class="border-b transition" style="border-color:#1e2a45;{{ $isPlusExclusive ? 'background:rgba(124,58,237,0.05);' : ($i % 2 === 0 ? 'background:#161b2e;' : 'background:#1a2035;') }}">
+                                            <td class="py-3 px-6 {{ $isPlusExclusive ? 'text-purple-300' : 'text-gray-300' }}">
+                                                {{ $row['label'] }}
+                                                @if($isPlusExclusive)<span class="ml-1 text-xs" style="color:#7c3aed;">★</span>@endif
+                                            </td>
+
+                                            {{-- Free --}}
+                                            @if($freePlan)
+                                            <td class="py-3 px-6 text-center">
+                                                @if($row['free'] === 'limited')
+                                                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="color:#f59e0b;background:rgba(245,158,11,0.15);">Limited</span>
+                                                @else
+                                                    <span style="color:#2d3748;font-size:1.2rem;">—</span>
+                                                @endif
+                                            </td>
+                                            @endif
+
+                                            {{-- Premium --}}
+                                            @if($premiumPlan)
+                                            @php $hasPremium = in_array($row['key'], $planFeatureKeys[$premiumPlan->id] ?? []); @endphp
+                                            <td class="py-3 px-6 text-center">
+                                                @if($hasPremium)
+                                                    <svg class="w-5 h-5 mx-auto" fill="none" stroke="#22d3ee" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                                @else
+                                                    <span style="color:#2d3748;font-size:1.2rem;">—</span>
+                                                @endif
+                                            </td>
+                                            @endif
+
+                                            {{-- Premium Plus --}}
+                                            @if($plusPlan)
+                                            @php $hasPlus = in_array($row['key'], $planFeatureKeys[$plusPlan->id] ?? []); @endphp
+                                            <td class="py-3 px-6 text-center" style="{{ $isPlusExclusive ? 'background:rgba(124,58,237,0.1);' : '' }}">
+                                                @if($hasPlus)
+                                                    <svg class="w-5 h-5 mx-auto" fill="none" stroke="#a78bfa" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                                @else
+                                                    <span style="color:#2d3748;font-size:1.2rem;">—</span>
+                                                @endif
+                                            </td>
+                                            @endif
+                                        </tr>
+                                    @endforeach
+                                @endforeach
+
+                                {{-- CTA row --}}
+                                <tr style="background:#0d1117;border-top:2px solid #1e2a45;">
+                                    <td class="py-6 px-6 text-gray-600 text-xs">All plans include core sexual health education content.</td>
+
+                                    @if($freePlan)
+                                    <td class="py-6 px-6 text-center">
+                                        <span class="text-xs text-gray-600">Always free</span>
+                                    </td>
+                                    @endif
+
+                                    @if($premiumPlan)
+                                    <td class="py-6 px-6 text-center">
+                                        @php $isActivePremium = isset($currentPlanId) && ($premiumMonthly && $premiumMonthly->id === $currentPlanId || $premiumAnnual && $premiumAnnual->id === $currentPlanId); @endphp
+                                        @if(!($hasActiveSubscription ?? false) || $isActivePremium)
+                                            <a href="{{ route('subscription.upgrade') }}#plans" class="inline-block py-2.5 px-6 rounded-xl text-sm font-bold transition" style="background:#22d3ee;color:#083344;">
+                                                Get PRO now
+                                            </a>
+                                        @endif
+                                    </td>
+                                    @endif
+
+                                    @if($plusPlan)
+                                    <td class="py-6 px-6 text-center" style="background:rgba(124,58,237,0.05);">
+                                        @if(!($hasActiveSubscription ?? false))
+                                            <a href="{{ route('subscription.upgrade') }}#plans" class="inline-block py-2.5 px-6 rounded-xl text-sm font-bold transition" style="background:#7c3aed;color:#fff;">
+                                                Get MAX now
+                                            </a>
+                                        @endif
+                                    </td>
+                                    @endif
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+            @endif
+
+            <p class="text-center text-xs text-gray-600 mt-10">
+                All plans include access to our core sexual health education content. Cancel anytime.
+                <a href="{{ route('dashboard') }}" class="ml-3 text-indigo-400 underline hover:text-indigo-300">← Back to dashboard</a>
+            </p>
         </div>
     </div>
 </x-app-layout>
+

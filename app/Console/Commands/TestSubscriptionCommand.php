@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
 use App\Models\User;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
@@ -71,7 +73,7 @@ class TestSubscriptionCommand extends Command
 
             // Cancel existing subscription
             $user->subscription->update([
-                'status' => 'cancelled',
+                'status' => SubscriptionStatus::Cancelled,
                 'cancelled_at' => now(),
                 'cancellation_reason' => 'Cancelled for test subscription',
             ]);
@@ -102,7 +104,7 @@ class TestSubscriptionCommand extends Command
                 'user_id' => $user->id,
                 'plan_id' => $testPlan->id,
                 'plan' => $testPlan->slug,
-                'status' => 'active',
+                'status' => SubscriptionStatus::Active,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'trial_ends_at' => null,
@@ -115,7 +117,7 @@ class TestSubscriptionCommand extends Command
                 'user_id' => $user->id,
                 'amount' => 1.00,
                 'method' => 'test_command',
-                'status' => 'completed',
+                'status' => PaymentStatus::Completed,
                 'transaction_id' => 'TEST-' . strtoupper(uniqid()),
                 'payment_details' => [
                     'test_subscription' => true,
@@ -229,8 +231,8 @@ class TestSubscriptionCommand extends Command
 
         $this->table($headers, $rows);
 
-        $activeCount = $testSubscriptions->where('status', 'active')->count();
-        $expiredCount = $testSubscriptions->where('status', 'expired')->count();
+        $activeCount = $testSubscriptions->where('status', SubscriptionStatus::Active->value)->count();
+        $expiredCount = $testSubscriptions->where('status', SubscriptionStatus::Expired->value)->count();
 
         $this->info("📊 Summary: {$testSubscriptions->count()} total, {$activeCount} active, {$expiredCount} expired");
         
@@ -242,7 +244,7 @@ class TestSubscriptionCommand extends Command
         $expiredTestSubs = Subscription::whereHas('plan', function ($query) {
             $query->where('slug', 'like', 'test-%');
         })
-        ->where('status', 'active')
+        ->where('status', SubscriptionStatus::Active)
         ->where('end_date', '<', now())
         ->get();
 
@@ -261,7 +263,7 @@ class TestSubscriptionCommand extends Command
 
         try {
             foreach ($expiredTestSubs as $sub) {
-                $sub->update(['status' => 'expired']);
+                $sub->update(['status' => SubscriptionStatus::Expired]);
                 $this->line("• Expired: {$sub->user->email} ({$sub->plan?->name})");
             }
 

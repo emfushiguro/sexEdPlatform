@@ -51,18 +51,52 @@ class SubscriptionPlan extends Model
 
     public function hasFeature(string $feature): bool
     {
-        if (is_array($this->features)) {
-            return in_array($feature, $this->features);
+        $features = $this->features;
+        if (!is_array($features) || empty($features)) return false;
+
+        // ── Flat array of strings: ['unlimited_quizzes', 'certificates', …]
+        $firstVal = reset($features);
+        if (is_string($firstVal) && !is_array($firstVal)) {
+            return in_array($feature, $features);
         }
+
+        // ── Grouped nested: ['learning' => ['full_course_access' => true, …], …]
+        foreach ($features as $group => $items) {
+            if (is_array($items)) {
+                if (!array_key_exists($feature, $items)) continue;
+                $val = $items[$feature];
+                return $val === true
+                    || (is_string($val) && !in_array($val, ['false', '0', '']))
+                    || (is_numeric($val) && $val > 0);
+            }
+            // top-level key matches (e.g. legacy 'test_mode' => true)
+            if ($group === $feature) {
+                return !empty($items) && $items !== false;
+            }
+        }
+
         return false;
     }
 
     public function getFeatureValue(string $feature, $default = null)
     {
-        // For backwards compatibility - always returns true if feature exists
-        if ($this->hasFeature($feature)) {
-            return true;
+        $features = $this->features;
+        if (!is_array($features)) return $default;
+
+        // Flat array  — can only say yes/no
+        $firstVal = reset($features);
+        if (is_string($firstVal)) {
+            return in_array($feature, $features) ? true : $default;
         }
+
+        // Grouped nested — return actual value
+        foreach ($features as $group => $items) {
+            if (is_array($items) && array_key_exists($feature, $items)) {
+                return $items[$feature];
+            }
+            if ($group === $feature) return $items;
+        }
+
         return $default;
     }
 

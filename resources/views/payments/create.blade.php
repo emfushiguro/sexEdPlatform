@@ -5,191 +5,155 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+    <div style="background:#0d1117;min-height:100vh;" class="py-12 px-4">
+        <div class="max-w-xl mx-auto">
+
             @if(session('error'))
-                <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    {{ session('error') }}
-                </div>
+                <div class="mb-5 rounded-xl px-4 py-3 text-sm text-red-300 border border-red-800" style="background:rgba(127,29,29,0.3);">{{ session('error') }}</div>
             @endif
-
             @if(session('success'))
-                <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                    {{ session('success') }}
-                </div>
+                <div class="mb-5 rounded-xl px-4 py-3 text-sm text-green-300 border border-green-800" style="background:rgba(20,83,45,0.3);">{{ session('success') }}</div>
             @endif
 
-            <!-- Order Summary -->
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                <div class="p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
-                    
-                    <div class="border-b border-gray-200 pb-4 mb-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-gray-600">Plan</span>
-                            <span class="font-medium text-gray-900">{{ $subscription->getPlanLabel() }}</span>
-                        </div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-gray-600">Start Date</span>
-                            <span class="font-medium text-gray-900">{{ $subscription->start_date->format('M d, Y') }}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">End Date</span>
-                            <span class="font-medium text-gray-900">{{ $subscription->end_date->format('M d, Y') }}</span>
-                        </div>
+            {{-- Order Summary Card --}}
+            <div class="rounded-2xl p-6 mb-5 border border-gray-700" style="background:#161b2e;">
+                <h3 class="text-lg font-bold text-white mb-5">Order Summary</h3>
+                <div class="space-y-3 pb-4 mb-4 border-b border-gray-700/60">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400 text-sm">Plan</span>
+                        <span class="font-semibold text-white">{{ $subscription->getPlanLabel() }}</span>
                     </div>
-
-                    <div class="flex justify-between items-center text-lg">
-                        <span class="font-semibold text-gray-900">Total Amount</span>
-                        <span class="font-bold text-blue-600">₱{{ number_format($amount, 2) }}</span>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400 text-sm">Start Date</span>
+                        <span class="font-medium text-gray-200">{{ $subscription->start_date->format('M d, Y') }}</span>
                     </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400 text-sm">End Date</span>
+                        <span class="font-medium text-gray-200">{{ $subscription->end_date->format('M d, Y') }}</span>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-white font-bold text-lg">Total Amount</span>
+                    <span class="text-2xl font-extrabold text-indigo-400">₱{{ number_format($amount, 2) }}</span>
                 </div>
             </div>
 
-            <!-- Payment Method Selection -->
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                <div class="p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Select Payment Method</h3>
+            {{-- Payment Method Card --}}
+            <div class="rounded-2xl p-6 border border-gray-700" style="background:#161b2e;">
+                <h3 class="text-lg font-bold text-white mb-5">Select Payment Method</h3>
 
-                    <form action="{{ route('payment.process', $subscription) }}" method="POST" id="payment-form">
-                        @csrf
+                <form action="{{ route('payment.process', $subscription) }}" method="POST" id="payment-form">
+                    @csrf
 
-                        <div class="space-y-4">
-                            <!-- GCash -->
-                            <label class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition payment-option">
-                                <input type="radio" name="payment_method" value="gcash" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
-                                <div class="ml-4 flex items-center">
-                                    <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-sm mr-3">
-                                        GC
-                                    </div>
-                                    <div>
-                                        <p class="font-medium text-gray-900">GCash</p>
-                                        <p class="text-sm text-gray-500">Pay using your GCash wallet</p>
-                                    </div>
+                    <div class="space-y-3">
+                        {{-- GCash --}}
+                        <label class="flex items-center p-4 rounded-xl cursor-pointer border border-gray-700 transition-all payment-option" style="background:#1a2035;">
+                            <input type="radio" name="payment_method" value="gcash" class="h-4 w-4 text-blue-500 border-gray-600">
+                            <div class="ml-4 flex items-center gap-3">
+                                <div class="w-11 h-11 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">GC</div>
+                                <div>
+                                    <p class="font-semibold text-white text-sm">GCash</p>
+                                    <p class="text-xs text-gray-400">Pay using your GCash wallet</p>
                                 </div>
-                            </label>
+                            </div>
+                        </label>
 
-                            <!-- PayMaya -->
-                            <label class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition payment-option">
-                                <input type="radio" name="payment_method" value="paymaya" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
-                                <div class="ml-4 flex items-center">
-                                    <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center text-white font-bold text-sm mr-3">
-                                        PM
-                                    </div>
-                                    <div>
-                                        <p class="font-medium text-gray-900">PayMaya / Maya</p>
-                                        <p class="text-sm text-gray-500">Pay using your Maya wallet</p>
-                                    </div>
+                        {{-- PayMaya --}}
+                        <label class="flex items-center p-4 rounded-xl cursor-pointer border border-gray-700 transition-all payment-option" style="background:#1a2035;">
+                            <input type="radio" name="payment_method" value="paymaya" class="h-4 w-4 text-green-500 border-gray-600">
+                            <div class="ml-4 flex items-center gap-3">
+                                <div class="w-11 h-11 bg-green-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">PM</div>
+                                <div>
+                                    <p class="font-semibold text-white text-sm">PayMaya / Maya</p>
+                                    <p class="text-xs text-gray-400">Pay using your Maya wallet</p>
                                 </div>
-                            </label>
+                            </div>
+                        </label>
 
-                            <!-- Credit/Debit Card -->
-                            <label class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition payment-option">
-                                <input type="radio" name="payment_method" value="card" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
-                                <div class="ml-4 flex items-center">
-                                    <div class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center text-white font-bold text-sm mr-3">
-                                        💳
-                                    </div>
-                                    <div>
-                                        <p class="font-medium text-gray-900">Credit/Debit Card</p>
-                                        <p class="text-sm text-gray-500">Visa, Mastercard, JCB</p>
-                                    </div>
+                        {{-- Credit/Debit Card --}}
+                        <label class="flex items-center p-4 rounded-xl cursor-pointer border border-gray-700 transition-all payment-option" style="background:#1a2035;">
+                            <input type="radio" name="payment_method" value="card" class="h-4 w-4 text-indigo-500 border-gray-600">
+                            <div class="ml-4 flex items-center gap-3">
+                                <div class="w-11 h-11 bg-gray-700 rounded-xl flex items-center justify-center text-xl flex-shrink-0">💳</div>
+                                <div>
+                                    <p class="font-semibold text-white text-sm">Credit/Debit Card</p>
+                                    <p class="text-xs text-gray-400">Visa, Mastercard, JCB</p>
                                 </div>
-                            </label>
-                        </div>
+                            </div>
+                        </label>
+                    </div>
 
-                        @error('payment_method')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+                    @error('payment_method')
+                        <p class="mt-2 text-sm text-red-400">{{ $message }}</p>
+                    @enderror
+
+                    {{-- Terms --}}
+                    <div class="mt-5 p-4 rounded-xl border border-gray-700" style="background:#1a2035;">
+                        <label class="flex items-start cursor-pointer gap-3">
+                            <input type="checkbox" name="accept_terms" id="accept_terms" required
+                                   class="h-4 w-4 text-indigo-500 mt-0.5 border-gray-600 rounded flex-shrink-0">
+                            <span class="text-xs text-gray-400 leading-relaxed">
+                                I have read and agree to the
+                                <a href="{{ route('terms') }}" target="_blank" class="text-indigo-400 hover:text-indigo-300 underline">Terms & Conditions</a>
+                                and
+                                <a href="{{ route('privacy') }}" target="_blank" class="text-indigo-400 hover:text-indigo-300 underline">Privacy Policy</a>.
+                                Refunds are only available within
+                                <strong class="text-white">{{ config('billing.subscription.refund_window_days', 3) }} days</strong> of payment.
+                            </span>
+                        </label>
+                        @error('accept_terms')
+                            <p class="mt-2 text-xs text-red-400">{{ $message }}</p>
                         @enderror
+                    </div>
 
-                        <!-- Terms & Conditions -->
-                        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-                            <label class="flex items-start">
-                                <input type="checkbox" name="accept_terms" id="accept_terms" required
-                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 mt-1">
-                                <span class="ml-3 text-sm text-gray-600">
-                                    I have read and agree to the
-                                    <a href="{{ route('terms') }}" target="_blank" class="text-blue-600 hover:underline">Terms & Conditions</a>
-                                    and
-                                    <a href="{{ route('privacy') }}" target="_blank" class="text-blue-600 hover:underline">Privacy Policy</a>.
-                                    I understand that refunds are only available within
-                                    <strong>{{ config('billing.subscription.refund_window_days', 3) }} days</strong> of payment.
-                                </span>
-                            </label>
-                            @error('accept_terms')
-                                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Submit Button -->
-                        <div class="mt-6">
-                            <button type="submit" id="submit-btn"
-                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                <span id="btn-text">Proceed to Payment</span>
-                                <span id="btn-loading" class="hidden">
-                                    <svg class="animate-spin h-5 w-5 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                </span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    {{-- Submit --}}
+                    <button type="submit" id="submit-btn"
+                            class="mt-5 w-full py-4 px-6 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed text-base"
+                            style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);">
+                        <span id="btn-text">Proceed to Payment</span>
+                        <span id="btn-loading" class="hidden">
+                            <svg class="animate-spin h-5 w-5 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </form>
             </div>
 
-            <!-- Security Notice -->
-            <div class="bg-gray-50 rounded-lg p-4 text-center">
-                <div class="flex items-center justify-center text-gray-500 text-sm">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                    </svg>
-                    <span>Secured by PayMongo - Your payment information is encrypted and secure</span>
-                </div>
+            {{-- Security + Back --}}
+            <div class="mt-5 flex items-center justify-center gap-2 text-gray-600 text-xs">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+                Secured by PayMongo — Your payment information is encrypted
             </div>
-
-            <!-- Back Link -->
-            <div class="mt-6 text-center">
-                <a href="{{ route('subscription.upgrade') }}" class="text-blue-600 hover:text-blue-800">
-                    ← Back to Plans
-                </a>
+            <div class="mt-4 text-center">
+                <a href="{{ route('subscription.upgrade') }}" class="text-indigo-400 hover:text-indigo-300 text-sm">← Back to Plans</a>
             </div>
         </div>
     </div>
 
     <script>
         document.getElementById('payment-form').addEventListener('submit', function(e) {
-            const acceptTerms = document.getElementById('accept_terms');
             const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
-            
-            if (!paymentMethod) {
-                e.preventDefault();
-                alert('Please select a payment method');
-                return;
-            }
-
-            if (!acceptTerms.checked) {
-                e.preventDefault();
-                alert('Please accept the Terms & Conditions');
-                return;
-            }
-
-            // Show loading state
+            const acceptTerms   = document.getElementById('accept_terms');
+            if (!paymentMethod) { e.preventDefault(); alert('Please select a payment method'); return; }
+            if (!acceptTerms.checked) { e.preventDefault(); alert('Please accept the Terms & Conditions'); return; }
             document.getElementById('btn-text').classList.add('hidden');
             document.getElementById('btn-loading').classList.remove('hidden');
             document.getElementById('submit-btn').disabled = true;
         });
 
-        // Highlight selected payment option
         document.querySelectorAll('.payment-option input[type="radio"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 document.querySelectorAll('.payment-option').forEach(opt => {
-                    opt.classList.remove('border-blue-500', 'bg-blue-50');
-                    opt.classList.add('border-gray-200');
+                    opt.style.borderColor = '#374151';
+                    opt.style.background  = '#1a2035';
                 });
                 if (this.checked) {
-                    this.closest('.payment-option').classList.add('border-blue-500', 'bg-blue-50');
-                    this.closest('.payment-option').classList.remove('border-gray-200');
+                    this.closest('.payment-option').style.borderColor = '#6366f1';
+                    this.closest('.payment-option').style.background  = 'rgba(99,102,241,0.15)';
                 }
             });
         });

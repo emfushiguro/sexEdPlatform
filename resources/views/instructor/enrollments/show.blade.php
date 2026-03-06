@@ -234,7 +234,7 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    @if($enrollment->status === 'pending')
+                    @if($enrollment->status === \App\Enums\EnrollmentStatus::Pending)
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6">
                                 <h3 class="text-lg font-semibold mb-4">Review Decision</h3>
@@ -271,7 +271,7 @@
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6">
                                 <div class="text-center">
-                                    @if($enrollment->status === 'approved')
+                                    @if($enrollment->status === \App\Enums\EnrollmentStatus::Approved)
                                         <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
                                             <svg class="w-12 h-12 text-green-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>

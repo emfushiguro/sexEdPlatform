@@ -58,10 +58,10 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <span class="px-2 py-1 text-xs font-semibold rounded-full 
-                                                    {{ $payment->status === 'completed' ? 'bg-green-100 text-green-800' : 
-                                                       ($payment->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                                                        ($payment->status === 'refunded' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800')) }}">
-                                                    {{ ucfirst($payment->status) }}
+                                                    {{ $payment->status->value === 'completed' ? 'bg-green-100 text-green-800' : 
+                                                       ($payment->status->value === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                                        ($payment->status->value === 'refunded' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800')) }}">
+                                                    {{ ucfirst($payment->status->value) }}
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -71,12 +71,12 @@
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                @if($payment->status === 'completed')
+                                                @if($payment->isCompleted())
                                                     <a href="{{ route('payment.receipt', $payment) }}" 
                                                        class="text-blue-600 hover:text-blue-900">
                                                         View Receipt
                                                     </a>
-                                                @elseif($payment->status === 'pending')
+                                                @elseif($payment->isPending())
                                                     <a href="{{ route('payment.pending', $payment) }}" 
                                                        class="text-yellow-600 hover:text-yellow-900">
                                                         View Status

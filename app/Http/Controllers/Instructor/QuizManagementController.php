@@ -91,11 +91,7 @@ class QuizManagementController extends Controller
 
         $quiz->update($validated);
 
-<<<<<<< HEAD
         return redirect()->route('instructor.quizzes.index')
-=======
-        return redirect()->route('instrutor.quizzes.index')
->>>>>>> main
             ->with('success', 'Quiz updated successfully!');
     }
 

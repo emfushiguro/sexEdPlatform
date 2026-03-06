@@ -2,6 +2,8 @@
 
 namespace App\Observers;
 
+use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
 use App\Events\PaymentSuccessful;
 use App\Models\Payment;
 use App\Services\SubscriptionService;
@@ -22,7 +24,7 @@ class PaymentObserver
 
     public function updated(Payment $payment): void
     {
-        if ($payment->isDirty('status') && $payment->status === 'completed') {
+        if ($payment->isDirty('status') && $payment->status === PaymentStatus::Completed) {
             // Fire PaymentSuccessful event (invoice + receipt email queued)
             event(new PaymentSuccessful($payment));
 
@@ -36,7 +38,7 @@ class PaymentObserver
             }
         }
 
-        if ($payment->isDirty('status') && $payment->status === 'failed') {
+        if ($payment->isDirty('status') && $payment->status === PaymentStatus::Failed) {
             Log::warning('Payment failed for pending subscription', [
                 'subscription_id' => $payment->subscription_id,
                 'payment_id'      => $payment->id,
@@ -51,17 +53,17 @@ class PaymentObserver
             'subscription_id' => $payment->subscription_id,
         ]);
 
-        if ($payment->subscription && $payment->status === 'completed') {
+        if ($payment->subscription && $payment->status === PaymentStatus::Completed) {
             $subscription = $payment->subscription;
 
             $hasOtherCompletedPayments = $subscription->payments()
                 ->where('id', '!=', $payment->id)
-                ->where('status', 'completed')
+                ->where('status', PaymentStatus::Completed)
                 ->exists();
 
             if (!$hasOtherCompletedPayments) {
                 $subscription->update([
-                    'status'              => 'cancelled',
+                    'status'              => SubscriptionStatus::Cancelled,
                     'cancelled_at'        => now(),
                     'cancellation_reason' => 'Associated payment was deleted',
                 ]);

@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Payment;
 use App\Models\Subscription;
-use App\Mail\PaymentFailedNotification;
-use App\Mail\SubscriptionExpiringNotification;
+use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
+use App\Mail\PaymentFailedMail;
+use App\Mail\SubscriptionExpiringMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
@@ -42,12 +44,12 @@ class SubscriptionDunningService
             ]);
 
             // Send failed payment notification
-            Mail::to($user->email)->send(new PaymentFailedNotification($payment, $nextRetryDays));
+            Mail::to($user->email)->send(new PaymentFailedMail($payment, $nextRetryDays));
             
             // Add grace period to subscription
-            if ($subscription->status === 'active') {
+            if ($subscription->status === SubscriptionStatus::Active) {
                 $subscription->update([
-                    'status' => 'past_due',
+                    'status' => SubscriptionStatus::PastDue,
                     'grace_period_ends' => now()->addDays($nextRetryDays)
                 ]);
             }
@@ -60,7 +62,7 @@ class SubscriptionDunningService
     public function handleExpiringSubscriptions(): void
     {
         // Find subscriptions expiring in 7 days
-        $expiringSoon = Subscription::where('status', 'active')
+        $expiringSoon = Subscription::where('status', SubscriptionStatus::Active)
             ->where('auto_renew', true)
             ->whereBetween('end_date', [now()->addDays(7), now()->addDays(8)])
             ->with('user')
@@ -68,11 +70,11 @@ class SubscriptionDunningService
 
         foreach ($expiringSoon as $subscription) {
             Mail::to($subscription->user->email)
-                ->send(new SubscriptionExpiringNotification($subscription));
+                ->send(new SubscriptionExpiringMail($subscription));
         }
 
         // Find subscriptions that expired yesterday - add grace period
-        $expiredYesterday = Subscription::where('status', 'active')
+        $expiredYesterday = Subscription::where('status', SubscriptionStatus::Active)
             ->where('end_date', '<', now()->startOfDay())
             ->where('end_date', '>', now()->subDays(2)->startOfDay())
             ->get();
@@ -80,7 +82,7 @@ class SubscriptionDunningService
         foreach ($expiredYesterday as $subscription) {
             if ($subscription->auto_renew) {
                 $subscription->update([
-                    'status' => 'past_due',
+                    'status' => SubscriptionStatus::PastDue,
                     'grace_period_ends' => now()->addDays(7)
                 ]);
             } else {
@@ -92,7 +94,7 @@ class SubscriptionDunningService
     private function cancelSubscription(Subscription $subscription, string $reason): void
     {
         $subscription->update([
-            'status' => 'cancelled',
+            'status' => SubscriptionStatus::Cancelled,
             'cancelled_at' => now(),
             'cancellation_reason' => $reason
         ]);
@@ -107,7 +109,7 @@ class SubscriptionDunningService
     public function processRetryPayments(): void
     {
         // Find payments ready for retry
-        $paymentsToRetry = Payment::where('status', 'failed')
+        $paymentsToRetry = Payment::where('status', PaymentStatus::Failed)
             ->whereJsonContains('payment_details->retry_count', '<=', 3)
             ->where('created_at', '>', now()->subDays(21)) // Don't retry older than 21 days
             ->with(['subscription.user'])
@@ -144,7 +146,7 @@ class SubscriptionDunningService
             'subscription_id' => $payment->subscription_id,
             'amount' => $payment->amount,
             'method' => 'retry_' . $payment->method,
-            'status' => 'pending',
+            'status' => PaymentStatus::Pending,
             'transaction_id' => 'RETRY-' . strtoupper(uniqid()),
             'payment_details' => [
                 'original_payment_id' => $payment->id,

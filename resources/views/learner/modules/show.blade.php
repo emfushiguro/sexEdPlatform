@@ -367,7 +367,7 @@
                                     </div>
                                 @endif
                             @endif
-                        @elseif($enrollmentStatus === 'pending')
+                        @elseif($enrollmentStatus === \App\Enums\EnrollmentStatus::Pending)
                             <!-- Pending Approval Status -->
                             <div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-4">
                                 <div class="flex items-center justify-center mb-2">
@@ -382,7 +382,7 @@
                                     Your enrollment request is waiting for instructor approval. You'll be notified once approved.
                                 </p>
                             </div>
-                        @elseif($enrollmentStatus === 'rejected')
+                        @elseif($enrollmentStatus === \App\Enums\EnrollmentStatus::Rejected)
                             <!-- Rejected Status -->
                             <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
                                 <div class="flex items-center justify-center mb-2">

@@ -93,11 +93,11 @@ class TestBillingSystem extends Command
 
         // Test 6: Check mail classes exist
         try {
-            if (!class_exists('App\\Mail\\PaymentFailedNotification')) {
-                $errors[] = '❌ PaymentFailedNotification mail class not found';
+            if (!class_exists('App\\Mail\\PaymentFailedMail')) {
+                $errors[] = '❌ PaymentFailedMail mail class not found';
             }
-            if (!class_exists('App\\Mail\\SubscriptionExpiringNotification')) {
-                $errors[] = '❌ SubscriptionExpiringNotification mail class not found';
+            if (!class_exists('App\\Mail\\SubscriptionExpiringMail')) {
+                $errors[] = '❌ SubscriptionExpiringMail mail class not found';
             }
             $this->info('✅ Mail classes verified');
         } catch (\Exception $e) {

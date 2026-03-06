@@ -6,13 +6,12 @@ use App\Http\Requests\ProcessPaymentRequest;
 use App\Models\Payment;
 use App\Models\Subscription;
 use App\Services\PayMongoPaymentLinkService;
+use App\Enums\PaymentStatus;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class PaymentController extends Controller
 {
@@ -54,7 +53,7 @@ class PaymentController extends Controller
         try {
             // Get the pending payment for this subscription
             $payment = Payment::where('subscription_id', $subscription->id)
-                ->where('status', 'pending')
+                ->where('status', PaymentStatus::Pending)
                 ->orderByDesc('id')
                 ->first();
             
@@ -64,7 +63,7 @@ class PaymentController extends Controller
                     'user_id' => Auth::id(),
                     'amount' => $subscription->getAmount(),
                     'method' => $request->payment_method,
-                    'status' => 'pending',
+                    'status' => PaymentStatus::Pending,
                     'transaction_id' => 'TXN-' . strtoupper(uniqid()),
                     'payment_details' => [
                         'plan' => $subscription->plan,
@@ -168,7 +167,7 @@ class PaymentController extends Controller
         }
 
         // Auto-activate if PayMongo already processed this payment
-        if ($payment->status === 'pending') {
+        if ($payment->status === PaymentStatus::Pending) {
             $activated = $this->verifyAndActivateIfPaid($payment);
             if ($activated) {
                 return redirect()->route('subscription.index')
@@ -194,7 +193,7 @@ class PaymentController extends Controller
         }
 
         // Already completed in DB
-        if ($payment->status === 'completed') {
+        if ($payment->status === PaymentStatus::Completed) {
             return response()->json(['status' => 'completed', 'redirect' => route('subscription.index')]);
         }
 
@@ -232,16 +231,22 @@ class PaymentController extends Controller
                 return false;
             }
 
+            // Resolve the actual pay_xxxxx ID from the link so refunds work later.
+            // The links/{id} endpoint includes data.attributes.payments[].
+            $actualPaymentId = $paymongoService->getActualPaymentIdFromLink($linkId);
+
             // Step 1: mark payment completed in its own transaction.
             // PaymentObserver fires inside this transaction and calls
             // SubscriptionService::activate() — fully atomic.
-            DB::transaction(function () use ($payment) {
+            DB::transaction(function () use ($payment, $actualPaymentId) {
                 $payment->update([
-                    'status'  => 'completed',
+                    'status'  => PaymentStatus::Completed,
                     'paid_at' => now(),
                     'payment_details' => array_merge($payment->payment_details ?? [], [
-                        'verified_via_api' => true,
-                        'verified_at'      => now()->toDateTimeString(),
+                        'verified_via_api'    => true,
+                        'verified_at'         => now()->toDateTimeString(),
+                        // Store the actual pay_xxxxx so refunds can use it
+                        'paymongo_payment_id' => $actualPaymentId,
                     ]),
                 ]);
             });
@@ -283,7 +288,7 @@ class PaymentController extends Controller
 
         DB::transaction(function () use ($payment) {
             $payment->update([
-                'status'  => 'completed',
+                'status'  => PaymentStatus::Completed,
                 'paid_at' => now(),
             ]);
 
@@ -292,155 +297,6 @@ class PaymentController extends Controller
 
         return redirect()->route('subscription.index')
             ->with('success', 'Payment simulated! Your subscription is now active.');
-    }
-
-    /**
-     * Payment webhook handler for PayMongo.
-     *
-     * IMPORTANT: By the time this method runs, the VerifyPayMongoWebhook middleware
-     * has already validated the Paymongo-Signature HMAC header. The inline signature
-     * check below is retained as a second-layer defence (defence-in-depth) in case
-     * the route middleware is ever accidentally removed.
-     *
-     * Handles payment link payment events from PayMongo.
-     * Captures the actual payment method (GCash, PayMaya, etc.)
-     */
-    public function webhook(Request $request)
-    {
-        try {
-            // 1. Verify PayMongo webhook signature (SECURITY)
-            $signature = $request->header('Paymongo-Signature');
-            $webhookSecret = config('paymongo.webhook_secret');
-            
-            if ($webhookSecret && !$this->verifyWebhookSignature($request->getContent(), $signature, $webhookSecret)) {
-                Log::error('PayMongo Webhook: Invalid signature', [
-                    'signature_provided' => $signature ? 'yes' : 'no',
-                ]);
-                return response()->json(['error' => 'Invalid signature'], 401);
-            }
-
-            Log::info('PayMongo Webhook Received', [
-                'payload' => $request->all()
-            ]);
-
-            $event = $request->input('data');
-            
-            if (!$event) {
-                Log::error('PayMongo Webhook: No event data');
-                return response()->json(['error' => 'No event data'], 400);
-            }
-            
-            // 2. Check for duplicate webhook processing (IDEMPOTENCY)
-            $eventId = $event['id'] ?? null;
-            if ($eventId) {
-                $cacheKey = "webhook_processed_{$eventId}";
-                if (Cache::has($cacheKey)) {
-                    Log::info("Duplicate webhook ignored: {$eventId}");
-                    return response()->json(['success' => true, 'already_processed' => true]);
-                }
-                // Mark as processed for 24 hours
-                Cache::put($cacheKey, true, now()->addDay());
-            }
-
-            $eventType = $event['attributes']['type'] ?? null;
-
-            // Handle payment.paid event (when payment link is paid)
-            if ($eventType === 'link.payment.paid') {
-                $paymentData = $event['attributes']['data'] ?? [];
-                $attributes = $paymentData['attributes'] ?? [];
-                
-                // Extract payment source type (gcash, grab_pay, paymaya, etc.)
-                $source = $attributes['source'] ?? [];
-                $paymentMethod = $source['type'] ?? 'paymongo'; // e.g., "gcash", "grab_pay", "paymaya"
-                
-                // Get metadata for subscription lookup
-                $metadata = $attributes['metadata'] ?? [];
-                $subscriptionId = $metadata['subscription_id'] ?? null;
-                $userId = $metadata['user_id'] ?? null;
-                
-                Log::info('PayMongo Payment Paid', [
-                    'subscription_id' => $subscriptionId,
-                    'user_id' => $userId,
-                    'payment_method' => $paymentMethod,
-                    'amount' => $attributes['amount'] ?? 0,
-                ]);
-
-                if ($subscriptionId) {
-                    // Find the subscription
-                    $subscription = Subscription::find($subscriptionId);
-                    
-                    if ($subscription) {
-                        // Find the most recent pending/paymongo payment for this subscription
-                        $payment = Payment::where('subscription_id', $subscription->id)
-                            ->whereIn('method', ['paymongo', 'pending'])
-                            ->whereIn('status', ['pending', 'processing'])
-                            ->orderByDesc('id')
-                            ->first();
-                        
-                        // Wrap payment completion + subscription activation in a single transaction.
-                        // If the server crashes between the two writes, the whole block rolls back —
-                        // preventing the "paid but no access" scenario.
-                        DB::transaction(function () use ($payment, $subscription, $paymentData, $paymentMethod) {
-                            if ($payment) {
-                                // Update payment status and method with actual source type
-                                $payment->update([
-                                    'status' => 'completed',
-                                    'method' => $paymentMethod, // GCash, PayMaya, etc.
-                                    'paid_at' => now(),
-                                    'payment_details' => array_merge($payment->payment_details ?? [], [
-                                        'paymongo_payment_id' => $paymentData['id'] ?? null,
-                                        'source_type' => $paymentMethod,
-                                        'webhook_received_at' => now()->toDateTimeString(),
-                                    ]),
-                                ]);
-
-                                Log::info('PayMongo Payment Completed', [
-                                    'payment_id' => $payment->id,
-                                    'method' => $paymentMethod,
-                                ]);
-                            }
-
-                            // Delegate to SubscriptionService::activate() which:
-                            // - Guards against double-activation (idempotent status check)
-                            // - Wraps subscription update in its own nested transaction
-                            // - Invalidates the premium cache
-                            // - Fires SubscriptionCreated event (invoice + welcome email queued)
-                            $this->subscriptionService->activate($subscription);
-                        });
-                    }
-                }
-            }
-
-            return response()->json(['success' => true]);
-
-        } catch (\Exception $e) {
-            Log::error('PayMongo Webhook Error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json(['error' => 'Webhook processing failed'], 500);
-        }
-    }
-
-    /**
-     * Verify PayMongo webhook signature.
-     * Returns false (never true) when the secret is not configured, so that
-     * unsigned requests are always rejected rather than silently accepted.
-     */
-    private function verifyWebhookSignature($payload, $signature, $secret): bool
-    {
-        if (empty($secret)) {
-            Log::error('Webhook secret (PAYMONGO_WEBHOOK_SECRET) is not configured. Request rejected.');
-            return false; // Reject all requests when secret is missing
-        }
-
-        if (empty($signature)) {
-            return false;
-        }
-
-        $computedSignature = hash_hmac('sha256', $payload, $secret);
-        return hash_equals($computedSignature, $signature);
     }
 
     /**
@@ -488,13 +344,13 @@ class PaymentController extends Controller
             // Mark the most recent pending payment as completed.
             // PaymentObserver will call SubscriptionService::activate() automatically.
             $payment = Payment::where('subscription_id', $subscription->id)
-                ->whereIn('status', ['pending', 'processing'])
+                ->whereIn('status', [PaymentStatus::Pending, PaymentStatus::Processing])
                 ->orderByDesc('id')
                 ->first();
 
             if ($payment) {
                 $payment->update([
-                    'status'  => 'completed',
+                    'status'  => PaymentStatus::Completed,
                     'paid_at' => now(),
                     'payment_details' => array_merge($payment->payment_details ?? [], [
                         'paymongo_callback_received' => true,
@@ -557,5 +413,26 @@ class PaymentController extends Controller
             return redirect()->route('subscription.index')
                 ->with('error', 'An error occurred. Please contact support.');
         }
+    }
+
+    /**
+     * Show payment success page
+     */
+    public function success()
+    {
+        return view('payments.success');
+    }
+
+    /**
+     * Show payment cancel page
+     */
+    public function cancel()
+    {
+        $premiumPlan = \App\Models\SubscriptionPlan::where('is_active', true)
+            ->where('price', '>', 0)
+            ->orderBy('sort_order')
+            ->first();
+
+        return view('payments.cancel', compact('premiumPlan'));
     }
 }

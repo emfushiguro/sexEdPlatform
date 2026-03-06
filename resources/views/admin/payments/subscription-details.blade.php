@@ -1,93 +1,100 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="container mx-auto py-8 max-w-4xl">
-    <h1 class="text-2xl font-bold mb-6">Subscription Details</h1>
+<div class="max-w-3xl mx-auto px-4 py-10">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">Subscription Details</h1>
 
-    <div class="bg-white rounded shadow p-6 mb-6">
-        <h2 class="text-lg font-semibold mb-4">Subscription Information</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+    <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs p-8 mb-8">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Subscription Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
             <div>
-                <label class="font-medium text-gray-500">Plan Name</label>
-                <div class="mt-1">{{ $subscription->getPlanLabel() }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Plan Name</label>
+                <div class="font-bold text-gray-900 dark:text-white">{{ $subscription->getPlanLabel() }}</div>
             </div>
             <div>
-                <label class="font-medium text-gray-500">Plan Slug</label>
-                <div class="mt-1 font-mono text-xs text-gray-600">{{ $subscription->plan->slug ?? ($subscription->plan_id ? 'n/a' : 'free') }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Plan Slug</label>
+                <div class="font-mono text-xs text-gray-600 dark:text-gray-400">{{ $subscription->plan->slug ?? ($subscription->plan_id ? 'n/a' : 'free') }}</div>
             </div>
             <div>
-                <label class="font-medium text-gray-500">Plan</label>
-                <div class="mt-1">{{ $subscription->getPlanLabel() }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Plan</label>
+                <div class="font-bold text-gray-900 dark:text-white">{{ $subscription->getPlanLabel() }}</div>
             </div>
             <div>
-                <label class="font-medium text-gray-500">Status</label>
-                <div class="mt-1 capitalize">{{ ucfirst($subscription->status) }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Status</label>
+                <div class="capitalize font-bold text-gray-900 dark:text-white">{{ ucfirst($subscription->status->value) }}</div>
             </div>
             <div>
-                <label class="font-medium text-gray-500">Start Date</label>
-                <div class="mt-1">{{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : 'N/A' }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Start Date</label>
+                <div class="text-gray-900 dark:text-white">{{ $subscription->start_date ? $subscription->start_date->format('M d, Y') : 'N/A' }}</div>
             </div>
             <div>
-                <label class="font-medium text-gray-500">End Date</label>
-                <div class="mt-1">{{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : 'N/A' }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">End Date</label>
+                <div class="text-gray-900 dark:text-white">{{ $subscription->end_date ? $subscription->end_date->format('M d, Y') : 'N/A' }}</div>
             </div>
             <div>
-                <label class="font-medium text-gray-500">Trial Ends</label>
-                <div class="mt-1">{{ $subscription->trial_ends_at ? $subscription->trial_ends_at->format('M d, Y') : 'N/A' }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Trial Ends</label>
+                <div class="text-gray-900 dark:text-white">{{ $subscription->trial_ends_at ? $subscription->trial_ends_at->format('M d, Y') : 'N/A' }}</div>
+                @if($subscription->start_date && $subscription->trial_ends_at)
+                    @php
+                        $trialDays = $subscription->start_date->diffInDays($subscription->trial_ends_at);
+                    @endphp
+                    <div class="text-xs text-gray-500 dark:text-gray-400">({{ $trialDays }} day{{ $trialDays == 1 ? '' : 's' }} trial)</div>
+                @endif
             </div>
             <div>
-                <label class="font-medium text-gray-500">Price Paid</label>
-                <div class="mt-1">₱{{ number_format($subscription->price_paid, 2) }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Price Paid</label>
+                <div class="font-bold text-gray-900 dark:text-white">₱{{ number_format($subscription->price_paid, 2) }}</div>
             </div>
         </div>
     </div>
 
-    <div class="bg-white rounded shadow p-6 mb-6">
-        <h2 class="text-lg font-semibold mb-4">User Information</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+    <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs p-8 mb-8">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">User Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
             <div>
-                <label class="font-medium text-gray-500">Name</label>
-                <div class="mt-1">{{ $subscription->user->name ?? 'N/A' }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Name</label>
+                <div class="font-bold text-gray-900 dark:text-white">{{ $subscription->user->name ?? 'N/A' }}</div>
             </div>
             <div>
-                <label class="font-medium text-gray-500">Email</label>
-                <div class="mt-1">{{ $subscription->user->email ?? 'N/A' }}</div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Email</label>
+                <div class="text-gray-900 dark:text-white">{{ $subscription->user->email ?? 'N/A' }}</div>
             </div>
         </div>
     </div>
 
-    <div class="bg-white rounded shadow p-6 mb-6">
-        <h2 class="text-lg font-semibold mb-4">Payments</h2>
+    <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs p-8 mb-8">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Payments</h2>
         @if($subscription->payments && $subscription->payments->count())
             <table class="min-w-full text-sm">
                 <thead>
-                    <tr>
-                        <th class="px-4 py-2 text-left">Amount</th>
-                        <th class="px-4 py-2 text-left">Status</th>
-                        <th class="px-4 py-2 text-left">Method</th>
-                        <th class="px-4 py-2 text-left">Transaction ID</th>
-                        <th class="px-4 py-2 text-left">Paid Date</th>
+                    <tr class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
+                        <th class="px-6 py-3 text-left font-bold uppercase tracking-wider">Amount</th>
+                        <th class="px-6 py-3 text-left font-bold uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left font-bold uppercase tracking-wider">Method</th>
+                        <th class="px-6 py-3 text-left font-bold uppercase tracking-wider">Transaction ID</th>
+                        <th class="px-6 py-3 text-left font-bold uppercase tracking-wider">Paid Date</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="bg-white dark:bg-white/[0.03] divide-y divide-gray-200 dark:divide-gray-800">
+                    <tbody class="bg-white dark:bg-white/[0.03] dark:text-gray-200 divide-y divide-gray-200 dark:divide-gray-800">
                     @foreach($subscription->payments as $payment)
                         <tr>
-                            <td class="px-4 py-2">₱{{ number_format($payment->amount, 2) }}</td>
-                            <td class="px-4 py-2">{{ ucfirst($payment->status) }}</td>
-                            <td class="px-4 py-2">{{ $payment->method ?? 'N/A' }}</td>
-                            <td class="px-4 py-2">{{ $payment->transaction_id ?? 'N/A' }}</td>
-                            <td class="px-4 py-2">{{ $payment->paid_at ? $payment->paid_at->format('M d, Y H:i:s') : 'Not paid' }}</td>
+                            <td class="px-6 py-4">₱{{ number_format($payment->amount, 2) }}</td>
+                            <td class="px-6 py-4">{{ ucfirst($payment->status->value) }}</td>
+                            <td class="px-6 py-4">{{ $payment->method ?? 'N/A' }}</td>
+                            <td class="px-6 py-4">{{ $payment->transaction_id ?? 'N/A' }}</td>
+                            <td class="px-6 py-4">{{ $payment->paid_at ? $payment->paid_at->format('M d, Y H:i:s') : 'Not paid' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         @else
-            <div class="text-gray-500">No payments found for this subscription.</div>
+            <div class="text-gray-500 dark:text-gray-400">No payments found for this subscription.</div>
         @endif
     </div>
 
     @if($subscription->payments && $subscription->payments->count())
-        <a href="{{ route('admin.payments.show', $subscription->payments->first()) }}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded block text-center">Back to Payment Details</a>
+        <a href="{{ route('admin.payments.show', $subscription->payments->first()) }}" class="w-full block text-center px-6 py-3 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold mt-2">Back to Payment Details</a>
     @endif
 </div>
 @endsection

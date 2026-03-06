@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\SubscriptionStatus;
 use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
@@ -72,7 +73,7 @@ class SubscriptionService
     public function getActiveSubscription(User $user): ?Subscription
     {
         return $user->subscriptions()
-            ->where('status', 'active')
+            ->where('status', SubscriptionStatus::Active)
             ->latest()
             ->first();
     }
@@ -91,7 +92,7 @@ class SubscriptionService
     public function isUserPremium(User $user): bool
     {
         return (bool) $user->subscriptions()
-            ->where('status', 'active')
+            ->where('status', SubscriptionStatus::Active)
             ->where(function ($q) {
                 $q->whereNull('end_date')
                   ->orWhere('end_date', '>', now());
@@ -190,14 +191,14 @@ class SubscriptionService
      */
     public function activate(Subscription $subscription): void
     {
-        if ($subscription->status === 'active') {
+        if ($subscription->status === SubscriptionStatus::Active) {
             return; // idempotent
         }
 
         DB::beginTransaction();
 
         try {
-            $subscription->update(['status' => 'active']);
+            $subscription->update(['status' => SubscriptionStatus::Active]);
 
             DB::commit();
 
@@ -297,14 +298,14 @@ class SubscriptionService
      */
     public function expire(Subscription $subscription): void
     {
-        if ($subscription->status !== 'active') {
+        if ($subscription->status !== SubscriptionStatus::Active) {
             return;
         }
 
         DB::beginTransaction();
 
         try {
-            $subscription->update(['status' => 'expired']);
+            $subscription->update(['status' => SubscriptionStatus::Expired]);
 
             DB::commit();
 

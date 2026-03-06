@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\PaymentStatus;
 use App\Models\Payment;
 use App\Models\Refund;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\PayMongoPaymentLinkService;
 
 /**
  * RefundService
@@ -75,18 +77,20 @@ use Illuminate\Support\Facades\Log;
  *
  * @see \App\Models\Refund
  * @see \App\Models\Payment
- * @see \App\Http\Controllers\SubscriptionController::requestRefund()
+ * @see \App\Http\Controllers\Learner\SubscriptionController::requestRefund()
  * @see \App\Http\Controllers\Admin\PaymentAdminController
  */
 class RefundService
 {
     protected string $secretKey;
     protected string $apiBaseUrl;
+    protected PayMongoPaymentLinkService $linkService;
 
-    public function __construct()
+    public function __construct(PayMongoPaymentLinkService $linkService)
     {
-        $this->secretKey = config('paymongo.secret_key');
+        $this->secretKey  = config('paymongo.secret_key');
         $this->apiBaseUrl = config('paymongo.api_base_url');
+        $this->linkService = $linkService;
     }
 
     public function processRefund(
@@ -103,7 +107,7 @@ class RefundService
             throw new \InvalidArgumentException('Refund amount cannot exceed payment amount');
         }
 
-        if ($payment->status !== 'completed') {
+        if ($payment->status !== PaymentStatus::Completed) {
             throw new \InvalidArgumentException('Can only refund completed payments');
         }
 
@@ -119,13 +123,34 @@ class RefundService
             }
         }
 
-        // Resolve the PayMongo payment identifier.
-        // PaymentController::process() stores the link ID under 'paymongo_link_id'.
-        // Webhook handler stores the actual payment object ID under 'paymongo_payment_id'.
-        // We check both keys so refunds work regardless of which path completed the payment.
-        $paymongo_payment_id = $payment->payment_details['paymongo_payment_id']
-            ?? $payment->payment_details['paymongo_link_id']
-            ?? null;
+        // Resolve the PayMongo payment object ID (pay_xxxxx).
+        // PayMongo Refunds API ONLY accepts pay_xxxxx IDs — NOT link_xxxxx IDs.
+        //
+        // Priority:
+        //   1. paymongo_payment_id  → set by webhook (pay_xxxxx) — best case
+        //   2. paymongo_link_id     → stored on checkout; resolve via API to get pay_xxxxx
+        //   3. Neither              → mark as manual_processing
+        $paymongo_payment_id = $payment->payment_details['paymongo_payment_id'] ?? null;
+
+        if (!$paymongo_payment_id) {
+            $linkId = $payment->payment_details['paymongo_link_id'] ?? null;
+            if ($linkId) {
+                $paymongo_payment_id = $this->linkService->getActualPaymentIdFromLink($linkId);
+                // Persist the resolved ID so future refund attempts are instant
+                if ($paymongo_payment_id) {
+                    $payment->update([
+                        'payment_details' => array_merge($payment->payment_details ?? [], [
+                            'paymongo_payment_id' => $paymongo_payment_id,
+                        ]),
+                    ]);
+                    Log::info('RefundService: Resolved and stored paymongo_payment_id from link', [
+                        'payment_id'         => $payment->id,
+                        'link_id'            => $linkId,
+                        'paymongo_payment_id' => $paymongo_payment_id,
+                    ]);
+                }
+            }
+        }
 
         // Idempotency: prevent duplicate refunds on the same payment
         $existingRefund = Refund::where('payment_id', $payment->id)
@@ -251,7 +276,7 @@ class RefundService
      */
     public function isRefundEligible(Payment $payment): array
     {
-        if ($payment->status !== 'completed') {
+        if ($payment->status !== PaymentStatus::Completed) {
             return [
                 'eligible' => false,
                 'reason' => 'Payment is not completed',
@@ -285,7 +310,7 @@ class RefundService
      */
     public function getRefundDeadline(Payment $payment): ?\Carbon\Carbon
     {
-        if (!$payment->paid_at || $payment->status !== 'completed') {
+        if (!$payment->paid_at || $payment->status !== PaymentStatus::Completed) {
             return null;
         }
 

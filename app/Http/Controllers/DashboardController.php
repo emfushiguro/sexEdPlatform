@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
 use App\Models\User;
 use App\Models\Module;
 use App\Models\Counselor;
@@ -181,7 +183,7 @@ class DashboardController extends Controller
     {
         try {
             $pendingSubscription = $user->subscriptions()
-                ->where('status', 'pending')
+                ->where('status', SubscriptionStatus::Pending)
                 ->latest()
                 ->first();
 
@@ -191,7 +193,7 @@ class DashboardController extends Controller
 
             // Layer 1: payment already completed in DB but sub still pending
             $completedPayment = $pendingSubscription->payments()
-                ->where('status', 'completed')
+                ->where('status', PaymentStatus::Completed)
                 ->first();
 
             if ($completedPayment) {
@@ -202,7 +204,7 @@ class DashboardController extends Controller
 
             // Layer 2: ask PayMongo API if the link is paid
             $pendingPayment = $pendingSubscription->payments()
-                ->where('status', 'pending')
+                ->where('status', PaymentStatus::Pending)
                 ->whereNotNull('payment_details')
                 ->latest()
                 ->first();
@@ -223,7 +225,7 @@ class DashboardController extends Controller
             if ($pmStatus === 'paid') {
                 DB::transaction(function () use ($pendingPayment, $pendingSubscription) {
                     $pendingPayment->update([
-                        'status'  => 'completed',
+                        'status'  => PaymentStatus::Completed,
                         'paid_at' => now(),
                         'payment_details' => array_merge($pendingPayment->payment_details ?? [], [
                             'verified_via_dashboard' => true,

@@ -13,7 +13,7 @@
                 </div>
             @endif
 
-            @if(session('paymongo_checkout_url') && $payment->status === 'pending')
+            @if(session('paymongo_checkout_url') && $payment->isPending())
             <!-- PayMongo Redirect Banner — shown immediately after submitting the payment form -->
             <div id="checkout-banner" class="mb-6 bg-indigo-50 border border-indigo-300 rounded-lg p-6 text-center">
                 <div class="flex items-center justify-center mb-3">
@@ -63,9 +63,9 @@
                                 <dt class="text-gray-500">Status</dt>
                                 <dd>
                                     <span class="px-2 py-1 text-xs font-semibold rounded-full 
-                                        {{ $payment->status === 'completed' ? 'bg-green-100 text-green-800' : 
-                                           ($payment->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                        {{ ucfirst($payment->status) }}
+                                        {{ $payment->status->value === 'completed' ? 'bg-green-100 text-green-800' : 
+                                           ($payment->status->value === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                        {{ ucfirst($payment->status->value) }}
                                     </span>
                                 </dd>
                             </div>
@@ -130,7 +130,7 @@
         </div>
     </div>
 
-    @if($payment->status === 'pending')
+    @if($payment->isPending())
     <script>
         (function () {
             // ── 1. Auto-redirect to PayMongo checkout ────────────────────────────

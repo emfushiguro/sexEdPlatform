@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
 use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\User;
@@ -15,9 +17,9 @@ class AnalyticsService
         $startDate = $this->getStartDate($period);
         
         return [
-            'total_subscribers' => Subscription::where('status', 'active')->count(),
+            'total_subscribers' => Subscription::where('status', SubscriptionStatus::Active)->count(),
             'new_subscribers' => Subscription::where('created_at', '>=', $startDate)->count(),
-            'churned_subscribers' => Subscription::where('status', 'cancelled')
+            'churned_subscribers' => Subscription::where('status', SubscriptionStatus::Cancelled)
                 ->where('cancelled_at', '>=', $startDate)->count(),
             'monthly_recurring_revenue' => $this->calculateMRR(),
             'annual_recurring_revenue' => $this->calculateARR(),
@@ -31,7 +33,7 @@ class AnalyticsService
     {
         $startDate = $this->getStartDate($period);
         
-        $payments = Payment::where('status', 'completed')
+        $payments = Payment::where('status', PaymentStatus::Completed)
             ->where('paid_at', '>=', $startDate);
             
         return [
@@ -74,15 +76,15 @@ class AnalyticsService
 
     private function calculateMRR(): float
     {
-        $monthlyRevenue = Subscription::where('status', 'active')
+        $monthlyRevenue = Subscription::where('status', SubscriptionStatus::Active)
             ->join('payments', 'subscriptions.id', '=', 'payments.subscription_id')
-            ->where('payments.status', 'completed')
+            ->where('payments.status', PaymentStatus::Completed)
             ->where('subscriptions.plan', 'monthly')
             ->sum('payments.amount');
             
-        $annualRevenue = Subscription::where('status', 'active')
+        $annualRevenue = Subscription::where('status', SubscriptionStatus::Active)
             ->join('payments', 'subscriptions.id', '=', 'payments.subscription_id')
-            ->where('payments.status', 'completed')
+            ->where('payments.status', PaymentStatus::Completed)
             ->where('subscriptions.plan', 'annual')
             ->sum('payments.amount');
             
@@ -98,11 +100,11 @@ class AnalyticsService
     {
         $startDate = $this->getStartDate($period);
         
-        $startingSubscribers = Subscription::where('status', 'active')
+        $startingSubscribers = Subscription::where('status', SubscriptionStatus::Active)
             ->where('created_at', '<', $startDate)
             ->count();
             
-        $churned = Subscription::where('status', 'cancelled')
+        $churned = Subscription::where('status', SubscriptionStatus::Cancelled)
             ->where('cancelled_at', '>=', $startDate)
             ->count();
             
@@ -129,7 +131,7 @@ class AnalyticsService
 
     private function getRevenueByPlan(\DateTime $startDate): Collection
     {
-        return Payment::where('status', 'completed')
+        return Payment::where('status', PaymentStatus::Completed)
             ->where('paid_at', '>=', $startDate)
             ->join('subscriptions', 'payments.subscription_id', '=', 'subscriptions.id')
             ->select('subscriptions.plan', DB::raw('SUM(payments.amount) as total_revenue'))
@@ -139,7 +141,7 @@ class AnalyticsService
 
     private function getDailyRevenue(\DateTime $startDate): Collection
     {
-        return Payment::where('status', 'completed')
+        return Payment::where('status', PaymentStatus::Completed)
             ->where('paid_at', '>=', $startDate)
             ->select(
                 DB::raw('DATE(paid_at) as date'),
@@ -163,7 +165,7 @@ class AnalyticsService
     private function getPaymentSuccessRate(\DateTime $startDate): float
     {
         $totalPayments = Payment::where('created_at', '>=', $startDate)->count();
-        $successfulPayments = Payment::where('status', 'completed')
+        $successfulPayments = Payment::where('status', PaymentStatus::Completed)
             ->where('created_at', '>=', $startDate)->count();
             
         return $totalPayments > 0 ? ($successfulPayments / $totalPayments) * 100 : 0;
@@ -233,13 +235,13 @@ class AnalyticsService
 
     private function getFailedPaymentStats(\DateTime $startDate): array
     {
-        $failedPayments = Payment::where('status', 'failed')
+        $failedPayments = Payment::where('status', PaymentStatus::Failed)
             ->where('created_at', '>=', $startDate);
             
         return [
             'count' => $failedPayments->count(),
             'total_amount' => $failedPayments->sum('amount'),
-            'common_reasons' => Payment::where('status', 'failed')
+            'common_reasons' => Payment::where('status', PaymentStatus::Failed)
                 ->where('created_at', '>=', $startDate)
                 ->selectRaw("JSON_EXTRACT(payment_details, '$.failure_reason') as reason, COUNT(*) as count")
                 ->groupBy('reason')
@@ -251,7 +253,7 @@ class AnalyticsService
 
     private function getAverageProcessingTime(\DateTime $startDate): float
     {
-        return Payment::where('status', 'completed')
+        return Payment::where('status', PaymentStatus::Completed)
             ->where('paid_at', '>=', $startDate)
             ->avg(DB::raw('TIMESTAMPDIFF(SECOND, created_at, paid_at)')) ?? 0;
     }

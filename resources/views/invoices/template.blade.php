@@ -103,7 +103,7 @@
         <div><strong>Payment Information:</strong></div>
         <div>Payment Method: {{ ucfirst(str_replace('_', ' ', $payment->method)) }}</div>
         <div>Payment Date: {{ $payment->paid_at->format('M d, Y h:i A') }}</div>
-        @if($payment->status === 'completed')
+        @if($payment->isCompleted())
         <div style="color: green; font-weight: bold;">✓ Payment Received</div>
         @endif
     </div>

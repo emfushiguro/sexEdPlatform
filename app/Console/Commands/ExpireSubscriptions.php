@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Subscription;
+use App\Enums\SubscriptionStatus;
 use App\Events\SubscriptionExpired;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +21,7 @@ class ExpireSubscriptions extends Command
         $this->info('Checking for expired subscriptions...');
 
         // Find all active subscriptions with end_date in the past
-        $query = Subscription::where('status', 'active')
+        $query = Subscription::where('status', SubscriptionStatus::Active)
             ->whereNotNull('end_date')
             ->where('end_date', '<', now());
 
@@ -55,7 +56,7 @@ class ExpireSubscriptions extends Command
         foreach ($subscriptions as $subscription) {
             try {
                 $subscription->update([
-                    'status' => 'expired',
+                    'status' => SubscriptionStatus::Expired,
                 ]);
 
                 // Dispatch event for notifications/logging

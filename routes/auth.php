@@ -30,13 +30,12 @@ Route::middleware('guest')->group(function () {
     Route::post('parent/register', [ParentRegistrationController::class, 'store'])
         ->name('parent.register.store');
 
-    // Learner login (homepage)
-    Route::get('/', function () {
+    // Learner login
+    Route::get('login', function () {
         return view('auth.learner-login');
-    })->name('learner.login');
-    
-    Route::post('login', [AuthenticatedSessionController::class, 'store'])
-        ->name('login');
+    })->name('login');
+
+    Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
     // Instructor login (separate portal)
     Route::get('instructor/login', [InstructorAuthController::class, 'showLoginForm'])

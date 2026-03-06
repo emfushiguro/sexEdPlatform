@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
 use App\Services\SubscriptionDunningService;
 use App\Models\Subscription;
 use App\Models\Payment;
@@ -38,13 +40,13 @@ class ProcessSubscriptionRenewals extends Command
 
     private function expireGracePeriodSubscriptions(): void
     {
-        $expiredSubscriptions = Subscription::where('status', 'past_due')
+        $expiredSubscriptions = Subscription::where('status', SubscriptionStatus::PastDue)
             ->where('grace_period_ends', '<', now())
             ->get();
 
         foreach ($expiredSubscriptions as $subscription) {
             $subscription->update([
-                'status' => 'cancelled',
+                'status' => SubscriptionStatus::Cancelled,
                 'cancelled_at' => now(),
                 'cancellation_reason' => 'Grace period expired - payment failed'
             ]);
@@ -61,13 +63,13 @@ class ProcessSubscriptionRenewals extends Command
     private function cleanupOldPendingPayments(): void
     {
         // Cancel payments older than 7 days that are still pending
-        $oldPendingPayments = Payment::where('status', 'pending')
+        $oldPendingPayments = Payment::where('status', PaymentStatus::Pending)
             ->where('created_at', '<', now()->subDays(7))
             ->get();
 
         foreach ($oldPendingPayments as $payment) {
             $payment->update([
-                'status' => 'failed',
+                'status' => PaymentStatus::Failed,
                 'payment_details' => array_merge($payment->payment_details ?? [], [
                     'failure_reason' => 'Payment timeout - cancelled after 7 days',
                     'cancelled_at' => now()->toDateTimeString()

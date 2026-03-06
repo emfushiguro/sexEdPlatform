@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\AnalyticsService;
-use App\Mail\WeeklyAnalyticsReport;
+use App\Mail\WeeklyAnalyticsReportMail;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
@@ -41,7 +41,7 @@ class GenerateAnalyticsReport extends Command
 
         // Send report via email
         foreach ($adminUsers as $admin) {
-            Mail::to($admin->email)->send(new WeeklyAnalyticsReport($data));
+            Mail::to($admin->email)->send(new WeeklyAnalyticsReportMail($data));
         }
 
         $this->info("✓ Analytics report sent to {$adminUsers->count()} administrators");

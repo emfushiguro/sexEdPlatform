@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SubscriptionStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Subscription extends Model
 {
     use SoftDeletes;
+
+    /**
+     * The table aligns with the renamed 'subscribers' database table.
+     */
+    protected $table = 'subscribers';
 
     protected $fillable = [
         'user_id',
@@ -29,6 +35,7 @@ class Subscription extends Model
     protected function casts(): array
     {
         return [
+            'status' => SubscriptionStatus::class,
             'start_date' => 'datetime',
             'end_date' => 'datetime',
             'trial_ends_at' => 'date',
@@ -77,7 +84,7 @@ class Subscription extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->where('status', SubscriptionStatus::Active);
     }
 
     public function scopePremium($query)
@@ -87,7 +94,7 @@ class Subscription extends Model
 
     public function scopeExpiringSoon($query, $days = 3)
     {
-        return $query->where('status', 'active')
+        return $query->where('status', SubscriptionStatus::Active)
             ->whereNotNull('end_date')
             ->where('end_date', '<=', now()->addDays($days))
             ->where('end_date', '>', now());
@@ -98,14 +105,14 @@ class Subscription extends Model
      */
     public function scopeExpired($query)
     {
-        return $query->where('status', 'active')
+        return $query->where('status', SubscriptionStatus::Active)
             ->whereNotNull('end_date')
             ->where('end_date', '<', now());
     }
 
     public function scopeInGracePeriod($query)
     {
-        return $query->where('status', 'past_due')
+        return $query->where('status', SubscriptionStatus::PastDue)
             ->where('grace_period_ends', '>', now());
     }
 
@@ -113,7 +120,7 @@ class Subscription extends Model
 
     public function isActive(): bool
     {
-        return $this->status === 'active' && 
+        return $this->status === SubscriptionStatus::Active && 
                ($this->end_date === null || $this->end_date->isAfter(now()));
     }
 
@@ -135,12 +142,12 @@ class Subscription extends Model
 
     public function isCancelled(): bool
     {
-        return $this->status === 'cancelled';
+        return $this->status === SubscriptionStatus::Cancelled;
     }
 
     public function isPastDue(): bool
     {
-        return $this->status === 'past_due';
+        return $this->status === SubscriptionStatus::PastDue;
     }
 
     public function isInTrial(): bool
@@ -214,23 +221,23 @@ class Subscription extends Model
     public function getStatusLabel(): string
     {
         return match($this->status) {
-            'active' => 'Active',
-            'cancelled' => 'Cancelled',
-            'expired' => 'Expired',
-            'past_due' => 'Past Due',
-            'pending' => 'Pending Activation',
-            default => ucfirst($this->status),
+            SubscriptionStatus::Active => 'Active',
+            SubscriptionStatus::Cancelled => 'Cancelled',
+            SubscriptionStatus::Expired => 'Expired',
+            SubscriptionStatus::PastDue => 'Past Due',
+            SubscriptionStatus::Pending => 'Pending Activation',
+            default => ucfirst($this->status->value),
         };
     }
 
     public function getStatusColor(): string
     {
         return match($this->status) {
-            'active' => 'green',
-            'cancelled' => 'gray',
-            'expired' => 'red',
-            'past_due' => 'orange',
-            'pending' => 'yellow',
+            SubscriptionStatus::Active => 'green',
+            SubscriptionStatus::Cancelled => 'gray',
+            SubscriptionStatus::Expired => 'red',
+            SubscriptionStatus::PastDue => 'orange',
+            SubscriptionStatus::Pending => 'yellow',
             default => 'gray',
         };
     }
