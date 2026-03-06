@@ -29,7 +29,7 @@ class QuizController extends Controller
         // Check enrollment
         $moduleId = $quiz->module_id ?? $quiz->lesson?->module_id;
         if (!$user->moduleEnrollments()->where('module_id', $moduleId)->exists()) {
-            return redirect()->route('modules.show', $moduleId)
+            return redirect()->route('learner.modules.show', $moduleId)
                 ->with('error', 'You must enroll in the module first.');
         }
 

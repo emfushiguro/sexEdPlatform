@@ -221,36 +221,141 @@
             <div id="content-subscription" class="tab-content hidden">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <h3 class="text-lg font-semibold mb-4">Manage Subscription</h3>
-                        
-                        @if(auth()->user()->isPremium())
-                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                                <div class="flex items-center gap-3">
-                                    <svg class="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                                    </svg>
-                                    <div>
-                                        <p class="font-semibold text-yellow-800">Premium Member</p>
-                                        <p class="text-sm text-yellow-700">You have access to all premium features</p>
-                                    </div>
-                                </div>
-                            </div>
-                        @else
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                                <p class="text-sm text-blue-700 mb-4">Upgrade to Premium for exclusive features!</p>
-                                <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition">
-                                    Upgrade to Premium
-                                </button>
-                            </div>
-                        @endif
+                        <h3 class="text-lg font-semibold mb-1">My Subscription</h3>
+                        <p class="text-sm text-gray-500 mb-6">View your current plan and upgrade anytime.</p>
 
-                        <div class="border-t pt-6">
-                            <h4 class="font-semibold mb-2">Subscription Details</h4>
-                            <p class="text-sm text-gray-600">Feature coming soon - manage your subscription here.</p>
+                        {{-- Current Plan Card --}}
+                        <div class="mb-8">
+                            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Current Plan</h4>
+
+                            @if($currentSubscription && $currentPlan)
+                                <div class="border-2 border-blue-500 rounded-xl p-5 bg-blue-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div>
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="text-lg font-bold text-blue-700">{{ $currentPlan->name }}</span>
+                                            <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">Active</span>
+                                        </div>
+                                        @if($currentPlan->description)
+                                            <p class="text-sm text-blue-600 mb-2">{{ $currentPlan->description }}</p>
+                                        @endif
+                                        <div class="flex flex-wrap gap-3 text-sm text-blue-700">
+                                            <span>
+                                                💰
+                                                @if($currentPlan->isFree())
+                                                    Free
+                                                @else
+                                                    ₱{{ number_format($currentSubscription->price_paid, 2) }} paid
+                                                @endif
+                                            </span>
+                                            @if($currentSubscription->end_date)
+                                                <span>📅 Expires {{ $currentSubscription->end_date->format('M d, Y') }}</span>
+                                            @endif
+                                            @if($currentSubscription->auto_renew)
+                                                <span class="text-green-700">🔄 Auto-renew on</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    @if(!$currentPlan->isFree())
+                                        <div class="flex flex-col items-end gap-2">
+                                            @if($isRefundEligible && $refundDeadline)
+                                                {{-- Countdown display --}}
+                                                <div class="text-right">
+                                                    <p class="text-xs text-gray-500 mb-0.5">Refund window closes:</p>
+                                                    <p class="text-xs font-medium text-orange-600">{{ $refundDeadline->format('M d, Y h:i A') }}</p>
+                                                    <div class="flex items-center justify-end gap-1 mt-1">
+                                                        <span class="text-xs text-gray-400">⏱</span>
+                                                        <span id="refund-countdown" class="text-sm font-mono font-bold text-orange-600">--:--:--</span>
+                                                        <span class="text-xs text-gray-400">remaining</span>
+                                                    </div>
+                                                </div>
+                                                {{-- Refund button --}}
+                                                <button onclick="document.getElementById('refund-modal').classList.remove('hidden')"
+                                                        class="text-sm text-orange-600 hover:text-orange-800 border border-orange-300 hover:border-orange-500 bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-lg transition font-medium">
+                                                    💸 Request Refund
+                                                </button>
+                                            @else
+                                                <div class="text-right">
+                                                    <span class="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg block">Refund window expired</span>
+                                                    @if($refundDeadline)
+                                                        <p class="text-xs text-gray-400 mt-1">Closed {{ $refundDeadline->format('M d, Y h:i A') }}</p>
+                                                    @elseif(!$latestPayment)
+                                                        <p class="text-xs text-gray-400 mt-1">No payment record found</p>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @else
+                                {{-- Free / No subscription --}}
+                                <div class="border-2 border-gray-300 rounded-xl p-5 bg-gray-50 flex items-center justify-between">
+                                    <div>
+                                        <span class="text-lg font-bold text-gray-700">Free Plan</span>
+                                        <p class="text-sm text-gray-500 mt-1">Basic access — upgrade to unlock more features.</p>
+                                    </div>
+                                    <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-full">Active</span>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Manage Subscription CTA --}}
+                        <div class="border-t border-gray-100 pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <p class="text-sm font-medium text-gray-700">Want to change or upgrade your plan?</p>
+                                <p class="text-xs text-gray-400 mt-0.5">View all available plans, switch, or manage your subscription.</p>
+                            </div>
+                            <a href="{{ route('subscription.index') }}"
+                               class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-gray-900 hover:bg-gray-700 text-white transition whitespace-nowrap">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                                Manage Subscription
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {{-- Refund Modal (placed here at top level so fixed positioning is never clipped) --}}
+            @if($isRefundEligible && $refundDeadline)
+            <div id="refund-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+                <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-y-auto max-h-[90vh]">
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-900 mb-2">Request a Refund</h3>
+                        <p class="text-sm text-gray-600 mb-1">You are requesting a refund for your <strong>{{ $currentPlan->name }}</strong>.</p>
+                        <p class="text-sm text-orange-600 mb-4">⚠️ Your subscription will be cancelled immediately upon refund.</p>
+                        <div class="bg-orange-50 border border-orange-200 rounded-lg px-4 py-2 mb-4 text-sm text-orange-700">
+                            ⏱ Window closes: <strong>{{ $refundDeadline->format('M d, Y h:i A') }}</strong>
+                            &nbsp;—&nbsp;<span id="modal-countdown" class="font-mono font-bold">--:--:--</span> remaining
+                        </div>
+                        <form method="POST" action="{{ route('subscription.refund') }}">
+                            @csrf
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Reason for refund <span class="text-gray-400">(optional)</span>
+                                </label>
+                                <textarea name="reason" rows="3"
+                                          placeholder="Tell us why you're requesting a refund..."
+                                          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent"></textarea>
+                            </div>
+                            <div class="flex gap-3 justify-end">
+                                <button type="button" onclick="document.getElementById('refund-modal').classList.add('hidden')"
+                                        class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                                    Go Back
+                                </button>
+                                <button type="submit"
+                                        class="px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
+                                        style="background-color: #f97316;"
+                                        onmouseover="this.style.backgroundColor='#ea580c'"
+                                        onmouseout="this.style.backgroundColor='#f97316'">
+                                    Confirm Refund
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             <!-- Delete Account Tab -->
             <div id="content-danger" class="tab-content hidden">
@@ -309,6 +414,50 @@
         // Initialize tabs on load
         document.addEventListener('DOMContentLoaded', function() {
             switchTab('profile');
+
+            @if($isRefundEligible && $refundDeadline)
+            // Refund countdown timer
+            const refundDeadline = new Date('{{ $refundDeadline->toIso8601String() }}');
+
+            function updateCountdown() {
+                const now  = new Date();
+                const diff = refundDeadline - now;
+
+                const countdownEls = document.querySelectorAll('#refund-countdown, #modal-countdown');
+
+                if (diff <= 0) {
+                    countdownEls.forEach(el => {
+                        if (el) {
+                            el.textContent = 'EXPIRED';
+                            el.classList.remove('text-orange-600');
+                            el.classList.add('text-red-600');
+                        }
+                    });
+                    return;
+                }
+
+                const totalSecs = Math.floor(diff / 1000);
+                const hours     = Math.floor(totalSecs / 3600);
+                const minutes   = Math.floor((totalSecs % 3600) / 60);
+                const seconds   = totalSecs % 60;
+                const formatted = String(hours).padStart(2,'0') + ':' +
+                                  String(minutes).padStart(2,'0') + ':' +
+                                  String(seconds).padStart(2,'0');
+
+                // Turn red when under 1 hour
+                countdownEls.forEach(el => {
+                    if (!el) return;
+                    el.textContent = formatted;
+                    if (hours < 1) {
+                        el.classList.remove('text-orange-600');
+                        el.classList.add('text-red-600');
+                    }
+                });
+            }
+
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+            @endif
         });
     </script>
 

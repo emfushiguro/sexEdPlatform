@@ -2,19 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
 use App\Models\User;
 use App\Models\Module;
 use App\Models\Counselor;
 use App\Models\Clinic;
 use App\Models\Seminar;
 use App\Models\UserProgress;
+use App\Models\Payment;
+use App\Services\PayMongoPaymentLinkService;
+use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $user = auth()->user();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
 
         // Route to role-specific dashboard
         return match($user->role) {
@@ -42,7 +51,14 @@ class DashboardController extends Controller
 
     private function learnerDashboard()
     {
-        $user = auth()->user();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        // Auto-verify any pending subscription against PayMongo API.
+        // This fires when the user navigates to the dashboard after paying
+        // instead of waiting on the pending page.
+        $this->autoVerifyPendingPayment($user);
+
         $learnerProfile = $user->learnerProfile;
 
         // Get age and age bracket
@@ -116,7 +132,8 @@ class DashboardController extends Controller
 
     private function counselorDashboard()
     {
-        $user = auth()->user();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
         $counselor = $user->counselor;
 
         $data = [
@@ -130,7 +147,8 @@ class DashboardController extends Controller
 
     private function clinicDashboard()
     {
-        $user = auth()->user();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
         $clinic = $user->clinic;
 
         $data = [
@@ -143,7 +161,8 @@ class DashboardController extends Controller
 
     private function organizationDashboard()
     {
-        $user = auth()->user();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
         $organization = $user->organization;
 
         $data = [
@@ -153,5 +172,73 @@ class DashboardController extends Controller
         ];
 
         return view('dashboards.organization', $data);
+    }
+
+    /**
+     * Check if the user has a pending subscription whose PayMongo link is already paid,
+     * and activate it automatically. Called from learnerDashboard() as a safety net for
+     * users who navigate to the dashboard instead of waiting on the pending page.
+     */
+    private function autoVerifyPendingPayment($user): void
+    {
+        try {
+            $pendingSubscription = $user->subscriptions()
+                ->where('status', SubscriptionStatus::Pending)
+                ->latest()
+                ->first();
+
+            if (!$pendingSubscription) {
+                return;
+            }
+
+            // Layer 1: payment already completed in DB but sub still pending
+            $completedPayment = $pendingSubscription->payments()
+                ->where('status', PaymentStatus::Completed)
+                ->first();
+
+            if ($completedPayment) {
+                app(SubscriptionService::class)->activate($pendingSubscription);
+                session()->flash('success', 'Your subscription is now active! 🎉');
+                return;
+            }
+
+            // Layer 2: ask PayMongo API if the link is paid
+            $pendingPayment = $pendingSubscription->payments()
+                ->where('status', PaymentStatus::Pending)
+                ->whereNotNull('payment_details')
+                ->latest()
+                ->first();
+
+            if (!$pendingPayment) {
+                return;
+            }
+
+            $linkId = $pendingPayment->payment_details['paymongo_link_id'] ?? null;
+            if (!$linkId) {
+                return;
+            }
+
+            $paymongoService = app(PayMongoPaymentLinkService::class);
+            $response = $paymongoService->retrievePaymentLink($linkId);
+            $pmStatus = $response['data']['attributes']['status'] ?? null;
+
+            if ($pmStatus === 'paid') {
+                DB::transaction(function () use ($pendingPayment, $pendingSubscription) {
+                    $pendingPayment->update([
+                        'status'  => PaymentStatus::Completed,
+                        'paid_at' => now(),
+                        'payment_details' => array_merge($pendingPayment->payment_details ?? [], [
+                            'verified_via_dashboard' => true,
+                            'verified_at'            => now()->toDateTimeString(),
+                        ]),
+                    ]);
+                    app(SubscriptionService::class)->activate($pendingSubscription);
+                });
+                session()->flash('success', 'Your payment was confirmed! Subscription is now active. 🎉');
+            }
+        } catch (\Exception $e) {
+            // Non-critical — don't break the dashboard if PayMongo is unavailable
+            Log::info('Dashboard auto-verify skipped', ['error' => $e->getMessage()]);
+        }
     }
 }

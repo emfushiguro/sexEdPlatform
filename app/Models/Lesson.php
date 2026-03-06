@@ -14,6 +14,7 @@ class Lesson extends Model
         'order',
         'duration',
         'is_published',
+        'text_content',
     ];
 
     protected function casts(): array

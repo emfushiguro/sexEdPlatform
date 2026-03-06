@@ -69,7 +69,7 @@
                                             <div class="p-4 hover:bg-gray-50 transition {{ $isEnrolled ? 'cursor-pointer' : '' }}"
                                                  @if($topicsCount > 0 && $isEnrolled)
                                                      @click="expandedLesson = expandedLesson === {{ $lesson->id }} ? null : {{ $lesson->id }}"
-                                                 @elseif($isEnrolled)
+                                                 @elseif($isEnrolled && $lesson)
                                                      onclick="window.location='{{ route('learner.lessons.show', $lesson) }}'"
                                                  @endif>
                                                 <div class="flex items-center justify-between">
@@ -152,8 +152,12 @@
                                                                     ->where('completed', true)
                                                                     ->exists();
                                                             @endphp
-                                                            <a href="{{ route('learner.lessons.show', $lesson) }}#topic-{{ $topic->id }}" 
-                                                               class="flex items-start gap-3 px-6 py-3 hover:bg-white transition group">
+                                                            @if($lesson)
+                                                                <a href="{{ route('learner.lessons.show', $lesson) }}#topic-{{ $topic->id }}" 
+                                                                   class="flex items-start gap-3 px-6 py-3 hover:bg-white transition group">
+                                                            @else
+                                                                <span class="flex items-start gap-3 px-6 py-3 text-gray-400 cursor-not-allowed">Lesson unavailable</span>
+                                                            @endif
                                                                 <!-- Completion Circle -->
                                                                 <div class="flex-shrink-0 mt-1">
                                                                     @if($isTopicCompleted)
@@ -285,15 +289,24 @@
                                 </p>
                             </div>
 
+<<<<<<< HEAD
                             @if($lessons->isNotEmpty())
                                 <a href="{{ route('learner.lessons.show', ['lesson' => $lessons->first()->id]) }}" 
+=======
+                            @if($lessons->first())
+                                <a href="{{ route('learner.lessons.show', $lessons->first()) }}" 
+>>>>>>> main
                                    class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg mb-3">
                                     {{ ($progress->progress_percentage ?? 0) > 0 ? 'Continue Learning' : 'Start Learning' }}
                                 </a>
                             @else
+<<<<<<< HEAD
                                 <div class="block w-full text-center bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg mb-3 cursor-not-allowed">
                                     No Lessons Available
                                 </div>
+=======
+                                <span class="block w-full text-center bg-gray-200 text-gray-500 font-semibold py-3 px-4 rounded-lg mb-3 cursor-not-allowed">No lessons available</span>
+>>>>>>> main
                             @endif
 
                             <!-- Certificate Section (Premium) -->
@@ -344,7 +357,7 @@
                                     </div>
                                 @endif
                             @endif
-                        @elseif($enrollmentStatus === 'pending')
+                        @elseif($enrollmentStatus === \App\Enums\EnrollmentStatus::Pending)
                             <!-- Pending Approval Status -->
                             <div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-4">
                                 <div class="flex items-center justify-center mb-2">
@@ -359,7 +372,7 @@
                                     Your enrollment request is waiting for instructor approval. You'll be notified once approved.
                                 </p>
                             </div>
-                        @elseif($enrollmentStatus === 'rejected')
+                        @elseif($enrollmentStatus === \App\Enums\EnrollmentStatus::Rejected)
                             <!-- Rejected Status -->
                             <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
                                 <div class="flex items-center justify-center mb-2">
