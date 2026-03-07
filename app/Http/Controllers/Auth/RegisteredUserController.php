@@ -42,6 +42,7 @@ class RegisteredUserController extends Controller
             session([
                 'pending_child_registration' => $validated,
                 'child_registration_timestamp' => now()->timestamp,
+                'is_parent_registration' => true,
             ]);
             
             return redirect()->route('parent.registration.required')

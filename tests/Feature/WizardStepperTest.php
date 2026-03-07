@@ -100,4 +100,15 @@ class WizardStepperTest extends TestCase
         $this->assertCount(5, $steps);
         $this->assertTrue($steps[3]['isActive']); // step 4 of 5
     }
+
+    public function test_parent_required_page_shows_parent_flow_step_1_active(): void
+    {
+        // is_parent_registration is now set before the redirect to this page
+        $component = new WizardStepper('parent.registration.required', true);
+        $steps = $component->steps;
+
+        $this->assertCount(5, $steps);
+        $this->assertTrue($steps[0]['isActive']);
+        $this->assertFalse($steps[1]['isActive']);
+    }
 }
