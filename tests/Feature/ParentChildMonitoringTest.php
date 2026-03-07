@@ -95,4 +95,77 @@ class ParentChildMonitoringTest extends TestCase
         $this->get(route('parent.children.show', $child))
              ->assertRedirect('/login');
     }
+
+    public function test_get_progress_returns_approved_enrollments_with_progress(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $module = Module::factory()->create(['title' => 'Test Module']);
+        ModuleEnrollment::create([
+            'user_id'     => $child->id,
+            'module_id'   => $module->id,
+            'status'      => 'approved',
+            'enrolled_at' => now(),
+        ]);
+
+        $service = app(\App\Services\ParentChildService::class);
+        $progress = $service->getProgress($child);
+
+        $this->assertCount(1, $progress);
+        $this->assertEquals('Test Module', $progress->first()->module->title);
+    }
+
+    public function test_get_quiz_results_returns_attempts_newest_first(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $quiz = Quiz::factory()->create();
+
+        QuizAttempt::create([
+            'user_id'      => $child->id,
+            'quiz_id'      => $quiz->id,
+            'score'        => 80,
+            'passed'       => true,
+            'answers'      => json_encode([]),
+            'started_at'   => now()->subMinutes(10),
+            'completed_at' => now(),
+        ]);
+
+        $service = app(\App\Services\ParentChildService::class);
+        $results = $service->getQuizResults($child);
+
+        $this->assertCount(1, $results);
+        $this->assertEquals(80, $results->first()->score);
+    }
+
+    public function test_get_achievements_returns_gamification_and_reward_logs(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $service = app(\App\Services\ParentChildService::class);
+        $achievements = $service->getAchievements($child);
+
+        $this->assertArrayHasKey('gamification', $achievements);
+        $this->assertArrayHasKey('rewardLogs', $achievements);
+        $this->assertEquals(1, $achievements['gamification']->level);
+    }
+
+    public function test_get_pending_enrollments_returns_only_pending_parent_approval(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $module = Module::factory()->create();
+        ModuleEnrollment::create([
+            'user_id'     => $child->id,
+            'module_id'   => $module->id,
+            'status'      => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $service = app(\App\Services\ParentChildService::class);
+        $pending = $service->getPendingEnrollments($child);
+
+        $this->assertCount(1, $pending);
+        $this->assertEquals('pending_parent_approval', $pending->first()->status);
+    }
 }
