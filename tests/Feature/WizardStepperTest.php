@@ -83,7 +83,6 @@ class WizardStepperTest extends TestCase
 
     public function test_verification_notice_shows_learner_flow_without_session_flag(): void
     {
-        // Simulate no session flag
         $component = new WizardStepper('verification.notice', false);
         $this->assertCount(3, $component->steps);
     }

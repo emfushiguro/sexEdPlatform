@@ -11,35 +11,34 @@ class WizardStepper extends Component
 
     private const LEARNER_FLOW = [
         ['label' => 'Create Account',   'route' => 'register'],
-        ['label' => 'Verify Email',     'route' => 'verification.notice'],
-        ['label' => 'Complete Profile', 'route' => 'profile.complete'],
+        ['label' => 'Verify Email',      'route' => 'verification.notice'],
+        ['label' => 'Complete Profile',  'route' => 'profile.complete'],
     ];
 
     private const PARENT_FLOW = [
-        ['label' => 'Parent Required',      'route' => 'parent.registration.required'],
-        ['label' => 'Parent Registers',     'route' => 'parent.register'],
-        ['label' => 'Verify Email',         'route' => 'verification.notice'],
-        ['label' => 'Complete Profile',     'route' => 'profile.complete'],
-        ['label' => 'Create Child Account', 'route' => 'parent.create-child'],
+        ['label' => 'Parent Required',       'route' => 'parent.registration.required'],
+        ['label' => 'Parent Registers',      'route' => 'parent.register'],
+        ['label' => 'Verify Email',          'route' => 'verification.notice'],
+        ['label' => 'Complete Profile',      'route' => 'profile.complete'],
+        ['label' => 'Create Child Account',  'route' => 'parent.create-child'],
     ];
 
     public function __construct(
-        ?string $currentRoute = null,
-        bool $isParentFlow = false,
+        private ?string $currentRoute = null,
+        private ?bool $isParentFlow = null,
     ) {
-        $this->steps = $this->buildSteps(
-            $currentRoute ?? (Route::currentRouteName() ?? ''),
-            $isParentFlow,
-        );
+        $this->currentRoute = $currentRoute ?? Route::currentRouteName() ?? '';
+        $this->isParentFlow = $isParentFlow ?? (bool) session('is_parent_registration');
+        $this->steps = $this->buildSteps();
     }
 
-    private function buildSteps(string $currentRoute, bool $isParentFlow): ?array
+    private function buildSteps(): ?array
     {
-        $map = $isParentFlow ? self::PARENT_FLOW : self::LEARNER_FLOW;
+        $map = $this->isParentFlow ? self::PARENT_FLOW : self::LEARNER_FLOW;
 
         $activeIndex = null;
         foreach ($map as $i => $step) {
-            if ($step['route'] === $currentRoute) {
+            if ($step['route'] === $this->currentRoute) {
                 $activeIndex = $i;
                 break;
             }
