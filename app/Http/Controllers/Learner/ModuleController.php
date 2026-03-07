@@ -185,6 +185,30 @@ class ModuleController extends Controller
             if ($existingEnrollment->status === 'rejected') {
                 return back()->with('error', 'Your enrollment request was rejected by the instructor.');
             }
+            if ($existingEnrollment->status === 'pending_parent_approval') {
+                return back()->with('info', 'Your enrollment request is awaiting your parent\'s approval.');
+            }
+        }
+
+        // Check if child requires parental content approval before enrolling
+        $learnerProfile = $user->learnerProfile;
+        if ($learnerProfile?->requires_parental_consent) {
+            $parentUser = $user->parent();
+            if ($parentUser) {
+                $parentChildAccount = \App\Models\ParentChildAccount::where('parent_user_id', $parentUser->id)
+                    ->where('child_user_id', $user->id)
+                    ->first();
+                if ($parentChildAccount?->can_approve_content) {
+                    ModuleEnrollment::create([
+                        'user_id'     => $user->id,
+                        'module_id'   => $module->id,
+                        'status'      => 'pending_parent_approval',
+                        'enrolled_at' => null,
+                    ]);
+                    return redirect()->route('learner.modules.show', $module)
+                        ->with('info', 'Your enrollment request has been sent to your parent for approval.');
+                }
+            }
         }
 
         // Check enrollment mode

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureProfileCompleted;
+use App\Models\LearnerProfile;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\ParentChildAccount;
@@ -255,5 +257,39 @@ class ParentChildMonitoringTest extends TestCase
         $this->actingAs($parent)
              ->post(route('parent.children.enrollments.approve', [$otherChild, $enrollment]))
              ->assertForbidden();
+    }
+
+    public function test_child_enrollment_is_gated_when_parent_has_content_approval_enabled(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        // Give the child a complete-enough learner profile for the controller
+        LearnerProfile::updateOrCreate(
+            ['user_id' => $child->id],
+            [
+                'username'                  => 'testchild',
+                'birthdate'                 => now()->subYears(8),
+                'requires_parental_consent' => true,
+            ]
+        );
+
+        $module = Module::factory()->create([
+            'enrollment_mode' => 'auto',
+            'is_published'    => true,
+            'min_age'         => 5,
+            'max_age'         => 12,
+        ]);
+
+        // Bypass the profile-completion redirect so we hit the enroll() logic
+        $this->withoutMiddleware(EnsureProfileCompleted::class)
+             ->actingAs($child)
+             ->post(route('learner.modules.enroll', $module))
+             ->assertRedirect();
+
+        $this->assertDatabaseHas('module_enrollments', [
+            'user_id'   => $child->id,
+            'module_id' => $module->id,
+            'status'    => 'pending_parent_approval',
+        ]);
     }
 }
