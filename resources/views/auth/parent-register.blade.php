@@ -8,6 +8,8 @@
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100">
     <div class="min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <x-wizard-stepper />
+
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-gray-900">Create Parent Account</h1>

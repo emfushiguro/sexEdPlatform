@@ -8,6 +8,8 @@
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <x-wizard-stepper />
+
         <!-- Header -->
         <div class="max-w-3xl mx-auto mb-8">
             <div class="flex items-center justify-between">

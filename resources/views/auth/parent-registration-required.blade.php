@@ -1,4 +1,6 @@
 <x-guest-layout>
+    <x-wizard-stepper />
+
     <div class="text-center mb-8">
         <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-orange-100 mb-4">
             <svg class="h-10 w-10 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
