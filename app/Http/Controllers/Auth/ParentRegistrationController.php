@@ -272,7 +272,7 @@ class ParentRegistrationController extends Controller
             'child_user_id' => $child->id,
             'can_view_progress' => true, // Always ON for COPPA compliance
             'can_view_quiz_answers' => true, // Always ON for safety monitoring
-            'can_approve_content' => false, // Future feature
+            'can_approve_content' => true, // Parents must approve content for their children
             'relationship_verified_at' => now(),
         ]);
         
