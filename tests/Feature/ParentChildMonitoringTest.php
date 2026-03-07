@@ -168,4 +168,92 @@ class ParentChildMonitoringTest extends TestCase
         $this->assertCount(1, $pending);
         $this->assertEquals('pending_parent_approval', $pending->first()->status);
     }
+
+    public function test_parent_can_approve_pending_enrollment_auto_module(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $module = Module::factory()->create(['enrollment_mode' => 'auto']);
+        $enrollment = ModuleEnrollment::create([
+            'user_id'     => $child->id,
+            'module_id'   => $module->id,
+            'status'      => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $this->actingAs($parent)
+             ->post(route('parent.children.enrollments.approve', [$child, $enrollment]))
+             ->assertRedirect(route('parent.children.show', $child));
+
+        $this->assertDatabaseHas('module_enrollments', [
+            'id'     => $enrollment->id,
+            'status' => 'approved',
+        ]);
+    }
+
+    public function test_parent_can_approve_pending_enrollment_manual_module(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $module = Module::factory()->create(['enrollment_mode' => 'manual']);
+        $enrollment = ModuleEnrollment::create([
+            'user_id'     => $child->id,
+            'module_id'   => $module->id,
+            'status'      => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $this->actingAs($parent)
+             ->post(route('parent.children.enrollments.approve', [$child, $enrollment]))
+             ->assertRedirect(route('parent.children.show', $child));
+
+        $this->assertDatabaseHas('module_enrollments', [
+            'id'     => $enrollment->id,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_parent_can_reject_pending_enrollment(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $module = Module::factory()->create();
+        $enrollment = ModuleEnrollment::create([
+            'user_id'     => $child->id,
+            'module_id'   => $module->id,
+            'status'      => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $this->actingAs($parent)
+             ->post(route('parent.children.enrollments.reject', [$child, $enrollment]))
+             ->assertRedirect(route('parent.children.show', $child));
+
+        $this->assertDatabaseHas('module_enrollments', [
+            'id'     => $enrollment->id,
+            'status' => 'rejected',
+        ]);
+    }
+
+    public function test_parent_cannot_approve_enrollment_for_another_childs_enrollment(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        // A stranger's child
+        $otherChild = User::factory()->create(['email_verified_at' => now()]);
+        $otherChild->assignRole('learner');
+
+        $module = Module::factory()->create();
+        $enrollment = ModuleEnrollment::create([
+            'user_id'     => $otherChild->id,
+            'module_id'   => $module->id,
+            'status'      => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        // Parent tries to approve an enrollment that belongs to a child they don't own
+        $this->actingAs($parent)
+             ->post(route('parent.children.enrollments.approve', [$otherChild, $enrollment]))
+             ->assertForbidden();
+    }
 }
