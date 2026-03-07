@@ -1,0 +1,159 @@
+@php
+    $authUser        = Auth::user();
+    $sidebarProfile  = $authUser->learnerProfile;
+    $sidebarUsername = $sidebarProfile?->username ?? $authUser->name;
+    $sidebarAvatar   = $sidebarProfile?->avatar_path
+        ? asset('storage/' . $sidebarProfile->avatar_path)
+        : null;
+
+    $navItems = [
+        [
+            'label'  => 'Dashboard',
+            'route'  => 'learner.dashboard',
+            'active' => request()->routeIs('learner.dashboard'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M3.25 5.5A2.25 2.25 0 0 1 5.5 3.25H9A2.25 2.25 0 0 1 11.25 5.5V9A2.25 2.25 0 0 1 9 11.25H5.5A2.25 2.25 0 0 1 3.25 9V5.5Zm0 9A2.25 2.25 0 0 1 5.5 12.25H9A2.25 2.25 0 0 1 11.25 14.5V18A2.25 2.25 0 0 1 9 20.25H5.5A2.25 2.25 0 0 1 3.25 18v-3.5Zm9-9A2.25 2.25 0 0 1 14.5 3.25H18A2.25 2.25 0 0 1 20.25 5.5V9A2.25 2.25 0 0 1 18 11.25h-3.5A2.25 2.25 0 0 1 12.25 9V5.5Zm0 9A2.25 2.25 0 0 1 14.5 12.25H18A2.25 2.25 0 0 1 20.25 14.5V18A2.25 2.25 0 0 1 18 20.25h-3.5A2.25 2.25 0 0 1 12.25 18v-3.5Z"/></svg>',
+        ],
+        [
+            'label'  => 'Subscriptions',
+            'route'  => 'subscription.index',
+            'active' => request()->routeIs('subscription.*'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M4.75 5.5A.75.75 0 0 1 5.5 4.75h13a.75.75 0 0 1 .75.75v1.75H4.75V5.5Zm-1.5 3v10A2.75 2.75 0 0 0 6 21.25h12A2.75 2.75 0 0 0 20.75 18.5V8.5H3.25Zm1.5 1.5h15v9A1.25 1.25 0 0 1 18.5 20H6A1.25 1.25 0 0 1 4.75 18.75V9.5Zm1 5a.75.75 0 0 1 .75-.75H11a.75.75 0 0 1 0 1.5H6.5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z"/></svg>',
+        ],
+        [
+            'label'  => 'My Modules',
+            'route'  => 'learner.modules.index',
+            'active' => request()->routeIs('learner.modules.*'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M3.25 4A.75.75 0 0 1 4 3.25h16a.75.75 0 0 1 .75.75v14a.75.75 0 0 1-.75.75H4a.75.75 0 0 1-.75-.75V4Zm1.5.75v12.5h14V4.75H4.75ZM7 8.25a.75.75 0 0 0 0 1.5h10a.75.75 0 0 0 0-1.5H7Zm0 4a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5H7Z"/></svg>',
+        ],
+        [
+            'label'  => 'Certificates',
+            'route'  => 'learner.certificates.index',
+            'active' => request()->routeIs('learner.certificates.*'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M7 2.75A4.25 4.25 0 0 0 2.75 7v10A4.25 4.25 0 0 0 7 21.25h10A4.25 4.25 0 0 0 21.25 17V7A4.25 4.25 0 0 0 17 2.75H7ZM4.25 7A2.75 2.75 0 0 1 7 4.25h10A2.75 2.75 0 0 1 19.25 7v10A2.75 2.75 0 0 1 17 19.25H7A2.75 2.75 0 0 1 4.25 17V7Zm4 2a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 0-1.5h-7.5Zm-.75 4.75a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1-.75-.75Zm.75 3.25a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5Z"/></svg>',
+        ],
+    ];
+
+    // Add My Children nav item for parents
+    if ($authUser->isParent()) {
+        $navItems[] = [
+            'label'  => 'My Children',
+            'route'  => 'parent.children.index',
+            'active' => request()->routeIs('parent.children.*'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M9 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM4.25 7a4.75 4.75 0 1 1 9.5 0 4.75 4.75 0 0 1-9.5 0Zm10.5-1.25a.75.75 0 0 1 .75-.75 4.75 4.75 0 0 1 0 9.5.75.75 0 0 1 0-1.5 3.25 3.25 0 0 0 0-6.5.75.75 0 0 1-.75-.75ZM2.75 17.5A3.25 3.25 0 0 1 6 14.25h6A3.25 3.25 0 0 1 15.25 17.5v.5a.75.75 0 0 1-1.5 0v-.5A1.75 1.75 0 0 0 12 15.75H6A1.75 1.75 0 0 0 4.25 17.5v.5a.75.75 0 0 1-1.5 0v-.5Zm15 0a.75.75 0 0 1 .75-.75 1.75 1.75 0 0 1 1.75 1.75v.5a.75.75 0 0 1-1.5 0v-.5a.25.25 0 0 0-.25-.25.75.75 0 0 1-.75-.75Z"/></svg>',
+        ];
+    }
+@endphp
+
+<aside
+    id="learner-sidebar"
+    class="fixed top-0 left-0 z-[99999] h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out flex flex-col"
+    :class="{
+        'w-[270px]': $store.sidebar.isExpanded || $store.sidebar.isMobileOpen || $store.sidebar.isHovered,
+        'w-[80px]': !$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen,
+        'translate-x-0': $store.sidebar.isMobileOpen,
+        '-translate-x-full xl:translate-x-0': !$store.sidebar.isMobileOpen
+    }"
+    @mouseenter="$store.sidebar.setHovered(true)"
+    @mouseleave="$store.sidebar.setHovered(false)"
+>
+    {{-- ─── Logo ─── --}}
+    <div
+        class="flex items-center px-5 py-5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 overflow-hidden"
+        :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'justify-center' : 'justify-start'"
+    >
+        <a href="{{ route('learner.dashboard') }}" class="flex items-center gap-3">
+            {{-- Full logo (expanded) --}}
+            <img
+                src="/media/Logo.png"
+                alt="Concious Connections"
+                x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                x-transition:enter="transition-opacity duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                class="h-10 w-auto object-contain"
+                x-cloak
+            >
+            {{-- Icon-only logo (collapsed) --}}
+            <img
+                src="/media/Logo.png"
+                alt="Logo"
+                x-show="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen"
+                class="h-9 w-9 object-contain"
+            >
+        </a>
+    </div>
+
+    {{-- ─── Navigation ─── --}}
+    <nav class="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1">
+        @foreach($navItems as $item)
+            <a
+                href="{{ route($item['route']) }}"
+                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                    {{ $item['active']
+                        ? 'text-white shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white' }}"
+                @if($item['active'])
+                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                @endif
+                :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'justify-center' : ''"
+            >
+                <span class="flex-shrink-0 {{ $item['active'] ? 'text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-white' }}">
+                    {!! $item['icon'] !!}
+                </span>
+                <span
+                    x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                    x-cloak
+                    class="truncate"
+                >{{ $item['label'] }}</span>
+            </a>
+        @endforeach
+    </nav>
+
+    {{-- ─── Bottom: Edit Profile + Logout ─── --}}
+    <div class="flex-shrink-0 border-t border-gray-100 dark:border-gray-800 p-3 space-y-1">
+
+        {{-- Edit Profile --}}
+        <a
+            href="{{ route('profile.learner.edit') }}"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all duration-200 overflow-hidden whitespace-nowrap"
+            :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'justify-center' : ''"
+        >
+            <div class="relative w-7 h-7 flex-shrink-0">
+                <div
+                    class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);"
+                >
+                    {{ strtoupper(mb_substr($sidebarUsername, 0, 1)) }}
+                </div>
+                @if($sidebarAvatar)
+                    <img src="{{ $sidebarAvatar }}" alt="{{ $sidebarUsername }}"
+                         class="absolute inset-0 w-7 h-7 rounded-full object-cover"
+                         onerror="this.remove()">
+                @endif
+            </div>
+            <span
+                x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                x-cloak
+                class="truncate"
+            >Edit Profile</span>
+        </a>
+
+        {{-- Logout --}}
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button
+                type="submit"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 overflow-hidden whitespace-nowrap"
+                :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'justify-center' : ''"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" class="flex-shrink-0">
+                    <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M15.75 12a.75.75 0 0 0-.75-.75H5.81l2.72-2.72a.75.75 0 0 0-1.06-1.06l-4 4a.75.75 0 0 0 0 1.06l4 4a.75.75 0 1 0 1.06-1.06L5.81 12.75H15a.75.75 0 0 0 .75-.75Zm.25-7.25A.75.75 0 0 0 15.25 5H17a2.25 2.25 0 0 1 2.25 2.25v9.5A2.25 2.25 0 0 1 17 19h-1.75a.75.75 0 0 0 0 1.5H17A3.75 3.75 0 0 0 20.75 16.75v-9.5A3.75 3.75 0 0 0 17 3.5h-1.75a.75.75 0 0 0-.25-.75Z"/>
+                </svg>
+                <span
+                    x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                    x-cloak
+                >Log Out</span>
+            </button>
+        </form>
+    </div>
+</aside>
