@@ -24,7 +24,8 @@
 
             <!-- Form Content -->
             <div class="p-8 sm:p-10 lg:p-12">
-                
+                <x-wizard-stepper />
+
                 <!-- Heading -->
                 <div class="mb-6">
                     <h2 class="text-4xl font-bold text-purple-900 flex items-center gap-2">
