@@ -39,4 +39,60 @@ class ParentChildMonitoringTest extends TestCase
             'status' => 'pending_parent_approval',
         ]);
     }
+
+    private function createParentWithChild(): array
+    {
+        $parent = User::factory()->create(['email_verified_at' => now()]);
+        $parent->assignRole('learner');
+
+        $child = User::factory()->create(['email_verified_at' => now()]);
+        $child->assignRole('learner');
+
+        ParentChildAccount::create([
+            'parent_user_id'        => $parent->id,
+            'child_user_id'         => $child->id,
+            'can_view_progress'     => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content'   => true,
+        ]);
+
+        UserGamification::create([
+            'user_id'      => $child->id,
+            'level'        => 1,
+            'score'        => 0,
+            'total_points' => 0,
+            'streak_count' => 0,
+        ]);
+
+        return [$parent, $child];
+    }
+
+    public function test_parent_can_view_own_childs_detail_page(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $this->actingAs($parent)
+             ->get(route('parent.children.show', $child))
+             ->assertOk();
+    }
+
+    public function test_parent_cannot_view_another_users_child(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $stranger = User::factory()->create(['email_verified_at' => now()]);
+        $stranger->assignRole('learner');
+
+        $this->actingAs($stranger)
+             ->get(route('parent.children.show', $child))
+             ->assertForbidden();
+    }
+
+    public function test_guest_cannot_access_parent_routes(): void
+    {
+        $child = User::factory()->create();
+
+        $this->get(route('parent.children.show', $child))
+             ->assertRedirect('/login');
+    }
 }

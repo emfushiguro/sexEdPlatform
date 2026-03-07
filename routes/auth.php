@@ -105,5 +105,15 @@ Route::middleware('auth')->group(function () {
         
         Route::get('parent/children', [ParentRegistrationController::class, 'childrenIndex'])
             ->name('parent.children.index');
+
+        // Parent monitoring routes
+        Route::get('parent/children/{child}', [\App\Http\Controllers\ParentController::class, 'show'])
+            ->name('parent.children.show');
+
+        Route::post('parent/children/{child}/enrollments/{enrollment}/approve', [\App\Http\Controllers\ParentController::class, 'approveEnrollment'])
+            ->name('parent.children.enrollments.approve');
+
+        Route::post('parent/children/{child}/enrollments/{enrollment}/reject', [\App\Http\Controllers\ParentController::class, 'rejectEnrollment'])
+            ->name('parent.children.enrollments.reject');
     });
 });
