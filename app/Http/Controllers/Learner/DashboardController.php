@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Learner;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
-use App\Models\QuizDailyLimit;
 use App\Models\RewardLog;
+use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use Illuminate\Support\Facades\Auth;
 
@@ -89,14 +89,8 @@ class DashboardController extends Controller
         $xpToNext     = 100 - $xpInLevel;
         $xpPercent    = $xpInLevel; // out of 100
 
-        // ── Quiz attempts today ─────────────────────────────────────────
-        $quizAttemptsUsed      = (int) QuizDailyLimit::where('user_id', $user->id)
-            ->where('date', today())
-            ->sum('attempts');
-        $maxQuizAttempts       = QuizDailyLimit::MAX_FREE_ATTEMPTS;
-        $quizAttemptsRemaining = $user->isPremium()
-            ? $maxQuizAttempts
-            : max(0, $maxQuizAttempts - $quizAttemptsUsed);
+        // ── Shields today ───────────────────────────────────────────────
+        $shieldsRemaining = UserDailyShield::getShields($user);
 
         // ── Recent achievements ─────────────────────────────────────────
         $recentAchievements = RewardLog::where('user_id', $user->id)
@@ -126,9 +120,7 @@ class DashboardController extends Controller
             'xpInLevel',
             'xpToNext',
             'xpPercent',
-            'quizAttemptsUsed',
-            'quizAttemptsRemaining',
-            'maxQuizAttempts',
+            'shieldsRemaining',
             'recentAchievements',
             'greeting',
         ));

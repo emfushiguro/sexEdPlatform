@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Certificate;
 use App\Models\Module;
+use App\Services\GamificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -68,7 +69,7 @@ class CertificateController extends Controller
             ]);
 
             // Award points for getting certificate
-            $user->gamification->addPoints(50);
+            app(GamificationService::class)->awardPoints($user, 'certificate_earned', 50);
 
             DB::commit();
 
