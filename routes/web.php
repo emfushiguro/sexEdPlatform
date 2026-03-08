@@ -100,6 +100,16 @@ Route::middleware('auth')->group(function () {
         // Topic completion
         Route::post('/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('topics.complete');
         
+        // Lessons topic completion (alternate name for tests)
+        Route::post('/lessons/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('lessons.topics.complete');
+
+        // Shields and streak savers
+        Route::post('/shields/refill', [\App\Http\Controllers\Learner\ShieldRefillController::class, 'store'])->name('shields.refill');
+        Route::post('/streak-savers/buy', [\App\Http\Controllers\Learner\StreakSaverController::class, 'store'])->name('streak-savers.buy');
+
+        // Gamification rules page
+        Route::get('/gamification', [\App\Http\Controllers\Learner\GamificationController::class, 'rules'])->name('gamification');
+
         // Certificates (Premium only)
         Route::middleware('premium')->group(function () {
             Route::get('/certificates', [\App\Http\Controllers\Learner\CertificateController::class, 'index'])->name('certificates.index');

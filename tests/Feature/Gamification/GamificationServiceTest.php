@@ -24,8 +24,8 @@ class GamificationServiceTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('learner');
-        UserGamification::create([
-            'user_id'      => $user->id,
+        // Reset auto-created gamification record to clean state
+        $user->gamification()->update([
             'level'        => 1,
             'score'        => 0,
             'total_points' => 0,
