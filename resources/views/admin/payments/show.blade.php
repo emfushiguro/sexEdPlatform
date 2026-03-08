@@ -10,15 +10,6 @@
     </a>
 </div>
 
-@foreach(['success','error','warning'] as $type)
-    @if(session($type))
-    <div class="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl border text-sm
-        {{ $type === 'success' ? 'bg-success-50 border-success-200 text-success-700 dark:bg-success-500/10 dark:border-success-500/20 dark:text-success-400' : ($type === 'error' ? 'bg-error-50 border-error-200 text-error-700 dark:bg-error-500/10 dark:border-error-500/20 dark:text-error-400' : 'bg-warning-50 border-warning-200 text-warning-700 dark:bg-warning-500/10 dark:border-warning-500/20 dark:text-warning-400') }}">
-        {{ session($type) }}
-    </div>
-    @endif
-@endforeach
-
 @php
     $pv = is_object($payment->status) ? $payment->status->value : $payment->status;
     $payStatusMap = ['completed'=>'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400','failed'=>'bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-400','refunded'=>'bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400','pending'=>'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-400','processing'=>'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400'];

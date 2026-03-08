@@ -100,7 +100,7 @@ class UserAdminController extends Controller
         // Get user stats
         $stats = [
             'total_payments' => $user->payments()->sum('amount'),
-            'completed_modules' => $user->moduleEnrollments()->where('completed', true)->count(),
+            'completed_modules' => $user->moduleEnrollments()->completed()->count(),
             'quiz_attempts' => $user->quizAttempts()->count(),
             'certificates' => $user->certificates()->count(),
         ];

@@ -12,8 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // First, update the ENUM to include new question types
-        DB::statement("ALTER TABLE quiz_questions MODIFY COLUMN question_type ENUM('multiple_choice', 'true_false', 'multiple_select', 'fill_blank_text', 'fill_blank_select', 'identification') DEFAULT 'multiple_choice'");
+        // For MySQL: update ENUM to include new question types
+        // For SQLite (testing): column is already a string, no ENUM constraint to change
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE quiz_questions MODIFY COLUMN question_type ENUM('multiple_choice', 'true_false', 'multiple_select', 'fill_blank_text', 'fill_blank_select', 'identification') DEFAULT 'multiple_choice'");
+        }
         
         // Then add new columns
         Schema::table('quiz_questions', function (Blueprint $table) {
@@ -39,6 +42,8 @@ return new class extends Migration
         });
         
         // Revert ENUM back to original types
-        DB::statement("ALTER TABLE quiz_questions MODIFY COLUMN question_type ENUM('multiple_choice', 'true_false', 'multiple_select') DEFAULT 'multiple_choice'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE quiz_questions MODIFY COLUMN question_type ENUM('multiple_choice', 'true_false', 'multiple_select') DEFAULT 'multiple_choice'");
+        }
     }
 };

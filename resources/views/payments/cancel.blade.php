@@ -99,7 +99,7 @@
                            class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                             Try Again
                         </a>
-                        <a href="{{ route('dashboard') }}" 
+                        <a href="{{ route('learner.dashboard') }}" 
                            class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                             Back to Dashboard
                         </a>

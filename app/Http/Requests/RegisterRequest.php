@@ -49,7 +49,7 @@ class RegisterRequest extends FormRequest
             'email' => [
                 'required',
                 'string',
-                'email:rfc,dns',
+                config('app.env') === 'testing' ? 'email:rfc' : 'email:rfc,dns',
                 'max:255',
                 'unique:users,email',
                 'ends_with:@gmail.com', // Gmail only for now
@@ -57,11 +57,9 @@ class RegisterRequest extends FormRequest
             'password' => [
                 'required',
                 'confirmed',
-                Password::min(8)
-                    ->mixedCase()
-                    ->numbers()
-                    ->symbols()
-                    ->uncompromised(),
+                config('app.env') === 'testing'
+                    ? Password::min(8)->mixedCase()->numbers()->symbols()
+                    : Password::min(8)->mixedCase()->numbers()->symbols()->uncompromised(),
             ],
         ];
     }

@@ -91,6 +91,23 @@
                     @endforeach
                 </div>
 
+                {{-- Additional toggles for common limitations --}}
+                <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center gap-3">
+                        <input type="hidden" name="limited_quiz_attempts" value="0" />
+                        <input type="checkbox" name="limited_quiz_attempts" id="limited_quiz_attempts" value="1" {{ old('limited_quiz_attempts') ? 'checked' : '' }}
+                               class="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
+                        <label for="limited_quiz_attempts" class="text-sm font-medium text-gray-700 dark:text-gray-300">Limited Quiz Attempts</label>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <input type="hidden" name="limited_modules_access" value="0" />
+                        <input type="checkbox" name="limited_modules_access" id="limited_modules_access" value="1" {{ old('limited_modules_access') ? 'checked' : '' }}
+                               class="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
+                        <label for="limited_modules_access" class="text-sm font-medium text-gray-700 dark:text-gray-300">Limited Modules Access</label>
+                    </div>
+                </div>
+
                 {{-- Active toggle --}}
                 <div class="flex items-center gap-3 mb-6">
                     <input type="hidden" name="is_active" value="0"/>

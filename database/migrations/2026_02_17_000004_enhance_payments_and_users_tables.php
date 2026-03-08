@@ -11,11 +11,11 @@ return new class extends Migration
     {
         // Update payments table with additional fields and statuses
         Schema::table('payments', function (Blueprint $table) {
-            // Add new payment statuses to enum
-            DB::statement("ALTER TABLE payments MODIFY COLUMN status ENUM('pending', 'completed', 'failed', 'refunded', 'cancelled', 'processing', 'expired') DEFAULT 'pending'");
-            
-            // Add new payment methods to enum  
-            DB::statement("ALTER TABLE payments MODIFY COLUMN method ENUM('gcash', 'paymaya', 'grab_pay', 'card', 'bank_transfer', 'paymongo', 'retry_gcash', 'retry_paymaya', 'retry_grab_pay', 'retry_card') DEFAULT NULL");
+            // Add new payment statuses and methods to enum (MySQL only — SQLite uses string columns)
+            if (DB::getDriverName() === 'mysql') {
+                DB::statement("ALTER TABLE payments MODIFY COLUMN status ENUM('pending', 'completed', 'failed', 'refunded', 'cancelled', 'processing', 'expired') DEFAULT 'pending'");
+                DB::statement("ALTER TABLE payments MODIFY COLUMN method ENUM('gcash', 'paymaya', 'grab_pay', 'card', 'bank_transfer', 'paymongo', 'retry_gcash', 'retry_paymaya', 'retry_grab_pay', 'retry_card') DEFAULT NULL");
+            }
             
             // Add notes field if it doesn't exist (might be added by refunds migration)
             if (!Schema::hasColumn('payments', 'notes')) {
@@ -95,11 +95,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Revert payment status enum
-        DB::statement("ALTER TABLE payments MODIFY COLUMN status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending'");
-        
-        // Revert payment method enum
-        DB::statement("ALTER TABLE payments MODIFY COLUMN method ENUM('gcash', 'paymaya', 'card', 'bank_transfer') DEFAULT NULL");
+        // Revert payment status and method enums
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE payments MODIFY COLUMN status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending'");
+            DB::statement("ALTER TABLE payments MODIFY COLUMN method ENUM('gcash', 'paymaya', 'card', 'bank_transfer') DEFAULT NULL");
+        }
 
         Schema::table('users', function (Blueprint $table) {
             if (Schema::hasColumn('users', 'last_login_at')) {

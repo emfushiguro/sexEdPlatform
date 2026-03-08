@@ -6,20 +6,20 @@
 @section('content')
     {{-- Back link --}}
     <div class="mb-5">
-        <a href="{{ route('admin.subscription-plans.show', $subscriptionPlan) }}"
+        <a href="{{ route('admin.subscription-plans.index') }}"
            class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition-colors">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
-            Back to {{ $subscriptionPlan->name }}
+            Back to Plans
         </a>
     </div>
 
     <div class="max-w-2xl">
         <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Edit Plan Details</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Plan Details</h2>
 
-            <form method="POST" action="{{ route('admin.subscription-plans.update', $subscriptionPlan) }}" x-data="planForm()">
+            <form method="POST" action="{{ route('admin.subscription-plans.update', $subscriptionPlan) }}">
                 @csrf
                 @method('PUT')
 
@@ -64,48 +64,56 @@
                     </div>
                 </div>
 
-                {{-- Max Modules & Sort Order --}}
-                <div class="grid grid-cols-2 gap-4 mb-5">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Max Modules <span class="text-xs text-gray-400">(0 = unlimited)</span></label>
-                        <input type="number" name="max_modules" value="{{ old('max_modules', $subscriptionPlan->max_modules ?? 0) }}" min="0"
-                               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Sort Order</label>
-                        <input type="number" name="sort_order" value="{{ old('sort_order', $subscriptionPlan->sort_order) }}" min="0"
-                               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
-                    </div>
+                {{-- Sort Order --}}
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Sort Order</label>
+                    <input type="number" name="sort_order" value="{{ old('sort_order', $subscriptionPlan->sort_order) }}" min="0"
+                           class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
                 </div>
 
-                {{-- Features --}}
+                {{-- Features (grouped checkboxes) --}}
                 <div class="mb-5">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Features</label>
-                    <div x-ref="featureList" class="space-y-2">
-                        @php
-                            $existingFeatures = old('feature_keys', $subscriptionPlan->features ?? ['']);
-                            if (empty($existingFeatures)) $existingFeatures = [''];
-                        @endphp
-                        @foreach($existingFeatures as $feature)
-                            <div class="flex gap-2">
-                                <input type="text" name="feature_keys[]" value="{{ $feature }}" placeholder="e.g. Unlimited quizzes"
-                                       class="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
-                                <button type="button" @click="removeRow($el.closest('div'))"
-                                        class="p-2 text-gray-400 hover:text-error-500 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/10 transition-colors">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        @endforeach
+                    @php
+                        $existingFeatures = old('feature_keys', $subscriptionPlan->features ?? []);
+                        if (!is_array($existingFeatures)) {
+                            $existingFeatures = [];
+                        }
+                        $limitedQuizChecked = (bool) old('limited_quiz_attempts', in_array('limited_quiz_attempts', $existingFeatures, true));
+                        $limitedModulesChecked = (bool) old('limited_modules_access', in_array('limited_modules_access', $existingFeatures, true));
+                    @endphp
+                    @foreach(config('subscription_features.groups', []) as $groupKey => $group)
+                        <p class="text-xs font-bold text-gray-500 uppercase mb-1 {{ $loop->first ? 'mt-2' : 'mt-3' }}">
+                            {{ $group['label'] }}
+                        </p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-2 {{ ($group['dimmed'] ?? false) ? 'opacity-60' : '' }}">
+                            @foreach($group['features'] as $val => $label)
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="feature_keys[]" value="{{ $val }}"
+                                           {{ in_array($val, $existingFeatures, true) ? 'checked' : '' }}
+                                           class="w-4 h-4 rounded border-gray-300 {{ ($group['dimmed'] ?? false) ? 'text-purple-600 focus:ring-purple-500' : 'text-brand-500 focus:ring-brand-500' }}">
+                                    <span class="text-sm {{ ($group['dimmed'] ?? false) ? 'text-gray-500 italic' : 'text-gray-700 dark:text-gray-300' }}">{{ $label }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Additional toggles for common limitations --}}
+                <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center gap-3">
+                        <input type="hidden" name="limited_quiz_attempts" value="0" />
+                        <input type="checkbox" name="limited_quiz_attempts" id="limited_quiz_attempts" value="1" {{ $limitedQuizChecked ? 'checked' : '' }}
+                               class="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
+                        <label for="limited_quiz_attempts" class="text-sm font-medium text-gray-700 dark:text-gray-300">Limited Quiz Attempts</label>
                     </div>
-                    <button type="button" @click="addRow"
-                            class="mt-2 inline-flex items-center gap-1.5 text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400 font-medium">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Add Feature
-                    </button>
+
+                    <div class="flex items-center gap-3">
+                        <input type="hidden" name="limited_modules_access" value="0" />
+                        <input type="checkbox" name="limited_modules_access" id="limited_modules_access" value="1" {{ $limitedModulesChecked ? 'checked' : '' }}
+                               class="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500" />
+                        <label for="limited_modules_access" class="text-sm font-medium text-gray-700 dark:text-gray-300">Limited Modules Access</label>
+                    </div>
                 </div>
 
                 {{-- Active toggle --}}
@@ -122,7 +130,7 @@
                             class="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-theme-xs">
                         Save Changes
                     </button>
-                    <a href="{{ route('admin.subscription-plans.show', $subscriptionPlan) }}"
+                    <a href="{{ route('admin.subscription-plans.index') }}"
                        class="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                         Cancel
                     </a>
@@ -131,32 +139,3 @@
         </div>
     </div>
 @endsection
-
-@push('scripts')
-<script>
-function planForm() {
-    return {
-        addRow() {
-            const list = this.$refs.featureList;
-            const div = document.createElement('div');
-            div.className = 'flex gap-2';
-            div.innerHTML = `
-                <input type="text" name="feature_keys[]" placeholder="e.g. Unlimited quizzes"
-                       class="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
-                <button type="button" onclick="this.closest('div').remove()"
-                        class="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>`;
-            list.appendChild(div);
-        },
-        removeRow(el) {
-            if (this.$refs.featureList.children.length > 1) {
-                el.remove();
-            }
-        }
-    };
-}
-</script>
-@endpush

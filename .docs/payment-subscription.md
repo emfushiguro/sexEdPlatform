@@ -643,7 +643,7 @@ The admin panel requires either `superadmin` or `admin` role (enforced via middl
 
 | Method | URI | Controller | Description |
 |---|---|---|---|
-| POST | `/webhook/paymongo` | `PaymentController@webhook` | PayMongo webhook receiver |
+| POST | `/webhook/paymongo` | `Api\WebhookController@paymongo` | PayMongo webhook receiver (HMAC verified via `paymongo.webhook` middleware) |
 
 ---
 
@@ -653,8 +653,9 @@ The admin panel requires either `superadmin` or `admin` role (enforced via middl
 
 | File | Responsibility |
 |---|---|
-| `app/Http/Controllers/SubscriptionController.php` | User subscription actions (subscribe, cancel, renew) |
-| `app/Http/Controllers/PaymentController.php` | Payment processing, webhook, callbacks |
+| `app/Http/Controllers/Learner/SubscriptionController.php` | User subscription actions (subscribe, cancel, renew) |
+| `app/Http/Controllers/PaymentController.php` | Payment processing, callbacks, status checks |
+| `app/Http/Controllers/Api/WebhookController.php` | PayMongo webhook receiver + signature verification |
 | `app/Http/Controllers/Admin/PaymentAdminController.php` | Admin payment management + refunds |
 | `app/Http/Controllers/Admin/UnifiedSubscriptionAdminController.php` | Admin subscription + plan management |
 

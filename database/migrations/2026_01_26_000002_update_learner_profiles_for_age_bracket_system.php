@@ -35,8 +35,9 @@ return new class extends Migration
         });
         
         // Set default birthdates for existing records (18 years old)
+        $eighteenYearsAgo = now()->subYears(18)->toDateString();
         DB::table('learner_profiles')->whereNull('birthdate')->update([
-            'birthdate' => DB::raw('DATE_SUB(CURDATE(), INTERVAL 18 YEAR)')
+            'birthdate' => $eighteenYearsAgo,
         ]);
     }
 

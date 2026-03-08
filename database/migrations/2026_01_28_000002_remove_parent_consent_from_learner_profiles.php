@@ -11,28 +11,35 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('learner_profiles', function (Blueprint $table) {
-            if (Schema::hasColumn('learner_profiles', 'parent_email')) {
-                $table->dropColumn('parent_email');
+        // Drop all indexes on parent_consent_token first (must be separate for SQLite)
+        if (Schema::hasColumn('learner_profiles', 'parent_consent_token')) {
+            try {
+                Schema::table('learner_profiles', function (Blueprint $table) {
+                    $table->dropUnique(['parent_consent_token']);
+                });
+            } catch (\Exception $e) {
+                // Unique index may not exist
             }
-            if (Schema::hasColumn('learner_profiles', 'parent_consent_required')) {
-                $table->dropColumn('parent_consent_required');
+            try {
+                Schema::table('learner_profiles', function (Blueprint $table) {
+                    $table->dropIndex(['parent_consent_token']);
+                });
+            } catch (\Exception $e) {
+                // Regular index may not exist
             }
-            if (Schema::hasColumn('learner_profiles', 'parent_consent_given')) {
-                $table->dropColumn('parent_consent_given');
+        }
+
+        // Each column drop must be in its own Schema::table call for SQLite compatibility
+        $columns = ['parent_email', 'parent_consent_required', 'parent_consent_given', 'parent_consent_at', 'parent_consent_token', 'parent_consent_ip'];
+
+        foreach ($columns as $column) {
+            if (Schema::hasColumn('learner_profiles', $column)) {
+                Schema::table('learner_profiles', function (Blueprint $table) use ($column) {
+                    $table->dropColumn($column);
+                });
             }
-            if (Schema::hasColumn('learner_profiles', 'parent_consent_at')) {
-                $table->dropColumn('parent_consent_at');
-            }
-            if (Schema::hasColumn('learner_profiles', 'parent_consent_token')) {
-                $table->dropIndex(['parent_consent_token']);
-                $table->dropColumn('parent_consent_token');
-            }
-            if (Schema::hasColumn('learner_profiles', 'parent_consent_ip')) {
-                $table->dropColumn('parent_consent_ip');
-            }
-        });
-        
+        }
+
         // Drop parent_consent_logs table if exists
         Schema::dropIfExists('parent_consent_logs');
     }

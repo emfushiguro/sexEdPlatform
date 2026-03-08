@@ -28,6 +28,8 @@ class UnifiedSubscriptionAdminController extends Controller
             'trial_days'     => 'nullable|integer|min:0|max:365',
             'feature_keys'   => 'array',
             'feature_keys.*' => 'nullable|string|max:255',
+            'limited_quiz_attempts' => 'boolean',
+            'limited_modules_access' => 'boolean',
             'is_active'      => 'boolean',
             'sort_order'     => 'nullable|integer|min:0',
         ]);
@@ -43,9 +45,12 @@ class UnifiedSubscriptionAdminController extends Controller
             $validated['sort_order'] = (SubscriptionPlan::max('sort_order') ?? 0) + 10;
         }
 
-        $validated['features'] = array_values(array_unique(array_filter(
-            array_map('trim', $request->input('feature_keys', []))
-        )));
+        $validated['features'] = $this->buildPlanFeatures(
+            $request->input('feature_keys', []),
+            $request->boolean('limited_quiz_attempts'),
+            $request->boolean('limited_modules_access')
+        );
+        unset($validated['feature_keys'], $validated['limited_quiz_attempts'], $validated['limited_modules_access']);
 
         SubscriptionPlan::create($validated);
 
@@ -73,31 +78,19 @@ class UnifiedSubscriptionAdminController extends Controller
             'trial_days'     => 'nullable|integer|min:0|max:365',
             'feature_keys'   => 'array',
             'feature_keys.*' => 'nullable|string|max:255',
+            'limited_quiz_attempts' => 'boolean',
+            'limited_modules_access' => 'boolean',
             'is_active'      => 'boolean',
             'sort_order'     => 'nullable|integer|min:0',
         ]);
 
-        // Preserve non-standard custom feature keys already saved on the plan
-        $standardFeatures = [
-            'full_course_access', 'offline_access', 'expert_video_sessions', 'exclusive_content',
-            'unlimited_quizzes', 'certificates', 'advanced_analytics',
-            'downloadable_materials', 'anonymous_qa', 'private_community',
-            'priority_support', 'ad_free',
-            // legacy compat
-            'downloadable_content', 'downloadable_resources', 'progress_analytics', 'all_modules',
-        ];
-
-        $existingCustom = [];
-        $existing = $subscriptionPlan->features ?? [];
-        if (!empty($existing) && is_array($existing) && is_string(reset($existing))) {
-            $existingCustom = array_values(array_filter(
-                $existing,
-                fn($f) => is_string($f) && !in_array($f, $standardFeatures)
-            ));
-        }
-
-        $checked = array_values(array_filter(array_map('trim', $request->input('feature_keys', []))));
-        $validated['features'] = array_values(array_unique(array_merge($existingCustom, $checked)));
+        $validated['features'] = $this->buildPlanFeatures(
+            $request->input('feature_keys', []),
+            $request->boolean('limited_quiz_attempts'),
+            $request->boolean('limited_modules_access'),
+            $subscriptionPlan->features ?? []
+        );
+        unset($validated['feature_keys'], $validated['limited_quiz_attempts'], $validated['limited_modules_access']);
 
         $subscriptionPlan->update($validated);
 
@@ -176,5 +169,60 @@ class UnifiedSubscriptionAdminController extends Controller
 
         return redirect()->route('admin.subscription-plans.index')
             ->with('success', "Test plan ({$duration} min) created.");
+    }
+
+    private function buildPlanFeatures(
+        array $featureKeys,
+        bool $limitedQuizAttempts,
+        bool $limitedModulesAccess,
+        array $existingFeatures = []
+    ): array {
+        $standardFeatureKeys = $this->getStandardFeatureKeys();
+
+        $cleanedFeatureKeys = array_values(array_unique(array_filter(array_map(
+            fn($feature) => is_string($feature) ? trim($feature) : '',
+            $featureKeys
+        ))));
+
+        $existingCustomKeys = array_values(array_filter(
+            $existingFeatures,
+            fn($feature) => is_string($feature) && !in_array($feature, $standardFeatureKeys, true)
+        ));
+
+        $features = array_values(array_unique(array_merge($existingCustomKeys, $cleanedFeatureKeys)));
+
+        if ($limitedQuizAttempts) {
+            $features = array_values(array_filter($features, fn($feature) => $feature !== 'unlimited_quizzes'));
+            $features[] = 'limited_quiz_attempts';
+        } else {
+            $features = array_values(array_filter($features, fn($feature) => $feature !== 'limited_quiz_attempts'));
+        }
+
+        if ($limitedModulesAccess) {
+            $features = array_values(array_filter($features, fn($feature) => !in_array($feature, ['full_course_access', 'all_modules'], true)));
+            $features[] = 'limited_modules_access';
+        } else {
+            $features = array_values(array_filter($features, fn($feature) => $feature !== 'limited_modules_access'));
+        }
+
+        return array_values(array_unique($features));
+    }
+
+    private function getStandardFeatureKeys(): array
+    {
+        $groupFeatureKeys = [];
+
+        foreach (config('subscription_features.groups', []) as $group) {
+            $groupFeatureKeys = array_merge($groupFeatureKeys, array_keys($group['features'] ?? []));
+        }
+
+        return array_values(array_unique(array_merge($groupFeatureKeys, [
+            'limited_quiz_attempts',
+            'limited_modules_access',
+            'downloadable_content',
+            'downloadable_resources',
+            'progress_analytics',
+            'all_modules',
+        ])));
     }
 }

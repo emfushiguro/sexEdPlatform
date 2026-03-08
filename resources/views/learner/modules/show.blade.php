@@ -289,24 +289,13 @@
                                 </p>
                             </div>
 
-<<<<<<< HEAD
                             @if($lessons->isNotEmpty())
-                                <a href="{{ route('learner.lessons.show', ['lesson' => $lessons->first()->id]) }}" 
-=======
-                            @if($lessons->first())
-                                <a href="{{ route('learner.lessons.show', $lessons->first()) }}" 
->>>>>>> main
+                                <a href="{{ route('learner.lessons.show', $lessons->first()) }}"
                                    class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg mb-3">
                                     {{ ($progress->progress_percentage ?? 0) > 0 ? 'Continue Learning' : 'Start Learning' }}
                                 </a>
                             @else
-<<<<<<< HEAD
-                                <div class="block w-full text-center bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg mb-3 cursor-not-allowed">
-                                    No Lessons Available
-                                </div>
-=======
-                                <span class="block w-full text-center bg-gray-200 text-gray-500 font-semibold py-3 px-4 rounded-lg mb-3 cursor-not-allowed">No lessons available</span>
->>>>>>> main
+                                <span class="block w-full text-center bg-gray-200 text-gray-500 font-semibold py-3 px-4 rounded-lg mb-3 cursor-not-allowed">No Lessons Available</span>
                             @endif
 
                             <!-- Certificate Section (Premium) -->

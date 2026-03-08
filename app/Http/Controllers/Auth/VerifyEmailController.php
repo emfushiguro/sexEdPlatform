@@ -19,7 +19,7 @@ class VerifyEmailController extends Controller
             if (!$request->user()->hasCompletedProfile()) {
                 return redirect()->route('profile.complete');
             }
-            return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+            return redirect()->intended(route('learner.dashboard', absolute: false).'?verified=1');
         }
 
         if ($request->user()->markEmailAsVerified()) {
@@ -32,6 +32,6 @@ class VerifyEmailController extends Controller
                 ->with('success', 'Email verified! Please complete your profile to continue.');
         }
 
-        return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+        return redirect()->intended(route('learner.dashboard', absolute: false).'?verified=1');
     }
 }

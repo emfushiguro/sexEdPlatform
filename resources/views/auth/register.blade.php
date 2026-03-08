@@ -288,7 +288,7 @@
                             <div class="mt-4 text-center">
                                 <p class="text-sm text-gray-600">
                                     Already registered? 
-                                <a href="{{ route('learner.login') }}" class="text-brand-purple-primary font-medium hover:text-brand-purple-dark transition-colors">Login</a>
+                                <a href="{{ route('login') }}" class="text-brand-purple-primary font-medium hover:text-brand-purple-dark transition-colors">Login</a>
                                 </p>
                             </div>
                             </div>
@@ -308,15 +308,6 @@
 
             </div>
         </div>
-
-        <div class="flex items-center justify-between mt-6">
-            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('learner.login') }}">
-                {{ __('Already registered?') }}
-            </a>
-
-            <x-primary-button class="ms-4">
-                {{ __('Create Account') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout>
+    </div>
+</body>
+</html>

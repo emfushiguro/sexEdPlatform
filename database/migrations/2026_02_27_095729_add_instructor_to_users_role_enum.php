@@ -12,8 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Add 'instructor' to the role enum
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('learner', 'organization', 'clinic', 'counselor', 'admin', 'instructor') NOT NULL DEFAULT 'learner'");
+        // Add 'instructor' to the role enum (MySQL only — SQLite uses string columns)
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('learner', 'organization', 'clinic', 'counselor', 'admin', 'instructor') NOT NULL DEFAULT 'learner'");
+        }
     }
 
     /**
@@ -21,7 +23,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Remove 'instructor' from the role enum
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('learner', 'organization', 'clinic', 'counselor', 'admin') NOT NULL DEFAULT 'learner'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('learner', 'organization', 'clinic', 'counselor', 'admin') NOT NULL DEFAULT 'learner'");
+        }
     }
 };

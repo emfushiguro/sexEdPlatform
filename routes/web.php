@@ -9,7 +9,7 @@ use App\Http\Controllers\Learner\SubscriptionController;
 use App\Http\Controllers\Learner\QuizController;
 use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
-use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,9 +18,8 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Landing page
-Route::view('/', 'landing')->name('home');
-Route::view('/landing', 'landing');
+Route::redirect('/', '/login')->name('home');
+Route::redirect('/landing', '/login');
 
 Route::view('/privacy', 'legal.privacy')->name('privacy');
 Route::view('/terms', 'legal.terms')->name('terms');
@@ -143,97 +142,13 @@ Route::middleware('auth')->group(function () {
     // Learner Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware(['role:learner', 'profile.completed'])
-        ->name('dashboard');
+        ->name('learner.dashboard');
 
-    // Instructor routes (Content Management)
-    Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
-        // Instructor Dashboard
-        Route::get('/dashboard', [\App\Http\Controllers\Instructor\DashboardController::class, 'index'])->name('dashboard');
-        
-        // User Management (Learners only)
-        Route::resource('users', \App\Http\Controllers\Instructor\UserController::class);
-        
-        // Module Management
-        Route::resource('modules', \App\Http\Controllers\Instructor\ModuleController::class);
-        
-        // Enrollment Management
-        Route::get('enrollments', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'index'])
-            ->name('enrollments.index');
-        Route::get('enrollments/{enrollment}', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'show'])
-            ->name('enrollments.show');
-        Route::patch('enrollments/{enrollment}/approve', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'approve'])
-            ->name('enrollments.approve');
-        Route::patch('enrollments/{enrollment}/reject', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'reject'])
-            ->name('enrollments.reject');
-        Route::get('modules/{module}/enrollments', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'moduleEnrollments'])
-            ->name('modules.enrollments');
-        
-        // Lesson Management
-        Route::resource('lessons', \App\Http\Controllers\Instructor\LessonController::class);
-        Route::patch('lessons/{lesson}/move', [\App\Http\Controllers\Instructor\LessonController::class, 'move'])
-            ->name('lessons.move');
-        
-        // Topic Management (Lesson Topics)
-        Route::get('topics/create', [\App\Http\Controllers\Instructor\TopicController::class, 'create'])
-            ->name('topics.create');
-        Route::post('topics', [\App\Http\Controllers\Instructor\TopicController::class, 'store'])
-            ->name('topics.store');
-        Route::get('topics/{topic}/edit', [\App\Http\Controllers\Instructor\TopicController::class, 'edit'])
-            ->name('topics.edit');
-        Route::get('topics/{topic}/preview', [\App\Http\Controllers\Instructor\TopicController::class, 'preview'])
-            ->name('topics.preview');
-        Route::put('topics/{topic}', [\App\Http\Controllers\Instructor\TopicController::class, 'update'])
-            ->name('topics.update');
-        Route::delete('topics/{topic}', [\App\Http\Controllers\Instructor\TopicController::class, 'destroy'])
-            ->name('topics.destroy');
-        
-        // Image upload for TinyMCE
-        Route::post('upload/image', [\App\Http\Controllers\Instructor\TopicController::class, 'uploadImage'])
-            ->name('upload.image');
-        
-        // Quiz Management
-        Route::resource('quizzes', \App\Http\Controllers\Instructor\QuizManagementController::class);
-        Route::get('quizzes/{quiz}/add-question', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'addQuestion'])
-            ->name('quizzes.add-question');
-        Route::post('quizzes/{quiz}/store-question', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'storeQuestion'])
-            ->name('quizzes.store-question');
-        Route::get('quizzes/{quiz}/questions/{question}/edit', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'editQuestion'])
-            ->name('quizzes.edit-question');
-        Route::put('quizzes/{quiz}/questions/{question}', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'updateQuestion'])
-            ->name('quizzes.update-question');
-        Route::delete('quizzes/{quiz}/questions/{question}', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'deleteQuestion'])
-            ->name('quizzes.delete-question');
-        
-        // CSV Import
-        Route::get('quizzes/{quiz}/import/template', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'downloadTemplate'])
-            ->name('quizzes.import.template');
-        Route::post('quizzes/{quiz}/import/preview', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'previewImport'])
-            ->name('quizzes.import.preview');
-        Route::post('quizzes/{quiz}/import/confirm', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'confirmImport'])
-            ->name('quizzes.import.confirm');
-        
-        // Image Library
-        Route::get('image-library', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'index'])
-            ->name('image-library.index');
-        Route::post('image-library/upload', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'upload'])
-            ->name('image-library.upload');
-        Route::delete('image-library/{filename}', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'delete'])
-            ->name('image-library.delete');
-    });
-
-    // Admin routes (System Management) - TODO: To be built
-    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
-        Route::get('/dashboard', function() {
-            return view('admin.dashboard');
-        })->name('dashboard');
-        
-        // TODO: Subscription management routes
-        // TODO: User management routes  
-        // TODO: Platform settings routes
-    });
 });
 
-// Paymongo webhook (outside auth middleware)
-Route::post('/webhook/paymongo', [PaymentController::class, 'webhook'])->name('webhook.paymongo');
+// PayMongo webhook (outside auth middleware — no user session required)
+Route::post('/webhook/paymongo', [WebhookController::class, 'paymongo'])
+    ->middleware('paymongo.webhook')
+    ->name('webhook.paymongo');
 
 require __DIR__.'/auth.php';

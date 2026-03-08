@@ -13,10 +13,15 @@ return new class extends Migration
     public function up(): void
     {
         // Update existing 'identification' types to 'multiple_choice' before changing enum
-        DB::statement("UPDATE quiz_questions SET question_type = 'multiple_choice' WHERE question_type = 'identification'");
-        
-        // Change enum to support our 3 types
-        DB::statement("ALTER TABLE quiz_questions MODIFY COLUMN question_type ENUM('multiple_choice', 'true_false', 'multiple_select') DEFAULT 'multiple_choice'");
+        DB::table('quiz_questions')
+            ->where('question_type', 'identification')
+            ->update(['question_type' => 'multiple_choice']);
+
+        // For MySQL: use raw MODIFY COLUMN to change ENUM values
+        // For SQLite (testing): column is already a string, no ENUM constraint to change
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE quiz_questions MODIFY COLUMN question_type ENUM('multiple_choice', 'true_false', 'multiple_select') DEFAULT 'multiple_choice'");
+        }
     }
 
     /**
@@ -24,6 +29,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE quiz_questions MODIFY COLUMN question_type ENUM('multiple_choice', 'true_false', 'identification') DEFAULT 'multiple_choice'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE quiz_questions MODIFY COLUMN question_type ENUM('multiple_choice', 'true_false', 'identification') DEFAULT 'multiple_choice'");
+        }
     }
 };
