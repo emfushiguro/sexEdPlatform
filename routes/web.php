@@ -134,6 +134,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
         // Instructor Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Instructor\DashboardController::class, 'index'])->name('dashboard');
+
+        // Search endpoint
+        Route::get('search', [\App\Http\Controllers\Instructor\SearchController::class, 'index'])->name('search');
         
         // User Management (Learners only)
         Route::resource('users', \App\Http\Controllers\Instructor\UserController::class);

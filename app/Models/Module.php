@@ -25,6 +25,7 @@ class Module extends Model
         'enrollment_mode',
         'final_quiz_id',
         'certificate_pass_score',
+        'created_by',
     ];
 
     protected function casts(): array

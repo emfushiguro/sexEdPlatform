@@ -21,6 +21,7 @@ class ModuleFactory extends Factory
             'is_published'    => true,
             'is_premium'      => false,
             'enrollment_mode' => 'auto',
+            'created_by'      => null,
         ];
     }
 }
