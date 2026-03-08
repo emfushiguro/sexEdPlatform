@@ -82,8 +82,12 @@
 
     @stack('scripts')
 
+    @auth
+        <x-learner.out-of-shields-modal :score="auth()->user()->gamification?->score ?? 0" />
+    @endauth
+
     {{-- ─── Flash toast notifications ─── --}}
-    @if(session('success') || session('error') || session('info') || session('warning') || session('status') || $errors->any())
+    @if(session('success') || session('error') || session('info') || session('warning') || session('status') || session('shield_lost') || session('shield_refilled') || session('points_earned') || session('streak_milestone') || session('streak_saved') || $errors->any())
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             function fireToasts() {
@@ -104,6 +108,21 @@
                 @endif
                 @if(session('status'))
                     window.toast.info("{{ addslashes(session('status')) }}");
+                @endif
+                @if(session('shield_lost'))
+                    window.toast.shieldLost({{ (int) session('shield_lost')['shields_left'] }});
+                @endif
+                @if(session('shield_refilled'))
+                    window.toast.shieldRefilled("{{ addslashes(session('shield_refilled')['message']) }}");
+                @endif
+                @if(session('points_earned'))
+                    window.toast.pointsEarned({{ (int) session('points_earned') }});
+                @endif
+                @if(session('streak_milestone'))
+                    window.toast.streakMilestone({{ (int) session('streak_milestone')['bonus'] }});
+                @endif
+                @if(session('streak_saved'))
+                    window.toast.streakSaved({{ (int) session('streak_saved')['savers_left'] }});
                 @endif
                 @if($errors->any())
                     @foreach($errors->all() as $error)

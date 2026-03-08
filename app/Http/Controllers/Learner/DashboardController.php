@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Models\LessonTopicProgress;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\RewardLog;
@@ -92,6 +93,21 @@ class DashboardController extends Controller
         // ── Shields today ───────────────────────────────────────────────
         $shieldsRemaining = UserDailyShield::getShields($user);
 
+        // ── Streak data ─────────────────────────────────────────────────
+        $streakActiveDays = LessonTopicProgress::where('user_id', $user->id)
+            ->where('completed', true)
+            ->whereBetween('completed_at', [
+                now()->startOfWeek(0),
+                now()->endOfWeek(6),
+            ])
+            ->get()
+            ->map(fn($p) => (int) $p->completed_at->dayOfWeek)
+            ->unique()
+            ->values()
+            ->toArray();
+        $longestStreak = $gamification?->longest_streak ?? 0;
+        $streakSavers  = $gamification?->streak_savers ?? 0;
+
         // ── Recent achievements ─────────────────────────────────────────
         $recentAchievements = RewardLog::where('user_id', $user->id)
             ->with('achievement')
@@ -121,6 +137,9 @@ class DashboardController extends Controller
             'xpToNext',
             'xpPercent',
             'shieldsRemaining',
+            'streakActiveDays',
+            'longestStreak',
+            'streakSavers',
             'recentAchievements',
             'greeting',
         ));

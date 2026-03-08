@@ -135,12 +135,18 @@
                 :xpInLevel="$xpInLevel"
                 :xpPercent="$xpPercent"
                 :totalEnrolled="$totalEnrolled"
-                :quizAttemptsUsed="$quizAttemptsUsed"
-                :quizAttemptsRemaining="$quizAttemptsRemaining"
-                :maxQuizAttempts="$maxQuizAttempts"
+                :shieldsRemaining="$shieldsRemaining"
                 :recentAchievements="$recentAchievements"
             />
         </div>
+
+        <x-learner.streak-card
+            :gamification="$gamification"
+            :streakActiveDays="$streakActiveDays"
+            :longestStreak="$longestStreak"
+            :streakSavers="$streakSavers"
+            :score="$gamification?->score ?? 0"
+        />
 
         <div class="rounded-2xl border-t-4 border-indigo-400 shadow-sm overflow-hidden">
             <x-learner.mini-calendar />
