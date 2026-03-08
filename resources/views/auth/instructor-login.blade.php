@@ -111,9 +111,9 @@
         <!-- Learner Login Link -->
         <div class="mt-6 text-center">
             <p class="text-sm text-gray-600">
-                or login as 
-                <a href="{{ route('learner.login') }}" class="instructor-link font-medium hover:underline transition-colors">
-                    Learner
+                Are you a learner?
+                <a href="{{ route('login') }}" class="font-medium text-indigo-600 hover:text-indigo-500">
+                    Go to Learner Login
                 </a>
             </p>
         </div>

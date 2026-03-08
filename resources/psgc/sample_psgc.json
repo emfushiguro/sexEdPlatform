@@ -1,0 +1,43 @@
+[
+  {
+    "code": "042101000",
+    "name": "Cavite",
+    "type": "province"
+  },
+  {
+    "code": "042101001",
+    "name": "Bacoor",
+    "type": "city",
+    "province_code": "042101000"
+  },
+  {
+    "code": "042101002",
+    "name": "Imus",
+    "type": "city",
+    "province_code": "042101000"
+  },
+  {
+    "code": "042101003",
+    "name": "Dasmariñas",
+    "type": "city",
+    "province_code": "042101000"
+  },
+  {
+    "code": "04210100101",
+    "name": "Barangay 1",
+    "type": "barangay",
+    "city_code": "042101001"
+  },
+  {
+    "code": "04210100102",
+    "name": "Barangay 2",
+    "type": "barangay",
+    "city_code": "042101001"
+  },
+  {
+    "code": "04210100201",
+    "name": "Barangay 1",
+    "type": "barangay",
+    "city_code": "042101002"
+  }
+]

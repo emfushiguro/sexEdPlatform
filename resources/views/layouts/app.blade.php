@@ -19,8 +19,8 @@
             [x-cloak] { display: none !important; }
         </style>
     </head>
-    <body class="font-sans antialiased" x-data>
-        <div class="min-h-screen bg-gray-100">
+    <body class="font-sans antialiased overflow-x-hidden" x-data>
+        <div class="min-h-screen bg-gray-100 overflow-x-hidden">
             @auth
                 @if(Auth::user()->hasRole('learner') || Auth::user()->hasRole('parent'))
                     @include('layouts.learner-navigation')
@@ -41,8 +41,9 @@
             @endisset
 
             <!-- Page Content -->
-            <main>
-                {{ $slot }}
+            <main class="overflow-x-hidden">
+                {{ $slot ?? '' }}
+                @yield('content')
             </main>
         </div>
 

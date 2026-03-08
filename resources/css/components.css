@@ -109,6 +109,25 @@
     .input-success {
         @apply input border-green-300 focus:border-green-500 focus:ring-green-500;
     }
+
+    .instructor-input {
+        @apply focus:ring-2 focus:ring-brand-blue-700 focus:border-transparent;
+    }
+
+    .instructor-checkbox {
+        @apply text-brand-blue-700 focus:ring-brand-blue-700 focus:ring-2;
+    }
+}
+
+/* Auth Styles */
+@layer components {
+    .instructor-link {
+        @apply text-brand-blue-700 hover:text-brand-blue-800;
+    }
+
+    .instructor-button-gradient {
+        @apply bg-gradient-to-r from-brand-blue-800 to-brand-blue-600 focus:outline-none focus:ring-2 focus:ring-brand-blue-500 focus:ring-offset-2 hover:from-brand-blue-700 hover:to-brand-blue-500;
+    }
 }
 
 /* Alert Styles */

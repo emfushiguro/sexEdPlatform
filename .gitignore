@@ -22,3 +22,20 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# IDE helper files (auto-generated)
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+
+# Backup files
+*.backup
+*.backup2
+
+# Database dumps (use migrations instead)
+*.sql
+
+# Office/data files (don't belong in repo)
+*.xlsx
+*.xls
+*.csv

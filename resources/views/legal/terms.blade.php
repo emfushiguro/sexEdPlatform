@@ -201,6 +201,124 @@
                     </div>
                 </section>
 
+                <!-- Subscription & Payment Terms -->
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-900 mb-4">12. Subscription &amp; Payment Terms</h2>
+                    <div class="space-y-4 text-gray-700">
+
+                        <div>
+                            <h3 class="font-semibold text-gray-800 mb-2">12.1 Subscription Plans</h3>
+                            <p class="leading-relaxed">
+                                {{ config('app.name') }} offers paid subscription plans that unlock premium educational content,
+                                downloadable resources, priority support, and digital certificates of completion.
+                                Free plan users retain access to basic modules at no cost. All subscription fees are stated in
+                                Philippine Peso (PHP) and are inclusive of applicable taxes.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-gray-800 mb-2">12.2 Payment Processing</h3>
+                            <p class="leading-relaxed">
+                                Payments are processed securely through <strong>PayMongo</strong>, a PCI-DSS compliant payment
+                                gateway licensed by the Bangko Sentral ng Pilipinas (BSP). Accepted payment methods include
+                                GCash, PayMaya, GrabPay, Visa, Mastercard, and JCB credit/debit cards.
+                            </p>
+                            <p class="leading-relaxed mt-2">
+                                Subscription access is granted only after successful payment confirmation. The platform verifies
+                                all transactions through PayMongo's API before activating any premium features.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-gray-800 mb-2">12.3 Billing Cycle &amp; Renewal</h3>
+                            <ul class="list-disc list-inside pl-4 space-y-1">
+                                <li><strong>Monthly subscriptions</strong> renew every 30 days from the activation date.</li>
+                                <li><strong>Annual subscriptions</strong> renew every 12 months from the activation date.</li>
+                                <li>Subscribers will be notified by email before their subscription expires.</li>
+                                <li>Subscriptions do not auto-renew; you must manually renew when your billing period ends.</li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-gray-800 mb-2">12.4 Subscription Cancellation</h3>
+                            <p class="leading-relaxed">
+                                You may cancel your subscription at any time from your account settings. Cancellation takes
+                                effect at the end of the current billing period. You will retain access to premium features
+                                until your paid period concludes. No prorated refund is issued for mid-cycle cancellations
+                                unless the cancellation falls within the refund window defined in Section 12.5.
+                            </p>
+                        </div>
+
+                        {{-- ─────────────────────────────────────────────────────────────────────
+                             3-Day Refund Policy
+                             refund_window_days is read from config/billing.php so that a single
+                             config change propagates to all pages, emails, and service logic.
+                        ───────────────────────────────────────────────────────────────────────── --}}
+                        <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-5">
+                            <h3 class="font-semibold text-gray-800 mb-2">
+                                12.5 Refund Policy &mdash; {{ config('billing.subscription.refund_window_days', 3) }}-Day Window
+                            </h3>
+                            <ul class="list-disc list-inside pl-4 space-y-2 text-gray-700">
+                                <li>
+                                    Users may submit a refund request within
+                                    <strong>{{ config('billing.subscription.refund_window_days', 3) }} ({{ config('billing.subscription.refund_window_days', 3) === 3 ? 'three' : config('billing.subscription.refund_window_days', 3) }}) calendar days</strong>
+                                    of the original payment date.
+                                </li>
+                                <li>
+                                    Refund requests submitted after this window will be automatically rejected by the system.
+                                </li>
+                                <li>
+                                    Approved refunds result in immediate cancellation of the subscription and revocation of
+                                    all premium access. Certificates issued during the subscription period remain valid.
+                                </li>
+                                <li>
+                                    The refund will be credited back to the original payment method within
+                                    <strong>5–10 business days</strong>, subject to the processing timelines of the user's
+                                    bank or e-wallet provider.
+                                </li>
+                                <li>
+                                    Refund requests are subject to admin review. {{ config('app.name') }} reserves the right
+                                    to deny refund requests where abuse of the policy is suspected (e.g., repeated subscribe-and-refund
+                                    patterns, or accounts flagged for policy violations).
+                                </li>
+                                <li>
+                                    <strong>No refund will be issued</strong> for accounts that have been suspended or terminated
+                                    due to violations of these Terms of Service.
+                                </li>
+                                <li>
+                                    Only one successful refund per user account is permitted within a 12-month rolling period.
+                                </li>
+                            </ul>
+                            <p class="mt-3 text-sm text-gray-600 italic">
+                                To request a refund, navigate to <strong>Account → Subscription → Request Refund</strong>
+                                and submit your reason. Our support team will review your request within 2 business days.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-gray-800 mb-2">12.6 Price Changes</h3>
+                            <p class="leading-relaxed">
+                                {{ config('app.name') }} reserves the right to revise subscription prices with at least
+                                <strong>14 days advance notice</strong> sent to the registered email address. If you do not
+                                cancel before the price change takes effect, you consent to the updated pricing for future
+                                billing cycles. Current active subscriptions are not retroactively repriced within their
+                                paid period.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-gray-800 mb-2">12.7 Failed Transactions</h3>
+                            <p class="leading-relaxed">
+                                If a payment is declined or fails for any reason, your subscription will remain in
+                                <em>pending</em> status and premium access will not be granted. You will be able to
+                                retry the payment from the payment status page. {{ config('app.name') }} is not liable
+                                for fees charged by your bank or e-wallet provider as a result of declined transactions.
+                            </p>
+                        </div>
+
+                    </div>
+                </section>
+
                 <!-- Contact -->
                 <section>
                     <h2 class="text-xl font-semibold text-gray-900 mb-4">12. Contact Information</h2>

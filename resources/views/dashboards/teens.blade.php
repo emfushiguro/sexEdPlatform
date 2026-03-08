@@ -11,8 +11,8 @@
         </div>
     </x-slot>
 
-    <div class="py-10">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-10 overflow-x-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             <!-- Profile & Stats Row -->
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
@@ -90,21 +90,6 @@
                     @endif
                 </div>
             </div>
-                @if($gamification)
-                <div class="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl shadow-lg hover:shadow-xl transition">
-                    <div class="p-6 text-white">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-medium opacity-90">Total Points</p>
-                                <p class="text-4xl font-bold mt-1">{{ number_format($gamification->score) }}</p>
-                                <p class="text-xs opacity-75 mt-2">Keep it up!</p>
-                            </div>
-                            <div class="text-4xl opacity-80">⭐</div>
-                        </div>
-                    </div>
-                </div>
-                @endif
-            </div>
 
             <!-- Continue Learning -->
             @if($enrolledModules->count() > 0)
@@ -120,9 +105,9 @@
                             $module = $enrollment->module;
                             $progress = $progressData[$module->id] ?? null;
                         @endphp
-                        <div class="bg-gray-50 rounded-lg p-5 border border-gray-200 hover:border-purple-400 hover:shadow-md transition">
+                        <div class="min-w-0 bg-gray-50 rounded-lg p-5 border border-gray-200 hover:border-purple-400 hover:shadow-md transition">
                             <div class="flex items-start justify-between mb-3">
-                                <h4 class="font-semibold text-lg text-gray-800 flex-1">{{ $module->title }}</h4>
+                                <h4 class="font-semibold text-lg text-gray-800 flex-1 min-w-0 break-words">{{ $module->title }}</h4>
                                 @if($module->is_premium)
                                     <span class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">PRO</span>
                                 @endif
@@ -165,9 +150,9 @@
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach($recommendedModules as $module)
-                        <div class="bg-gradient-to-br from-gray-50 to-white rounded-lg p-5 border border-gray-200 hover:border-indigo-400 hover:shadow-md transition">
+                        <div class="min-w-0 bg-gradient-to-br from-gray-50 to-white rounded-lg p-5 border border-gray-200 hover:border-indigo-400 hover:shadow-md transition">
                             <div class="flex items-start justify-between mb-3">
-                                <h4 class="font-semibold text-lg text-gray-800 flex-1">{{ $module->title }}</h4>
+                                <h4 class="font-semibold text-lg text-gray-800 flex-1 min-w-0 break-words">{{ $module->title }}</h4>
                                 @if($module->is_premium)
                                     <span class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">PRO</span>
                                 @endif

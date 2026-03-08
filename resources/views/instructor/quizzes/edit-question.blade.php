@@ -1,36 +1,35 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Edit Question: {{ $quiz->title }}
-            </h2>
-            <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="text-sm text-gray-600 hover:text-gray-900">
-                ← Back to Quiz
-            </a>
+@extends('layouts.instructor')
+@section('title', 'Edit Question: ' . $quiz->title)
+@section('page-title', 'Edit Question')
+@section('content')
+
+<div class="mb-5">
+    <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to Quiz
+    </a>
+</div>
+
+<div class="max-w-4xl">
+    <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Edit Question: {{ $quiz->title }}</h3>
         </div>
-    </x-slot>
+        <div class="p-6">
+            <!-- Display Validation Errors -->
+            @if($errors->any())
+                <div class="mb-5 rounded-xl bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/20 px-4 py-3">
+                    <ul class="list-disc list-inside text-sm text-red-700 dark:text-red-400 space-y-1">
+                        @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                    </ul>
+                </div>
+            @endif
 
-    <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
-                    <!-- Display Validation Errors -->
-                    @if($errors->any())
-                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                            <p class="font-bold">Please fix the following errors:</p>
-                            <ul class="list-disc list-inside mt-2">
-                                @foreach($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                            {{ session('error') }}
-                        </div>
-                    @endif
+            @if(session('error'))
+                <div class="mb-5 rounded-xl bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/20 px-4 py-3">
+                    <p class="text-sm text-red-700 dark:text-red-400">{{ session('error') }}</p>
+                </div>
+            @endif
 
                     <form method="POST" action="{{ route('instructor.quizzes.update-question', ['quiz' => $quiz, 'question' => $question]) }}" id="questionForm" enctype="multipart/form-data">
                         @csrf
@@ -240,22 +239,21 @@
                             @enderror
                         </div>
 
-                        <!-- Submit Button -->
-                        <div class="flex gap-4">
-                            <a href="{{ route('instructor.quizzes.show', $quiz) }}" 
-                               class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition">
-                                Cancel
-                            </a>
-                            <button type="submit" 
-                                    class="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
-                                Update Question
-                            </button>
-                        </div>
-                    </form>
-                </div>
+            <!-- Submit Button -->
+            <div class="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <a href="{{ route('instructor.quizzes.show', $quiz) }}"
+                   class="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="flex-1 px-6 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium shadow-theme-xs transition-colors">
+                    Update Question
+                </button>
             </div>
+                    </form>
         </div>
     </div>
+</div>
 
     <script>
         let optionIndex = 0;
@@ -496,4 +494,4 @@
             }
         @endif
     </script>
-</x-app-layout>
+@endsection

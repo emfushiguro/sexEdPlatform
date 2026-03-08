@@ -83,17 +83,17 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
         // Create Roles and assign permissions
 
         // Admin Role - Full access
-        $adminRole = Role::create(['name' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $adminRole->givePermissionTo(Permission::all());
 
         // Learner Role
-        $learnerRole = Role::create(['name' => 'learner']);
+        $learnerRole = Role::firstOrCreate(['name' => 'learner']);
         $learnerRole->givePermissionTo([
             'view modules',
             'view lessons',
@@ -107,7 +107,7 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // Instructor Role - Content Management
-        $instructorRole = Role::create(['name' => 'instructor']);
+        $instructorRole = Role::firstOrCreate(['name' => 'instructor']);
         $instructorRole->givePermissionTo([
             'view modules',
             'create modules',
@@ -130,7 +130,7 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // Counselor Role
-        $counselorRole = Role::create(['name' => 'counselor']);
+        $counselorRole = Role::firstOrCreate(['name' => 'counselor']);
         $counselorRole->givePermissionTo([
             'view modules',
             'view lessons',
@@ -139,13 +139,13 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // Clinic Role
-        $clinicRole = Role::create(['name' => 'clinic']);
+        $clinicRole = Role::firstOrCreate(['name' => 'clinic']);
         $clinicRole->givePermissionTo([
             'manage clinics',
         ]);
 
         // Organization Role
-        $organizationRole = Role::create(['name' => 'organization']);
+        $organizationRole = Role::firstOrCreate(['name' => 'organization']);
         $organizationRole->givePermissionTo([
             'view seminars',
             'create seminars',

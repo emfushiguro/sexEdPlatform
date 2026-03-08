@@ -10,74 +10,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global custom styles */
-@layer base {
-    /* Smooth scrolling */
-    html {
-        scroll-behavior: smooth;
-    }
-    
-    /* Better font rendering */
-    body {
-        @apply antialiased;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
-    
-    /* Focus visible for accessibility */
-    :focus-visible {
-        @apply outline-none ring-2 ring-brand-purple-500 ring-offset-2;
-    }
-}
-
-/* Custom scrollbar */
 @layer utilities {
-    .scrollbar-thin::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    
-    .scrollbar-thin::-webkit-scrollbar-track {
-        @apply bg-gray-100 rounded;
-    }
-    
-    .scrollbar-thin::-webkit-scrollbar-thumb {
-        @apply bg-gray-300 rounded hover:bg-gray-400;
-    }
-}
+	.no-scrollbar {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
 
-/* Instructor Blue Theme Styles */
-@layer components {
-    /* Instructor input focus states */
-    .instructor-input:focus {
-        @apply ring-2 ring-offset-0 border-transparent;
-        ring-color: #354FAE;
-    }
-    
-    /* Instructor checkbox */
-    .instructor-checkbox {
-        color: #354FAE;
-    }
-    
-    .instructor-checkbox:focus {
-        ring-color: #354FAE;
-    }
-    
-    /* Instructor button gradient */
-    .instructor-button-gradient {
-        background: linear-gradient(135deg, #0A205C 0%, #354FAE 100%);
-    }
-    
-    .instructor-button-gradient:hover {
-        background: linear-gradient(135deg, #0d2a73 0%, #3f5fc7 100%);
-    }
-    
-    /* Instructor link color */
-    .instructor-link {
-        color: #354FAE;
-    }
-    
-    .instructor-link:hover {
-        color: #0A205C;
-    }
+	.no-scrollbar::-webkit-scrollbar {
+		display: none;
+	}
 }

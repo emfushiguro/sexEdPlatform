@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
+use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use Illuminate\Http\Request;
@@ -71,14 +72,14 @@ class EnrollmentController extends Controller
      */
     public function approve(ModuleEnrollment $enrollment)
     {
-        if ($enrollment->status !== 'pending') {
+        if ($enrollment->status !== EnrollmentStatus::Pending) {
             return redirect()->back()
                 ->with('error', 'This enrollment request is not pending.');
         }
 
         // Update enrollment to approved
         $enrollment->update([
-            'status' => 'approved',
+            'status' => EnrollmentStatus::Approved,
             'enrolled_at' => now(),
         ]);
 
@@ -94,14 +95,14 @@ class EnrollmentController extends Controller
      */
     public function reject(ModuleEnrollment $enrollment)
     {
-        if ($enrollment->status !== 'pending') {
+        if ($enrollment->status !== EnrollmentStatus::Pending) {
             return redirect()->back()
                 ->with('error', 'This enrollment request is not pending.');
         }
 
         // Update enrollment to rejected
         $enrollment->update([
-            'status' => 'rejected',
+            'status' => EnrollmentStatus::Rejected,
         ]);
 
         return redirect()->back()

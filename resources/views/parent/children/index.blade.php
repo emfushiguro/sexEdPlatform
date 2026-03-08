@@ -133,7 +133,7 @@
                             @if($child->moduleEnrollments()->count() > 0)
                                 @php
                                     $totalEnrollments = $child->moduleEnrollments()->count();
-                                    $completedModules = $child->moduleEnrollments()->where('status', 'completed')->count();
+                                    $completedModules = $child->moduleEnrollments()->whereNotNull('completed_at')->count();
                                     $progressPercent = $totalEnrollments > 0 ? round(($completedModules / $totalEnrollments) * 100) : 0;
                                 @endphp
                                 <div class="px-6 py-4">

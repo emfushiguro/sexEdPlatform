@@ -1,82 +1,66 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Add Question to: {{ $quiz->title }}
-            </h2>
-            <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="text-sm text-gray-600 hover:text-gray-900">
-                ← Back to Quiz
-            </a>
+@extends('layouts.instructor')
+@section('title', 'Add Question: ' . $quiz->title)
+@section('page-title', 'Add Question')
+@section('content')
+
+<div class="mb-5">
+    <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to Quiz
+    </a>
+</div>
+
+<div class="max-w-4xl">
+    <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Add Question to: {{ $quiz->title }}</h3>
         </div>
-    </x-slot>
+        <div class="p-6">
+            <!-- Display Validation Errors -->
+            @if($errors->any())
+                <div class="mb-5 rounded-xl bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/20 px-4 py-3">
+                    <ul class="list-disc list-inside text-sm text-red-700 dark:text-red-400 space-y-1">
+                        @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                    </ul>
+                </div>
+            @endif
 
-    <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
-                    <!-- Display Validation Errors -->
-                    @if($errors->any())
-                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                            <p class="font-bold">Please fix the following errors:</p>
-                            <ul class="list-disc list-inside mt-2">
-                                @foreach($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                            {{ session('error') }}
-                        </div>
-                    @endif
+            @if(session('error'))
+                <div class="mb-5 rounded-xl bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/20 px-4 py-3">
+                    <p class="text-sm text-red-700 dark:text-red-400">{{ session('error') }}</p>
+                </div>
+            @endif
 
                     <form method="POST" action="{{ route('instructor.quizzes.store-question', $quiz) }}" id="questionForm" enctype="multipart/form-data">
                         @csrf
 
-                        <!-- Question Text -->
-                        <div class="mb-6">
-                            <div class="flex items-center justify-between mb-2">
-                                <label for="question_text" class="block text-sm font-medium text-gray-700">
+            <!-- Question Text -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-2">
+                    <label for="question_text" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Question Text *
                                 </label>
-                                <button 
-                                    type="button" 
-                                    id="insertBlankBtn"
-                                    onclick="insertBlank()"
-                                    style="display: none;"
-                                    class="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded transition">
-                                    Insert Blank (_____)</button>
-                            </div>
-                            <textarea 
-                                id="question_text" 
-                                name="question_text" 
-                                rows="3" 
-                                required
-                                oninput="updateBlankCount()"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                placeholder="Enter your question here...">{{ old('question_text') }}</textarea>
-                            <div id="blankCountHint" style="display: none;" class="mt-1 text-xs">
-                                <span class="text-blue-600 font-medium">Blanks detected: <span id="blankCount">0</span></span>
-                                <span class="text-gray-500 ml-3">Use <code class="px-1 bg-gray-100 rounded">_____</code> (5 underscores) to create blanks</span>
-                            </div>
-                            @error('question_text')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
+                    <button type="button" id="insertBlankBtn" onclick="insertBlank()" style="display: none;"
+                        class="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded transition">
+                        Insert Blank (_____)</button>
+                </div>
+                <textarea id="question_text" name="question_text" rows="3" required oninput="updateBlankCount()"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition"
+                    placeholder="Enter your question here...">{{ old('question_text') }}</textarea>
+                <div id="blankCountHint" style="display: none;" class="mt-1 text-xs">
+                    <span class="text-brand-600 dark:text-brand-400 font-medium">Blanks detected: <span id="blankCount">0</span></span>
+                    <span class="text-gray-500 ml-3">Use <code class="px-1 bg-gray-100 dark:bg-gray-800 rounded">_____</code> (5 underscores) to create blanks</span>
+                </div>
+                @error('question_text')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
 
-                        <!-- Question Type -->
-                        <div class="mb-6">
-                            <label for="question_type" class="block text-sm font-medium text-gray-700 mb-2">
-                                Question Type *
-                            </label>
-                            <select 
-                                id="question_type" 
-                                name="question_type" 
-                                required
-                                onchange="updateQuestionType()"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            <!-- Question Type -->
+            <div class="mb-6">
+                <label for="question_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Question Type <span class="text-red-500">*</span></label>
+                <select id="question_type" name="question_type" required onchange="updateQuestionType()"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                                 <option value="">Select question type...</option>
                                 <option value="multiple_choice" {{ old('question_type') === 'multiple_choice' ? 'selected' : '' }}>
                                     Multiple Choice (Single Answer)
@@ -97,28 +81,20 @@
                                     Identification
                                 </option>
                             </select>
-                            @error('question_type')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
+                @error('question_type')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
 
-                        <!-- Points -->
-                        <div class="mb-6">
-                            <label for="points" class="block text-sm font-medium text-gray-700 mb-2">
-                                Points *
-                            </label>
-                            <input 
-                                type="number" 
-                                id="points" 
-                                name="points" 
-                                min="1" 
-                                value="{{ old('points', 1) }}"
-                                required
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            @error('points')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
+            <!-- Points -->
+            <div class="mb-6">
+                <label for="points" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Points <span class="text-red-500">*</span></label>
+                <input type="number" id="points" name="points" min="1" value="{{ old('points', 1) }}" required
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
+                @error('points')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
 
                         <!-- Fill Blank Text & Identification Fields -->
                         <div id="textAnswerContainer" class="mb-6" style="display: none;">
@@ -238,22 +214,21 @@
                             @enderror
                         </div>
 
-                        <!-- Submit Button -->
-                        <div class="flex gap-4">
-                            <a href="{{ route('instructor.quizzes.show', $quiz) }}" 
-                               class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition">
-                                Cancel
-                            </a>
-                            <button type="submit" 
-                                    class="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
-                                Add Question
-                            </button>
-                        </div>
-                    </form>
-                </div>
+            <!-- Submit Button -->
+            <div class="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <a href="{{ route('instructor.quizzes.show', $quiz) }}"
+                   class="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="flex-1 px-6 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium shadow-theme-xs transition-colors">
+                    Add Question
+                </button>
             </div>
+        </form>
         </div>
     </div>
+</div>
 
     <script>
         let optionIndex = 0;
@@ -446,4 +421,4 @@
             updateQuestionType();
         @endif
     </script>
-</x-app-layout>
+@endsection

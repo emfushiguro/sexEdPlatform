@@ -98,7 +98,34 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function subscription()
     {
+        // Return active subscription first, then fall back to latest
+        return $this->hasOne(Subscription::class)
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhere('status', 'trialing');
+            })
+            ->latest();
+    }
+
+    /**
+     * Get the latest subscription regardless of status
+     */
+    public function latestSubscription()
+    {
         return $this->hasOne(Subscription::class)->latestOfMany();
+    }
+
+    /**
+     * Get the active subscription specifically
+     */
+    public function activeSubscription()
+    {
+        return $this->hasOne(Subscription::class)
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>', now());
+            });
     }
 
     public function subscriptions()
@@ -109,6 +136,28 @@ class User extends Authenticatable implements MustVerifyEmail
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function refunds()
+    {
+        return $this->hasMany(Refund::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function subscriptionPlan()
+    {
+        return $this->hasOneThrough(
+            SubscriptionPlan::class, 
+            Subscription::class, 
+            'user_id', 
+            'id', 
+            'id', 
+            'plan_id'
+        )->where('subscriptions.status', 'active');
     }
 
     public function counselor()
@@ -200,6 +249,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isPremium(): bool
     {
+        // Force refresh subscription to avoid cached status issues
+        $this->load('subscription');
         return $this->subscription?->isPremium() ?? false;
     }
 
