@@ -7,6 +7,7 @@ use App\Models\Module;
 use App\Models\Certificate;
 use App\Models\QuizAttempt;
 use App\Models\UserProgress;
+use App\Services\GamificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -93,9 +94,8 @@ class CertificateController extends Controller
         ]);
 
         // Award bonus points for certificate
-        $gamification = $user->gamification;
-        if ($gamification) {
-            $gamification->addPoints(50); // 50 points for completing module
+        if ($user->gamification) {
+            app(GamificationService::class)->awardPoints($user, 'certificate_earned', 50);
         }
 
         return redirect()->route('learner.certificates.show', $certificate)

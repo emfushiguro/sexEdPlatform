@@ -282,6 +282,98 @@ function addProgressBar(toastElement, duration) {
     });
 }
 
+// Shield Lost Toast
+function showShieldLost(shieldsLeft) {
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    const shieldIcon = '<svg class="toast-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>';
+    const duration = 4000;
+    const config = {
+        ...defaultConfig, duration,
+        text: `<div class="toast-content"><span class="toast-icon-wrapper">${shieldIcon}</span><span class="toast-message">Shield lost! ${shieldsLeft}/3 remaining today.</span></div>`,
+        offset: getToastOffset(),
+        className: 'custom-toast toast-shield-lost',
+        ariaLive: 'assertive',
+    };
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
+}
+
+// Shield Refilled Toast
+function showShieldRefilled(message) {
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    const shieldIcon = '<svg class="toast-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>';
+    const duration = 4000;
+    const config = {
+        ...defaultConfig, duration,
+        text: `<div class="toast-content"><span class="toast-icon-wrapper">${shieldIcon}</span><span class="toast-message">${message}</span></div>`,
+        offset: getToastOffset(),
+        className: 'custom-toast toast-shield-refill',
+        ariaLive: 'polite',
+    };
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
+}
+
+// Points Earned Toast
+function showPointsEarned(points) {
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    const starIcon = '<svg class="toast-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+    const duration = 3000;
+    const config = {
+        ...defaultConfig, duration,
+        text: `<div class="toast-content toast-content-compact"><span class="toast-icon-wrapper">${starIcon}</span><span class="toast-message">+${points} points earned!</span></div>`,
+        offset: getToastOffset(),
+        className: 'custom-toast toast-points',
+        ariaLive: 'polite',
+    };
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
+}
+
+// Streak Milestone Toast
+function showStreakMilestone(bonus) {
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    const flameIcon = '<svg class="toast-icon toast-icon-large" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12.963 2.286a.75.75 0 00-1.071-.136 9.742 9.742 0 00-3.539 6.177A7.547 7.547 0 016.648 6.61a.75.75 0 00-1.152.082A9 9 0 1015.68 4.534a7.46 7.46 0 01-2.717-2.248zM15.75 14.25a3.75 3.75 0 11-7.313-1.172c.628.465 1.35.81 2.133 1a5.99 5.99 0 011.925-3.545 3.75 3.75 0 013.255 3.717z" clip-rule="evenodd"/></svg>';
+    const duration = 8000;
+    const config = {
+        ...defaultConfig, duration,
+        text: `<div class="toast-content toast-content-large"><span class="toast-icon-wrapper toast-icon-celebration">${flameIcon}</span><span class="toast-message">🎉 Streak Milestone! +${bonus} bonus points awarded!</span></div>`,
+        gravity: 'top', position: 'center',
+        offset: getToastOffset(),
+        className: 'custom-toast toast-streak-milestone',
+        ariaLive: 'polite',
+    };
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
+}
+
+// Streak Saved Toast
+function showStreakSaved(saversLeft) {
+    if (activeToasts >= maxToasts) return;
+    activeToasts++;
+    const shieldIcon = '<svg class="toast-icon toast-icon-large" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>';
+    const duration = 6000;
+    const config = {
+        ...defaultConfig, duration,
+        text: `<div class="toast-content toast-content-large"><span class="toast-icon-wrapper toast-icon-celebration">${shieldIcon}</span><span class="toast-message">🛡 Streak Saved! ${saversLeft} saver${saversLeft !== 1 ? 's' : ''} remaining.</span></div>`,
+        gravity: 'top', position: 'center',
+        offset: getToastOffset(),
+        className: 'custom-toast toast-streak-saved',
+        ariaLive: 'polite',
+    };
+    const toast = Toastify(config);
+    toast.showToast();
+    addProgressBar(toast.toastElement, duration);
+}
+
 // Make available globally
 window.toast = {
     success: showSuccess,
@@ -293,4 +385,9 @@ window.toast = {
     levelUp: showLevelUp,
     xp: showXPGained,
     show: showToast,
+    shieldLost: showShieldLost,
+    shieldRefilled: showShieldRefilled,
+    pointsEarned: showPointsEarned,
+    streakMilestone: showStreakMilestone,
+    streakSaved: showStreakSaved,
 };

@@ -10,12 +10,39 @@
     ══════════════════════════════════════════════════════════════════ --}}
     <div class="xl:col-span-2 space-y-8">
 
-        {{-- Greeting --}}
-        <div>
-            <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                {{ $greeting }}, {{ $learnerProfile->username ?? Auth::user()->first_name ?? 'Learner' }}!
-            </h1>
-            <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Continue your learning journey.</p>
+        {{-- ── Hero banner ── --}}
+        <div class="relative rounded-2xl overflow-hidden border border-purple-200/60 dark:border-purple-800/40 shadow-sm">
+            {{-- Gradient background --}}
+            <div class="absolute inset-0" style="background: linear-gradient(135deg, #A30EB2 0%, #730DB1 50%, #3B0CB1 100%);"></div>
+            {{-- Subtle dot-grid overlay --}}
+            <div class="absolute inset-0 opacity-10"
+                 style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+            {{-- Decorative blobs --}}
+            <div class="absolute -top-6 -right-6 w-40 h-40 rounded-full opacity-20" style="background: radial-gradient(circle, #fff, transparent);"></div>
+            <div class="absolute -bottom-8 -left-4 w-32 h-32 rounded-full opacity-10" style="background: radial-gradient(circle, #fff, transparent);"></div>
+
+            {{-- Content --}}
+            <div class="relative z-10 flex items-center justify-between gap-4 px-6 py-5">
+                <div>
+                    <p class="text-purple-200 text-xs font-medium uppercase tracking-widest mb-1">Welcome back</p>
+                    <h1 class="text-2xl font-bold tracking-tight text-white">
+                        {{ $greeting }}, {{ $learnerProfile->username ?? Auth::user()->first_name ?? 'Learner' }}!
+                    </h1>
+                    <p class="text-purple-200 text-sm mt-1">Continue your learning journey today.</p>
+                </div>
+                {{-- Right side illustration-style icon --}}
+                <div class="flex-shrink-0 hidden sm:flex flex-col items-center gap-2">
+                    <div class="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-white">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
+                        </svg>
+                    </div>
+                    <a href="{{ route('learner.modules.index') }}"
+                       class="text-[11px] font-semibold text-white/80 hover:text-white transition-colors">
+                        My Modules &rarr;
+                    </a>
+                </div>
+            </div>
         </div>
 
         {{-- Active Learning Modules --}}
@@ -26,7 +53,7 @@
                     <p class="text-xs text-gray-400 dark:text-gray-500">Continue your learning journey</p>
                 </div>
                 <a href="{{ route('learner.modules.index') }}"
-                   class="group inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors duration-150 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-800/50">
+                   class="group inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-600 hover:text-white hover:scale-105 hover:shadow-md hover:shadow-purple-300/40 transition-all duration-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-600 dark:hover:text-white">
                     View All
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-0.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -68,7 +95,7 @@
                     <p class="text-xs text-gray-400 dark:text-gray-500">Age-appropriate modules picked for you</p>
                 </div>
                 <a href="{{ route('learner.modules.index') }}"
-                   class="group inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors duration-150 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-800/50">
+                   class="group inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white hover:scale-105 hover:shadow-md hover:shadow-indigo-300/40 transition-all duration-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white">
                     Browse All
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 transition-transform duration-150 group-hover:translate-x-0.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -83,9 +110,11 @@
                     </p>
                 </div>
             @else
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth scrollbar-thin">
                     @foreach($recommendedModules as $module)
-                        <x-learner.module-card-recommended :module="$module" />
+                        <div class="flex-shrink-0 w-72 snap-start">
+                            <x-learner.module-card-recommended :module="$module" />
+                        </div>
                     @endforeach
                 </div>
             @endif
@@ -98,20 +127,30 @@
     ══════════════════════════════════════════════════════════════════ --}}
     <div class="space-y-4">
 
-        <x-learner.gamification-panel
-            :user="Auth::user()"
-            :learnerProfile="$learnerProfile"
+        <div class="rounded-2xl border-t-4 border-purple-500 shadow-sm overflow-hidden">
+            <x-learner.gamification-panel
+                :user="Auth::user()"
+                :learnerProfile="$learnerProfile"
+                :gamification="$gamification"
+                :xpInLevel="$xpInLevel"
+                :xpPercent="$xpPercent"
+                :totalEnrolled="$totalEnrolled"
+                :shieldsRemaining="$shieldsRemaining"
+                :recentAchievements="$recentAchievements"
+            />
+        </div>
+
+        <x-learner.streak-card
             :gamification="$gamification"
-            :xpInLevel="$xpInLevel"
-            :xpPercent="$xpPercent"
-            :totalEnrolled="$totalEnrolled"
-            :quizAttemptsUsed="$quizAttemptsUsed"
-            :quizAttemptsRemaining="$quizAttemptsRemaining"
-            :maxQuizAttempts="$maxQuizAttempts"
-            :recentAchievements="$recentAchievements"
+            :streakActiveDays="$streakActiveDays"
+            :longestStreak="$longestStreak"
+            :streakSavers="$streakSavers"
+            :score="$gamification?->score ?? 0"
         />
 
-        <x-learner.mini-calendar />
+        <div class="rounded-2xl border-t-4 border-indigo-400 shadow-sm overflow-hidden">
+            <x-learner.mini-calendar />
+        </div>
 
     </div>
 </div>

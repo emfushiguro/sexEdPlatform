@@ -3,10 +3,12 @@
     'activeTab' => 'login', // 'login' or 'register'
     'loginRoute' => null,
     'registerRoute' => null,
-    'gradientFrom' => '#6D2994',
-    'gradientTo' => '#3C1255',
+    'gradientFrom' => '#A30EB2',
+    'gradientMid' => '#730DB1',
+    'gradientTo' => '#3B0CB1',
     'logo' => '/media/Logo.png',
     'brandText' => 'Taboo',
+    'panel' => null,
 ])
 
 <!DOCTYPE html>
@@ -74,15 +76,18 @@
                 
                 <!-- RIGHT SIDE: Branding Area -->
                 <div class="w-full lg:w-1/2 relative overflow-hidden" 
-                     style="background: linear-gradient(135deg, {{ $gradientFrom }} 0%, {{ $gradientTo }} 100%);">
+                     style="background: linear-gradient(135deg, {{ $gradientFrom }} 0%, {{ $gradientMid }} 50%, {{ $gradientTo }} 100%);">
                     
-                    <!-- Decorative Elements -->
+                    <!-- Decorative blur blobs -->
                     <div class="absolute inset-0 opacity-10">
                         <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
                         <div class="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
                     </div>
-                    
-                    <!-- Logo -->
+
+                    @if($panel->isNotEmpty())
+                        {{ $panel }}
+                    @else
+                    <!-- Default: Logo fallback -->
                     <div class="relative h-full flex flex-col items-center justify-center p-12">
                         <div class="relative animate-fade-in">
                             <img src="{{ asset($logo) }}" 
@@ -104,6 +109,7 @@
                         </h1>
                         @endif
                     </div>
+                    @endif
                 </div>
                 
             </div>

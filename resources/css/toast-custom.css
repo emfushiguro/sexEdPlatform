@@ -91,6 +91,43 @@
     animation: xpSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
 }
 
+.toast-shield-lost {
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+}
+
+.toast-shield-refill {
+    background: linear-gradient(135deg, #A30EB2 0%, #730DB1 50%, #3B0CB1 100%) !important;
+}
+
+.toast-points {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    min-width: 180px !important;
+    animation: xpSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+}
+
+.toast-streak-milestone {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    padding: 22px 32px !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    min-width: 380px !important;
+    box-shadow: 0 20px 60px rgba(245, 158, 11, 0.4), 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+    animation: achievementBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards !important;
+}
+
+.toast-streak-saved {
+    background: linear-gradient(135deg, #A30EB2 0%, #730DB1 50%, #3B0CB1 100%) !important;
+    padding: 22px 32px !important;
+    font-size: 17px !important;
+    font-weight: 600 !important;
+    min-width: 360px !important;
+    box-shadow: 0 20px 60px rgba(163, 14, 178, 0.4), 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+    animation: achievementBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards !important;
+}
+
 /* Toast Content Layout */
 .toast-content {
     display: flex;

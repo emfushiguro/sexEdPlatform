@@ -1,16 +1,6 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Edit Question: {{ $quiz->title }}
-            </h2>
-            <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="text-sm text-gray-600 hover:text-gray-900">
-                ← Back to Quiz
-            </a>
-        </div>
-    </x-slot>
+﻿@extends('layouts.instructor-app')
 
-    <div class="py-12">
+@section('content')
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
@@ -155,7 +145,7 @@
                                     <label for="case_sensitive" class="text-sm font-medium text-gray-700">
                                         Case Sensitive
                                     </label>
-                                    <p class="text-xs text-gray-600 mt-1">If checked, answers must match exact capitalization (e.g., "Paris" ≠ "paris"). Learners will see a notice.</p>
+                                    <p class="text-xs text-gray-600 mt-1">If checked, answers must match exact capitalization (e.g., "Paris" â‰  "paris"). Learners will see a notice.</p>
                                 </div>
                             </div>
                         </div>
@@ -496,4 +486,4 @@
             }
         @endif
     </script>
-</x-app-layout>
+@endsection

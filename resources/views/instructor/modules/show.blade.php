@@ -1,25 +1,6 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ $module->title }}
-            </h2>
-            <div class="flex gap-2">
-                <a href="{{ route('instructor.lessons.create', ['module_id' => $module->id]) }}" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                    Add Lesson
-                </a>
-                <a href="{{ route('instructor.modules.edit', $module) }}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
-                    Edit Module
-                </a>
-                <a href="{{ route('instructor.modules.index') }}" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
-                    Back to List
-                </a>
-            </div>
-        </div>
-    </x-slot>
+﻿@extends('layouts.instructor-app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+@section('content')
             <!-- Module Info Card -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
@@ -96,7 +77,7 @@
                                                 <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
                                                     <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">{{ strtoupper($lesson->type) }}</span>
                                                     @if($lesson->duration)
-                                                        <span>• {{ $lesson->duration }} min</span>
+                                                        <span>â€¢ {{ $lesson->duration }} min</span>
                                                     @endif
                                                 </div>
                                             </div>
@@ -154,6 +135,4 @@
                     @endif
                 </div>
             </div>
-        </div>
-    </div>
-</x-app-layout>
+@endsection

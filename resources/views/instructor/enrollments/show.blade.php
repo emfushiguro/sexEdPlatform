@@ -1,23 +1,6 @@
-<x-app-layout>
-    <x-slot name="header">
-        <x-breadcrumb :items="[
-            ['label' => 'Dashboard', 'url' => route('instructor.dashboard')],
-            ['label' => 'Enrollment Requests', 'url' => route('instructor.enrollments.index')],
-            ['label' => 'Review Learner']
-        ]" />
-        
-        <div class="flex items-center space-x-3 mt-4">
-            <a href="{{ route('instructor.enrollments.index') }}" class="text-gray-600 hover:text-gray-900">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-            </a>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Review Enrollment Request</h2>
-        </div>
-    </x-slot>
+﻿@extends('layouts.instructor-app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+@section('content')
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Main Content - Learner Profile -->
                 <div class="lg:col-span-2 space-y-6">
@@ -62,9 +45,9 @@
                                                 $isAgeAppropriate = $age >= $moduleMinAge && $age <= $moduleMaxAge;
                                             @endphp
                                             @if($isAgeAppropriate)
-                                                <span class="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">✓ Age-appropriate</span>
+                                                <span class="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">âœ“ Age-appropriate</span>
                                             @else
-                                                <span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">⚠ Outside target age range</span>
+                                                <span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">âš  Outside target age range</span>
                                             @endif
                                         @else
                                             -
@@ -144,9 +127,9 @@
                                     <p class="text-sm text-gray-600 mt-1">{{ Str::limit($enrollment->module->description, 150) }}</p>
                                     <div class="flex gap-3 mt-2 text-xs text-gray-500">
                                         <span>Age: {{ $enrollment->module->min_age }}-{{ $enrollment->module->max_age }} years</span>
-                                        <span>•</span>
+                                        <span>â€¢</span>
                                         <span>{{ $enrollment->module->lessons_count ?? 0 }} lessons</span>
-                                        <span>•</span>
+                                        <span>â€¢</span>
                                         <span>Requested {{ $enrollment->created_at->diffForHumans() }}</span>
                                     </div>
                                 </div>
@@ -233,7 +216,7 @@
                                         <button type="submit" 
                                                 class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition"
                                                 onclick="return confirm('Approve this enrollment request?')">
-                                            ✓ Approve Enrollment
+                                            âœ“ Approve Enrollment
                                         </button>
                                     </form>
 
@@ -243,13 +226,13 @@
                                         <button type="submit" 
                                                 class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition"
                                                 onclick="return confirm('Reject this enrollment request? The learner will be notified.')">
-                                            ✗ Reject Request
+                                            âœ— Reject Request
                                         </button>
                                     </form>
 
                                     <a href="{{ route('instructor.enrollments.index') }}" 
                                        class="block w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition">
-                                        ← Back to Requests
+                                        â† Back to Requests
                                     </a>
                                 </div>
                             </div>
@@ -277,7 +260,7 @@
 
                                     <a href="{{ route('instructor.enrollments.index') }}" 
                                        class="block w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition mt-4">
-                                        ← Back to Requests
+                                        â† Back to Requests
                                     </a>
                                 </div>
                             </div>
@@ -285,6 +268,4 @@
                     @endif
                 </div>
             </div>
-        </div>
-    </div>
-</x-app-layout>
+@endsection

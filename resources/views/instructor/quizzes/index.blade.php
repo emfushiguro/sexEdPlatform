@@ -1,31 +1,6 @@
-<x-app-layout>
-    <x-slot name="header">
-        <x-breadcrumb :items="[
-            ['label' => 'Dashboard', 'url' => route('instructor.dashboard')],
-            ['label' => 'Quizzes']
-        ]" />
-        
-        <div class="flex justify-between items-center mt-4">
-            <div class="flex items-center space-x-3">
-                <a href="{{ route('instructor.dashboard') }}" class="text-gray-600 hover:text-gray-900">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                    </svg>
-                </a>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Quiz Management</h2>
-            </div>
-            <button @click="$store.modals.openQuizModal()" 
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                Create New Quiz
-            </button>
-        </div>
-    </x-slot>
+﻿@extends('layouts.instructor-app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+@section('content')
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
                     <form method="GET" class="flex gap-4">
@@ -90,5 +65,4 @@
 
         <!-- Quiz Creation Modal -->
         @include('instructor.quizzes.partials.quiz-modal')
-    </div>
-</x-app-layout>
+@endsection

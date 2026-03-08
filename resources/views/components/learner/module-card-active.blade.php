@@ -18,7 +18,7 @@
     $thumbnail       = $module->thumbnail ? asset('storage/' . $module->thumbnail) : null;
     $continueUrl     = $nextLesson
         ? route('learner.lessons.show', $nextLesson)
-        : route('learner.modules.index');
+        : route('learner.modules.index');   
     $isCompleted     = !is_null($enrollment->completed_at);
 @endphp
 
@@ -62,29 +62,17 @@
     {{-- Body --}}
     <div class="p-4 flex flex-col flex-1 gap-3">
 
-        {{-- Title + difficulty --}}
+        {{-- Title + Lesson Completed--}}
         <div>
             <div class="flex items-start justify-between gap-2 mb-1">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2">
                     {{ $module->title }}
                 </h3>
-                @if($module->difficulty_level)
-                    <span class="flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full
-                        {{ $module->difficulty_level === 'beginner'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                            : ($module->difficulty_level === 'intermediate'
-                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400') }}">
-                        {{ ucfirst($module->difficulty_level) }}
-                    </span>
-                @endif
             </div>
-            <p class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-purple-400 flex-shrink-0">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                </svg>
+            <p class="text-sm text-gray-">
                 {{ $completedLessons }}/{{ $totalLessons }} lessons completed
             </p>
+
         </div>
 
         {{-- Progress bar --}}
@@ -109,7 +97,7 @@
         {{-- CTA button --}}
         <a
             href="{{ $continueUrl }}"
-            class="mt-auto block w-full text-center text-sm font-semibold text-white py-2 px-4 rounded-xl transition-all duration-150 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+            class="mt-auto block w-full text-center text-sm font-semibold text-white py-2.5 px-4 rounded-lg transition-all duration-150 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
             style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
         >
             {{ $isCompleted ? 'Review Module' : ($pct > 0 ? 'Continue Learning' : 'Start Learning') }}

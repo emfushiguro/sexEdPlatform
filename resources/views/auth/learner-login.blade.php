@@ -1,7 +1,26 @@
-<x-auth-split-layout 
+<x-auth-split-layout
     logo="/media/Logo.png"
-    brandText="Taboo"
 >
+    <x-slot name="panel">
+        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
+            {{-- Small logo top-left --}}
+            <div class="absolute top-8 left-8">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+            </div>
+            {{-- Icon bubble --}}
+            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                </svg>
+            </div>
+            {{-- Headline --}}
+            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Welcome back</h2>
+            {{-- Sub-text --}}
+            <p class="text-white/80 text-lg max-w-xs">Continue your learning journey</p>
+        </div>
+    </x-slot>
+
     {{-- Session Status (hidden - using toasts instead) --}}
     <div style="display: none;">
         <x-auth-session-status class="mb-6" :status="session('status')" />

@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Models\LessonTopicProgress;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
+use App\Models\RewardLog;
+use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,8 +23,9 @@ class DashboardController extends Controller
                 ->with('error', 'Please complete your profile to access your dashboard.');
         }
 
-        // Enrolled modules with progress
+        // ── Enrolled modules with progress ──────────────────────────────
         $enrollments = ModuleEnrollment::where('user_id', $user->id)
+            ->where('status', 'approved')
             ->with(['module' => function ($query) {
                 $query->withCount(['lessons' => function ($q) {
                     $q->where('is_published', true);
@@ -30,7 +34,6 @@ class DashboardController extends Controller
             ->latest()
             ->get();
 
-        // Calculate per-module progress
         $enrollmentData = $enrollments->map(function ($enrollment) use ($user) {
             $module = $enrollment->module;
             if (!$module) return null;
@@ -45,42 +48,101 @@ class DashboardController extends Controller
                 ? round(($completedLessons / $totalLessons) * 100)
                 : 0;
 
+            // Find the first incomplete lesson for "Continue Learning"
+            $nextLesson = $module->lessons()
+                ->where('is_published', true)
+                ->whereDoesntHave('userProgress', function ($q) use ($user) {
+                    $q->where('user_id', $user->id)->where('completed', true);
+                })
+                ->orderBy('order')
+                ->first();
+
             return [
                 'enrollment'        => $enrollment,
                 'module'            => $module,
                 'total_lessons'     => $totalLessons,
                 'completed_lessons' => $completedLessons,
                 'progress_percent'  => $progressPercent,
+                'next_lesson'       => $nextLesson,
             ];
         })->filter()->values();
 
-        // Stats
-        $totalEnrolled   = $enrollments->count();
-        $totalCompleted  = $enrollments->whereNotNull('completed_at')->count();
-        $inProgress      = $totalEnrolled - $totalCompleted;
+        // ── Recommended modules ─────────────────────────────────────────
+        $enrolledModuleIds = $enrollments->pluck('module_id')->toArray();
+        $learnerAge = $learnerProfile->getAge();
 
-        // "Continue Learning" — most-recently updated in-progress enrollment
-        $continueData = $enrollmentData
-            ->filter(fn($d) => $d['progress_percent'] > 0 && !$d['enrollment']->completed_at)
-            ->sortByDesc(fn($d) => $d['enrollment']->updated_at)
-            ->first();
+        $recommendedModules = Module::published()
+            ->forAge($learnerAge)
+            ->whereNotIn('id', $enrolledModuleIds)
+            ->withCount(['lessons' => fn($q) => $q->where('is_published', true)])
+            ->orderBy('order')
+            ->limit(6)
+            ->get();
 
-        // Time-based greeting
-        $hour = now()->hour;
-        $greeting = match(true) {
+        // ── Stats ───────────────────────────────────────────────────────
+        $totalEnrolled  = $enrollments->count();
+        $totalCompleted = $enrollments->whereNotNull('completed_at')->count();
+        $inProgress     = $totalEnrolled - $totalCompleted;
+
+        // ── Gamification ────────────────────────────────────────────────
+        $gamification = $user->gamification;
+        $xpInLevel    = $gamification ? ($gamification->score % 100) : 0;
+        $xpToNext     = 100 - $xpInLevel;
+        $xpPercent    = $xpInLevel; // out of 100
+
+        // ── Shields today ───────────────────────────────────────────────
+        $shieldsRemaining = UserDailyShield::getShields($user);
+
+        // ── Streak data ─────────────────────────────────────────────────
+        $streakActiveDays = LessonTopicProgress::where('user_id', $user->id)
+            ->where('completed', true)
+            ->whereBetween('completed_at', [
+                now()->startOfWeek(0),
+                now()->endOfWeek(6),
+            ])
+            ->get()
+            ->map(fn($p) => (int) $p->completed_at->dayOfWeek)
+            ->unique()
+            ->values()
+            ->toArray();
+        $longestStreak = $gamification?->longest_streak ?? 0;
+        $streakSavers  = $gamification?->streak_savers ?? 0;
+
+        // ── Recent achievements ─────────────────────────────────────────
+        $recentAchievements = RewardLog::where('user_id', $user->id)
+            ->with('achievement')
+            ->orderByDesc('earned_at')
+            ->take(3)
+            ->get()
+            ->pluck('achievement')
+            ->filter();
+
+        // ── Greeting ────────────────────────────────────────────────────
+        $hour     = now()->hour;
+        $greeting = match (true) {
             $hour < 12  => 'Good morning',
             $hour < 17  => 'Good afternoon',
             default     => 'Good evening',
         };
 
-        return view('learner.dashboard', [
-            'learnerProfile'  => $learnerProfile,
-            'enrollmentData'  => $enrollmentData,
-            'totalEnrolled'   => $totalEnrolled,
-            'totalCompleted'  => $totalCompleted,
-            'inProgress'      => $inProgress,
-            'continueData'    => $continueData,
-            'greeting'        => $greeting,
-        ]);
+        return view('learner.dashboard', compact(
+            'learnerProfile',
+            'enrollmentData',
+            'totalEnrolled',
+            'totalCompleted',
+            'inProgress',
+            'recommendedModules',
+            'gamification',
+            'xpInLevel',
+            'xpToNext',
+            'xpPercent',
+            'shieldsRemaining',
+            'streakActiveDays',
+            'longestStreak',
+            'streakSavers',
+            'recentAchievements',
+            'greeting',
+        ));
     }
 }
+

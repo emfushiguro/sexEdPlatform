@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileCompletionController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\CertificateController;
@@ -101,6 +100,16 @@ Route::middleware('auth')->group(function () {
         // Topic completion
         Route::post('/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('topics.complete');
         
+        // Lessons topic completion (alternate name for tests)
+        Route::post('/lessons/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('lessons.topics.complete');
+
+        // Shields and streak savers
+        Route::post('/shields/refill', [\App\Http\Controllers\Learner\ShieldRefillController::class, 'store'])->name('shields.refill');
+        Route::post('/streak-savers/buy', [\App\Http\Controllers\Learner\StreakSaverController::class, 'store'])->name('streak-savers.buy');
+
+        // Gamification rules page
+        Route::get('/gamification', [\App\Http\Controllers\Learner\GamificationController::class, 'rules'])->name('gamification');
+
         // Certificates (Premium only)
         Route::middleware('premium')->group(function () {
             Route::get('/certificates', [\App\Http\Controllers\Learner\CertificateController::class, 'index'])->name('certificates.index');
@@ -135,6 +144,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
         // Instructor Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Instructor\DashboardController::class, 'index'])->name('dashboard');
+
+        // Search endpoint
+        Route::get('search', [\App\Http\Controllers\Instructor\SearchController::class, 'index'])->name('search');
         
         // User Management (Learners only)
         Route::resource('users', \App\Http\Controllers\Instructor\UserController::class);

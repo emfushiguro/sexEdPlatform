@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Instructor;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class ModuleController extends Controller
@@ -53,6 +54,7 @@ class ModuleController extends Controller
         $validated['duration_minutes'] = 0;
 
         $validated['order'] = $validated['order'] ?? Module::max('order') + 1;
+        $validated['created_by'] = Auth::id();
 
         Module::create($validated);
 

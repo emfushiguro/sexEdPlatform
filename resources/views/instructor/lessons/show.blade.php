@@ -1,32 +1,6 @@
-<x-app-layout>
-    <x-slot name="header">
-        <x-breadcrumb :items="[
-            ['label' => 'Dashboard', 'url' => route('instructor.dashboard')],
-            ['label' => 'Modules', 'url' => route('instructor.modules.index')],
-            ['label' => $lesson->module->title, 'url' => route('instructor.modules.show', $lesson->module)],
-            ['label' => $lesson->title]
-        ]" />
-        
-        <div class="flex items-center justify-between mt-4">
-            <div class="flex items-center space-x-3">
-                <a href="{{ route('instructor.modules.show', $lesson->module) }}" class="text-gray-600 hover:text-gray-900">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                    </svg>
-                </a>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $lesson->title }}</h2>
-            </div>
-            <div class="flex items-center gap-3">
-                <a href="{{ route('instructor.lessons.edit', $lesson) }}" 
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                    Edit Lesson
-                </a>
-            </div>
-        </div>
-    </x-slot>
+﻿@extends('layouts.instructor-app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+@section('content')
             
             <!-- Lesson Details Card -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -371,4 +345,4 @@
 
     <!-- Quiz Creation Modal -->
     @include('instructor.lessons.partials.quiz-modal')
-</x-app-layout>
+@endsection

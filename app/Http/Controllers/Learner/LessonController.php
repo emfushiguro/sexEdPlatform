@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\UserProgress;
+use App\Services\GamificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -229,14 +230,13 @@ class LessonController extends Controller
             'completed_at' => now(),
         ]);
 
-        // Award gamification points (10 points per lesson)
-        $gamification = $user->gamification;
-        if ($gamification) {
-            $gamification->addPoints(10);
-            $gamification->updateStreak();
-        }
+        // Award gamification points (15 points per lesson)
+        $gamificationService = app(GamificationService::class);
+        $gamificationService->awardPoints($user, 'lesson_complete', 15);
+        $gamificationService->updateStreak($user);
+        session()->flash('points_earned', ['points' => 15, 'reason' => 'lesson complete']);
 
-        return back()->with('success', 'Lesson completed! You earned 10 points! 🎉');
+        return back()->with('success', 'Lesson completed! You earned 15 points! 🎉');
     }
 
     /**
@@ -264,11 +264,11 @@ class LessonController extends Controller
         // Mark topic as completed
         $topic->markCompleted($user->id);
 
-        // Award points (5 points per topic)
-        $gamification = $user->gamification;
-        if ($gamification) {
-            $gamification->addPoints(5);
-        }
+        // Award topic completion points (+10) and update streak
+        $gamificationService = app(GamificationService::class);
+        $gamificationService->awardPoints($user, 'topic_complete', 10);
+        $gamificationService->updateStreak($user);
+        session()->flash('points_earned', ['points' => 10, 'reason' => 'topic complete']);
 
         // Check if all topics are completed to auto-complete lesson
         $allTopics = $lesson->topics()->ordered()->get();
@@ -291,17 +291,19 @@ class LessonController extends Controller
                     'completed_at' => now(),
                 ]
             );
+            // Award lesson complete bonus (+15)
+            $gamificationService->awardPoints($user, 'lesson_complete', 15);
+            session()->flash('points_earned', ['points' => 15, 'reason' => 'lesson complete']);
         }
 
         // Check if we should navigate to next topic
         $nextTopicIndex = request()->input('next_topic_index');
         if ($nextTopicIndex !== null) {
-            // Redirect to next topic
             return redirect()->route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $nextTopicIndex])
-                ->with('success', 'Topic completed! +5 points ✓');
+                ->with('success', 'Topic completed! +10 points ✓');
         }
 
         return redirect()->route('learner.lessons.show', $lesson)
-            ->with('success', 'Topic completed! +5 points ✓');
+            ->with('success', 'Topic completed! +10 points ✓');
     }
 }

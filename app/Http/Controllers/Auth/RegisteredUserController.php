@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AccountInfoRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
@@ -16,7 +16,7 @@ use Carbon\Carbon;
 class RegisteredUserController extends Controller
 {
     /**
-     * Display the registration view.
+     * Step 1: Show personal information form.
      */
     public function create(): View
     {
@@ -24,54 +24,79 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Handle an incoming registration request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
+     * Step 1 POST: Validate personal info, detect age, branch to correct flow.
      */
     public function store(RegisterRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
-        // Calculate age from birthdate
         $birthdate = Carbon::parse($validated['birthdate']);
         $age = $birthdate->age;
 
-        // Check if user is under 13 (requires parental consent)
         if ($age < 13) {
-            // Store child data in persistent session (not flash) so it survives through parent registration and email verification
             session([
-                'pending_child_registration' => $validated,
+                'pending_child_registration'   => $validated,
                 'child_registration_timestamp' => now()->timestamp,
+                'is_parent_registration'       => true,
             ]);
-            
+
             return redirect()->route('parent.registration.required')
                 ->with('info', 'Children under 13 require a parent or guardian to create their account.');
         }
 
-        // Create user account (13+ only reaches here)
+        // Store personal info in session and advance to account info step
+        session(['pending_personal_info' => array_merge($validated, ['age' => $age])]);
+
+        return redirect()->route('register.account');
+    }
+
+    /**
+     * Step 2: Show account information form (email + password).
+     */
+    public function showAccount(): View|RedirectResponse
+    {
+        if (! session('pending_personal_info')) {
+            return redirect()->route('register');
+        }
+
+        return view('auth.register-account');
+    }
+
+    /**
+     * Step 2 POST: Create the user account from session + submitted data.
+     */
+    public function storeAccount(AccountInfoRequest $request): RedirectResponse
+    {
+        $personal = session('pending_personal_info');
+
+        if (! $personal) {
+            return redirect()->route('register');
+        }
+
+        $account = $request->validated();
+
         $user = User::create([
-            'name' => trim($validated['first_name'] . ' ' . $validated['last_name']),
-            'first_name' => $validated['first_name'],
-            'middle_initial' => $validated['middle_initial'] ?? null,
-            'last_name' => $validated['last_name'],
-            'suffix' => $validated['suffix'] ?? null,
-            'email' => strtolower($validated['email']),
-            'birthdate' => $validated['birthdate'],
-            'age' => $age,
-            'password' => Hash::make($validated['password']),
+            'name'           => trim($personal['first_name'] . ' ' . $personal['last_name']),
+            'first_name'     => $personal['first_name'],
+            'middle_initial' => $personal['middle_initial'] ?? null,
+            'last_name'      => $personal['last_name'],
+            'suffix'         => $personal['suffix'] ?? null,
+            'email'          => $account['email'],
+            'birthdate'      => $personal['birthdate'],
+            'age'            => $personal['age'],
+            'password'       => Hash::make($account['password']),
         ]);
 
-        // Assign learner role by default
         $user->assignRole('learner');
 
-        // Fire registered event (triggers email verification)
         event(new Registered($user));
 
-        // Log the user in
+        session()->forget('pending_personal_info');
+
         Auth::login($user);
 
-        // Redirect to email verification notice
         return redirect()->route('verification.notice')
             ->with('success', 'Registration successful! Please verify your email address.');
     }
 }
+
