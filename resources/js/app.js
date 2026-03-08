@@ -49,25 +49,6 @@ Alpine.store('sidebar', {
     },
 });
 
-// Instructor sidebar store — separate from learner sidebar
-Alpine.store('instructorSidebar', {
-    isExpanded: true,
-    isMobileOpen: false,
-    isHovered: false,
-    toggleExpanded() {
-        this.isExpanded = !this.isExpanded;
-        this.isMobileOpen = false;
-    },
-    toggleMobileOpen() {
-        this.isMobileOpen = !this.isMobileOpen;
-    },
-    setHovered(val) {
-        if (window.innerWidth >= 1280 && !this.isExpanded) {
-            this.isHovered = val;
-        }
-    },
-});
-
 // Global modal state store
 Alpine.store('modals', {
     quizModal: false,

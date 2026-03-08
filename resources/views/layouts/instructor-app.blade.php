@@ -7,17 +7,57 @@
     <title>@yield('title', 'Dashboard') | Instructor Panel</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    {{-- Apply dark mode immediately to prevent flash (runs synchronously before render) --}}
+    <script>
+        (function () {
+            var saved = localStorage.getItem('theme');
+            var system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            if ((saved || system) === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{--
+        Register instructor sidebar store via alpine:init so it is available
+        before Alpine scans the DOM — independent of the Vite build hash.
+        (TailAdmin pattern: stores for a layout live in the layout head)
+    --}}
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('instructorSidebar', {
+                isExpanded: window.innerWidth >= 1280,
+                isMobileOpen: false,
+                isHovered: false,
+                toggleExpanded() {
+                    this.isExpanded = !this.isExpanded;
+                    this.isMobileOpen = false;
+                },
+                toggleMobileOpen() {
+                    this.isMobileOpen = !this.isMobileOpen;
+                },
+                setHovered(val) {
+                    if (window.innerWidth >= 1280 && !this.isExpanded) {
+                        this.isHovered = val;
+                    }
+                }
+            });
+        });
+    </script>
+
     <style>[x-cloak] { display: none !important; }</style>
     @stack('head')
 </head>
 
 <body
-    class="font-[Poppins] antialiased bg-gray-50 h-full"
+    class="font-[Poppins] antialiased bg-gray-50 dark:bg-gray-900 h-full"
     x-data
     x-init="
         $store.instructorSidebar.isExpanded = window.innerWidth >= 1280;
-        window.addEventListener('resize', () => {
+        const _checkInstructorMobile = () => {
             if (window.innerWidth < 1280) {
                 $store.instructorSidebar.isMobileOpen = false;
                 $store.instructorSidebar.isExpanded = false;
@@ -25,7 +65,8 @@
                 $store.instructorSidebar.isMobileOpen = false;
                 $store.instructorSidebar.isExpanded = true;
             }
-        });
+        };
+        window.addEventListener('resize', _checkInstructorMobile);
     "
 >
 
@@ -230,7 +271,7 @@
             @include('layouts.instructor-header')
 
             {{-- ── PAGE CONTENT ── --}}
-            <main class="flex-1 p-4 md:p-6 max-w-screen-2xl mx-auto w-full">
+            <main class="flex-1 p-4 md:p-6 max-w-screen-2xl mx-auto w-full dark:text-gray-100">
                 @yield('content')
             </main>
 
