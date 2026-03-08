@@ -68,6 +68,8 @@ class PageRenderTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('learner');
+        // Re-fresh the user model to pick up DB defaults
+        $user->refresh();
         $response = $this->actingAs($user)->get(route('profile.complete'));
         $response->assertStatus(200);
         $response->assertSee('One last step!');
@@ -75,9 +77,11 @@ class PageRenderTest extends TestCase
 
     public function test_create_child_page_shows_set_up_their_account_panel(): void
     {
-        $parent = User::factory()->create();
+        $parent = User::factory()->create([
+            'birthdate' => now()->subYears(25)->toDateString(),
+            'email_verified_at' => now(),
+        ]);
         $parent->assignRole('learner');
-        $parent->markEmailAsVerified();
         $response = $this->actingAs($parent)->get(route('parent.create-child'));
         $response->assertStatus(200);
         $response->assertSee('Set up their account');

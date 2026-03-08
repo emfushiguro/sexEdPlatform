@@ -1,41 +1,37 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'Laravel') }} - Account Information</title>
+<x-auth-split-layout
+    :showTabs="true"
+    activeTab="register"
+    :loginRoute="route('learner.login')"
+    :registerRoute="route('register')"
+>
+    <x-slot name="panel">
+        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
+            {{-- Small logo top-left --}}
+            <div class="absolute top-8 left-8">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+            </div>
+            {{-- Icon bubble --}}
+            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+            </div>
+            {{-- Headline --}}
+            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Almost there!</h2>
+            {{-- Sub-text --}}
+            <p class="text-white/80 text-lg max-w-xs">Create your credentials to protect your account</p>
+        </div>
+    </x-slot>
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <x-wizard-stepper />
 
-    <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <!-- Heading -->
+    <div class="mb-6">
+        <h2 class="text-3xl font-bold text-purple-900">Account Information</h2>
+        <p class="mt-1 text-sm text-gray-500">Step 2 of 2 — Set up your login credentials</p>
+    </div>
 
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
-</head>
-<body class="font-sans antialiased bg-gray-100">
-    <div class="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-
-            <!-- Form Content -->
-            <div class="p-8 sm:p-10 lg:p-12">
-                <x-wizard-stepper />
-
-                <!-- Heading -->
-                <div class="mb-6">
-                    <h2 class="text-4xl font-bold text-purple-900 flex items-center gap-2">
-                        Account Information
-                        <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="w-28 h-24 object-contain inline-block" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E♂️%3C/text%3E%3C/svg%3E%27">
-                    </h2>
-                    <p class="mt-1 text-sm text-gray-500">Set up your login credentials</p>
-                </div>
-
-                <!-- Account Form -->
+    <!-- Account Form -->
                 <form method="POST" action="{{ route('register.account') }}" x-data="{
                     showPassword: false,
                     showConfirmPassword: false,
@@ -166,8 +162,4 @@
                     </div>
                 </form>
 
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+</x-auth-split-layout>

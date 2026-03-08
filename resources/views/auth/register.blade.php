@@ -1,40 +1,38 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'Laravel') }} - Register</title>
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
-</head>
-<body class="font-sans antialiased bg-gray-100">
-    <div class="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+<x-auth-split-layout
+    :showTabs="true"
+    activeTab="register"
+    :loginRoute="route('learner.login')"
+    :registerRoute="route('register')"
+>
+    <x-slot name="panel">
+        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
+            {{-- Small logo top-left --}}
+            <div class="absolute top-8 left-8">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+            </div>
+            {{-- Icon bubble --}}
+            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                </svg>
+            </div>
+            {{-- Headline --}}
+            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Start your learning journey</h2>
+            {{-- Sub-text --}}
+            <p class="text-white/80 text-lg max-w-xs">A safe, age-appropriate space to grow</p>
+        </div>
+    </x-slot>
 
-            <!-- Form Content -->
-            <div class="p-8 sm:p-10 lg:p-12">
-                <x-wizard-stepper />
+    <x-wizard-stepper />
 
-                <!-- Heading -->
-                <div class="mb-6">
-                    <h2 class="text-4xl font-bold text-purple-900 flex items-center gap-2">
-                        Create your account
-                        <img src="{{ asset('/media/Logo.png') }}" alt="Taboo" class="w-28 h-24 object-contain inline-block" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E♂️%3C/text%3E%3C/svg%3E%27">
-                    </h2>
-                </div>
+    <!-- Heading -->
+    <div class="mb-6">
+        <h2 class="text-3xl font-bold text-purple-900">Create your account</h2>
+        <p class="mt-1 text-sm text-gray-500">Step 1 of 2 — Personal Information</p>
+    </div>
 
-                <!-- Registration Form -->
+    <!-- Registration Form -->
                 <form method="POST" action="{{ route('register') }}" x-data="{
                     birthdate: '{{ old('birthdate') }}',
                     age: null,
@@ -212,8 +210,4 @@
                     </div>
                 </form>
 
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+</x-auth-split-layout>

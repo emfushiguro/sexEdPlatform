@@ -1,94 +1,98 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Create Child Account - {{ config('app.name') }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="bg-gray-50">
-    <div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-        <x-wizard-stepper />
+<x-auth-split-layout :showTabs="false">
+    <x-slot name="panel">
+        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
+            {{-- Small logo top-left --}}
+            <div class="absolute top-8 left-8">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+            </div>
+            {{-- Icon bubble --}}
+            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                </svg>
+            </div>
+            {{-- Headline --}}
+            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Set up their account</h2>
+            {{-- Sub-text --}}
+            <p class="text-white/80 text-lg max-w-xs">Age-appropriate content, curated just for them</p>
+        </div>
+    </x-slot>
 
-        <!-- Header -->
-        <div class="max-w-3xl mx-auto mb-8">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900">Create Child Account</h1>
-                    <p class="mt-2 text-sm text-gray-600">Add a learning account for your child</p>
+    <x-wizard-stepper />
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-purple-900">Create Child Account</h1>
+            <p class="mt-1 text-sm text-gray-600">Add a learning account for your child</p>
+        </div>
+        <a href="{{ route('parent.children.index') }}" class="text-sm text-brand-purple-primary hover:text-brand-purple-light font-medium">
+            ← Back to My Children
+        </a>
+    </div>
+
+        <!-- Completing Registration Banner (if child data exists) -->
+        @if(isset($childData))
+        <div class="bg-purple-50 border-l-4 border-purple-500 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
                 </div>
-                <a href="{{ route('parent.children.index') }}" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    ← Back to My Children
-                </a>
+                <div class="ml-3">
+                    <p class="text-sm text-purple-800 font-semibold">
+                        Completing registration for: {{ $childData['first_name'] ?? '' }} {{ $childData['last_name'] ?? '' }}
+                    </p>
+                    <p class="text-xs text-purple-700 mt-1">
+                        We've pre-filled the information from their registration attempt. You can review and complete the setup below.
+                    </p>
+                </div>
+            </div>
+        </div>
+        @endif
+        
+        <!-- Parent Info Banner -->
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-green-800">
+                        <strong>Registered by:</strong> {{ auth()->user()->full_name }} ({{ auth()->user()->email }})
+                    </p>
+                    <p class="text-xs text-green-700 mt-1">
+                        You'll be able to monitor this child's progress, view quiz results, and manage their learning.
+                    </p>
+                </div>
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="max-w-3xl mx-auto">
-            <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-8">
-                
-                <!-- Completing Registration Banner (if child data exists) -->
-                @if(isset($childData))
-                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm text-blue-800 font-semibold">
-                                Completing registration for: {{ $childData['first_name'] ?? '' }} {{ $childData['last_name'] ?? '' }}
-                            </p>
-                            <p class="text-xs text-blue-700 mt-1">
-                                We've pre-filled the information from their registration attempt. You can review and complete the setup below.
-                            </p>
-                        </div>
+        <!-- Validation Errors -->
+        @if ($errors->any())
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">Please correct the following errors:</h3>
+                        <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
                     </div>
                 </div>
-                @endif
-                
-                <!-- Parent Info Banner -->
-                <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm text-green-800">
-                                <strong>Registered by:</strong> {{ auth()->user()->full_name }} ({{ auth()->user()->email }})
-                            </p>
-                            <p class="text-xs text-green-700 mt-1">
-                                You'll be able to monitor this child's progress, view quiz results, and manage their learning.
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            </div>
+        @endif
 
-                <!-- Validation Errors -->
-                @if ($errors->any())
-                    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium text-red-800">Please correct the following errors:</h3>
-                                <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
-                                    @foreach ($errors->all() as $error)
-                                        <li>{{ $error }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                @endif
-
-                <!-- Form -->
+        <!-- Form -->
                 <form method="POST" action="{{ route('parent.create-child.store') }}"
                       x-data="{
                           birthdate: '{{ old('birthdate', $childData['birthdate_formatted'] ?? '') }}',
@@ -145,7 +149,7 @@
                                 </label>
                                 <input id="first_name" name="first_name" type="text" required 
                                        value="{{ old('first_name', $childData['first_name'] ?? '') }}"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}"
                                        placeholder="Maria">
                                 @if(isset($childData))
                                     <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
@@ -163,7 +167,7 @@
                                 <input id="middle_initial" name="middle_initial" type="text" 
                                        value="{{ old('middle_initial', $childData['middle_initial'] ?? '') }}"
                                        maxlength="10"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) && !empty($childData['middle_initial']) ? 'bg-blue-50' : '' }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) && !empty($childData['middle_initial']) ? 'bg-blue-50' : '' }}"
                                        placeholder="C.">
                                 @if(isset($childData) && !empty($childData['middle_initial']))
                                     <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
@@ -180,7 +184,7 @@
                                 </label>
                                 <input id="last_name" name="last_name" type="text" required 
                                        value="{{ old('last_name', $childData['last_name'] ?? '') }}"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}"
                                        placeholder="Santos">
                                 @if(isset($childData))
                                     <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
@@ -196,7 +200,7 @@
                                     Suffix
                                 </label>
                                 <select id="suffix" name="suffix"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) && !empty($childData['suffix']) ? 'bg-blue-50' : '' }}">
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) && !empty($childData['suffix']) ? 'bg-blue-50' : '' }}">
                                     <option value="">None</option>
                                     <option value="Jr." {{ old('suffix', $childData['suffix'] ?? '') == 'Jr.' ? 'selected' : '' }}>Jr.</option>
                                     <option value="Sr." {{ old('suffix', $childData['suffix'] ?? '') == 'Sr.' ? 'selected' : '' }}>Sr.</option>
@@ -224,7 +228,7 @@
                                    @change="calculateAge()"
                                    min="{{ now()->subYears(18)->format('Y-m-d') }}"
                                    max="{{ now()->subYears(5)->format('Y-m-d') }}"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}">
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}">
                             
                             @if(isset($childData))
                                 <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
@@ -251,7 +255,7 @@
                                     </div>
                                 </template>
                                 <template x-if="age >= 18">
-                                    <div class="flex items-center text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                                    <div class="flex items-center text-sm text-blue-700 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
                                         <svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                                         </svg>
@@ -271,7 +275,7 @@
                                 Gender <span class="text-red-500">*</span>
                             </label>
                             <select id="gender" name="gender" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ isset($childData) && !empty($childData['gender']) ? 'bg-blue-50' : '' }}">
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) && !empty($childData['gender']) ? 'bg-blue-50' : '' }}">
                                 <option value="">Select gender</option>
                                 <option value="male" {{ old('gender', $childData['gender'] ?? '') === 'male' ? 'selected' : '' }}>Male</option>
                                 <option value="female" {{ old('gender', $childData['gender'] ?? '') === 'female' ? 'selected' : '' }}>Female</option>
@@ -297,8 +301,8 @@
                                 </p>
                             </div>
                         @else
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                                <p class="text-sm text-blue-800">
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                                <p class="text-sm text-purple-800">
                                     <strong>Select your home address:</strong> Your child lives with you in the same household.
                                 </p>
                             </div>
@@ -312,7 +316,7 @@
                                 </label>
                                 <select id="city_code" name="city_code" required
                                         x-model="cityCode" @change="loadBarangays()"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ $parentProfile && $parentProfile->city_code ? 'bg-purple-50' : '' }}">
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ $parentProfile && $parentProfile->city_code ? 'bg-purple-50' : '' }}">
                                     <option value="">Select municipality/city</option>
                                     @foreach($cities as $city)
                                         <option value="{{ $city->code }}">
@@ -334,7 +338,7 @@
                                     Barangay <span class="text-red-500">*</span>
                                 </label>
                                 <select id="barangay_code" name="barangay_code" required
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ $parentProfile && $parentProfile->barangay_code ? 'bg-purple-50' : '' }}">
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ $parentProfile && $parentProfile->barangay_code ? 'bg-purple-50' : '' }}">
                                     <option value="">Select municipality first</option>
                                     @if($parentProfile && $parentProfile->city_code && count($barangays) > 0)
                                         @foreach($barangays as $barangay)
@@ -368,7 +372,7 @@
                                    pattern="[a-z0-9_-]+"
                                    minlength="3"
                                    maxlength="30"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent"
                                    placeholder="maria_santos123">
                             <p class="mt-1 text-xs text-gray-500">
                                 <strong>Important:</strong> This will be used to log in. Use lowercase letters, numbers, underscores, and hyphens only. Make it easy for your child to remember!
@@ -379,14 +383,14 @@
                         </div>
                         
                         <!-- Email Information Box -->
-                        <div class="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
                             <div class="flex items-start">
                                 <svg class="w-5 h-5 mr-2 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                                 </svg>
                                 <div>
                                     <p class="text-sm font-semibold text-blue-900 mb-1">📧 About Email Address</p>
-                                    <p class="text-xs text-blue-800">
+                                    <p class="text-xs text-purple-800">
                                         @if(str_ends_with(strtolower(auth()->user()->email), '@gmail.com'))
                                             Your child's account will use a Gmail+ address linked to your email: 
                                             <span class="font-mono bg-white px-2 py-0.5 rounded border border-blue-300">{{ explode('@', auth()->user()->email)[0] }}+[username]@gmail.com</span>
@@ -406,7 +410,7 @@
                                     Password <span class="text-red-500">*</span>
                                 </label>
                                 <input id="password" name="password" type="password" required 
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent"
                                        placeholder="••••••••">
                                 <p class="mt-1 text-xs text-gray-500">Choose a simple password for your child</p>
                                 @error('password')
@@ -419,7 +423,7 @@
                                     Confirm Password <span class="text-red-500">*</span>
                                 </label>
                                 <input id="password_confirmation" name="password_confirmation" type="password" required 
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent"
                                        placeholder="••••••••">
                             </div>
                         </div>
@@ -448,7 +452,7 @@
                         <p class="text-sm text-gray-600 mb-4">
                             For your child's safety and COPPA compliance, you will have the following access:
                         </p>
-                        <div class="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="space-y-3 bg-purple-50 border border-purple-200 rounded-lg p-4">
                             <div class="flex items-start">
                                 <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -483,38 +487,10 @@
                     <div class="flex items-center justify-between pt-6 border-t border-gray-200">
                         <a href="{{ route('parent.children.index') }}" class="text-gray-600 hover:text-gray-700">Cancel</a>
                         <button type="submit" 
-                                class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150">
+                                class="bg-brand-purple-primary text-white font-semibold py-2 px-6 rounded-xl hover:bg-brand-purple-light focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:ring-offset-2 transition duration-150 shadow-lg">
                             Create Child Account
                         </button>
                     </div>
                 </form>
-            </div>
 
-            <!-- What Happens Next -->
-            <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h4 class="text-sm font-semibold text-gray-900 mb-3">After Creating the Account</h4>
-                <ul class="space-y-2 text-sm text-gray-700">
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 mr-2 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>Your child can log in using the username and password you created</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 mr-2 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>View and monitor their activity from your parent dashboard</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 mr-2 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>You can create additional child accounts at any time</span>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+</x-auth-split-layout>
