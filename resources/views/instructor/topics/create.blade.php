@@ -1,30 +1,22 @@
-<x-app-layout>
-    <x-slot name="header">
-        <x-breadcrumb :items="[
-            ['label' => 'Dashboard', 'url' => route('instructor.dashboard')],
-            ['label' => 'Lessons', 'url' => route('instructor.lessons.index')],
-            ['label' => $lesson->title, 'url' => route('instructor.lessons.show', $lesson)],
-            ['label' => 'Add Topic']
-        ]" />
-        
-        <div class="flex items-center space-x-3 mt-4">
-            <a href="{{ route('instructor.lessons.show', $lesson) }}" class="text-gray-600 hover:text-gray-900">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-            </a>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Add New Topic</h2>
-        </div>
-    </x-slot>
+@extends('layouts.instructor')
+@section('title', 'Add New Topic')
+@section('page-title', 'Add New Topic')
+@section('content')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+<div class="mb-5">
+    <a href="{{ route('instructor.lessons.show', $lesson) }}" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to {{ $lesson->title }}
+    </a>
+</div>
+
+<div class="space-y-6">
 
     <!-- Display All Errors -->
     @if ($errors->any())
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <div class="rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 px-4 py-3" role="alert">
             <strong class="font-bold">Oops! There were some errors:</strong>
-            <ul class="mt-2 list-disc list-inside">
+            <ul class="mt-2 list-disc list-inside text-sm">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -49,12 +41,15 @@
         <input type="hidden" name="lesson_id" value="{{ $lesson->id }}">
 
         <!-- Basic Information Card -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Basic Information</h2>
+        <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-white">Basic Information</h2>
+            </div>
+            <div class="p-6">
 
             <!-- Topic Title -->
             <div class="mb-6">
-                <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Topic Title <span class="text-red-500">*</span>
                 </label>
                 <input 
@@ -62,17 +57,17 @@
                     name="title" 
                     id="title" 
                     value="{{ old('title') }}"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('title') border-red-500 @enderror"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 outline-none transition @error('title') border-red-500 @enderror"
                     required
                 >
                 @error('title')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
             </div>
 
             <!-- Duration -->
             <div class="mb-6">
-                <label for="duration" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="duration" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Duration (minutes) <span class="text-red-500">*</span>
                 </label>
                 <input 
@@ -81,11 +76,11 @@
                     id="duration" 
                     value="{{ old('duration') }}"
                     min="1"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('duration') border-red-500 @enderror"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 outline-none transition @error('duration') border-red-500 @enderror"
                     required
                 >
                 @error('duration')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
             </div>
 
@@ -98,13 +93,13 @@
                         id="is_prerequisite" 
                         value="1"
                         {{ old('is_prerequisite', true) ? 'checked' : '' }}
-                        class="w-5 h-5 mt-0.5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer transition-all hover:border-blue-400"
+                        class="w-5 h-5 mt-0.5 text-brand-600 border-2 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-brand-500 focus:ring-offset-0 cursor-pointer"
                     >
                     <div class="flex-1">
-                        <span class="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-brand-600 transition-colors">
                             Mark as Prerequisite Topic
                         </span>
-                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                             If checked, learners must complete this topic before proceeding to the next prerequisite topic in sequence
                         </p>
                     </div>
@@ -113,12 +108,12 @@
 
             <!-- Topic Type Selection -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
                     Topic Type <span class="text-red-500">*</span>
                 </label>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <!-- Video Type -->
-                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-md transition-all topic-type-card">
+                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-300 dark:border-gray-700 rounded-xl cursor-pointer hover:border-brand-500 hover:shadow-md transition-all topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -127,14 +122,14 @@
                             {{ old('type') === 'video' ? 'checked' : '' }}
                             required
                         >
-                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-12 h-12 text-gray-600 dark:text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                         </svg>
-                        <span class="text-sm font-semibold text-gray-900">Video</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Video</span>
                     </label>
 
                     <!-- Text Type -->
-                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-md transition-all topic-type-card">
+                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-300 dark:border-gray-700 rounded-xl cursor-pointer hover:border-brand-500 hover:shadow-md transition-all topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -143,14 +138,14 @@
                             {{ old('type') === 'text' ? 'checked' : '' }}
                             required
                         >
-                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-12 h-12 text-gray-600 dark:text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
-                        <span class="text-sm font-semibold text-gray-900">Text</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Text</span>
                     </label>
 
                     <!-- Worksheet Type -->
-                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-md transition-all topic-type-card">
+                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-300 dark:border-gray-700 rounded-xl cursor-pointer hover:border-brand-500 hover:shadow-md transition-all topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -159,14 +154,14 @@
                             {{ old('type') === 'worksheet' ? 'checked' : '' }}
                             required
                         >
-                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-12 h-12 text-gray-600 dark:text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
-                        <span class="text-sm font-semibold text-gray-900">Worksheet</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Worksheet</span>
                     </label>
 
                     <!-- Interactive Type -->
-                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-md transition-all topic-type-card">
+                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-300 dark:border-gray-700 rounded-xl cursor-pointer hover:border-brand-500 hover:shadow-md transition-all topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -175,29 +170,33 @@
                             {{ old('type') === 'interactive' ? 'checked' : '' }}
                             required
                         >
-                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-12 h-12 text-gray-600 dark:text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <span class="text-sm font-semibold text-gray-900">Interactive</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Interactive</span>
                     </label>
                 </div>
             </div>
         </div>
+        </div>
 
         <!-- Video Content -->
-        <div id="videoContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Video Content</h2>
+        <div id="videoContent" class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden content-section hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-white">Video Content</h2>
+            </div>
+            <div class="p-6">
 
             <!-- Video Source Dropdown -->
             <div class="mb-6">
-                <label for="video_source" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="video_source" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Video Source <span class="text-red-500">*</span>
                 </label>
                 <select
                     name="video_source"
                     id="video_source"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 outline-none transition"
                     onchange="toggleVideoSource()"
                 >
                     <option value="">Select video source</option>
@@ -208,7 +207,7 @@
 
             <!-- YouTube/Vimeo URL -->
             <div id="videoUrlField" class="mb-6 hidden">
-                <label for="video_url" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="video_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Video URL <span class="text-red-500">*</span>
                 </label>
                 <input 
@@ -217,12 +216,12 @@
                     id="video_url" 
                     value="{{ old('video_url') }}"
                     placeholder="https://www.youtube.com/watch?v=..."
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('video_url') border-red-500 @enderror"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 outline-none transition @error('video_url') border-red-500 @enderror"
                 >
                 @error('video_url')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
-                <p class="mt-1 text-sm text-gray-500">Supports YouTube and Vimeo URLs</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Supports YouTube and Vimeo URLs</p>
             </div>
 
             <!-- Upload Video File -->
@@ -239,13 +238,13 @@
                         class="hidden"
                         onchange="updateFileName(this, 'videoFileName')"
                     >
-                    <label for="video_file" class="flex items-center justify-center w-full px-6 py-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition">
+                    <label for="video_file" class="flex items-center justify-center w-full px-6 py-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl cursor-pointer hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition">
                         <div class="text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                             </svg>
-                            <p class="mt-2 text-sm text-gray-600"><span class="font-semibold text-blue-600">Click to upload video</span></p>
-                            <p class="text-xs text-gray-500 mt-1" id="videoFileName">MP4, WebM, MOV up to 100MB</p>
+                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400"><span class="font-semibold text-brand-500">Click to upload video</span></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" id="videoFileName">MP4, WebM, MOV up to 100MB</p>
                         </div>
                     </label>
                 </div>
@@ -256,34 +255,38 @@
 
             <!-- Video Description/Instructions -->
             <div class="mb-6">
-                <label for="video_description" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="video_description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Video Description/Instructions
                 </label>
                 <textarea
                     name="video_description"
                     id="video_description"
                     rows="4"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 outline-none transition"
                     placeholder="Add instructions or description for this video..."
                 >{{ old('video_description') }}</textarea>
-                <p class="mt-1 text-sm text-gray-500">Optional: Provide context or instructions for learners</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Optional: Provide context or instructions for learners</p>
             </div>
+        </div>
         </div>
 
         <!-- Text Content -->
-        <div id="textContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Text Content</h2>
+        <div id="textContent" class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden content-section hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-white">Text Content</h2>
+            </div>
+            <div class="p-6">
 
             <!-- Rich Text Editor -->
             <div class="mb-6">
-                <label for="text_content" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="text_content" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Content
                 </label>
                 <textarea 
                     name="text_content" 
                     id="text_content" 
                     rows="15"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/30 outline-none transition"
                 >{{ old('text_content') }}</textarea>
             </div>
 
@@ -318,10 +321,14 @@
                 <div id="imagePreviews" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
             </div>
         </div>
+        </div>
 
         <!-- Worksheet Content -->
-        <div id="worksheetContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Worksheet Content</h2>
+        <div id="worksheetContent" class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden content-section hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-white">Worksheet Content</h2>
+            </div>
+            <div class="p-6">
 
             <!-- File Upload with Drag & Drop (Multiple Files) -->
             <div class="mb-6">
@@ -338,13 +345,13 @@
                         class="hidden"
                         onchange="handleWorksheetSelection(this.files, false)"
                     >
-                    <label for="worksheet_files" class="flex items-center justify-center w-full px-6 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-500 hover:bg-green-50 transition worksheet-drop-zone">
+                    <label for="worksheet_files" class="flex items-center justify-center w-full px-6 py-8 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl cursor-pointer hover:border-success-500 hover:bg-success-50 dark:hover:bg-success-500/10 transition worksheet-drop-zone">
                         <div class="text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                             </svg>
-                            <p class="mt-2 text-sm text-gray-600"><span class="font-semibold text-green-600">Click to upload</span> or drag and drop</p>
-                            <p class="text-xs text-gray-500 mt-1">PDF, DOC, DOCX up to 10MB each (Multiple files supported)</p>
+                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400"><span class="font-semibold text-success-500">Click to upload</span> or drag and drop</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF, DOC, DOCX up to 10MB each (Multiple files supported)</p>
                         </div>
                     </label>
                 </div>
@@ -355,32 +362,36 @@
 
             <!-- Instructions -->
             <div class="mb-6">
-                <label for="worksheet_instructions" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="worksheet_instructions" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Instructions
                 </label>
                 <textarea 
                     name="worksheet_instructions" 
                     id="worksheet_instructions" 
                     rows="6"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 outline-none transition"
                     placeholder="Provide instructions for completing this worksheet..."
                 >{{ old('worksheet_instructions') }}</textarea>
             </div>
         </div>
+        </div>
 
         <!-- Interactive Content -->
-        <div id="interactiveContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Interactive Activity</h2>
+        <div id="interactiveContent" class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden content-section hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-white">Interactive Activity</h2>
+            </div>
+            <div class="p-6">
 
             <!-- Activity Type -->
             <div class="mb-6">
-                <label for="interactive_type" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="interactive_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Activity Type <span class="text-red-500">*</span>
                 </label>
                 <select 
                     name="interactive_type" 
                     id="interactive_type"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 outline-none transition"
                 >
                     <option value="">Select activity type</option>
                     <option value="activity" {{ old('interactive_type') === 'activity' ? 'selected' : '' }}>Activity</option>
@@ -391,17 +402,18 @@
 
             <!-- Instructions -->
             <div class="mb-6">
-                <label for="interactive_instructions" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="interactive_instructions" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Instructions <span class="text-red-500">*</span>
                 </label>
                 <textarea 
                     name="interactive_instructions" 
                     id="interactive_instructions" 
                     rows="6"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 outline-none transition"
                     placeholder="Provide detailed instructions for this interactive activity..."
                 >{{ old('interactive_instructions') }}</textarea>
             </div>
+        </div>
         </div>
 
         <!-- Form Actions -->
@@ -409,7 +421,7 @@
             <button 
                 type="button"
                 onclick="previewTopic()"
-                class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                class="px-5 py-2.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium shadow-theme-xs transition-colors flex items-center gap-2"
             >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -417,16 +429,16 @@
                 </svg>
                 Preview Topic
             </button>
-            <div class="flex gap-4">
+            <div class="flex gap-3">
                 <a 
                     href="{{ route('instructor.lessons.show', $lesson) }}" 
-                    class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    class="px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                 >
                     Cancel
                 </a>
                 <button 
                     type="submit" 
-                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    class="px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium shadow-theme-xs transition-colors"
                     id="submitButton"
                 >
                     Create Topic
@@ -435,9 +447,9 @@
         </div>
     </form>
 
-        </div>
-    </div>
+</div><!-- end space-y-6 -->
 
+@push('scripts')
 <script src="{{ asset('build/tinymce/tinymce.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1016,4 +1028,6 @@ function formatFileSize(bytes) {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 </script>
-</x-app-layout>
+@endpush
+
+@endsection
