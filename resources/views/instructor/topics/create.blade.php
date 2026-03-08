@@ -1,24 +1,6 @@
-<x-app-layout>
-    <x-slot name="header">
-        <x-breadcrumb :items="[
-            ['label' => 'Dashboard', 'url' => route('instructor.dashboard')],
-            ['label' => 'Lessons', 'url' => route('instructor.lessons.index')],
-            ['label' => $lesson->title, 'url' => route('instructor.lessons.show', $lesson)],
-            ['label' => 'Add Topic']
-        ]" />
-        
-        <div class="flex items-center space-x-3 mt-4">
-            <a href="{{ route('instructor.lessons.show', $lesson) }}" class="text-gray-600 hover:text-gray-900">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-            </a>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Add New Topic</h2>
-        </div>
-    </x-slot>
+﻿@extends('layouts.instructor-app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+@section('content')
 
     <!-- Display All Errors -->
     @if ($errors->any())
@@ -309,7 +291,7 @@
                             </svg>
                             <p class="mt-2 text-sm text-gray-600"><span class="font-semibold text-blue-600">Click to upload</span> or drag and drop</p>
                             <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 2MB each (Multiple images supported)</p>
-                            <p class="text-xs text-blue-500 mt-1 font-medium">📸 Both Gallery & Slideshow views available to learners</p>
+                            <p class="text-xs text-blue-500 mt-1 font-medium">ðŸ“¸ Both Gallery & Slideshow views available to learners</p>
                         </div>
                     </label>
                 </div>
@@ -1016,4 +998,4 @@ function formatFileSize(bytes) {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 </script>
-</x-app-layout>
+@endsection
