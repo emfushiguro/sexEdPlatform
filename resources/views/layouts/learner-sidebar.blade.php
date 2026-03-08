@@ -91,13 +91,13 @@
                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
                     {{ $item['active']
                         ? 'text-white shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white' }}"
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-700 dark:hover:text-purple-300' }}"
                 @if($item['active'])
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                 @endif
                 :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'justify-center' : ''"
             >
-                <span class="flex-shrink-0 {{ $item['active'] ? 'text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-white' }}">
+                <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ $item['active'] ? 'text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400' }}">
                     {!! $item['icon'] !!}
                 </span>
                 <span

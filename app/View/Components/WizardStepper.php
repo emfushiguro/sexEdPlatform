@@ -10,12 +10,14 @@ class WizardStepper extends Component
     public ?array $steps;
 
     private const LEARNER_FLOW = [
-        ['label' => 'Create Account',   'route' => 'register'],
+        ['label' => 'Personal Info',     'route' => 'register'],
+        ['label' => 'Account Info',      'route' => 'register.account'],
         ['label' => 'Verify Email',      'route' => 'verification.notice'],
         ['label' => 'Complete Profile',  'route' => 'profile.complete'],
     ];
 
     private const PARENT_FLOW = [
+        ['label' => 'Personal Info',         'route' => 'register'],
         ['label' => 'Parent Required',       'route' => 'parent.registration.required'],
         ['label' => 'Parent Registers',      'route' => 'parent.register'],
         ['label' => 'Verify Email',          'route' => 'verification.notice'],

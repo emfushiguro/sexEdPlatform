@@ -1,6 +1,7 @@
 <x-auth-split-layout 
     logo="/media/Logo.png"
-    brandText="Taboo"
+    brandText="Concious
+    Connections"
 >
     {{-- Session Status (hidden - using toasts instead) --}}
     <div style="display: none;">

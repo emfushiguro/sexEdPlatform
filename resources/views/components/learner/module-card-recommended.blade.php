@@ -15,20 +15,19 @@
     $enrollUrl = route('learner.modules.show', $module);
 @endphp
 
-<div class="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 hover:ring-2 hover:ring-purple-200 dark:hover:ring-purple-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
+<div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow duration-200 flex flex-col">
 
     {{-- Thumbnail --}}
     <div class="relative aspect-video bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 overflow-hidden">
         @if($thumbnail)
             <img src="{{ $thumbnail }}" alt="{{ $module->title }}"
-                 class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
+                 class="w-full h-full object-cover">
         @else
             <div class="w-full h-full flex items-center justify-center">
-                <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900/40 rounded-xl flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-purple-500 dark:text-purple-400">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                    </svg>
-                </div>
+                <svg class="w-16 h-16 text-purple-300" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
             </div>
         @endif
 
@@ -70,15 +69,17 @@
         {{-- Meta info --}}
         <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
             <span class="flex items-center gap-1">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 flex-shrink-0">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                 </svg>
                 {{ $module->lessons_count }} {{ Str::plural('lesson', $module->lessons_count) }}
             </span>
             @if($durationStr)
                 <span class="flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 flex-shrink-0">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 6v6l4 2M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Z"/>
                     </svg>
                     {{ trim($durationStr) }}
                 </span>
@@ -88,7 +89,7 @@
         {{-- CTA button --}}
         <a
             href="{{ $enrollUrl }}"
-            class="mt-auto block w-full text-center text-sm font-semibold text-white py-2 px-4 rounded-xl transition-all duration-150 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+            class="mt-auto block w-full text-center text-sm font-semibold text-white py-2.5 px-4 rounded-lg transition-all duration-150 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
             style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
         >
             {{ $module->enrollment_mode === 'approval' ? 'Request to Enroll' : 'Start Learning' }}

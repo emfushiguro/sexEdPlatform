@@ -20,6 +20,11 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
+    Route::get('register/account', [RegisteredUserController::class, 'showAccount'])
+        ->name('register.account');
+
+    Route::post('register/account', [RegisteredUserController::class, 'storeAccount']);
+
     // Parent registration routes
     Route::get('parent-registration-required', [ParentRegistrationController::class, 'requiredPage'])
         ->name('parent.registration.required');

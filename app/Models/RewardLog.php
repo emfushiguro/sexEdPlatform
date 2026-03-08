@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class RewardLog extends Model
 {
+    protected $table = 'rewards_logs';
+
     protected $fillable = [
         'user_id',
         'achievement_id',
