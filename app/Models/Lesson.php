@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Helpers\VideoEmbedHelper;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Lesson extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'module_id',
         'title',
