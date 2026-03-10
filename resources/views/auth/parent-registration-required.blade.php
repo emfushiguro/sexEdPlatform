@@ -1,20 +1,12 @@
 <x-auth-split-layout :showTabs="false">
     <x-slot name="panel">
-        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center overflow-hidden">
-            <div class="absolute top-0 left-0 w-40 h-40 bg-white/5 rounded-br-full"></div>
-            <div class="absolute bottom-0 right-0 w-56 h-56 bg-white/5 rounded-tl-full"></div>
-
-            <div class="relative mb-6 z-10">
-                <div class="w-32 h-32 bg-white/15 rounded-3xl flex items-center justify-center shadow-2xl backdrop-blur-sm border border-white/20">
-                    <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="w-24 h-24 object-contain drop-shadow-lg">
-                </div>
+        <div class="h-full flex flex-col items-center justify-center p-12 text-center">
+            <div class="mb-6">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
+                <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
             </div>
-
-            <h1 class="text-2xl font-bold text-white mb-1 tracking-wide z-10">Concious Connections</h1>
-            <div class="w-12 h-0.5 bg-white/40 rounded-full mx-auto mb-6 z-10"></div>
-
-            <h2 class="text-3xl font-bold text-white mb-3 leading-tight z-10">Young learner?</h2>
-            <p class="text-white/75 text-base max-w-[200px] leading-relaxed z-10">A parent account is needed first</p>
+            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Young learner?</h2>
+            <p class="text-white/80 text-lg max-w-xs">A parent account is needed first</p>
         </div>
     </x-slot>
 
@@ -82,8 +74,10 @@
 
     <!-- Action Buttons -->
     <div class="space-y-3">
-        <a href="{{ route('parent.register') }}" class="w-full inline-flex justify-center items-center px-6 py-3 bg-brand-purple-primary text-white text-base font-medium rounded-xl hover:bg-brand-purple-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple-primary transition shadow-lg">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <a href="{{ route('parent.register') }}"
+           style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+           class="w-full inline-flex justify-center items-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
             </svg>
             Register as Parent/Guardian
@@ -97,7 +91,7 @@
     <!-- Privacy Notice -->
     <div class="mt-8 p-4 bg-gray-50 rounded-lg">
         <p class="text-xs text-gray-600 text-center">
-            🔒 We take your child's privacy seriously. Read our 
+             We take your child's privacy seriously. Read our 
             <a href="{{ route('privacy') }}" class="text-brand-purple-primary hover:text-brand-purple-light underline" target="_blank">Privacy Policy</a> 
             and <a href="{{ route('terms') }}" class="text-brand-purple-primary hover:text-brand-purple-light underline" target="_blank">Terms of Service</a>.
         </p>

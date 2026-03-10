@@ -35,7 +35,7 @@
 
     <form method="POST" action="{{ route('parent.create-child.location.store') }}"
           x-data="{
-              cityCode: '{{ old('city_code') }}',
+              cityCode: '{{ old('city_code', $preFilledCity ?? '') }}',
               barangays: [],
               loading: false,
               async loadBarangays(code) {
@@ -52,6 +52,15 @@
           x-init="if (cityCode) loadBarangays(cityCode)">
         @csrf
 
+        @if($preFilledCity ?? false)
+            <div class="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mb-5">
+                <svg class="w-4 h-4 text-purple-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-xs text-purple-800">Pre-filled from your location — assuming same household. Modify if needed.</p>
+            </div>
+        @endif
+
         {{-- City --}}
         <div class="mb-4">
             <label for="city_code" class="block text-sm font-medium text-gray-700 mb-1">
@@ -60,10 +69,10 @@
             <select id="city_code" name="city_code" required
                     x-model="cityCode"
                     @change="loadBarangays(cityCode)"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                 <option value="">Select municipality / city</option>
                 @foreach($cities as $city)
-                    <option value="{{ $city->code }}" {{ old('city_code') == $city->code ? 'selected' : '' }}>
+                    <option value="{{ $city->code }}" {{ old('city_code', $preFilledCity ?? '') == $city->code ? 'selected' : '' }}>
                         {{ $city->name }}
                     </option>
                 @endforeach
@@ -79,7 +88,7 @@
                 Barangay <span class="text-red-500">*</span>
             </label>
             <select id="barangay_code" name="barangay_code" required
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition"
                     :disabled="!cityCode || loading">
                 <option value="">
                     <span x-show="!cityCode">Select a city first</span>
@@ -87,7 +96,7 @@
                     <span x-show="cityCode && !loading">Select barangay</span>
                 </option>
                 <template x-for="b in barangays" :key="b.code">
-                    <option :value="b.code" :selected="b.code === '{{ old('barangay_code') }}'" x-text="b.name"></option>
+                    <option :value="b.code" :selected="b.code === '{{ old('barangay_code', $preFilledBarangay ?? '') }}'" x-text="b.name"></option>
                 </template>
             </select>
             @error('barangay_code')
@@ -100,7 +109,7 @@
             <a href="{{ route('parent.create-child') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
             <button type="submit"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
-                    class="text-white font-semibold py-2 px-6 rounded-xl hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition shadow-lg text-sm">
+                    class="inline-flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
                 Continue — Login Details →
             </button>
         </div>

@@ -46,7 +46,7 @@
 
     <form method="POST" action="{{ route('parent.create-child.store') }}"
           x-data="{
-              birthdate: '{{ old('birthdate') }}',
+              birthdate: '{{ old('birthdate', $pendingChild['birthdate'] ?? '') }}',
               age: null,
               calculateAge() {
                   if (!this.birthdate) { this.age = null; return; }
@@ -61,6 +61,15 @@
           x-init="calculateAge()">
         @csrf
 
+        @if(!empty($pendingChild))
+            <div class="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mb-5">
+                <svg class="w-4 h-4 text-purple-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-xs text-purple-800">Pre-filled from your child's registration — modify if needed.</p>
+            </div>
+        @endif
+
                     <!-- Child's Personal Information -->
                     <div class="mb-6">
                         {{-- Row 1: First Name + Last Name --}}
@@ -70,8 +79,8 @@
                                     First Name <span class="text-red-500">*</span>
                                 </label>
                                 <input id="first_name" name="first_name" type="text" required
-                                       value="{{ old('first_name') }}"
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       value="{{ old('first_name', $pendingChild['first_name'] ?? '') }}"
+                                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition"
                                        placeholder="Maria">
                                 @error('first_name')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -82,8 +91,8 @@
                                     Last Name <span class="text-red-500">*</span>
                                 </label>
                                 <input id="last_name" name="last_name" type="text" required
-                                       value="{{ old('last_name') }}"
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       value="{{ old('last_name', $pendingChild['last_name'] ?? '') }}"
+                                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition"
                                        placeholder="Santos">
                                 @error('last_name')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -95,12 +104,12 @@
                         <div class="grid grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label for="middle_initial" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Middle Initial
+                                    Middle Initial <span class="text-gray-400 font-normal text-xs">(Optional)</span>
                                 </label>
                                 <input id="middle_initial" name="middle_initial" type="text"
-                                       value="{{ old('middle_initial') }}"
+                                       value="{{ old('middle_initial', $pendingChild['middle_initial'] ?? '') }}"
                                        maxlength="10"
-                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition"
                                        placeholder="C.">
                                 @error('middle_initial')
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -108,13 +117,13 @@
                             </div>
                             <div>
                                 <label for="suffix" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Suffix
+                                    Suffix <span class="text-gray-400 font-normal text-xs">(Optional)</span>
                                 </label>
                                 <select id="suffix" name="suffix"
-                                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                                     <option value="">None</option>
                                     @foreach(['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'] as $s)
-                                        <option value="{{ $s }}" {{ old('suffix') == $s ? 'selected' : '' }}>{{ $s }}</option>
+                                        <option value="{{ $s }}" {{ old('suffix', $pendingChild['suffix'] ?? '') == $s ? 'selected' : '' }}>{{ $s }}</option>
                                     @endforeach
                                 </select>
                                 @error('suffix')
@@ -133,7 +142,7 @@
                                    @change="calculateAge()"
                                    min="{{ now()->subYears(17)->format('Y-m-d') }}"
                                    max="{{ now()->subYears(5)->format('Y-m-d') }}"
-                                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                   class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                             <p class="mt-1 text-xs text-gray-500">Child must be 5–17 years old.</p>
                             <div x-show="age !== null" class="mt-2">
                                 <template x-if="age >= 5 && age <= 17">
@@ -158,11 +167,11 @@
                                 Gender <span class="text-red-500">*</span>
                             </label>
                             <select id="gender" name="gender" required
-                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                    class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                                 <option value="">Select gender</option>
-                                <option value="male"              {{ old('gender') === 'male'              ? 'selected' : '' }}>Male</option>
-                                <option value="female"            {{ old('gender') === 'female'            ? 'selected' : '' }}>Female</option>
-                                <option value="prefer_not_to_say" {{ old('gender') === 'prefer_not_to_say' ? 'selected' : '' }}>Prefer not to say</option>
+                                <option value="male"              {{ old('gender', $pendingChild['gender'] ?? '') === 'male'              ? 'selected' : '' }}>Male</option>
+                                <option value="female"            {{ old('gender', $pendingChild['gender'] ?? '') === 'female'            ? 'selected' : '' }}>Female</option>
+                                <option value="prefer_not_to_say" {{ old('gender', $pendingChild['gender'] ?? '') === 'prefer_not_to_say' ? 'selected' : '' }}>Prefer not to say</option>
                             </select>
                             @error('gender')
                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -175,7 +184,7 @@
                         <a href="{{ route('parent.children.index') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back to My Children</a>
                         <button type="submit"
                                 style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
-                                class="text-white font-semibold py-2 px-6 rounded-xl hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition shadow-lg text-sm">
+                                class="inline-flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
                             Continue — Where Are You? →
                         </button>
                     </div>

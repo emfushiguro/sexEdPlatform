@@ -1,24 +1,21 @@
 <x-auth-split-layout :showTabs="false">
     <x-slot name="panel">
-        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center overflow-hidden">
-            <div class="absolute top-0 left-0 w-40 h-40 bg-white/5 rounded-br-full"></div>
-            <div class="absolute bottom-0 right-0 w-56 h-56 bg-white/5 rounded-tl-full"></div>
-
-            <div class="relative mb-6 z-10">
-                <div class="w-32 h-32 bg-white/15 rounded-3xl flex items-center justify-center shadow-2xl backdrop-blur-sm border border-white/20">
-                    <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="w-24 h-24 object-contain drop-shadow-lg">
-                </div>
+        <div class="h-full flex flex-col items-center justify-center p-12 text-center">
+            <div class="mb-6">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
+                <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
             </div>
-
-            <h1 class="text-2xl font-bold text-white mb-1 tracking-wide z-10">Concious Connections</h1>
-            <div class="w-12 h-0.5 bg-white/40 rounded-full mx-auto mb-6 z-10"></div>
-
-            <h2 class="text-3xl font-bold text-white mb-3 leading-tight z-10">Start your journey</h2>
-            <p class="text-white/75 text-base max-w-[200px] leading-relaxed z-10">A safe space to grow and learn</p>
+            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Start your journey</h2>
+            <p class="text-white/80 text-lg max-w-xs">A safe space to grow and learn</p>
         </div>
     </x-slot>
 
-    <x-wizard-stepper />
+    <x-wizard-stepper :steps="[
+        ['label' => 'Personal Info', 'active' => true,  'done' => false],
+        ['label' => 'Account Info',  'active' => false, 'done' => false],
+        ['label' => 'Verify Email',  'active' => false, 'done' => false],
+        ['label' => 'Profile',       'active' => false, 'done' => false],
+    ]" />
 
     <!-- Heading -->
     <div class="mb-6">

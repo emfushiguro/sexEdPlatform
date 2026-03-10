@@ -1,20 +1,12 @@
 <x-auth-split-layout :showTabs="false">
     <x-slot name="panel">
-        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center overflow-hidden">
-            <div class="absolute top-0 left-0 w-40 h-40 bg-white/5 rounded-br-full"></div>
-            <div class="absolute bottom-0 right-0 w-56 h-56 bg-white/5 rounded-tl-full"></div>
-
-            <div class="relative mb-6 z-10">
-                <div class="w-32 h-32 bg-white/15 rounded-3xl flex items-center justify-center shadow-2xl backdrop-blur-sm border border-white/20">
-                    <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="w-24 h-24 object-contain drop-shadow-lg">
-                </div>
+        <div class="h-full flex flex-col items-center justify-center p-12 text-center">
+            <div class="mb-6">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
+                <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
             </div>
-
-            <h1 class="text-2xl font-bold text-white mb-1 tracking-wide z-10">Concious Connections</h1>
-            <div class="w-12 h-0.5 bg-white/40 rounded-full mx-auto mb-6 z-10"></div>
-
-            <h2 class="text-3xl font-bold text-white mb-3 leading-tight z-10">Your credentials</h2>
-            <p class="text-white/75 text-base max-w-[200px] leading-relaxed z-10">Secure your parent account</p>
+            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Your credentials</h2>
+            <p class="text-white/80 text-lg max-w-xs">Secure your parent account</p>
         </div>
     </x-slot>
 
@@ -123,7 +115,8 @@
             <!-- Buttons -->
             <div class="pt-2 space-y-3">
                 <button type="submit"
-                        class="w-full bg-brand-purple-primary text-white py-3 px-6 rounded-xl font-semibold text-sm hover:bg-brand-purple-dark transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                        style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                        class="w-full flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
                     Create Parent Account →
                 </button>
                 <a href="{{ route('parent.register') }}"

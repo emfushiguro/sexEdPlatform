@@ -153,7 +153,9 @@ class ParentRegistrationController extends Controller
             abort(403, 'You must be 18 or older to create a child account.');
         }
 
-        return view('auth.create-child-account');
+        return view('auth.create-child-account', [
+            'pendingChild' => session('pending_child_registration', []),
+        ]);
     }
 
     /**
@@ -207,7 +209,11 @@ class ParentRegistrationController extends Controller
         $cities = \Schoolees\Psgc\Models\City::where('province_code', '402100000')
             ->orderBy('name')->get();
 
-        return view('auth.child.step2-location', compact('cities'));
+        $parentProfile  = auth()->user()->learnerProfile;
+        $preFilledCity  = $parentProfile?->city_code;
+        $preFilledBarangay = $parentProfile?->barangay_code;
+
+        return view('auth.child.step2-location', compact('cities', 'preFilledCity', 'preFilledBarangay'));
     }
 
     /**
