@@ -1,6 +1,6 @@
-<div class="bg-white rounded-lg shadow-md overflow-hidden">
+<div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] overflow-hidden">
     <!-- Topic Header -->
-    <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6">
+    <div class="p-6" style="background: linear-gradient(to right, #A30EB2, #730DB1, #3B0CB1);">
         <div class="flex items-center gap-3">
             <div class="flex-shrink-0 w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                 @if($currentTopic->type === 'video')
@@ -24,7 +24,7 @@
             </div>
             <div class="flex-1 min-w-0">
                 <h3 class="text-2xl font-bold text-white">{{ $currentTopic->title }}</h3>
-                <p class="text-blue-100 text-sm mt-1">
+                <p class="text-white/80 text-sm mt-1">
                     Topic {{ $currentTopicIndex + 1 }} of {{ $lessonTopics->count() }} 
                     <span class="mx-2">•</span> 
                     {{ $currentTopic->duration }} minutes
@@ -36,7 +36,7 @@
     </div>
 
     <!-- Topic Content -->
-    <div class="p-6">
+    <div class="p-6 bg-white dark:bg-transparent">
         @if($currentTopic->type === 'video')
             <!-- Video Content -->
             <div class="space-y-4">
@@ -109,32 +109,26 @@
             @keydown.escape.window="closeZoom()"
             @keydown.arrow-left.window="showZoomModal && prevZoomImage()"
             @keydown.arrow-right.window="showZoomModal && nextZoomImage()">
-                @if($currentTopic->text_content)
-                    <div class="prose max-w-none">
-                        {!! $currentTopic->text_content !!}
-                    </div>
-                @endif
-
                 @if($currentTopic->image_attachments && count($currentTopic->image_attachments) > 0)
-                    <div class="mt-8">
-                        <div class="flex items-center justify-between mb-4">
-                            <h4 class="font-semibold text-gray-900 flex items-center gap-2">
-                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
                                 Images
                             </h4>
-                            <div class="flex gap-2">
-                                <button 
-                                    @click="displayMode = 'slideshow'" 
-                                    :class="displayMode === 'slideshow' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'"
-                                    class="px-3 py-1 rounded-lg text-sm font-medium transition">
+                            <div class="flex gap-1.5">
+                                <button
+                                    @click="displayMode = 'slideshow'"
+                                    :class="displayMode === 'slideshow' ? 'bg-indigo-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'"
+                                    class="px-3 py-1 rounded-lg text-xs font-medium transition">
                                     Slideshow
                                 </button>
-                                <button 
-                                    @click="displayMode = 'gallery'" 
-                                    :class="displayMode === 'gallery' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'"
-                                    class="px-3 py-1 rounded-lg text-sm font-medium transition">
+                                <button
+                                    @click="displayMode = 'gallery'"
+                                    :class="displayMode === 'gallery' ? 'bg-indigo-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'"
+                                    class="px-3 py-1 rounded-lg text-xs font-medium transition">
                                     Gallery
                                 </button>
                             </div>
@@ -284,6 +278,12 @@
                                 </div>
                             </template>
                         </div>
+                    </div>
+                @endif
+
+                @if($currentTopic->text_content)
+                    <div class="prose dark:prose-invert max-w-none mt-6">
+                        {!! $currentTopic->text_content !!}
                     </div>
                 @endif
             </div>
