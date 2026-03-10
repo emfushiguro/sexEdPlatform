@@ -29,6 +29,23 @@
                         {{ $greeting }}, {{ $learnerProfile->username ?? Auth::user()->first_name ?? 'Learner' }}!
                     </h1>
                     <p class="text-purple-200 text-sm mt-1">Continue your learning journey today.</p>
+                    {{-- Learner type badge --}}
+                    @php
+                        $ageBracket = $learnerProfile->getAgeBracket();
+                        $isParentUser = Auth::user()->isParent();
+                        $typeBadge = match(true) {
+                            $isParentUser              => ['label' => 'Parent Account',  'class' => 'bg-amber-400/20 text-amber-200 border-amber-400/30'],
+                            $ageBracket === 'kids'     => ['label' => 'Young Learner',   'class' => 'bg-green-400/20 text-green-200 border-green-400/30'],
+                            $ageBracket === 'teens'    => ['label' => 'Teen Learner',    'class' => 'bg-blue-400/20 text-blue-100 border-blue-400/30'],
+                            $ageBracket === 'adults'   => ['label' => 'Adult Learner',   'class' => 'bg-white/10 text-purple-100 border-white/20'],
+                            default                    => null,
+                        };
+                    @endphp
+                    @if($typeBadge)
+                        <span class="mt-2 inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-widest {{ $typeBadge['class'] }}">
+                            {{ $typeBadge['label'] }}
+                        </span>
+                    @endif
                 </div>
                 {{-- Right side illustration-style icon --}}
                 <div class="flex-shrink-0 hidden sm:flex flex-col items-center gap-2">

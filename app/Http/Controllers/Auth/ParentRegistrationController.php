@@ -25,7 +25,7 @@ class ParentRegistrationController extends Controller
     }
 
     /**
-     * Show the parent registration form
+     * Show the parent registration form (Step 1 — personal info)
      */
     public function create(): View
     {
@@ -33,20 +33,52 @@ class ParentRegistrationController extends Controller
     }
 
     /**
-     * Handle parent registration request
+     * Store personal info in session and redirect to step 2 (credentials)
      */
-    public function store(Request $request): RedirectResponse
+    public function storePersonal(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
+            'first_name'   => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
             'middle_initial' => ['nullable', 'string', 'max:10', 'regex:/^[a-zA-Z.\s]+$/'],
-            'last_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
-            'suffix' => ['nullable', 'string', 'in:Jr.,Sr.,II,III,IV,V'],
-            'birthdate' => [
+            'last_name'    => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
+            'suffix'       => ['nullable', 'string', 'in:Jr.,Sr.,II,III,IV,V'],
+            'birthdate'    => [
                 'required',
                 'date',
-                'before:' . now()->subYears(18)->format('Y-m-d'), // Must be 18+
+                'before:' . now()->subYears(18)->format('Y-m-d'),
             ],
+        ]);
+
+        session(['pending_parent_info' => $validated]);
+
+        return redirect()->route('parent.register.account');
+    }
+
+    /**
+     * Show step 2 — account credentials
+     */
+    public function createAccount(): View
+    {
+        if (!session('pending_parent_info')) {
+            return redirect()->route('parent.register');
+        }
+
+        return view('auth.parent-register-account');
+    }
+
+    /**
+     * Create the parent account from session + credentials
+     */
+    public function storeAccount(Request $request): RedirectResponse
+    {
+        $personalInfo = session('pending_parent_info');
+
+        if (!$personalInfo) {
+            return redirect()->route('parent.register')
+                ->with('error', 'Session expired. Please start over.');
+        }
+
+        $validated = $request->validate([
             'email' => [
                 'required',
                 'string',
@@ -66,221 +98,236 @@ class ParentRegistrationController extends Controller
             ],
         ]);
 
-        // Calculate age
-        $birthdate = Carbon::parse($validated['birthdate']);
-        $age = $birthdate->age;
+        $birthdate = Carbon::parse($personalInfo['birthdate']);
 
-        // Double-check age is 18+
-        if ($age < 18) {
-            return back()->withErrors([
-                'birthdate' => 'You must be at least 18 years old to register as a parent.'
-            ])->withInput();
+        if ($birthdate->age < 18) {
+            session()->forget('pending_parent_info');
+            return redirect()->route('parent.register')
+                ->with('error', 'You must be at least 18 years old to register as a parent.');
         }
 
-        // Create parent account
         $parent = User::create([
-            'name' => trim($validated['first_name'] . ' ' . $validated['last_name']),
-            'first_name' => $validated['first_name'],
-            'middle_initial' => $validated['middle_initial'] ?? null,
-            'last_name' => $validated['last_name'],
-            'suffix' => $validated['suffix'] ?? null,
-            'email' => strtolower($validated['email']),
-            'birthdate' => $validated['birthdate'],
-            'age' => $age,
-            'password' => Hash::make($validated['password']),
+            'name'           => trim($personalInfo['first_name'] . ' ' . $personalInfo['last_name']),
+            'first_name'     => $personalInfo['first_name'],
+            'middle_initial' => $personalInfo['middle_initial'] ?? null,
+            'last_name'      => $personalInfo['last_name'],
+            'suffix'         => $personalInfo['suffix'] ?? null,
+            'email'          => strtolower($validated['email']),
+            'birthdate'      => $personalInfo['birthdate'],
+            'age'            => $birthdate->age,
+            'password'       => Hash::make($validated['password']),
         ]);
 
-        // Assign learner role (parent is also a learner who can take courses)
         $parent->assignRole('learner');
 
-        // Fire registered event (triggers email verification)
         event(new Registered($parent));
 
-        // Store session flag to identify parent account during profile completion
+        session()->forget('pending_parent_info');
         session(['is_parent_registration' => true]);
 
-        // Log the parent in
         Auth::login($parent);
 
-        // Redirect to email verification notice
         return redirect()->route('verification.notice')
             ->with('success', 'Parent account created! Please verify your email before creating a child account.');
     }
 
     /**
-     * Show create child account form (only for verified parents)
+     * Handle parent registration request (legacy — kept for backward compat)
      */
-    public function createChildForm(): View
+    public function store(Request $request): RedirectResponse
     {
-        // Ensure user is verified
+        return $this->storePersonal($request);
+    }
+
+    /**
+     * Step 1: Show create child form (personal info)
+     */
+    public function createChildForm(): View|RedirectResponse
+    {
         if (!auth()->user()->hasVerifiedEmail()) {
             return redirect()->route('verification.notice')
                 ->with('error', 'Please verify your email first.');
         }
 
-        // Ensure user is 18+
         if (!auth()->user()->canBeParent()) {
             abort(403, 'You must be 18 or older to create a child account.');
         }
 
-        // Get parent's profile for location auto-fill (if completed)
-        $parentProfile = auth()->user()->learnerProfile;
-        
-        // Retrieve pending child registration data from session (if exists)
-        $childData = session('pending_child_registration');
-        $childTimestamp = session('child_registration_timestamp');
-        
-        // Check if child data is still valid (within 24 hours)
-        if ($childData && $childTimestamp) {
-            $hoursElapsed = (now()->timestamp - $childTimestamp) / 3600;
-            if ($hoursElapsed > 24) {
-                // Data too old, clear it
-                session()->forget(['pending_child_registration', 'child_registration_timestamp']);
-                $childData = null;
-            }
+        return view('auth.create-child-account');
+    }
+
+    /**
+     * Step 1 POST: Save child personal info to session
+     */
+    public function storeChildInfo(Request $request): RedirectResponse
+    {
+        if (!auth()->user()->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
         }
-        
-        // Format birthdate for date input (YYYY-MM-DD) if childData exists
-        if ($childData && isset($childData['birthdate'])) {
-            $childData['birthdate_formatted'] = Carbon::parse($childData['birthdate'])->format('Y-m-d');
+
+        if (!auth()->user()->canBeParent()) {
+            abort(403);
         }
-        
-        // Generate Gmail+ email suggestion for child
+
+        $validated = $request->validate([
+            'first_name'    => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
+            'middle_initial'=> ['nullable', 'string', 'max:10', 'regex:/^[a-zA-Z.\s]+$/'],
+            'last_name'     => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
+            'suffix'        => ['nullable', 'string', 'in:Jr.,Sr.,II,III,IV,V'],
+            'birthdate'     => [
+                'required',
+                'date',
+                'before:today',
+                'after:' . now()->subYears(18)->format('Y-m-d'),
+            ],
+            'gender'        => ['required', 'in:male,female,prefer_not_to_say'],
+        ]);
+
+        $birthdate = Carbon::parse($validated['birthdate']);
+        if ($birthdate->age >= 18) {
+            return back()->withErrors([
+                'birthdate' => 'Child must be under 18 years old.'
+            ])->withInput();
+        }
+
+        session(['child_step1' => array_merge($validated, ['age' => $birthdate->age])]);
+
+        return redirect()->route('parent.create-child.location');
+    }
+
+    /**
+     * Step 2: Show location form
+     */
+    public function childLocationForm(): View|RedirectResponse
+    {
+        if (!session('child_step1')) {
+            return redirect()->route('parent.create-child');
+        }
+
+        $cities = \Schoolees\Psgc\Models\City::where('province_code', '402100000')
+            ->orderBy('name')->get();
+
+        return view('auth.child.step2-location', compact('cities'));
+    }
+
+    /**
+     * Step 2 POST: Save location to session
+     */
+    public function storeChildLocation(Request $request): RedirectResponse
+    {
+        if (!session('child_step1')) {
+            return redirect()->route('parent.create-child');
+        }
+
+        $validated = $request->validate([
+            'city_code'     => ['required', 'string', 'exists:cities,code'],
+            'barangay_code' => ['required', 'string', 'exists:barangays,code'],
+        ]);
+
+        session(['child_step2' => $validated]);
+
+        return redirect()->route('parent.create-child.credentials');
+    }
+
+    /**
+     * Step 3: Show credentials form
+     */
+    public function childCredentialsForm(): View|RedirectResponse
+    {
+        if (!session('child_step1') || !session('child_step2')) {
+            return redirect()->route('parent.create-child');
+        }
+
+        $step1 = session('child_step1');
         $parentEmail = auth()->user()->email;
         $suggestedEmail = null;
-        if ($childData && preg_match('/^(.+)@gmail\.com$/i', $parentEmail, $matches)) {
-            // Extract first name for email pattern
-            $childFirstName = strtolower(preg_replace('/[^a-z0-9]/', '', $childData['first_name'] ?? ''));
+        if (preg_match('/^(.+)@gmail\.com$/i', $parentEmail, $matches)) {
+            $childFirstName = strtolower(preg_replace('/[^a-z0-9]/', '', $step1['first_name'] ?? ''));
             if ($childFirstName) {
                 $suggestedEmail = $matches[1] . '+' . $childFirstName . '@gmail.com';
             }
         }
-        
-        // Get Cavite cities for dropdown
-        $cities = \Schoolees\Psgc\Models\City::where('province_code', '402100000')
-            ->orderBy('name')
-            ->get();
-        
-        // Get barangays for parent's city (only if parent has profile)
-        $barangays = [];
-        if ($parentProfile && $parentProfile->city_code) {
-            $barangays = \Schoolees\Psgc\Models\Barangay::where('city_code', $parentProfile->city_code)
-                ->orderBy('name')
-                ->get();
-        }
 
-        return view('auth.create-child-account', compact('parentProfile', 'cities', 'barangays', 'childData', 'suggestedEmail'));
+        return view('auth.child.step3-credentials', compact('step1', 'suggestedEmail'));
     }
 
     /**
-     * Create child account
+     * Step 3 POST: Create the child account
      */
-    public function storeChild(Request $request): RedirectResponse
+    public function storeChildCredentials(Request $request): RedirectResponse
     {
-        // Ensure parent is verified
-        if (!auth()->user()->hasVerifiedEmail()) {
-            return redirect()->route('verification.notice')
-                ->with('error', 'Please verify your email first.');
-        }
+        $step1 = session('child_step1');
+        $step2 = session('child_step2');
 
-        // Ensure user can be parent
-        if (!auth()->user()->canBeParent()) {
-            abort(403, 'You must be 18 or older to create a child account.');
+        if (!$step1 || !$step2) {
+            return redirect()->route('parent.create-child');
         }
 
         $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
-            'middle_initial' => ['nullable', 'string', 'max:10', 'regex:/^[a-zA-Z.\s]+$/'],
-            'last_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
-            'suffix' => ['nullable', 'string', 'in:Jr.,Sr.,II,III,IV,V'],
-            'birthdate' => [
-                'required',
-                'date',
-                'before:today',
-                'after:' . now()->subYears(18)->format('Y-m-d'), // Must be under 18
-            ],
             'username' => ['required', 'string', 'min:3', 'max:30', 'unique:learner_profiles,username', 'regex:/^[a-z0-9_-]+$/'],
-            'gender' => ['required', 'in:male,female,prefer_not_to_say'],
-            'city_code' => ['required', 'string', 'exists:cities,code'],
-            'barangay_code' => ['required', 'string', 'exists:barangays,code'],
-            'password' => [
-                'required',
-                'confirmed',
-                Password::min(8),
-            ],
+            'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
-        // Calculate age
-        $birthdate = Carbon::parse($validated['birthdate']);
-        $age = $birthdate->age;
-
-        // Ensure child is under 18
-        if ($age >= 18) {
-            return back()->withErrors([
-                'birthdate' => 'Child must be under 18 years old. For 18+, please use regular registration.'
-            ])->withInput();
-        }
-
-        // Get parent's location for child to inherit (same household)
         $parent = auth()->user();
-        $parentProfile = $parent->learnerProfile;
-        
-        // Get barangay name
-        $barangay = \Schoolees\Psgc\Models\Barangay::where('code', $validated['barangay_code'])->first();
-        
-        // Generate child email using Gmail+ addressing pattern if parent uses Gmail
         $parentEmail = $parent->email;
-        $childEmail = $validated['username'] . '@child.sexed-platform.local'; // Fallback
-        
+        $childEmail = $validated['username'] . '@child.sexed-platform.local';
+
         if (preg_match('/^(.+)@gmail\.com$/i', $parentEmail, $matches)) {
-            // Parent uses Gmail - use Gmail+ addressing (e.g., parent@gmail.com -> parent+maria@gmail.com)
             $childEmail = $matches[1] . '+' . $validated['username'] . '@gmail.com';
         }
-        
-        // Create child account
+
+        $barangay = \Schoolees\Psgc\Models\Barangay::where('code', $step2['barangay_code'])->first();
+
         $child = User::create([
-            'name' => trim($validated['first_name'] . ' ' . $validated['last_name']),
-            'first_name' => $validated['first_name'],
-            'middle_initial' => $validated['middle_initial'] ?? null,
-            'last_name' => $validated['last_name'],
-            'suffix' => $validated['suffix'] ?? null,
-            'email' => $childEmail,
-            'birthdate' => $validated['birthdate'],
-            'age' => $age,
-            'password' => Hash::make($validated['password']),
-            'email_verified_at' => now(), // Auto-verify child accounts (parent already verified)
+            'name'           => trim($step1['first_name'] . ' ' . $step1['last_name']),
+            'first_name'     => $step1['first_name'],
+            'middle_initial' => $step1['middle_initial'] ?? null,
+            'last_name'      => $step1['last_name'],
+            'suffix'         => $step1['suffix'] ?? null,
+            'email'          => $childEmail,
+            'birthdate'      => $step1['birthdate'],
+            'age'            => $step1['age'],
+            'password'       => Hash::make($validated['password']),
+            'email_verified_at' => now(),
         ]);
 
-        // Assign learner role
         $child->assignRole('learner');
 
-        // Create COMPLETE learner profile (no profile completion needed)
         $child->learnerProfile()->create([
-            'username' => $validated['username'],
-            'birthdate' => $child->birthdate,
-            'gender' => $validated['gender'],
-            'city_code' => $validated['city_code'],
-            'barangay_code' => $validated['barangay_code'],
-            'barangay' => $barangay->name,
-            'province_code' => '402100000', // Cavite
-            'requires_parental_consent' => true,
+            'username'                 => $validated['username'],
+            'birthdate'                => $child->birthdate,
+            'gender'                   => $step1['gender'],
+            'city_code'                => $step2['city_code'],
+            'barangay_code'            => $step2['barangay_code'],
+            'barangay'                 => $barangay->name,
+            'province_code'            => '402100000',
+            'requires_parental_consent'=> true,
         ]);
 
-        // Create parent-child relationship (monitoring always enabled for safety)
         ParentChildAccount::create([
-            'parent_user_id' => auth()->id(),
-            'child_user_id' => $child->id,
-            'can_view_progress' => true, // Always ON for COPPA compliance
-            'can_view_quiz_answers' => true, // Always ON for safety monitoring
-            'can_approve_content' => true, // Parents must approve content for their children
-            'relationship_verified_at' => now(),
+            'parent_user_id'          => $parent->id,
+            'child_user_id'           => $child->id,
+            'can_view_progress'       => true,
+            'can_view_quiz_answers'   => true,
+            'can_approve_content'     => true,
+            'relationship_verified_at'=> now(),
         ]);
-        
-        // Clear pending child registration data from session (process complete)
-        session()->forget(['pending_child_registration', 'child_registration_timestamp']);
 
-        return redirect()->route('parent.children.index')
-            ->with('success', "Child account created successfully! Username: {$validated['username']} | Password: (as you set) | Your child can now log in and start learning!");
+        session()->forget(['child_step1', 'child_step2']);
+        session(['child_created_name' => $step1['first_name']]);
+
+        return redirect()->route('parent.create-child.done');
+    }
+
+    /**
+     * Step 4: Done page (monitoring info)
+     */
+    public function childDone(): View
+    {
+        $childName = session('child_created_name', 'your child');
+        session()->forget('child_created_name');
+
+        return view('auth.child.done', compact('childName'));
     }
 
     /**

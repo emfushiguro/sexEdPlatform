@@ -5,6 +5,8 @@
     $headerAvatar  = $headerProfile?->avatar_path
         ? asset('storage/' . $headerProfile->avatar_path)
         : null;
+    $unreadCount   = $headerUser->unreadNotifications()->count();
+    $recentNotifs  = $headerUser->notifications()->latest()->limit(5)->get();
 @endphp
 
 <header class="sticky top-0 z-[9998] w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -35,19 +37,50 @@
                 </svg>
             </button>
 
-            {{-- Search bar --}}
-            <div class="relative hidden sm:block">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+            {{-- ── Live Search (hidden on My Modules page — it has its own search) ── --}}
+            @unless(request()->routeIs('learner.modules.index'))
+            <div class="relative hidden sm:block" x-data="learnerSearch()" @click.outside="open = false">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z"/>
                     </svg>
                 </span>
                 <input
                     type="text"
+                    x-model="query"
+                    @input.debounce.300ms="search()"
+                    @focus="if(results.modules.length) open = true"
                     placeholder="Search modules..."
+                    autocomplete="off"
                     class="h-10 w-64 xl:w-80 pl-9 pr-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 dark:focus:ring-purple-600 focus:border-transparent transition-all"
                 >
+
+                {{-- Results dropdown --}}
+                <div
+                    x-show="open && results.modules.length"
+                    x-cloak
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 translate-y-1"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    class="absolute top-full mt-1 left-0 w-80 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 z-50 overflow-hidden"
+                >
+                    <div class="p-2">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-2 mb-1">Modules</p>
+                        <template x-for="item in results.modules" :key="item.id">
+                            <a :href="item.url"
+                               class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-sm text-gray-700 dark:text-gray-300"
+                            >
+                                <svg class="w-3.5 h-3.5 text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253"/>
+                                </svg>
+                                <span x-text="item.title" class="truncate flex-1"></span>
+                                <span x-show="item.is_premium" class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 flex-shrink-0">PREMIUM</span>
+                            </a>
+                        </template>
+                    </div>
+                </div>
             </div>
+            @endunless
         </div>
 
         {{-- ─── Right: Dark mode + Notifications + User ─── --}}
@@ -59,27 +92,95 @@
                 @click="$store.theme.toggle()"
                 aria-label="Toggle dark mode"
             >
-                {{-- Sun icon (shown in dark mode) --}}
                 <svg x-show="$store.theme.mode === 'dark'" width="18" height="18" fill="none" viewBox="0 0 24 24" x-cloak>
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364-.707.707M6.343 17.657l-.707.707m12.728 0-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/>
                 </svg>
-                {{-- Moon icon (shown in light mode) --}}
                 <svg x-show="$store.theme.mode === 'light'" width="18" height="18" fill="none" viewBox="0 0 24 24">
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
                 </svg>
             </button>
 
-            {{-- Notifications --}}
-            <button
-                class="relative flex items-center justify-center w-10 h-10 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                aria-label="Notifications"
-            >
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.437L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/>
-                </svg>
-                {{-- Notification dot (placeholder) --}}
-                <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            {{-- ── Notifications ── --}}
+            <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                <button
+                    @click="open = !open"
+                    class="relative flex items-center justify-center w-10 h-10 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    aria-label="Notifications"
+                >
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.437L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/>
+                    </svg>
+                    @if($unreadCount > 0)
+                        <span class="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold">
+                            {{ $unreadCount > 9 ? '9+' : $unreadCount }}
+                        </span>
+                    @endif
+                </button>
+
+                {{-- Notification dropdown --}}
+                <div
+                    x-show="open"
+                    x-cloak
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-75"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    class="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 z-50 overflow-hidden"
+                >
+                    <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Notifications</h3>
+                        @if($unreadCount > 0)
+                            <form method="POST" action="{{ route('learner.notifications.mark-all-read') }}">
+                                @csrf
+                                <button type="submit" class="text-xs font-medium text-purple-600 hover:text-purple-800 dark:text-purple-400 transition-colors">
+                                    Mark all read
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+
+                    @if($recentNotifs->isEmpty())
+                        <div class="px-4 py-8 text-center">
+                            <svg class="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.437L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/>
+                            </svg>
+                            <p class="text-sm text-gray-400 dark:text-gray-500">No notifications yet</p>
+                        </div>
+                    @else
+                        <div class="divide-y divide-gray-50 dark:divide-gray-800 max-h-80 overflow-y-auto">
+                            @foreach($recentNotifs as $notif)
+                                @php
+                                    $isUnread = is_null($notif->read_at);
+                                    $notifType = $notif->data['type'] ?? '';
+                                    $iconColor = $notifType === 'enrollment_approved' ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-500';
+                                @endphp
+                                <a
+                                    href="{{ route('learner.notifications.read', $notif->id) }}"
+                                    class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors {{ $isUnread ? 'bg-purple-50/40 dark:bg-purple-900/10' : '' }}"
+                                >
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {{ $iconColor }}">
+                                        @if($notifType === 'enrollment_approved')
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 13 4 4L19 7"/></svg>
+                                        @else
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"/></svg>
+                                        @endif
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-semibold text-gray-900 dark:text-white">{{ $notif->data['title'] ?? 'Notification' }}</p>
+                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-snug mt-0.5">{{ $notif->data['message'] ?? '' }}</p>
+                                        <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{{ $notif->created_at->diffForHumans() }}</p>
+                                    </div>
+                                    @if($isUnread)
+                                        <span class="w-2 h-2 rounded-full bg-purple-500 mt-1 flex-shrink-0"></span>
+                                    @endif
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
 
             {{-- User dropdown --}}
             <div class="relative" x-data="{ open: false }" @click.outside="open = false">
@@ -155,3 +256,36 @@
         </div>
     </div>
 </header>
+
+@push('scripts')
+<script>
+function learnerSearch() {
+    return {
+        query: '',
+        open: false,
+        results: { modules: [] },
+        async search() {
+            if (this.query.length < 2) {
+                this.results = { modules: [] };
+                this.open = false;
+                return;
+            }
+            try {
+                const res = await fetch(`/learn/search?q=${encodeURIComponent(this.query)}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    }
+                });
+                if (res.ok) {
+                    this.results = await res.json();
+                    this.open = this.results.modules.length > 0;
+                }
+            } catch (e) {
+                console.error('Search failed', e);
+            }
+        }
+    };
+}
+</script>
+@endpush

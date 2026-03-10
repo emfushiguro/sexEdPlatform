@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Instructor;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
+use App\Notifications\EnrollmentApproved;
+use App\Notifications\EnrollmentRejected;
 use Illuminate\Http\Request;
 
 class EnrollmentController extends Controller
@@ -82,8 +84,8 @@ class EnrollmentController extends Controller
             'enrolled_at' => now(),
         ]);
 
-        // Note: UserProgress records are created per-lesson as learners progress,
-        // not at enrollment time. The user_progress table tracks lesson-level completion.
+        // Notify the learner
+        $enrollment->user->notify(new EnrollmentApproved($enrollment));
 
         return redirect()->back()
             ->with('success', 'Enrollment request approved successfully!');
@@ -103,6 +105,9 @@ class EnrollmentController extends Controller
         $enrollment->update([
             'status' => 'rejected',
         ]);
+
+        // Notify the learner
+        $enrollment->user->notify(new EnrollmentRejected($enrollment));
 
         return redirect()->back()
             ->with('success', 'Enrollment request rejected.');

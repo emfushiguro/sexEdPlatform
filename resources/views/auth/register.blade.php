@@ -1,26 +1,20 @@
-<x-auth-split-layout
-    :showTabs="true"
-    activeTab="register"
-    :loginRoute="route('learner.login')"
-    :registerRoute="route('register')"
->
+<x-auth-split-layout :showTabs="false">
     <x-slot name="panel">
-        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
-            {{-- Small logo top-left --}}
-            <div class="absolute top-8 left-8">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center overflow-hidden">
+            <div class="absolute top-0 left-0 w-40 h-40 bg-white/5 rounded-br-full"></div>
+            <div class="absolute bottom-0 right-0 w-56 h-56 bg-white/5 rounded-tl-full"></div>
+
+            <div class="relative mb-6 z-10">
+                <div class="w-32 h-32 bg-white/15 rounded-3xl flex items-center justify-center shadow-2xl backdrop-blur-sm border border-white/20">
+                    <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="w-24 h-24 object-contain drop-shadow-lg">
+                </div>
             </div>
-            {{-- Icon bubble --}}
-            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
-                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l9-5-9-5-9 5 9 5z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
-                </svg>
-            </div>
-            {{-- Headline --}}
-            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Start your learning journey</h2>
-            {{-- Sub-text --}}
-            <p class="text-white/80 text-lg max-w-xs">A safe, age-appropriate space to grow</p>
+
+            <h1 class="text-2xl font-bold text-white mb-1 tracking-wide z-10">Concious Connections</h1>
+            <div class="w-12 h-0.5 bg-white/40 rounded-full mx-auto mb-6 z-10"></div>
+
+            <h2 class="text-3xl font-bold text-white mb-3 leading-tight z-10">Start your journey</h2>
+            <p class="text-white/75 text-base max-w-[200px] leading-relaxed z-10">A safe space to grow and learn</p>
         </div>
     </x-slot>
 
@@ -54,83 +48,82 @@
                 }" x-init="calculateAge()" @submit="loading = true">
                     @csrf
 
-                    <div class="space-y-4">
+                    <div class="space-y-3">
 
-                        <!-- First Name -->
-                        <div>
-                            <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                            <input 
-                                id="first_name" 
-                                type="text" 
-                                name="first_name" 
-                                value="{{ old('first_name') }}"
-                                required 
-                                autofocus 
-                                autocomplete="given-name"
-                                placeholder="Juan"
-                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200"
-                            />
-                            @error('first_name')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                        <!-- First Name + Last Name (2-col) -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                <input 
+                                    id="first_name" 
+                                    type="text" 
+                                    name="first_name" 
+                                    value="{{ old('first_name') }}"
+                                    required 
+                                    autofocus 
+                                    autocomplete="given-name"
+                                    placeholder="Juan"
+                                    class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200 text-sm"
+                                />
+                                @error('first_name')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                <input 
+                                    id="last_name" 
+                                    type="text" 
+                                    name="last_name" 
+                                    value="{{ old('last_name') }}"
+                                    required 
+                                    autocomplete="family-name"
+                                    placeholder="dela Cruz"
+                                    class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200 text-sm"
+                                />
+                                @error('last_name')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
 
-                        <!-- Middle Initial (Optional) -->
-                        <div>
-                            <label for="middle_initial" class="block text-sm font-medium text-gray-700 mb-1">Middle Initial <span class="text-gray-400 font-normal">(Optional)</span></label>
-                            <input 
-                                id="middle_initial" 
-                                type="text" 
-                                name="middle_initial" 
-                                value="{{ old('middle_initial') }}"
-                                maxlength="10"
-                                autocomplete="additional-name"
-                                placeholder="D."
-                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200"
-                            />
-                            <p class="mt-1 text-xs text-gray-500">Example: D. or De la</p>
-                            @error('middle_initial')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Last Name -->
-                        <div>
-                            <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                            <input 
-                                id="last_name" 
-                                type="text" 
-                                name="last_name" 
-                                value="{{ old('last_name') }}"
-                                required 
-                                autocomplete="family-name"
-                                placeholder="dela Cruz"
-                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200"
-                            />
-                            @error('last_name')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Suffix (Optional) -->
-                        <div>
-                            <label for="suffix" class="block text-sm font-medium text-gray-700 mb-1">Suffix <span class="text-gray-400 font-normal">(Optional)</span></label>
-                            <select 
-                                id="suffix" 
-                                name="suffix"
-                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200"
-                            >
-                                <option value="">-- None --</option>
-                                <option value="Jr." {{ old('suffix') == 'Jr.' ? 'selected' : '' }}>Jr.</option>
-                                <option value="Sr." {{ old('suffix') == 'Sr.' ? 'selected' : '' }}>Sr.</option>
-                                <option value="II"  {{ old('suffix') == 'II'  ? 'selected' : '' }}>II</option>
-                                <option value="III" {{ old('suffix') == 'III' ? 'selected' : '' }}>III</option>
-                                <option value="IV"  {{ old('suffix') == 'IV'  ? 'selected' : '' }}>IV</option>
-                                <option value="V"   {{ old('suffix') == 'V'   ? 'selected' : '' }}>V</option>
-                            </select>
-                            @error('suffix')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                        <!-- Middle Initial + Suffix (2-col) -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="middle_initial" class="block text-sm font-medium text-gray-700 mb-1">Middle Initial <span class="text-gray-400 font-normal">(Optional)</span></label>
+                                <input 
+                                    id="middle_initial" 
+                                    type="text" 
+                                    name="middle_initial" 
+                                    value="{{ old('middle_initial') }}"
+                                    maxlength="10"
+                                    autocomplete="additional-name"
+                                    placeholder="D."
+                                    class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200 text-sm"
+                                />
+                                @error('middle_initial')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="suffix" class="block text-sm font-medium text-gray-700 mb-1">Suffix <span class="text-gray-400 font-normal">(Optional)</span></label>
+                                <select 
+                                    id="suffix" 
+                                    name="suffix"
+                                    class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200 text-sm"
+                                >
+                                    <option value="">-- None --</option>
+                                    <option value="Jr." {{ old('suffix') == 'Jr.' ? 'selected' : '' }}>Jr.</option>
+                                    <option value="Sr." {{ old('suffix') == 'Sr.' ? 'selected' : '' }}>Sr.</option>
+                                    <option value="II"  {{ old('suffix') == 'II'  ? 'selected' : '' }}>II</option>
+                                    <option value="III" {{ old('suffix') == 'III' ? 'selected' : '' }}>III</option>
+                                    <option value="IV"  {{ old('suffix') == 'IV'  ? 'selected' : '' }}>IV</option>
+                                    <option value="V"   {{ old('suffix') == 'V'   ? 'selected' : '' }}>V</option>
+                                </select>
+                                @error('suffix')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
 
                         <!-- Birth Date -->
@@ -146,7 +139,7 @@
                                 required 
                                 min="{{ now()->subYears(100)->format('Y-m-d') }}"
                                 max="{{ now()->subYears(5)->format('Y-m-d') }}"
-                                class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200"
+                                class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200 text-sm"
                             />
                             
                             <!-- Age Display -->

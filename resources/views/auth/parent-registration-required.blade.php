@@ -1,24 +1,22 @@
 <x-auth-split-layout :showTabs="false">
     <x-slot name="panel">
-        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
-            {{-- Small logo top-left --}}
-            <div class="absolute top-8 left-8">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center overflow-hidden">
+            <div class="absolute top-0 left-0 w-40 h-40 bg-white/5 rounded-br-full"></div>
+            <div class="absolute bottom-0 right-0 w-56 h-56 bg-white/5 rounded-tl-full"></div>
+
+            <div class="relative mb-6 z-10">
+                <div class="w-32 h-32 bg-white/15 rounded-3xl flex items-center justify-center shadow-2xl backdrop-blur-sm border border-white/20">
+                    <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="w-24 h-24 object-contain drop-shadow-lg">
+                </div>
             </div>
-            {{-- Icon bubble --}}
-            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
-                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016zM12 9v2m0 4h.01"/>
-                </svg>
-            </div>
-            {{-- Headline --}}
-            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Safe learning for young ones</h2>
-            {{-- Sub-text --}}
-            <p class="text-white/80 text-lg max-w-xs">Children under 13 need a parent or guardian to get started</p>
+
+            <h1 class="text-2xl font-bold text-white mb-1 tracking-wide z-10">Concious Connections</h1>
+            <div class="w-12 h-0.5 bg-white/40 rounded-full mx-auto mb-6 z-10"></div>
+
+            <h2 class="text-3xl font-bold text-white mb-3 leading-tight z-10">Young learner?</h2>
+            <p class="text-white/75 text-base max-w-[200px] leading-relaxed z-10">A parent account is needed first</p>
         </div>
     </x-slot>
-
-    <x-wizard-stepper />
 
     <div class="mb-6">
         <h2 class="text-2xl font-bold text-purple-900">Parent/Guardian Required</h2>

@@ -28,7 +28,7 @@ class PageRenderTest extends TestCase
     {
         $response = $this->get('/register');
         $response->assertStatus(200);
-        $response->assertSee('Start your learning journey');
+        $response->assertSee('Start your journey');
     }
 
     public function test_register_account_page_shows_almost_there_panel(): void
@@ -54,7 +54,7 @@ class PageRenderTest extends TestCase
     {
         $response = $this->get(route('parent.registration.required'));
         $response->assertStatus(200);
-        $response->assertSee('Safe learning for young ones');
+        $response->assertSee('Young learner?');
     }
 
     public function test_parent_register_page_shows_guide_their_journey_panel(): void

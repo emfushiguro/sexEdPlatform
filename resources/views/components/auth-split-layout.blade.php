@@ -84,7 +84,7 @@
                         <div class="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
                     </div>
 
-                    @if($panel->isNotEmpty())
+                    @if($panel && $panel->isNotEmpty())
                         {{ $panel }}
                     @else
                     <!-- Default: Logo fallback -->

@@ -2,22 +2,25 @@
     logo="/media/Logo.png"
 >
     <x-slot name="panel">
-        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
-            {{-- Small logo top-left --}}
-            <div class="absolute top-8 left-8">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center overflow-hidden">
+            {{-- Decorative accent shapes --}}
+            <div class="absolute top-0 left-0 w-40 h-40 bg-white/5 rounded-br-full"></div>
+            <div class="absolute bottom-0 right-0 w-56 h-56 bg-white/5 rounded-tl-full"></div>
+
+            {{-- Logo card --}}
+            <div class="relative mb-6 z-10">
+                <div class="w-32 h-32 bg-white/15 rounded-3xl flex items-center justify-center shadow-2xl backdrop-blur-sm border border-white/20">
+                    <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="w-24 h-24 object-contain drop-shadow-lg">
+                </div>
             </div>
-            {{-- Icon bubble --}}
-            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
-                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l9-5-9-5-9 5 9 5z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
-                </svg>
-            </div>
-            {{-- Headline --}}
-            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Welcome back</h2>
-            {{-- Sub-text --}}
-            <p class="text-white/80 text-lg max-w-xs">Continue your learning journey</p>
+
+            {{-- Brand name --}}
+            <h1 class="text-2xl font-bold text-white mb-1 tracking-wide z-10">Concious Connections</h1>
+            <div class="w-12 h-0.5 bg-white/40 rounded-full mx-auto mb-6 z-10"></div>
+
+            {{-- Page headline --}}
+            <h2 class="text-3xl font-bold text-white mb-3 leading-tight z-10">Welcome back</h2>
+            <p class="text-white/75 text-base max-w-[200px] leading-relaxed z-10">Sign in to continue your learning journey</p>
         </div>
     </x-slot>
 
