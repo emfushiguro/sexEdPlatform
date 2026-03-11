@@ -1,33 +1,51 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Terms of Service - {{ config('app.name') }}</title>
+    <title>Terms of Service &mdash; {{ config('app.name') }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+    </style>
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen">
-        <!-- Header -->
-        <div class="bg-white shadow-sm border-b border-gray-200">
-            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <div class="flex items-center justify-between">
-                    <h1 class="text-2xl font-bold text-gray-900">Terms of Service</h1>
-                    <a href="{{ route('register') }}" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                        ← Back to Registration
-                    </a>
+<body class="min-h-screen bg-gray-50">
+
+    <!-- Gradient Header -->
+    <header style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="flex items-center gap-3 mb-1">
+                        <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <h1 class="text-2xl font-bold text-white">Terms of Service</h1>
+                    </div>
+                    <p class="text-purple-200 text-sm">Last Updated: {{ now()->format('F d, Y') }}</p>
                 </div>
-                <p class="mt-2 text-sm text-gray-600">Last Updated: {{ now()->format('F d, Y') }}</p>
+                <button onclick="history.back()"
+                    class="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Back
+                </button>
             </div>
         </div>
+    </header>
 
-        <!-- Content -->
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 space-y-8">
+    <!-- Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-10 space-y-8">
                 
                 <!-- Introduction -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">1. Introduction</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">1. Introduction</h2>
                     <p class="text-gray-700 leading-relaxed">
                         Welcome to Sex Education Learning Platform. By accessing or using our platform, you agree to be bound by these Terms of Service. 
                         This platform is designed to provide age-appropriate sexual education and health information to learners of all ages.
@@ -36,7 +54,7 @@
 
                 <!-- Age Requirements -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">2. Age Requirements & Parental Consent</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">2. Age Requirements & Parental Consent</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             <strong>For Users Under 13 Years Old:</strong> In compliance with the Children's Online Privacy Protection Act (COPPA), 
@@ -61,7 +79,7 @@
 
                 <!-- User Accounts -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">3. User Accounts</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">3. User Accounts</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed"><strong>Account Creation:</strong></p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -81,7 +99,7 @@
 
                 <!-- Platform Use -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">4. Acceptable Use</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">4. Acceptable Use</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">You agree to use the platform only for lawful educational purposes. You may NOT:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -97,7 +115,7 @@
 
                 <!-- Parent Rights -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">5. Parent Rights & Responsibilities</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">5. Parent Rights & Responsibilities</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">Parents who create accounts for children under 13 have the right to:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -118,7 +136,7 @@
 
                 <!-- Content & IP -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">6. Content & Intellectual Property</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">6. Content & Intellectual Property</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             All educational content, modules, quizzes, videos, and materials on this platform are the intellectual property of 
@@ -134,11 +152,11 @@
 
                 <!-- Privacy -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">7. Privacy & Data Protection</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">7. Privacy & Data Protection</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             Your privacy is important to us. Please review our 
-                            <a href="{{ route('privacy') }}" class="text-blue-600 hover:text-blue-700 underline">Privacy Policy</a> 
+                            <a href="{{ route('privacy') }}" class="underline hover:opacity-75 transition-opacity" style="color: #730DB1;">Privacy Policy</a> 
                             to understand how we collect, use, and protect your personal information, especially for users under 13.
                         </p>
                     </div>
@@ -146,7 +164,7 @@
 
                 <!-- Disclaimers -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">8. Educational Disclaimers</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">8. Educational Disclaimers</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             The information provided on this platform is for educational purposes only and should not replace 
@@ -162,7 +180,7 @@
 
                 <!-- Limitation of Liability -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">9. Limitation of Liability</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">9. Limitation of Liability</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             Sex Education Learning Platform is provided "as is" for educational purposes. We are not liable for:
@@ -178,7 +196,7 @@
 
                 <!-- Termination -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">10. Termination</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">10. Termination</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             We reserve the right to suspend or terminate accounts that violate these Terms of Service. 
@@ -192,7 +210,7 @@
 
                 <!-- Changes to Terms -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">11. Changes to Terms</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">11. Changes to Terms</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             We may update these Terms of Service from time to time. Significant changes will be communicated via 
@@ -203,34 +221,35 @@
 
                 <!-- Contact -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">12. Contact Information</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">12. Contact Information</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             If you have questions about these Terms of Service, please contact us at:
                         </p>
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-3">
-                            <p class="font-medium text-gray-900">{{ config('app.name') }} Support</p>
+                        <div class="rounded-xl p-4 mt-3 border" style="border-color: #730DB1; background: #fdf4ff;">
+                            <p class="font-semibold" style="color: #730DB1;">{{ config('app.name') }} Support</p>
                             <p class="text-gray-600 text-sm mt-1">sexeducation@platform.com</p>
                         </div>
                     </div>
                 </section>
 
-                <!-- Acceptance -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-8">
-                    <p class="text-sm text-gray-700 leading-relaxed">
-                        <strong>By creating an account or using {{ config('app.name') }}, you acknowledge that you have read, 
+                <!-- Acceptance banner -->
+                <div class="rounded-xl p-6 mt-8" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                    <p class="text-sm text-white leading-relaxed text-center">
+                        <strong>By creating an account or using {{ config('app.name') }}, you acknowledge that you have read,
                         understood, and agree to be bound by these Terms of Service.</strong>
                     </p>
                 </div>
-            </div>
+        </div><!-- /card -->
 
-            <!-- Footer Links -->
-            <div class="mt-8 text-center space-x-4 pb-8">
-                <a href="{{ route('register') }}" class="text-blue-600 hover:text-blue-700 font-medium">Back to Registration</a>
-                <span class="text-gray-400">•</span>
-                <a href="{{ route('privacy') }}" class="text-blue-600 hover:text-blue-700 font-medium">Privacy Policy</a>
-            </div>
+        <!-- Footer Links -->
+        <div class="mt-8 text-center space-x-4 pb-10 text-sm">
+            <button onclick="history.back()" class="font-medium hover:opacity-75 transition-opacity" style="color: #730DB1;">← Go Back</button>
+            <span class="text-gray-400">•</span>
+            <a href="{{ route('privacy') }}" class="font-medium hover:opacity-75 transition-opacity" style="color: #730DB1;">Privacy Policy</a>
         </div>
-    </div>
+    </main>
+
 </body>
 </html>
+

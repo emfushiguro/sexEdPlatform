@@ -35,10 +35,14 @@ class LessonController extends Controller
                 ->with('error', 'Please enroll in this module first.');
         }
 
-        // Get all lessons for navigation
+        // Get all lessons for navigation (with topics + quiz eager-loaded for sidebar)
         $allLessons = $module->lessons()
             ->where('is_published', true)
             ->orderBy('order')
+            ->with([
+                'topics',
+                'quiz' => fn($q) => $q->where('is_active', true)->with('questions'),
+            ])
             ->get();
 
         // Security: Check sequential access - must complete previous lessons first
@@ -76,6 +80,17 @@ class LessonController extends Controller
             ->where('completed', true)
             ->pluck('lesson_id')
             ->toArray();
+
+        // Get all completed topic IDs across the entire module (for sidebar display)
+        $allModuleTopicIds = $allLessons->flatMap(fn($l) => $l->topics->pluck('id'));
+        $allCompletedTopicIds = [];
+        if ($allModuleTopicIds->isNotEmpty()) {
+            $allCompletedTopicIds = \App\Models\LessonTopicProgress::where('user_id', $user->id)
+                ->whereIn('lesson_topic_id', $allModuleTopicIds)
+                ->where('completed', true)
+                ->pluck('lesson_topic_id')
+                ->toArray();
+        }
 
         // Get lesson quiz if exists
         $lessonQuiz = $lesson->quiz()->where('is_active', true)->with('questions')->first();
@@ -179,6 +194,7 @@ class LessonController extends Controller
             'allLessons',
             'isLessonCompleted',
             'completedLessonIds',
+            'allCompletedTopicIds',
             'lessonQuiz',
             'quizAttempt',
             'lessonTopics',
@@ -305,5 +321,39 @@ class LessonController extends Controller
 
         return redirect()->route('learner.lessons.show', $lesson)
             ->with('success', 'Topic completed! +10 points ✓');
+    }
+
+    /**
+     * Mark a lesson topic as incomplete.
+     */
+    public function uncompleteTopic(LessonTopic $topic)
+    {
+        $user = Auth::user();
+        $lesson = $topic->lesson;
+        $module = $lesson->module;
+
+        if (!$lesson->is_published || !$module->is_published) {
+            abort(404);
+        }
+
+        $isEnrolled = $user->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->exists();
+
+        if (!$isEnrolled) {
+            return back()->with('error', 'You are not enrolled in this module.');
+        }
+
+        // Mark this topic incomplete
+        \App\Models\LessonTopicProgress::where('user_id', $user->id)
+            ->where('lesson_topic_id', $topic->id)
+            ->update(['completed' => false, 'completed_at' => null]);
+
+        // Revert lesson completion so progress is recalculated on next completion
+        UserProgress::where('user_id', $user->id)
+            ->where('lesson_id', $lesson->id)
+            ->update(['completed' => false, 'completed_at' => null, 'progress_percentage' => 0]);
+
+        return redirect()->back()->with('info', 'Topic marked as incomplete.');
     }
 }

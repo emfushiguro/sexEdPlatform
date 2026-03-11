@@ -10,6 +10,7 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Carbon\Carbon;
 use App\Notifications\CustomVerifyEmail;
+use App\Notifications\CustomResetPassword;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -82,6 +83,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function sendEmailVerificationNotification()
     {
         $this->notify(new CustomVerifyEmail);
+    }
+
+    /**
+     * Send the password reset notification using custom template.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new CustomResetPassword($token));
     }
 
     // Relationships

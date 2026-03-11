@@ -106,6 +106,7 @@ Route::middleware('auth')->group(function () {
         
         // Topic completion
         Route::post('/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('topics.complete');
+        Route::post('/topics/{topic}/uncomplete', [LearnerLessonController::class, 'uncompleteTopic'])->name('topics.uncomplete');
         
         // Lessons topic completion (alternate name for tests)
         Route::post('/lessons/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('lessons.topics.complete');

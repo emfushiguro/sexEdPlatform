@@ -65,13 +65,15 @@
 
             {{-- Module hero --}}
             <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
-                <div class="relative h-52 sm:h-64 bg-gradient-to-br from-purple-500 to-indigo-700 overflow-hidden">
+                <div class="relative h-40 sm:h-48 overflow-hidden" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                     @if($module->thumbnail)
                         <img src="{{ asset('storage/' . $module->thumbnail) }}"
                              alt="{{ $module->title }}"
-                             class="w-full h-full object-cover">
+                             class="absolute inset-0 w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                    @else
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
                     @endif
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"></div>
                     <div class="absolute bottom-0 left-0 right-0 p-5">
                         <div class="flex flex-wrap gap-2 mb-2">
                             @if($module->difficulty_level)
@@ -177,29 +179,6 @@
                                     {{-- Content type icon + title --}}
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-2 flex-wrap">
-                                            {{-- Content type badge --}}
-                                            <span class="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded
-                                                {{ $lesson->content_type === 'video'
-                                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                                                    : ($lesson->content_type === 'text'
-                                                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                                                        : ($lesson->content_type === 'worksheet'
-                                                            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                                                            : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400')) }}">
-                                                @if($lesson->content_type === 'video')
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
-                                                    VIDEO
-                                                @elseif($lesson->content_type === 'text')
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
-                                                    TEXT
-                                                @elseif($lesson->content_type === 'worksheet')
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                                                    WORKSHEET
-                                                @else
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.39 48.39 0 01-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 01-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 00-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 01-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 00.657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 01-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.401.604-.401.959v0c0 .333.277.599.61.58a48.1 48.1 0 005.427-.63 48.05 48.05 0 00.582-4.717.532.532 0 00-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.959.401v0a.656.656 0 00.658-.663 48.422 48.422 0 00-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 01-.61-.58v0z"/></svg>
-                                                    ACTIVITY
-                                                @endif
-                                            </span>
                                             <h4 class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $lesson->title }}</h4>
                                         </div>
                                         <div class="flex items-center gap-3 mt-0.5">
@@ -267,7 +246,7 @@
                                                         <span class="text-[10px] text-gray-400 dark:text-gray-500">{{ $topic->duration }}m</span>
                                                     @endif
                                                     @if($topic->is_prerequisite)
-                                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">REQ</span>
+                                                        <span class="text-[10px] text-gray-400 dark:text-gray-500">· Required</span>
                                                     @endif
                                                 </div>
                                             </div>
@@ -339,7 +318,7 @@
         <div class="space-y-5">
 
             {{-- Enrollment / progress card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 sticky top-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 sticky top-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
 
                 @if($isEnrolled)
                     {{-- Progress --}}

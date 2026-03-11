@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Your Email — Concious Connections</title>
+    <title>Reset Your Password — Concious Connections</title>
     <style>
         body {
             margin: 0;
@@ -35,11 +35,6 @@
             border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.25);
             margin-bottom: 16px;
-        }
-        .logo-card img {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
         }
         .brand-name {
             font-size: 22px;
@@ -101,12 +96,25 @@
             text-align: center;
             margin-bottom: 28px;
         }
+        .warning-box {
+            background: #fef9f0;
+            border-left: 4px solid #f59e0b;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+        }
+        .warning-box p {
+            font-size: 13px;
+            color: #92400e;
+            margin: 0;
+            line-height: 1.5;
+        }
         .divider {
             border: none;
             border-top: 1px solid #f3f4f6;
             margin: 24px 0;
         }
-        .next-steps-title {
+        .tips-title {
             font-size: 13px;
             font-weight: 600;
             color: #374151;
@@ -114,20 +122,20 @@
             letter-spacing: 0.8px;
             margin-bottom: 12px;
         }
-        .next-steps-list {
+        .tips-list {
             list-style: none;
             padding: 0;
             margin: 0 0 24px;
         }
-        .next-steps-list li {
+        .tips-list li {
             font-size: 14px;
             color: #6b7280;
             padding: 5px 0 5px 24px;
             position: relative;
             line-height: 1.5;
         }
-        .next-steps-list li::before {
-            content: '✓';
+        .tips-list li::before {
+            content: '•';
             position: absolute;
             left: 0;
             color: #A30EB2;
@@ -157,9 +165,6 @@
             text-decoration: none;
             margin: 0 8px;
         }
-        .footer-links a:hover {
-            color: #730DB1;
-        }
         .footer-copy {
             font-size: 12px;
             color: #d1d5db;
@@ -176,8 +181,8 @@
             </div>
             <p class="brand-name">Concious Connections</p>
             <div class="header-divider"></div>
-            <h1 class="header-title">Verify Your Email</h1>
-            <p class="header-subtitle">One quick step to activate your account</p>
+            <h1 class="header-title">Password Reset</h1>
+            <p class="header-subtitle">We received a request to reset your password</p>
         </div>
 
         {{-- Body --}}
@@ -186,37 +191,39 @@
                 Hi, <strong>{{ $user->first_name ?? $user->name }}</strong>!
             </p>
             <p class="message">
-                Thanks for joining Concious Connections! We're excited to have you be part of our
-                safe, age-appropriate learning community. Before you can start exploring, please
-                confirm your email address by clicking the button below.
+                We received a request to reset the password for your Concious Connections account
+                linked to <strong>{{ $user->email }}</strong>. Click the button below to choose a new password.
             </p>
 
             <div class="cta-wrapper">
-                <a href="{{ $verificationUrl }}" class="cta-button">
-                    Verify Email Address
+                <a href="{{ $resetUrl }}" class="cta-button">
+                    Reset My Password
                 </a>
             </div>
 
             <p class="expiry-note">⏱ This link expires in <strong>60 minutes</strong>.</p>
 
+            <div class="warning-box">
+                <p>
+                    ⚠️ <strong>Didn't request this?</strong> If you did not request a password reset,
+                    no action is needed — your account is safe and this email can be ignored.
+                </p>
+            </div>
+
             <hr class="divider">
 
-            <p class="next-steps-title">What happens next?</p>
-            <ul class="next-steps-list">
-                <li>Complete your profile with a username and location</li>
-                <li>Browse age-appropriate educational modules</li>
-                <li>Track progress and earn achievements</li>
-                <li>Take quizzes and download certificates</li>
+            <p class="tips-title">Password Tips</p>
+            <ul class="tips-list">
+                <li>Use at least 8 characters</li>
+                <li>Mix uppercase and lowercase letters</li>
+                <li>Add numbers and special characters (e.g., @, #, !)</li>
+                <li>Avoid using your name or email address</li>
             </ul>
 
-            <p class="url-fallback">
+            <div class="url-fallback">
                 If the button doesn't work, copy and paste this link into your browser:<br>
-                <span style="color: #730DB1;">{{ $verificationUrl }}</span>
-            </p>
-
-            <p style="font-size: 13px; color: #9ca3af; margin: 0;">
-                If you did not create an account, you can safely ignore this email.
-            </p>
+                <span style="color: #730DB1;">{{ $resetUrl }}</span>
+            </div>
         </div>
 
         {{-- Footer --}}

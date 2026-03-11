@@ -21,7 +21,7 @@ class PageRenderTest extends TestCase
     {
         $response = $this->get(route('learner.login'));
         $response->assertStatus(200);
-        $response->assertSee('Welcome back');
+        $response->assertSee('Concious Connections');
     }
 
     public function test_register_page_shows_start_your_learning_journey_panel(): void

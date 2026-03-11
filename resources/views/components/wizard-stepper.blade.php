@@ -1,5 +1,3 @@
-@props(['steps' => null])
-
 @php
 // Normalize step keys: support both old (active/done) and new (isActive/isCompleted) formats
 $steps = $steps ? array_map(function ($step) {

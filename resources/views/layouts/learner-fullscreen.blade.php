@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,7 +14,8 @@
 
     <style>
         [x-cloak] { display: none !important; }
-        html, body { overflow: hidden; height: 100%; }
+        html { height: 100%; overflow: hidden; }
+        body { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
     </style>
 
     {{-- Apply dark mode immediately to prevent flash --}}
@@ -30,7 +31,7 @@
 
     @stack('head')
 </head>
-<body class="font-sans antialiased bg-gray-50 dark:bg-gray-900 h-full overflow-hidden" x-data>
+<body class="font-sans antialiased bg-gray-50 dark:bg-gray-900" x-data>
 
     {{-- ═══════════════════════════════════════════════════════════
          FULLSCREEN TOP BAR
@@ -40,22 +41,22 @@
         $fsShields = \App\Models\UserDailyShield::getShields(auth()->user());
     @endphp
 
-    <div class="fixed top-0 left-0 right-0 z-50 h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 gap-3">
+    <div class="flex-shrink-0 h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 gap-3">
 
         {{-- Left: close button + breadcrumb --}}
         <div class="flex items-center gap-3 min-w-0 flex-1">
             <a href="@yield('back-url', route('learner.modules.index'))"
-               class="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+               class="flex-shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                title="Exit lesson">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </a>
             <div class="min-w-0">
-                <p class="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-none truncate hidden sm:block">
+                <p class="text-xs font-medium text-gray-400 dark:text-gray-500 leading-none truncate hidden sm:block">
                     @yield('module-title', '')
                 </p>
-                <p class="text-sm font-semibold text-gray-900 dark:text-white truncate leading-snug">
+                <p class="text-base font-semibold text-gray-900 dark:text-white truncate leading-snug">
                     @yield('lesson-title', 'Lesson')
                 </p>
             </div>
@@ -83,8 +84,8 @@
                 <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{{ $fsShields }}</span>
             </div>
             {{-- Points --}}
-            <div class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40">
-                <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+            <div class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/40">
+                <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
                 </svg>
                 <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{{ number_format($fsGami?->score ?? 0) }}</span>
@@ -109,7 +110,7 @@
     {{-- ═══════════════════════════════════════════════════════════
          BODY (below fixed top bar)
     ═══════════════════════════════════════════════════════════ --}}
-    <div class="flex h-full pt-14" style="height: 100vh;">
+    <div class="flex-1 min-h-0 overflow-hidden">
         @yield('content')
     </div>
 

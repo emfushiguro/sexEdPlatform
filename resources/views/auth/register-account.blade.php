@@ -3,7 +3,6 @@
         <div class="h-full flex flex-col items-center justify-center p-12 text-center">
             <div class="mb-6">
                 <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
-                <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
             </div>
             <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Almost there!</h2>
             <p class="text-white/80 text-lg max-w-xs">Just your login details left</p>
@@ -20,7 +19,6 @@
     <!-- Heading -->
     <div class="mb-6">
         <h2 class="text-3xl font-bold text-purple-900">Account Information</h2>
-        <p class="mt-1 text-sm text-gray-500">Step 2 of 2 — Set up your login credentials</p>
     </div>
 
     <!-- Account Form -->
@@ -35,7 +33,7 @@
 
                         <!-- Email Address -->
                         <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-gray-400 font-normal">(Gmail only)</span></label>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                             <input
                                 id="email"
                                 type="email"
@@ -121,7 +119,8 @@
                             <button
                                 type="submit"
                                 :disabled="loading"
-                                class="w-full bg-brand-purple-primary text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:bg-brand-purple-dark transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                class="w-full flex items-center justify-center gap-2 py-3.5 px-6 font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span x-show="!loading">Create Account</span>
                                 <span x-show="loading" class="flex items-center gap-2">
@@ -145,11 +144,11 @@
                     <!-- Footer Links -->
                     <div class="mt-6 pt-4 border-t border-gray-200">
                         <div class="flex items-center justify-center gap-4 text-xs text-gray-500">
-                            <a href="#" class="hover:text-brand-purple-primary transition-colors">Help</a>
+                            <button type="button" @click="$dispatch('open-help')" class="hover:text-brand-purple-primary transition-colors">Help</button>
                             <span class="text-gray-300">|</span>
-                            <a href="{{ route('terms') }}" class="hover:text-brand-purple-primary transition-colors">Terms</a>
+                            <button type="button" @click="$dispatch('open-terms')" class="hover:text-brand-purple-primary transition-colors">Terms</button>
                             <span class="text-gray-300">|</span>
-                            <a href="{{ route('privacy') }}" class="hover:text-brand-purple-primary transition-colors">Privacy</a>
+                            <button type="button" @click="$dispatch('open-privacy')" class="hover:text-brand-purple-primary transition-colors">Privacy</button>
                         </div>
                     </div>
                 </form>

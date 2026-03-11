@@ -123,7 +123,7 @@
             @if($recommendedModules->isEmpty())
                 <div class="bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-8 text-center">
                     <p class="text-sm text-gray-400 dark:text-gray-500">
-                        You've explored all available modules for your age group — great work! 🎉
+                        You've explored all available modules for your age group — great work!
                     </p>
                 </div>
             @else

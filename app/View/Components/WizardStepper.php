@@ -10,28 +10,36 @@ class WizardStepper extends Component
     public ?array $steps;
 
     private const LEARNER_FLOW = [
-        ['label' => 'Personal Info',     'route' => 'register'],
-        ['label' => 'Account Info',      'route' => 'register.account'],
-        ['label' => 'Verify Email',      'route' => 'verification.notice'],
-        ['label' => 'Complete Profile',  'route' => 'profile.complete'],
+        ['label' => 'Personal Info', 'route' => 'register'],
+        ['label' => 'Account Info',  'route' => 'register.account'],
+        ['label' => 'Verify Email',  'route' => 'verification.notice'],
+        ['label' => 'Profile',       'route' => 'profile.complete'],
     ];
 
+    // Parent registers their own account first (4 steps — mirrors learner flow)
     private const PARENT_FLOW = [
-        ['label' => 'Personal Info',         'route' => 'register'],
-        ['label' => 'Parent Required',       'route' => 'parent.registration.required'],
-        ['label' => 'Parent Registers',      'route' => 'parent.register'],
-        ['label' => 'Verify Email',          'route' => 'verification.notice'],
-        ['label' => 'Complete Profile',      'route' => 'profile.complete'],
-        ['label' => 'Create Child Account',  'route' => 'parent.create-child'],
+        ['label' => 'Personal Info', 'route' => 'parent.register'],
+        ['label' => 'Account Info',  'route' => 'parent.register.account'],
+        ['label' => 'Verify Email',  'route' => 'verification.notice'],
+        ['label' => 'Profile',       'route' => 'profile.complete'],
     ];
 
     public function __construct(
         private ?string $currentRoute = null,
         private ?bool $isParentFlow = null,
+        ?array $steps = null,
     ) {
         $this->currentRoute = $currentRoute ?? Route::currentRouteName() ?? '';
-        $this->isParentFlow = $isParentFlow ?? (bool) session('is_parent_registration');
-        $this->steps = $this->buildSteps();
+
+        // Detect parent flow via session flag OR by being on a parent-only route
+        // (the session flag is not yet set when parent first visits parent.register)
+        $this->isParentFlow = $isParentFlow ?? (
+            (bool) session('is_parent_registration') ||
+            in_array($this->currentRoute, ['parent.register', 'parent.register.account'])
+        );
+
+        // Explicit :steps prop (from child wizard pages) takes priority over auto-detection
+        $this->steps = $steps ?? $this->buildSteps();
     }
 
     private function buildSteps(): ?array

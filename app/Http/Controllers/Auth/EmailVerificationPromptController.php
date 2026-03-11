@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Schoolees\Psgc\Models\City;
+use Schoolees\Psgc\Models\Barangay;
 
 class EmailVerificationPromptController extends Controller
 {
@@ -14,17 +16,36 @@ class EmailVerificationPromptController extends Controller
      */
     public function __invoke(Request $request): RedirectResponse|View
     {
-        if ($request->user()->hasVerifiedEmail()) {
-            if ($request->query('verified') == '1') {
-                // Show success state with countdown that redirects to profile
-                return view('auth.verify-email', ['showSuccess' => true]);
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            if ($user->hasCompletedProfile()) {
+                return redirect()->route('learner.dashboard');
             }
-            // Already verified with no context — send to appropriate destination
-            return $request->user()->hasCompletedProfile()
-                ? redirect()->route('learner.dashboard')
-                : redirect()->route('profile.complete');
+
+            // Verified but profile not yet complete — show inline profile form
+            $learnerProfile = $user->learnerProfile;
+            $cities = City::where('province_code', '402100000')->orderBy('name')->get();
+            $barangays = collect();
+            if ($learnerProfile && $learnerProfile->city_code) {
+                $barangays = Barangay::where('city_code', $learnerProfile->city_code)
+                    ->orderBy('name')
+                    ->get();
+            }
+
+            return view('auth.verify-email', [
+                'showSuccess'    => true,
+                'learnerProfile' => $learnerProfile,
+                'cities'         => $cities,
+                'barangays'      => $barangays,
+            ]);
         }
 
-        return view('auth.verify-email', ['showSuccess' => false]);
+        return view('auth.verify-email', [
+            'showSuccess'    => false,
+            'learnerProfile' => null,
+            'cities'         => collect(),
+            'barangays'      => collect(),
+        ]);
     }
 }

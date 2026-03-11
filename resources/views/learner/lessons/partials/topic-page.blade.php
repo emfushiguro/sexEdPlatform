@@ -437,8 +437,8 @@
                 @endif
             </div>
 
-            <!-- Navigation Buttons -->
-            <div class="mt-8 flex items-center justify-between border-t pt-6">
+            {{-- Navigation buttons moved to the persistent bottom action bar in show.blade.php --}}
+            <div class="hidden">
                 <div>
                     @if($currentTopicIndex > 0)
                         <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $currentTopicIndex - 1]) }}" 

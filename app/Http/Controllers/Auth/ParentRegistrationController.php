@@ -29,7 +29,9 @@ class ParentRegistrationController extends Controller
      */
     public function create(): View
     {
-        return view('auth.parent-register');
+        return view('auth.parent-register', [
+            'parentInfo' => session('pending_parent_info', []),
+        ]);
     }
 
     /**
@@ -152,6 +154,10 @@ class ParentRegistrationController extends Controller
         if (!auth()->user()->canBeParent()) {
             abort(403, 'You must be 18 or older to create a child account.');
         }
+
+        // Clear stale in-progress data from an abandoned session, but keep
+        // pending_child_registration — it holds the original child's info for pre-fill
+        session()->forget(['child_step1', 'child_step2', 'child_created_name']);
 
         return view('auth.create-child-account', [
             'pendingChild' => session('pending_child_registration', []),
@@ -319,7 +325,7 @@ class ParentRegistrationController extends Controller
             'relationship_verified_at'=> now(),
         ]);
 
-        session()->forget(['child_step1', 'child_step2']);
+        session()->forget(['child_step1', 'child_step2', 'pending_child_registration']);
         session(['child_created_name' => $step1['first_name']]);
 
         return redirect()->route('parent.create-child.done');

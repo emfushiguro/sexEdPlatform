@@ -182,5 +182,8 @@
             });
         })();
     </script>
+    <!-- Legal + Help Modals (available on every auth page) -->
+    <x-legal-modals />
+    
 </body>
 </html>

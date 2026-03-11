@@ -10,17 +10,12 @@
         </div>
     </x-slot>
 
-    <x-wizard-stepper :steps="[
-        ['label' => 'Personal Info', 'active' => false, 'done' => true],
-        ['label' => 'Account Info', 'active' => true, 'done' => false],
-        ['label' => 'Verify Email', 'active' => false, 'done' => false],
-        ['label' => 'Profile', 'active' => false, 'done' => false],
-    ]" />
+    <x-wizard-stepper />
 
     <!-- Header -->
     <div class="mb-5">
         <h2 class="text-2xl font-bold text-purple-900">Account Information</h2>
-        <p class="mt-1 text-sm text-gray-500">Step 2 of 2 — Set up your login credentials</p>
+        <p class="mt-1 text-sm text-gray-500">Set up your login credentials</p>
     </div>
 
     @if ($errors->any())
@@ -42,8 +37,7 @@
             <!-- Email -->
             <div>
                 <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address <span class="text-red-500">*</span>
-                    <span class="text-xs text-blue-600 font-normal ml-1">(Gmail only)</span>
+                    Email Address
                 </label>
                 <input id="email" name="email" type="email" required value="{{ old('email') }}"
                        placeholder="parent@gmail.com"
@@ -55,7 +49,7 @@
             <!-- Password -->
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
-                    Password <span class="text-red-500">*</span>
+                    Password
                 </label>
                 <div class="relative">
                     <input id="password" name="password" :type="showPassword ? 'text' : 'password'" required
@@ -79,7 +73,7 @@
             <!-- Confirm Password -->
             <div>
                 <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm Password <span class="text-red-500">*</span>
+                    Confirm Password
                 </label>
                 <div class="relative">
                     <input id="password_confirmation" name="password_confirmation" :type="showConfirm ? 'text' : 'password'" required
@@ -105,9 +99,9 @@
                            class="mt-0.5 h-4 w-4 text-brand-purple-primary border-gray-300 rounded focus:ring-brand-purple-primary">
                     <span class="text-sm text-gray-600">
                         I agree to the
-                        <a href="{{ route('terms') }}" target="_blank" class="text-brand-purple-primary hover:underline font-medium">Terms of Service</a>
+                        <button type="button" @click="$dispatch('open-terms')" class="text-brand-purple-primary hover:underline font-medium">Terms of Service</button>
                         and
-                        <a href="{{ route('privacy') }}" target="_blank" class="text-brand-purple-primary hover:underline font-medium">Privacy Policy</a>
+                        <button type="button" @click="$dispatch('open-privacy')" class="text-brand-purple-primary hover:underline font-medium">Privacy Policy</button>
                     </span>
                 </label>
             </div>
@@ -117,11 +111,11 @@
                 <button type="submit"
                         style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                         class="w-full flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
-                    Create Parent Account →
+                    Create Parent Account
                 </button>
                 <a href="{{ route('parent.register') }}"
                    class="w-full block text-center py-2.5 px-6 rounded-xl text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 transition">
-                    ← Back to Personal Info
+                    Back to Personal Info
                 </a>
             </div>
 

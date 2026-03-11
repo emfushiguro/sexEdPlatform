@@ -52,6 +52,12 @@
           x-init="if (cityCode) loadBarangays(cityCode)">
         @csrf
 
+        @php
+            $locationPrefill = !empty($preFilledCity ?? '');
+            $locSelectClass  = 'w-full px-3 py-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition ' .
+                ($locationPrefill ? 'bg-purple-50 border border-purple-300' : 'bg-gray-50 border border-gray-200');
+        @endphp
+
         @if($preFilledCity ?? false)
             <div class="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mb-5">
                 <svg class="w-4 h-4 text-purple-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -69,7 +75,7 @@
             <select id="city_code" name="city_code" required
                     x-model="cityCode"
                     @change="loadBarangays(cityCode)"
-                    class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
+                    class="{{ $locSelectClass }}">
                 <option value="">Select municipality / city</option>
                 @foreach($cities as $city)
                     <option value="{{ $city->code }}" {{ old('city_code', $preFilledCity ?? '') == $city->code ? 'selected' : '' }}>
@@ -88,7 +94,7 @@
                 Barangay <span class="text-red-500">*</span>
             </label>
             <select id="barangay_code" name="barangay_code" required
-                    class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition"
+                    class="{{ $locSelectClass }}"
                     :disabled="!cityCode || loading">
                 <option value="">
                     <span x-show="!cityCode">Select a city first</span>
@@ -109,7 +115,7 @@
             <a href="{{ route('parent.create-child') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
             <button type="submit"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
-                    class="inline-flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
+                    class="inline-flex items-center justify-center gap-2 px-8 py-3.5 font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
                 Continue — Login Details →
             </button>
         </div>

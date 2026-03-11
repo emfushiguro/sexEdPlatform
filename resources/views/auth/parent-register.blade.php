@@ -10,17 +10,12 @@
         </div>
     </x-slot>
 
-    <x-wizard-stepper :steps="[
-        ['label' => 'Personal Info', 'active' => true, 'done' => false],
-        ['label' => 'Account Info', 'active' => false, 'done' => false],
-        ['label' => 'Verify Email', 'active' => false, 'done' => false],
-        ['label' => 'Profile', 'active' => false, 'done' => false],
-    ]" />
+    <x-wizard-stepper />
 
     <!-- Header -->
     <div class="mb-5">
         <h2 class="text-2xl font-bold text-purple-900">Personal Information</h2>
-        <p class="mt-1 text-sm text-gray-500">Step 1 of 2 — Tell us about yourself</p>
+        <p class="mt-1 text-sm text-gray-500">Tell us about yourself</p>
     </div>
 
     @if ($errors->any())
@@ -35,7 +30,7 @@
 
     <form method="POST" action="{{ route('parent.register.store') }}"
           x-data="{
-              birthdate: '{{ old('birthdate') }}',
+              birthdate: '{{ old('birthdate', $parentInfo['birthdate'] ?? '') }}',
               age: null,
               calculateAge() {
                   if (!this.birthdate) { this.age = null; return; }
@@ -56,14 +51,14 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
-                    <input id="first_name" name="first_name" type="text" required value="{{ old('first_name') }}"
+                    <input id="first_name" name="first_name" type="text" required value="{{ old('first_name', $parentInfo['first_name'] ?? '') }}"
                            placeholder="Juan"
                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                     @error('first_name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name <span class="text-red-500">*</span></label>
-                    <input id="last_name" name="last_name" type="text" required value="{{ old('last_name') }}"
+                    <input id="last_name" name="last_name" type="text" required value="{{ old('last_name', $parentInfo['last_name'] ?? '') }}"
                            placeholder="dela Cruz"
                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                     @error('last_name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
@@ -74,7 +69,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label for="middle_initial" class="block text-sm font-medium text-gray-700 mb-1">Middle Initial <span class="text-gray-400 font-normal text-xs">(Optional)</span></label>
-                    <input id="middle_initial" name="middle_initial" type="text" value="{{ old('middle_initial') }}"
+                    <input id="middle_initial" name="middle_initial" type="text" value="{{ old('middle_initial', $parentInfo['middle_initial'] ?? '') }}"
                            maxlength="10" placeholder="D."
                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                     @error('middle_initial')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
@@ -83,13 +78,14 @@
                     <label for="suffix" class="block text-sm font-medium text-gray-700 mb-1">Suffix <span class="text-gray-400 font-normal text-xs">(Optional)</span></label>
                     <select id="suffix" name="suffix"
                             class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
+                        @php $psfx = old('suffix', $parentInfo['suffix'] ?? ''); @endphp
                         <option value="">-- None --</option>
-                        <option value="Jr." {{ old('suffix') == 'Jr.' ? 'selected' : '' }}>Jr.</option>
-                        <option value="Sr." {{ old('suffix') == 'Sr.' ? 'selected' : '' }}>Sr.</option>
-                        <option value="II"  {{ old('suffix') == 'II'  ? 'selected' : '' }}>II</option>
-                        <option value="III" {{ old('suffix') == 'III' ? 'selected' : '' }}>III</option>
-                        <option value="IV"  {{ old('suffix') == 'IV'  ? 'selected' : '' }}>IV</option>
-                        <option value="V"   {{ old('suffix') == 'V'   ? 'selected' : '' }}>V</option>
+                        <option value="Jr." {{ $psfx == 'Jr.' ? 'selected' : '' }}>Jr.</option>
+                        <option value="Sr." {{ $psfx == 'Sr.' ? 'selected' : '' }}>Sr.</option>
+                        <option value="II"  {{ $psfx == 'II'  ? 'selected' : '' }}>II</option>
+                        <option value="III" {{ $psfx == 'III' ? 'selected' : '' }}>III</option>
+                        <option value="IV"  {{ $psfx == 'IV'  ? 'selected' : '' }}>IV</option>
+                        <option value="V"   {{ $psfx == 'V'   ? 'selected' : '' }}>V</option>
                     </select>
                     @error('suffix')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
@@ -100,7 +96,7 @@
                 <label for="birthdate" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth <span class="text-red-500">*</span></label>
                 <input id="birthdate" name="birthdate" type="date"
                        x-model="birthdate" @change="calculateAge()"
-                       value="{{ old('birthdate') }}" required
+                       value="{{ old('birthdate', $parentInfo['birthdate'] ?? '') }}" required
                        min="{{ now()->subYears(100)->format('Y-m-d') }}"
                        max="{{ now()->subYears(18)->format('Y-m-d') }}"
                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
@@ -123,7 +119,7 @@
                 <button type="submit"
                         style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                         class="w-full flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
-                    Continue — Account Info →
+                    Continue
                 </button>
                 <div class="mt-4 text-center text-sm text-gray-600">
                     Already have an account?

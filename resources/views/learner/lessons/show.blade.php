@@ -17,148 +17,279 @@
                  style="width: {{ $progressPct }}%; background: linear-gradient(to right, #A30EB2, #3B0CB1);"></div>
         </div>
         <span class="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
-            {{ $doneCount }}/{{ $topicCount }}
+            {{ $doneCount }}/{{ $topicCount }} topics
         </span>
     </div>
 @endsection
 
 @section('content')
-<div class="flex h-full overflow-hidden">
+<div class="flex h-full min-h-0">
 
     {{-- ═══════════════════════════════════════════
-         LEFT SIDEBAR — Lesson Content List
+         LEFT SIDEBAR — Module Curriculum Overview
     ═══════════════════════════════════════════ --}}
-    <aside class="w-[300px] flex-shrink-0 h-full flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+    @php
+        $_totalLessons = $allLessons->count();
+        $_doneLessons  = count($completedLessonIds);
+        $_modPct       = $_totalLessons > 0 ? round($_doneLessons / $_totalLessons * 100) : 0;
 
-        {{-- Panel Header --}}
-        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-            <p class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Lesson Content</p>
-            <p class="text-sm font-semibold text-gray-900 dark:text-white leading-tight line-clamp-2">{{ $lesson->title }}</p>
+        // Pre-compute locked lessons for sequential access enforcement
+        $sidebarLockedIds = [];
+        $__prevDone = true;
+        foreach ($allLessons as $__si => $__sl) {
+            if ($__si > 0 && !$__prevDone) {
+                $sidebarLockedIds[] = $__sl->id;
+            }
+            $__prevDone = in_array($__sl->id, $completedLessonIds);
+        }
+    @endphp
+
+    <aside class="w-[280px] flex-shrink-0 h-full flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
+           x-data="{
+               q: '',
+               open: {{ $lesson->id }},
+               lessonVisible(sc) {
+                   const term = this.q.toLowerCase().trim();
+                   return !term || sc.includes(term);
+               },
+               lessonOpen(id, sc) {
+                   const term = this.q.toLowerCase().trim();
+                   if (term) return sc.includes(term);
+                   return this.open === id;
+               }
+           }">
+
+        {{-- Module Progress Header --}}
+        <div class="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+            <p class="text-xs font-semibold text-purple-600 dark:text-purple-400 truncate" title="{{ $module->title }}">{{ $module->title }}</p>
+            <div class="flex items-center justify-between mt-2 mb-1.5">
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ $_doneLessons }}/{{ $_totalLessons }} lessons</p>
+                <span class="text-sm font-bold" style="color: #A30EB2;">{{ $_modPct }}%</span>
+            </div>
+            <div class="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500"
+                     style="width: {{ $_modPct }}%; background: linear-gradient(to right, #A30EB2, #3B0CB1);"></div>
+            </div>
         </div>
 
-        {{-- Scrollable Topic List --}}
-        <div class="flex-1 overflow-y-auto py-2 px-3 space-y-1">
+        {{-- Search --}}
+        <div class="px-3 py-2.5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+            <div class="relative">
+                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" x-model="q"
+                       placeholder="Search lessons, topics, quizzes…"
+                       class="w-full pl-8 pr-7 py-2 text-sm rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
+                <button x-show="q" @click="q = ''" x-cloak
+                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
 
-            @foreach($lessonTopics as $index => $topic)
+        {{-- Scrollable lesson accordion --}}
+        <div class="flex-1 overflow-y-auto">
+            @foreach($allLessons as $__l)
                 @php
-                    $isCompleted = in_array($topic->id, $completedTopicIds);
-                    $isLocked    = in_array($topic->id, $lockedTopicIds);
-                    $isCurrent   = $currentTopicIndex === $index && !request()->has('quiz');
+                    $__lIsCompleted = in_array($__l->id, $completedLessonIds);
+                    $__lIsCurrent   = $__l->id === $lesson->id;
+                    $__lIsLocked    = in_array($__l->id, $sidebarLockedIds);
+                    $__lTopics      = $__l->topics;
+                    $__lTopicCount  = $__lTopics->count();
+                    $__lDoneCount   = $__lTopics->filter(fn($t) => in_array($t->id, $allCompletedTopicIds))->count();
+                    $__lQuiz        = $__l->quiz;
+                    $__lTotalItems  = $__lTopicCount + ($__lQuiz ? 1 : 0);
+                    $__lDoneItems   = $__lDoneCount + (($__lIsCurrent && ($quizAttempt?->passed ?? false)) ? 1 : 0);
+                    // Build searchable content string: lesson + all topic titles + quiz title
+                    $__sc = strtolower(
+                        $__l->title . ' ' .
+                        $__lTopics->pluck('title')->implode(' ') . ' ' .
+                        ($__lQuiz?->title ?? '')
+                    );
                 @endphp
 
-                @php
-                    $typeConfig = match($topic->type) {
-                        'video'     => ['bg' => 'bg-blue-50 dark:bg-blue-900/20',    'text' => 'text-blue-500',   'icon' => 'video'],
-                        'text'      => ['bg' => 'bg-indigo-50 dark:bg-indigo-900/20','text' => 'text-indigo-500', 'icon' => 'text'],
-                        'worksheet' => ['bg' => 'bg-green-50 dark:bg-green-900/20',  'text' => 'text-green-600',  'icon' => 'worksheet'],
-                        'quiz'      => ['bg' => 'bg-purple-50 dark:bg-purple-900/20','text' => 'text-purple-500', 'icon' => 'quiz'],
-                        default     => ['bg' => 'bg-gray-100 dark:bg-gray-800',      'text' => 'text-gray-500',   'icon' => 'default'],
-                    };
-                @endphp
+                <div class="border-b border-gray-100 dark:border-gray-800 last:border-b-0"
+                     x-show="lessonVisible({{ json_encode($__sc) }})">
 
-                @if($isLocked)
-                    <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl opacity-50 cursor-not-allowed select-none">
-                        {{-- Type icon --}}
-                        <div class="flex-shrink-0 w-7 h-7 rounded-lg {{ $typeConfig['bg'] }} {{ $typeConfig['text'] }} flex items-center justify-center">
-                            @include('learner.lessons.partials.topic-type-icon', ['iconType' => $typeConfig['icon']])
-                        </div>
-                        {{-- Lock icon --}}
-                        <div class="flex-shrink-0">
-                            <svg class="w-4 h-4 text-gray-300 dark:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        {{-- Text --}}
-                        <div class="flex-1 min-w-0">
-                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{{ $topic->title }}</p>
-                            <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-                                {{ $topic->duration }} min{{ $topic->is_prerequisite ? ' · Required' : '' }}
-                            </p>
-                        </div>
-                    </div>
-
-                @else
-                    <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $index]) }}"
-                       class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors group
-                              {{ $isCurrent
-                                  ? 'bg-violet-50 dark:bg-violet-900/10 border-l-2 border-violet-600'
-                                  : 'hover:bg-gray-50 dark:hover:bg-gray-800/60 border-l-2 border-transparent' }}">
-                        {{-- Type icon --}}
-                        <div class="flex-shrink-0 w-7 h-7 rounded-lg {{ $typeConfig['bg'] }} {{ $typeConfig['text'] }} flex items-center justify-center">
-                            @include('learner.lessons.partials.topic-type-icon', ['iconType' => $typeConfig['icon']])
-                        </div>
-                        {{-- Completion state --}}
-                        <div class="flex-shrink-0">
-                            @if($isCompleted)
-                                <svg class="w-4 h-4 text-violet-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    {{-- ── Lesson Header ── --}}
+                    @if($__lIsLocked)
+                        <div class="flex items-center gap-3 px-4 py-3.5 opacity-40 cursor-not-allowed select-none">
+                            <div class="flex-shrink-0 w-7 h-7 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
+                                <svg class="w-3.5 h-3.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
                                 </svg>
-                            @elseif($isCurrent)
-                                <div class="w-4 h-4 rounded-full border-2 border-violet-500 flex items-center justify-center">
-                                    <div class="w-1.5 h-1.5 rounded-full bg-violet-500"></div>
-                                </div>
-                            @else
-                                <div class="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-gray-600"></div>
-                            @endif
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 leading-snug">{{ $__l->title }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ $__lTotalItems }} items · Locked</p>
+                            </div>
                         </div>
-                        {{-- Text --}}
-                        <div class="flex-1 min-w-0">
-                            <p class="text-xs font-medium truncate
-                                      {{ $isCurrent ? 'text-violet-700 dark:text-violet-300' : 'text-gray-800 dark:text-gray-200' }}">
-                                {{ $topic->title }}
-                            </p>
-                            <p class="text-[11px] mt-0.5
-                                      {{ $isCurrent ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500' }}">
-                                {{ $topic->duration }} min{{ $topic->is_prerequisite ? ' · Required' : '' }}
-                            </p>
-                        </div>
-                    </a>
-                @endif
-            @endforeach
-
-            {{-- Lesson Quiz Row (only when all topics are done) --}}
-            @if($lessonQuiz && count($completedTopicIds) === $lessonTopics->count())
-                @php $isQuizActive = request()->has('quiz'); @endphp
-                <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1]) }}"
-                   class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors border-l-2
-                          {{ $isQuizActive
-                              ? 'bg-violet-50 dark:bg-violet-900/10 border-violet-600'
-                              : 'hover:bg-gray-50 dark:hover:bg-gray-800/60 border-transparent' }}">
-                    {{-- Quiz icon --}}
-                    <div class="flex-shrink-0 w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                        </svg>
-                    </div>
-                    {{-- Completion --}}
-                    <div class="flex-shrink-0">
-                        @if($quizAttempt && $quizAttempt->passed)
-                            <svg class="w-4 h-4 text-violet-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    @else
+                        <button type="button"
+                                @click="open = open === {{ $__l->id }} ? null : {{ $__l->id }}"
+                                class="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors
+                                       {{ $__lIsCurrent ? 'bg-violet-50 dark:bg-violet-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50' }}">
+                            <div class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center
+                                {{ $__lIsCompleted
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/40'
+                                    : ($__lIsCurrent
+                                        ? 'bg-violet-100 dark:bg-violet-900/30 border-2 border-violet-500'
+                                        : 'border-2 border-gray-200 dark:border-gray-600') }}">
+                                @if($__lIsCompleted)
+                                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                @elseif($__lIsCurrent)
+                                    <div class="w-2.5 h-2.5 rounded-full bg-violet-500"></div>
+                                @endif
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold leading-snug
+                                          {{ $__lIsCurrent ? 'text-violet-700 dark:text-violet-300' : 'text-gray-800 dark:text-gray-100' }}">
+                                    {{ $__l->title }}
+                                </p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ $__lDoneItems }}/{{ $__lTotalItems }} items</p>
+                            </div>
+                            <svg class="flex-shrink-0 w-4 h-4 text-gray-400 transition-transform duration-200"
+                                 :class="lessonOpen({{ $__l->id }}, {{ json_encode($__sc) }}) ? 'rotate-180' : ''"
+                                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                             </svg>
-                        @else
-                            <div class="w-4 h-4 rounded-full border-2 {{ $isQuizActive ? 'border-violet-500' : 'border-gray-300 dark:border-gray-600' }}"></div>
+                        </button>
+                    @endif
+
+                    {{-- ── Expanded stepper (flex-column — zero absolute positioning, overflow safe) ── --}}
+                    @if(!$__lIsLocked)
+                    <div x-show="lessonOpen({{ $__l->id }}, {{ json_encode($__sc) }})"
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         class="px-4 pt-1 pb-2">
+
+                        @foreach($__lTopics as $__tIdx => $__t)
+                            @php
+                                $__tIsLast  = $loop->last && !$__lQuiz;
+                                $__tDone    = in_array($__t->id, $allCompletedTopicIds);
+                                $__tCurrent = $__lIsCurrent && $currentTopicIndex === $__tIdx && !request()->has('quiz');
+                                $__tLocked  = $__lIsCurrent && in_array($__t->id, $lockedTopicIds);
+                                $__tLabel   = match($__t->type) {
+                                    'video'       => 'VIDEO',
+                                    'text'        => 'TEXT',
+                                    'worksheet'   => 'FILE',
+                                    'quiz'        => 'QUIZ',
+                                    'interactive' => 'INTERACTIVE',
+                                    default       => 'CONTENT',
+                                };
+                                $__tUrl = route('learner.lessons.show', ['lesson' => $__l->id, 'topic' => $__tIdx]);
+                            @endphp
+
+                            {{-- Flex-column stepper row --}}
+                            <div class="flex gap-3 {{ $__tLocked ? 'opacity-50' : '' }}">
+                                {{-- Left: dot + connector --}}
+                                <div class="flex flex-col items-center flex-shrink-0" style="width:16px;">
+                                <div class="mt-3 flex-shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center
+                                            {{ $__tDone
+                                                ? 'bg-violet-600'
+                                                : ($__tCurrent
+                                                    ? 'bg-white border-2 border-violet-500'
+                                                    : 'bg-white border-2 border-gray-300 dark:border-gray-600') }}">
+                                        @if($__tDone)
+                                            <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                        @endif
+                                    </div>
+                                    @if(!$__tIsLast)
+                                        <div class="flex-1 mt-1 min-h-[8px] rounded-full"
+                                             style="width:2px; background:{{ $__tDone ? '#c4b5fd' : '#e5e7eb' }};"></div>
+                                    @endif
+                                </div>
+                                {{-- Right: content --}}
+                                <div class="flex-1 min-w-0 {{ !$__tIsLast ? 'pb-3' : 'pb-1' }}">
+                                    @if($__tLocked)
+                                        <div class="py-0.5 cursor-not-allowed">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400 leading-snug">{{ $__t->title }}</p>
+                                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ $__t->duration }}m · {{ $__tLabel }}{{ $__t->is_prerequisite ? ' · Required' : '' }}</p>
+                                        </div>
+                                    @else
+                                        <a href="{{ $__tUrl }}"
+                                           class="block rounded-lg py-0.5 px-2 -mx-2 transition-colors
+                                                  {{ $__tCurrent ? 'bg-violet-50 dark:bg-violet-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60' }}">
+                                            <p class="text-sm font-medium leading-snug
+                                                       {{ $__tCurrent ? 'text-violet-700 dark:text-violet-300' : 'text-gray-700 dark:text-gray-200' }}">
+                                                {{ $__t->title }}
+                                            </p>
+                                            <p class="text-xs mt-0.5 {{ $__tCurrent ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500' }}">
+                                                {{ $__t->duration }}m · {{ $__tLabel }}{{ $__t->is_prerequisite ? ' · Required' : '' }}
+                                            </p>
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+
+                        {{-- Quiz step (always shown if quiz exists) --}}
+                        @if($__lQuiz)
+                            @php
+                                $__qActive  = $__lIsCurrent && request()->has('quiz');
+                                $__qDone    = $__lIsCurrent && ($quizAttempt?->passed ?? false);
+                                $__qLocked  = $__lDoneCount < $__lTopicCount;
+                                $__qUrl     = route('learner.lessons.show', ['lesson' => $__l->id, 'quiz' => 1]);
+                            @endphp
+                            <div class="flex gap-3 {{ $__qLocked ? 'opacity-50' : '' }}">
+                                <div class="flex flex-col items-center flex-shrink-0" style="width:16px;">
+                                    <div class="mt-3 flex-shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center
+                                                {{ $__qDone
+                                                    ? 'bg-violet-600'
+                                                    : ($__qActive
+                                                        ? 'bg-white border-2 border-violet-500'
+                                                        : 'bg-white border-2 border-gray-300 dark:border-gray-600') }}">
+                                        @if($__qDone)
+                                            <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                        @endif
+                                    </div>
+                                    {{-- No connector after last item --}}
+                                </div>
+                                <div class="flex-1 min-w-0 pb-1">
+                                    @if($__qLocked)
+                                        <div class="py-0.5 cursor-not-allowed">
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400 leading-snug">{{ $__lQuiz->title }}</p>
+                                            <p class="text-xs text-gray-400 mt-0.5">{{ $__lQuiz->questions->count() }} questions · QUIZ · Complete topics first</p>
+                                        </div>
+                                    @else
+                                        <a href="{{ $__qUrl }}"
+                                           class="block rounded-lg py-0.5 px-2 -mx-2 transition-colors
+                                                  {{ $__qActive ? 'bg-violet-50 dark:bg-violet-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60' }}">
+                                            <p class="text-sm font-medium leading-snug
+                                                       {{ $__qActive ? 'text-violet-700 dark:text-violet-300' : 'text-gray-700 dark:text-gray-200' }}">
+                                                {{ $__lQuiz->title }}
+                                            </p>
+                                            <p class="text-xs mt-0.5 {{ $__qActive ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500' }}">
+                                                {{ $__lQuiz->questions->count() }} questions · QUIZ
+                                            </p>
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
                         @endif
-                    </div>
-                    {{-- Text --}}
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs font-medium truncate {{ $isQuizActive ? 'text-violet-700 dark:text-violet-300' : 'text-gray-800 dark:text-gray-200' }}">
-                            {{ $lessonQuiz->title }}
-                        </p>
-                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-                            {{ $lessonQuiz->questions->count() }} questions
-                        </p>
-                    </div>
-                </a>
-            @endif
 
-        </div>
+                    </div>
+                    @endif
 
-        {{-- Panel Footer: Back to Module --}}
-        <div class="flex-shrink-0 px-5 py-3 border-t border-gray-100 dark:border-gray-800">
+                </div>{{-- end lesson item --}}
+            @endforeach
+        </div>{{-- end scrollable --}}
+
+        {{-- Footer: Back to Module --}}
+        <div class="flex-shrink-0 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
             <a href="{{ route('learner.modules.show', $module) }}"
-               class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+               class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
                 </svg>
                 Back to Module
@@ -169,26 +300,149 @@
     {{-- ═══════════════════════════════════════════
          RIGHT — Main Content
     ═══════════════════════════════════════════ --}}
-    <main class="flex-1 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
-        <div class="max-w-4xl mx-auto px-4 py-6">
+    <main class="flex-1 min-w-0 h-full flex flex-col bg-gray-50 dark:bg-gray-950">
+        {{-- Scrollable content --}}
+        <div class="flex-1 overflow-y-auto">
+            <div class="max-w-4xl mx-auto px-4 py-6">
 
-            @if(request()->has('quiz') && $lessonQuiz)
-                @include('learner.lessons.partials.quiz-page')
-            @elseif($currentTopic)
-                @include('learner.lessons.partials.topic-page')
-            @else
-                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-12 text-center">
-                    <svg class="mx-auto h-14 w-14 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">No content available for this lesson.</p>
-                </div>
-            @endif
+                @if(request()->has('quiz') && $lessonQuiz)
+                    @include('learner.lessons.partials.quiz-page')
+                @elseif($currentTopic)
+                    @include('learner.lessons.partials.topic-page')
+                @else
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] p-12 text-center">
+                        <svg class="mx-auto h-14 w-14 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No content available for this lesson.</p>
+                    </div>
+                @endif
 
-            {{-- NOTE: "About this Lesson" block intentionally removed per design --}}
-
+            </div>
         </div>
-    </main>
 
+        {{-- ── Bottom Action Bar — always visible, no scrolling required ── --}}
+        @if($currentTopic && !request()->has('quiz'))
+        @php
+            $__barDone     = in_array($currentTopic->id, $completedTopicIds);
+            $__isLastTopic = $currentTopicIndex >= $lessonTopics->count() - 1;
+        @endphp
+        <div class="flex-shrink-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+
+            {{-- Left: Previous + Mark as Incomplete --}}
+            <div class="flex items-center gap-3">
+                @if($currentTopicIndex > 0)
+                    <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $currentTopicIndex - 1]) }}"
+                       class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                        <span class="hidden sm:inline">Previous</span>
+                    </a>
+                @endif
+
+                @if($__barDone)
+                    <form action="{{ route('learner.topics.uncomplete', $currentTopic) }}" method="POST">
+                        @csrf
+                        <button type="submit"
+                                class="text-xs sm:text-sm text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 underline underline-offset-2 transition-colors whitespace-nowrap">
+                            Mark as Incomplete
+                        </button>
+                    </form>
+                @endif
+            </div>
+
+            {{-- Right: Primary CTA --}}
+            <div class="flex-shrink-0">
+                @if($__barDone)
+                    {{-- Topic is done — navigate forward --}}
+                    @if(!$__isLastTopic)
+                        <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $currentTopicIndex + 1]) }}"
+                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+                           style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                            Continue
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    @elseif($lessonQuiz)
+                        <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1]) }}"
+                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+                           style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                            Take Lesson Quiz
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    @elseif($nextLesson)
+                        <a href="{{ route('learner.lessons.show', $nextLesson) }}"
+                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+                           style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                            Next Lesson
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    @else
+                        <a href="{{ route('learner.modules.show', $module) }}"
+                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+                           style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                            Back to Module
+                        </a>
+                    @endif
+                @else
+                    {{-- Topic not done — show Complete & Continue CTA --}}
+                    @if(!$__isLastTopic)
+                        <form action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline">
+                            @csrf
+                            <input type="hidden" name="next_topic_index" value="{{ $currentTopicIndex + 1 }}">
+                            <button type="submit"
+                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+                                    style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Mark Complete & Continue
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </button>
+                        </form>
+                    @elseif($lessonQuiz)
+                        <form action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit"
+                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+                                    style="background: linear-gradient(to right, #A30EB2, #3B0CB1);"
+                                    onclick="event.preventDefault();
+                                             fetch(this.form.action, { method: 'POST', body: new FormData(this.form), headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'} })
+                                             .then(() => window.location.href = '{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1]) }}');">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Complete & Take Quiz
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </button>
+                        </form>
+                    @else
+                        <form action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit"
+                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+                                    style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Mark Complete
+                            </button>
+                        </form>
+                    @endif
+                @endif
+            </div>
+        </div>
+        @endif
+    </main>
 </div>
 @endsection

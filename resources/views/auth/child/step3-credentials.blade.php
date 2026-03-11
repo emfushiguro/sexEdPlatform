@@ -35,16 +35,6 @@
         </div>
     @endif
 
-    @if($suggestedEmail)
-        <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
-            <p class="text-sm text-purple-800">
-                <strong>📧 Email:</strong> Your child's account will use
-                <span class="font-mono text-xs bg-white px-2 py-0.5 rounded border border-purple-300">{{ $suggestedEmail }}</span>
-                — emails go to your inbox.
-            </p>
-        </div>
-    @endif
-
     <form method="POST" action="{{ route('parent.create-child.credentials.store') }}"
           x-data="{ showPass: false, showConfirm: false }">
         @csrf
@@ -58,7 +48,7 @@
                    value="{{ old('username') }}"
                    pattern="[a-z0-9_\-]+"
                    minlength="3" maxlength="30"
-                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                   class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                    placeholder="e.g. maria_santos">
             <p class="mt-1 text-xs text-gray-500">Lowercase letters, numbers, underscores and hyphens only.</p>
             @error('username')
@@ -73,10 +63,10 @@
             </label>
             <div class="relative">
                 <input id="password" name="password" :type="showPass ? 'text' : 'password'" required
-                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
+                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition pr-10"
                        placeholder="••••••••">
                 <button type="button" @click="showPass = !showPass"
-                        class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600">
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                     <svg x-show="!showPass" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -100,10 +90,10 @@
             <div class="relative">
                 <input id="password_confirmation" name="password_confirmation"
                        :type="showConfirm ? 'text' : 'password'" required
-                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
+                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition pr-10"
                        placeholder="••••••••">
                 <button type="button" @click="showConfirm = !showConfirm"
-                        class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600">
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                     <svg x-show="!showConfirm" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -120,7 +110,7 @@
             <a href="{{ route('parent.create-child.location') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
             <button type="submit"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
-                    class="inline-flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
+                    class="inline-flex items-center justify-center gap-2 px-8 py-3.5 font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
                 Create Child Account →
             </button>
         </div>

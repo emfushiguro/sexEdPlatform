@@ -1,33 +1,51 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Privacy Policy - {{ config('app.name') }}</title>
+    <title>Privacy Policy &mdash; {{ config('app.name') }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+    </style>
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen">
-        <!-- Header -->
-        <div class="bg-white shadow-sm border-b border-gray-200">
-            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <div class="flex items-center justify-between">
-                    <h1 class="text-2xl font-bold text-gray-900">Privacy Policy</h1>
-                    <a href="{{ route('register') }}" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    ← Back to Registration
-                    </a>
+<body class="min-h-screen bg-gray-50">
+
+    <!-- Gradient Header -->
+    <header style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="flex items-center gap-3 mb-1">
+                        <div class="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                        </div>
+                        <h1 class="text-2xl font-bold text-white">Privacy Policy</h1>
+                    </div>
+                    <p class="text-purple-200 text-sm">Last Updated: {{ now()->format('F d, Y') }}</p>
                 </div>
-                <p class="mt-2 text-sm text-gray-600">Last Updated: {{ now()->format('F d, Y') }}</p>
+                <button onclick="history.back()"
+                    class="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Back
+                </button>
             </div>
         </div>
+    </header>
 
-        <!-- Content -->
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 space-y-8">
+    <!-- Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-10 space-y-8">
                 
                 <!-- Introduction -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">1. Introduction</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">1. Introduction</h2>
                     <p class="text-gray-700 leading-relaxed">
                         {{ config('app.name') }} is committed to protecting your privacy and the privacy of children who use our platform. 
                         This Privacy Policy explains how we collect, use, store, and protect personal information, with special attention 
@@ -37,9 +55,9 @@
 
                 <!-- COPPA Compliance -->
                 <section>
-                    <div class="bg-blue-50 border-l-4 border-blue-500 p-6 mb-6">
-                        <h3 class="text-lg font-semibold text-blue-900 mb-2">COPPA Compliance Statement</h3>
-                        <p class="text-blue-800 leading-relaxed">
+                    <div class="rounded-xl p-6 mb-6 border-l-4" style="background:#fdf4ff; border-color:#730DB1;">
+                        <h3 class="text-lg font-semibold mb-2" style="color:#730DB1;">COPPA Compliance Statement</h3>
+                        <p class="text-gray-700 leading-relaxed">
                             We comply with the Children's Online Privacy Protection Act (COPPA). We do not knowingly collect personal 
                             information from children under 13 without verifiable parental consent. Parents have full control over 
                             their child's account and can review, modify, or delete their child's information at any time.
@@ -49,12 +67,12 @@
 
                 <!-- Information We Collect -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">2. Information We Collect</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">2. Information We Collect</h2>
                     
                     <div class="space-y-6">
                         <!-- For All Users -->
                         <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-3">For All Users (Registration Information)</h3>
+                            <h3 class="text-lg font-medium mb-3" style="color:#A30EB2;">For All Users (Registration Information)</h3>
                             <ul class="list-disc list-inside pl-4 space-y-2 text-gray-700">
                                 <li><strong>Personal Information:</strong> First name, middle initial (optional), last name, suffix (optional)</li>
                                 <li><strong>Birthdate:</strong> To calculate age and determine appropriate content access</li>
@@ -67,13 +85,13 @@
 
                         <!-- For Child Users -->
                         <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-3">Additional Information for Users Under 13</h3>
+                            <h3 class="text-lg font-medium mb-3" style="color:#A30EB2;">Additional Information for Users Under 13</h3>
                             <ul class="list-disc list-inside pl-4 space-y-2 text-gray-700">
                                 <li><strong>Parent Information:</strong> Parent's name, email, and verified relationship</li>
                                 <li><strong>Parental Consent:</strong> Timestamp of when parent created the child account</li>
                                 <li><strong>Monitoring Permissions:</strong> Parent's viewing and approval settings</li>
                             </ul>
-                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-3">
+                            <div class="rounded-xl p-4 mt-3 bg-amber-50 border border-amber-200">
                                 <p class="text-sm text-yellow-800">
                                     <strong>Note:</strong> Children under 13 cannot create accounts independently. A parent or legal 
                                     guardian must register, verify their email, and create a child account on their behalf.
@@ -83,7 +101,7 @@
 
                         <!-- Usage Data -->
                         <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-3">Usage & Learning Data</h3>
+                            <h3 class="text-lg font-medium mb-3" style="color:#A30EB2;">Usage & Learning Data</h3>
                             <ul class="list-disc list-inside pl-4 space-y-2 text-gray-700">
                                 <li><strong>Learning Progress:</strong> Module enrollments, lesson completion, quiz attempts</li>
                                 <li><strong>Quiz Responses:</strong> Answers, scores, and timestamps</li>
@@ -96,7 +114,7 @@
 
                 <!-- How We Use Information -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">3. How We Use Your Information</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">3. How We Use Your Information</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">We use collected information for the following purposes:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -107,7 +125,7 @@
                             <li><strong>Communication:</strong> Send email verification, important notifications, and updates</li>
                             <li><strong>Platform Improvement:</strong> Analyze usage patterns to improve educational content</li>
                         </ul>
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                        <div class="rounded-xl p-4 mt-4 bg-green-50 border border-green-200">
                             <p class="text-sm text-gray-700">
                                 <strong>We do NOT:</strong> Sell personal information, share it with third parties for marketing, 
                                 or use it for purposes unrelated to education.
@@ -118,7 +136,7 @@
 
                 <!-- Parent Rights (COPPA) -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">4. Parent Rights & Choices (For Children Under 13)</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">4. Parent Rights & Choices (For Children Under 13)</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">As a parent or legal guardian, you have the right to:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -145,7 +163,7 @@
 
                 <!-- Data Sharing -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">5. Information Sharing & Disclosure</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">5. Information Sharing & Disclosure</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">We DO NOT sell or rent personal information. We may share information only in these limited cases:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -155,7 +173,7 @@
                             <li><strong>Legal Requirements:</strong> If required by law, court order, or government request</li>
                             <li><strong>Safety:</strong> To protect the safety of users or prevent harmful activity</li>
                         </ul>
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                        <div class="rounded-xl p-4 mt-4" style="background:#fdf4ff; border:1px solid #c084fc;">
                             <p class="text-sm text-gray-700">
                                 Any third-party service providers we use are required to maintain the confidentiality and security 
                                 of personal information and are prohibited from using it for any other purpose.
@@ -166,7 +184,7 @@
 
                 <!-- Data Security -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">6. Data Security</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">6. Data Security</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">We implement industry-standard security measures to protect your information:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -185,7 +203,7 @@
 
                 <!-- Data Retention -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">7. Data Retention</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">7. Data Retention</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">We retain personal information for as long as necessary to provide our services:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -202,7 +220,7 @@
 
                 <!-- Email Communications -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">8. Email Communications</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">8. Email Communications</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">We send emails for:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -223,7 +241,7 @@
 
                 <!-- Cookies -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">9. Cookies & Tracking</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">9. Cookies & Tracking</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">We use minimal cookies and tracking technologies:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -239,7 +257,7 @@
 
                 <!-- User Rights -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">10. Your Rights</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">10. Your Rights</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">All users have the right to:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
@@ -257,7 +275,7 @@
 
                 <!-- Third-Party Links -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">11. Third-Party Links</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">11. Third-Party Links</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             Our platform may contain links to external websites or embedded videos (e.g., YouTube). We are not 
@@ -269,7 +287,7 @@
 
                 <!-- International Users -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">12. International Users</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">12. International Users</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             This platform is designed for users in the Philippines. By using the platform, you consent to the transfer 
@@ -280,7 +298,7 @@
 
                 <!-- Changes to Policy -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">13. Changes to This Privacy Policy</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">13. Changes to This Privacy Policy</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             We may update this Privacy Policy from time to time. Significant changes will be communicated via email. 
@@ -294,14 +312,14 @@
 
                 <!-- Contact -->
                 <section>
-                    <h2 class="text-xl font-semibold text-gray-900 mb-4">14. Contact Us</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">14. Contact Us</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             If you have questions, concerns, or requests regarding this Privacy Policy or your personal information, 
                             please contact us:
                         </p>
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-3">
-                            <p class="font-medium text-gray-900">{{ config('app.name') }} Support</p>
+                        <div class="rounded-xl p-4 mt-3 border" style="border-color: #730DB1; background: #fdf4ff;">
+                            <p class="font-semibold" style="color: #730DB1;">{{ config('app.name') }} Support</p>
                             <p class="text-gray-600 text-sm mt-1">Email: support@example.com</p>
                             <p class="text-gray-600 text-sm mt-1">Response Time: Within 48 hours</p>
                         </div>
@@ -312,26 +330,28 @@
                     </div>
                 </section>
 
-                <!-- Acceptance -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-8">
-                    <p class="text-sm text-gray-700 leading-relaxed">
-                        <strong>By creating an account or using {{ config('app.name') }}, you acknowledge that you have read 
+                <!-- Acceptance banner -->
+                <div class="rounded-xl p-6 mt-8" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                    <p class="text-sm text-white leading-relaxed text-center">
+                        <strong>By creating an account or using {{ config('app.name') }}, you acknowledge that you have read
                         and understood this Privacy Policy and agree to its terms.</strong>
                     </p>
-                    <p class="text-sm text-gray-700 leading-relaxed mt-2">
-                        <strong>For Parents:</strong> By creating a child account, you confirm that you have read this Privacy Policy 
+                    <p class="text-sm text-purple-200 leading-relaxed text-center mt-2">
+                        <strong>For Parents:</strong> By creating a child account, you confirm that you have read this Privacy Policy
                         and consent to the collection and use of your child's information as described.
                     </p>
                 </div>
-            </div>
+        </div><!-- /card -->
 
-            <!-- Footer Links -->
-            <div class="mt-8 text-center space-x-4 pb-8">
-                <a href="{{ route('register') }}" class="text-blue-600 hover:text-blue-700 font-medium">Back to Registration</a>
-                <span class="text-gray-400">•</span>
-                <a href="{{ route('terms') }}" class="text-blue-600 hover:text-blue-700 font-medium">Terms of Service</a>
-            </div>
+        <!-- Footer Links -->
+        <div class="mt-8 text-center space-x-4 pb-10 text-sm">
+            <button onclick="history.back()" class="font-medium hover:opacity-75 transition-opacity" style="color: #730DB1;">← Go Back</button>
+            <span class="text-gray-400">•</span>
+            <a href="{{ route('terms') }}" class="font-medium hover:opacity-75 transition-opacity" style="color: #730DB1;">Terms of Service</a>
         </div>
-    </div>
+    </main>
+
 </body>
 </html>
+
+

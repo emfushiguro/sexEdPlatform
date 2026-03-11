@@ -70,12 +70,12 @@
                             <h3 class="font-semibold text-gray-900 truncate">{{ $child->full_name }}</h3>
                             <p class="text-xs text-gray-500 mt-0.5">
                                 @if($child->learnerProfile?->birthdate)
-                                    {{ \Carbon\Carbon::parse($child->learnerProfile->birthdate)->age }} years old Â·
+                                    {{ \Carbon\Carbon::parse($child->learnerProfile->birthdate)->age }} years old.
                                 @endif
                                 Added {{ $child->created_at->diffForHumans() }}
                             </p>
                             @if($child->learnerProfile?->username)
-                                <p class="text-xs text-purple-600 mt-0.5">@{{ $child->learnerProfile->username }}</p>
+                                <p class="text-xs text-purple-600 mt-0.5">{{ $child->learnerProfile->username }}</p>
                             @endif
                         </div>
 

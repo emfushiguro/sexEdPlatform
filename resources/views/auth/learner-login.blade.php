@@ -5,13 +5,10 @@
         <div class="h-full flex flex-col items-center justify-center p-12 text-center">
             <div class="mb-8">
                 <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-40 w-auto mx-auto mb-4 drop-shadow-lg">
-                <p class="text-white/90 font-bold tracking-widest text-sm uppercase">Concious Connections</p>
+                <p class="text-4xl font-bold text-white mb-4 leading-tight">Concious Connections</p>
             </div>
-            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Welcome back</h2>
-            <p class="text-white/80 text-lg max-w-xs">Sign in to continue your learning journey</p>
         </div>
     </x-slot>
-
     {{-- Session Status (hidden - using toasts instead) --}}
     <div style="display: none;">
         <x-auth-session-status class="mb-6" :status="session('status')" />
@@ -93,19 +90,6 @@
                 </a>
             @endif
         </div>
-
-        <!-- Remember Me Checkbox -->
-        <div class="mb-6">
-            <label class="flex items-center cursor-pointer group">
-                <input 
-                    type="checkbox" 
-                    name="remember" 
-                    class="w-4 h-4 text-brand-purple-primary border-gray-300 rounded focus:ring-brand-purple-primary focus:ring-2 cursor-pointer"
-                />
-                <span class="ml-2 text-sm text-gray-700 group-hover:text-gray-900">Remember me</span>
-            </label>
-        </div>
-
         <!-- Login Button -->
         <button 
             type="submit"
@@ -143,11 +127,11 @@
         <!-- Footer Links -->
         <div class="mt-8 pt-6 border-t border-gray-200">
             <div class="flex items-center justify-center gap-4 text-xs text-gray-500">
-                <a href="#" class="hover:text-brand-purple-primary transition-colors">Help</a>
+                <button type="button" @click="$dispatch('open-help')" class="hover:text-brand-purple-primary transition-colors">Help</button>
                 <span class="text-gray-300">|</span>
-                <a href="{{ route('terms') }}" class="hover:text-brand-purple-primary transition-colors">Terms</a>
+                <button type="button" @click="$dispatch('open-terms')" class="hover:text-brand-purple-primary transition-colors">Terms</button>
                 <span class="text-gray-300">|</span>
-                <a href="{{ route('privacy') }}" class="hover:text-brand-purple-primary transition-colors">Privacy</a>
+                <button type="button" @click="$dispatch('open-privacy')" class="hover:text-brand-purple-primary transition-colors">Privacy</button>
             </div>
         </div>
     </form>
