@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
+use App\Models\ParentChildAccount;
 use App\Models\UserProgress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -186,6 +187,23 @@ class ModuleController extends Controller
             if ($existingEnrollment->status === EnrollmentStatus::Rejected) {
                 return back()->with('error', 'Your enrollment request was rejected by the instructor.');
             }
+        }
+
+        // Check if parent approval is required
+        $needsParentApproval = ParentChildAccount::where('child_user_id', $user->id)
+            ->where('can_approve_content', true)
+            ->exists();
+
+        if ($needsParentApproval) {
+            ModuleEnrollment::create([
+                'user_id'     => $user->id,
+                'module_id'   => $module->id,
+                'status'      => EnrollmentStatus::PendingParentApproval,
+                'enrolled_at' => null,
+            ]);
+
+            return redirect()->route('learner.modules.show', $module)
+                ->with('success', 'Enrollment request submitted! Waiting for parental approval.');
         }
 
         // Check enrollment mode

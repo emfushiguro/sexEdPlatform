@@ -19,7 +19,7 @@ class PageRenderTest extends TestCase
 
     public function test_learner_login_page_shows_welcome_back_panel(): void
     {
-        $response = $this->get(route('learner.login'));
+        $response = $this->get(route('login'));
         $response->assertStatus(200);
         $response->assertSee('Concious Connections');
     }

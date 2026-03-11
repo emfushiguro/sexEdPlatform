@@ -168,7 +168,7 @@ class ParentChildMonitoringTest extends TestCase
         $pending = $service->getPendingEnrollments($child);
 
         $this->assertCount(1, $pending);
-        $this->assertEquals('pending_parent_approval', $pending->first()->status);
+        $this->assertEquals('pending_parent_approval', $pending->first()->status->value);
     }
 
     public function test_parent_can_approve_pending_enrollment_auto_module(): void

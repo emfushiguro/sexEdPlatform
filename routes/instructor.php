@@ -17,6 +17,9 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
     // Instructor Dashboard
     Route::get('/dashboard', [Instructor\DashboardController::class, 'index'])->name('dashboard');
 
+    // Search endpoint
+    Route::get('/search', [Instructor\SearchController::class, 'index'])->name('search');
+
     // User Management (Learners only)
     Route::resource('users', Instructor\UserController::class);
 

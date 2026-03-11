@@ -182,7 +182,7 @@
                             <div class="mt-4 text-center">
                                 <p class="text-sm text-gray-600">
                                     Already registered? 
-                                    <a href="{{ route('learner.login') }}" class="text-brand-purple-primary font-medium hover:text-brand-purple-dark transition-colors">Login</a>
+                                    <a href="{{ route('login') }}" class="text-brand-purple-primary font-medium hover:text-brand-purple-dark transition-colors">Login</a>
                                 </p>
                             </div>
                         </div>

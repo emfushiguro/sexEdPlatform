@@ -21,12 +21,11 @@ class ModuleFactory extends Factory
             'min_age' => 5,
             'max_age' => 18,
             'age_specific_content' => null,
-            'difficulty_level' => fake()->randomElement(['beginner', 'intermediate', 'advanced']),
             'order' => fake()->numberBetween(1, 20),
             'duration_minutes' => fake()->numberBetween(15, 120),
             'is_published' => true,
             'is_premium' => false,
-            'enrollment_mode' => 'open',
+            'enrollment_mode' => 'auto',
             'final_quiz_id' => null,
             'certificate_pass_score' => 70,
         ];

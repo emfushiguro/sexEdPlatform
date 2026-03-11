@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EnrollmentStatus;
 use App\Models\ModuleEnrollment;
 use App\Models\User;
 use App\Services\ParentChildService;
@@ -36,7 +37,7 @@ class ParentController extends Controller
     {
         $this->authorize('view', $child);
 
-        if ($enrollment->user_id !== $child->id || $enrollment->status !== 'pending_parent_approval') {
+        if ($enrollment->user_id !== $child->id || $enrollment->status !== EnrollmentStatus::PendingParentApproval) {
             abort(403);
         }
 
@@ -55,7 +56,7 @@ class ParentController extends Controller
     {
         $this->authorize('view', $child);
 
-        if ($enrollment->user_id !== $child->id || $enrollment->status !== 'pending_parent_approval') {
+        if ($enrollment->user_id !== $child->id || $enrollment->status !== EnrollmentStatus::PendingParentApproval) {
             abort(403);
         }
 

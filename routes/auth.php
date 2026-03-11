@@ -20,6 +20,12 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
+    // Step 2: Account info (email + password)
+    Route::get('register/account', [RegisteredUserController::class, 'showAccount'])
+        ->name('register.account');
+
+    Route::post('register/account', [RegisteredUserController::class, 'storeAccount']);
+
     // Parent registration routes
     Route::get('parent-registration-required', [ParentRegistrationController::class, 'requiredPage'])
         ->name('parent.registration.required');
@@ -27,8 +33,15 @@ Route::middleware('guest')->group(function () {
     Route::get('parent/register', [ParentRegistrationController::class, 'create'])
         ->name('parent.register');
     
-    Route::post('parent/register', [ParentRegistrationController::class, 'store'])
+    Route::post('parent/register', [ParentRegistrationController::class, 'storePersonal'])
         ->name('parent.register.store');
+
+    // Step 2: Parent account credentials
+    Route::get('parent/register-account', [ParentRegistrationController::class, 'createAccount'])
+        ->name('parent.register.account');
+
+    Route::post('parent/register-account', [ParentRegistrationController::class, 'storeAccount'])
+        ->name('parent.register.account.store');
 
     // Learner login
     Route::get('login', function () {

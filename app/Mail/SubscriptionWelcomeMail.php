@@ -32,7 +32,7 @@ class SubscriptionWelcomeMail extends Mailable
                 'user'         => $this->subscription->user,
                 'planName'     => $this->subscription->getPlanLabel(),
                 'endDate'      => $this->subscription->end_date?->format('M d, Y'),
-                'dashboardUrl' => route('dashboard'),
+                'dashboardUrl' => route('learner.dashboard'),
             ]
         );
     }

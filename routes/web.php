@@ -102,6 +102,16 @@ Route::middleware('auth')->group(function () {
 
     // Learner routes
     Route::prefix('learn')->name('learner.')->middleware('profile.completed')->group(function () {
+        // Dashboard
+        Route::get('/dashboard', [\App\Http\Controllers\Learner\DashboardController::class, 'index'])->name('dashboard');
+
+        // Live search (AJAX)
+        Route::get('/search', [\App\Http\Controllers\Learner\SearchController::class, 'index'])->name('search');
+
+        // Notifications
+        Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Learner\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+        Route::get('/notifications/{id}/read', [\App\Http\Controllers\Learner\NotificationController::class, 'markRead'])->name('notifications.read');
+
         // Module browsing and enrollment
         Route::get('/modules', [LearnerModuleController::class, 'index'])->name('modules.index');
         Route::get('/modules/{module}', [LearnerModuleController::class, 'show'])->name('modules.show');
@@ -110,6 +120,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/lessons/{lesson}', [LearnerLessonController::class, 'show'])->name('lessons.show');
         Route::post('/lessons/{lesson}/complete', [LearnerLessonController::class, 'complete'])->name('lessons.complete');
         Route::post('/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('topics.complete');
+        Route::post('/topics/{topic}/uncomplete', [LearnerLessonController::class, 'uncompleteTopic'])->name('topics.uncomplete');
+        Route::post('/lessons/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('lessons.topics.complete');
+
+        // Shields and streak savers
+        Route::post('/shields/refill', [\App\Http\Controllers\Learner\ShieldRefillController::class, 'store'])->name('shields.refill');
+        Route::post('/streak-savers/buy', [\App\Http\Controllers\Learner\StreakSaverController::class, 'store'])->name('streak-savers.buy');
+
+        // Gamification rules page
+        Route::get('/gamification', [\App\Http\Controllers\Learner\GamificationController::class, 'rules'])->name('gamification');
 
         // Certificates (Premium only)
         Route::middleware('premium')->group(function () {
@@ -140,10 +159,15 @@ Route::middleware('auth')->group(function () {
         });
     });
 
-    // Learner Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])
-        ->middleware(['role:learner', 'profile.completed'])
-        ->name('dashboard');
+    // Parent monitoring routes
+    Route::prefix('parent')->name('parent.')->middleware('verified')->group(function () {
+        Route::get('/children/{child}', [\App\Http\Controllers\ParentController::class, 'show'])
+            ->name('children.show');
+        Route::post('/children/{child}/enrollments/{enrollment}/approve', [\App\Http\Controllers\ParentController::class, 'approveEnrollment'])
+            ->name('children.enrollments.approve');
+        Route::post('/children/{child}/enrollments/{enrollment}/reject', [\App\Http\Controllers\ParentController::class, 'rejectEnrollment'])
+            ->name('children.enrollments.reject');
+    });
 
     // Instructor routes (Content Management)
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
