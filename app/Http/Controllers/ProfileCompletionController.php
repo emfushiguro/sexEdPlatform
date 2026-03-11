@@ -24,7 +24,7 @@ class ProfileCompletionController extends Controller
             if ($user->hasRole('instructor')) {
                 return redirect()->route('instructor.dashboard');
             }
-            return redirect()->route('learner.modules.index');
+            return redirect()->route('learner.dashboard');
         }
 
         $learnerProfile = $user->learnerProfile;
@@ -107,8 +107,8 @@ class ProfileCompletionController extends Controller
                 ->with('success', 'Profile completed successfully! Welcome to the instructor dashboard.');
         }
 
-        return redirect()->route('learner.modules.index')
-            ->with('success', 'Profile completed successfully! Welcome to the learning platform.');
+        return redirect()->route('learner.dashboard')
+            ->with('success', 'Profile completed successfully! Welcome to Concious Connections.');
     }
 
     /**

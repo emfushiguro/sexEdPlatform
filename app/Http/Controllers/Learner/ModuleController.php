@@ -14,7 +14,7 @@ class ModuleController extends Controller
     /**
      * Display all published modules filtered by learner's age
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $learnerProfile = $user->learnerProfile;
@@ -24,15 +24,15 @@ class ModuleController extends Controller
                 ->with('error', 'Please complete your profile to access modules.');
         }
 
-        // Get learner's age
         $learnerAge = $learnerProfile->getAge();
-        
-        // Get published modules appropriate for learner's age
+        $search = $request->get('search');
+
         $modules = Module::where('is_published', true)
             ->where(function ($query) use ($learnerAge) {
                 $query->where('min_age', '<=', $learnerAge)
                       ->where('max_age', '>=', $learnerAge);
             })
+            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%"))
             ->withCount('lessons')
             ->with(['lessons' => function ($query) {
                 $query->where('is_published', true)->orderBy('order');
@@ -42,6 +42,9 @@ class ModuleController extends Controller
 
         // Get user's enrollments
         $enrolledModuleIds = $user->moduleEnrollments()->pluck('module_id')->toArray();
+        $enrollments = ModuleEnrollment::where('user_id', $user->id)
+            ->get()
+            ->keyBy('module_id');
         
         // Calculate progress for each module
         $progress = [];
@@ -65,7 +68,7 @@ class ModuleController extends Controller
             ];
         }
 
-        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'progress'));
+        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'progress', 'search', 'enrollments'));
     }
 
     /**

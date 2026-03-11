@@ -2,25 +2,13 @@
     logo="/media/Logo.png"
 >
     <x-slot name="panel">
-        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
-            {{-- Small logo top-left --}}
-            <div class="absolute top-8 left-8">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+        <div class="h-full flex flex-col items-center justify-center p-12 text-center">
+            <div class="mb-8">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-40 w-auto mx-auto mb-4 drop-shadow-lg">
+                <p class="text-4xl font-bold text-white mb-4 leading-tight">Concious Connections</p>
             </div>
-            {{-- Icon bubble --}}
-            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
-                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l9-5-9-5-9 5 9 5z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
-                </svg>
-            </div>
-            {{-- Headline --}}
-            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Welcome back</h2>
-            {{-- Sub-text --}}
-            <p class="text-white/80 text-lg max-w-xs">Continue your learning journey</p>
         </div>
     </x-slot>
-
     {{-- Session Status (hidden - using toasts instead) --}}
     <div style="display: none;">
         <x-auth-session-status class="mb-6" :status="session('status')" />
@@ -102,24 +90,12 @@
                 </a>
             @endif
         </div>
-
-        <!-- Remember Me Checkbox -->
-        <div class="mb-6">
-            <label class="flex items-center cursor-pointer group">
-                <input 
-                    type="checkbox" 
-                    name="remember" 
-                    class="w-4 h-4 text-brand-purple-primary border-gray-300 rounded focus:ring-brand-purple-primary focus:ring-2 cursor-pointer"
-                />
-                <span class="ml-2 text-sm text-gray-700 group-hover:text-gray-900">Remember me</span>
-            </label>
-        </div>
-
         <!-- Login Button -->
         <button 
             type="submit"
             :disabled="loading"
-            class="w-full py-3.5 px-4 bg-brand-purple-primary hover:bg-brand-purple-light text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+            style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+            class="w-full flex items-center justify-center gap-2 px-8 py-3 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
             <svg x-show="loading" x-cloak class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -151,11 +127,11 @@
         <!-- Footer Links -->
         <div class="mt-8 pt-6 border-t border-gray-200">
             <div class="flex items-center justify-center gap-4 text-xs text-gray-500">
-                <a href="#" class="hover:text-brand-purple-primary transition-colors">Help</a>
+                <button type="button" @click="$dispatch('open-help')" class="hover:text-brand-purple-primary transition-colors">Help</button>
                 <span class="text-gray-300">|</span>
-                <a href="{{ route('terms') }}" class="hover:text-brand-purple-primary transition-colors">Terms</a>
+                <button type="button" @click="$dispatch('open-terms')" class="hover:text-brand-purple-primary transition-colors">Terms</button>
                 <span class="text-gray-300">|</span>
-                <a href="{{ route('privacy') }}" class="hover:text-brand-purple-primary transition-colors">Privacy</a>
+                <button type="button" @click="$dispatch('open-privacy')" class="hover:text-brand-purple-primary transition-colors">Privacy</button>
             </div>
         </div>
     </form>

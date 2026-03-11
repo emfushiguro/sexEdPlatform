@@ -20,7 +20,13 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        return view('auth.register');
+        // Clear parent-flow contamination only. Do NOT clear pending_personal_info:
+        // it is preserved so the user can navigate back from step 2 and see their data.
+        session()->forget(['is_parent_registration', 'pending_parent_info']);
+
+        return view('auth.register', [
+            'personalInfo' => session('pending_personal_info', []),
+        ]);
     }
 
     /**

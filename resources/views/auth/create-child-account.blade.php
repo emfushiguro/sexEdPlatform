@@ -1,75 +1,27 @@
 <x-auth-split-layout :showTabs="false">
     <x-slot name="panel">
-        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
-            {{-- Small logo top-left --}}
-            <div class="absolute top-8 left-8">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+        <div class="h-full flex flex-col items-center justify-center p-12 text-center">
+            <div class="mb-6">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-20 w-auto mx-auto mb-3">
+                <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
             </div>
-            {{-- Icon bubble --}}
-            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
-                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
-                </svg>
-            </div>
-            {{-- Headline --}}
             <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Set up their account</h2>
-            {{-- Sub-text --}}
-            <p class="text-white/80 text-lg max-w-xs">Age-appropriate content, curated just for them</p>
+            <p class="text-white/80 text-lg max-w-xs">Let's register your child and get them learning safely.</p>
         </div>
     </x-slot>
 
-    <x-wizard-stepper />
+    <x-wizard-stepper :steps="[
+        ['label' => 'Set Up Info',    'active' => true,  'done' => false],
+        ['label' => 'Where Are You?', 'active' => false, 'done' => false],
+        ['label' => 'Login Details',  'active' => false, 'done' => false],
+        ['label' => 'All Set!',       'active' => false, 'done' => false],
+    ]" />
 
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-purple-900">Create Child Account</h1>
-            <p class="mt-1 text-sm text-gray-600">Add a learning account for your child</p>
-        </div>
-        <a href="{{ route('parent.children.index') }}" class="text-sm text-brand-purple-primary hover:text-brand-purple-light font-medium">
-            ← Back to My Children
-        </a>
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-purple-900">Child's Information</h1>
+        <p class="mt-1 text-sm text-gray-600">Tell us a little about your child.</p>
     </div>
 
-        <!-- Completing Registration Banner (if child data exists) -->
-        @if(isset($childData))
-        <div class="bg-purple-50 border-l-4 border-purple-500 p-4 mb-6">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-purple-800 font-semibold">
-                        Completing registration for: {{ $childData['first_name'] ?? '' }} {{ $childData['last_name'] ?? '' }}
-                    </p>
-                    <p class="text-xs text-purple-700 mt-1">
-                        We've pre-filled the information from their registration attempt. You can review and complete the setup below.
-                    </p>
-                </div>
-            </div>
-        </div>
-        @endif
-        
-        <!-- Parent Info Banner -->
-        <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-green-800">
-                        <strong>Registered by:</strong> {{ auth()->user()->full_name }} ({{ auth()->user()->email }})
-                    </p>
-                    <p class="text-xs text-green-700 mt-1">
-                        You'll be able to monitor this child's progress, view quiz results, and manage their learning.
-                    </p>
-                </div>
-            </div>
-        </div>
 
         <!-- Validation Errors -->
         @if ($errors->any())
@@ -92,403 +44,149 @@
             </div>
         @endif
 
-        <!-- Form -->
-                <form method="POST" action="{{ route('parent.create-child.store') }}"
-                      x-data="{
-                          birthdate: '{{ old('birthdate', $childData['birthdate_formatted'] ?? '') }}',
-                          age: null,
-                          cityCode: '{{ old('city_code', $parentProfile?->city_code ?? '') }}',
-                          calculateAge() {
-                              if (!this.birthdate) {
-                                  this.age = null;
-                                  return;
-                              }
-                              const today = new Date();
-                              const birth = new Date(this.birthdate);
-                              let age = today.getFullYear() - birth.getFullYear();
-                              const monthDiff = today.getMonth() - birth.getMonth();
-                              if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-                                  age--;
-                              }
-                              this.age = age;
-                          },
-                          async loadBarangays() {
-                              if (!this.cityCode) return;
-                              const response = await fetch('/api/barangays/' + this.cityCode);
-                              const barangays = await response.json();
-                              const select = document.getElementById('barangay_code');
-                              select.innerHTML = '<option value=&quot;&quot;>Select barangay</option>';
-                              barangays.forEach(b => {
-                                  const option = document.createElement('option');
-                                  option.value = b.code;
-                                  option.textContent = b.name;
-                                  select.appendChild(option);
-                              });
-                              // Reselect the barangay if it was pre-filled
-                              const barangayCode = '{{ old('barangay_code', $parentProfile?->barangay_code ?? '') }}';
-                              if (barangayCode) {
-                                  select.value = barangayCode;
-                              }
-                          }
-                      }"
-                      x-init="
-                          calculateAge(); 
-                          if (cityCode) loadBarangays();
-                      ">
-                    @csrf
+    <form method="POST" action="{{ route('parent.create-child.store') }}"
+          x-data="{
+              birthdate: '{{ old('birthdate', $pendingChild['birthdate'] ?? '') }}',
+              age: null,
+              calculateAge() {
+                  if (!this.birthdate) { this.age = null; return; }
+                  const today = new Date();
+                  const birth = new Date(this.birthdate);
+                  let a = today.getFullYear() - birth.getFullYear();
+                  const m = today.getMonth() - birth.getMonth();
+                  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) a--;
+                  this.age = a;
+              }
+          }"
+          x-init="calculateAge()">
+        @csrf
+
+        @if(!empty($pendingChild))
+            <div class="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mb-5">
+                <svg class="w-4 h-4 text-purple-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-xs text-purple-800">Pre-filled from your child's registration — modify if needed.</p>
+            </div>
+        @endif
 
                     <!-- Child's Personal Information -->
                     <div class="mb-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Child's Information</h3>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- First Name -->
+                        {{-- Row 1: First Name + Last Name --}}
+                        <div class="grid grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">
                                     First Name <span class="text-red-500">*</span>
                                 </label>
-                                <input id="first_name" name="first_name" type="text" required 
-                                       value="{{ old('first_name', $childData['first_name'] ?? '') }}"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}"
+                                <input id="first_name" name="first_name" type="text" required
+                                       value="{{ old('first_name', $pendingChild['first_name'] ?? '') }}"
+                                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition"
                                        placeholder="Maria">
-                                @if(isset($childData))
-                                    <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
-                                @endif
                                 @error('first_name')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
-
-                            <!-- Middle Initial -->
-                            <div>
-                                <label for="middle_initial" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Middle Initial
-                                </label>
-                                <input id="middle_initial" name="middle_initial" type="text" 
-                                       value="{{ old('middle_initial', $childData['middle_initial'] ?? '') }}"
-                                       maxlength="10"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) && !empty($childData['middle_initial']) ? 'bg-blue-50' : '' }}"
-                                       placeholder="C.">
-                                @if(isset($childData) && !empty($childData['middle_initial']))
-                                    <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
-                                @endif
-                                @error('middle_initial')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Last Name -->
                             <div>
                                 <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">
                                     Last Name <span class="text-red-500">*</span>
                                 </label>
-                                <input id="last_name" name="last_name" type="text" required 
-                                       value="{{ old('last_name', $childData['last_name'] ?? '') }}"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}"
+                                <input id="last_name" name="last_name" type="text" required
+                                       value="{{ old('last_name', $pendingChild['last_name'] ?? '') }}"
+                                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition"
                                        placeholder="Santos">
-                                @if(isset($childData))
-                                    <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
-                                @endif
                                 @error('last_name')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
+                        </div>
 
-                            <!-- Suffix -->
+                        {{-- Row 2: Middle Initial + Suffix --}}
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="middle_initial" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Middle Initial <span class="text-gray-400 font-normal text-xs">(Optional)</span>
+                                </label>
+                                <input id="middle_initial" name="middle_initial" type="text"
+                                       value="{{ old('middle_initial', $pendingChild['middle_initial'] ?? '') }}"
+                                       maxlength="10"
+                                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition"
+                                       placeholder="C.">
+                                @error('middle_initial')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
                             <div>
                                 <label for="suffix" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Suffix
+                                    Suffix <span class="text-gray-400 font-normal text-xs">(Optional)</span>
                                 </label>
                                 <select id="suffix" name="suffix"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) && !empty($childData['suffix']) ? 'bg-blue-50' : '' }}">
+                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                                     <option value="">None</option>
-                                    <option value="Jr." {{ old('suffix', $childData['suffix'] ?? '') == 'Jr.' ? 'selected' : '' }}>Jr.</option>
-                                    <option value="Sr." {{ old('suffix', $childData['suffix'] ?? '') == 'Sr.' ? 'selected' : '' }}>Sr.</option>
-                                    <option value="II" {{ old('suffix', $childData['suffix'] ?? '') == 'II' ? 'selected' : '' }}>II</option>
-                                    <option value="III" {{ old('suffix', $childData['suffix'] ?? '') == 'III' ? 'selected' : '' }}>III</option>
-                                    <option value="IV" {{ old('suffix', $childData['suffix'] ?? '') == 'IV' ? 'selected' : '' }}>IV</option>
-                                    <option value="V" {{ old('suffix', $childData['suffix'] ?? '') == 'V' ? 'selected' : '' }}>V</option>
-                                </select>
-                                @if(isset($childData) && !empty($childData['suffix']))
-                                    <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
-                                @endif
-                                @error('suffix')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <!-- Birthdate -->
-                        <div class="mt-4">
-                            <label for="birthdate" class="block text-sm font-medium text-gray-700 mb-1">
-                                Birthdate <span class="text-red-500">*</span>
-                            </label>
-                            <input id="birthdate" name="birthdate" type="date" required 
-                                   x-model="birthdate"
-                                   @change="calculateAge()"
-                                   min="{{ now()->subYears(18)->format('Y-m-d') }}"
-                                   max="{{ now()->subYears(5)->format('Y-m-d') }}"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) ? 'bg-blue-50' : '' }}">
-                            
-                            @if(isset($childData))
-                                <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
-                            @else
-                                <p class="mt-1 text-xs text-gray-500">Child must be 5-17 years old to use this platform</p>
-                            @endif
-                            
-                            <!-- Age Display -->
-                            <div x-show="age !== null" class="mt-2">
-                                <template x-if="age >= 5 && age <= 17">
-                                    <div class="flex items-center text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                                        <svg class="w-5 h-5 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                        </svg>
-                                        <span>Child is <strong x-text="age"></strong> years old - eligible for child account!</span>
-                                    </div>
-                                </template>
-                                <template x-if="age < 5">
-                                    <div class="flex items-center text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-                                        <svg class="w-5 h-5 mr-2 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                        </svg>
-                                        <span>Child must be at least 5 years old to use the platform.</span>
-                                    </div>
-                                </template>
-                                <template x-if="age >= 18">
-                                    <div class="flex items-center text-sm text-blue-700 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
-                                        <svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                                        </svg>
-                                        <span>This person is 18+ and can create their own account.</span>
-                                    </div>
-                                </template>
-                            </div>
-
-                            @error('birthdate')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Gender -->
-                        <div class="mt-4">
-                            <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">
-                                Gender <span class="text-red-500">*</span>
-                            </label>
-                            <select id="gender" name="gender" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ isset($childData) && !empty($childData['gender']) ? 'bg-blue-50' : '' }}">
-                                <option value="">Select gender</option>
-                                <option value="male" {{ old('gender', $childData['gender'] ?? '') === 'male' ? 'selected' : '' }}>Male</option>
-                                <option value="female" {{ old('gender', $childData['gender'] ?? '') === 'female' ? 'selected' : '' }}>Female</option>
-                                <option value="prefer_not_to_say" {{ old('gender', $childData['gender'] ?? '') === 'prefer_not_to_say' ? 'selected' : '' }}>Prefer not to say</option>
-                            </select>
-                            @if(isset($childData) && !empty($childData['gender']))
-                                <p class="mt-1 text-xs text-blue-600">✓ Pre-filled from child's registration</p>
-                            @endif
-                            @error('gender')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-
-                    <!-- Child's Location (Same Household as Parent) -->
-                    <div class="mb-6 pt-6 border-t border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Location (Same Household)</h3>
-                        
-                        @if($parentProfile && $parentProfile->city_code)
-                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                                <p class="text-sm text-purple-800">
-                                     <strong>Auto-filled from your profile:</strong> Your child lives with you, so we're using your home address.
-                                </p>
-                            </div>
-                        @else
-                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                                <p class="text-sm text-purple-800">
-                                    <strong>Select your home address:</strong> Your child lives with you in the same household.
-                                </p>
-                            </div>
-                        @endif
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Municipality/City -->
-                            <div>
-                                <label for="city_code" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Municipality/City (Cavite) <span class="text-red-500">*</span>
-                                </label>
-                                <select id="city_code" name="city_code" required
-                                        x-model="cityCode" @change="loadBarangays()"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ $parentProfile && $parentProfile->city_code ? 'bg-purple-50' : '' }}">
-                                    <option value="">Select municipality/city</option>
-                                    @foreach($cities as $city)
-                                        <option value="{{ $city->code }}">
-                                            {{ $city->name }}
-                                        </option>
+                                    @foreach(['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'] as $s)
+                                        <option value="{{ $s }}" {{ old('suffix', $pendingChild['suffix'] ?? '') == $s ? 'selected' : '' }}>{{ $s }}</option>
                                     @endforeach
                                 </select>
-                                @if($parentProfile && $parentProfile->city_code)
-                                    <p class="mt-1 text-xs text-purple-600">✓ Auto-filled from your profile ({{ $parentProfile->city_code }})</p>
-                                @endif
-                                @error('city_code')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @error('suffix')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        {{-- Row 3: Birthdate + Gender --}}
+                        <div class="grid grid-cols-2 gap-4 mb-2">
+                            <div>
+                                <label for="birthdate" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Birthdate <span class="text-red-500">*</span>
+                                </label>
+                                <input id="birthdate" name="birthdate" type="date" required
+                                       x-model="birthdate"
+                                       @change="calculateAge()"
+                                       min="{{ now()->subYears(17)->format('Y-m-d') }}"
+                                       max="{{ now()->subYears(5)->format('Y-m-d') }}"
+                                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
+                                <p class="mt-1 text-xs text-gray-500">Age 5–17 only.</p>
+                                <div x-show="age !== null" class="mt-2">
+                                    <template x-if="age >= 5 && age <= 17">
+                                        <p class="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">
+                                            ✓ Age <strong x-text="age"></strong> — eligible!
+                                        </p>
+                                    </template>
+                                    <template x-if="age !== null && (age < 5 || age > 17)">
+                                        <p class="text-xs text-red-700 bg-red-50 rounded-lg px-3 py-2">
+                                            ✗ Must be 5–17 years old.
+                                        </p>
+                                    </template>
+                                </div>
+                                @error('birthdate')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
 
-                            <!-- Barangay -->
                             <div>
-                                <label for="barangay_code" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Barangay <span class="text-red-500">*</span>
+                                <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Gender <span class="text-red-500">*</span>
                                 </label>
-                                <select id="barangay_code" name="barangay_code" required
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent {{ $parentProfile && $parentProfile->barangay_code ? 'bg-purple-50' : '' }}">
-                                    <option value="">Select municipality first</option>
-                                    @if($parentProfile && $parentProfile->city_code && count($barangays) > 0)
-                                        @foreach($barangays as $barangay)
-                                            <option value="{{ $barangay->code }}" {{ (string)old('barangay_code', $parentProfile?->barangay_code ?? '') == (string)$barangay->code ? 'selected' : '' }}>
-                                                {{ $barangay->name }}
-                                            </option>
-                                        @endforeach
-                                    @endif
+                                <select id="gender" name="gender" required
+                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
+                                    <option value="">Select gender</option>
+                                    <option value="male"              {{ old('gender', $pendingChild['gender'] ?? '') === 'male'              ? 'selected' : '' }}>Male</option>
+                                    <option value="female"            {{ old('gender', $pendingChild['gender'] ?? '') === 'female'            ? 'selected' : '' }}>Female</option>
+                                    <option value="prefer_not_to_say" {{ old('gender', $pendingChild['gender'] ?? '') === 'prefer_not_to_say' ? 'selected' : '' }}>Prefer not to say</option>
                                 </select>
-                                @if($parentProfile && $parentProfile->barangay_code)
-                                    <p class="mt-1 text-xs text-purple-600">✓ Auto-filled from your profile</p>
-                                @endif
-                                @error('barangay_code')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @error('gender')
+                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
                         </div>
                     </div>
 
-                    <!-- Account Credentials Section -->
-                    <div class="mb-6 pt-6 border-t border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Login Credentials</h3>
-
-                        <!-- Username -->
-                        <div class="mb-4">
-                            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
-                                Username <span class="text-red-500">*</span>
-                            </label>
-                            <input id="username" name="username" type="text" required 
-                                   value="{{ old('username') }}"
-                                   pattern="[a-z0-9_-]+"
-                                   minlength="3"
-                                   maxlength="30"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent"
-                                   placeholder="maria_santos123">
-                            <p class="mt-1 text-xs text-gray-500">
-                                <strong>Important:</strong> This will be used to log in. Use lowercase letters, numbers, underscores, and hyphens only. Make it easy for your child to remember!
-                            </p>
-                            @error('username')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        
-                        <!-- Email Information Box -->
-                        <div class="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
-                            <div class="flex items-start">
-                                <svg class="w-5 h-5 mr-2 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                                </svg>
-                                <div>
-                                    <p class="text-sm font-semibold text-blue-900 mb-1">📧 About Email Address</p>
-                                    <p class="text-xs text-purple-800">
-                                        @if(str_ends_with(strtolower(auth()->user()->email), '@gmail.com'))
-                                            Your child's account will use a Gmail+ address linked to your email: 
-                                            <span class="font-mono bg-white px-2 py-0.5 rounded border border-blue-300">{{ explode('@', auth()->user()->email)[0] }}+[username]@gmail.com</span>
-                                            <br><span class="text-blue-700 mt-1 block">All emails will be delivered to your inbox: <strong>{{ auth()->user()->email }}</strong></span>
-                                        @else
-                                            Your child's account will be assigned a unique email address. All notifications will be sent to your email: <strong>{{ auth()->user()->email }}</strong>
-                                        @endif
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Password -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Password <span class="text-red-500">*</span>
-                                </label>
-                                <input id="password" name="password" type="password" required 
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent"
-                                       placeholder="••••••••">
-                                <p class="mt-1 text-xs text-gray-500">Choose a simple password for your child</p>
-                                @error('password')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div>
-                                <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Confirm Password <span class="text-red-500">*</span>
-                                </label>
-                                <input id="password_confirmation" name="password_confirmation" type="password" required 
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent"
-                                       placeholder="••••••••">
-                            </div>
-                        </div>
-
-                        <!-- Security Notice -->
-                        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm text-yellow-800">
-                                        <strong>Important:</strong> Write down these credentials and keep them secure. 
-                                        Your child will need them to log in.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Monitoring Permissions (Always Enabled for Safety) -->
-                    <div class="mb-6 pt-6 border-t border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Your Parental Monitoring Access</h3>
-                        <p class="text-sm text-gray-600 mb-4">
-                            For your child's safety and COPPA compliance, you will have the following access:
-                        </p>
-                        <div class="space-y-3 bg-purple-50 border border-purple-200 rounded-lg p-4">
-                            <div class="flex items-start">
-                                <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                </svg>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">View Learning Progress</p>
-                                    <p class="text-xs text-gray-600">See module completions, lesson views, and overall progress</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start">
-                                <svg class="w-5 h-5 mr-3 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                </svg>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">View Quiz Answers</p>
-                                    <p class="text-xs text-gray-600">See quiz attempts, selected answers, and scores</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start">
-                                <svg class="w-5 h-5 mr-3 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
-                                </svg>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-500">Content Approval (Coming Soon)</p>
-                                    <p class="text-xs text-gray-500">Require your approval before child can access certain modules</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <div class="flex items-center justify-between pt-6 border-t border-gray-200">
-                        <a href="{{ route('parent.children.index') }}" class="text-gray-600 hover:text-gray-700">Cancel</a>
-                        <button type="submit" 
-                                class="bg-brand-purple-primary text-white font-semibold py-2 px-6 rounded-xl hover:bg-brand-purple-light focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:ring-offset-2 transition duration-150 shadow-lg">
-                            Create Child Account
+                    <!-- Actions -->
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <a href="{{ route('parent.children.index') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back to My Children</a>
+                        <button type="submit"
+                                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                class="inline-flex items-center justify-center gap-2 px-8 py-3.5 font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
+                            Continue
                         </button>
                     </div>
                 </form>

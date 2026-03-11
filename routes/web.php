@@ -88,6 +88,13 @@ Route::middleware('auth')->group(function () {
         // Dashboard
         Route::get('/dashboard', [LearnerDashboardController::class, 'index'])->name('dashboard');
 
+        // Live search (AJAX)
+        Route::get('/search', [\App\Http\Controllers\Learner\SearchController::class, 'index'])->name('search');
+
+        // Notifications
+        Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Learner\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+        Route::get('/notifications/{id}/read', [\App\Http\Controllers\Learner\NotificationController::class, 'markRead'])->name('notifications.read');
+
         // Module browsing and enrollment
         Route::get('/modules', [LearnerModuleController::class, 'index'])->name('modules.index');
         Route::get('/modules/{module}', [LearnerModuleController::class, 'show'])->name('modules.show');
@@ -99,6 +106,7 @@ Route::middleware('auth')->group(function () {
         
         // Topic completion
         Route::post('/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('topics.complete');
+        Route::post('/topics/{topic}/uncomplete', [LearnerLessonController::class, 'uncompleteTopic'])->name('topics.uncomplete');
         
         // Lessons topic completion (alternate name for tests)
         Route::post('/lessons/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('lessons.topics.complete');

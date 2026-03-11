@@ -1,3 +1,17 @@
+@php
+// Normalize step keys: support both old (active/done) and new (isActive/isCompleted) formats
+$steps = $steps ? array_map(function ($step) {
+    $done   = $step['isCompleted'] ?? $step['done']   ?? false;
+    $active = $step['isActive']    ?? $step['active']  ?? false;
+    return [
+        'label'       => $step['label'] ?? '',
+        'isCompleted' => $done,
+        'isActive'    => $active,
+        'isUpcoming'  => !$done && !$active,
+    ];
+}, $steps) : null;
+@endphp
+
 @if($steps)
 <div class="max-w-lg mx-auto mb-6">
     <div class="bg-white rounded-2xl border border-purple-100/60 shadow-sm px-6 py-4">

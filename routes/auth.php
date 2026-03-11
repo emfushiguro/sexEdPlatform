@@ -32,8 +32,15 @@ Route::middleware('guest')->group(function () {
     Route::get('parent/register', [ParentRegistrationController::class, 'create'])
         ->name('parent.register');
     
-    Route::post('parent/register', [ParentRegistrationController::class, 'store'])
+    Route::post('parent/register', [ParentRegistrationController::class, 'storePersonal'])
         ->name('parent.register.store');
+
+    // Parent registration step 2 — credentials
+    Route::get('parent/register/account', [ParentRegistrationController::class, 'createAccount'])
+        ->name('parent.register.account');
+
+    Route::post('parent/register/account', [ParentRegistrationController::class, 'storeAccount'])
+        ->name('parent.register.account.store');
 
     // Learner login (homepage)
     Route::get('/', function () {
@@ -105,8 +112,22 @@ Route::middleware('auth')->group(function () {
         Route::get('parent/create-child', [ParentRegistrationController::class, 'createChildForm'])
             ->name('parent.create-child');
         
-        Route::post('parent/create-child', [ParentRegistrationController::class, 'storeChild'])
+        Route::post('parent/create-child', [ParentRegistrationController::class, 'storeChildInfo'])
             ->name('parent.create-child.store');
+
+        // Child wizard steps 2-4
+        Route::get('parent/create-child/location', [ParentRegistrationController::class, 'childLocationForm'])
+            ->name('parent.create-child.location');
+        Route::post('parent/create-child/location', [ParentRegistrationController::class, 'storeChildLocation'])
+            ->name('parent.create-child.location.store');
+
+        Route::get('parent/create-child/credentials', [ParentRegistrationController::class, 'childCredentialsForm'])
+            ->name('parent.create-child.credentials');
+        Route::post('parent/create-child/credentials', [ParentRegistrationController::class, 'storeChildCredentials'])
+            ->name('parent.create-child.credentials.store');
+
+        Route::get('parent/create-child/done', [ParentRegistrationController::class, 'childDone'])
+            ->name('parent.create-child.done');
         
         Route::get('parent/children', [ParentRegistrationController::class, 'childrenIndex'])
             ->name('parent.children.index');

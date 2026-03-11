@@ -1,34 +1,24 @@
-<x-auth-split-layout
-    :showTabs="true"
-    activeTab="register"
-    :loginRoute="route('learner.login')"
-    :registerRoute="route('register')"
->
+<x-auth-split-layout :showTabs="false">
     <x-slot name="panel">
-        <div class="relative h-full flex flex-col items-center justify-center p-12 text-center">
-            {{-- Small logo top-left --}}
-            <div class="absolute top-8 left-8">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-10 w-auto opacity-80">
+        <div class="h-full flex flex-col items-center justify-center p-12 text-center">
+            <div class="mb-6">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
             </div>
-            {{-- Icon bubble --}}
-            <div class="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-8 shadow-lg">
-                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
-            </div>
-            {{-- Headline --}}
             <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Almost there!</h2>
-            {{-- Sub-text --}}
-            <p class="text-white/80 text-lg max-w-xs">Create your credentials to protect your account</p>
+            <p class="text-white/80 text-lg max-w-xs">Just your login details left</p>
         </div>
     </x-slot>
 
-    <x-wizard-stepper />
+    <x-wizard-stepper :steps="[
+        ['label' => 'Personal Info', 'active' => false, 'done' => true],
+        ['label' => 'Account Info',  'active' => true,  'done' => false],
+        ['label' => 'Verify Email',  'active' => false, 'done' => false],
+        ['label' => 'Profile',       'active' => false, 'done' => false],
+    ]" />
 
     <!-- Heading -->
     <div class="mb-6">
         <h2 class="text-3xl font-bold text-purple-900">Account Information</h2>
-        <p class="mt-1 text-sm text-gray-500">Step 2 of 2 — Set up your login credentials</p>
     </div>
 
     <!-- Account Form -->
@@ -43,7 +33,7 @@
 
                         <!-- Email Address -->
                         <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-gray-400 font-normal">(Gmail only)</span></label>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                             <input
                                 id="email"
                                 type="email"
@@ -129,7 +119,8 @@
                             <button
                                 type="submit"
                                 :disabled="loading"
-                                class="w-full bg-brand-purple-primary text-white py-3.5 px-6 rounded-xl font-semibold text-base hover:bg-brand-purple-dark transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                class="w-full flex items-center justify-center gap-2 py-3.5 px-6 font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span x-show="!loading">Create Account</span>
                                 <span x-show="loading" class="flex items-center gap-2">
@@ -153,11 +144,11 @@
                     <!-- Footer Links -->
                     <div class="mt-6 pt-4 border-t border-gray-200">
                         <div class="flex items-center justify-center gap-4 text-xs text-gray-500">
-                            <a href="#" class="hover:text-brand-purple-primary transition-colors">Help</a>
+                            <button type="button" @click="$dispatch('open-help')" class="hover:text-brand-purple-primary transition-colors">Help</button>
                             <span class="text-gray-300">|</span>
-                            <a href="{{ route('terms') }}" class="hover:text-brand-purple-primary transition-colors">Terms</a>
+                            <button type="button" @click="$dispatch('open-terms')" class="hover:text-brand-purple-primary transition-colors">Terms</button>
                             <span class="text-gray-300">|</span>
-                            <a href="{{ route('privacy') }}" class="hover:text-brand-purple-primary transition-colors">Privacy</a>
+                            <button type="button" @click="$dispatch('open-privacy')" class="hover:text-brand-purple-primary transition-colors">Privacy</button>
                         </div>
                     </div>
                 </form>

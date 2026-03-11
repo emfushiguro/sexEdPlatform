@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Models\LessonTopic;
 use App\Models\LessonTopicProgress;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
@@ -39,14 +40,31 @@ class DashboardController extends Controller
             if (!$module) return null;
 
             $totalLessons = $module->lessons_count;
+
+            // Lesson-level count for card display ("X/Y lessons completed")
             $completedLessons = UserProgress::where('user_id', $user->id)
                 ->where('module_id', $module->id)
                 ->where('completed', true)
                 ->count();
 
-            $progressPercent = $totalLessons > 0
-                ? round(($completedLessons / $totalLessons) * 100)
-                : 0;
+            // Topic-based progress — reflects partial lesson progress accurately
+            $lessonIds = $module->lessons()->where('is_published', true)->pluck('id');
+            $totalTopics = LessonTopic::whereIn('lesson_id', $lessonIds)->count();
+
+            if ($totalTopics > 0) {
+                $completedTopics = LessonTopicProgress::where('user_id', $user->id)
+                    ->whereIn('lesson_topic_id', function ($q) use ($lessonIds) {
+                        $q->select('id')->from('lesson_topics')->whereIn('lesson_id', $lessonIds);
+                    })
+                    ->where('completed', true)
+                    ->count();
+                $progressPercent = round(($completedTopics / $totalTopics) * 100);
+            } else {
+                // No topics: fall back to lesson-level completion
+                $progressPercent = $totalLessons > 0
+                    ? round(($completedLessons / $totalLessons) * 100)
+                    : 0;
+            }
 
             // Find the first incomplete lesson for "Continue Learning"
             $nextLesson = $module->lessons()
