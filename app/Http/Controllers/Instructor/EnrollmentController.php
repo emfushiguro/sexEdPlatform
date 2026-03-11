@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
+use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
-use App\Notifications\EnrollmentApproved;
-use App\Notifications\EnrollmentRejected;
 use Illuminate\Http\Request;
 
 class EnrollmentController extends Controller
@@ -73,19 +72,19 @@ class EnrollmentController extends Controller
      */
     public function approve(ModuleEnrollment $enrollment)
     {
-        if ($enrollment->status !== 'pending') {
+        if ($enrollment->status !== EnrollmentStatus::Pending) {
             return redirect()->back()
                 ->with('error', 'This enrollment request is not pending.');
         }
 
         // Update enrollment to approved
         $enrollment->update([
-            'status' => 'approved',
+            'status' => EnrollmentStatus::Approved,
             'enrolled_at' => now(),
         ]);
 
-        // Notify the learner
-        $enrollment->user->notify(new EnrollmentApproved($enrollment));
+        // Note: UserProgress records are created per-lesson as learners progress,
+        // not at enrollment time. The user_progress table tracks lesson-level completion.
 
         return redirect()->back()
             ->with('success', 'Enrollment request approved successfully!');
@@ -96,18 +95,15 @@ class EnrollmentController extends Controller
      */
     public function reject(ModuleEnrollment $enrollment)
     {
-        if ($enrollment->status !== 'pending') {
+        if ($enrollment->status !== EnrollmentStatus::Pending) {
             return redirect()->back()
                 ->with('error', 'This enrollment request is not pending.');
         }
 
         // Update enrollment to rejected
         $enrollment->update([
-            'status' => 'rejected',
+            'status' => EnrollmentStatus::Rejected,
         ]);
-
-        // Notify the learner
-        $enrollment->user->notify(new EnrollmentRejected($enrollment));
 
         return redirect()->back()
             ->with('success', 'Enrollment request rejected.');

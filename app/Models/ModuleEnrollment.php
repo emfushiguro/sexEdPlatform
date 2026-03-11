@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Enums\EnrollmentStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class ModuleEnrollment extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'user_id',
         'module_id',
@@ -21,7 +19,7 @@ class ModuleEnrollment extends Model
     protected function casts(): array
     {
         return [
-            'status' => 'string',
+            'status' => EnrollmentStatus::class,
             'enrolled_at' => 'datetime',
             'completed_at' => 'datetime',
             'completion_percentage' => 'integer',
@@ -54,17 +52,17 @@ class ModuleEnrollment extends Model
 
     public function scopeApproved($query)
     {
-        return $query->where('status', 'approved');
+        return $query->where('status', EnrollmentStatus::Approved);
     }
 
     public function scopePending($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('status', EnrollmentStatus::Pending);
     }
 
     public function scopeRejected($query)
     {
-        return $query->where('status', 'rejected');
+        return $query->where('status', EnrollmentStatus::Rejected);
     }
 
     // Helper Methods

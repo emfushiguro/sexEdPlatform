@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\UserProgress;
@@ -14,7 +15,7 @@ class ModuleController extends Controller
     /**
      * Display all published modules filtered by learner's age
      */
-    public function index(Request $request)
+    public function index()
     {
         $user = Auth::user();
         $learnerProfile = $user->learnerProfile;
@@ -24,15 +25,15 @@ class ModuleController extends Controller
                 ->with('error', 'Please complete your profile to access modules.');
         }
 
+        // Get learner's age
         $learnerAge = $learnerProfile->getAge();
-        $search = $request->get('search');
-
+        
+        // Get published modules appropriate for learner's age
         $modules = Module::where('is_published', true)
             ->where(function ($query) use ($learnerAge) {
                 $query->where('min_age', '<=', $learnerAge)
                       ->where('max_age', '>=', $learnerAge);
             })
-            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%"))
             ->withCount('lessons')
             ->with(['lessons' => function ($query) {
                 $query->where('is_published', true)->orderBy('order');
@@ -42,9 +43,6 @@ class ModuleController extends Controller
 
         // Get user's enrollments
         $enrolledModuleIds = $user->moduleEnrollments()->pluck('module_id')->toArray();
-        $enrollments = ModuleEnrollment::where('user_id', $user->id)
-            ->get()
-            ->keyBy('module_id');
         
         // Calculate progress for each module
         $progress = [];
@@ -68,7 +66,7 @@ class ModuleController extends Controller
             ];
         }
 
-        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'progress', 'search', 'enrollments'));
+        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'progress'));
     }
 
     /**
@@ -102,7 +100,7 @@ class ModuleController extends Controller
             ->where('module_id', $module->id)
             ->first();
 
-        $isEnrolled = $enrollment && $enrollment->status === 'approved';
+        $isEnrolled = $enrollment && $enrollment->status === EnrollmentStatus::Approved;
         $enrollmentStatus = $enrollment ? $enrollment->status : null;
 
         // Calculate progress
@@ -179,38 +177,14 @@ class ModuleController extends Controller
         $existingEnrollment = $user->moduleEnrollments()->where('module_id', $module->id)->first();
         
         if ($existingEnrollment) {
-            if ($existingEnrollment->status === 'pending') {
+            if ($existingEnrollment->status === EnrollmentStatus::Pending) {
                 return back()->with('info', 'Your enrollment request is pending instructor approval.');
             }
-            if ($existingEnrollment->status === 'approved') {
+            if ($existingEnrollment->status === EnrollmentStatus::Approved) {
                 return back()->with('info', 'You are already enrolled in this module.');
             }
-            if ($existingEnrollment->status === 'rejected') {
+            if ($existingEnrollment->status === EnrollmentStatus::Rejected) {
                 return back()->with('error', 'Your enrollment request was rejected by the instructor.');
-            }
-            if ($existingEnrollment->status === 'pending_parent_approval') {
-                return back()->with('info', 'Your enrollment request is awaiting your parent\'s approval.');
-            }
-        }
-
-        // Check if child requires parental content approval before enrolling
-        $learnerProfile = $user->learnerProfile;
-        if ($learnerProfile?->requires_parental_consent) {
-            $parentUser = $user->parent();
-            if ($parentUser) {
-                $parentChildAccount = \App\Models\ParentChildAccount::where('parent_user_id', $parentUser->id)
-                    ->where('child_user_id', $user->id)
-                    ->first();
-                if ($parentChildAccount?->can_approve_content) {
-                    ModuleEnrollment::create([
-                        'user_id'     => $user->id,
-                        'module_id'   => $module->id,
-                        'status'      => 'pending_parent_approval',
-                        'enrolled_at' => null,
-                    ]);
-                    return redirect()->route('learner.modules.show', $module)
-                        ->with('info', 'Your enrollment request has been sent to your parent for approval.');
-                }
             }
         }
 
@@ -220,7 +194,7 @@ class ModuleController extends Controller
             ModuleEnrollment::create([
                 'user_id' => $user->id,
                 'module_id' => $module->id,
-                'status' => 'pending',
+                'status' => EnrollmentStatus::Pending,
                 'enrolled_at' => null,
             ]);
 
@@ -232,7 +206,7 @@ class ModuleController extends Controller
         ModuleEnrollment::create([
             'user_id' => $user->id,
             'module_id' => $module->id,
-            'status' => 'approved',
+            'status' => EnrollmentStatus::Approved,
             'enrolled_at' => now(),
         ]);
 

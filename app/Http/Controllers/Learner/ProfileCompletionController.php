@@ -1,9 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Learner;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\ProfileCompletionRequest;
 use App\Models\LearnerProfile;
+use App\Models\SubscriptionPlan;
 use Schoolees\Psgc\Models\City;
 use Schoolees\Psgc\Models\Barangay;
 use Illuminate\Http\Request;
@@ -24,7 +26,7 @@ class ProfileCompletionController extends Controller
             if ($user->hasRole('instructor')) {
                 return redirect()->route('instructor.dashboard');
             }
-            return redirect()->route('learner.dashboard');
+            return redirect()->route('learner.modules.index');
         }
 
         $learnerProfile = $user->learnerProfile;
@@ -107,8 +109,8 @@ class ProfileCompletionController extends Controller
                 ->with('success', 'Profile completed successfully! Welcome to the instructor dashboard.');
         }
 
-        return redirect()->route('learner.dashboard')
-            ->with('success', 'Profile completed successfully! Welcome to Concious Connections.');
+        return redirect()->route('learner.modules.index')
+            ->with('success', 'Profile completed successfully! Welcome to the learning platform.');
     }
 
     /**
@@ -123,7 +125,33 @@ class ProfileCompletionController extends Controller
             return redirect()->route('profile.complete');
         }
 
-        return view('profile.learner-edit', compact('learnerProfile'));
+        $currentSubscription = $user->subscriptions()
+            ->where('status', 'active')
+            ->latest()
+            ->first();
+
+        $currentPlan = $currentSubscription && $currentSubscription->plan_id
+            ? \App\Models\SubscriptionPlan::find($currentSubscription->plan_id)
+            : null;
+
+        $availablePlans = SubscriptionPlan::active()->ordered()->get();
+
+        // Refund eligibility based on the latest completed payment's paid_at
+        $latestPayment    = $currentSubscription
+            ? $currentSubscription->payments()->where('status', 'completed')->latest('paid_at')->first()
+            : null;
+        $refundDeadline   = $latestPayment?->paid_at?->copy()->addDays(3);
+        $isRefundEligible = $refundDeadline && now()->lt($refundDeadline);
+
+        return view('profile.learner-edit', compact(
+            'learnerProfile',
+            'currentSubscription',
+            'currentPlan',
+            'availablePlans',
+            'latestPayment',
+            'refundDeadline',
+            'isRefundEligible'
+        ));
     }
 
     /**
