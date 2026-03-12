@@ -185,6 +185,9 @@ class ModuleController extends Controller
             if ($existingEnrollment->status === EnrollmentStatus::Approved) {
                 return back()->with('info', 'You are already enrolled in this module.');
             }
+            if ($existingEnrollment->status === EnrollmentStatus::PendingParentApproval) {
+                return back()->with('info', 'Your enrollment request is awaiting parental approval.');
+            }
             if ($existingEnrollment->status === EnrollmentStatus::Rejected) {
                 return back()->with('error', 'Your enrollment request was rejected by the instructor.');
             }

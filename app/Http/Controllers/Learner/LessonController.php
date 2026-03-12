@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Enums\EnrollmentStatus;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\UserProgress;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 
 class LessonController extends Controller
 {
+    public function __construct(private GamificationService $gamificationService) {}
     /**
      * Display a specific lesson
      */
@@ -25,9 +27,10 @@ class LessonController extends Controller
             abort(404);
         }
 
-        // Security: Check if user is enrolled
+        // Security: Check if user is enrolled and approved
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
             ->exists();
 
         if (!$isEnrolled) {
@@ -220,6 +223,7 @@ class LessonController extends Controller
 
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
             ->exists();
 
         if (!$isEnrolled) {
@@ -247,9 +251,8 @@ class LessonController extends Controller
         ]);
 
         // Award gamification points (15 points per lesson)
-        $gamificationService = app(GamificationService::class);
-        $gamificationService->awardPoints($user, 'lesson_complete', 15);
-        $gamificationService->updateStreak($user);
+        $this->gamificationService->awardPoints($user, 'lesson_complete', 15);
+        $this->gamificationService->updateStreak($user);
         session()->flash('points_earned', ['points' => 15, 'reason' => 'lesson complete']);
 
         return back()->with('success', 'Lesson completed! You earned 15 points! 🎉');
@@ -271,6 +274,7 @@ class LessonController extends Controller
 
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
             ->exists();
 
         if (!$isEnrolled) {
@@ -281,9 +285,8 @@ class LessonController extends Controller
         $topic->markCompleted($user->id);
 
         // Award topic completion points (+10) and update streak
-        $gamificationService = app(GamificationService::class);
-        $gamificationService->awardPoints($user, 'topic_complete', 10);
-        $gamificationService->updateStreak($user);
+        $this->gamificationService->awardPoints($user, 'topic_complete', 10);
+        $this->gamificationService->updateStreak($user);
         session()->flash('points_earned', ['points' => 10, 'reason' => 'topic complete']);
 
         // Check if all topics are completed to auto-complete lesson
@@ -308,7 +311,7 @@ class LessonController extends Controller
                 ]
             );
             // Award lesson complete bonus (+15)
-            $gamificationService->awardPoints($user, 'lesson_complete', 15);
+            $this->gamificationService->awardPoints($user, 'lesson_complete', 15);
             session()->flash('points_earned', ['points' => 15, 'reason' => 'lesson complete']);
         }
 
@@ -338,6 +341,7 @@ class LessonController extends Controller
 
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
             ->exists();
 
         if (!$isEnrolled) {
