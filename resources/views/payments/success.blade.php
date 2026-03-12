@@ -1,12 +1,9 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Payment Successful!') }}
-        </h2>
-    </x-slot>
+@extends('layouts.learner-app')
 
-    <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+@section('title', 'Payment Successful')
+
+@section('content')
+<div class="max-w-3xl mx-auto">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-8 text-center">
                     <!-- Success Icon -->
@@ -79,7 +76,7 @@
 
                     <!-- Action Buttons -->
                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                        <a href="{{ route('dashboard') }}" 
+                        <a href="{{ route('learner.dashboard') }}" 
                            class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                             Go to Dashboard
                         </a>
@@ -95,6 +92,5 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-</x-app-layout>
+</div>
+@endsection

@@ -43,8 +43,9 @@ class ModuleController extends Controller
             ->get();
 
         // Get user's enrollments
-        $enrolledModuleIds = $user->moduleEnrollments()->pluck('module_id')->toArray();
-        
+        $enrollments = $user->moduleEnrollments()->get()->keyBy('module_id');
+        $enrolledModuleIds = $enrollments->keys()->toArray();
+
         // Calculate progress for each module
         $progress = [];
         foreach ($modules as $module) {
@@ -67,7 +68,7 @@ class ModuleController extends Controller
             ];
         }
 
-        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'progress'));
+        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'enrollments', 'progress'));
     }
 
     /**

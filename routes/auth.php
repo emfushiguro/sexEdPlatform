@@ -111,10 +111,25 @@ Route::middleware('auth')->group(function () {
     Route::middleware('verified')->group(function () {
         Route::get('parent/create-child', [ParentRegistrationController::class, 'createChildForm'])
             ->name('parent.create-child');
-        
-        Route::post('parent/create-child', [ParentRegistrationController::class, 'storeChild'])
+
+        Route::post('parent/create-child', [ParentRegistrationController::class, 'storeChildInfo'])
             ->name('parent.create-child.store');
-        
+
+        Route::get('parent/create-child/location', [ParentRegistrationController::class, 'childLocationForm'])
+            ->name('parent.create-child.location');
+
+        Route::post('parent/create-child/location', [ParentRegistrationController::class, 'storeChildLocation'])
+            ->name('parent.create-child.location.store');
+
+        Route::get('parent/create-child/credentials', [ParentRegistrationController::class, 'childCredentialsForm'])
+            ->name('parent.create-child.credentials');
+
+        Route::post('parent/create-child/credentials', [ParentRegistrationController::class, 'storeChildCredentials'])
+            ->name('parent.create-child.credentials.store');
+
+        Route::get('parent/create-child/done', [ParentRegistrationController::class, 'childDone'])
+            ->name('parent.create-child.done');
+
         Route::get('parent/children', [ParentRegistrationController::class, 'childrenIndex'])
             ->name('parent.children.index');
     });

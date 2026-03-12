@@ -1,15 +1,19 @@
-<x-app-layout>
+@extends('layouts.learner-app')
+
+@section('title', 'Choose Your Plan')
+
+@section('content')
     {{-- Dark Hero Banner --}}
     <div style="background:linear-gradient(160deg,#0d1117 0%,#1a1f3c 50%,#0d1117 100%);" class="text-white py-14 px-4 text-center border-b border-gray-800">
         <p class="text-indigo-400 text-sm font-semibold uppercase tracking-widest mb-3">Choose your plan</p>
-        <h1 class="text-4xl font-extrabold tracking-tight mb-3">Unlock more lessons, practice &amp; Hearts</h1>
+        <h1 class="text-4xl font-extrabold tracking-tight mb-3">Unlock more lessons, practice &amp; Shields</h1>
         <p class="text-gray-400 text-lg max-w-xl mx-auto">Start for free. Upgrade any time to unlock the full learning experience.</p>
         @if(!auth()->user()->isPremium())
             <div class="inline-flex items-center gap-2 mt-5 bg-white/5 border border-white/10 text-gray-300 text-sm px-4 py-2 rounded-full">
                 <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                 </svg>
-                Free plan: limited to <strong class="mx-1 text-white">{{ \App\Models\QuizDailyLimit::MAX_FREE_ATTEMPTS }} quiz attempts</strong> per day
+                Free plan: limited to <strong class="mx-1 text-white">3 shields</strong> per day
             </div>
         @endif
     </div>
@@ -177,7 +181,7 @@
                             {{-- Feature list — checkmarks on LEFT --}}
                             <ul class="flex-1 space-y-1.5 mb-4">
                                 @if($isFree)
-                                    @foreach(['3 quiz attempts / day','Limited module access'] as $feat)
+                                    @foreach(['3 shields / day','Limited module access'] as $feat)
                                         <li class="flex items-center gap-2">
                                             <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="{{ $checkClr }}" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                                             <span class="text-xs" style="color:#94a3b8;">{{ $feat }}</span>
@@ -475,11 +479,11 @@
 
             <!-- Back to Dashboard -->
             <div class="text-center">
-                <a href="{{ route('dashboard') }}" class="text-blue-600 hover:text-blue-800">
+                <a href="{{ route('learner.dashboard') }}" class="text-purple-400 hover:text-purple-300">
                     ← Back to Dashboard
                 </a>
             </div>
         </div>
     </div>
-</x-app-layout>
+@endsection
 

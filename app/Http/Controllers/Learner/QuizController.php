@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Learner;
 use App\Http\Controllers\Controller;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
-use App\Models\QuizDailyLimit;
+use App\Models\UserDailyShield;
+use App\Services\GamificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class QuizController extends Controller
 {
+    public function __construct(
+        private GamificationService $gamificationService,
+    ) {}
+
     /**
      * Show quiz start page (redirects to start method)
      */
@@ -34,12 +39,12 @@ class QuizController extends Controller
                 ->with('error', 'You must enroll in the module first.');
         }
 
-        // Check daily limit for free users
-        $remainingAttempts = QuizDailyLimit::getRemainingAttempts($user, $quiz->id);
-        
-        if ($remainingAttempts <= 0) {
-            return redirect()->route('subscription.upgrade')
-                ->with('error', 'You have reached your daily quiz limit. Upgrade to premium for unlimited attempts!');
+        // Check shields for free users (premium users have unlimited attempts)
+        if (!$user->isPremium()) {
+            if (UserDailyShield::getShields($user) <= 0) {
+                return redirect()->route('subscription.upgrade')
+                    ->with('error', 'You are out of shields for today. Refill with points or upgrade to premium for unlimited attempts!');
+            }
         }
 
         // Load quiz with questions and options
@@ -65,11 +70,10 @@ class QuizController extends Controller
             abort(403);
         }
 
-        // Check daily limit again before submitting
-        $remainingAttempts = QuizDailyLimit::getRemainingAttempts($user, $quiz->id);
-        if ($remainingAttempts <= 0) {
+        // Re-check shields before submitting (race-condition guard for free users)
+        if (!$user->isPremium() && UserDailyShield::getShields($user) <= 0) {
             return redirect()->route('subscription.upgrade')
-                ->with('error', 'You have reached your daily quiz limit.');
+                ->with('error', 'You are out of shields for today.');
         }
 
         DB::beginTransaction();
@@ -303,32 +307,22 @@ class QuizController extends Controller
                 'completed_at' => now(),
             ]);
 
-            // Increment daily limit for free users
-            QuizDailyLimit::incrementAttempts($user, $quiz->id);
+            // Drain one shield for free users
+            if (!$user->isPremium()) {
+                UserDailyShield::drainShield($user);
+            }
 
             // Award points based on performance
-            $gamification = $user->gamification;
-            if ($gamification) {
-                if ($passed) {
-                    // 25 points for passing
-                    $points = 25;
-                    // Bonus for perfect score
-                    if ($score == 100) {
-                        $points = 30;
-                    }
-                    $gamification->addPoints($points);
-                    $message = "Congratulations! You passed and earned {$points} points! 🎉";
-                } else {
-                    // 5 points for attempt (participation)
-                    $gamification->addPoints(5);
-                    $message = "You earned 5 points for trying! Keep practicing! 💪";
-                }
-                
-                // Update streak
-                $gamification->updateStreak();
+            if ($passed) {
+                $points = $score === 100 ? 30 : 25;
+                $this->gamificationService->awardPoints($user, 'quiz_passed', $points);
+                $message = "Congratulations! You passed and earned {$points} points! 🎉";
             } else {
-                $message = $passed ? 'Congratulations! You passed!' : 'Keep trying!';
+                $this->gamificationService->awardPoints($user, 'quiz_attempted', 5);
+                $message = "You earned 5 points for trying! Keep practicing! 💪";
             }
+
+            $this->gamificationService->updateStreak($user);
 
             DB::commit();
 
@@ -368,9 +362,9 @@ class QuizController extends Controller
             ->latest()
             ->paginate(10);
 
-        $remainingAttempts = QuizDailyLimit::getRemainingAttempts(auth()->user());
+        $shieldsRemaining = UserDailyShield::getShields(auth()->user());
 
-        return view('quizzes.history', compact('attempts', 'remainingAttempts'));
+        return view('quizzes.history', compact('attempts', 'shieldsRemaining'));
     }
 
     /**
@@ -411,7 +405,7 @@ class QuizController extends Controller
             ]);
 
             // Award completion bonus
-            $user->gamification->addPoints(100);
+            $this->gamificationService->awardPoints($user, 'module_completed', 100);
         }
     }
 }

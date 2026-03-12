@@ -1,12 +1,9 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('My Subscription') }}
-        </h2>
-    </x-slot>
+@extends('layouts.learner-app')
 
-    <div class="py-10 bg-gray-50 min-h-screen">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+@section('title', 'My Subscription')
+
+@section('content')
+<div class="max-w-4xl mx-auto">
 
             {{-- Flash messages --}}
             @foreach(['success' => 'green', 'error' => 'red', 'info' => 'blue'] as $type => $color)
@@ -228,6 +225,5 @@
                 </div>
             @endif
 
-        </div>
-    </div>
-</x-app-layout>
+</div>
+@endsection

@@ -1,12 +1,9 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Payment History') }}
-        </h2>
-    </x-slot>
+@extends('layouts.learner-app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+@section('title', 'Payment History')
+
+@section('content')
+<div class="max-w-7xl mx-auto">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     @if($payments->count() > 0)
@@ -116,6 +113,5 @@
                     ← Back to Subscription
                 </a>
             </div>
-        </div>
-    </div>
-</x-app-layout>
+</div>
+@endsection

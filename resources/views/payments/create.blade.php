@@ -1,12 +1,9 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Complete Your Payment') }}
-        </h2>
-    </x-slot>
+@extends('layouts.learner-app')
 
-    <div style="background:#0d1117;min-height:100vh;" class="py-12 px-4">
-        <div class="max-w-xl mx-auto">
+@section('title', 'Complete Your Payment')
+
+@section('content')
+<div class="max-w-xl mx-auto">
 
             @if(session('error'))
                 <div class="mb-5 rounded-xl px-4 py-3 text-sm text-red-300 border border-red-800" style="background:rgba(127,29,29,0.3);">{{ session('error') }}</div>
@@ -131,8 +128,7 @@
             <div class="mt-4 text-center">
                 <a href="{{ route('subscription.upgrade') }}" class="text-indigo-400 hover:text-indigo-300 text-sm">← Back to Plans</a>
             </div>
-        </div>
-    </div>
+</div>
 
     <script>
         document.getElementById('payment-form').addEventListener('submit', function(e) {
@@ -158,4 +154,4 @@
             });
         });
     </script>
-</x-app-layout>
+@endsection

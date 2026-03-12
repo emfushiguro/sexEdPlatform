@@ -1,12 +1,9 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Payment Pending') }}
-        </h2>
-    </x-slot>
+@extends('layouts.learner-app')
 
-    <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+@section('title', 'Payment Pending')
+
+@section('content')
+<div class="max-w-3xl mx-auto">
             @if(session('info'))
                 <div class="mb-6 bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
                     {{ session('info') }}
@@ -209,5 +206,4 @@
         })();
     </script>
     @endif
-
-</x-app-layout>
+@endsection
