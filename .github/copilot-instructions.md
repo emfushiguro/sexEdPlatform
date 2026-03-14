@@ -30,8 +30,18 @@ A Philippine-focused **Sex Education Learning Platform** called **Concious Conne
 
 ## Architecture Notes (Read Before Writing Any Code)
 
-### No Services or Actions layer yet — this is tech debt
-`app/Services/` and `app/Actions/` **do not exist**. Business logic is currently written directly in controllers. **New code should NOT follow this pattern.** Extract logic into Service classes in `app/Services/` and keep controllers thin.
+### Services layer exists — use it
+`app/Services/` **exists** with the following services already in place:
+- `GamificationService` — award/spend points, update streaks
+- `SubscriptionService` — subscription lifecycle management
+- `SubscriptionDunningService` — handles overdue/failed billing
+- `InvoiceService` — invoice generation
+- `RefundService` — refund processing via Paymongo
+- `ParentChildService` — parent-child account logic
+- `PayMongoPaymentLinkService` — Paymongo payment link creation
+- `AnalyticsService` — platform-wide analytics queries
+
+`app/Actions/` still does not exist. Keep controllers thin — put business logic in `app/Services/` classes.
 
 ### Server-rendered only
 No REST API, no SPA. Everything is Blade + Alpine.js. The only API-style routes are the PSGC location lookup endpoints (`/api/cities/{provinceCode}`, `/api/barangays/{cityCode}`) for form dropdowns.
@@ -45,51 +55,103 @@ Learners have a profile with an `age_bracket` field. Modules are targeted to spe
 
 ### Authentication & User Management
 - Three-path login split: Admin, Instructor, Learner (each has dedicated login page + controller)
-- Learner registration (`RegisteredUserController`) + email verification
+- Learner registration (`RegisteredUserController`) + email verification, including a **wizard-stepper** multi-step registration flow
 - Password reset flow
-- Parent-child account system (`ParentChildAccount` model, `ParentRegistrationController` — may be incomplete)
+- Parent-child account system: `ParentChildAccount` model, `ParentRegistrationController`, `ParentChildService`, `ParentController` — functional, with monitoring views under `/parent`
 - Profile completion gate: Learners must complete their profile before accessing the platform (`ProfileCompletionController`, `profile.completed` middleware)
 - Learner profile: display name, username (rate-limited change for free users), avatar, age bracket, PSGC location, date of birth
+- Account deletion, password change via `ProfileCompletionController`
 
 ### Instructor Panel (`/instructor`)
-- **Modules:** Full CRUD, thumbnail upload, enrollment mode (open/approval), premium flag, age bracket targeting, final quiz assignment
+- **Dashboard:** Real stat cards (total learners, modules published/total, quizzes, pending enrollments, enrolled learners) via `Instructor\DashboardController`
+- **Modules:** Full CRUD, thumbnail upload, enrollment mode (open/approval/pending-parent-approval), premium flag, age bracket targeting, final quiz assignment, `created_by` tracking
 - **Lessons:** Full CRUD, rich content support (video embed, TinyMCE, PDF), ordering/reordering
 - **Lesson Topics:** Sub-units within lessons, TinyMCE content, worksheet file support
 - **Quizzes:** Full CRUD, question management (multiple choice, true/false, short answer, matching, ordering, fill-in-the-blank), CSV bulk import
 - **Enrollments:** View, approve, and reject learner enrollment requests
 - **Image Library:** Upload/manage/delete images for use in TinyMCE editor
 - **User management:** View and manage learner accounts
+- **Search:** Live AJAX search (`Instructor\SearchController`)
 
 ### Learner Features (`/learn`)
+- **Dashboard:** Redesigned, uses `@extends('layouts.learner-app')` — hero banner with greeting, age bracket badge, gamification bar component, active module cards, recommended modules, streak card, mini calendar
 - Module browsing: age-bracket-filtered catalog, enrollment flow (`Learner\ModuleController`)
 - Lesson viewing + completion: progress tracked per user (`Learner\LessonController`)
 - Topic-level completion: fine-grained progress via `LessonTopicProgress`
-- Basic dashboard: exists but uses old `<x-app-layout>` layout — **the redesigned dashboard (Figma) is not yet built**
-- Gamification: `UserGamification` (level, XP, streak, total points), `Achievement`, `RewardLog` models exist — full UI is **not yet built**
+- **Gamification (partial UI built):**
+  - `GamificationService` handles all XP/points/streak logic
+  - `UserGamification` model: level, score (spendable XP), total_points (lifetime), streak_count, longest_streak, streak_savers
+  - `UserDailyShield` model (renamed from `QuizDailyLimit`) — shields consumed on quiz attempts
+  - `ShieldRefillController` — spend points to refill shields
+  - `StreakSaverController` — buy streak savers with points
+  - `<x-gamification-bar>` component — displays XP, level, streak in header
+  - `<x-learner.gamification-panel>`, `<x-learner.streak-card>`, `<x-learner.out-of-shields-modal>` components
+  - Gamification rules page at `/learn/gamification`
+  - Achievement/badge display UI: **not yet built**
+- **Certificates (working):** `Learner\CertificateController` — index, show, PDF download (premium only), public verification at `/certificates/verify`
+- **Notifications:** `Learner\NotificationController` — mark-read, mark-all-read; DB notifications via Laravel's notifications table
+- **Search:** Live AJAX search (`Learner\SearchController`)
 
 ### Subscription & Payment
-- `SubscriptionController`: upgrade, cancel, renew, status check
-- `PaymentController`: Paymongo integration, webhook handling, payment receipts
+- `Learner\SubscriptionController`: view plans, upgrade, cancel, refund request, renew, status check
+- `PaymentController`: Paymongo payment link creation, success/failure callbacks, payment history, receipt
+- `PayMongoPaymentLinkService` + `SubscriptionService` + `InvoiceService` + `RefundService` back-end logic
+- `SubscriptionDunningService` — handles expired/overdue subscriptions
+- `Invoice` + `Refund` models with migrations
+- `CheckPremiumStatus` middleware (alias: `premium`) — guards premium-only routes
 - Free vs. premium: premium unlocks certificate downloads, unlimited quiz attempts, module attachment downloads
+- Views: `subscriptions/index`, `subscriptions/upgrade`, `payments/create`, `payments/pending`, `payments/success`, `payments/cancel`, `payments/receipt`, `payments/history`
 
 ### Quizzes (Learner-facing)
 - `QuizController`: start, submit, result, attempt history
-- Daily attempt limits via `QuizDailyLimit`
-- Points-based attempt recharge (spend gamification points for more attempts)
+- Daily attempt gates via `UserDailyShield` (shields consumed per attempt; **renamed from `QuizDailyLimit`**)
+- Points-based shield refill via `ShieldRefillController`
+- Streak savers purchasable via `StreakSaverController`
+
+### Admin Panel (`/admin`)
+- **Dashboard:** Live stat cards — total users, instructors, total modules (data pulled in Blade directly)
+- **User Management:** Full CRUD via `UserAdminController` — create, edit, show, delete users; filter by role
+- **Subscriber Management:** `SubscriberAdminController` — list all subscribers with quick-action (cancel/activate), detail view with subscription history; `UnifiedSubscriptionAdminController` — create/edit/manage plans from the same UI
+- **Subscription Plans:** `SubscriptionPlanAdminController` — full CRUD (create, edit, show, delete, toggle active/inactive, reorder)
+- **Payment Management:** `PaymentAdminController` — list payments, view detail, process refund, mark as completed
+- **Calendar:** Stub view at `/admin/calendar`
+- **Seminars:** Stub views (index, create, show) — no controller logic yet
+- **Organizations:** Stub views (index, show) — no controller logic yet
+- **Messages:** Stub view at `/admin/messages`
+- **Email Announcements:** Stub views (index, compose)
 
 ---
 
 ## What Is NOT Yet Built
 
 | Feature | Status |
-| **Certificates** | Not started — models and migrations exist, no working UI or controller logic |
-| **Seminars** | Not started — models and migrations only |
-| **Organizations** | Not started — models and migrations only |
-| **Health Centers & Clinics** | Not started — models and migrations only |
-| **Counselors** | Not started — models and migrations only |
-| **Consultations** | Not started — models and migrations only |
-| **Admin panel** | Stub only — `/admin/dashboard` view exists, no CRUD or analytics |
-| **Services / Actions layer** | Not started — tech debt from fat controllers |
+|---|---|
+| **Gamification — Achievement/Badge UI** | Service + models exist; achievement display, badge unlocks, and reward history UI not built |
+| **Seminars** | Admin stub views exist; no `SeminarController`, no learner-facing pages |
+| **Organizations** | Admin stub views exist; no controller logic |
+| **Health Centers & Clinics** | Models and migrations only — no views or controllers |
+| **Counselors** | Models and migrations only — no views or controllers |
+| **Consultations** | Models and migrations only — no views or controllers |
+| **Admin Analytics (deep)** | Dashboard has basic counts; no charts, revenue graphs, or drill-down analytics |
+| **app/Actions layer** | Not started — `app/Services/` exists; `app/Actions/` does not |
+
+## UI Architecture
+
+### Layouts
+- `layouts/learner-app.blade.php` — main learner layout (sidebar + header + gamification bar)
+- `layouts/learner-fullscreen.blade.php` — full-screen layout for quizzes/lessons
+- `layouts/instructor-app.blade.php` — instructor panel layout
+- `layouts/admin.blade.php` — admin panel layout
+- `layouts/guest.blade.php` — auth/registration pages
+
+### Blade Component Libraries
+**Generic UI components** (`resources/views/components/ui/`):
+`alert`, `badge`, `button`, `card`, `empty-state`, `progress-bar`, `skeleton`, `spinner`
+
+**Learner-specific components** (`resources/views/components/learner/`):
+`gamification-panel`, `mini-calendar`, `module-card-active`, `module-card-recommended`, `out-of-shields-modal`, `streak-card`
+
+**Other top-level components:** `gamification-bar`, `wizard-stepper`, `breadcrumb`, `modal`, `dropdown`, `legal-modals`
 
 ---
 

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Enums\EnrollmentStatus;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
+use App\Models\LessonTopicProgress;
 use App\Models\UserProgress;
 use App\Services\GamificationService;
 use Illuminate\Http\Request;
@@ -12,6 +14,10 @@ use Illuminate\Support\Facades\Auth;
 
 class LessonController extends Controller
 {
+    public function __construct(
+        private GamificationService $gamificationService,
+    ) {}
+
     /**
      * Display a specific lesson
      */
@@ -28,6 +34,7 @@ class LessonController extends Controller
         // Security: Check if user is enrolled
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
             ->exists();
 
         if (!$isEnrolled) {
@@ -85,7 +92,7 @@ class LessonController extends Controller
         $allModuleTopicIds = $allLessons->flatMap(fn($l) => $l->topics->pluck('id'));
         $allCompletedTopicIds = [];
         if ($allModuleTopicIds->isNotEmpty()) {
-            $allCompletedTopicIds = \App\Models\LessonTopicProgress::where('user_id', $user->id)
+            $allCompletedTopicIds = LessonTopicProgress::where('user_id', $user->id)
                 ->whereIn('lesson_topic_id', $allModuleTopicIds)
                 ->where('completed', true)
                 ->pluck('lesson_topic_id')
@@ -106,7 +113,7 @@ class LessonController extends Controller
         $lessonTopics = $lesson->topics()->ordered()->get();
         $completedTopicIds = [];
         if ($lessonTopics->count() > 0) {
-            $completedTopicIds = \App\Models\LessonTopicProgress::where('user_id', $user->id)
+            $completedTopicIds = LessonTopicProgress::where('user_id', $user->id)
                 ->whereIn('lesson_topic_id', $lessonTopics->pluck('id'))
                 ->where('completed', true)
                 ->pluck('lesson_topic_id')
@@ -220,6 +227,7 @@ class LessonController extends Controller
 
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
             ->exists();
 
         if (!$isEnrolled) {
@@ -247,9 +255,8 @@ class LessonController extends Controller
         ]);
 
         // Award gamification points (15 points per lesson)
-        $gamificationService = app(GamificationService::class);
-        $gamificationService->awardPoints($user, 'lesson_complete', 15);
-        $gamificationService->updateStreak($user);
+        $this->gamificationService->awardPoints($user, 'lesson_complete', 15);
+        $this->gamificationService->updateStreak($user);
         session()->flash('points_earned', ['points' => 15, 'reason' => 'lesson complete']);
 
         return back()->with('success', 'Lesson completed! You earned 15 points! 🎉');
@@ -271,6 +278,7 @@ class LessonController extends Controller
 
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
             ->exists();
 
         if (!$isEnrolled) {
@@ -281,14 +289,13 @@ class LessonController extends Controller
         $topic->markCompleted($user->id);
 
         // Award topic completion points (+10) and update streak
-        $gamificationService = app(GamificationService::class);
-        $gamificationService->awardPoints($user, 'topic_complete', 10);
-        $gamificationService->updateStreak($user);
+        $this->gamificationService->awardPoints($user, 'topic_complete', 10);
+        $this->gamificationService->updateStreak($user);
         session()->flash('points_earned', ['points' => 10, 'reason' => 'topic complete']);
 
         // Check if all topics are completed to auto-complete lesson
         $allTopics = $lesson->topics()->ordered()->get();
-        $completedCount = \App\Models\LessonTopicProgress::where('user_id', $user->id)
+        $completedCount = LessonTopicProgress::where('user_id', $user->id)
             ->whereIn('lesson_topic_id', $allTopics->pluck('id'))
             ->where('completed', true)
             ->count();
@@ -308,7 +315,7 @@ class LessonController extends Controller
                 ]
             );
             // Award lesson complete bonus (+15)
-            $gamificationService->awardPoints($user, 'lesson_complete', 15);
+            $this->gamificationService->awardPoints($user, 'lesson_complete', 15);
             session()->flash('points_earned', ['points' => 15, 'reason' => 'lesson complete']);
         }
 
@@ -338,6 +345,7 @@ class LessonController extends Controller
 
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
             ->exists();
 
         if (!$isEnrolled) {
@@ -345,7 +353,7 @@ class LessonController extends Controller
         }
 
         // Mark this topic incomplete
-        \App\Models\LessonTopicProgress::where('user_id', $user->id)
+        LessonTopicProgress::where('user_id', $user->id)
             ->where('lesson_topic_id', $topic->id)
             ->update(['completed' => false, 'completed_at' => null]);
 

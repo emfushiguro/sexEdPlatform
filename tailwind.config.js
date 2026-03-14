@@ -17,8 +17,21 @@ export default {
                 sans: ['Poppins', 'Figtree', ...defaultTheme.fontFamily.sans],
             },
             colors: {
-                // Custom brand colors for Sex Ed Platform
+                // Flat brand scale — matches platform gradient #A30EB2 → #730DB1 → #3B0CB1
+                // Used by landing page, admin layout, and all admin views
                 brand: {
+                    50:  '#fdf4ff',
+                    100: '#f8e4ff',
+                    200: '#f0c4fe',
+                    300: '#e393fb',
+                    400: '#cf56f3',
+                    500: '#A30EB2', // gradient start — vivid purple
+                    600: '#8A0DB3',
+                    700: '#730DB1', // gradient mid
+                    800: '#550CB1',
+                    900: '#3B0CB1', // gradient end — deeper indigo-purple
+                    950: '#1e0660', // dark navbar/hero backgrounds
+                    // Legacy nested keys kept for backward compat with older views
                     purple: {
                         50: '#faf5ff',
                         100: '#f3e8ff',
@@ -30,10 +43,9 @@ export default {
                         700: '#7e22ce',
                         800: '#6b21a8',
                         900: '#581c87',
-                        // Exact colors from Figma design
-                        primary: '#6D2994',  // Main brand purple
-                        dark: '#3C1255',     // Gradient dark end
-                        light: '#8B4DAF',    // Lighter shade for hover
+                        primary: '#6D2994',
+                        dark: '#3C1255',
+                        light: '#8B4DAF',
                     },
                     blue: {
                         50: '#eff6ff',
@@ -41,7 +53,7 @@ export default {
                         200: '#bfdbfe',
                         300: '#93c5fd',
                         400: '#60a5fa',
-                        500: '#3b82f6', // Primary blue
+                        500: '#3b82f6',
                         600: '#2563eb',
                         700: '#1d4ed8',
                         800: '#1e40af',
@@ -53,7 +65,7 @@ export default {
                         200: '#fbcfe8',
                         300: '#f9a8d4',
                         400: '#f472b6',
-                        500: '#ec4899', // Accent pink
+                        500: '#ec4899',
                         600: '#db2777',
                         700: '#be185d',
                         800: '#9f1239',
@@ -116,6 +128,10 @@ export default {
                 'glow-purple': '0 0 20px rgba(168, 85, 247, 0.4)',
                 'glow-blue': '0 0 20px rgba(59, 130, 246, 0.4)',
                 'glow-pink': '0 0 20px rgba(236, 72, 153, 0.4)',
+                // Admin layout shadow utilities
+                'theme-xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                'theme-sm': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+                'theme-md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
             },
             spacing: {
                 '18': '4.5rem',

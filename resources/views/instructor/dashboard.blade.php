@@ -115,8 +115,8 @@
                             'rejected' => 'bg-red-100 text-red-700',
                         ];
                     @endphp
-                    <span class="flex-shrink-0 text-[11px] font-semibold px-2.5 py-0.5 rounded-full {{ $statusClasses[$activity->status] ?? 'bg-gray-100 text-gray-600' }}">
-                        {{ ucfirst($activity->status) }}
+                    <span class="flex-shrink-0 text-[11px] font-semibold px-2.5 py-0.5 rounded-full {{ $statusClasses[$activity->status->value] ?? 'bg-gray-100 text-gray-600' }}">
+                        {{ ucfirst($activity->status->value) }}
                     </span>
                 </div>
                 @endforeach

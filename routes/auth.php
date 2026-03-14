@@ -20,6 +20,7 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
+    // Step 2: Account info (email + password)
     Route::get('register/account', [RegisteredUserController::class, 'showAccount'])
         ->name('register.account');
 
@@ -35,20 +36,19 @@ Route::middleware('guest')->group(function () {
     Route::post('parent/register', [ParentRegistrationController::class, 'storePersonal'])
         ->name('parent.register.store');
 
-    // Parent registration step 2 — credentials
-    Route::get('parent/register/account', [ParentRegistrationController::class, 'createAccount'])
+    // Step 2: Parent account credentials
+    Route::get('parent/register-account', [ParentRegistrationController::class, 'createAccount'])
         ->name('parent.register.account');
 
-    Route::post('parent/register/account', [ParentRegistrationController::class, 'storeAccount'])
+    Route::post('parent/register-account', [ParentRegistrationController::class, 'storeAccount'])
         ->name('parent.register.account.store');
 
-    // Learner login (homepage)
-    Route::get('/', function () {
+    // Learner login
+    Route::get('login', function () {
         return view('auth.learner-login');
-    })->name('learner.login');
-    
-    Route::post('login', [AuthenticatedSessionController::class, 'store'])
-        ->name('login');
+    })->name('login');
+
+    Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
     // Instructor login (separate portal)
     Route::get('instructor/login', [InstructorAuthController::class, 'showLoginForm'])
@@ -111,35 +111,26 @@ Route::middleware('auth')->group(function () {
     Route::middleware('verified')->group(function () {
         Route::get('parent/create-child', [ParentRegistrationController::class, 'createChildForm'])
             ->name('parent.create-child');
-        
+
         Route::post('parent/create-child', [ParentRegistrationController::class, 'storeChildInfo'])
             ->name('parent.create-child.store');
 
-        // Child wizard steps 2-4
         Route::get('parent/create-child/location', [ParentRegistrationController::class, 'childLocationForm'])
             ->name('parent.create-child.location');
+
         Route::post('parent/create-child/location', [ParentRegistrationController::class, 'storeChildLocation'])
             ->name('parent.create-child.location.store');
 
         Route::get('parent/create-child/credentials', [ParentRegistrationController::class, 'childCredentialsForm'])
             ->name('parent.create-child.credentials');
+
         Route::post('parent/create-child/credentials', [ParentRegistrationController::class, 'storeChildCredentials'])
             ->name('parent.create-child.credentials.store');
 
         Route::get('parent/create-child/done', [ParentRegistrationController::class, 'childDone'])
             ->name('parent.create-child.done');
-        
+
         Route::get('parent/children', [ParentRegistrationController::class, 'childrenIndex'])
             ->name('parent.children.index');
-
-        // Parent monitoring routes
-        Route::get('parent/children/{child}', [\App\Http\Controllers\ParentController::class, 'show'])
-            ->name('parent.children.show');
-
-        Route::post('parent/children/{child}/enrollments/{enrollment}/approve', [\App\Http\Controllers\ParentController::class, 'approveEnrollment'])
-            ->name('parent.children.enrollments.approve');
-
-        Route::post('parent/children/{child}/enrollments/{enrollment}/reject', [\App\Http\Controllers\ParentController::class, 'rejectEnrollment'])
-            ->name('parent.children.enrollments.reject');
     });
 });

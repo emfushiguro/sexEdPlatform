@@ -123,7 +123,7 @@
                 </button>
                 <div class="mt-4 text-center text-sm text-gray-600">
                     Already have an account?
-                    <a href="{{ route('learner.login') }}" class="text-brand-purple-primary font-medium hover:underline">Login</a>
+                    <a href="{{ route('login') }}" class="text-brand-purple-primary font-medium hover:underline">Login</a>
                 </div>
             </div>
 

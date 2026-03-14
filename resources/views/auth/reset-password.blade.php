@@ -106,7 +106,7 @@
         </div>
 
         <div class="mt-6 text-center">
-            <a href="{{ route('learner.login') }}"
+            <a href="{{ route('login') }}"
                class="text-sm text-gray-500 hover:text-brand-purple-primary transition-colors">
                 &larr; Back to Login
             </a>

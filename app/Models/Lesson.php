@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 class Lesson extends Model
 {
     use HasFactory;
-
     protected $fillable = [
         'module_id',
         'title',
@@ -17,6 +16,7 @@ class Lesson extends Model
         'order',
         'duration',
         'is_published',
+        'text_content',
     ];
 
     protected function casts(): array

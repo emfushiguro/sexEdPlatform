@@ -112,7 +112,7 @@
         <div class="mt-6 text-center">
             <p class="text-sm text-gray-600">
                 or login as 
-                <a href="{{ route('learner.login') }}" class="instructor-link font-medium hover:underline transition-colors">
+                <a href="{{ route('login') }}" class="instructor-link font-medium hover:underline transition-colors">
                     Learner
                 </a>
             </p>

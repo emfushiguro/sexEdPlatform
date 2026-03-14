@@ -8,13 +8,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    {{-- Apply dark mode immediately to prevent flash (runs synchronously before render) --}}
+    {{-- Apply saved theme immediately to prevent flash. Default is light mode. --}}
     <script>
         (function () {
             var saved = localStorage.getItem('theme');
-            var system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            if ((saved || system) === 'dark') {
+            if (!saved) {
+                localStorage.setItem('theme', 'light');
+                saved = 'light';
+            }
+            if (saved === 'dark') {
                 document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
             }
         })();
     </script>
