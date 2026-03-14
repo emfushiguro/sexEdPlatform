@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Enums\EnrollmentStatus;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
+use App\Models\LessonTopicProgress;
 use App\Models\UserProgress;
 use App\Services\GamificationService;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ use Illuminate\Support\Facades\Auth;
 
 class LessonController extends Controller
 {
-    public function __construct(private GamificationService $gamificationService) {}
+    public function __construct(
+        private GamificationService $gamificationService,
+    ) {}
+
     /**
      * Display a specific lesson
      */
@@ -27,7 +31,7 @@ class LessonController extends Controller
             abort(404);
         }
 
-        // Security: Check if user is enrolled and approved
+        // Security: Check if user is enrolled
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
             ->where('status', EnrollmentStatus::Approved)
@@ -88,7 +92,7 @@ class LessonController extends Controller
         $allModuleTopicIds = $allLessons->flatMap(fn($l) => $l->topics->pluck('id'));
         $allCompletedTopicIds = [];
         if ($allModuleTopicIds->isNotEmpty()) {
-            $allCompletedTopicIds = \App\Models\LessonTopicProgress::where('user_id', $user->id)
+            $allCompletedTopicIds = LessonTopicProgress::where('user_id', $user->id)
                 ->whereIn('lesson_topic_id', $allModuleTopicIds)
                 ->where('completed', true)
                 ->pluck('lesson_topic_id')
@@ -109,7 +113,7 @@ class LessonController extends Controller
         $lessonTopics = $lesson->topics()->ordered()->get();
         $completedTopicIds = [];
         if ($lessonTopics->count() > 0) {
-            $completedTopicIds = \App\Models\LessonTopicProgress::where('user_id', $user->id)
+            $completedTopicIds = LessonTopicProgress::where('user_id', $user->id)
                 ->whereIn('lesson_topic_id', $lessonTopics->pluck('id'))
                 ->where('completed', true)
                 ->pluck('lesson_topic_id')
@@ -291,7 +295,7 @@ class LessonController extends Controller
 
         // Check if all topics are completed to auto-complete lesson
         $allTopics = $lesson->topics()->ordered()->get();
-        $completedCount = \App\Models\LessonTopicProgress::where('user_id', $user->id)
+        $completedCount = LessonTopicProgress::where('user_id', $user->id)
             ->whereIn('lesson_topic_id', $allTopics->pluck('id'))
             ->where('completed', true)
             ->count();
@@ -349,7 +353,7 @@ class LessonController extends Controller
         }
 
         // Mark this topic incomplete
-        \App\Models\LessonTopicProgress::where('user_id', $user->id)
+        LessonTopicProgress::where('user_id', $user->id)
             ->where('lesson_topic_id', $topic->id)
             ->update(['completed' => false, 'completed_at' => null]);
 

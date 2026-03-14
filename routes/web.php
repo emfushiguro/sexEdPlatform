@@ -18,9 +18,8 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Landing page
-Route::view('/', 'landing')->name('home');
-Route::view('/landing', 'landing');
+// Default entry point goes to learner login
+Route::redirect('/', '/login')->name('home');
 
 Route::view('/privacy', 'legal.privacy')->name('privacy');
 Route::view('/terms', 'legal.terms')->name('terms');

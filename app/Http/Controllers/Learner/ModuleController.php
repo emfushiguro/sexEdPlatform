@@ -7,6 +7,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\ParentChildAccount;
+use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -79,6 +80,11 @@ class ModuleController extends Controller
         $user = Auth::user();
         $learnerProfile = $user->learnerProfile;
 
+        if (!$learnerProfile) {
+            return redirect()->route('profile.complete')
+                ->with('error', 'Please complete your profile to access modules.');
+        }
+
         // Security: Check if module is published
         if (!$module->is_published) {
             abort(404);
@@ -95,6 +101,10 @@ class ModuleController extends Controller
         $lessons = $module->lessons()
             ->where('is_published', true)
             ->orderBy('order')
+            ->with([
+                'topics' => fn($query) => $query->ordered(),
+                'quiz' => fn($query) => $query->where('is_active', true)->with('questions'),
+            ])
             ->get();
 
         // Check enrollment status
@@ -103,7 +113,7 @@ class ModuleController extends Controller
             ->first();
 
         $isEnrolled = $enrollment && $enrollment->status === EnrollmentStatus::Approved;
-        $enrollmentStatus = $enrollment ? $enrollment->status : null;
+        $enrollmentStatus = $enrollment?->status?->value;
 
         // Calculate progress
         $totalLessons = $lessons->count();
@@ -128,12 +138,15 @@ class ModuleController extends Controller
             ->toArray();
 
         // Get quizzes for this module
-        $moduleQuizzes = $module->quizzes()->where('is_active', true)->get();
+        $moduleQuizzes = $module->quizzes()
+            ->where('is_active', true)
+            ->with('questions')
+            ->get();
         
         // Get lesson quizzes
         $lessonQuizzes = [];
         foreach ($lessons as $lesson) {
-            if ($lesson->quiz && $lesson->quiz->is_active) {
+            if ($lesson->quiz) {
                 $lessonQuizzes[$lesson->id] = $lesson->quiz;
             }
         }
@@ -144,6 +157,8 @@ class ModuleController extends Controller
             ->get()
             ->groupBy('quiz_id');
 
+        $shieldsRemaining = UserDailyShield::getShields($user);
+
         return view('learner.modules.show', compact(
             'module', 
             'lessons', 
@@ -153,7 +168,8 @@ class ModuleController extends Controller
             'completedLessonIds',
             'moduleQuizzes',
             'lessonQuizzes',
-            'quizAttempts'
+            'quizAttempts',
+            'shieldsRemaining'
         ));
     }
 
@@ -163,6 +179,11 @@ class ModuleController extends Controller
     public function enroll(Module $module)
     {
         $user = Auth::user();
+
+        if (!$user->learnerProfile) {
+            return redirect()->route('profile.complete')
+                ->with('error', 'Please complete your profile to access modules.');
+        }
 
         // Security checks
         if (!$module->is_published) {

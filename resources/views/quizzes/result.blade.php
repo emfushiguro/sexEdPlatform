@@ -1,9 +1,12 @@
-@extends('layouts.learner-app')
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            Quiz Results
+        </h2>
+    </x-slot>
 
-@section('title', 'Quiz Results')
-
-@section('content')
-<div class="max-w-4xl mx-auto">
+    <div class="py-12">
+        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             @if(session('success'))
                 <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
                     {{ session('success') }}
@@ -86,8 +89,7 @@
                         </a>
                         @if(!$attempt->passed)
                             @php
-                                $shieldsLeft = \App\Models\UserDailyShield::getShields(auth()->user());
-                                $canRetry = auth()->user()->isPremium() || $shieldsLeft > 0;
+                                $canRetry = auth()->user()->isPremium() || $remainingAttempts > 0;
                             @endphp
                             @if($canRetry)
                                 <a href="{{ route('quizzes.show', $attempt->quiz) }}" 
@@ -97,7 +99,7 @@
                             @else
                                 <button disabled
                                    class="flex-1 text-center px-6 py-3 bg-gray-400 text-white font-semibold rounded-lg cursor-not-allowed">
-                                    Out of Shields
+                                    Daily Limit Reached
                                 </button>
                             @endif
                         @endif
@@ -106,11 +108,9 @@
                     @if(!$attempt->passed && !$canRetry)
                         <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                             <p class="text-sm text-yellow-800 text-center">
-                                <strong>Out of shields for today!</strong>
-                                <a href="{{ route('learner.gamification') }}" class="underline font-semibold">Refill shields</a>
-                                or
-                                <a href="{{ route('subscription.upgrade') }}" class="underline font-semibold">upgrade to Premium</a>
-                                for unlimited attempts.
+                                <strong>Daily limit reached!</strong> 
+                                <a href="{{ route('subscription.upgrade') }}" class="underline font-semibold">Upgrade to Premium</a> 
+                                for unlimited quiz attempts.
                             </p>
                         </div>
                     @endif
@@ -253,5 +253,4 @@
             </div>
         </div>
     </div>
-</div>
-@endsection
+</x-app-layout>
