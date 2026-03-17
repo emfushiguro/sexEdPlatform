@@ -15,27 +15,11 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::with('roles');
-
-        // Search filter
-        if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        // Role filter
-        if ($request->filled('role')) {
-            $query->where('role', $request->role);
-        }
-
-        // Status filter
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $users = $query->latest()->paginate(15);
+        $users = User::with(['moduleEnrollments.module:id,title'])
+            ->withCount('moduleEnrollments')
+            ->withTrashed()
+            ->latest()
+            ->get();
 
         return view('instructor.users.index', compact('users'));
     }
@@ -75,7 +59,7 @@ class UserController extends Controller
         // Assign role using Spatie
         $user->assignRole($validated['role']);
 
-        return redirect()->route('admin.users.index')
+        return redirect()->route('instructor.users.index')
             ->with('success', 'User created successfully!');
     }
 
@@ -125,7 +109,7 @@ class UserController extends Controller
         // Sync role
         $user->syncRoles([$validated['role']]);
 
-        return redirect()->route('admin.users.index')
+        return redirect()->route('instructor.users.index')
             ->with('success', 'User updated successfully!');
     }
 
@@ -142,7 +126,14 @@ class UserController extends Controller
 
         $user->delete();
 
-        return redirect()->route('admin.users.index')
+        return redirect()->route('instructor.users.index')
             ->with('success', 'User deleted successfully!');
+    }
+
+    public function restore($id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+        return back()->with('success', 'User restored successfully.');
     }
 }

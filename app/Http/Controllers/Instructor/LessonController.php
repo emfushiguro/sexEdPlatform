@@ -15,16 +15,13 @@ class LessonController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Lesson::with('module');
+        $moduleGroups = Module::where('created_by', auth()->id())
+            ->with(['lessons' => fn($q) => $q->orderBy('order')])
+            ->withCount('lessons')
+            ->orderByDesc('created_at')
+            ->get();
 
-        if ($request->filled('module_id')) {
-            $query->where('module_id', $request->module_id);
-        }
-
-        $lessons = $query->latest()->paginate(15);
-        $modules = Module::all();
-
-        return view('instructor.lessons.index', compact('lessons', 'modules'));
+        return view('instructor.lessons.index', compact('moduleGroups'));
     }
 
     public function create()
@@ -38,7 +35,7 @@ class LessonController extends Controller
         $validated = $request->validate([
             'module_id' => 'required|exists:modules,id',
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'nullable|string',
         ]);
 
         // Auto-increment order
@@ -63,9 +60,21 @@ class LessonController extends Controller
 
     public function show(Lesson $lesson)
     {
-        $lesson->load('module');
-        $modules = Module::with('lessons')->get();
-        return view('instructor.lessons.show', compact('lesson', 'modules'));
+        $lesson->load(['module', 'topics' => fn($q) => $q->orderBy('order'), 'quizzes.questions']);
+
+        $enrolledCount = $lesson->module
+            ? $lesson->module->enrollments()->where('status', 'approved')->count()
+            : 0;
+
+        $completedCount = \App\Models\UserProgress::where('lesson_id', $lesson->id)
+            ->where('completed', true)
+            ->count();
+
+        $completionRate = $enrolledCount > 0
+            ? round(($completedCount / $enrolledCount) * 100)
+            : 0;
+
+        return view('instructor.lessons.show', compact('lesson', 'enrolledCount', 'completedCount', 'completionRate'));
     }
 
     public function edit(Lesson $lesson)
@@ -79,7 +88,7 @@ class LessonController extends Controller
         $validated = $request->validate([
             'module_id' => 'required|exists:modules,id',
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'nullable|string',
         ]);
 
         // Duration is auto-calculated from topics (recalculate it)
@@ -109,24 +118,24 @@ class LessonController extends Controller
     {
         $direction = $request->input('direction');
         $currentOrder = $lesson->order;
-        
+
         if ($direction === 'up' && $currentOrder > 1) {
             $swapLesson = Lesson::where('module_id', $lesson->module_id)
                 ->where('order', $currentOrder - 1)
                 ->first();
-            
+
             if ($swapLesson) {
                 $lesson->update(['order' => $currentOrder - 1]);
                 $swapLesson->update(['order' => $currentOrder]);
             }
         } elseif ($direction === 'down') {
             $maxOrder = Lesson::where('module_id', $lesson->module_id)->max('order');
-            
+
             if ($currentOrder < $maxOrder) {
                 $swapLesson = Lesson::where('module_id', $lesson->module_id)
                     ->where('order', $currentOrder + 1)
                     ->first();
-                
+
                 if ($swapLesson) {
                     $lesson->update(['order' => $currentOrder + 1]);
                     $swapLesson->update(['order' => $currentOrder]);
@@ -135,5 +144,16 @@ class LessonController extends Controller
         }
 
         return redirect()->back()->with('success', 'Lesson order updated!');
+    }
+
+    public function reorder(Request $request)
+    {
+        $request->validate(['order' => 'required|array', 'order.*' => 'integer|exists:lessons,id']);
+
+        foreach ($request->order as $index => $id) {
+            Lesson::where('id', $id)->update(['order' => $index + 1]);
+        }
+
+        return response()->json(['success' => true]);
     }
 }

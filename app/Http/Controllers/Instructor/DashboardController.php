@@ -28,7 +28,7 @@ class DashboardController extends Controller
                 return [
                     'direction' => 'flat',
                     'percent' => 0.0,
-                    'text' => 'No data',
+                    'text' => '',
                 ];
             }
 

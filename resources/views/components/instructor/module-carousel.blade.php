@@ -26,6 +26,7 @@
             this.timerId = null;
         }
      }"
+     x-init="init()"
      @mouseenter="stopAuto()"
      @mouseleave="startAuto()">
     <div class="flex items-center justify-between mb-4">
@@ -61,6 +62,23 @@
                                 @if($module->thumbnail)
                                     <img src="{{ Storage::url($module->thumbnail) }}" alt="{{ $module->title }}" class="w-full h-full object-cover opacity-80">
                                 @endif
+                                <div class="absolute top-2 right-2 flex items-center gap-1.5 z-20">
+                                    <a href="{{ route('instructor.modules.show', $module) }}"
+                                       aria-label="View module"
+                                       class="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </a>
+                                    <a href="{{ route('instructor.modules.edit', $module) }}"
+                                       aria-label="Edit module"
+                                       class="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </a>
+                                </div>
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-3">
                                     <p class="text-white text-sm font-semibold leading-tight line-clamp-2">{{ $module->title }}</p>
                                     <span class="text-xs text-white/80 mt-1">{{ $module->enrollments_count }} enrolled</span>
