@@ -23,7 +23,9 @@
 @endsection
 
 @section('content')
-<div class="flex h-full min-h-0">
+<div class="flex h-full min-h-0 overflow-hidden"
+     x-data="{ sidebarOpen: JSON.parse(localStorage.getItem('lessonSidebarOpen') ?? 'true') }"
+     x-effect="localStorage.setItem('lessonSidebarOpen', JSON.stringify(sidebarOpen))">
 
     {{-- ═══════════════════════════════════════════
          LEFT SIDEBAR — Module Curriculum Overview
@@ -44,7 +46,8 @@
         }
     @endphp
 
-    <aside class="w-[280px] flex-shrink-0 h-full flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
+    <aside :class="sidebarOpen ? 'w-[280px] min-w-[280px] border-r border-gray-200 dark:border-gray-800' : 'w-0 min-w-0'"
+           class="flex-shrink-0 h-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden transition-all duration-300 ease-in-out"
            x-data="{
                q: '',
                open: {{ $lesson->id }},
@@ -300,9 +303,25 @@
     {{-- ═══════════════════════════════════════════
          RIGHT — Main Content
     ═══════════════════════════════════════════ --}}
-    <main class="flex-1 min-w-0 h-full flex flex-col bg-gray-50 dark:bg-gray-950">
+    <main class="flex-1 min-w-0 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950">
+        {{-- Sidebar toggle + breadcrumb strip --}}
+        <div class="flex-shrink-0 flex items-center gap-2 px-3 pt-3 pb-1">
+            <button type="button"
+                    @click="sidebarOpen = !sidebarOpen"
+                    class="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    :title="sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'">
+                {{-- Chevron-double-left when open, double-right when closed --}}
+                <svg x-show="sidebarOpen" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+                <svg x-show="!sidebarOpen" x-cloak class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                </svg>
+            </button>
+            <span class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ $lesson->title }}</span>
+        </div>
         {{-- Scrollable content --}}
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex-1 min-h-0 overflow-y-auto">
             <div class="max-w-4xl mx-auto px-4 py-6">
 
                 @if(request()->has('quiz') && $lessonQuiz)
@@ -321,13 +340,33 @@
             </div>
         </div>
 
-        {{-- ── Bottom Action Bar — always visible, no scrolling required ── --}}
+        {{-- ── Bottom Action Bar — sticky, always visible ── --}}
         @if($currentTopic && !request()->has('quiz'))
         @php
             $__barDone     = in_array($currentTopic->id, $completedTopicIds);
             $__isLastTopic = $currentTopicIndex >= $lessonTopics->count() - 1;
         @endphp
-        <div class="flex-shrink-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div class="flex-shrink-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+
+            {{-- Topic progress dot strip --}}
+            @if($lessonTopics->count() > 1)
+            <div class="flex items-center justify-center gap-1.5 px-4 pt-2.5 pb-1">
+                @foreach($lessonTopics as $__dot)
+                @php
+                    $__dotDone    = in_array($__dot->id, $completedTopicIds);
+                    $__dotCurrent = $__dot->id === $currentTopic->id;
+                @endphp
+                <div class="rounded-full transition-all duration-300 {{ $__dotCurrent ? 'w-3 h-3 ring-2 ring-offset-1' : 'w-2 h-2' }}"
+                     style="{{ $__dotDone || $__dotCurrent
+                         ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1);' . ($__dotCurrent ? ' --tw-ring-color: #A30EB2;' : '')
+                         : 'background-color: #e5e7eb;' }}"
+                     title="{{ $__dot->title }}"></div>
+                @endforeach
+            </div>
+            @endif
+
+            {{-- Button row --}}
+            <div class="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
 
             {{-- Left: Previous + Mark as Incomplete --}}
             <div class="flex items-center gap-3">
@@ -345,7 +384,7 @@
                     <form action="{{ route('learner.topics.uncomplete', $currentTopic) }}" method="POST">
                         @csrf
                         <button type="submit"
-                                class="text-xs sm:text-sm text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 underline underline-offset-2 transition-colors whitespace-nowrap">
+                                class="text-xs text-gray-400 hover:text-red-400 dark:text-gray-500 dark:hover:text-red-400 transition-colors whitespace-nowrap underline underline-offset-2">
                             Mark as Incomplete
                         </button>
                     </form>
@@ -358,8 +397,8 @@
                     {{-- Topic is done — navigate forward --}}
                     @if(!$__isLastTopic)
                         <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $currentTopicIndex + 1]) }}"
-                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
-                           style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+                           style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                             Continue
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
@@ -367,8 +406,8 @@
                         </a>
                     @elseif($lessonQuiz)
                         <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1]) }}"
-                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
-                           style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+                           style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                             Take Lesson Quiz
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
@@ -376,8 +415,8 @@
                         </a>
                     @elseif($nextLesson)
                         <a href="{{ route('learner.lessons.show', $nextLesson) }}"
-                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
-                           style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+                           style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                             Next Lesson
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
@@ -385,8 +424,8 @@
                         </a>
                     @else
                         <a href="{{ route('learner.modules.show', $module) }}"
-                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
-                           style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+                           style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                             Back to Module
                         </a>
                     @endif
@@ -397,8 +436,8 @@
                             @csrf
                             <input type="hidden" name="next_topic_index" value="{{ $currentTopicIndex + 1 }}">
                             <button type="submit"
-                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
-                                    style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                                 </svg>
@@ -412,8 +451,8 @@
                         <form action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline">
                             @csrf
                             <button type="submit"
-                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
-                                    style="background: linear-gradient(to right, #A30EB2, #3B0CB1);"
+                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                                     onclick="event.preventDefault();
                                              fetch(this.form.action, { method: 'POST', body: new FormData(this.form), headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'} })
                                              .then(() => window.location.href = '{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1]) }}');">
@@ -430,8 +469,8 @@
                         <form action="{{ route('learner.topics.complete', $currentTopic) }}" method="POST" class="inline">
                             @csrf
                             <button type="submit"
-                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
-                                    style="background: linear-gradient(to right, #A30EB2, #3B0CB1);">
+                                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                                 </svg>
@@ -441,7 +480,9 @@
                     @endif
                 @endif
             </div>
-        </div>
+
+            </div>{{-- end button row --}}
+        </div>{{-- end bottom action bar --}}
         @endif
     </main>
 </div>

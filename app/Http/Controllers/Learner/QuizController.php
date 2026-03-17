@@ -307,27 +307,47 @@ class QuizController extends Controller
                 'completed_at' => now(),
             ]);
 
-            // Drain one shield for free users
+            // Pass Protection: deduct 1 shield on attempt; refund on pass (net 0 if passed)
+            $shieldDelta = null; // null = premium (no cost)
             if (!$user->isPremium()) {
                 UserDailyShield::drainShield($user);
+                if ($passed) {
+                    UserDailyShield::refillOne($user); // refund — pass protects your shield
+                    $shieldDelta = 0;
+                } else {
+                    $shieldDelta = -1;
+                }
             }
 
             // Award points based on performance
             if ($passed) {
                 $points = $score === 100 ? 30 : 25;
                 $this->gamificationService->awardPoints($user, 'quiz_passed', $points);
-                $message = "Congratulations! You passed and earned {$points} points! 🎉";
+                $message = "Congratulations! You passed and earned {$points} points!";
             } else {
-                $this->gamificationService->awardPoints($user, 'quiz_attempted', 5);
-                $message = "You earned 5 points for trying! Keep practicing! 💪";
+                $points = 5;
+                $this->gamificationService->awardPoints($user, 'quiz_attempted', $points);
+                $message = "You earned 5 points for trying! Keep practicing!";
             }
 
             $this->gamificationService->updateStreak($user);
 
             DB::commit();
 
+            // Redirect: lesson quizzes return to the lesson viewer; standalone go to result page
+            if ($quiz->lesson_id) {
+                return redirect(route('learner.lessons.show', $quiz->lesson_id) . '?quiz=1')
+                    ->with('success', $message)
+                    ->with('quiz_result', true)
+                    ->with('quiz_attempt_id', $attempt->id)
+                    ->with('shield_delta', $shieldDelta)
+                    ->with('xp_earned', $points);
+            }
+
             return redirect()->route('quizzes.result', $attempt)
-                ->with('success', $message);
+                ->with('success', $message)
+                ->with('shield_delta', $shieldDelta)
+                ->with('xp_earned', $points);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -349,7 +369,13 @@ class QuizController extends Controller
 
         $attempt->load(['quiz.questions.options']);
 
-        return view('quizzes.result', compact('attempt'));
+        $user = auth()->user();
+        $shieldsRemaining = $user->isPremium() ? null : UserDailyShield::getShields($user);
+        $remainingAttempts = $shieldsRemaining; // shields are the retry gate for free users
+        $shieldDelta = session('shield_delta');
+        $xpEarned = session('xp_earned');
+
+        return view('quizzes.result', compact('attempt', 'shieldsRemaining', 'remainingAttempts', 'shieldDelta', 'xpEarned'));
     }
 
     /**

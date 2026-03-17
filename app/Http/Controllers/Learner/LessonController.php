@@ -99,14 +99,24 @@ class LessonController extends Controller
                 ->toArray();
         }
 
-        // Get lesson quiz if exists
-        $lessonQuiz = $lesson->quiz()->where('is_active', true)->with('questions')->first();
+        // Get lesson quiz if exists — eager-load questions.options for the quiz wizard
+        $lessonQuiz = $lesson->quiz()->where('is_active', true)->with('questions.options')->first();
         $quizAttempt = null;
+        $quizAttempts = collect();
+        $questionTypeCounts = collect();
         if ($lessonQuiz) {
             $quizAttempt = $user->quizAttempts()
                 ->where('quiz_id', $lessonQuiz->id)
                 ->orderByDesc('score')
                 ->first();
+            $quizAttempts = $user->quizAttempts()
+                ->where('quiz_id', $lessonQuiz->id)
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get();
+            $questionTypeCounts = $lessonQuiz->questions
+                ->groupBy('question_type')
+                ->map->count();
         }
 
         // Get lesson topics with progress
@@ -204,6 +214,8 @@ class LessonController extends Controller
             'allCompletedTopicIds',
             'lessonQuiz',
             'quizAttempt',
+            'quizAttempts',
+            'questionTypeCounts',
             'lessonTopics',
             'completedTopicIds',
             'lockedTopicIds',

@@ -18,6 +18,7 @@ class LessonTopic extends Model
         'video_provider',
         'video_id',
         'video_file_path',
+        'caption_file_path',
         'text_content',
         'file_path',
         'worksheet_files',
