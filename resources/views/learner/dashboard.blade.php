@@ -171,4 +171,50 @@
 
     </div>
 </div>
+
+@include('learner.partials.edit-profile-modal', [
+    'learnerProfile'       => $learnerProfile,
+    'currentSubscription'  => $currentSubscription,
+    'currentPlan'          => $currentPlan,
+    'usernameCooldownDays' => $usernameCooldownDays,
+    'isPremium'            => Auth::user()->isPremium(),
+])
+
+@if(request()->boolean('open_edit_profile'))
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const openModal = function () {
+                    if (!window.Alpine || typeof window.Alpine.store !== 'function') {
+                        return false;
+                    }
+
+                    const modals = window.Alpine.store('modals');
+                    if (!modals) {
+                        return false;
+                    }
+
+                    if (typeof modals.openEditProfile === 'function') {
+                        modals.openEditProfile();
+                    } else {
+                        modals.editProfile = true;
+                    }
+
+                    return true;
+                };
+
+                if (!openModal()) {
+                    let attempts = 0;
+                    const maxAttempts = 20;
+                    const timer = setInterval(function () {
+                        attempts++;
+                        if (openModal() || attempts >= maxAttempts) {
+                            clearInterval(timer);
+                        }
+                    }, 75);
+                }
+            });
+        </script>
+    @endpush
+@endif
 @endsection

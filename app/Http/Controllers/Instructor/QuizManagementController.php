@@ -16,14 +16,21 @@ class QuizManagementController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Quiz::with(['module', 'lesson']);
+        $instructorModuleIds = Module::where('created_by', auth()->id())->pluck('id');
 
-        if ($request->filled('module_id')) {
-            $query->where('module_id', $request->module_id);
-        }
+        $quizzes = Quiz::with(['module:id,title', 'lesson:id,title'])
+            ->withCount('questions')
+            ->where(function ($q) use ($instructorModuleIds) {
+                $q->whereIn('module_id', $instructorModuleIds)
+                  ->orWhereHas('lesson', fn($lq) => $lq->whereIn('module_id', $instructorModuleIds));
+            })
+            ->orderByDesc('created_at')
+            ->get();
 
-        $quizzes = $query->latest()->paginate(15);
-        $modules = Module::with('lessons')->get();
+        $modules = Module::where('created_by', auth()->id())
+            ->select('id', 'title')
+            ->orderBy('title')
+            ->get();
 
         return view('instructor.quizzes.index', compact('quizzes', 'modules'));
     }
@@ -68,7 +75,8 @@ class QuizManagementController extends Controller
     public function show(Quiz $quiz)
     {
         $quiz->load(['questions.options', 'module', 'lesson']);
-        return view('instructor.quizzes.show', compact('quiz'));
+        $openModal = request()->boolean('open_modal');
+        return view('instructor.quizzes.show', compact('quiz', 'openModal'));
     }
 
     public function edit(Quiz $quiz)
@@ -115,7 +123,10 @@ class QuizManagementController extends Controller
     // Question management
     public function addQuestion(Quiz $quiz)
     {
-        return view('instructor.quizzes.add-question', compact('quiz'));
+        $preselectedType = request()->query('type');
+        $validTypes = ['multiple_choice', 'true_false', 'multiple_select', 'fill_blank_text', 'fill_blank_select', 'identification'];
+        $selectedType = in_array($preselectedType, $validTypes) ? $preselectedType : null;
+        return view('instructor.quizzes.add-question', compact('quiz', 'selectedType'));
     }
 
     public function storeQuestion(Request $request, Quiz $quiz)
@@ -190,7 +201,16 @@ class QuizManagementController extends Controller
 
             DB::commit();
 
-            return redirect()->route('instructor.quizzes.show', $quiz)
+            $afterSave = $request->input('after_save', 'return');
+
+            if ($afterSave === 'another') {
+                return redirect()
+                    ->route('instructor.quizzes.add-question', ['quiz' => $quiz, 'type' => $validated['question_type']])
+                    ->with('success', 'Question added! Add another one below.');
+            }
+
+            return redirect()
+                ->route('instructor.quizzes.show', ['quiz' => $quiz, 'open_modal' => 1])
                 ->with('success', 'Question added successfully!');
 
         } catch (\Exception $e) {

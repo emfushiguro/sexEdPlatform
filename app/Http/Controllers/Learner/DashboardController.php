@@ -143,6 +143,22 @@ class DashboardController extends Controller
             default     => 'Good evening',
         };
 
+        // ── Profile modal data ───────────────────────────────────────────
+        $currentSubscription = $user->subscriptions()
+            ->whereIn('status', ['active', 'trialing'])
+            ->latest()
+            ->first();
+
+        $currentPlan = $currentSubscription && $currentSubscription->plan_id
+            ? \App\Models\SubscriptionPlan::find($currentSubscription->plan_id)
+            : null;
+
+        $usernameCooldownDays = 0;
+        if (!$user->isPremium() && $learnerProfile->username_changed_at) {
+            $daysSince = now()->diffInDays($learnerProfile->username_changed_at);
+            $usernameCooldownDays = $daysSince < 7 ? (7 - (int) $daysSince) : 0;
+        }
+
         return view('learner.dashboard', compact(
             'learnerProfile',
             'enrollmentData',
@@ -160,6 +176,9 @@ class DashboardController extends Controller
             'streakSavers',
             'recentAchievements',
             'greeting',
+            'currentSubscription',
+            'currentPlan',
+            'usernameCooldownDays',
         ));
     }
 }

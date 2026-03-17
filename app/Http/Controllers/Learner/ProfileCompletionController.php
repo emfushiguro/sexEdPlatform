@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ProfileCompletionRequest;
 use App\Models\LearnerProfile;
-use App\Models\SubscriptionPlan;
 use Schoolees\Psgc\Models\City;
 use Schoolees\Psgc\Models\Barangay;
 use Illuminate\Http\Request;
@@ -115,43 +113,13 @@ class ProfileCompletionController extends Controller
 
     /**
      * Show the profile edit form for learners.
+     * Profile editing is now managed via modal on the dashboard.
      */
     public function edit()
     {
-        $user = Auth::user();
-        $learnerProfile = $user->learnerProfile;
-
-        if (!$learnerProfile) {
-            return redirect()->route('profile.complete');
-        }
-
-        $currentSubscription = $user->subscriptions()
-            ->where('status', 'active')
-            ->latest()
-            ->first();
-
-        $currentPlan = $currentSubscription && $currentSubscription->plan_id
-            ? \App\Models\SubscriptionPlan::find($currentSubscription->plan_id)
-            : null;
-
-        $availablePlans = SubscriptionPlan::active()->ordered()->get();
-
-        // Refund eligibility based on the latest completed payment's paid_at
-        $latestPayment    = $currentSubscription
-            ? $currentSubscription->payments()->where('status', 'completed')->latest('paid_at')->first()
-            : null;
-        $refundDeadline   = $latestPayment?->paid_at?->copy()->addDays(3);
-        $isRefundEligible = $refundDeadline && now()->lt($refundDeadline);
-
-        return view('profile.learner-edit', compact(
-            'learnerProfile',
-            'currentSubscription',
-            'currentPlan',
-            'availablePlans',
-            'latestPayment',
-            'refundDeadline',
-            'isRefundEligible'
-        ));
+        return redirect()->route('learner.dashboard', [
+            'open_edit_profile' => 1,
+        ]);
     }
 
     /**
@@ -185,7 +153,11 @@ class ProfileCompletionController extends Controller
                     if ($daysSinceChange < 7) {
                         $daysRemaining = 7 - $daysSinceChange;
                         $nextChangeDate = $learnerProfile->username_changed_at->addDays(7)->format('M d, Y');
-                        return back()->with('error', "You can change your username again in {$daysRemaining} day(s) (on {$nextChangeDate}). Upgrade to Premium for unlimited changes!");
+                        $message = "You can change your username again in {$daysRemaining} day(s) (on {$nextChangeDate}). Upgrade to Premium for unlimited changes!";
+                        if ($request->expectsJson()) {
+                            return response()->json(['success' => false, 'errors' => ['username' => [$message]]], 422);
+                        }
+                        return back()->with('error', $message);
                     }
                 }
             }
@@ -211,6 +183,20 @@ class ProfileCompletionController extends Controller
 
         $learnerProfile->update($validated);
 
+        if ($request->expectsJson()) {
+            $fresh = $learnerProfile->fresh();
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile updated successfully!',
+                'data' => [
+                    'username'   => $fresh->username,
+                    'about'      => $fresh->about,
+                    'avatar_url' => $fresh->avatar_path
+                        ? asset('storage/' . $fresh->avatar_path) : null,
+                ],
+            ]);
+        }
+
         return back()->with('success', 'Profile updated successfully!');
     }
 
@@ -229,6 +215,10 @@ class ProfileCompletionController extends Controller
         $user = Auth::user();
         $user->password = bcrypt($request->password);
         $user->save();
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Password updated successfully!']);
+        }
 
         return back()->with('success', 'Password updated successfully!');
     }
@@ -249,10 +239,18 @@ class ProfileCompletionController extends Controller
             \Storage::disk('public')->delete($user->learnerProfile->avatar_path);
         }
 
-        // Logout and delete account
+        // Archive status before soft-delete
+        $user->status = 'archived';
+        $user->save();
+
+        // Logout and soft-delete
         Auth::logout();
         $user->delete();
 
-        return redirect()->route('home')->with('success', 'Your account has been deleted.');
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'redirect' => route('home')]);
+        }
+
+        return redirect()->route('home')->with('success', 'Your account has been archived.');
     }
 }

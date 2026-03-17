@@ -18,8 +18,13 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Default entry point goes to learner login
-Route::redirect('/', '/login')->name('home');
+// Default entry point — landing page for guests, dashboard for authenticated users
+Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect('/learn/dashboard');
+    }
+    return view('landing.index');
+})->name('home');
 
 Route::view('/privacy', 'legal.privacy')->name('privacy');
 Route::view('/terms', 'legal.terms')->name('terms');
@@ -175,9 +180,13 @@ Route::middleware('auth')->group(function () {
         
         // User Management (Learners only)
         Route::resource('users', \App\Http\Controllers\Instructor\UserController::class);
+        Route::patch('users/{id}/restore', [\App\Http\Controllers\Instructor\UserController::class, 'restore'])->name('users.restore');
         
         // Module Management
         Route::resource('modules', \App\Http\Controllers\Instructor\ModuleController::class);
+        Route::patch('modules/{module}/activate', [\App\Http\Controllers\Instructor\ModuleController::class, 'activate'])->name('modules.activate');
+        Route::patch('modules/{module}/deactivate', [\App\Http\Controllers\Instructor\ModuleController::class, 'deactivate'])->name('modules.deactivate');
+        Route::patch('modules/{id}/restore', [\App\Http\Controllers\Instructor\ModuleController::class, 'restore'])->name('modules.restore');
         
         // Enrollment Management
         Route::get('enrollments', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'index'])
@@ -192,11 +201,13 @@ Route::middleware('auth')->group(function () {
             ->name('modules.enrollments');
         
         // Lesson Management
+        Route::patch('lessons/reorder', [\App\Http\Controllers\Instructor\LessonController::class, 'reorder'])->name('lessons.reorder');
         Route::resource('lessons', \App\Http\Controllers\Instructor\LessonController::class);
         Route::patch('lessons/{lesson}/move', [\App\Http\Controllers\Instructor\LessonController::class, 'move'])
             ->name('lessons.move');
         
         // Topic Management (Lesson Topics)
+        Route::patch('topics/reorder', [\App\Http\Controllers\Instructor\TopicController::class, 'reorder'])->name('topics.reorder');
         Route::get('topics/create', [\App\Http\Controllers\Instructor\TopicController::class, 'create'])
             ->name('topics.create');
         Route::post('topics', [\App\Http\Controllers\Instructor\TopicController::class, 'store'])
@@ -238,6 +249,8 @@ Route::middleware('auth')->group(function () {
         // Image Library
         Route::get('image-library', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'index'])
             ->name('image-library.index');
+        Route::get('image-library/json', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'indexJson'])
+            ->name('image-library.json');
         Route::post('image-library/upload', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'upload'])
             ->name('image-library.upload');
         Route::delete('image-library/{filename}', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'delete'])

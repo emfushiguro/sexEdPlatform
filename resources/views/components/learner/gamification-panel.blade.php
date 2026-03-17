@@ -75,13 +75,13 @@
     </div>
 
     {{-- Edit Profile button --}}
-    <a
-        href="{{ route('profile.learner.edit') }}"
+    <button
+        @click="typeof $store.modals.openEditProfile === 'function' ? $store.modals.openEditProfile() : ($store.modals.editProfile = true)"
         class="block w-full text-center text-sm font-semibold text-white py-2 rounded-xl mb-4 transition-opacity hover:opacity-90"
         style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
     >
         Edit Profile
-    </a>
+    </button>
 
     {{-- ─── Stats grid (icon chips) ─── --}}
     <div class="grid grid-cols-2 gap-3 mb-4">

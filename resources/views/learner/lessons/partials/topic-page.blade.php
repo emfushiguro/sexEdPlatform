@@ -1,35 +1,33 @@
 <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-white/[0.03] overflow-hidden">
     <!-- Topic Header -->
-    <div class="p-6" style="background: linear-gradient(to right, #A30EB2, #730DB1, #3B0CB1);">
-        <div class="flex items-center gap-3">
-            <div class="flex-shrink-0 w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+    <div class="px-4 py-3" style="background: linear-gradient(to right, #A30EB2, #730DB1, #3B0CB1);">
+        <div class="flex items-center gap-2.5">
+            <div class="flex-shrink-0 w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                 @if($currentTopic->type === 'video')
-                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
                     </svg>
                 @elseif($currentTopic->type === 'text')
-                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
                     </svg>
                 @elseif($currentTopic->type === 'worksheet')
-                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd"/>
                     </svg>
                 @else
-                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
                         <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
                     </svg>
                 @endif
             </div>
             <div class="flex-1 min-w-0">
-                <h3 class="text-2xl font-bold text-white">{{ $currentTopic->title }}</h3>
-                <p class="text-white/80 text-sm mt-1">
-                    Topic {{ $currentTopicIndex + 1 }} of {{ $lessonTopics->count() }} 
-                    <span class="mx-2">•</span> 
-                    {{ $currentTopic->duration }} minutes
-                    <span class="mx-2">•</span>
-                    {{ ucfirst($currentTopic->type) }}
+                <h3 class="text-sm font-semibold text-white leading-snug">{{ $currentTopic->title }}</h3>
+                <p class="text-white/70 text-xs">
+                    Topic {{ $currentTopicIndex + 1 }} of {{ $lessonTopics->count() }}
+                    <span class="mx-1">·</span>{{ $currentTopic->duration }}m
+                    <span class="mx-1">·</span>{{ ucfirst($currentTopic->type) }}
                 </p>
             </div>
         </div>
@@ -41,18 +39,20 @@
             <!-- Video Content -->
             <div class="space-y-4">
                 @if($currentTopic->video_file_path)
-                    <!-- Uploaded Video File -->
-                    <div class="bg-black rounded-lg overflow-hidden">
-                        <video 
-                            id="lesson-video" 
-                            controls 
-                            class="w-full aspect-video"
-                            controlsList="nodownload"
-                            oncontextmenu="return false;">
+                    {{-- Plyr.js Video Player (bundled via npm) --}}
+                    <div class="rounded-2xl overflow-hidden bg-black" style="aspect-ratio: 16/9;">
+                        <video id="plyr-video-{{ $currentTopic->id }}"
+                               class="plyr-video w-full h-full"
+                               playsinline
+                               title="{{ $currentTopic->title }}">
                             <source src="{{ asset('storage/' . $currentTopic->video_file_path) }}" type="video/mp4">
-                            <source src="{{ asset('storage/' . $currentTopic->video_file_path) }}" type="video/webm">
-                            <source src="{{ asset('storage/' . $currentTopic->video_file_path) }}" type="video/ogg">
-                            Your browser does not support the video tag.
+                            @if($currentTopic->caption_file_path)
+                                <track kind="subtitles"
+                                       label="Subtitles"
+                                       srclang="en"
+                                       src="{{ asset('storage/' . $currentTopic->caption_file_path) }}"
+                                       default>
+                            @endif
                         </video>
                     </div>
                 @elseif($currentTopic->video_embed_url)
@@ -111,24 +111,20 @@
             @keydown.arrow-right.window="showZoomModal && nextZoomImage()">
                 @if($currentTopic->image_attachments && count($currentTopic->image_attachments) > 0)
                     <div>
-                        <div class="flex items-center justify-between mb-3">
-                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                Images
-                            </h4>
-                            <div class="flex gap-1.5">
+                        <div class="flex justify-end mb-3">
+                            <div class="flex gap-0.5 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg">
                                 <button
                                     @click="displayMode = 'slideshow'"
-                                    :class="displayMode === 'slideshow' ? 'bg-indigo-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'"
-                                    class="px-3 py-1 rounded-lg text-xs font-medium transition">
+                                    class="px-3 py-1 rounded-md text-xs font-medium transition-all duration-200"
+                                    :class="displayMode === 'slideshow' ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'"
+                                    :style="displayMode === 'slideshow' ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1);' : ''">
                                     Slideshow
                                 </button>
                                 <button
                                     @click="displayMode = 'gallery'"
-                                    :class="displayMode === 'gallery' ? 'bg-indigo-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'"
-                                    class="px-3 py-1 rounded-lg text-xs font-medium transition">
+                                    class="px-3 py-1 rounded-md text-xs font-medium transition-all duration-200"
+                                    :class="displayMode === 'gallery' ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'"
+                                    :style="displayMode === 'gallery' ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1);' : ''">
                                     Gallery
                                 </button>
                             </div>
@@ -146,45 +142,50 @@
                                     </div>
                                 </template>
 
-                                <!-- Click to zoom hint -->
-                                <div class="absolute top-4 right-4 bg-black bg-opacity-60 text-white px-3 py-1 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition">
-                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
-                                    </svg>
-                                    Click to zoom
-                                </div>
-
                                 <!-- Navigation Arrows - Always Visible -->
                                 <template x-if="images.length > 1">
                                     <div>
-                                        <button 
+                                        <button
                                             @click.stop="currentImageIndex = currentImageIndex > 0 ? currentImageIndex - 1 : images.length - 1"
-                                            class="absolute left-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 text-gray-800 p-4 rounded-full transition-all shadow-xl hover:shadow-2xl hover:scale-110 z-10"
+                                            class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center shadow transition-all hover:scale-110 z-10 bg-white/70 dark:bg-black/50 hover:bg-white/90 dark:hover:bg-black/70 backdrop-blur-sm"
                                             title="Previous image">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"/>
+                                            <svg class="w-4 h-4 text-gray-800 dark:text-gray-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
                                             </svg>
                                         </button>
-                                        <button 
+                                        <button
                                             @click.stop="currentImageIndex = currentImageIndex < images.length - 1 ? currentImageIndex + 1 : 0"
-                                            class="absolute right-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 text-gray-800 p-4 rounded-full transition-all shadow-xl hover:shadow-2xl hover:scale-110 z-10"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center shadow transition-all hover:scale-110 z-10 bg-white/70 dark:bg-black/50 hover:bg-white/90 dark:hover:bg-black/70 backdrop-blur-sm"
                                             title="Next image">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/>
+                                            <svg class="w-4 h-4 text-gray-800 dark:text-gray-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
                                             </svg>
                                         </button>
                                     </div>
                                 </template>
+
+                                {{-- Dot indicators --}}
+                                <template x-if="images.length > 1">
+                                    <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
+                                        <template x-for="(img, idx) in images" :key="idx">
+                                            <button @click.stop="currentImageIndex = idx"
+                                                    class="rounded-full transition-all duration-300"
+                                                    :class="currentImageIndex === idx ? 'w-5 h-2' : 'w-2 h-2 opacity-60'"
+                                                    :style="currentImageIndex === idx
+                                                        ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1);'
+                                                        : 'background-color: white;'"
+                                                    :title="`Image ${idx + 1}`">
+                                            </button>
+                                        </template>
+                                    </div>
+                                </template>
                             </div>
 
-                            <!-- Image Caption -->
+                            <!-- Image Caption (only shown if caption exists) -->
                             <template x-for="(image, index) in images" :key="index">
-                                <div x-show="currentImageIndex === index">
-                                    <div class="bg-gray-50 rounded-lg p-4">
-                                        <p class="text-gray-700" x-text="image.caption || 'No caption'"></p>
-                                        <p class="text-xs text-gray-500 mt-1" x-text="`Image ${index + 1} of ${images.length}`"></p>
-                                    </div>
-                                </div>
+                                <template x-if="currentImageIndex === index && image.caption">
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center px-2" x-text="image.caption"></p>
+                                </template>
                             </template>
                         </div>
 
@@ -264,7 +265,7 @@
                                     <!-- Caption and Counter Container -->
                                     <div class="flex flex-col items-center gap-2 w-full max-w-3xl">
                                         <!-- Image Counter -->
-                                        <div class="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg">
+                                        <div class="text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg" style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
                                             <span x-text="`Image ${index + 1} of ${images.length}`"></span>
                                         </div>
                                         
@@ -306,85 +307,163 @@
                 @endif
 
                 @if($currentTopic->worksheet_files && count($currentTopic->worksheet_files) > 0)
-                    <div class="space-y-4">
-                        <h4 class="font-semibold text-gray-900 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd"/>
-                            </svg>
-                            Worksheet Files ({{ count($currentTopic->worksheet_files) }})
-                        </h4>
+                    <div class="space-y-6">
+                        <div class="border-l-4 pl-3 flex items-center justify-between" style="border-color: #730DB1;">
+                            <h4 class="font-semibold text-gray-800 dark:text-gray-100 text-sm tracking-wide uppercase">
+                                Worksheet Files
+                                <span class="ml-1.5 text-xs font-normal text-gray-400 normal-case tracking-normal">{{ count($currentTopic->worksheet_files) }} file{{ count($currentTopic->worksheet_files) > 1 ? 's' : '' }}</span>
+                            </h4>
+                        </div>
+
                         @foreach($currentTopic->worksheet_files as $index => $file)
-                            <div class="bg-white border-2 border-gray-200 rounded-lg p-6 hover:border-blue-300 transition">
-                                <div class="flex items-center gap-4">
-                                    <div class="flex-shrink-0 w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center">
-                                        @if(isset($file['mime_type']))
-                                            @if(str_contains($file['mime_type'], 'pdf'))
-                                                <svg class="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
-                                                </svg>
-                                            @elseif(str_contains($file['mime_type'], 'word') || str_contains($file['mime_type'], 'document'))
-                                                <svg class="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
-                                                </svg>
-                                            @else
-                                                <svg class="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
-                                                </svg>
-                                            @endif
-                                        @else
-                                            <svg class="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
-                                            </svg>
-                                        @endif
+                        @php
+                            $__filePath     = $file['path'] ?? '';
+                            $__fileName     = $file['original_name'] ?? basename($__filePath);
+                            $__mimeType     = $file['mime_type'] ?? '';
+                            $__fileSize     = isset($file['size']) ? number_format($file['size'] / 1024, 1) . ' KB' : null;
+                            $__fileExt      = strtolower(pathinfo($__fileName, PATHINFO_EXTENSION));
+                            $__isPdf        = str_contains($__mimeType, 'pdf') || $__fileExt === 'pdf';
+                            $__isWord       = str_contains($__mimeType, 'word') || str_contains($__mimeType, 'document') || in_array($__fileExt, ['doc', 'docx']);
+                            $__fileUrl      = asset('storage/' . $__filePath);
+                        @endphp
+
+                        @if($__isPdf)
+                        {{-- PDF.js inline viewer --}}
+                        <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden"
+                             x-data="pdfViewer('{{ $__fileUrl }}')"
+                             x-init="init()">
+                            {{-- PDF viewer header --}}
+                            <div class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <div class="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                                        </svg>
                                     </div>
-                                    <div class="flex-1 min-w-0">
-                                        <h5 class="font-semibold text-gray-900 mb-1">
-                                            Worksheet {{ $index + 1 }}
-                                            @if(count($currentTopic->worksheet_files) === 1)
-                                                File
-                                            @endif
-                                        </h5>
-                                        <p class="text-sm text-gray-600 truncate">{{ $file['original_name'] ?? basename($file['path']) }}</p>
-                                        @if(isset($file['size']))
-                                            <p class="text-xs text-gray-500 mt-1">
-                                                {{ number_format($file['size'] / 1024, 2) }} KB
-                                            </p>
-                                        @endif
-                                    </div>
-                                    <a href="{{ asset('storage/' . $file['path']) }}" 
-                                       download
-                                       class="flex-shrink-0 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition flex items-center gap-2 shadow-md hover:shadow-lg">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{{ $__fileName }}</span>
+                                    @if($__fileSize)
+                                        <span class="flex-shrink-0 text-xs text-gray-400 dark:text-gray-500">{{ $__fileSize }}</span>
+                                    @endif
+                                </div>
+                                <div class="flex items-center gap-2 flex-shrink-0">
+                                    {{-- Page counter --}}
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
+                                          x-text="totalPages ? `Page ${page} / ${totalPages}` : 'Loading…'"></span>
+                                    {{-- Download --}}
+                                    <a href="{{ $__fileUrl }}" download="{{ $__fileName }}"
+                                       class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-all hover:opacity-90"
+                                       style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                         </svg>
                                         Download
                                     </a>
                                 </div>
                             </div>
-                        @endforeach
-                    </div>
-                @elseif($currentTopic->file_path)
-                    <!-- Legacy single file support -->
-                    <div class="bg-white border-2 border-gray-200 rounded-lg p-6">
-                        <div class="flex items-center gap-4">
-                            <div class="flex-shrink-0 w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <svg class="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd"/>
-                                </svg>
+
+                            {{-- Canvas area --}}
+                            <div class="bg-gray-100 dark:bg-gray-950 overflow-auto p-3 flex justify-center" style="min-height: 400px; max-height: 600px;">
+                                <canvas x-ref="canvas" class="shadow-lg rounded max-w-full"></canvas>
+                            </div>
+
+                            {{-- Controls bar --}}
+                            <div class="flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                                {{-- Pagination --}}
+                                <div class="flex items-center gap-2">
+                                    <button @click="prev()"
+                                            :disabled="page <= 1"
+                                            class="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                                        </svg>
+                                    </button>
+                                    <button @click="next()"
+                                            :disabled="page >= totalPages"
+                                            class="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                {{-- Zoom --}}
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-gray-500 dark:text-gray-400" x-text="`${Math.round(scale * 100)}%`"></span>
+                                    <button @click="zoomOut()"
+                                            class="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/>
+                                        </svg>
+                                    </button>
+                                    <button @click="zoomIn()"
+                                            class="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        @else
+                        {{-- Non-PDF download card --}}
+                        <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 flex items-center gap-4">
+                            <div class="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
+                                 style="background: linear-gradient(135deg, rgba(163,14,178,0.1), rgba(59,12,177,0.1));">
+                                @if($__isWord)
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" style="color: #4F81BD;">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                                    </svg>
+                                @else
+                                    <svg class="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                                    </svg>
+                                @endif
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h4 class="font-semibold text-gray-900 mb-1">Worksheet File</h4>
-                                <p class="text-sm text-gray-500 truncate">{{ basename($currentTopic->file_path) }}</p>
+                                <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{{ $__fileName }}</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                    {{ strtoupper($__fileExt) }} file{{ $__fileSize ? ' · ' . $__fileSize : '' }}
+                                </p>
                             </div>
-                            <a href="{{ asset('storage/' . $currentTopic->file_path) }}" 
-                               download
-                               class="flex-shrink-0 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition flex items-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            <a href="{{ $__fileUrl }}" download="{{ $__fileName }}"
+                               class="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl transition-all hover:opacity-90 active:scale-[0.98]"
+                               style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
                                 Download
                             </a>
                         </div>
+                        @endif
+
+                        @endforeach
+                    </div>
+                @elseif($currentTopic->file_path)
+                    {{-- Legacy single file support --}}
+                    @php
+                        $__legacyExt = strtolower(pathinfo($currentTopic->file_path, PATHINFO_EXTENSION));
+                        $__legacyUrl = asset('storage/' . $currentTopic->file_path);
+                        $__legacyName = basename($currentTopic->file_path);
+                    @endphp
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 flex items-center gap-4">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
+                             style="background: linear-gradient(135deg, rgba(163,14,178,0.1), rgba(59,12,177,0.1));">
+                            <svg class="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{{ $__legacyName }}</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ strtoupper($__legacyExt) }} file</p>
+                        </div>
+                        <a href="{{ $__legacyUrl }}" download="{{ $__legacyName }}"
+                           class="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl transition-all hover:opacity-90 active:scale-[0.98]"
+                           style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            Download
+                        </a>
                     </div>
                 @else
                     <div class="bg-gray-100 rounded-lg p-12 text-center">
@@ -553,3 +632,61 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    // PDF.js viewer — Alpine component factory
+    // window.pdfjsLib is set by app.js (pdfjs-dist bundled via npm)
+    window.pdfViewer = function(url) {
+        // Keep PDF.js objects outside Alpine reactive state to avoid
+        // private-field access errors when methods are invoked.
+        let pdfDoc = null;
+
+        return {
+            page: 1,
+            totalPages: 0,
+            scale: 1.2,
+            rendering: false,
+
+            async init() {
+                const lib = window.pdfjsLib || (window.ensurePdfJsLib ? await window.ensurePdfJsLib() : null);
+                if (!lib) return;
+                try {
+                    pdfDoc = await lib.getDocument(url).promise;
+                    this.totalPages = pdfDoc.numPages;
+                    this.$nextTick(() => this.render());
+                } catch (e) {
+                    console.error('[pdfViewer] Failed to load PDF:', e);
+                }
+            },
+
+            async render() {
+                if (!pdfDoc || this.rendering) return;
+                this.rendering = true;
+                try {
+                    const pdfPage = await pdfDoc.getPage(this.page);
+                    const viewport = pdfPage.getViewport({ scale: this.scale });
+                    const canvas   = this.$refs.canvas;
+                    canvas.width   = viewport.width;
+                    canvas.height  = viewport.height;
+                    await pdfPage.render({
+                        canvasContext: canvas.getContext('2d'),
+                        viewport,
+                    }).promise;
+                } finally {
+                    this.rendering = false;
+                }
+            },
+
+            async prev() {
+                if (this.page > 1) { this.page--; await this.render(); }
+            },
+            async next() {
+                if (this.page < this.totalPages) { this.page++; await this.render(); }
+            },
+            zoomIn()  { this.scale = Math.min(this.scale + 0.2, 3);   this.render(); },
+            zoomOut() { this.scale = Math.max(this.scale - 0.2, 0.5); this.render(); },
+        };
+    };
+</script>
+@endpush

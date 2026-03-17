@@ -499,4 +499,15 @@ class TopicController extends Controller
 
         return response()->json(['error' => 'No file uploaded'], 400);
     }
+
+    public function reorder(Request $request)
+    {
+        $request->validate(['order' => 'required|array', 'order.*' => 'integer|exists:lesson_topics,id']);
+
+        foreach ($request->order as $index => $id) {
+            LessonTopic::where('id', $id)->update(['order' => $index + 1]);
+        }
+
+        return response()->json(['success' => true]);
+    }
 }
