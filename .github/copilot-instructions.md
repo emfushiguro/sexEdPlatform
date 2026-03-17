@@ -163,13 +163,21 @@ Learners have a profile with an `age_bracket` field. Modules are targeted to spe
 - `QUICK_TESTING_GUIDE.md` — how to test features manually
 - `CSV_IMPORT_GUIDE.md` — quiz CSV bulk import format
 
+## Current Workspace Progress (As of 2026-03-15)
+
+- Active feature branch: `feat/admin-panel-integration`
+- Latest implemented milestone: instructor dashboard phase 1 component refresh (see commit `cdf496d`)
+- Recent learner-side stabilization completed: enrollment status checks, gamification dependency wiring, shield-related fixes, and subscription/payment integration updates
+- Latest planning artifact added: `docs/plans/2026-03-15-lesson-viewer-enhancement-design.md`
+- Current workflow source of truth: `!skills/MY-WORKFLOW.md` (3-stage flow)
+
 ---
 
 ## Skills-Based Workflow
 
 This project uses the **Superpowers skills system** for structured AI-assisted development. The skills folder is at `!skills/` in the workspace root.
 
-**Read `!skills/MY-WORKFLOW.md` for the complete 7-session development flow.**
+**Read `!skills/MY-WORKFLOW.md` for the complete 3-stage development flow (Brainstorming -> Writing Plans -> Executing Plans).**
 
 Quick reference:
 
@@ -177,7 +185,8 @@ Quick reference:
 |---|---|
 | New feature / change idea | `!skills/brainstorming/SKILL.md` |
 | Approved design, need a plan | `!skills/writing-plans/SKILL.md` |
-| Writing code for a task | `!skills/test-driven-development/SKILL.md` |
+| Implementing the approved plan | `!skills/executing-plans/SKILL.md` |
+| Writing code with strict red-green-refactor (optional mode) | `!skills/test-driven-development/SKILL.md` |
 | Something is broken | `!skills/systematic-debugging/SKILL.md` |
 | About to say "done" | `!skills/verification-before-completion/SKILL.md` |
 | Feature complete, need review | `!skills/requesting-code-review/SKILL.md` |
