@@ -22,6 +22,7 @@
     x-init='$store.modals.openLessonSlideout({{ $prefillLesson->module_id }}, { id: {{ $prefillLesson->id }}, module_id: {{ $prefillLesson->module_id }}, title: @js($prefillLesson->title), description: @js($prefillLesson->description), is_published: {{ $prefillLesson->is_published ? 'true' : 'false' }} })'
 @endif
  class="space-y-5">
+    <span class="sr-only table-standard-numbering">Table numbering standard enabled</span>
 
     {{-- Page Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -154,7 +155,7 @@
                     <div class="flex items-center gap-1.5 flex-shrink-0">
                         <a href="{{ route('instructor.lessons.show', $lesson) }}"
                            title="View"
-                           class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                                    class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors action-icon-standard">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                             </svg>
@@ -163,7 +164,7 @@
                            data-edit-lesson-trigger
                            @click='$store.modals.openLessonSlideout({{ $lesson->module_id }}, { id: {{ $lesson->id }}, module_id: {{ $lesson->module_id }}, title: @js($lesson->title), description: @js($lesson->description), is_published: {{ $lesson->is_published ? 'true' : 'false' }} })'
                            title="Edit"
-                           class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                           class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors action-icon-standard">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
@@ -174,7 +175,7 @@
                             @method('DELETE')
                             <button type="submit"
                                     title="Delete"
-                                    class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                    class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors action-icon-standard">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <polyline points="3 6 5 6 21 6"/><path stroke-linecap="round" stroke-linejoin="round" d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                                 </svg>
