@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Services\AdminActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -91,6 +92,7 @@ class SubscriberAdminController extends Controller
     private function activate(Request $request)
     {
         $subscription = Subscription::findOrFail($request->subscription_id);
+        $before = $subscription->only(['id', 'status', 'cancelled_at', 'cancellation_reason']);
 
         try {
             app(\App\Services\SubscriptionService::class)->activate($subscription);
@@ -98,17 +100,36 @@ class SubscriberAdminController extends Controller
             return redirect()->back()->with('error', 'Activation failed: ' . $e->getMessage());
         }
 
+        app(AdminActivityLogService::class)->logModelMutation(
+            action: 'subscribers.activate',
+            entity: $subscription,
+            before: $before,
+            after: $subscription->fresh()->only(['id', 'status', 'cancelled_at', 'cancellation_reason']),
+            meta: ['source' => 'admin.subscribers.quick-action'],
+            request: $request,
+        );
+
         return redirect()->back()->with('success', 'Subscription activated successfully.');
     }
 
     private function cancel(Request $request)
     {
         $subscription = Subscription::findOrFail($request->subscription_id);
+        $before = $subscription->only(['id', 'status', 'cancelled_at', 'cancellation_reason']);
         $subscription->update([
             'status'               => 'cancelled',
             'cancelled_at'         => now(),
             'cancellation_reason'  => 'Cancelled by admin',
         ]);
+
+        app(AdminActivityLogService::class)->logModelMutation(
+            action: 'subscribers.cancel',
+            entity: $subscription,
+            before: $before,
+            after: $subscription->fresh()->only(['id', 'status', 'cancelled_at', 'cancellation_reason']),
+            meta: ['source' => 'admin.subscribers.quick-action'],
+            request: $request,
+        );
 
         return redirect()->back()->with('success', 'Subscription cancelled.');
     }

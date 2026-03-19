@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SubscriptionPlan;
+use App\Services\AdminActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -47,7 +48,16 @@ class UnifiedSubscriptionAdminController extends Controller
             array_map('trim', $request->input('feature_keys', []))
         )));
 
-        SubscriptionPlan::create($validated);
+        $plan = SubscriptionPlan::create($validated);
+
+        app(AdminActivityLogService::class)->logModelMutation(
+            action: 'plans.create',
+            entity: $plan,
+            before: null,
+            after: $plan->fresh()->only(['id', 'name', 'slug', 'price', 'is_active']),
+            meta: ['source' => 'admin.subscribers.store-plan'],
+            request: $request,
+        );
 
         return redirect()->route('admin.subscription-plans.index')
             ->with('success', 'Subscription plan created successfully!');
@@ -66,6 +76,8 @@ class UnifiedSubscriptionAdminController extends Controller
 
     public function updatePlan(Request $request, SubscriptionPlan $subscriptionPlan)
     {
+        $before = $subscriptionPlan->only(['id', 'name', 'slug', 'price', 'is_active', 'features']);
+
         $validated = $request->validate([
             'name'           => 'required|string|max:255',
             'description'    => 'nullable|string',
@@ -101,6 +113,15 @@ class UnifiedSubscriptionAdminController extends Controller
 
         $subscriptionPlan->update($validated);
 
+        app(AdminActivityLogService::class)->logModelMutation(
+            action: 'plans.update',
+            entity: $subscriptionPlan,
+            before: $before,
+            after: $subscriptionPlan->fresh()->only(['id', 'name', 'slug', 'price', 'is_active', 'features']),
+            meta: ['source' => 'admin.subscribers.update-plan'],
+            request: $request,
+        );
+
         return redirect()->route('admin.subscription-plans.index')
             ->with('success', 'Subscription plan updated successfully!');
     }
@@ -122,6 +143,7 @@ class UnifiedSubscriptionAdminController extends Controller
     private function togglePlan(Request $request)
     {
         $plan = SubscriptionPlan::findOrFail($request->plan_id);
+        $before = $plan->only(['id', 'name', 'is_active']);
 
         if ($plan->is_active) {
             if ($plan->isFree()) {
@@ -142,12 +164,22 @@ class UnifiedSubscriptionAdminController extends Controller
         $plan->update(['is_active' => !$plan->is_active]);
         $status = $plan->fresh()->is_active ? 'activated' : 'deactivated';
 
+        app(AdminActivityLogService::class)->logModelMutation(
+            action: 'plans.toggle',
+            entity: $plan,
+            before: $before,
+            after: $plan->fresh()->only(['id', 'name', 'is_active']),
+            meta: ['source' => 'admin.subscribers.quick-action-plan', 'status' => $status],
+            request: $request,
+        );
+
         return redirect()->back()->with('success', "Plan {$status} successfully.");
     }
 
     private function deletePlan(Request $request)
     {
         $plan = SubscriptionPlan::findOrFail($request->plan_id);
+        $before = $plan->only(['id', 'name', 'slug', 'price', 'is_active']);
 
         if ($plan->subscriptions()->where('status', 'active')->exists()) {
             return redirect()->back()
@@ -155,6 +187,16 @@ class UnifiedSubscriptionAdminController extends Controller
         }
 
         $plan->delete();
+
+        app(AdminActivityLogService::class)->log(
+            action: 'plans.delete',
+            entityType: SubscriptionPlan::class,
+            entityId: $before['id'],
+            before: $before,
+            after: null,
+            meta: ['source' => 'admin.subscribers.quick-action-plan'],
+            request: $request,
+        );
 
         return redirect()->back()->with('success', 'Plan deleted successfully.');
     }

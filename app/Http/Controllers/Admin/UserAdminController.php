@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AdminActivityLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -86,6 +87,15 @@ class UserAdminController extends Controller
         // Assign role using Spatie
         $user->assignRole($validated['role']);
 
+        app(AdminActivityLogService::class)->logModelMutation(
+            action: 'users.create',
+            entity: $user,
+            before: null,
+            after: $user->fresh()->only(['id', 'name', 'email', 'role', 'status']),
+            meta: ['source' => 'admin.users.store'],
+            request: $request,
+        );
+
         return redirect()->route('admin.users.index')
             ->with('success', 'User created successfully!');
     }
@@ -122,6 +132,8 @@ class UserAdminController extends Controller
      */
     public function update(Request $request, User $user)
     {
+        $before = $user->only(['id', 'name', 'email', 'role', 'status']);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
@@ -145,6 +157,15 @@ class UserAdminController extends Controller
         // Sync role
         $user->syncRoles([$validated['role']]);
 
+        app(AdminActivityLogService::class)->logModelMutation(
+            action: 'users.update',
+            entity: $user,
+            before: $before,
+            after: $user->fresh()->only(['id', 'name', 'email', 'role', 'status']),
+            meta: ['source' => 'admin.users.update'],
+            request: $request,
+        );
+
         return redirect()->route('admin.users.index')
             ->with('success', 'User updated successfully!');
     }
@@ -160,7 +181,18 @@ class UserAdminController extends Controller
                 ->with('error', 'You cannot delete your own account!');
         }
 
+        $before = $user->only(['id', 'name', 'email', 'role', 'status']);
         $user->delete();
+
+        app(AdminActivityLogService::class)->log(
+            action: 'users.delete',
+            entityType: User::class,
+            entityId: $before['id'],
+            before: $before,
+            after: null,
+            meta: ['source' => 'admin.users.destroy'],
+            request: request(),
+        );
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User deleted successfully!');
