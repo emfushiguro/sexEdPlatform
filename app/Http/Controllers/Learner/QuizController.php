@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Models\Module;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\UserDailyShield;
@@ -39,6 +40,12 @@ class QuizController extends Controller
                 ->with('error', 'You must enroll in the module first.');
         }
 
+        $module = Module::find($moduleId);
+        if ($module && !$module->is_published) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'This module is currently deactivated. Quiz attempts are temporarily unavailable.');
+        }
+
         // Check shields for free users (premium users have unlimited attempts)
         if (!$user->isPremium()) {
             if (UserDailyShield::getShields($user) <= 0) {
@@ -68,6 +75,12 @@ class QuizController extends Controller
         $moduleId = $quiz->module_id ?? $quiz->lesson?->module_id;
         if (!$user->moduleEnrollments()->where('module_id', $moduleId)->exists()) {
             abort(403);
+        }
+
+        $module = Module::find($moduleId);
+        if ($module && !$module->is_published) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'This module is currently deactivated. Quiz attempts are temporarily unavailable.');
         }
 
         // Re-check shields before submitting (race-condition guard for free users)

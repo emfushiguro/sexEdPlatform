@@ -26,9 +26,14 @@ class LessonController extends Controller
         $user = Auth::user();
         $module = $lesson->module;
 
-        // Security: Check if lesson and module are published
-        if (!$lesson->is_published || !$module->is_published) {
+        // Security: Check if lesson is published.
+        if (!$lesson->is_published) {
             abort(404);
+        }
+
+        if (!$module->is_published) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
         }
 
         // Security: Check if user is enrolled
@@ -233,8 +238,13 @@ class LessonController extends Controller
         $module = $lesson->module;
 
         // Security checks
-        if (!$lesson->is_published || !$module->is_published) {
+        if (!$lesson->is_published) {
             abort(404);
+        }
+
+        if (!$module->is_published) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
         }
 
         $isEnrolled = $user->moduleEnrollments()
@@ -284,8 +294,13 @@ class LessonController extends Controller
         $module = $lesson->module;
 
         // Security checks
-        if (!$lesson->is_published || !$module->is_published) {
+        if (!$lesson->is_published) {
             abort(404);
+        }
+
+        if (!$module->is_published) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
         }
 
         $isEnrolled = $user->moduleEnrollments()
@@ -351,8 +366,13 @@ class LessonController extends Controller
         $lesson = $topic->lesson;
         $module = $lesson->module;
 
-        if (!$lesson->is_published || !$module->is_published) {
+        if (!$lesson->is_published) {
             abort(404);
+        }
+
+        if (!$module->is_published) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
         }
 
         $isEnrolled = $user->moduleEnrollments()

@@ -9,6 +9,12 @@
 
 <div class="space-y-5">
 
+    @if(!$module->is_published)
+    <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+        This module is currently deactivated. You can review existing content, but lesson and quiz progression is temporarily unavailable.
+    </div>
+    @endif
+
     {{-- Back link --}}
     <div>
         <a href="{{ route('learner.modules.index') }}"

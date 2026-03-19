@@ -55,6 +55,7 @@
                     $thumbnail   = $module->thumbnail ? asset('storage/' . $module->thumbnail) : null;
                     $pct         = $prog->progress_percentage;
                     $isCompleted = $enrollment?->completed_at !== null;
+                    $isDeactivated = !$module->is_published;
                 @endphp
                 <div
                     x-show="!query.trim() || '{{ addslashes(strtolower($module->title)) }}'.includes(query.toLowerCase().trim())"
@@ -75,6 +76,9 @@
                         @endif
                         @if($module->is_premium)
                             <span class="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-amber-900">PREMIUM</span>
+                        @endif
+                        @if($isDeactivated)
+                            <span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-900/80 text-white">DEACTIVATED</span>
                         @endif
                         @if($isCompleted)
                             <div class="absolute inset-0 bg-green-500/10 flex items-end p-2">
@@ -105,6 +109,9 @@
                         @if($enrollment?->updated_at)
                         <p class="text-xs text-gray-400 dark:text-gray-500">Last studied {{ $enrollment->updated_at->diffForHumans() }}</p>
                         @endif
+                                @if($isDeactivated)
+                                <p class="text-xs font-medium text-amber-700 dark:text-amber-300">Module is currently deactivated. You can still review content while progression actions are paused.</p>
+                                @endif
                         <a href="{{ route('learner.modules.show', $module) }}"
                            class="mt-auto block w-full text-center text-sm font-semibold text-white py-2.5 px-4 rounded-xl transition-all duration-150 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
                            style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">

@@ -30,11 +30,21 @@ class ModuleController extends Controller
         // Get learner's age
         $learnerAge = $learnerProfile->getAge();
         
-        // Get published modules appropriate for learner's age
-        $modules = Module::where('is_published', true)
-            ->where(function ($query) use ($learnerAge) {
-                $query->where('min_age', '<=', $learnerAge)
-                      ->where('max_age', '>=', $learnerAge);
+        $enrolledModuleIds = $user->moduleEnrollments()
+            ->where('status', EnrollmentStatus::Approved)
+            ->pluck('module_id');
+
+        // Show active age-appropriate modules plus enrolled modules (including deactivated) for history visibility.
+        $modules = Module::where(function ($query) use ($learnerAge, $enrolledModuleIds) {
+                $query->where(function ($inner) use ($learnerAge) {
+                    $inner->where('is_published', true)
+                        ->where('min_age', '<=', $learnerAge)
+                        ->where('max_age', '>=', $learnerAge);
+                });
+
+                if ($enrolledModuleIds->isNotEmpty()) {
+                    $query->orWhereIn('id', $enrolledModuleIds);
+                }
             })
             ->withCount('lessons')
             ->with(['lessons' => function ($query) {
@@ -85,14 +95,20 @@ class ModuleController extends Controller
                 ->with('error', 'Please complete your profile to access modules.');
         }
 
-        // Security: Check if module is published
-        if (!$module->is_published) {
+        $enrollment = $user->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->first();
+
+        $isApprovedEnrollment = $enrollment && $enrollment->status === EnrollmentStatus::Approved;
+
+        // Deactivated modules remain viewable for enrolled learners only.
+        if (!$module->is_published && !$isApprovedEnrollment) {
             abort(404);
         }
 
-        // Security: Check age-based access
+        // Security: Check age-based access for non-enrolled learners.
         $learnerAge = $learnerProfile->getAge();
-        if (!$this->canAccessModule($module, $learnerAge)) {
+        if (!$isApprovedEnrollment && !$this->canAccessModule($module, $learnerAge)) {
             return redirect()->route('learner.modules.index')
                 ->with('error', 'This module is not available for your age group.');
         }
@@ -108,11 +124,7 @@ class ModuleController extends Controller
             ->get();
 
         // Check enrollment status
-        $enrollment = $user->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->first();
-
-        $isEnrolled = $enrollment && $enrollment->status === EnrollmentStatus::Approved;
+        $isEnrolled = $isApprovedEnrollment;
         $enrollmentStatus = $enrollment?->status?->value;
 
         // Calculate progress
