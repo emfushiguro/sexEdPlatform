@@ -86,6 +86,18 @@
 <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-5"
      x-data="{
          tab: 'all',
+         rejectModalOpen: false,
+         rejectEnrollmentId: null,
+         rejectReasonCode: '',
+         rejectReasonNote: '',
+         rejectErrors: {},
+         rejectReasons: [
+             { value: 'prerequisite_missing', label: 'Prerequisite module not completed' },
+             { value: 'age_requirement_not_met', label: 'Age requirement not met' },
+             { value: 'profile_incomplete', label: 'Learner profile is incomplete' },
+             { value: 'capacity_limit', label: 'Module capacity reached' },
+             { value: 'other', label: 'Other' },
+         ],
          enrollments: {{ json_encode($module->enrollments->map(fn($e) => [
              'id'        => $e->id,
              'name'      => trim(($e->user->first_name ?? '').( ' ').($e->user->last_name ?? '')) ?: ($e->user->name ?? 'Learner'),
@@ -109,14 +121,44 @@
                  if (i > -1) this.enrollments[i].status = 'approved';
              }
          },
-         async rejectEnrollment(id) {
-             const res = await fetch('/instructor/enrollments/' + id + '/reject', {
+         openRejectModal(id) {
+             this.rejectEnrollmentId = id;
+             this.rejectReasonCode = '';
+             this.rejectReasonNote = '';
+             this.rejectErrors = {};
+             this.rejectModalOpen = true;
+         },
+         async submitRejectEnrollment() {
+             if (!this.rejectEnrollmentId) {
+                 return;
+             }
+
+             this.rejectErrors = {};
+
+             const res = await fetch('/instructor/enrollments/' + this.rejectEnrollmentId + '/reject', {
                  method: 'PATCH',
-                 headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+                 headers: {
+                     'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                     'Accept': 'application/json',
+                     'Content-Type': 'application/json',
+                 },
+                 body: JSON.stringify({
+                     rejection_reason_code: this.rejectReasonCode,
+                     rejection_reason_note: this.rejectReasonNote,
+                 }),
              });
+
+             if (res.status === 422) {
+                 const payload = await res.json();
+                 this.rejectErrors = payload.errors || {};
+                 return;
+             }
+
              if (res.ok) {
-                 const i = this.enrollments.findIndex(e => e.id === id);
+                 const i = this.enrollments.findIndex(e => e.id === this.rejectEnrollmentId);
                  if (i > -1) this.enrollments[i].status = 'rejected';
+                 this.rejectModalOpen = false;
+                 this.rejectEnrollmentId = null;
              }
          },
          async unenroll(id) {
@@ -204,7 +246,7 @@
                                     </button>
                                     {{-- Reject (pending only) --}}
                                     <button x-show="e.status === 'pending'"
-                                            @click="rejectEnrollment(e.id)"
+                                            @click="openRejectModal(e.id)"
                                             title="Reject enrollment"
                                             class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -234,6 +276,59 @@
             <p class="text-sm text-gray-400 dark:text-gray-500">No <span x-text="tab === 'all' ? '' : tab"></span> enrollments found.</p>
         </div>
     </template>
+
+    <div x-show="rejectModalOpen"
+         x-cloak
+         class="fixed inset-0 z-[99999] flex items-center justify-center p-4"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        <div class="absolute inset-0 bg-black/50" @click="rejectModalOpen = false"></div>
+
+        <div class="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-xl p-5 space-y-4">
+            <div>
+                <h3 class="text-base font-semibold text-gray-900 dark:text-white">Reject Enrollment</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Choose a reason and optionally add a note for the learner.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Reason</label>
+                <select x-model="rejectReasonCode"
+                        class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-300">
+                    <option value="">Select a reason</option>
+                    <template x-for="reason in rejectReasons" :key="reason.value">
+                        <option :value="reason.value" x-text="reason.label"></option>
+                    </template>
+                </select>
+                <p x-show="rejectErrors.rejection_reason_code" class="mt-1 text-xs text-red-600" x-text="rejectErrors.rejection_reason_code?.[0]"></p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Note (optional)</label>
+                <textarea x-model="rejectReasonNote"
+                          rows="3"
+                          class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                          placeholder="Add additional context for the learner"></textarea>
+                <p x-show="rejectErrors.rejection_reason_note" class="mt-1 text-xs text-red-600" x-text="rejectErrors.rejection_reason_note?.[0]"></p>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button"
+                        @click="rejectModalOpen = false"
+                        class="px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                    Cancel
+                </button>
+                <button type="button"
+                        @click="submitRejectEnrollment()"
+                        class="px-3 py-2 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors">
+                    Reject Enrollment
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- ══  Section 3: Lessons List  ══ --}}

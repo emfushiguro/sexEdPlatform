@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Instructor\RejectEnrollmentRequest;
 use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
@@ -104,17 +105,14 @@ class EnrollmentController extends Controller
     /**
      * Reject an enrollment request
      */
-    public function reject(Request $request, ModuleEnrollment $enrollment)
+    public function reject(RejectEnrollmentRequest $request, ModuleEnrollment $enrollment)
     {
         if ($enrollment->status !== EnrollmentStatus::Pending) {
             return redirect()->back()
                 ->with('error', 'This enrollment request is not pending.');
         }
 
-        $validated = $request->validate([
-            'rejection_reason_code' => ['required', 'string', 'max:100'],
-            'rejection_reason_note' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validated();
 
         $enrollment->loadMissing('module', 'user');
 
