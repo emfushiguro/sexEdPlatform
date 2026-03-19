@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SubscriptionPlan extends Model
@@ -32,6 +33,23 @@ class SubscriptionPlan extends Model
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class, 'plan_id');
+    }
+
+    public function planPrices(): HasMany
+    {
+        return $this->hasMany(PlanPrice::class, 'plan_id');
+    }
+
+    public function defaultPlanPrice(): HasOne
+    {
+        return $this->hasOne(PlanPrice::class, 'plan_id')
+            ->where('is_default', true)
+            ->where('is_active', true);
+    }
+
+    public function featureEntitlements(): HasMany
+    {
+        return $this->hasMany(PlanFeatureEntitlement::class, 'plan_id');
     }
 
     public function scopeActive($query)

@@ -14,6 +14,21 @@
                 @endif
             @endforeach
 
+            @if(($subscriptionSummary['has_subscription'] ?? false) && !empty($subscriptionSummary['status']))
+                @php
+                    $summaryStatus = (string) $subscriptionSummary['status'];
+                    $summaryLabel = match($summaryStatus) {
+                        'scheduled_cancel' => 'Scheduled Cancel',
+                        'grace_period' => 'Grace Period',
+                        default => ucfirst(str_replace('_', ' ', $summaryStatus)),
+                    };
+                @endphp
+                <div class="mb-5 bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-3 rounded-lg text-sm">
+                    <span class="font-semibold">Subscription Status:</span>
+                    <span class="ml-2 inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">{{ $summaryLabel }}</span>
+                </div>
+            @endif
+
                     {{-- Pending payment warning --}}
             @if($subscription && $subscription->status === \App\Enums\SubscriptionStatus::Pending)
                 <div class="mb-5 bg-amber-50 border border-amber-300 rounded-xl p-4 flex gap-3">

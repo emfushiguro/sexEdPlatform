@@ -77,6 +77,11 @@
                         $isPlus        = str_contains($lowerName, 'plus') || str_contains($lowerName, 'max');
                         $isAnnual      = str_contains($lowerName, 'annual') || str_contains($lowerName, 'yearly');
                         $isMonthly     = str_contains($lowerName, 'month');
+                        $normalizedPrices = collect($plan->planPrices ?? [])
+                            ->filter(fn ($price) => (bool) ($price->is_active ?? false))
+                            ->sortByDesc('is_default')
+                            ->sortBy('duration_count')
+                            ->values();
 
                         // First non-free non-plus annual plan gets MOST POPULAR
                         $isFeatured = !$isFree && !$isPlus && $isAnnual && !$featuredUsed;
@@ -167,6 +172,25 @@
                                     <span class="text-lg font-bold mb-1" style="color:{{ $accentClr }};">₱</span>
                                 </div>
                                 <p class="text-[11px] mb-4" style="color:#6b7280;">Always free · No card needed</p>
+                            @elseif($normalizedPrices->isNotEmpty())
+                                <div class="mb-4 space-y-1.5">
+                                    @foreach($normalizedPrices as $price)
+                                        @php
+                                            $durationLabel = $price->duration_label
+                                                ?? match(($price->duration_unit ?? null)) {
+                                                    'year' => 'Yearly',
+                                                    'month' => 'Monthly',
+                                                    'week' => 'Weekly',
+                                                    'day' => 'Daily',
+                                                    default => ucfirst((string) ($price->duration_unit ?? 'Plan')),
+                                                };
+                                        @endphp
+                                        <div class="flex items-center justify-between rounded-md px-2 py-1 {{ $price->is_default ? 'bg-white/10 border border-white/20' : 'bg-transparent border border-white/5' }}">
+                                            <span class="text-[11px] font-semibold text-gray-200">{{ $durationLabel }}</span>
+                                            <span class="text-[11px] font-bold text-white">PHP {{ number_format(((int) $price->amount_minor) / 100, 0) }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
                             @else
                                 <div class="flex items-end gap-1 mb-1">
                                     <span class="text-3xl font-black text-white leading-none">{{ number_format($plan->price, 0) }}</span>
