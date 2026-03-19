@@ -40,19 +40,30 @@ class Certificate extends Model
         parent::boot();
 
         static::creating(function ($certificate) {
-            if (empty($certificate->certificate_number)) {
-                $certificate->certificate_number = static::generateCertificateNumber();
-            }
             if (empty($certificate->issued_at)) {
                 $certificate->issued_at = now();
+            }
+
+            if (empty($certificate->certificate_number)) {
+                $certificate->certificate_number = static::generateCertificateNumber($certificate->issued_at);
             }
         });
     }
 
     // Helper Methods
 
-    public static function generateCertificateNumber(): string
+    public static function generateCertificateNumber($issuedAt = null): string
     {
-        return 'CERT-' . strtoupper(Str::random(12));
+        $year = now()->format('Y');
+
+        if (!empty($issuedAt)) {
+            $timestamp = strtotime((string) $issuedAt);
+
+            if ($timestamp !== false) {
+                $year = date('Y', $timestamp);
+            }
+        }
+
+        return 'CC-' . $year . '-' . strtoupper(Str::random(8));
     }
 }

@@ -10,7 +10,6 @@ use App\Models\UserProgress;
 use App\Services\GamificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class CertificateController extends Controller
 {
@@ -83,13 +82,9 @@ class CertificateController extends Controller
     {
         $user = Auth::user();
 
-        // Generate unique certificate number
-        $certificateNumber = 'CERT-' . strtoupper(Str::random(8)) . '-' . date('Y');
-
         $certificate = Certificate::create([
             'user_id' => $user->id,
             'module_id' => $module->id,
-            'certificate_number' => $certificateNumber,
             'issued_at' => now(),
         ]);
 
