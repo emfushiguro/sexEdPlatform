@@ -84,8 +84,9 @@ class QuizManagementController extends Controller
 
     public function edit(Quiz $quiz)
     {
-        $modules = Module::with('lessons')->get();
-        return view('instructor.quizzes.edit', compact('quiz', 'modules'));
+        return redirect()->route('instructor.quizzes.index', [
+            'edit_quiz' => $quiz->id,
+        ]);
     }
 
     public function update(Request $request, Quiz $quiz)

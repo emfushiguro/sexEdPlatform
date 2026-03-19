@@ -100,24 +100,34 @@ Alpine.store('sidebar', {
 // Global modal state store
 Alpine.store('modals', {
     quizModal: false,
+    quizModalDraft: null,
     moduleModal: false,
     lessonSlideout: false,
     lessonSlideoutModuleId: null,
+    lessonSlideoutDraft: null,
     editProfile: false,
 
-    openQuizModal() { this.quizModal = true; },
-    closeQuizModal() { this.quizModal = false; },
+    openQuizModal(quiz = null) {
+        this.quizModalDraft = quiz;
+        this.quizModal = true;
+    },
+    closeQuizModal() {
+        this.quizModal = false;
+        this.quizModalDraft = null;
+    },
 
     openModuleModal() { this.moduleModal = true; },
     closeModuleModal() { this.moduleModal = false; },
 
-    openLessonSlideout(moduleId = null) {
+    openLessonSlideout(moduleId = null, lesson = null) {
         this.lessonSlideoutModuleId = moduleId;
+        this.lessonSlideoutDraft = lesson;
         this.lessonSlideout = true;
     },
     closeLessonSlideout() {
         this.lessonSlideout = false;
         this.lessonSlideoutModuleId = null;
+        this.lessonSlideoutDraft = null;
     },
 
     openEditProfile() { this.editProfile = true; },

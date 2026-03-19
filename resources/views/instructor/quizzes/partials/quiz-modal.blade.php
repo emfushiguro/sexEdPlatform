@@ -21,8 +21,15 @@
     <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
          @click.stop
          x-data="{ 
+            mode: 'create',
+            editQuizId: null,
+            title: '',
+            description: '',
+            passingScore: 70,
+            isActive: true,
             selectedModule: '',
             selectedLesson: '',
+            actionBase: '{{ url('instructor/quizzes') }}',
             allLessons: {{ json_encode($modules->flatMap(function($module) {
                 return $module->lessons->map(function($lesson) use ($module) {
                     return [
@@ -36,14 +43,50 @@
                 if (!this.selectedModule) return [];
                 return this.allLessons.filter(lesson => lesson.module_id == this.selectedModule);
             },
+            get isEdit() {
+                return this.mode === 'edit' && this.editQuizId !== null;
+            },
+            get formAction() {
+                return this.isEdit ? `${this.actionBase}/${this.editQuizId}` : '{{ route('instructor.quizzes.store') }}';
+            },
+            syncFromStore() {
+                const draft = $store.modals.quizModalDraft;
+                if (!draft) {
+                    this.mode = 'create';
+                    this.editQuizId = null;
+                    this.title = '';
+                    this.description = '';
+                    this.passingScore = 70;
+                    this.isActive = true;
+                    this.selectedModule = '';
+                    this.selectedLesson = '';
+                    return;
+                }
+
+                this.mode = 'edit';
+                this.editQuizId = draft.id;
+                this.title = draft.title || '';
+                this.description = draft.description || '';
+                this.passingScore = draft.passing_score ?? 70;
+                this.isActive = !!draft.is_active;
+                this.selectedModule = draft.module_id ? String(draft.module_id) : '';
+                this.selectedLesson = draft.lesson_id ? String(draft.lesson_id) : '';
+            },
             onModuleChange() {
                 this.selectedLesson = '';
-            }
+            },
+            init() {
+                this.syncFromStore();
+                this.$watch('$store.modals.quizModalDraft', () => { this.syncFromStore(); });
+                this.$watch('$store.modals.quizModal', open => {
+                    if (open) this.syncFromStore();
+                });
+            },
         }">
             
             <!-- Modal Header -->
             <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
-                <h3 class="text-xl font-semibold text-gray-900">Create New Quiz</h3>
+                <h3 class="text-xl font-semibold text-gray-900" x-text="isEdit ? 'Edit Quiz' : 'Create New Quiz'"></h3>
                 <button @click="$store.modals.closeQuizModal()" 
                         class="text-gray-400 hover:text-gray-600 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,15 +96,16 @@
             </div>
 
             <!-- Modal Body -->
-            <form method="POST" action="{{ route('instructor.quizzes.store') }}" class="p-6">
+            <form method="POST" :action="formAction" class="p-6">
                 @csrf
+                <input x-show="isEdit" type="hidden" name="_method" value="PUT">
 
                 <!-- Title -->
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Quiz Title *</label>
                     <input type="text" 
                            name="title" 
-                           value="{{ old('title') }}" 
+                           x-model="title" 
                            required
                            placeholder="e.g., Module 1 Quiz: Growing Up"
                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
@@ -74,15 +118,16 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
                     <textarea name="description" 
+                              x-model="description"
                               rows="3"
                               placeholder="Optional description for the quiz..."
-                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('description') }}</textarea>
+                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
                 </div>
 
                 <!-- Quiz Attachment — cascading module → lesson -->
                 <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h4 class="text-sm font-semibold text-blue-900 mb-1">📌 Quiz Attachment</h4>
-                    <p class="text-xs text-blue-600 mb-4">Select a module, then optionally narrow down to a specific lesson within it.</p>
+                    <p class="text-xs text-blue-600 mb-4" x-text="isEdit ? 'Update where this quiz appears in the learning flow.' : 'Select a module, then optionally narrow down to a specific lesson within it.'"></p>
 
                     <!-- Step 1: Module -->
                     <div class="mb-3">
@@ -134,7 +179,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Passing Score (%) *</label>
                     <input type="number" 
                            name="passing_score" 
-                           value="{{ old('passing_score', 70) }}" 
+                           x-model="passingScore" 
                            required 
                            min="0" 
                            max="100"
@@ -149,10 +194,11 @@
                     <div class="flex items-center justify-between gap-4">
                         <div>
                             <p class="text-sm font-semibold text-gray-900">Active quiz</p>
-                            <p class="text-xs text-gray-500 mt-0.5">New quizzes default to active.</p>
+                            <p class="text-xs text-gray-500 mt-0.5" x-text="isEdit ? 'Toggle to activate or deactivate this quiz.' : 'New quizzes default to active.'"></p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                            <input type="checkbox" class="sr-only peer" name="is_active" value="1" checked>
+                            <input type="hidden" name="is_active" :value="isActive ? 1 : 0">
+                            <input type="checkbox" class="sr-only peer" x-model="isActive">
                             <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                         </label>
                     </div>
@@ -167,10 +213,10 @@
                     </button>
                     <button type="submit" 
                             class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="!isEdit">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
-                        + Create Quiz
+                        <span x-text="isEdit ? 'Save Quiz Changes' : 'Create Quiz'"></span>
                     </button>
                 </div>
             </form>

@@ -28,12 +28,44 @@
      x-transition:leave-end="translate-x-full"
      class="fixed top-0 right-0 h-full w-full max-w-lg z-50 flex flex-col"
      x-data="{
+         mode: 'create',
+         editLessonId: null,
          selectedModuleId: null,
-         init() {
+         title: '',
+         description: '',
+         isPublished: true,
+         actionBase: '{{ url('instructor/lessons') }}',
+         syncFromStore() {
+             const draft = $store.modals.lessonSlideoutDraft;
+             if (draft) {
+                 this.mode = 'edit';
+                 this.editLessonId = draft.id;
+                 this.selectedModuleId = draft.module_id;
+                 this.title = draft.title || '';
+                 this.description = draft.description || '';
+                 this.isPublished = !!draft.is_published;
+                 return;
+             }
+
+             this.mode = 'create';
+             this.editLessonId = null;
              this.selectedModuleId = $store.modals.lessonSlideoutModuleId;
+             this.title = '';
+             this.description = '';
+             this.isPublished = true;
+         },
+         get isEdit() {
+             return this.mode === 'edit' && this.editLessonId !== null;
+         },
+         get formAction() {
+             return this.isEdit ? `${this.actionBase}/${this.editLessonId}` : '{{ route('instructor.lessons.store') }}';
+         },
+         init() {
+             this.syncFromStore();
              this.$watch('$store.modals.lessonSlideoutModuleId', val => { this.selectedModuleId = val; });
+             this.$watch('$store.modals.lessonSlideoutDraft', () => { this.syncFromStore(); });
              this.$watch('$store.modals.lessonSlideout', open => {
-                 if (open) this.selectedModuleId = $store.modals.lessonSlideoutModuleId;
+                 if (open) this.syncFromStore();
              });
          }
      }"
@@ -52,8 +84,8 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-bold text-gray-900 dark:text-white">New Lesson</h3>
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Add a lesson to your module</p>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white" x-text="isEdit ? 'Edit Lesson' : 'New Lesson'"></h3>
+                    <p class="text-xs text-gray-400 dark:text-gray-500" x-text="isEdit ? 'Update lesson details and status' : 'Add a lesson to your module'"></p>
                 </div>
             </div>
             <button @click="$store.modals.closeLessonSlideout()"
@@ -66,8 +98,9 @@
 
         {{-- Panel Body (scrollable) --}}
         <div class="flex-1 overflow-y-auto">
-            <form method="POST" action="{{ route('instructor.lessons.store') }}" id="lessonSlideoutForm" class="p-6 space-y-5">
+            <form method="POST" :action="formAction" id="lessonSlideoutForm" class="p-6 space-y-5">
                 @csrf
+                <input x-show="isEdit" type="hidden" name="_method" value="PUT">
 
                 {{-- Module Selector --}}
                 <div>
@@ -76,7 +109,7 @@
                     </label>
                     <select name="module_id"
                             x-model="selectedModuleId"
-                            :disabled="selectedModuleId !== null && {{ json_encode($slideoutModules->count()) }} > 0 && $store.modals.lessonSlideoutModuleId !== null"
+                            :disabled="mode === 'create' && selectedModuleId !== null && {{ json_encode($slideoutModules->count()) }} > 0 && $store.modals.lessonSlideoutModuleId !== null"
                             required
                             class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                         <option value="">— Select a module —</option>
@@ -86,7 +119,7 @@
                     </select>
                     {{-- Hidden fallback when disabled --}}
                     <input type="hidden" name="module_id"
-                           x-show="selectedModuleId !== null && $store.modals.lessonSlideoutModuleId !== null"
+                              x-show="mode === 'create' && selectedModuleId !== null && $store.modals.lessonSlideoutModuleId !== null"
                            :value="selectedModuleId">
                     @error('module_id')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -98,7 +131,7 @@
                     <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
                         Lesson Title <span class="text-red-500">*</span>
                     </label>
-                    <input type="text" name="title" value="{{ old('title') }}" required
+                          <input type="text" name="title" x-model="title" required
                            placeholder="e.g., Introduction to the Topic"
                            class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
                     @error('title')
@@ -112,9 +145,9 @@
                         Description
                         <span class="text-gray-400 font-normal normal-case tracking-normal ml-1">(optional)</span>
                     </label>
-                    <textarea name="description" rows="4"
+                    <textarea name="description" x-model="description" rows="4"
                               placeholder="What will learners gain from this lesson?"
-                              class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors resize-none">{{ old('description') }}</textarea>
+                              class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors resize-none"></textarea>
                     @error('description')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror
@@ -125,10 +158,11 @@
                     <div class="flex items-center justify-between gap-4">
                         <div>
                             <p class="text-sm font-semibold text-gray-900 dark:text-white">Active lesson</p>
-                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">New lessons default to active.</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5" x-text="isEdit ? 'Toggle to activate or deactivate this lesson.' : 'New lessons default to active.'"></p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                            <input type="checkbox" class="sr-only peer" name="is_published" value="1" checked>
+                            <input type="hidden" name="is_published" :value="isPublished ? 1 : 0">
+                            <input type="checkbox" class="sr-only peer" x-model="isPublished">
                             <div class="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:ring-2 peer-focus:ring-purple-400/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
                                  style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);"></div>
                         </label>
@@ -142,7 +176,8 @@
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                         </svg>
                         <p class="text-xs text-purple-700 dark:text-purple-300 leading-relaxed">
-                            After creating the lesson, you'll be taken to the lesson page where you can add <strong>topics</strong> and attach a <strong>quiz</strong>.
+                            <span x-show="!isEdit">After creating the lesson, you'll be taken to the lesson page where you can add <strong>topics</strong> and attach a <strong>quiz</strong>.</span>
+                            <span x-show="isEdit">After saving changes, you'll return to the lesson details page.</span>
                         </p>
                     </div>
                 </div>
@@ -158,10 +193,10 @@
             <button type="submit" form="lessonSlideoutForm"
                     class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" x-show="!isEdit">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                 </svg>
-                Create &amp; Add Topics
+                <span x-text="isEdit ? 'Save Lesson Changes' : 'Create & Add Topics'"></span>
             </button>
         </div>
     </div>

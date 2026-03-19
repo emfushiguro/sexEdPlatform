@@ -82,8 +82,9 @@ class LessonController extends Controller
 
     public function edit(Lesson $lesson)
     {
-        $modules = Module::all();
-        return view('instructor.lessons.edit', compact('lesson', 'modules'));
+        return redirect()->route('instructor.lessons.index', [
+            'edit_lesson' => $lesson->id,
+        ]);
     }
 
     public function update(Request $request, Lesson $lesson)

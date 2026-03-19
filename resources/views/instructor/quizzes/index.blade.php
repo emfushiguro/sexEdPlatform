@@ -23,6 +23,11 @@
             'title' => $mod->title,
         ];
     })->values()->all();
+
+    $prefillQuiz = null;
+    if (request()->filled('edit_quiz')) {
+        $prefillQuiz = $quizzes->firstWhere('id', (int) request('edit_quiz'));
+    }
 @endphp
 
 @push('scripts')
@@ -63,7 +68,11 @@ function quizTable() {
 @endpush
 
 @section('content')
-<div x-data="quizTable()" class="space-y-5">
+<div x-data="quizTable()"
+@if($prefillQuiz)
+    x-init='$store.modals.openQuizModal({ id: {{ $prefillQuiz->id }}, title: @js($prefillQuiz->title), description: @js($prefillQuiz->description), module_id: {{ $prefillQuiz->module_id ?? 'null' }}, lesson_id: {{ $prefillQuiz->lesson_id ?? 'null' }}, passing_score: {{ $prefillQuiz->passing_score }}, is_active: {{ $prefillQuiz->is_active ? 'true' : 'false' }} })'
+@endif
+ class="space-y-5">
 
     {{-- Page Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -180,13 +189,15 @@ function quizTable() {
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                                         </svg>
                                     </a>
-                                    <a :href="`{{ url('instructor/quizzes') }}/${quiz.id}/edit`"
+                                    <button type="button"
+                                       data-edit-quiz-trigger
+                                       @click="$store.modals.openQuizModal(quiz)"
                                        title="Edit"
                                        class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
-                                    </a>
+                                    </button>
                                     <form :action="`{{ url('instructor/quizzes') }}/${quiz.id}`" method="POST" class="inline"
                                           @submit.prevent="if(confirm('Delete this quiz and all its questions?')) $el.submit()">
                                         @csrf

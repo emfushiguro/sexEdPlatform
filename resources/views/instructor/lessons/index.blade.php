@@ -1,6 +1,13 @@
 @extends('layouts.instructor-app')
 
 @section('content')
+@php
+    $prefillLesson = null;
+    if (request()->filled('edit_lesson')) {
+        $editLessonId = (int) request('edit_lesson');
+        $prefillLesson = $moduleGroups->flatMap(fn($group) => $group->lessons)->firstWhere('id', $editLessonId);
+    }
+@endphp
 <div x-data="{
     q: '',
     matchesSearch(text) {
@@ -10,7 +17,11 @@
         if (!this.q) return true;
         return lessons.some(l => l.title.toLowerCase().includes(this.q.toLowerCase()) || (l.description && l.description.toLowerCase().includes(this.q.toLowerCase())));
     }
-}" class="space-y-5">
+}"
+@if($prefillLesson)
+    x-init='$store.modals.openLessonSlideout({{ $prefillLesson->module_id }}, { id: {{ $prefillLesson->id }}, module_id: {{ $prefillLesson->module_id }}, title: @js($prefillLesson->title), description: @js($prefillLesson->description), is_published: {{ $prefillLesson->is_published ? 'true' : 'false' }} })'
+@endif
+ class="space-y-5">
 
     {{-- Page Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -148,13 +159,15 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                             </svg>
                         </a>
-                        <a href="{{ route('instructor.lessons.edit', $lesson) }}"
+                        <button type="button"
+                           data-edit-lesson-trigger
+                           @click='$store.modals.openLessonSlideout({{ $lesson->module_id }}, { id: {{ $lesson->id }}, module_id: {{ $lesson->module_id }}, title: @js($lesson->title), description: @js($lesson->description), is_published: {{ $lesson->is_published ? 'true' : 'false' }} })'
                            title="Edit"
                            class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
-                        </a>
+                        </button>
                         <form action="{{ route('instructor.lessons.destroy', $lesson) }}" method="POST" class="inline"
                               onsubmit="return confirm('Delete this lesson and all its topics?')">
                             @csrf
