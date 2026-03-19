@@ -7,7 +7,15 @@
 <div class="max-w-7xl mx-auto px-4 py-8">
     <!-- Header with Quick Actions -->
     <div class="flex justify-between items-start mb-8">
-
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Subscription Management</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage subscriber lifecycle, plan pricing, and entitlements.</p>
+        </div>
+        <div>
+            <a href="{{ route('admin.subscribers.create-plan') }}" class="inline-flex items-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
+                Create Plan
+            </a>
+        </div>
     </div>
 
     <!-- Combined Statistics -->
@@ -74,6 +82,7 @@
     </div>
 
     <!-- Filter Form -->
+    @include('admin.partials.table-filter-bar', ['label' => 'Subscribers Filters', 'hint' => 'Filter by status, plan, and user search'])
     <form method="GET" action="" class="mb-6 flex flex-wrap gap-4 items-end">
         <div>
             <label for="status" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Status</label>
@@ -104,6 +113,7 @@
             <a href="{{ route('admin.subscribers.index') }}" class="ml-2 px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold transition">Reset</a>
         </div>
     </form>
+    @include('admin.partials.row-actions', ['actions' => ['Timeline', 'Retry Payment', 'Extend Grace', 'Schedule Cancel', 'Reactivate']])
     <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs p-6 mb-8">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">Subscribers</h2>

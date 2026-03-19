@@ -9,6 +9,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Events\SubscriptionCreated;
 use App\Services\PayMongoPaymentLinkService;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -319,6 +320,58 @@ class SubscriptionService
             Log::error('SubscriptionService::expire failed', ['error' => $e->getMessage()]);
             throw new \RuntimeException('Failed to expire subscription: ' . $e->getMessage(), 0, $e);
         }
+    }
+
+    /**
+     * Mark an active subscription to cancel at the end of the current period.
+     */
+    public function scheduleCancelAtPeriodEnd(Subscription $subscription): void
+    {
+        if ($subscription->status !== SubscriptionStatus::Active) {
+            throw new \RuntimeException('Only active subscriptions can be scheduled for cancellation.');
+        }
+
+        $cancelAt = $subscription->ends_at ?? $subscription->end_date ?? now();
+
+        $subscription->update([
+            'status' => SubscriptionStatus::ScheduledCancel,
+            'cancel_at' => $cancelAt,
+            'auto_renew' => false,
+        ]);
+    }
+
+    /**
+     * Move an active subscription into grace period after a failed renewal.
+     */
+    public function moveToGracePeriod(Subscription $subscription, ?CarbonInterface $graceEndsAt = null): void
+    {
+        if ($subscription->status !== SubscriptionStatus::Active) {
+            throw new \RuntimeException('Only active subscriptions can enter grace period.');
+        }
+
+        $graceEndsAt ??= now()->addDays(7);
+
+        $subscription->update([
+            'status' => SubscriptionStatus::GracePeriod,
+            'grace_ends_at' => $graceEndsAt,
+            'grace_period_ends' => $graceEndsAt,
+        ]);
+    }
+
+    /**
+     * Recover a grace-period subscription back to active after successful payment.
+     */
+    public function recoverFromGracePeriod(Subscription $subscription): void
+    {
+        if ($subscription->status !== SubscriptionStatus::GracePeriod) {
+            throw new \RuntimeException('Only grace period subscriptions can be recovered.');
+        }
+
+        $subscription->update([
+            'status' => SubscriptionStatus::Active,
+            'grace_ends_at' => null,
+            'grace_period_ends' => null,
+        ]);
     }
 
     /**

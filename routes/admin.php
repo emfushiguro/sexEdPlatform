@@ -15,9 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
     // Dashboard
-    Route::get('/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
     // User Management
     Route::resource('users', Admin\UserAdminController::class);

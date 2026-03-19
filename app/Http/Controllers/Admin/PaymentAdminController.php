@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Services\AdminActivityLogService;
 use App\Services\RefundService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
@@ -70,6 +71,8 @@ class PaymentAdminController extends Controller
 
     public function processRefund(Request $request, Payment $payment)
     {
+        $before = $payment->only(['id', 'status', 'amount', 'subscription_id']);
+
         if ($payment->status !== PaymentStatus::Completed) {
             return back()->with('error', 'Only completed payments can be refunded.');
         }
@@ -93,6 +96,15 @@ class PaymentAdminController extends Controller
                 'manual_processing' => 'Refund has been logged for manual processing (no PayMongo payment ID found). Please process the refund directly in your PayMongo dashboard.',
                 default             => 'Refund recorded with status: ' . $refund->status,
             };
+
+            app(AdminActivityLogService::class)->logModelMutation(
+                action: 'payments.refund',
+                entity: $payment,
+                before: $before,
+                after: $payment->fresh()->only(['id', 'status', 'amount', 'subscription_id']),
+                meta: ['reason' => $request->reason, 'refund_id' => $refund->id],
+                request: $request,
+            );
 
             return redirect()->route('admin.payments.show', $payment)
                 ->with('success', $statusMsg);
@@ -118,6 +130,8 @@ class PaymentAdminController extends Controller
      */
     public function markAsCompleted(Payment $payment)
     {
+        $before = $payment->only(['id', 'status', 'paid_at', 'subscription_id']);
+
         if ($payment->status === PaymentStatus::Completed) {
             return back()->with('info', 'Payment is already completed');
         }
@@ -142,6 +156,15 @@ class PaymentAdminController extends Controller
                     app(SubscriptionService::class)->activate($subscription);
                 }
             }
+
+            app(AdminActivityLogService::class)->logModelMutation(
+                action: 'payments.complete',
+                entity: $payment,
+                before: $before,
+                after: $payment->fresh()->only(['id', 'status', 'paid_at', 'subscription_id']),
+                meta: ['source' => 'admin.payments.complete'],
+                request: request(),
+            );
 
             return redirect()->route('admin.payments.index')
                 ->with('success', 'Payment marked as completed and subscription activated!');

@@ -20,16 +20,25 @@ class Subscription extends Model
     protected $fillable = [
         'user_id',
         'plan_id',
+        'plan_price_id',
         'plan',
         'status',
         'start_date',
         'end_date',
+        'starts_at',
+        'ends_at',
         'price_paid',
         'trial_ends_at',
         'cancelled_at',
         'cancellation_reason',
         'auto_renew',
         'grace_period_ends',
+        'grace_ends_at',
+        'cancel_at',
+        'canceled_at',
+        'next_billing_at',
+        'source_provider',
+        'source_reference',
     ];
 
     protected function casts(): array
@@ -38,9 +47,15 @@ class Subscription extends Model
             'status' => SubscriptionStatus::class,
             'start_date' => 'datetime',
             'end_date' => 'datetime',
+            'starts_at' => 'datetime',
+            'ends_at' => 'datetime',
             'trial_ends_at' => 'date',
             'cancelled_at' => 'datetime',
             'grace_period_ends' => 'datetime',
+            'grace_ends_at' => 'datetime',
+            'cancel_at' => 'datetime',
+            'canceled_at' => 'datetime',
+            'next_billing_at' => 'datetime',
             'price_paid' => 'decimal:2',
             'auto_renew' => 'boolean',
         ];
@@ -73,6 +88,11 @@ class Subscription extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(SubscriptionPlan::class, 'plan_id');
+    }
+
+    public function planPrice(): BelongsTo
+    {
+        return $this->belongsTo(PlanPrice::class, 'plan_price_id');
     }
 
     public function payments(): HasMany
