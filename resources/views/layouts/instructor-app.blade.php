@@ -95,6 +95,7 @@
              SIDEBAR
         ══════════════════════════════════════ --}}
         <aside
+            id="instructor-sidebar"
             class="fixed top-0 left-0 h-screen z-[99999] flex flex-col transition-all duration-300 ease-in-out border-r border-purple-900/30"
             style="background: linear-gradient(180deg, #A30EB2 0%, #730DB1 50%, #3B0CB1 100%);"
             :class="{
@@ -140,11 +141,11 @@
                     [
                         'label' => 'ASSESSMENTS',
                         'items' => [
-                            ['label' => 'Manage Learners',   'route' => 'instructor.users.index',       'active' => request()->routeIs('instructor.users.*'),       'badge' => 0,            'icon' => 'users'],
-                            ['label' => 'Manage Modules',    'route' => 'instructor.modules.index',     'active' => request()->routeIs('instructor.modules.*'),     'badge' => 0,            'icon' => 'book'],
-                            ['label' => 'Manage Lessons',    'route' => 'instructor.lessons.index',     'active' => request()->routeIs('instructor.lessons.*'),     'badge' => 0,            'icon' => 'document'],
-                            ['label' => 'Manage Quizzes',    'route' => 'instructor.quizzes.index',     'active' => request()->routeIs('instructor.quizzes.*'),     'badge' => 0,            'icon' => 'clipboard'],
-                            ['label' => 'Assessment Logs',   'route' => 'instructor.enrollments.index', 'active' => request()->routeIs('instructor.enrollments.*'), 'badge' => $pendingCount, 'icon' => 'chart'],
+                            ['label' => 'Learners',     'route' => 'instructor.users.index',       'active' => request()->routeIs('instructor.users.*'),       'badge' => 0,            'icon' => 'users'],
+                            ['label' => 'Modules',     'route' => 'instructor.modules.index',     'active' => request()->routeIs('instructor.modules.*'),     'badge' => 0,            'icon' => 'book'],
+                            ['label' => 'Lessons',     'route' => 'instructor.lessons.index',     'active' => request()->routeIs('instructor.lessons.*'),     'badge' => 0,            'icon' => 'document'],
+                            ['label' => 'Quizzes',     'route' => 'instructor.quizzes.index',     'active' => request()->routeIs('instructor.quizzes.*'),     'badge' => 0,            'icon' => 'clipboard'],
+                            ['label' => 'Enrollments',  'route' => 'instructor.enrollments.index', 'active' => request()->routeIs('instructor.enrollments.*'), 'badge' => $pendingCount, 'icon' => 'chart'],
                         ],
                     ],
                     [
