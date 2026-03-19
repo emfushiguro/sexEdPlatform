@@ -258,6 +258,76 @@ Then edit: `resources/views/vendor/mail/html/button.blade.php`
 
 ## 🚀 DEPLOYMENT CHECKLIST
 
+---
+
+## Instructor Panel Refinement QA Checklist (2026-03-19)
+
+Use this checklist after deploying instructor refinement updates.
+
+### 1. Learners Management Scope + View-Only
+
+- Login as instructor and open `/instructor/users`
+- Confirm only learners enrolled in instructor-owned modules are listed
+- Confirm actions are view-only (no add/edit learner mutation paths)
+
+### 2. Search Routing + Visibility Rules
+
+- On dashboard, use global search and verify routes:
+   - Module -> module details page
+   - Lesson -> lesson details page
+   - Learner -> learner information page
+- Confirm global search is dashboard-only
+- Confirm local search/filter controls still work on management pages
+
+### 3. Enrollment Rejection Workflow
+
+- From module details/enrollments, reject an enrollment
+- Confirm reason code is required
+- Confirm optional note is saved
+- Confirm learner receives notification containing:
+   - module title
+   - rejection reason/note
+   - instructor name
+
+### 4. Active/Inactive Hybrid Learner Behavior
+
+- Deactivate a module/lesson/quiz from instructor flow
+- Confirm learner can still see deactivated module in enrolled/history context
+- Confirm lesson/quiz progression actions are blocked for deactivated content
+- Confirm historical progress remains viewable
+
+### 5. Modal Edit + Delete Confirmation UX
+
+- From lessons and quizzes index pages, verify edit opens modal workflow
+- Validate modal preserves input and errors when validation fails
+- Trigger delete from key instructor pages and confirm modal appears before mutation
+
+### 6. Assessment Insights
+
+- Open `/instructor/assessments`
+- Verify sections render:
+   - score distribution by module
+   - attempt count per learner
+   - at-risk learner table
+- Test thresholds with query params:
+   - `?low_score_threshold=60&low_activity_threshold=2`
+
+### 7. Notification Center + Sidebar Polish
+
+- On instructor dashboard, open notification bell
+- Confirm quiz-taking summary appears when attempts occurred in last 24h
+- Confirm enrollment decision notifications are listed with title + message
+- Confirm sidebar includes Assessment Logs entry and icon/readability remains consistent
+
+### 8. Regression Commands
+
+```bash
+php artisan test tests/Feature/Instructor
+php artisan test
+```
+
+Expected: all passing, no new failures.
+
 Before deploying to production:
 
 - [ ] Use real Gmail account for MAIL_FROM_ADDRESS
