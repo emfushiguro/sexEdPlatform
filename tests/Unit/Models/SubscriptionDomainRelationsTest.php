@@ -10,9 +10,9 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
-class SubscriptionDomainRelationsTest extends TestCase
+class SubscriptionDomainRelationsTest extends UnitTestCase
 {
     public function test_subscription_plan_exposes_normalized_relations(): void
     {
