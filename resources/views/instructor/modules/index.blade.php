@@ -37,7 +37,7 @@
         </div>
 
         {{-- Client-side Search within current page --}}
-        <div class="relative w-full sm:w-64">
+        <div class="relative w-full sm:w-64" id="modules-local-search">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
@@ -96,15 +96,6 @@
                          style="background: radial-gradient(circle, #fff, transparent);"></div>
                 @endif
 
-                {{-- Module Icon (bottom-left) --}}
-                <div class="absolute left-4 bottom-4">
-                    <div class="w-9 h-9 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center backdrop-blur-sm">
-                        <svg style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                        </svg>
-                    </div>
-                </div>
-
                 {{-- Enrollment mode chip (top-left, only if not archived) --}}
                 @unless($module->trashed())
                 <div class="absolute top-3 left-3">
@@ -133,6 +124,16 @@
 
                 {{-- Stats Row --}}
                 <div class="flex items-center gap-2 mt-auto pt-2 flex-wrap">
+                    <span class="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium module-meta-status-inline">
+                        @if($module->is_published)
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Active
+                        @else
+                            <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                            Inactive
+                        @endif
+                    </span>
+                    <span class="text-gray-200 dark:text-gray-600 text-xs">·</span>
                     <span class="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
                         <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
