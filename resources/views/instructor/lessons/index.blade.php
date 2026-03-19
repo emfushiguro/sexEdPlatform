@@ -10,6 +10,21 @@
 @endphp
 <div x-data="{
     q: '',
+    deleteModalOpen: false,
+    deleteForm: null,
+    openDeleteConfirm(form) {
+        this.deleteForm = form;
+        this.deleteModalOpen = true;
+    },
+    closeDeleteConfirm() {
+        this.deleteModalOpen = false;
+        this.deleteForm = null;
+    },
+    confirmDelete() {
+        if (this.deleteForm) {
+            this.deleteForm.submit();
+        }
+    },
     matchesSearch(text) {
         return !this.q || text.toLowerCase().includes(this.q.toLowerCase());
     },
@@ -170,7 +185,7 @@
                             </svg>
                         </button>
                         <form action="{{ route('instructor.lessons.destroy', $lesson) }}" method="POST" class="inline"
-                              onsubmit="return confirm('Delete this lesson and all its topics?')">
+                            @submit.prevent="openDeleteConfirm($event.target)">
                             @csrf
                             @method('DELETE')
                             <button type="submit"
@@ -214,6 +229,18 @@
         </a>
     </div>
     @endforelse
+
+        <div x-show="deleteModalOpen" x-cloak class="fixed inset-0 z-40 bg-gray-900/50" @click="closeDeleteConfirm()"></div>
+        <div x-show="deleteModalOpen" x-cloak id="lessons-delete-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl border border-gray-100 dark:border-gray-700" @click.stop>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Confirm Lesson Deletion</h3>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">This action permanently removes the selected lesson and all of its topics.</p>
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button" data-delete-confirm-cancel @click="closeDeleteConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
+                    <button type="button" data-delete-confirm-submit @click="confirmDelete()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button>
+                </div>
+            </div>
+        </div>
 
 </div>
 

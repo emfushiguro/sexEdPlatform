@@ -1,6 +1,23 @@
 ﻿@extends('layouts.instructor-app')
 
 @section('content')
+<div x-data="{
+    deleteModalOpen: false,
+    deleteForm: null,
+    openDeleteConfirm(form) {
+        this.deleteForm = form;
+        this.deleteModalOpen = true;
+    },
+    closeDeleteConfirm() {
+        this.deleteModalOpen = false;
+        this.deleteForm = null;
+    },
+    confirmDelete() {
+        if (this.deleteForm) {
+            this.deleteForm.submit();
+        }
+    }
+}" class="space-y-6">
             <!-- Upload Form -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
@@ -67,8 +84,8 @@
                                                 class="flex-1 text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition">
                                                 Copy Name
                                             </button>
-                                            <form method="POST" action="{{ route('instructor.image-library.delete', $image['filename']) }}" 
-                                                  onsubmit="return confirm('Delete this image?');" class="flex-1">
+                                              <form method="POST" action="{{ route('instructor.image-library.delete', $image['filename']) }}" 
+                                                  @submit.prevent="openDeleteConfirm($event.target)" class="flex-1">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="w-full text-xs px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded transition">
@@ -87,8 +104,19 @@
                     @endif
                 </div>
             </div>
+
+            <div x-show="deleteModalOpen" x-cloak class="fixed inset-0 z-40 bg-gray-900/50" @click="closeDeleteConfirm()"></div>
+            <div x-show="deleteModalOpen" x-cloak id="image-library-delete-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-gray-100" @click.stop>
+                    <h3 class="text-lg font-semibold text-gray-900">Confirm Image Deletion</h3>
+                    <p class="mt-2 text-sm text-gray-600">This action permanently removes the selected image from your library.</p>
+                    <div class="mt-6 flex items-center justify-end gap-3">
+                        <button type="button" data-delete-confirm-cancel @click="closeDeleteConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">Cancel</button>
+                        <button type="button" data-delete-confirm-submit @click="confirmDelete()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
     
     <script>
         function copyFilename(filename) {

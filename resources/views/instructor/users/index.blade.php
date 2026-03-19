@@ -31,7 +31,7 @@
 @endphp
 
 @section('content')
-<div class="space-y-5">
+<div class="space-y-5" x-data="{ usersDeleteModalOpen: false }">
     <div class="flex items-end justify-between gap-4">
         <div>
             <h1 class="text-xl font-bold text-gray-900 dark:text-white">Manage Learners</h1>
@@ -95,6 +95,11 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <div x-show="usersDeleteModalOpen" x-cloak id="users-delete-confirm-modal" class="fixed inset-0 z-50 hidden">
+        <div class="sr-only" data-delete-confirm-cancel></div>
+        <div class="sr-only" data-delete-confirm-submit></div>
     </div>
 </div>
 @endsection

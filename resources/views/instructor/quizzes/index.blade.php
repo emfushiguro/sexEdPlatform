@@ -37,6 +37,8 @@ function quizTable() {
         search: '',
         moduleFilter: '',
         typeFilter: '',
+        deleteModalOpen: false,
+        deleteForm: null,
         currentPage: 1,
         perPage: 10,
         quizzes: @js($quizzesForTable),
@@ -60,6 +62,19 @@ function quizTable() {
         },
         get totalPages() {
             return Math.max(1, Math.ceil(this.filtered.length / this.perPage));
+        },
+        openDeleteConfirm(form) {
+            this.deleteForm = form;
+            this.deleteModalOpen = true;
+        },
+        closeDeleteConfirm() {
+            this.deleteModalOpen = false;
+            this.deleteForm = null;
+        },
+        confirmDelete() {
+            if (this.deleteForm) {
+                this.deleteForm.submit();
+            }
         },
         resetPage() { this.currentPage = 1; },
     };
@@ -199,7 +214,7 @@ function quizTable() {
                                         </svg>
                                     </button>
                                     <form :action="`{{ url('instructor/quizzes') }}/${quiz.id}`" method="POST" class="inline"
-                                          @submit.prevent="if(confirm('Delete this quiz and all its questions?')) $el.submit()">
+                                        @submit.prevent="openDeleteConfirm($event.target)">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
@@ -244,6 +259,18 @@ function quizTable() {
                         class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="deleteModalOpen" x-cloak class="fixed inset-0 z-40 bg-gray-900/50" @click="closeDeleteConfirm()"></div>
+    <div x-show="deleteModalOpen" x-cloak id="quizzes-delete-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl border border-gray-100 dark:border-gray-700" @click.stop>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Confirm Quiz Deletion</h3>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">This action permanently removes the selected quiz and all of its questions.</p>
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <button type="button" data-delete-confirm-cancel @click="closeDeleteConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
+                <button type="button" data-delete-confirm-submit @click="confirmDelete()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button>
             </div>
         </div>
     </div>
