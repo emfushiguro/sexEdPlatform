@@ -39,6 +39,7 @@
     <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
         <h3 class="text-base font-semibold text-gray-900 dark:text-white">All Payments</h3>
     </div>
+    @include('admin.partials.table-filter-bar', ['label' => 'Payments Filters', 'hint' => 'Filter by method, status, date range, and user'])
     <form method="GET" class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <input type="text" name="search" value="{{ request('search') }}" placeholder="Search user..."
@@ -70,6 +71,7 @@
             </div>
         </div>
     </form>
+    @include('admin.partials.row-actions', ['actions' => ['Detail', 'Reconcile', 'Refund', 'Add Internal Note']])
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-800">
             <thead class="bg-gray-50 dark:bg-white/[0.02]">

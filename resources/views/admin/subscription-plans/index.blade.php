@@ -34,6 +34,7 @@
     </div>
 
     {{-- Filters --}}
+    @include('admin.partials.table-filter-bar', ['label' => 'Plans Filters', 'hint' => 'Search by plan name/description and status'])
     <form method="GET" action="{{ route('admin.subscription-plans.index') }}"
           class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 p-4 mb-5 shadow-theme-xs flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-[200px]">
@@ -61,6 +62,7 @@
             </a>
         @endif
     </form>
+    @include('admin.partials.row-actions', ['actions' => ['Edit', 'Duplicate', 'Archive/Unarchive', 'Reorder']])
 
     {{-- Plans Table --}}
     <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden">
