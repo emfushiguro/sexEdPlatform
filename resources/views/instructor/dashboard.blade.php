@@ -70,6 +70,25 @@
     @endforeach
 </div>
 
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <div class="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4" data-testid="dashboard-assessment-insights-cta">
+        <h2 class="text-sm font-semibold text-indigo-900">Assessment Insights</h2>
+        <p class="text-xs text-indigo-700 mt-1">Review score distributions, learner attempt counts, and at-risk flags.</p>
+        <a href="{{ route('instructor.assessments.index') }}" class="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-indigo-700 hover:text-indigo-900">
+            Open Assessment Dashboard
+            <span aria-hidden="true">→</span>
+        </a>
+    </div>
+    <div class="rounded-2xl border border-purple-100 bg-white p-4" data-testid="dashboard-notification-summary">
+        <h2 class="text-sm font-semibold text-gray-900">Notification Snapshot</h2>
+        <p class="text-xs text-gray-600 mt-1">
+            New quiz taking in last 24h: <span class="font-semibold text-purple-700">{{ $quizTakingSummary['attempt_count'] ?? 0 }}</span>
+            ({{ $quizTakingSummary['learner_count'] ?? 0 }} learners)
+        </p>
+        <p class="text-xs text-gray-500 mt-2">Use the header bell to review instructor activity and enrollment decision updates.</p>
+    </div>
+</div>
+
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
     <div class="xl:col-span-2 space-y-6">
         <x-instructor.section-shell

@@ -7,6 +7,13 @@ $headerPendingEnrollments = \App\Models\ModuleEnrollment::pending()
     ->limit(10)
     ->get();
 $headerPendingCount = $headerPendingEnrollments->count();
+$headerQuizTakingSummary = $quizTakingSummary ?? [
+    'attempt_count' => 0,
+    'learner_count' => 0,
+];
+$headerInstructorNotifications = $instructorNotifications ?? auth()->user()->notifications()->latest()->limit(8)->get();
+$headerUnreadCount = auth()->user()->unreadNotifications()->count();
+$notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQuizTakingSummary['attempt_count'] ?? 0) > 0 ? 1 : 0);
 @endphp
 
 <header
@@ -139,9 +146,9 @@ $headerPendingCount = $headerPendingEnrollments->count();
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                @if($headerPendingCount > 0)
-                <span class="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold">
-                    {{ $headerPendingCount > 9 ? '9+' : $headerPendingCount }}
+                @if($notificationBadgeCount > 0)
+                <span data-testid="instructor-notification-badge" class="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold">
+                    {{ $notificationBadgeCount > 9 ? '9+' : $notificationBadgeCount }}
                 </span>
                 @endif
             </button>
@@ -160,11 +167,36 @@ $headerPendingCount = $headerPendingEnrollments->count();
                 class="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 z-50 overflow-hidden"
             >
                 <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-gray-900">Pending Requests</h3>
-                    @if($headerPendingCount > 0)
-                    <span class="text-xs font-medium text-purple-600">{{ $headerPendingCount }} pending</span>
+                    <h3 class="text-sm font-semibold text-gray-900">Notification Center</h3>
+                    @if($notificationBadgeCount > 0)
+                    <span class="text-xs font-medium text-purple-600">{{ $notificationBadgeCount }} items</span>
                     @endif
                 </div>
+
+                @if(($headerQuizTakingSummary['attempt_count'] ?? 0) > 0)
+                <div class="px-4 py-3 border-b border-gray-50 bg-indigo-50/40" data-testid="quiz-taking-summary">
+                    <p class="text-xs font-semibold text-indigo-700">New quiz taking</p>
+                    <p class="text-[11px] text-indigo-600 mt-0.5">
+                        {{ $headerQuizTakingSummary['attempt_count'] }} attempts from {{ $headerQuizTakingSummary['learner_count'] }} learners in the last 24 hours.
+                    </p>
+                </div>
+                @endif
+
+                @if($headerInstructorNotifications->isNotEmpty())
+                <div class="divide-y divide-gray-50 max-h-56 overflow-y-auto">
+                    @foreach($headerInstructorNotifications as $notification)
+                    @php
+                        $title = data_get($notification->data, 'title', 'Instructor update');
+                        $message = data_get($notification->data, 'message', 'You have a new instructor notification.');
+                        $actionUrl = data_get($notification->data, 'action_url', route('instructor.dashboard'));
+                    @endphp
+                    <a href="{{ $actionUrl }}" class="block px-4 py-3 hover:bg-gray-50 transition-colors">
+                        <p class="text-xs font-semibold text-gray-800">{{ $title }}</p>
+                        <p class="text-[11px] text-gray-600 mt-0.5 line-clamp-2">{{ $message }}</p>
+                    </a>
+                    @endforeach
+                </div>
+                @endif
 
                 @if($headerPendingEnrollments->isEmpty())
                 <div class="px-4 py-6 text-center">
