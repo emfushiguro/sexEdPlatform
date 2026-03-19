@@ -10,6 +10,7 @@ use App\Models\SubscriptionPlan;
 use App\Services\PayMongoPaymentLinkService;
 use App\Services\RefundService;
 use App\Services\SubscriptionService;
+use App\Services\EntitlementService;
 use App\Enums\PaymentStatus;
 use App\Enums\SubscriptionStatus;
 use Illuminate\Http\Request;
@@ -19,7 +20,10 @@ use Illuminate\Support\Facades\Log;
 
 class SubscriptionController extends Controller
 {
-    public function __construct(protected SubscriptionService $subscriptionService) {}
+    public function __construct(
+        protected SubscriptionService $subscriptionService,
+        protected EntitlementService $entitlementService,
+    ) {}
 
     /**
      * Display subscription plans and current status
@@ -108,7 +112,9 @@ class SubscriptionController extends Controller
                 && now()->lte($latestPaidPayment->paid_at->copy()->addDays($refundWindowDays));
         }
 
-        return view('subscriptions.index', compact('subscription', 'canRequestRefund', 'latestPaidPayment'));
+        $subscriptionSummary = $this->entitlementService->getSubscriptionSummary($user);
+
+        return view('subscriptions.index', compact('subscription', 'canRequestRefund', 'latestPaidPayment', 'subscriptionSummary'));
     }
 
     /**
@@ -122,7 +128,9 @@ class SubscriptionController extends Controller
         // The subscribe() method still blocks active subscribers from subscribing again.
         // Previously this redirected premium users away, which caused confusion.
         $currentSubscription = $user->subscription;
-        $availablePlans      = SubscriptionPlan::active()->ordered()->get();
+        $availablePlans      = SubscriptionPlan::active()->ordered()->with(['planPrices' => function ($q) {
+            $q->where('is_active', true)->orderByDesc('is_default')->orderBy('duration_count');
+        }])->get();
         $currentPlanId       = $currentSubscription?->plan_id;
         $hasActiveSubscription = $currentSubscription && $currentSubscription->status === SubscriptionStatus::Active;
 
