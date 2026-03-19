@@ -43,14 +43,18 @@ class SubscriptionDunningService
                 'next_retry_in_days' => $nextRetryDays
             ]);
 
-            // Send failed payment notification
-            Mail::to($user->email)->send(new PaymentFailedMail($payment, $nextRetryDays));
+            // Send failed payment notification only once per retry count.
+            if ($this->shouldSendFailureReminder($payment, $retryCount)) {
+                Mail::to($user->email)->send(new PaymentFailedMail($payment, $nextRetryDays));
+                $this->markFailureReminderSent($payment, $retryCount);
+            }
             
             // Add grace period to subscription
             if ($subscription->status === SubscriptionStatus::Active) {
                 $subscription->update([
-                    'status' => SubscriptionStatus::PastDue,
-                    'grace_period_ends' => now()->addDays($nextRetryDays)
+                    'status' => SubscriptionStatus::GracePeriod,
+                    'grace_period_ends' => now()->addDays($nextRetryDays),
+                    'grace_ends_at' => now()->addDays($nextRetryDays),
                 ]);
             }
         } else {
@@ -82,13 +86,33 @@ class SubscriptionDunningService
         foreach ($expiredYesterday as $subscription) {
             if ($subscription->auto_renew) {
                 $subscription->update([
-                    'status' => SubscriptionStatus::PastDue,
-                    'grace_period_ends' => now()->addDays(7)
+                    'status' => SubscriptionStatus::GracePeriod,
+                    'grace_period_ends' => now()->addDays(7),
+                    'grace_ends_at' => now()->addDays(7),
                 ]);
             } else {
                 $this->cancelSubscription($subscription, 'Subscription expired - auto-renew disabled');
             }
         }
+    }
+
+    public function expireGracePeriodSubscription(Subscription $subscription): void
+    {
+        if ($subscription->status !== SubscriptionStatus::GracePeriod) {
+            return;
+        }
+
+        $graceEndsAt = $subscription->grace_ends_at ?? $subscription->grace_period_ends;
+        if ($graceEndsAt && now()->lt($graceEndsAt)) {
+            return;
+        }
+
+        $subscription->update([
+            'status' => SubscriptionStatus::Expired,
+            'auto_renew' => false,
+            'grace_ends_at' => null,
+            'grace_period_ends' => null,
+        ]);
     }
 
     private function cancelSubscription(Subscription $subscription, string $reason): void
@@ -157,5 +181,23 @@ class SubscriptionDunningService
 
         // TODO: Integrate with PayMongo to create new payment intent
         // For now, just log the retry attempt
+    }
+
+    private function shouldSendFailureReminder(Payment $payment, int $retryCount): bool
+    {
+        $alreadySent = $payment->payment_details['failure_reminders_sent'] ?? [];
+
+        return !in_array($retryCount, $alreadySent, true);
+    }
+
+    private function markFailureReminderSent(Payment $payment, int $retryCount): void
+    {
+        $details = $payment->payment_details ?? [];
+        $alreadySent = $details['failure_reminders_sent'] ?? [];
+        $alreadySent[] = $retryCount;
+
+        $details['failure_reminders_sent'] = array_values(array_unique($alreadySent));
+
+        $payment->update(['payment_details' => $details]);
     }
 }
