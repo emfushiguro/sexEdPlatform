@@ -40,13 +40,27 @@ class EnrollmentDecisionNotificationTest extends TestCase
 
         $response->assertRedirect();
 
-        Notification::assertSentTo($learner, EnrollmentRejectedNotification::class);
+        $this->assertDatabaseHas('module_enrollments', [
+            'id' => $enrollment->id,
+            'status' => EnrollmentStatus::Rejected->value,
+            'rejection_reason_code' => 'prerequisite_missing',
+            'rejection_reason_note' => 'Please complete Intro first.',
+            'rejected_by_instructor_id' => $instructor->id,
+        ]);
 
-        $notificationPayload = $learner->fresh()->notifications()->latest()->first()?->data ?? [];
+        $this->assertNotNull($enrollment->fresh()->rejected_at);
 
-        $this->assertStringContainsString($module->title, (string) ($notificationPayload['message'] ?? ''));
-        $this->assertStringContainsString('Please complete Intro first.', (string) ($notificationPayload['message'] ?? ''));
-        $this->assertStringContainsString((string) ($instructor->full_name ?: $instructor->name), (string) ($notificationPayload['message'] ?? ''));
+        Notification::assertSentTo(
+            $learner,
+            EnrollmentRejectedNotification::class,
+            function (EnrollmentRejectedNotification $notification) use ($learner, $module, $instructor): bool {
+                $payload = $notification->toDatabase($learner);
+
+                return str_contains((string) ($payload['message'] ?? ''), $module->title)
+                    && str_contains((string) ($payload['message'] ?? ''), 'Please complete Intro first.')
+                    && str_contains((string) ($payload['message'] ?? ''), (string) ($instructor->full_name ?: $instructor->name));
+            }
+        );
     }
 
     private function createInstructor(): User
