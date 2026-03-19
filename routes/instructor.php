@@ -20,8 +20,8 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
     // Search endpoint
     Route::get('/search', [Instructor\SearchController::class, 'index'])->name('search');
 
-    // User Management (Learners only)
-    Route::resource('users', Instructor\UserController::class);
+    // Learner Management (view-only)
+    Route::resource('users', Instructor\UserController::class)->only(['index', 'show']);
 
     // Module Management
     Route::resource('modules', Instructor\ModuleController::class);

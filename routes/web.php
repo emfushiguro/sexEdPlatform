@@ -178,9 +178,8 @@ Route::middleware('auth')->group(function () {
         // Instructor Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Instructor\DashboardController::class, 'index'])->name('dashboard');
         
-        // User Management (Learners only)
-        Route::resource('users', \App\Http\Controllers\Instructor\UserController::class);
-        Route::patch('users/{id}/restore', [\App\Http\Controllers\Instructor\UserController::class, 'restore'])->name('users.restore');
+        // Learner Management (view-only)
+        Route::resource('users', \App\Http\Controllers\Instructor\UserController::class)->only(['index', 'show']);
         
         // Module Management
         Route::resource('modules', \App\Http\Controllers\Instructor\ModuleController::class);

@@ -54,6 +54,20 @@ class LearnerVisibilityTest extends TestCase
         });
     }
 
+    public function test_instructor_learner_management_routes_are_view_only(): void
+    {
+        $instructor = $this->createInstructor();
+        $learner = $this->createLearner('View', 'Only', 'view-only@example.test');
+
+        $this->actingAs($instructor)
+            ->get('/instructor/users/create')
+            ->assertNotFound();
+
+        $this->actingAs($instructor)
+            ->get('/instructor/users/' . $learner->id . '/edit')
+            ->assertNotFound();
+    }
+
     private function createInstructor(): User
     {
         $instructor = User::factory()->create();
