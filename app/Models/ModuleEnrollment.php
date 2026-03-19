@@ -13,6 +13,10 @@ class ModuleEnrollment extends Model
         'user_id',
         'module_id',
         'status',
+        'rejection_reason_code',
+        'rejection_reason_note',
+        'rejected_by_instructor_id',
+        'rejected_at',
         'enrolled_at',
         'completed_at',
         'completion_percentage',
@@ -22,6 +26,7 @@ class ModuleEnrollment extends Model
     {
         return [
             'status' => EnrollmentStatus::class,
+            'rejected_at' => 'datetime',
             'enrolled_at' => 'datetime',
             'completed_at' => 'datetime',
             'completion_percentage' => 'integer',
