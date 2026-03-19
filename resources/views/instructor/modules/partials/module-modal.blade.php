@@ -24,7 +24,7 @@
          @click.stop
          x-data="{
              thumbnailPreview: null,
-             status: 'draft',
+             isPublished: true,
              previewImage(event) {
                  const file = event.target.files[0];
                  if (file) {
@@ -155,17 +155,15 @@
             <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50/50 dark:bg-gray-800/50">
                 <div class="flex items-center justify-between gap-4">
                     <div>
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">Publish immediately</p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Toggle on to publish this module now. Leave off to save as draft.</p>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">Active module</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">New modules default to active. Turn this off to save as inactive.</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                        <input type="checkbox" class="sr-only peer" x-model="status" true-value="publish" false-value="draft" name="_status_toggle">
+                        <input type="checkbox" class="sr-only peer" x-model="isPublished" name="is_published" value="1" checked>
                         <div class="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:ring-2 peer-focus:ring-purple-400/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r"
-                             :style="status === 'publish' ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1)' : ''"></div>
+                             :style="isPublished ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1)' : ''"></div>
                     </label>
                 </div>
-                {{-- Hidden action input read by controller --}}
-                <input type="hidden" name="action" :value="status">
             </div>
 
             {{-- Form Actions --}}

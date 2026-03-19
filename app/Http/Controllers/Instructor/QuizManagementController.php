@@ -51,6 +51,7 @@ class QuizManagementController extends Controller
             'module_id' => 'nullable|exists:modules,id',
             'lesson_id' => 'nullable|exists:lessons,id',
             'passing_score' => 'required|integer|min:0|max:100',
+            'is_active' => 'nullable|boolean',
         ]);
 
         // Set null defaults for optional fields
@@ -64,7 +65,9 @@ class QuizManagementController extends Controller
 
         $validated['slug'] = Str::slug($validated['title']);
         $validated['time_limit'] = null;
-        $validated['is_active'] = true;
+        $validated['is_active'] = $request->has('is_active')
+            ? $request->boolean('is_active')
+            : true;
 
         $quiz = Quiz::create($validated);
 
@@ -93,6 +96,7 @@ class QuizManagementController extends Controller
             'module_id' => 'nullable|exists:modules,id',
             'lesson_id' => 'nullable|exists:lessons,id',
             'passing_score' => 'required|integer|min:0|max:100',
+            'is_active' => 'nullable|boolean',
         ]);
 
         // Set null defaults for optional fields
@@ -105,6 +109,12 @@ class QuizManagementController extends Controller
 
         $validated['slug'] = Str::slug($validated['title']);
         $validated['time_limit'] = null;
+
+        if ($request->has('is_active')) {
+            $validated['is_active'] = $request->boolean('is_active');
+        } else {
+            unset($validated['is_active']);
+        }
 
         $quiz->update($validated);
 

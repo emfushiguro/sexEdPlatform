@@ -144,6 +144,20 @@
                     @enderror
                 </div>
 
+                <!-- Active status -->
+                <div class="mb-6 rounded-xl border border-gray-200 p-4 bg-gray-50/70">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">Active quiz</p>
+                            <p class="text-xs text-gray-500 mt-0.5">New quizzes default to active.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" class="sr-only peer" name="is_active" value="1" checked>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Form Actions -->
                 <div class="flex items-center justify-end gap-3 pt-4 border-t">
                     <button type="button" 

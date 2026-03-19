@@ -55,6 +55,7 @@ class ModuleController extends Controller
             'age_bracket' => 'required|in:kids,teens,adults',
             'enrollment_mode' => 'required|in:auto,manual',
             'order' => 'nullable|integer|min:0',
+            'is_published' => 'nullable|boolean',
         ]);
 
         if ($request->hasFile('thumbnail')) {
@@ -72,8 +73,14 @@ class ModuleController extends Controller
         $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
         unset($validated['age_bracket']);
 
-        // Set publishing status based on button clicked
-        $validated['is_published'] = $request->input('action') === 'publish';
+        // Default create flow to active; keep legacy action support.
+        if ($request->has('is_published')) {
+            $validated['is_published'] = $request->boolean('is_published');
+        } elseif ($request->filled('action')) {
+            $validated['is_published'] = $request->input('action') === 'publish';
+        } else {
+            $validated['is_published'] = true;
+        }
         
         // Duration will be auto-calculated from lessons
         $validated['duration_minutes'] = 0;
@@ -140,8 +147,14 @@ class ModuleController extends Controller
         $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
         unset($validated['age_bracket']);
 
-        // Set publishing status
-        $validated['is_published'] = $request->has('is_published');
+        // Allow explicit deactivation/activation from edit flows.
+        if ($request->has('is_published')) {
+            $validated['is_published'] = $request->boolean('is_published');
+        } elseif ($request->filled('action')) {
+            $validated['is_published'] = $request->input('action') === 'publish';
+        } else {
+            unset($validated['is_published']);
+        }
         
         // Duration is auto-calculated, but update it now
         $module->duration_minutes = $module->lessons()->sum('duration');

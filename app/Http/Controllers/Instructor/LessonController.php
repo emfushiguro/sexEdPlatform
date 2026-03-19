@@ -36,6 +36,7 @@ class LessonController extends Controller
             'module_id' => 'required|exists:modules,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'is_published' => 'nullable|boolean',
         ]);
 
         // Auto-increment order
@@ -44,8 +45,10 @@ class LessonController extends Controller
         // Duration will be auto-calculated from topics (start with 0)
         $validated['duration'] = 0;
         
-        // Default published status
-        $validated['is_published'] = true;
+        // Default create flow to active unless explicitly set.
+        $validated['is_published'] = $request->has('is_published')
+            ? $request->boolean('is_published')
+            : true;
         
         // Default content type (container lesson)
         $validated['content_type'] = 'text';
@@ -89,7 +92,14 @@ class LessonController extends Controller
             'module_id' => 'required|exists:modules,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'is_published' => 'nullable|boolean',
         ]);
+
+        if ($request->has('is_published')) {
+            $validated['is_published'] = $request->boolean('is_published');
+        } else {
+            unset($validated['is_published']);
+        }
 
         // Duration is auto-calculated from topics (recalculate it)
         $lesson->duration = $lesson->topics()->sum('duration');

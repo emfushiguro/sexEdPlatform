@@ -120,6 +120,21 @@
                     @enderror
                 </div>
 
+                {{-- Active status --}}
+                <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50/50 dark:bg-gray-800/50">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">Active lesson</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">New lessons default to active.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" class="sr-only peer" name="is_published" value="1" checked>
+                            <div class="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:ring-2 peer-focus:ring-purple-400/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
+                                 style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);"></div>
+                        </label>
+                    </div>
+                </div>
+
                 {{-- Info banner --}}
                 <div class="rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/40 px-4 py-3">
                     <div class="flex items-start gap-2.5">
