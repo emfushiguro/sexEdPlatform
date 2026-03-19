@@ -5,6 +5,65 @@
 @section('content')
 <x-instructor.hero-banner :hero="$dashboardHero" />
 
+<div class="mb-6" x-data="instructorSearch()">
+    <div class="relative max-w-2xl">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        </span>
+        <input
+            type="text"
+            x-model="query"
+            @input.debounce.300ms="search()"
+            @focus="open = true"
+            @click.away="open = false"
+            placeholder="Search modules, lessons, learners..."
+            class="w-full pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all"
+            autocomplete="off"
+        >
+
+        <div
+            x-show="open && (results.modules.length || results.lessons.length || results.learners.length)"
+            x-cloak
+            class="absolute top-full mt-1 left-0 right-0 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 z-50 overflow-hidden"
+        >
+            <template x-if="results.modules.length">
+                <div class="p-2">
+                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-2 mb-1">Modules</p>
+                    <template x-for="item in results.modules" :key="'m-'+item.id">
+                        <a :href="item.url" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-purple-50 transition-colors text-sm text-gray-700 dark:text-gray-200">
+                            <span x-text="item.title" class="truncate"></span>
+                        </a>
+                    </template>
+                </div>
+            </template>
+
+            <template x-if="results.lessons.length">
+                <div class="p-2 border-t border-gray-50 dark:border-gray-800">
+                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-2 mb-1">Lessons</p>
+                    <template x-for="item in results.lessons" :key="'l-'+item.id">
+                        <a :href="item.url" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-purple-50 transition-colors text-sm text-gray-700 dark:text-gray-200">
+                            <span x-text="item.title" class="truncate"></span>
+                        </a>
+                    </template>
+                </div>
+            </template>
+
+            <template x-if="results.learners.length">
+                <div class="p-2 border-t border-gray-50 dark:border-gray-800">
+                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-2 mb-1">Learners</p>
+                    <template x-for="item in results.learners" :key="'u-'+item.id">
+                        <a :href="item.url" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-purple-50 transition-colors text-sm text-gray-700 dark:text-gray-200">
+                            <span x-text="item.name" class="truncate"></span>
+                        </a>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 mb-6" data-testid="stats-grid">
     @foreach($statCards as $card)
         <x-instructor.stat-card :card="$card" :avg-quiz-score-scopes="$avgQuizScoreScopes" />

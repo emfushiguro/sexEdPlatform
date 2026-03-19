@@ -36,7 +36,8 @@ $headerPendingCount = $headerPendingEnrollments->count();
         </svg>
     </button>
 
-    {{-- ── Search bar ── --}}
+    {{-- ── Search bar (dashboard only) ── --}}
+    @if(request()->routeIs('instructor.dashboard'))
     <div class="flex-1 max-w-lg relative">
         <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
@@ -106,6 +107,9 @@ $headerPendingCount = $headerPendingEnrollments->count();
             </template>
         </div>
     </div>
+    @else
+    <div class="flex-1"></div>
+    @endif
 
     <div class="flex items-center gap-3 ml-auto">
 

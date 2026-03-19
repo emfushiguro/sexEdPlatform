@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Instructor;
 
+use App\Enums\EnrollmentStatus;
 use App\Models\Lesson;
 use App\Models\Module;
+use App\Models\ModuleEnrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -34,6 +36,12 @@ class SearchRoutingTest extends TestCase
             'role' => 'learner',
         ]);
         $learner->assignRole('learner');
+
+        ModuleEnrollment::factory()->create([
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+            'status' => EnrollmentStatus::Approved,
+        ]);
 
         $response = $this->actingAs($instructor)
             ->getJson(route('instructor.search', ['q' => 'Puberty']))

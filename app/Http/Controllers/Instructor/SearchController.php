@@ -25,20 +25,20 @@ class SearchController extends Controller
             ->where('title', 'like', "%{$q}%")
             ->limit(5)
             ->get(['id', 'title'])
-            ->map(fn($m) => ['id' => $m->id, 'title' => $m->title, 'url' => route('instructor.modules.edit', $m)]);
+            ->map(fn($m) => ['id' => $m->id, 'title' => $m->title, 'url' => route('instructor.modules.show', $m)]);
 
         $lessons = Lesson::whereHas('module', fn($mq) => $mq->where('created_by', $instructorId))
             ->where('title', 'like', "%{$q}%")
             ->limit(5)
             ->get(['id', 'title'])
-            ->map(fn($l) => ['id' => $l->id, 'title' => $l->title, 'url' => route('instructor.lessons.edit', $l)]);
+            ->map(fn($l) => ['id' => $l->id, 'title' => $l->title, 'url' => route('instructor.lessons.show', $l)]);
 
         $learners = User::role('learner')
             ->whereHas('moduleEnrollments.module', fn($mq) => $mq->where('created_by', $instructorId))
             ->where(fn($uq) => $uq->where('first_name', 'like', "%{$q}%")->orWhere('last_name', 'like', "%{$q}%"))
             ->limit(5)
             ->get(['id', 'first_name', 'last_name'])
-            ->map(fn($u) => ['id' => $u->id, 'name' => trim($u->first_name . ' ' . $u->last_name), 'url' => route('instructor.users.index')]);
+            ->map(fn($u) => ['id' => $u->id, 'name' => trim($u->first_name . ' ' . $u->last_name), 'url' => route('instructor.users.show', $u)]);
 
         return response()->json(compact('modules', 'lessons', 'learners'));
     }
