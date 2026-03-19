@@ -20,7 +20,7 @@
                                             🏆
                                         </div>
                                         <h3 class="text-lg font-bold text-gray-800">
-                                            {{ $certificate->module->title }}
+                                            {{ $certificate->module_title }}
                                         </h3>
                                     </div>
                                     

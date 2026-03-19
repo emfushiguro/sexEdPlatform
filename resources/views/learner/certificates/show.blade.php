@@ -27,11 +27,11 @@
                         <div class="text-center mb-8">
                             <p class="text-lg text-gray-700 mb-4">This is to certify that</p>
                             <h2 class="text-3xl font-bold text-gray-800 mb-6">
-                                {{ $certificate->user->name }}
+                                {{ $certificate->learner_name }}
                             </h2>
                             <p class="text-lg text-gray-700 mb-2">has successfully completed the module</p>
                             <h3 class="text-2xl font-bold text-blue-600 mb-6">
-                                {{ $certificate->module->title }}
+                                {{ $certificate->module_title }}
                             </h3>
                             <p class="text-gray-600 mb-2">
                                 Demonstrating knowledge and understanding of the course material

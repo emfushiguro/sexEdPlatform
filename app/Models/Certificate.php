@@ -11,6 +11,9 @@ class Certificate extends Model
         'user_id',
         'module_id',
         'certificate_number',
+        'learner_name_snapshot',
+        'module_title_snapshot',
+        'pdf_path',
         'issued_at',
     ];
 
@@ -31,6 +34,18 @@ class Certificate extends Model
     public function module()
     {
         return $this->belongsTo(Module::class);
+    }
+
+    // Accessors
+
+    public function getLearnerNameAttribute(): ?string
+    {
+        return $this->learner_name_snapshot ?: $this->user?->name;
+    }
+
+    public function getModuleTitleAttribute(): ?string
+    {
+        return $this->module_title_snapshot ?: $this->module?->title;
     }
 
     // Boot method

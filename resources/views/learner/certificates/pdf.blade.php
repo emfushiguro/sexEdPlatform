@@ -110,9 +110,9 @@
 
         <div class="content">
             <p>This is to certify that</p>
-            <div class="recipient-name">{{ $certificate->user->name }}</div>
+            <div class="recipient-name">{{ $certificate->learner_name }}</div>
             <p>has successfully completed the module</p>
-            <div class="module-title">{{ $certificate->module->title }}</div>
+            <div class="module-title">{{ $certificate->module_title }}</div>
             <p class="description">Demonstrating knowledge and understanding of the course material</p>
         </div>
 
