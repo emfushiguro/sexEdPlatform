@@ -7,7 +7,15 @@
 <div class="max-w-7xl mx-auto px-4 py-8">
     <!-- Header with Quick Actions -->
     <div class="flex justify-between items-start mb-8">
-
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Subscription Management</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage subscriber lifecycle, plan pricing, and entitlements.</p>
+        </div>
+        <div>
+            <a href="{{ route('admin.subscribers.create-plan') }}" class="inline-flex items-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
+                Create Plan
+            </a>
+        </div>
     </div>
 
     <!-- Combined Statistics -->

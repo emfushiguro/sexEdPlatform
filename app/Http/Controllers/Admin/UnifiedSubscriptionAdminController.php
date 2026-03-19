@@ -3,9 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StorePlanRequest;
+use App\Http\Requests\Admin\UpdatePlanRequest;
+use App\Models\FeatureCatalog;
+use App\Models\PlanFeatureEntitlement;
+use App\Models\PlanPrice;
 use App\Models\SubscriptionPlan;
 use App\Services\AdminActivityLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -17,38 +23,102 @@ class UnifiedSubscriptionAdminController extends Controller
 
     public function createPlan()
     {
-        return view('admin.subscription-plans.create');
+        return view('admin.subscriber.plan-create');
     }
 
-    public function storePlan(Request $request)
+    public function storePlan(StorePlanRequest $request)
     {
-        $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'description'    => 'nullable|string',
-            'price'          => 'required|numeric|min:0',
-            'trial_days'     => 'nullable|integer|min:0|max:365',
-            'feature_keys'   => 'array',
-            'feature_keys.*' => 'nullable|string|max:255',
-            'is_active'      => 'boolean',
-            'sort_order'     => 'nullable|integer|min:0',
-        ]);
+        $validated = $request->validated();
 
-        $validated['slug'] = Str::slug($validated['name']);
-        $base = $validated['slug'];
-        $i = 1;
-        while (SubscriptionPlan::where('slug', $validated['slug'])->exists()) {
-            $validated['slug'] = $base . '-' . $i++;
-        }
+        $plan = DB::transaction(function () use ($validated) {
+            $slug = $this->generateUniqueSlug($validated['name']);
+            $sortOrder = $validated['sort_order'] ?? ((SubscriptionPlan::max('sort_order') ?? 0) + 10);
 
-        if (empty($validated['sort_order'])) {
-            $validated['sort_order'] = (SubscriptionPlan::max('sort_order') ?? 0) + 10;
-        }
+            $plan = SubscriptionPlan::create([
+                'name' => $validated['name'],
+                'slug' => $slug,
+                'description' => $validated['description'] ?? null,
+                'price' => 0,
+                'features' => [],
+                'trial_days' => $validated['trial_days'] ?? 0,
+                'is_active' => (bool) ($validated['is_active'] ?? false),
+                'sort_order' => $sortOrder,
+            ]);
 
-        $validated['features'] = array_values(array_unique(array_filter(
-            array_map('trim', $request->input('feature_keys', []))
-        )));
+            $prices = $validated['prices'] ?? [];
+            if (empty($prices) && array_key_exists('price', $validated)) {
+                $prices[] = [
+                    'duration_mode' => 'preset',
+                    'duration_unit' => 'month',
+                    'duration_count' => 1,
+                    'duration_label' => 'Monthly',
+                    'amount_minor' => (int) round(((float) $validated['price']) * 100),
+                    'currency' => 'PHP',
+                    'compare_at_minor' => null,
+                    'is_default' => true,
+                    'is_active' => true,
+                ];
+            }
 
-        $plan = SubscriptionPlan::create($validated);
+            $defaultAmountMinor = 0;
+            foreach ($prices as $index => $priceData) {
+                $price = $plan->planPrices()->create([
+                    'duration_mode' => $priceData['duration_mode'],
+                    'duration_unit' => $priceData['duration_unit'],
+                    'duration_count' => (int) $priceData['duration_count'],
+                    'duration_label' => $priceData['duration_label'],
+                    'amount_minor' => (int) $priceData['amount_minor'],
+                    'currency' => strtoupper($priceData['currency'] ?? 'PHP'),
+                    'compare_at_minor' => $priceData['compare_at_minor'] ?? null,
+                    'is_default' => (bool) ($priceData['is_default'] ?? $index === 0),
+                    'is_active' => (bool) ($priceData['is_active'] ?? true),
+                ]);
+
+                if ($price->is_default) {
+                    $defaultAmountMinor = (int) $price->amount_minor;
+                }
+            }
+
+            $enabledKeys = [];
+            foreach ($validated['entitlements'] ?? [] as $row) {
+                $feature = FeatureCatalog::firstOrCreate(
+                    ['key' => $row['feature_key']],
+                    [
+                        'name' => $row['feature_name'] ?? Str::headline($row['feature_key']),
+                        'description' => null,
+                        'value_type' => $row['value_type'],
+                        'unit_label' => $row['unit_label'] ?? null,
+                        'category' => $row['category'] ?? 'general',
+                        'is_active' => true,
+                    ]
+                );
+
+                $isEnabled = (bool) ($row['is_enabled'] ?? false);
+                if ($isEnabled) {
+                    $enabledKeys[] = $feature->key;
+                }
+
+                PlanFeatureEntitlement::create([
+                    'plan_id' => $plan->id,
+                    'feature_id' => $feature->id,
+                    'is_enabled' => $isEnabled,
+                    'quota_value' => $row['quota_value'] ?? null,
+                    'is_unlimited' => (bool) ($row['is_unlimited'] ?? false),
+                ]);
+            }
+
+            $legacyFeatureKeys = array_values(array_unique(array_merge(
+                $enabledKeys,
+                array_values(array_filter(array_map('trim', $validated['feature_keys'] ?? [])))
+            )));
+
+            $plan->update([
+                'price' => $defaultAmountMinor > 0 ? $defaultAmountMinor / 100 : 0,
+                'features' => $legacyFeatureKeys,
+            ]);
+
+            return $plan;
+        });
 
         app(AdminActivityLogService::class)->logModelMutation(
             action: 'plans.create',
@@ -71,47 +141,76 @@ class UnifiedSubscriptionAdminController extends Controller
 
     public function editPlan(SubscriptionPlan $subscriptionPlan)
     {
-        return view('admin.subscription-plans.edit', compact('subscriptionPlan'));
+        return view('admin.subscriber.plan-edit', compact('subscriptionPlan'));
     }
 
-    public function updatePlan(Request $request, SubscriptionPlan $subscriptionPlan)
+    public function updatePlan(UpdatePlanRequest $request, SubscriptionPlan $subscriptionPlan)
     {
         $before = $subscriptionPlan->only(['id', 'name', 'slug', 'price', 'is_active', 'features']);
+        $validated = $request->validated();
 
-        $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'description'    => 'nullable|string',
-            'price'          => 'required|numeric|min:0',
-            'trial_days'     => 'nullable|integer|min:0|max:365',
-            'feature_keys'   => 'array',
-            'feature_keys.*' => 'nullable|string|max:255',
-            'is_active'      => 'boolean',
-            'sort_order'     => 'nullable|integer|min:0',
-        ]);
+        DB::transaction(function () use ($subscriptionPlan, $validated) {
+            $subscriptionPlan->update([
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'trial_days' => $validated['trial_days'] ?? 0,
+                'is_active' => (bool) ($validated['is_active'] ?? false),
+                'sort_order' => $validated['sort_order'] ?? $subscriptionPlan->sort_order,
+            ]);
 
-        // Preserve non-standard custom feature keys already saved on the plan
-        $standardFeatures = [
-            'full_course_access', 'offline_access', 'expert_video_sessions', 'exclusive_content',
-            'unlimited_quizzes', 'certificates', 'advanced_analytics',
-            'downloadable_materials', 'anonymous_qa', 'private_community',
-            'priority_support', 'ad_free',
-            // legacy compat
-            'downloadable_content', 'downloadable_resources', 'progress_analytics', 'all_modules',
-        ];
+            if (array_key_exists('prices', $validated)) {
+                $subscriptionPlan->planPrices()->delete();
+                foreach ($validated['prices'] as $index => $priceData) {
+                    $subscriptionPlan->planPrices()->create([
+                        'duration_mode' => $priceData['duration_mode'],
+                        'duration_unit' => $priceData['duration_unit'],
+                        'duration_count' => (int) $priceData['duration_count'],
+                        'duration_label' => $priceData['duration_label'],
+                        'amount_minor' => (int) $priceData['amount_minor'],
+                        'currency' => strtoupper($priceData['currency'] ?? 'PHP'),
+                        'compare_at_minor' => $priceData['compare_at_minor'] ?? null,
+                        'is_default' => (bool) ($priceData['is_default'] ?? $index === 0),
+                        'is_active' => (bool) ($priceData['is_active'] ?? true),
+                    ]);
+                }
+            }
 
-        $existingCustom = [];
-        $existing = $subscriptionPlan->features ?? [];
-        if (!empty($existing) && is_array($existing) && is_string(reset($existing))) {
-            $existingCustom = array_values(array_filter(
-                $existing,
-                fn($f) => is_string($f) && !in_array($f, $standardFeatures)
-            ));
-        }
+            if (array_key_exists('entitlements', $validated)) {
+                $subscriptionPlan->featureEntitlements()->delete();
+                foreach ($validated['entitlements'] as $row) {
+                    $feature = FeatureCatalog::firstOrCreate(
+                        ['key' => $row['feature_key']],
+                        [
+                            'name' => $row['feature_name'] ?? Str::headline($row['feature_key']),
+                            'description' => null,
+                            'value_type' => $row['value_type'],
+                            'unit_label' => $row['unit_label'] ?? null,
+                            'category' => $row['category'] ?? 'general',
+                            'is_active' => true,
+                        ]
+                    );
 
-        $checked = array_values(array_filter(array_map('trim', $request->input('feature_keys', []))));
-        $validated['features'] = array_values(array_unique(array_merge($existingCustom, $checked)));
+                    PlanFeatureEntitlement::create([
+                        'plan_id' => $subscriptionPlan->id,
+                        'feature_id' => $feature->id,
+                        'is_enabled' => (bool) ($row['is_enabled'] ?? false),
+                        'quota_value' => $row['quota_value'] ?? null,
+                        'is_unlimited' => (bool) ($row['is_unlimited'] ?? false),
+                    ]);
+                }
+            }
 
-        $subscriptionPlan->update($validated);
+            if (array_key_exists('price', $validated)) {
+                $subscriptionPlan->price = (float) $validated['price'];
+            } elseif ($subscriptionPlan->planPrices()->exists()) {
+                $default = $subscriptionPlan->planPrices()->where('is_default', true)->first()
+                    ?? $subscriptionPlan->planPrices()->orderBy('id')->first();
+                $subscriptionPlan->price = $default ? ((int) $default->amount_minor) / 100 : $subscriptionPlan->price;
+            }
+
+            $subscriptionPlan->features = array_values(array_unique(array_filter(array_map('trim', $validated['feature_keys'] ?? []))));
+            $subscriptionPlan->save();
+        });
 
         app(AdminActivityLogService::class)->logModelMutation(
             action: 'plans.update',
@@ -124,6 +223,19 @@ class UnifiedSubscriptionAdminController extends Controller
 
         return redirect()->route('admin.subscription-plans.index')
             ->with('success', 'Subscription plan updated successfully!');
+    }
+
+    private function generateUniqueSlug(string $name): string
+    {
+        $slug = Str::slug($name);
+        $base = $slug;
+        $i = 1;
+
+        while (SubscriptionPlan::where('slug', $slug)->exists()) {
+            $slug = $base . '-' . $i++;
+        }
+
+        return $slug;
     }
 
     // -------------------------------------------------------------------------
