@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Modernize instructor panel UI from old blue theme to consistent purple gradient brand identity across 6 key pages.
+**Goal:** Modernize instructor panel UI from old blue theme to consistent purple gradient brand identity across 6 key pages, plus add learner review modal to enrollments page.
 
-**Architecture:** This is a pure frontend UI update. No database changes, no business logic changes, no new routes. Only Blade template modifications to align visual design. All existing functionality remains intact.
+**Architecture:** Primarily frontend UI updates (Blade template modifications). Task 1-7: pure styling changes with no database/business logic changes. Task 8: adds new modal UI feature using existing backend infrastructure (Alpine.js + existing enrollment controller methods).
 
 **Tech Stack:** Blade templates, Tailwind CSS v3, Alpine.js (existing integrations preserved)
 
@@ -1303,6 +1303,698 @@ Before marking complete:
 1. Ensure `x-model`, `x-data`, `x-show` attributes unchanged
 2. Only modify CSS classes, not Alpine directives
 3. Test modal open/close after changes
+
+---
+
+## Task 8: Add Learner Review Modal to Enrollments Index
+
+**Goal:** Add a "Review Information" modal on enrollments index page so instructors can view learner profile, module details, and approve/reject without leaving the page.
+
+**Files:**
+- Modify: `resources/views/instructor/enrollments/index.blade.php`
+- Modify: `resources/js/app.js` (Alpine.js store extension)
+
+**Rationale:** Currently, instructors must navigate to a separate show page to see learner details. A modal provides faster workflow and keeps instructors on the enrollments list page.
+
+**Backend Note:** All controller methods and rejection reason system already exist. This is pure UI enhancement.
+
+---
+
+### Step 1: Read current enrollments index structure
+
+```bash
+cat resources/views/instructor/enrollments/index.blade.php | head -n 100
+```
+
+Understand:
+- Current card layout for enrollment listings
+- Existing Alpine.js data structure
+- Where "View" button currently is
+- Inline approve/reject button implementation
+
+---
+
+### Step 2: Extend Alpine.js modals store
+
+**File:** `resources/js/app.js`
+
+Add enrollment review modal state after existing modal declarations:
+
+```javascript
+Alpine.store('modals', {
+    // ... existing modals (quizModal, lessonSlideout, etc.)
+
+    enrollmentReview: false,
+    enrollmentReviewData: null,
+
+    openEnrollmentReview(enrollmentData) {
+        this.enrollmentReviewData = enrollmentData;
+        this.enrollmentReview = true;
+    },
+
+    closeEnrollmentReview() {
+        this.enrollmentReview = false;
+        setTimeout(() => {
+            this.enrollmentReviewData = null;
+        }, 300); // Wait for transition
+    },
+
+    rejectModal: false,
+    rejectEnrollmentId: null,
+    rejectReason: '',
+    rejectNote: '',
+    rejectReasons: [
+        { value: 'prerequisite_missing', label: 'Prerequisite module not completed' },
+        { value: 'age_requirement_not_met', label: 'Age requirement not met' },
+        { value: 'profile_incomplete', label: 'Learner profile is incomplete' },
+        { value: 'capacity_limit', label: 'Module capacity reached' },
+        { value: 'other', label: 'Other (specify in notes)' },
+    ],
+
+    openRejectModal(enrollmentId) {
+        this.rejectEnrollmentId = enrollmentId;
+        this.rejectReason = '';
+        this.rejectNote = '';
+        this.rejectModal = true;
+        this.closeEnrollmentReview(); // Close review modal
+    },
+
+    closeRejectModal() {
+        this.rejectModal = false;
+        setTimeout(() => {
+            this.rejectEnrollmentId = null;
+            this.rejectReason = '';
+            this.rejectNote = '';
+        }, 300);
+    },
+});
+```
+
+---
+
+### Step 3: Add "Review Information" button to enrollment cards
+
+**File:** `resources/views/instructor/enrollments/index.blade.php`
+
+Find the enrollment card where "View" button exists (likely in a foreach loop).
+
+**Replace the "View" link:**
+
+**OLD:**
+```blade
+<a href="{{ route('instructor.enrollments.show', $enrollment) }}"
+   class="...">
+    View
+</a>
+```
+
+**NEW:**
+```blade
+<button type="button"
+        @click="$store.modals.openEnrollmentReview({
+            id: {{ $enrollment->id }},
+            learner: {
+                name: '{{ addslashes($enrollment->user->name) }}',
+                email: '{{ $enrollment->user->email }}',
+                username: '{{ $enrollment->user->learnerProfile->username ?? 'N/A' }}',
+                age: {{ $enrollment->user->learnerProfile->getAge() ?? 'null' }},
+                ageBracket: '{{ $enrollment->user->learnerProfile->getAgeBracket() ?? 'N/A' }}',
+                gender: '{{ $enrollment->user->learnerProfile->gender ?? 'N/A' }}',
+                city: '{{ $enrollment->user->learnerProfile->city->name ?? 'N/A' }}',
+                barangay: '{{ $enrollment->user->learnerProfile->barangay->name ?? 'N/A' }}',
+                isChild: {{ $enrollment->user->learnerProfile->requires_parental_consent ? 'true' : 'false' }},
+                parentName: '{{ $enrollment->user->parent->name ?? null }}',
+                profileComplete: {{ $enrollment->user->learnerProfile->isCompleted() ? 'true' : 'false' }},
+            },
+            module: {
+                id: {{ $enrollment->module->id }},
+                title: '{{ addslashes($enrollment->module->title) }}',
+                description: '{{ addslashes(Str::limit($enrollment->module->description, 150)) }}',
+                minAge: {{ $enrollment->module->min_age ?? 0 }},
+                maxAge: {{ $enrollment->module->max_age ?? 100 }},
+                lessonsCount: {{ $enrollment->module->lessons()->count() }},
+                isPremium: {{ $enrollment->module->is_premium ? 'true' : 'false' }},
+                thumbnailUrl: '{{ $enrollment->module->thumbnail ? asset('storage/' . $enrollment->module->thumbnail) : asset('images/default-module.jpg') }}',
+            },
+            status: '{{ $enrollment->status }}',
+            appliedAt: '{{ $enrollment->created_at->format('M d, Y h:i A') }}',
+        })"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+    </svg>
+    Review Information
+</button>
+```
+
+**Note:** Use `addslashes()` to escape quotes in JSON data. Ensure all Blade variables are safely escaped.
+
+---
+
+### Step 4: Create enrollment review modal component
+
+**File:** `resources/views/instructor/enrollments/index.blade.php`
+
+Add this modal component **at the end of the file**, before `@endsection`:
+
+```blade
+{{-- ══════════════════════════════════════════════════════════
+     ENROLLMENT REVIEW MODAL
+══════════════════════════════════════════════════════════ --}}
+<div x-show="$store.modals.enrollmentReview"
+     x-cloak
+     @keydown.escape.window="$store.modals.closeEnrollmentReview()"
+     class="fixed inset-0 z-50 overflow-y-auto"
+     style="display: none;">
+
+    {{-- Backdrop --}}
+    <div x-show="$store.modals.enrollmentReview"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="$store.modals.closeEnrollmentReview()"
+         class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm"></div>
+
+    {{-- Modal Container --}}
+    <div class="flex min-h-screen items-center justify-center p-4">
+        <div x-show="$store.modals.enrollmentReview"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             @click.stop
+             class="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+            {{-- Header --}}
+            <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between"
+                 style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Enrollment Review</h3>
+                        <p class="text-xs text-white/70 mt-0.5">Review learner information and module details</p>
+                    </div>
+                </div>
+                <button type="button"
+                        @click="$store.modals.closeEnrollmentReview()"
+                        class="p-2 rounded-lg hover:bg-white/10 transition text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="p-6 space-y-6" x-data="{ data: $store.modals.enrollmentReviewData }">
+
+                {{-- Age Appropriateness Warning --}}
+                <div x-show="data && data.learner.age && (data.learner.age < data.module.minAge || data.learner.age > data.module.maxAge)"
+                     class="rounded-xl border border-orange-200 bg-orange-50 p-4 flex items-start gap-3">
+                    <svg class="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold text-orange-800">Age Appropriateness Warning</p>
+                        <p class="text-xs text-orange-700 mt-1">
+                            Learner's age (<span x-text="data?.learner.age"></span>) is outside the recommended range
+                            (<span x-text="data?.module.minAge"></span>-<span x-text="data?.module.maxAge"></span> years old) for this module.
+                        </p>
+                    </div>
+                </div>
+
+                {{-- Two Column Layout --}}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                    {{-- LEFT COLUMN: Learner Information --}}
+                    <div class="space-y-4">
+                        <div class="border-l-4 pl-3" style="border-color: #730DB1;">
+                            <h4 class="text-sm font-bold text-gray-900">Learner Information</h4>
+                            <p class="text-xs text-gray-400 mt-0.5">Profile and demographic details</p>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                            {{-- Full Name --}}
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-medium text-gray-500">Full Name</p>
+                                    <p class="text-sm font-semibold text-gray-900 truncate" x-text="data?.learner.name"></p>
+                                </div>
+                            </div>
+
+                            {{-- Username --}}
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-medium text-gray-500">Username</p>
+                                    <p class="text-sm font-semibold text-gray-900" x-text="data?.learner.username"></p>
+                                </div>
+                            </div>
+
+                            {{-- Email --}}
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-medium text-gray-500">Email Address</p>
+                                    <p class="text-sm font-semibold text-gray-900 truncate" x-text="data?.learner.email"></p>
+                                </div>
+                            </div>
+
+                            {{-- Age & Gender --}}
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="flex items-start gap-2">
+                                    <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-xs font-medium text-gray-500">Age</p>
+                                        <p class="text-sm font-semibold text-gray-900">
+                                            <span x-text="data?.learner.age || 'N/A'"></span>
+                                            <span x-show="data?.learner.ageBracket" class="text-xs text-gray-500">
+                                                (<span x-text="data?.learner.ageBracket"></span>)
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-2">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-xs font-medium text-gray-500">Gender</p>
+                                        <p class="text-sm font-semibold text-gray-900 capitalize" x-text="data?.learner.gender"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Location --}}
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-medium text-gray-500">Location</p>
+                                    <p class="text-sm font-semibold text-gray-900">
+                                        <span x-text="data?.learner.barangay"></span>,
+                                        <span x-text="data?.learner.city"></span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            {{-- Profile Status --}}
+                            <div class="flex items-start gap-3 pt-2 border-t border-gray-200">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                     :class="data?.learner.profileComplete ? 'bg-green-100' : 'bg-red-100'">
+                                    <svg class="w-4 h-4" :class="data?.learner.profileComplete ? 'text-green-600' : 'text-red-600'"
+                                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path x-show="data?.learner.profileComplete" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        <path x-show="!data?.learner.profileComplete" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-xs font-medium text-gray-500">Profile Status</p>
+                                    <p class="text-sm font-semibold" :class="data?.learner.profileComplete ? 'text-green-700' : 'text-red-700'">
+                                        <span x-text="data?.learner.profileComplete ? 'Complete' : 'Incomplete'"></span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            {{-- Parent Info (if child account) --}}
+                            <div x-show="data?.learner.isChild" class="pt-2 border-t border-gray-200">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-xs font-medium text-gray-500">Parent/Guardian</p>
+                                        <p class="text-sm font-semibold text-gray-900" x-text="data?.learner.parentName || 'Not linked'"></p>
+                                        <p class="text-xs text-purple-600 mt-1">✓ Requires parental consent</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- RIGHT COLUMN: Module Information --}}
+                    <div class="space-y-4">
+                        <div class="border-l-4 pl-3" style="border-color: #730DB1;">
+                            <h4 class="text-sm font-bold text-gray-900">Module Requested</h4>
+                            <p class="text-xs text-gray-400 mt-0.5">Details about the module for enrollment</p>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-xl p-4 space-y-4">
+                            {{-- Module Thumbnail & Title --}}
+                            <div class="flex items-start gap-3">
+                                <img :src="data?.module.thumbnailUrl"
+                                     :alt="data?.module.title"
+                                     class="w-16 h-16 rounded-lg object-cover flex-shrink-0">
+                                <div class="flex-1 min-w-0">
+                                    <h5 class="text-base font-bold text-gray-900 line-clamp-2" x-text="data?.module.title"></h5>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span x-show="data?.module.isPremium"
+                                              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-700 text-xs font-semibold">
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                            </svg>
+                                            Premium
+                                        </span>
+                                        <span class="text-xs text-gray-500" x-text="data?.module.lessonsCount + ' lessons'"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Description --}}
+                            <div>
+                                <p class="text-xs font-medium text-gray-500 mb-1">Description</p>
+                                <p class="text-sm text-gray-700 leading-relaxed" x-text="data?.module.description"></p>
+                            </div>
+
+                            {{-- Age Range --}}
+                            <div>
+                                <p class="text-xs font-medium text-gray-500 mb-1">Age Range</p>
+                                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50 border border-purple-200">
+                                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                    </svg>
+                                    <span class="text-sm font-semibold text-purple-700">
+                                        <span x-text="data?.module.minAge"></span>-<span x-text="data?.module.maxAge"></span> years old
+                                    </span>
+                                </div>
+                            </div>
+
+                            {{-- Applied Date --}}
+                            <div class="pt-3 border-t border-gray-200">
+                                <p class="text-xs font-medium text-gray-500 mb-1">Application Date</p>
+                                <p class="text-sm font-semibold text-gray-900" x-text="data?.appliedAt"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Footer with Actions --}}
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                <button type="button"
+                        @click="$store.modals.closeEnrollmentReview()"
+                        class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition">
+                    Close
+                </button>
+
+                <div class="flex items-center gap-3">
+                    {{-- Reject Button --}}
+                    <button type="button"
+                            @click="$store.modals.openRejectModal($store.modals.enrollmentReviewData?.id)"
+                            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Reject
+                    </button>
+
+                    {{-- Approve Button --}}
+                    <form method="POST" :action="`/instructor/enrollments/${$store.modals.enrollmentReviewData?.id}/approve`">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit"
+                                class="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-xl transition hover:opacity-90 active:scale-[0.98] shadow-sm"
+                                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Approve Enrollment
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════════
+     REJECTION REASON MODAL
+══════════════════════════════════════════════════════════ --}}
+<div x-show="$store.modals.rejectModal"
+     x-cloak
+     @keydown.escape.window="$store.modals.closeRejectModal()"
+     class="fixed inset-0 z-[60] overflow-y-auto"
+     style="display: none;">
+
+    {{-- Backdrop --}}
+    <div x-show="$store.modals.rejectModal"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="$store.modals.closeRejectModal()"
+         class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm"></div>
+
+    {{-- Modal Container --}}
+    <div class="flex min-h-screen items-center justify-center p-4">
+        <div x-show="$store.modals.rejectModal"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             @click.stop
+             class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl">
+
+            {{-- Header --}}
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h3 class="text-lg font-bold text-gray-900">Reject Enrollment</h3>
+                <p class="text-xs text-gray-500 mt-1">Please provide a reason for rejection</p>
+            </div>
+
+            {{-- Form --}}
+            <form method="POST" :action="`/instructor/enrollments/${$store.modals.rejectEnrollmentId}/reject`">
+                @csrf
+                @method('PATCH')
+
+                <div class="p-6 space-y-4">
+                    {{-- Rejection Reason Dropdown --}}
+                    <div>
+                        <label for="rejection_reason_code" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Reason <span class="text-red-500">*</span>
+                        </label>
+                        <select id="rejection_reason_code"
+                                name="rejection_reason_code"
+                                x-model="$store.modals.rejectReason"
+                                required
+                                class="w-full rounded-xl border-gray-200 shadow-sm focus:border-purple-400 focus:ring-purple-300 text-sm">
+                            <option value="">Select a reason...</option>
+                            <template x-for="reason in $store.modals.rejectReasons" :key="reason.value">
+                                <option :value="reason.value" x-text="reason.label"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    {{-- Optional Notes --}}
+                    <div>
+                        <label for="rejection_reason_note" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Additional Notes <span class="text-gray-400 font-normal">(optional)</span>
+                        </label>
+                        <textarea id="rejection_reason_note"
+                                  name="rejection_reason_note"
+                                  x-model="$store.modals.rejectNote"
+                                  rows="3"
+                                  maxlength="1000"
+                                  placeholder="Provide additional context or guidance for the learner..."
+                                  class="w-full rounded-xl border-gray-200 shadow-sm focus:border-purple-400 focus:ring-purple-300 text-sm"></textarea>
+                        <p class="text-xs text-gray-400 mt-1">
+                            <span x-text="($store.modals.rejectNote || '').length"></span>/1000 characters
+                        </p>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-3">
+                    <button type="button"
+                            @click="$store.modals.closeRejectModal()"
+                            class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition active:scale-[0.98] shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Confirm Rejection
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+```
+
+---
+
+### Step 5: Add x-cloak CSS to prevent flash
+
+**File:** `resources/css/app.css` (if not already present)
+
+```css
+[x-cloak] {
+    display: none !important;
+}
+```
+
+Run: `npm run dev` to compile
+
+---
+
+### Step 6: Visual verification
+
+**Manual check:**
+1. Navigate to `/instructor/enrollments`
+2. Find an enrollment card
+3. Click "Review Information" button
+4. **Verify modal opens with:**
+   - Purple gradient header
+   - Learner profile information (name, email, age, gender, location)
+   - Parent info displays if child account
+   - Profile completion status
+   - Module thumbnail, title, description
+   - Age range badge
+   - Age appropriateness warning (if applicable)
+5. **Test actions:**
+   - Click "Approve" → Should submit form and approve enrollment
+   - Click "Reject" → Should open rejection reason modal
+   - Select rejection reason → Add notes → Submit → Should reject
+   - Click "Close" or click outside modal → Should close
+6. **Test responsiveness:**
+   - Desktop: Two-column layout
+   - Mobile: Stacked single-column layout
+
+---
+
+### Step 7: Functional verification
+
+**Test workflows:**
+
+1. **Age-appropriate learner:**
+   - Open review modal for learner within module age range
+   - Verify NO warning banner displays
+   - Approve → Verify enrollment updates to "approved"
+
+2. **Age-inappropriate learner:**
+   - Open review modal for learner outside module age range
+   - Verify orange warning banner displays
+   - Still able to approve (instructor discretion)
+
+3. **Child account:**
+   - Open review modal for learner with `requires_parental_consent = true`
+   - Verify parent name displays
+   - Verify "Requires parental consent" badge shows
+
+4. **Incomplete profile:**
+   - Open review modal for learner with incomplete profile
+   - Verify profile status shows "Incomplete" in red
+
+5. **Rejection flow:**
+   - Click "Reject" button
+   - Review modal closes, rejection modal opens
+   - Select reason → No notes → Submit → Verify rejection saves
+   - Try rejecting with "Other" reason without notes → Should still work
+
+6. **Multiple modals:**
+   - Open review modal → Click reject → Rejection modal opens (z-index correct)
+   - Close rejection modal → Review modal should still be closed
+
+---
+
+### Step 8: Error handling verification
+
+**Test edge cases:**
+
+1. **Missing data:**
+   - Open review modal with missing optional fields (no parent, no age)
+   - Verify "N/A" or fallback displays correctly
+
+2. **Long text:**
+   - Module with very long title (50+ chars)
+   - Verify truncation or line-clamp works
+
+3. **Console errors:**
+   - Open browser console
+   - Interact with modals
+   - Verify no JavaScript errors
+
+4. **Network errors:**
+   - Open review modal → Click approve
+   - If network fails, verify appropriate error handling
+
+---
+
+### Step 9: Commit
+
+```bash
+git add resources/views/instructor/enrollments/index.blade.php resources/js/app.js
+git commit -m "feat(instructor): add learner review modal to enrollments index
+
+Add comprehensive review information modal on enrollments index page:
+
+Features:
+- Quick review of learner profile without leaving page
+- Display appropriate learner information (profile, demographics)
+- Show complete module details with thumbnail
+- Age appropriateness warning if outside module range
+- Parent/guardian info for child accounts
+- Profile completion status indicator
+- Inline approve/reject actions
+
+Rejection flow:
+- Integrated rejection reason modal
+- Predefined rejection reasons (prerequisite, age, profile, capacity, other)
+- Optional additional notes (1000 char limit)
+- Form validation with error display
+
+UI/UX:
+- Purple gradient brand theme
+- Smooth Alpine.js transitions
+- Responsive two-column layout (stacks on mobile)
+- Proper z-index layering for nested modals
+- Click-outside and Escape key to close
+
+Backend: Reuses existing controller methods and rejection system
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+```
 
 ---
 
