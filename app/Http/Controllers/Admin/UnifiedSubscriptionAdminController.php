@@ -10,6 +10,7 @@ use App\Models\PlanFeatureEntitlement;
 use App\Models\PlanPrice;
 use App\Models\SubscriptionPlan;
 use App\Services\AdminActivityLogService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,6 +34,17 @@ class UnifiedSubscriptionAdminController extends Controller
         $plan = DB::transaction(function () use ($validated) {
             $slug = $this->generateUniqueSlug($validated['name']);
             $sortOrder = $validated['sort_order'] ?? ((SubscriptionPlan::max('sort_order') ?? 0) + 10);
+            $billingMode = $validated['billing_mode'] ?? 'monthly';
+
+            $previewStart = Carbon::today();
+            $previewEnd = match ($billingMode) {
+                'annual' => $previewStart->copy()->addYear()->subDay(),
+                'custom' => Carbon::parse($validated['end_date']),
+                default => $previewStart->copy()->addMonth()->subDay(),
+            };
+
+            $availabilityStart = $billingMode === 'custom' ? Carbon::parse($validated['start_date'])->toDateString() : null;
+            $availabilityEnd = $billingMode === 'custom' ? Carbon::parse($validated['end_date'])->toDateString() : null;
 
             $plan = SubscriptionPlan::create([
                 'name' => $validated['name'],
@@ -40,6 +52,12 @@ class UnifiedSubscriptionAdminController extends Controller
                 'description' => $validated['description'] ?? null,
                 'price' => 0,
                 'features' => [],
+                'plan_audience' => $validated['plan_audience'] ?? 'learner',
+                'billing_mode' => $billingMode,
+                'availability_starts_on' => $availabilityStart,
+                'availability_ends_on' => $availabilityEnd,
+                'admin_preview_starts_on' => $previewStart->toDateString(),
+                'admin_preview_ends_on' => $previewEnd->toDateString(),
                 'trial_days' => $validated['trial_days'] ?? 0,
                 'is_active' => (bool) ($validated['is_active'] ?? false),
                 'sort_order' => $sortOrder,
@@ -47,11 +65,28 @@ class UnifiedSubscriptionAdminController extends Controller
 
             $prices = $validated['prices'] ?? [];
             if (empty($prices) && array_key_exists('price', $validated)) {
+                $durationUnit = 'month';
+                $durationCount = 1;
+                $durationLabel = 'Monthly';
+                $durationMode = 'preset';
+
+                if ($billingMode === 'annual') {
+                    $durationUnit = 'year';
+                    $durationLabel = 'Annual';
+                }
+
+                if ($billingMode === 'custom') {
+                    $durationUnit = 'day';
+                    $durationMode = 'custom';
+                    $durationLabel = 'Custom Period';
+                    $durationCount = max(1, Carbon::parse($validated['start_date'])->diffInDays(Carbon::parse($validated['end_date'])) + 1);
+                }
+
                 $prices[] = [
-                    'duration_mode' => 'preset',
-                    'duration_unit' => 'month',
-                    'duration_count' => 1,
-                    'duration_label' => 'Monthly',
+                    'duration_mode' => $durationMode,
+                    'duration_unit' => $durationUnit,
+                    'duration_count' => $durationCount,
+                    'duration_label' => $durationLabel,
                     'amount_minor' => (int) round(((float) $validated['price']) * 100),
                     'currency' => 'PHP',
                     'compare_at_minor' => null,
@@ -68,7 +103,7 @@ class UnifiedSubscriptionAdminController extends Controller
                     'duration_count' => (int) $priceData['duration_count'],
                     'duration_label' => $priceData['duration_label'],
                     'amount_minor' => (int) $priceData['amount_minor'],
-                    'currency' => strtoupper($priceData['currency'] ?? 'PHP'),
+                    'currency' => 'PHP',
                     'compare_at_minor' => $priceData['compare_at_minor'] ?? null,
                     'is_default' => (bool) ($priceData['is_default'] ?? $index === 0),
                     'is_active' => (bool) ($priceData['is_active'] ?? true),
@@ -79,8 +114,39 @@ class UnifiedSubscriptionAdminController extends Controller
                 }
             }
 
+            $normalizedEntitlements = $validated['entitlements'] ?? [];
+            if (empty($normalizedEntitlements)) {
+                $enabledEntitlements = $validated['entitlement_enabled'] ?? [];
+                $unlimitedEntitlements = $validated['entitlement_unlimited'] ?? [];
+                $entitlementLimits = $validated['entitlement_limits'] ?? [];
+
+                foreach ($this->learnerEntitlementDefinitions() as $featureKey => $definition) {
+                    $isEnabled = filter_var($enabledEntitlements[$featureKey] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    if (!$isEnabled) {
+                        continue;
+                    }
+
+                    $isUnlimited = filter_var($unlimitedEntitlements[$featureKey] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    $quotaValue = null;
+                    if (($definition['value_type'] ?? 'boolean') === 'quota' && !$isUnlimited) {
+                        $quotaValue = (int) ($entitlementLimits[$featureKey] ?? 0);
+                    }
+
+                    $normalizedEntitlements[] = [
+                        'feature_key' => $featureKey,
+                        'feature_name' => $definition['name'],
+                        'value_type' => $definition['value_type'],
+                        'unit_label' => $definition['unit_label'] ?? null,
+                        'category' => $definition['category'],
+                        'is_enabled' => true,
+                        'quota_value' => $quotaValue,
+                        'is_unlimited' => $isUnlimited,
+                    ];
+                }
+            }
+
             $enabledKeys = [];
-            foreach ($validated['entitlements'] ?? [] as $row) {
+            foreach ($normalizedEntitlements as $row) {
                 $feature = FeatureCatalog::firstOrCreate(
                     ['key' => $row['feature_key']],
                     [
@@ -146,13 +212,27 @@ class UnifiedSubscriptionAdminController extends Controller
 
     public function updatePlan(UpdatePlanRequest $request, SubscriptionPlan $subscriptionPlan)
     {
-        $before = $subscriptionPlan->only(['id', 'name', 'slug', 'price', 'is_active', 'features']);
+        $before = $subscriptionPlan->only(['id', 'name', 'slug', 'price', 'is_active', 'features', 'plan_audience', 'billing_mode', 'availability_starts_on', 'availability_ends_on', 'admin_preview_starts_on', 'admin_preview_ends_on']);
         $validated = $request->validated();
 
         DB::transaction(function () use ($subscriptionPlan, $validated) {
+            $billingMode = $validated['billing_mode'] ?? $subscriptionPlan->billing_mode ?? 'monthly';
+            $previewStart = Carbon::today();
+            $previewEnd = match ($billingMode) {
+                'annual' => $previewStart->copy()->addYear()->subDay(),
+                'custom' => Carbon::parse($validated['end_date']),
+                default => $previewStart->copy()->addMonth()->subDay(),
+            };
+
             $subscriptionPlan->update([
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
+                'plan_audience' => $validated['plan_audience'] ?? 'learner',
+                'billing_mode' => $billingMode,
+                'availability_starts_on' => $billingMode === 'custom' ? Carbon::parse($validated['start_date'])->toDateString() : null,
+                'availability_ends_on' => $billingMode === 'custom' ? Carbon::parse($validated['end_date'])->toDateString() : null,
+                'admin_preview_starts_on' => $previewStart->toDateString(),
+                'admin_preview_ends_on' => $previewEnd->toDateString(),
                 'trial_days' => $validated['trial_days'] ?? 0,
                 'is_active' => (bool) ($validated['is_active'] ?? false),
                 'sort_order' => $validated['sort_order'] ?? $subscriptionPlan->sort_order,
@@ -200,6 +280,49 @@ class UnifiedSubscriptionAdminController extends Controller
                 }
             }
 
+            if (!array_key_exists('entitlements', $validated) && array_key_exists('entitlement_enabled', $validated)) {
+                $subscriptionPlan->featureEntitlements()->delete();
+
+                $enabledEntitlements = $validated['entitlement_enabled'] ?? [];
+                $unlimitedEntitlements = $validated['entitlement_unlimited'] ?? [];
+                $entitlementLimits = $validated['entitlement_limits'] ?? [];
+
+                foreach ($this->learnerEntitlementDefinitions() as $featureKey => $definition) {
+                    $isEnabled = filter_var($enabledEntitlements[$featureKey] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+                    $feature = FeatureCatalog::firstOrCreate(
+                        ['key' => $featureKey],
+                        [
+                            'name' => $definition['name'],
+                            'description' => null,
+                            'value_type' => $definition['value_type'],
+                            'unit_label' => $definition['unit_label'] ?? null,
+                            'category' => $definition['category'],
+                            'is_active' => true,
+                        ]
+                    );
+
+                    $isUnlimited = filter_var($unlimitedEntitlements[$featureKey] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    $quotaValue = null;
+                    if (($definition['value_type'] ?? 'boolean') === 'quota' && $isEnabled && !$isUnlimited) {
+                        $quotaValue = (int) ($entitlementLimits[$featureKey] ?? 0);
+                    }
+
+                    PlanFeatureEntitlement::create([
+                        'plan_id' => $subscriptionPlan->id,
+                        'feature_id' => $feature->id,
+                        'is_enabled' => $isEnabled,
+                        'quota_value' => $quotaValue,
+                        'is_unlimited' => $isUnlimited,
+                    ]);
+                }
+
+                $subscriptionPlan->features = array_values(array_keys(array_filter(
+                    $enabledEntitlements,
+                    fn($value) => filter_var($value, FILTER_VALIDATE_BOOLEAN)
+                )));
+            }
+
             if (array_key_exists('price', $validated)) {
                 $subscriptionPlan->price = (float) $validated['price'];
             } elseif ($subscriptionPlan->planPrices()->exists()) {
@@ -236,6 +359,58 @@ class UnifiedSubscriptionAdminController extends Controller
         }
 
         return $slug;
+    }
+
+    private function learnerEntitlementDefinitions(): array
+    {
+        return [
+            'unlimited_username_changes' => [
+                'name' => 'Unlimited Username Changes',
+                'value_type' => 'boolean',
+                'category' => 'account_profile',
+            ],
+            'profile_customization_perks' => [
+                'name' => 'Profile Customization Perks',
+                'value_type' => 'boolean',
+                'category' => 'account_profile',
+            ],
+            'early_access_profile_features' => [
+                'name' => 'Early Access to Profile Features',
+                'value_type' => 'boolean',
+                'category' => 'account_profile',
+            ],
+            'certificate_pdf_download' => [
+                'name' => 'Certificate PDF Download',
+                'value_type' => 'boolean',
+                'category' => 'learning_access',
+            ],
+            'premium_module_access' => [
+                'name' => 'Premium Module Access',
+                'value_type' => 'boolean',
+                'category' => 'learning_access',
+            ],
+            'lesson_attachment_downloads' => [
+                'name' => 'Lesson Attachment Downloads',
+                'value_type' => 'boolean',
+                'category' => 'learning_access',
+            ],
+            'advanced_topic_bundles' => [
+                'name' => 'Advanced Topic Bundles',
+                'value_type' => 'boolean',
+                'category' => 'learning_access',
+            ],
+            'unlimited_quiz_retaking' => [
+                'name' => 'Unlimited Shields / Unlimited Quiz Retaking',
+                'value_type' => 'boolean',
+                'category' => 'quiz_practice',
+            ],
+            'monthly_streak_savers' => [
+                'name' => 'Monthly Streak Savers',
+                'value_type' => 'quota',
+                'unit_label' => 'count',
+                'category' => 'quiz_practice',
+            ],
+        ];
     }
 
     // -------------------------------------------------------------------------

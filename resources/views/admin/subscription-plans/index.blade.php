@@ -4,7 +4,31 @@
 @section('page-title', 'Subscription Plans')
 
 @section('content')
-    <div x-data="{ showCreatePlanModal: false }">
+    <div x-data="{
+        showCreatePlanModal: false,
+        billingMode: 'monthly',
+        startDate: '',
+        endDate: '',
+        previewRangeText() {
+            const format = (dateValue) => new Date(dateValue).toLocaleDateString('en-PH', { month: 'short', day: '2-digit', year: 'numeric' });
+            if (this.billingMode === 'custom') {
+                if (!this.startDate || !this.endDate) {
+                    return 'Set start and end date for custom period.';
+                }
+                return `${format(this.startDate)} to ${format(this.endDate)}`;
+            }
+
+            const start = new Date();
+            const end = new Date(start);
+            if (this.billingMode === 'annual') {
+                end.setFullYear(end.getFullYear() + 1);
+            } else {
+                end.setMonth(end.getMonth() + 1);
+            }
+            end.setDate(end.getDate() - 1);
+            return `${format(start)} to ${format(end)}`;
+        }
+    }">
     {{-- Page Header --}}
     <div class="flex items-center justify-between mb-6">
         <div>
@@ -29,7 +53,7 @@
                 <button type="button" @click="showCreatePlanModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">&times;</button>
             </div>
 
-            <form method="POST" action="{{ route('admin.subscribers.store-plan') }}" class="p-6 space-y-4">
+            <form method="POST" action="{{ route('admin.subscribers.store-plan') }}" class="p-6 space-y-5">
                 @csrf
                 <div>
                     <label for="modal-plan-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan Name</label>
@@ -47,13 +71,91 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
+                        <label for="modal-plan-audience" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan Audience</label>
+                        <select id="modal-plan-audience" name="plan_audience"
+                                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                            <option value="learner" selected>Learner</option>
+                            <option value="instructor" disabled>Instructor (future)</option>
+                            <option value="connectors" disabled>Connectors (future)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="modal-billing-mode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Billing Mode</label>
+                        <select id="modal-billing-mode" name="billing_mode" x-model="billingMode"
+                                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                            <option value="monthly">Monthly</option>
+                            <option value="annual">Annual</option>
+                            <option value="custom">Custom Period</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
                         <label for="modal-plan-price" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Base Price (PHP)</label>
-                        <input id="modal-plan-price" name="price" type="number" min="0" step="0.01" value="0"
+                        <input id="modal-plan-price" name="price" type="number" min="0" step="0.01" value="0.00"
                                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                     </div>
                     <div class="flex items-center gap-2 pt-6">
                         <input id="modal-plan-active" name="is_active" type="checkbox" value="1" checked class="rounded border-gray-300 text-brand-500 focus:ring-brand-500">
                         <label for="modal-plan-active" class="text-sm text-gray-700 dark:text-gray-300">Active plan</label>
+                    </div>
+                </div>
+
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/30 p-3">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Billing Preview</p>
+                    <p class="mt-1 text-sm text-gray-700 dark:text-gray-200" x-text="previewRangeText()"></p>
+                </div>
+
+                <div x-show="billingMode === 'custom'" x-cloak class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="modal-start-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                        <input id="modal-start-date" name="start_date" type="date" x-model="startDate"
+                               class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                    </div>
+                    <div>
+                        <label for="modal-end-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                        <input id="modal-end-date" name="end_date" type="date" x-model="endDate"
+                               class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Learner Entitlements</h3>
+
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Account and Profile</p>
+                        <div class="grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-200">
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[unlimited_username_changes]" value="1" class="rounded border-gray-300"> Unlimited Username Changes</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[profile_customization_perks]" value="1" class="rounded border-gray-300"> Profile Customization Perks (future)</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[early_access_profile_features]" value="1" class="rounded border-gray-300"> Early Access to Profile Features (future)</label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Learning Access</p>
+                        <div class="grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-200">
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[certificate_pdf_download]" value="1" class="rounded border-gray-300"> Certificate PDF Download</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[premium_module_access]" value="1" class="rounded border-gray-300"> Premium Module Access</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[lesson_attachment_downloads]" value="1" class="rounded border-gray-300"> Lesson Attachment Downloads</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[advanced_topic_bundles]" value="1" class="rounded border-gray-300"> Advanced Topic Bundles</label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Quiz and Practice</p>
+                        <div class="grid grid-cols-1 gap-3 text-sm text-gray-700 dark:text-gray-200">
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[unlimited_quiz_retaking]" value="1" class="rounded border-gray-300"> Unlimited Shields / Unlimited Quiz Retaking</label>
+                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+                                <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[monthly_streak_savers]" value="1" class="rounded border-gray-300"> Monthly Streak Savers</label>
+                                <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" name="entitlement_unlimited[monthly_streak_savers]" value="1" class="rounded border-gray-300"> Unlimited</label>
+                                <div>
+                                    <label for="modal-streak-saver-limit" class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Monthly Limit (used when not unlimited)</label>
+                                    <input id="modal-streak-saver-limit" name="entitlement_limits[monthly_streak_savers]" type="number" min="0" step="1" value="0"
+                                           class="w-36 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
