@@ -11,6 +11,22 @@ class PlanManagementFlowTest extends TestCase
 {
     use DatabaseTransactions;
 
+    public function test_plans_index_uses_modal_first_plan_creation_flow(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->get(route('admin.subscription-plans.index'))
+            ->assertOk()
+            ->assertSee('data-testid="open-create-plan-modal"', false)
+            ->assertSee(route('admin.subscribers.store-plan'), false)
+            ->assertDontSee(route('admin.subscription-plans.create'), false);
+    }
+
     public function test_admin_can_create_plan_with_multiple_prices_and_entitlements(): void
     {
         $admin = User::factory()->create([

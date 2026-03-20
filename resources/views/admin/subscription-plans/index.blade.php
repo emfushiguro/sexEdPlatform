@@ -4,17 +4,71 @@
 @section('page-title', 'Subscription Plans')
 
 @section('content')
+    <div x-data="{ showCreatePlanModal: false }">
     {{-- Page Header --}}
     <div class="flex items-center justify-between mb-6">
         <div>
         </div>
-        <a href="{{ route('admin.subscription-plans.create') }}"
+        <button type="button"
+           data-testid="open-create-plan-modal"
+           @click="showCreatePlanModal = true"
            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-theme-xs">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
             New Plan
-        </a>
+        </button>
+    </div>
+
+    {{-- Create Plan Modal --}}
+    <div x-show="showCreatePlanModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40" @click="showCreatePlanModal = false"></div>
+        <div class="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Create Subscription Plan</h2>
+                <button type="button" @click="showCreatePlanModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">&times;</button>
+            </div>
+
+            <form method="POST" action="{{ route('admin.subscribers.store-plan') }}" class="p-6 space-y-4">
+                @csrf
+                <div>
+                    <label for="modal-plan-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan Name</label>
+                    <input id="modal-plan-name" name="name" type="text" required
+                           class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                           placeholder="e.g., Premium Learner">
+                </div>
+
+                <div>
+                    <label for="modal-plan-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                    <textarea id="modal-plan-description" name="description" rows="3"
+                              class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                              placeholder="Plan summary for admins"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="modal-plan-price" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Base Price (PHP)</label>
+                        <input id="modal-plan-price" name="price" type="number" min="0" step="0.01" value="0"
+                               class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                    </div>
+                    <div class="flex items-center gap-2 pt-6">
+                        <input id="modal-plan-active" name="is_active" type="checkbox" value="1" checked class="rounded border-gray-300 text-brand-500 focus:ring-brand-500">
+                        <label for="modal-plan-active" class="text-sm text-gray-700 dark:text-gray-300">Active plan</label>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button type="button" @click="showCreatePlanModal = false"
+                            class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+                        Create Plan
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     {{-- Stats --}}
@@ -159,7 +213,7 @@
                         <tr>
                             <td colspan="6" class="px-5 py-12 text-center">
                                 <p class="text-sm text-gray-400 dark:text-gray-500">No subscription plans found.</p>
-                                <a href="{{ route('admin.subscription-plans.create') }}" class="mt-2 inline-block text-sm text-brand-500 hover:text-brand-600">Create your first plan →</a>
+                                <button type="button" @click="showCreatePlanModal = true" class="mt-2 inline-block text-sm text-brand-500 hover:text-brand-600">Create your first plan →</button>
                             </td>
                         </tr>
                     @endforelse
@@ -172,5 +226,6 @@
                 {{ $plans->withQueryString()->links() }}
             </div>
         @endif
+    </div>
     </div>
 @endsection

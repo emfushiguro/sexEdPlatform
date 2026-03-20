@@ -23,7 +23,7 @@ class UnifiedSubscriptionAdminController extends Controller
 
     public function createPlan()
     {
-        return view('admin.subscriber.plan-create');
+        return redirect()->route('admin.subscription-plans.index');
     }
 
     public function storePlan(StorePlanRequest $request)
