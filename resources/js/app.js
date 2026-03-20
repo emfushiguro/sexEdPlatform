@@ -1,5 +1,6 @@
 import './bootstrap';
 import Alpine from 'alpinejs';
+import collapse from '@alpinejs/collapse';
 import './toast'; // Toast notification system
 
 // Heavy libraries are loaded on-demand to keep the main bundle small.
@@ -51,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 window.Alpine = Alpine;
+Alpine.plugin(collapse);
 
 // Theme store — dark / light mode, persisted in localStorage
 Alpine.store('theme', {
@@ -80,32 +82,95 @@ Alpine.store('sidebar', {
     isExpanded: true,
     isMobileOpen: false,
     isHovered: false,
+    isLocked: false,
     toggleExpanded() {
+        if (this.isLocked) {
+            return;
+        }
         this.isExpanded = !this.isExpanded;
         this.isMobileOpen = false;
     },
     toggleMobileOpen() {
+        if (this.isLocked) {
+            return;
+        }
         this.isMobileOpen = !this.isMobileOpen;
     },
     setMobileOpen(val) {
+        if (this.isLocked) {
+            this.isMobileOpen = false;
+            return;
+        }
         this.isMobileOpen = val;
     },
     setHovered(val) {
+        if (this.isLocked) {
+            this.isHovered = false;
+            return;
+        }
         if (window.innerWidth >= 1280 && !this.isExpanded) {
             this.isHovered = val;
         }
     },
+    lock() {
+        this.isLocked = true;
+        this.isMobileOpen = false;
+        this.isHovered = false;
+    },
+    unlock() {
+        this.isLocked = false;
+    },
 });
+
+let adminSidebarLockCount = 0;
+window.adminSidebarLock = {
+    lock() {
+        adminSidebarLockCount += 1;
+        const sidebar = Alpine.store('sidebar');
+        if (!sidebar) {
+            return;
+        }
+
+        sidebar.lock();
+        document.body.classList.add('admin-sidebar-locked');
+    },
+    unlock() {
+        adminSidebarLockCount = Math.max(0, adminSidebarLockCount - 1);
+        if (adminSidebarLockCount > 0) {
+            return;
+        }
+
+        const sidebar = Alpine.store('sidebar');
+        if (sidebar) {
+            sidebar.unlock();
+        }
+        document.body.classList.remove('admin-sidebar-locked');
+    },
+};
 
 // Global modal state store
 Alpine.store('modals', {
     quizModal: false,
     quizModalDraft: null,
     moduleModal: false,
+    moduleModalDraft: null,
     lessonSlideout: false,
     lessonSlideoutModuleId: null,
     lessonSlideoutDraft: null,
     editProfile: false,
+    enrollmentReview: false,
+    enrollmentReviewData: null,
+    rejectModal: false,
+    rejectEnrollmentId: null,
+    rejectReason: '',
+    rejectNote: '',
+    rejectReasons: [
+        { value: 'prerequisite_missing', label: 'Prerequisite module not completed' },
+        { value: 'age_requirement_not_met', label: 'Age requirement not met' },
+        { value: 'profile_incomplete', label: 'Learner profile is incomplete' },
+        { value: 'capacity_limit', label: 'Module capacity reached' },
+        { value: 'other', label: 'Other (specify in notes)' },
+    ],
 
     openQuizModal(quiz = null) {
         this.quizModalDraft = quiz;
@@ -116,8 +181,14 @@ Alpine.store('modals', {
         this.quizModalDraft = null;
     },
 
-    openModuleModal() { this.moduleModal = true; },
-    closeModuleModal() { this.moduleModal = false; },
+    openModuleModal(module = null) {
+        this.moduleModalDraft = module;
+        this.moduleModal = true;
+    },
+    closeModuleModal() {
+        this.moduleModal = false;
+        this.moduleModalDraft = null;
+    },
 
     openLessonSlideout(moduleId = null, lesson = null) {
         this.lessonSlideoutModuleId = moduleId;
@@ -132,6 +203,33 @@ Alpine.store('modals', {
 
     openEditProfile() { this.editProfile = true; },
     closeEditProfile() { this.editProfile = false; },
+
+    openEnrollmentReview(enrollmentData) {
+        this.enrollmentReviewData = enrollmentData;
+        this.enrollmentReview = true;
+    },
+    closeEnrollmentReview() {
+        this.enrollmentReview = false;
+        setTimeout(() => {
+            this.enrollmentReviewData = null;
+        }, 300);
+    },
+
+    openRejectModal(enrollmentId) {
+        this.rejectEnrollmentId = enrollmentId;
+        this.rejectReason = '';
+        this.rejectNote = '';
+        this.rejectModal = true;
+        this.closeEnrollmentReview();
+    },
+    closeRejectModal() {
+        this.rejectModal = false;
+        setTimeout(() => {
+            this.rejectEnrollmentId = null;
+            this.rejectReason = '';
+            this.rejectNote = '';
+        }, 300);
+    },
 });
 
 Alpine.start();

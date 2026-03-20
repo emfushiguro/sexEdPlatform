@@ -164,12 +164,21 @@ class SubscriptionDunningService
             'subscription_id' => $payment->subscription_id
         ]);
 
+        $baseMethod = (string) ($payment->method ?? '');
+
+        $retryMethod = match ($baseMethod) {
+            'gcash' => 'retry_gcash',
+            'paymaya' => 'retry_paymaya',
+            'grab_pay' => 'retry_grab_pay',
+            default => 'retry_card',
+        };
+
         // Create new payment record for retry
         $newPayment = Payment::create([
             'user_id' => $payment->user_id,
             'subscription_id' => $payment->subscription_id,
             'amount' => $payment->amount,
-            'method' => 'retry_' . $payment->method,
+            'method' => $retryMethod,
             'status' => PaymentStatus::Pending,
             'transaction_id' => 'RETRY-' . strtoupper(uniqid()),
             'payment_details' => [

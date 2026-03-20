@@ -7,7 +7,6 @@
     'gradientMid' => '#730DB1',
     'gradientTo' => '#3B0CB1',
     'logo' => '/media/Logo.png',
-    'brandText' => 'Taboo',
     'panel' => null,
 ])
 
@@ -94,24 +93,10 @@
                                  alt="Logo" 
                                  class="w-80 h-80 sm:w-96 sm:h-96 lg:w-[28rem] lg:h-[28rem] object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-500"
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            
-                            <!-- Fallback if logo doesn't exist -->
-                            <div class="hidden text-center">
-                                <div class="text-9xl mb-4">🏳️‍🌈</div>
-                                <p class="text-white/50 text-sm">Logo placeholder</p>
-                            </div>
                         </div>
-                        
-                        @if($brandText)
-                        <h1 class="mt-8 text-5xl sm:text-6xl font-bold text-white tracking-wider font-['Brush_Script_MT',cursive] drop-shadow-lg animate-fade-in" 
-                            style="animation-delay: 0.2s; font-family: 'Brush Script MT', cursive;">
-                            {{ $brandText }}
-                        </h1>
                         @endif
                     </div>
-                    @endif
-                </div>
-                
+                </div>  
             </div>
         </div>
     </div>

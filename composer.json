@@ -11,6 +11,7 @@
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "schoolees/laravel-psgc": "^1.0",
+        "spatie/browsershot": "^5.2",
         "spatie/laravel-permission": "^6.24"
     },
     "require-dev": {

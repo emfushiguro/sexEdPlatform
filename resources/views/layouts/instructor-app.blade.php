@@ -8,19 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    {{-- Apply saved theme immediately to prevent flash. Default is light mode. --}}
+    {{-- Instructor UI is locked to light mode. --}}
     <script>
         (function () {
-            var saved = localStorage.getItem('theme');
-            if (!saved) {
-                localStorage.setItem('theme', 'light');
-                saved = 'light';
-            }
-            if (saved === 'dark') {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
+            document.documentElement.classList.remove('dark');
         })();
     </script>
 
@@ -60,7 +51,7 @@
 </head>
 
 <body
-    class="font-[Poppins] antialiased bg-gray-50 dark:bg-gray-900 h-full"
+    class="font-[Poppins] antialiased bg-gray-50 h-full"
     x-data="instructorSidebar"
     x-init="
         $store.instructorSidebar.isExpanded = window.innerWidth >= 1280;
@@ -148,7 +139,7 @@
                             ['label' => 'Lessons',     'route' => 'instructor.lessons.index',     'active' => request()->routeIs('instructor.lessons.*'),     'badge' => 0,            'icon' => 'document'],
                             ['label' => 'Quizzes',     'route' => 'instructor.quizzes.index',     'active' => request()->routeIs('instructor.quizzes.*'),     'badge' => 0,            'icon' => 'clipboard'],
                             ['label' => 'Assessment Logs', 'route' => 'instructor.assessments.index', 'active' => request()->routeIs('instructor.assessments.*'), 'badge' => 0,            'icon' => 'chart'],
-                            ['label' => 'Enrollments',  'route' => 'instructor.enrollments.index', 'active' => request()->routeIs('instructor.enrollments.*'), 'badge' => $pendingCount, 'icon' => 'chart'],
+                            ['label' => 'Enrollments',  'route' => 'instructor.enrollments.index', 'active' => request()->routeIs('instructor.enrollments.*'), 'badge' => $pendingCount, 'icon' => 'enrollments'],
                         ],
                     ],
                     [
@@ -204,6 +195,10 @@
                                     @elseif($item['icon'] === 'sparkles')
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                    </svg>
+                                    @elseif($item['icon'] === 'enrollments')
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5V9a2 2 0 00-2-2h-4m1 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v15h5m10 0v-2a3 3 0 00-3-3H10a3 3 0 00-3 3v2m10 0H7m5-13a2 2 0 110 4 2 2 0 010-4z" />
                                     </svg>
                                     @endif
                                 </span>
@@ -280,7 +275,7 @@
             @include('layouts.instructor-header')
 
             {{-- ── PAGE CONTENT ── --}}
-            <main class="flex-1 p-4 md:p-6 max-w-screen-2xl mx-auto w-full dark:text-gray-100">
+            <main class="flex-1 p-4 md:p-6 max-w-screen-2xl mx-auto w-full">
                 @yield('content')
             </main>
 

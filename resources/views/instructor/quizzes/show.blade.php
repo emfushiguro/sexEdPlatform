@@ -115,12 +115,6 @@
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Passing Score</p>
                 <p class="text-xl font-bold text-gray-900">{{ $quiz->passing_score }}%</p>
             </div>
-            <div class="bg-purple-50/40 rounded-xl p-3 border border-purple-100/60">
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Time Limit</p>
-                <p class="text-xl font-bold text-gray-900">
-                    {{ $quiz->time_limit ? $quiz->time_limit . ' min' : '—' }}
-                </p>
-            </div>
         </div>
     </div>
 

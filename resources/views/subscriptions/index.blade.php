@@ -1,244 +1,351 @@
-@extends('layouts.learner-app')
+﻿@extends('layouts.learner-app')
 
 @section('title', 'My Subscription')
 
 @section('content')
-<div class="max-w-4xl mx-auto">
+<div class="max-w-6xl mx-auto" x-data="subscriptionPage({{ Js::from($planCards ?? []) }})" x-init="init()">
+    @foreach(['success' => 'green', 'error' => 'red', 'info' => 'blue'] as $type => $color)
+        @if(session($type))
+            <div x-data="{ show: true }" x-init="
+                Toastify({
+                    text: '{{ session($type) }}',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    className: 'bg-{{ $color }}-500 rounded-xl font-medium'
+                }).showToast();
+            "></div>
+        @endif
+    @endforeach
 
-            {{-- Flash messages --}}
-            @foreach(['success' => 'green', 'error' => 'red', 'info' => 'blue'] as $type => $color)
-                @if(session($type))
-                    <div class="mb-5 bg-{{ $color }}-50 border border-{{ $color }}-300 text-{{ $color }}-700 px-4 py-3 rounded-lg text-sm">
-                        {{ session($type) }}
+    @if(($subscriptionSummary['has_subscription'] ?? false) && !empty($subscriptionSummary['status']))
+        @php
+            $summaryStatus = (string) $subscriptionSummary['status'];
+            $summaryLabel = match($summaryStatus) {
+                'scheduled_cancel' => 'Scheduled Cancel',
+                'grace_period' => 'Grace Period',
+                default => ucfirst(str_replace('_', ' ', $summaryStatus)),
+            };
+        @endphp
+
+        <div class="mb-8 relative overflow-hidden rounded-2xl border border-purple-200/60 shadow-sm">
+            <div class="absolute inset-0" style="background: linear-gradient(135deg, #A30EB2 0%, #730DB1 50%, #3B0CB1 100%);"></div>
+            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+            <div class="relative z-10 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="flex items-start gap-4">
+                <div>
+                    <h3 class="text-white font-bold font-heading text-lg mb-1">Active Subscription</h3>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        @if($subscription)
+                            <span class="text-purple-100 text-sm">
+                                Current Plan: <span class="text-white font-semibold">{{ $subscription->getPlanLabel() }}</span>
+                            </span>
+                        @endif
                     </div>
-                @endif
-            @endforeach
-
-            @if(($subscriptionSummary['has_subscription'] ?? false) && !empty($subscriptionSummary['status']))
-                @php
-                    $summaryStatus = (string) $subscriptionSummary['status'];
-                    $summaryLabel = match($summaryStatus) {
-                        'scheduled_cancel' => 'Scheduled Cancel',
-                        'grace_period' => 'Grace Period',
-                        default => ucfirst(str_replace('_', ' ', $summaryStatus)),
-                    };
-                @endphp
-                <div class="mb-5 bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-3 rounded-lg text-sm">
-                    <span class="font-semibold">Subscription Status:</span>
-                    <span class="ml-2 inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">{{ $summaryLabel }}</span>
+                </div>
+            </div>
+            @if(in_array($summaryStatus, ['active', 'grace_period', 'scheduled_cancel']) && $subscription)
+                <div class="flex flex-col md:text-right gap-1 md:gap-0 bg-white/10 p-4 rounded-xl border border-white/20 backdrop-blur-sm">
+                    <span class="text-purple-100 text-sm">Next Billing Statement</span>
+                    <span class="text-white font-semibold font-heading">
+                        {{ $subscription->end_date->format('F d, Y') }} 
+                        <span class="text-purple-100 font-normal text-sm ml-1">({{ $subscription->end_date->diffForHumans() }})</span>
+                    </span>
                 </div>
             @endif
+            </div>
+        </div>
+    @endif
 
-                    {{-- Pending payment warning --}}
-            @if($subscription && $subscription->status === \App\Enums\SubscriptionStatus::Pending)
-                <div class="mb-5 bg-amber-50 border border-amber-300 rounded-xl p-4 flex gap-3">
-                    <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-                    <div>
-                        <p class="font-semibold text-amber-800 text-sm">Payment pending</p>
-                        <p class="text-amber-700 text-sm mt-0.5">If you already paid, click "Return to merchant" on PayMongo or refresh this page. Contact support if it doesn't update after 5 minutes.</p>
-                    </div>
-                </div>
-            @endif
+<div class="mb-8 flex items-center justify-between gap-4 flex-wrap relative z-10">        
+        <div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500">Choose your subscription</h1>
+            <p class="text-sm text-gray-500 mt-2">All active admin plans are shown below. Ineligible plans remain visible with explanation.</p>
+        </div>
+        <a href="{{ route('payment.history') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 hover:shadow-lg hover:shadow-purple-300/40 hover:-translate-y-0.5 transition-all duration-300">
+            <i class="fi fi-rr-time-past text-xs"></i>
+            Payment history
+        </a>
+    </div>
 
-            @if($subscription && in_array($subscription->status->value, ['active', 'trialing', 'cancelled', 'past_due', 'pending']))
-                @php
-                    $planModel = $subscription->relationLoaded('plan') ? $subscription->getRelation('plan') : $subscription->plan;
-                    $daysLeft  = $subscription->end_date ? max(0, (int) ceil(now()->floatDiffInDays($subscription->end_date))) : null;
-                    $totalDays = ($subscription->start_date && $subscription->end_date)
-                        ? max(1, $subscription->start_date->diffInDays($subscription->end_date))
-                        : null;
-                    $progress  = ($daysLeft !== null && $totalDays) ? min(100, round(($daysLeft / $totalDays) * 100)) : null;
-                    $statusColor = match($subscription->status->value) {
-                        'active'    => ['bg' => 'bg-green-100', 'text' => 'text-green-700', 'dot' => 'bg-green-500'],
-                        'trialing'  => ['bg' => 'bg-blue-100',  'text' => 'text-blue-700',  'dot' => 'bg-blue-500'],
-                        'cancelled' => ['bg' => 'bg-gray-100',  'text' => 'text-gray-600',  'dot' => 'bg-gray-400'],
-                        'past_due'  => ['bg' => 'bg-red-100',   'text' => 'text-red-700',   'dot' => 'bg-red-500'],
-                        default     => ['bg' => 'bg-yellow-100','text' => 'text-yellow-700','dot' => 'bg-yellow-500'],
-                    };
-                @endphp
-
-                {{-- Hero Plan Card --}}
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-6">
-                    <div class="flex items-start justify-between flex-wrap gap-4">
-                        <div>
-                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Current plan</p>
-                            <h2 class="text-3xl font-bold text-gray-900">{{ $subscription->getPlanLabel() }}</h2>
-                            @if($planModel && $planModel->description)
-                                <p class="text-gray-500 text-sm mt-1">{{ $planModel->description }}</p>
+    @if(empty($planCards))
+        <div class="bg-white rounded-2xl border border-gray-200 p-10 text-center">
+            <h2 class="text-xl font-semibold text-gray-900 mb-2">No plans are currently available</h2>
+            <p class="text-gray-500 text-sm mb-6">New plans may be published soon. You can continue using available free learning content in the meantime.</p>
+            <a href="{{ route('dashboard') }}" class="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                Back to dashboard
+            </a>
+        </div>
+    @else
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10 relative z-10">
+            <!-- Decorative background elements -->
+            <div class="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-purple-50/50 to-transparent -z-10 pointer-events-none rounded-t-3xl blur-xl"></div>
+            
+            @foreach($planCards as $plan)
+                <div class="relative group">
+                    @if($plan['is_recommended'])
+                        <div class="absolute -inset-0.5 bg-gradient-to-r from-pink-400 to-purple-600 rounded-3xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
+                    @endif
+                    <article class="relative h-full rounded-2xl border p-6 bg-white transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] {{ $plan['is_recommended'] ? 'border-purple-200 shadow-lg' : 'border-gray-200 shadow-sm' }} {{ !$plan['is_eligible'] && !$plan['is_current'] ? 'opacity-75' : '' }} flex flex-col">
+<div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h2 class="text-2xl font-extrabold tracking-tight text-gray-900 bg-clip-text group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-purple-700 group-hover:to-pink-600 transition-all duration-300">{{ $plan['name'] }}</h2>
+                                @if(!empty($plan['description']))
+                                <p class="text-sm text-gray-500 mt-2 font-medium leading-relaxed">{{ $plan['description'] }}</p>
                             @endif
                         </div>
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold {{ $statusColor['bg'] }} {{ $statusColor['text'] }}">
-                            <span class="w-2 h-2 rounded-full {{ $statusColor['dot'] }}"></span>
-                            {{ $subscription->getStatusLabel() }}
-                        </span>
-                    </div>
-
-                    {{-- Dates row --}}
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-100">
-                        @if($subscription->start_date)
-                            <div>
-                                <p class="text-xs text-gray-400 mb-0.5">Started</p>
-                                <p class="text-sm font-medium text-gray-800">{{ $subscription->start_date->format('M d, Y') }}</p>
-                            </div>
-                        @endif
-                        @if($subscription->end_date)
-                            <div>
-                                <p class="text-xs text-gray-400 mb-0.5">{{ $subscription->isCancelled() ? 'Access until' : 'Renews' }}</p>
-                                <p class="text-sm font-medium text-gray-800">{{ $subscription->end_date->format('M d, Y') }}</p>
-                            </div>
-                        @endif
-                        @if($daysLeft !== null && $subscription->isActive())
-                            <div>
-                                <p class="text-xs text-gray-400 mb-0.5">Days remaining</p>
-                                <p class="text-sm font-bold text-gray-800">{{ $daysLeft }} days</p>
-                            </div>
-                        @endif
-                    </div>
-
-                    {{-- Progress bar (active subscriptions only) --}}
-                    @if($progress !== null && $subscription->isActive())
-                        <div class="mt-4">
-                            <div class="flex justify-between text-xs text-gray-400 mb-1">
-                                <span>Subscription period</span>
-                                <span>{{ $progress }}% remaining</span>
-                            </div>
-                            <div class="w-full bg-gray-100 rounded-full h-2">
-                                <div class="bg-blue-500 h-2 rounded-full transition-all" style="width: {{ $progress }}%"></div>
-                            </div>
+                        <div class="flex flex-col items-end gap-2 shrink-0">
+                            @if($plan['is_current'])
+                                <span class="inline-flex items-center rounded-full bg-purple-100/80 px-3 py-1.5 text-xs font-bold text-purple-700 ring-1 ring-inset ring-purple-200/50 shadow-sm">Current</span>
+                            @endif
+                            @if($plan['is_recommended'])
+                                <span class="inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-3 py-1.5 text-xs font-bold text-white shadow-md animate-pulse">Recommended</span>
+                            @endif
                         </div>
-                    @endif
+                    </div>
+
+                    <div class="mt-6 space-y-2 lg:min-h-[100px]">
+                        @foreach($plan['prices'] as $price)
+                            <button type="button"
+                                class="w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm transition-all duration-300 transform"
+                                :class="selectedPlanId === {{ $plan['id'] }} && selectedPriceId === {{ $price['id'] }} ? 'border-purple-400 bg-purple-50 text-purple-900 shadow-inner scale-[1.02] ring-1 ring-purple-100' : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-200 text-gray-700'"
+                                @if(!$plan['is_eligible']) disabled @endif
+                                @click="setSelection({{ $plan['id'] }}, {{ $price['id'] }})"
+                            >
+                                <span class="font-medium">{{ $price['label'] }}</span>
+                                <span class="font-bold tracking-tight">PHP {{ $price['amount_display'] }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-6 pt-6 border-t border-gray-100 flex-grow">
+                        <ul class="space-y-3.5 text-sm text-gray-600">
+                            @foreach(array_slice(array_values($plan['feature_labels']), 0, 5) as $featureLabel)
+                                <li class="flex items-start gap-3 transition-colors duration-200 group-hover:text-gray-900">
+                                    <svg class="h-5 w-5 text-purple-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                    <span class="leading-tight">{{ $featureLabel }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+
+                    <div class="mt-auto pt-6 w-full flex-grow flex flex-col justify-end">
+                        @if($plan['is_current'])
+                            <button type="button" disabled class="w-full py-3 rounded-xl text-sm font-bold border border-purple-200 text-purple-700 bg-purple-50 cursor-default ring-1 ring-purple-100/50">
+                                Current plan
+                            </button>
+                        @elseif(!$plan['is_eligible'])
+                            <button type="button" disabled class="w-full py-3 rounded-xl text-sm font-bold border border-gray-200 text-gray-400 bg-gray-50/50 cursor-not-allowed backdrop-blur-sm">
+                                Not available
+                            </button>
+                        @else
+                            <button type="button" @click="openSummary({{ $plan['id'] }})" class="w-full py-3 rounded-xl text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
+                                Continue
+                            </button>
+                        @endif
+                    </div>
+                </article>
                 </div>
+            @endforeach
+        </div>
 
-                {{-- Two-column: Features + Actions --}}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="rounded-3xl border border-gray-200/80 bg-white/60 backdrop-blur-xl overflow-hidden mb-24 lg:mb-8 shadow-sm hover:shadow-md transition-all duration-300 relative z-10">
+            <button type="button" class="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-purple-50/50 transition-colors duration-300 group" @click="toggleComparison()">
+                <span>
+                    <span class="block text-base font-extrabold text-gray-900 group-hover:text-purple-700 transition-colors">Compare all plan features</span>
+                    <span class="block text-sm text-gray-500 mt-1 font-medium">Detailed matrix based on active admin plans</span>
+                </span>
+                <span class="flex items-center gap-2 text-sm font-bold text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg group-hover:bg-purple-100 transition-colors">
+                    <span x-text="showComparison ? 'Hide' : 'Show'"></span>
+                    <svg class="w-4 h-4 transform transition-transform duration-300" :class="showComparison ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </span>
+            </button>
 
-                    {{-- Plan features --}}
-                    @if($planModel && is_object($planModel))
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">What's included</h3>
-                            @php
-                                $featureLabels = [
-                                    'unlimited_quizzes'          => 'Unlimited quiz attempts',
-                                    'certificates'               => 'Completion certificates',
-                                    'priority_support'           => 'Priority support',
-                                    'downloadable_content'       => 'Downloadable resources',
-                                    'downloadable_resources'     => 'Downloadable resources',
-                                    'consultations'              => 'Live consultations',
-                                    'offline_access'             => 'Offline access',
-                                    'progress_analytics'         => 'Progress analytics',
-                                    'all_modules'                => 'Access to all modules',
-                                    'admin_dashboard'            => 'Admin dashboard',
-                                    'progress_tracking'          => 'Progress tracking',
-                                    'bulk_enrollment'            => 'Bulk enrollment',
-                                    'custom_branding'            => 'Custom branding',
-                                    'api_access'                 => 'API access',
-                                    'dedicated_account_manager'  => 'Dedicated account manager',
-                                    'custom_reporting'           => 'Custom reporting',
-                                ];
-                                $features = is_array($planModel->features) ? $planModel->features : [];
-                                // Filter out internal/technical flags
-                                $hidden = ['test_mode', 'duration_minutes'];
-                                $displayFeatures = array_filter($features, fn($f) => !in_array($f, $hidden));
-                            @endphp
-                            <ul class="space-y-2.5 text-sm">
-                                @if($planModel->isFree())
-                                    <li class="flex items-center gap-2.5">
-                                        <input type="checkbox" checked disabled class="w-4 h-4 rounded border-gray-300 accent-green-500 cursor-default">
-                                        <span class="text-gray-700">3 quiz attempts per day</span>
-                                    </li>
-                                    <li class="flex items-center gap-2.5">
-                                        <input type="checkbox" checked disabled class="w-4 h-4 rounded border-gray-300 accent-green-500 cursor-default">
-                                        <span class="text-gray-700">Limited module access</span>
-                                    </li>
-                                @else
-                                    @foreach($displayFeatures as $feature)
-                                        <li class="flex items-center gap-2.5">
-                                            <input type="checkbox" checked disabled
-                                                   class="w-4 h-4 rounded border-gray-300 text-green-500 accent-green-500 cursor-default">
-                                            <span class="text-gray-700">
-                                                {{ $featureLabels[$feature] ?? ucwords(str_replace('_', ' ', $feature)) }}
-                                            </span>
-                                        </li>
+            <div x-show="showComparison" x-collapse class="border-t border-gray-100">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-600">Feature</th>
+                                @foreach($planCards as $plan)
+                                    <th class="px-4 py-3 text-center font-semibold text-gray-600">{{ $plan['name'] }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($comparisonFeatures as $feature)
+                                <tr class="border-t border-gray-100">
+                                    <td class="px-4 py-3 text-gray-700">{{ $feature['label'] }}</td>
+                                    @foreach($planCards as $plan)
+                                        <td class="px-4 py-3 text-center">
+                                            @if(in_array($feature['key'], $plan['feature_keys'], true))
+                                                <span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700" aria-label="Included">
+                                                    <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                        <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.2 7.2a1 1 0 01-1.414 0l-3-3a1 1 0 011.414-1.414l2.293 2.293 6.493-6.493a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </span>
+                                            @else
+                                                <span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-gray-100 text-gray-400 font-bold">-</span>
+                                            @endif
+                                        </td>
                                     @endforeach
-                                    @if($planModel->trial_days > 0)
-                                        <li class="flex items-center gap-2.5">
-                                            <input type="checkbox" checked disabled
-                                                   class="w-4 h-4 rounded border-gray-300 accent-blue-500 cursor-default">
-                                            <span class="text-blue-600">{{ $planModel->trial_days }}-Day Access</span>
-                                        </li>
-                                    @endif
-                                @endif
-                            </ul>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="selectedPlan && selectedPlan.is_eligible && !showSummary" x-cloak class="lg:hidden fixed left-0 right-0 bottom-0 z-40 border-t border-purple-100 bg-white/90 backdrop-blur-lg px-5 py-4 shadow-[0_-10px_30px_rgba(200,100,250,0.1)] transition-all duration-300">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <p class="text-xs text-gray-500 font-medium">Selected plan</p>
+                    <p class="text-base font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500" x-text="selectedPlan ? selectedPlan.name : ''"></p>
+                </div>
+                <button type="button" @click="openSummary(selectedPlan.id)" class="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-500 hover:scale-105 active:scale-95 shadow-md shadow-purple-200 transition-all duration-300">Continue</button>
+            </div>
+        </div>
+
+        <div x-show="showSummary" x-cloak class="fixed inset-0 z-50">
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeSummary()"
+                 x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+            <div class="relative h-full flex items-end sm:items-center justify-center p-4">
+                <div class="w-full max-w-md rounded-3xl bg-white border border-purple-100 shadow-[0_25px_50px_-12px_rgba(100,0,200,0.25)] p-6 sm:p-8 transform transition-all" @click.stop
+                     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-8 sm:translate-y-4 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-8 sm:translate-y-4 sm:scale-95">
+                    
+                    <div class="absolute top-0 right-0 pt-5 pr-5">
+                        <button type="button" @click="closeSummary()" class="text-gray-400 hover:text-gray-500 bg-gray-50 p-2 rounded-full hover:bg-gray-100 transition-colors">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    <h3 class="text-2xl font-extrabold text-gray-900 pr-10">Confirm your plan</h3>
+                    <p class="text-sm text-gray-500 mt-2 font-medium">Review your selection before continuing to seamless payment.</p>
+
+                    <div class="mt-6 rounded-2xl border border-purple-100 bg-gradient-to-b from-purple-50/50 to-white p-5 space-y-3 shadow-inner">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500 font-medium">Selected Plan</span>
+                            <span class="font-extrabold text-purple-900" x-text="selectedPlan ? selectedPlan.name : ''"></span>
                         </div>
-                    @endif
-
-                    {{-- Actions --}}
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col gap-3">
-                        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-1">Manage</h3>
-
-                        @if($subscription->canRenew())
-                            <form action="{{ route('subscription.renew') }}" method="POST">
-                                @csrf
-                                <button type="submit" class="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition">
-                                    Renew subscription
-                                </button>
-                            </form>
-                        @endif
-
-                        @if(!$subscription->isPremium())
-                            <a href="{{ route('subscription.upgrade') }}"
-                               class="block text-center w-full py-3 px-4 rounded-xl text-sm font-semibold bg-gray-900 hover:bg-gray-800 text-white transition">
-                                Upgrade plan
-                            </a>
-                        @endif
-
-                        <a href="{{ route('payment.history') }}"
-                           class="block text-center w-full py-3 px-4 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition">
-                            Payment history
-                        </a>
-
-                        <a href="{{ route('subscription.upgrade') }}"
-                           class="block text-center w-full py-3 px-4 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition">
-                            View all plans
-                        </a>
-
-                        {{-- Refund --}}
-                        @if($canRequestRefund ?? false)
-                            @php $refundWindowDays = config('billing.subscription.refund_window_days', 3); @endphp
-                            <div class="border-t border-gray-100 pt-3 mt-1">
-                                <p class="text-xs text-gray-400 mb-2">
-                                    Refund window closes {{ $latestPaidPayment->paid_at->copy()->addDays($refundWindowDays)->format('M d, Y h:i A') }}
-                                </p>
-                                <form action="{{ route('subscription.refund') }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="reason" value="Customer refund request">
-                                    <button type="submit"
-                                        onclick="return confirm('Request a refund? Your subscription will be cancelled immediately.')"
-                                        class="w-full py-2.5 px-4 rounded-xl text-sm font-semibold border border-red-300 text-red-600 hover:bg-red-50 transition">
-                                        Request refund
-                                    </button>
-                                </form>
-                            </div>
-                        @endif
+                        <div class="flex items-center justify-between text-sm" x-show="selectedPrice">
+                            <span class="text-gray-500 font-medium">Billing Cycle</span>
+                            <span class="font-bold text-gray-800" x-text="selectedPrice ? selectedPrice.label : ''"></span>
+                        </div>
+                        <div class="pt-3 mt-3 border-t border-purple-100/60 flex items-center justify-between">
+                            <span class="text-gray-700 font-semibold">Total Amount</span>
+                            <span class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-600" x-text="selectedPrice ? 'PHP ' + selectedPrice.amount_display : ''"></span>
+                        </div>
                     </div>
-                </div>
 
-            @else
-                {{-- No subscription --}}
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
-                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">No active subscription</h3>
-                    <p class="text-gray-500 mb-6">You're currently on the free plan with limited access to modules.</p>
-                    <a href="{{ route('subscription.upgrade') }}"
-                       class="inline-block py-3 px-8 rounded-xl text-sm font-semibold bg-gray-900 hover:bg-gray-800 text-white transition">
-                        Choose a plan
-                    </a>
+                    <form method="POST" action="{{ route('subscription.subscribe') }}" class="mt-7 space-y-3" @submit="track('subscription_checkout_started')">
+                        @csrf
+                        <input type="hidden" name="plan_id" :value="selectedPlanId">
+                        <button type="submit" class="w-full py-3.5 rounded-xl text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 hover:shadow-lg shadow-purple-200/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
+                            Continue to payment process
+                        </button>
+                        <button type="button" @click="closeSummary()" class="w-full py-3 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 bg-white shadow-sm transition-all duration-300">
+                            Cancel
+                        </button>
+                    </form>
                 </div>
-            @endif
-
+            </div>
+        </div>
+    @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function subscriptionPage(planCards) {
+    return {
+        planCards: Array.isArray(planCards) ? planCards : [],
+        selectedPlanId: null,
+        selectedPriceId: null,
+        showSummary: false,
+        showComparison: false,
+
+        track(eventName, payload = {}) {
+            const detail = {
+                event: eventName,
+                source: 'subscription.index',
+                viewport: window.innerWidth < 1024 ? 'mobile' : 'desktop',
+                ...payload,
+            };
+
+            window.dispatchEvent(new CustomEvent('subscription-analytics', { detail }));
+
+            if (Array.isArray(window.dataLayer)) {
+                window.dataLayer.push(detail);
+            }
+        },
+
+        get selectedPlan() {
+            return this.planCards.find((plan) => plan.id === this.selectedPlanId) || null;
+        },
+
+        get selectedPrice() {
+            if (!this.selectedPlan) return null;
+            return (this.selectedPlan.prices || []).find((price) => price.id === this.selectedPriceId) || null;
+        },
+
+        init() {
+            const initial = this.planCards.find((plan) => plan.is_recommended && plan.is_eligible)
+                || this.planCards.find((plan) => plan.is_eligible && !plan.is_current)
+                || null;
+
+            this.track('subscription_plans_viewed', { plan_count: this.planCards.length });
+
+            if (!initial) return;
+
+            this.selectedPlanId = initial.id;
+            const defaultPrice = (initial.prices || []).find((price) => price.is_default) || initial.prices?.[0] || null;
+            this.selectedPriceId = defaultPrice ? defaultPrice.id : null;
+        },
+
+        setSelection(planId, priceId) {
+            const plan = this.planCards.find((item) => item.id === planId);
+            if (!plan || !plan.is_eligible) return;
+            this.selectedPlanId = planId;
+            this.selectedPriceId = priceId;
+            this.track('subscription_plan_selected', {
+                plan_id: planId,
+                price_id: priceId,
+            });
+        },
+
+        toggleComparison() {
+            this.showComparison = !this.showComparison;
+            if (this.showComparison) {
+                this.track('subscription_compare_expanded');
+            }
+        },
+
+        openSummary(planId) {
+            const plan = this.planCards.find((item) => item.id === planId);
+            if (!plan || !plan.is_eligible) return;
+
+            this.selectedPlanId = planId;
+            if (!this.selectedPriceId || !plan.prices.find((price) => price.id === this.selectedPriceId)) {
+                const defaultPrice = plan.prices.find((price) => price.is_default) || plan.prices[0] || null;
+                this.selectedPriceId = defaultPrice ? defaultPrice.id : null;
+            }
+
+            this.showSummary = true;
+            this.track('subscription_continue_clicked', {
+                plan_id: planId,
+                price_id: this.selectedPriceId,
+            });
+        },
+
+        closeSummary() {
+            this.showSummary = false;
+        }
+    };
+}
+</script>
+@endpush
+
+

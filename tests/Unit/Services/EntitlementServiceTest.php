@@ -90,6 +90,46 @@ class EntitlementServiceTest extends TestCase
         $this->assertNull($service->getFeatureQuota($user, SubscriptionFeatureKeys::UNLIMITED_SHIELDS));
     }
 
+    public function test_phase1_boolean_entitlement_keys_are_readable_from_plan_entitlements(): void
+    {
+        [$user, $plan] = $this->createActiveSubscription();
+
+        $unlimitedShields = FeatureCatalog::create([
+            'key' => SubscriptionFeatureKeys::UNLIMITED_SHIELDS,
+            'name' => 'Unlimited Shields',
+            'value_type' => 'boolean',
+            'category' => 'core',
+            'is_active' => true,
+        ]);
+
+        $certificateDownload = FeatureCatalog::create([
+            'key' => SubscriptionFeatureKeys::CERTIFICATE_PDF_DOWNLOAD_ACCESS,
+            'name' => 'Certificate PDF Download Access',
+            'value_type' => 'boolean',
+            'category' => 'core',
+            'is_active' => true,
+        ]);
+
+        PlanFeatureEntitlement::create([
+            'plan_id' => $plan->id,
+            'feature_id' => $unlimitedShields->id,
+            'is_enabled' => true,
+            'is_unlimited' => true,
+        ]);
+
+        PlanFeatureEntitlement::create([
+            'plan_id' => $plan->id,
+            'feature_id' => $certificateDownload->id,
+            'is_enabled' => true,
+            'is_unlimited' => false,
+        ]);
+
+        $service = app(EntitlementService::class);
+
+        $this->assertTrue($service->canAccessFeature($user, SubscriptionFeatureKeys::UNLIMITED_SHIELDS));
+        $this->assertTrue($service->canAccessFeature($user, SubscriptionFeatureKeys::CERTIFICATE_PDF_DOWNLOAD_ACCESS));
+    }
+
     public function test_missing_feature_falls_back_to_denied_and_null_quota(): void
     {
         [$user] = $this->createActiveSubscription();

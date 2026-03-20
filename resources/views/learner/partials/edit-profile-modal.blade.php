@@ -7,7 +7,7 @@
     x-data="editProfileModal()"
     x-show="$store.modals.editProfile"
     x-cloak
-    class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-4 py-8"
+    class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-6"
     @keydown.escape.window="typeof $store.modals.closeEditProfile === 'function' ? $store.modals.closeEditProfile() : ($store.modals.editProfile = false)"
 >
     {{-- Backdrop --}}
@@ -31,7 +31,7 @@
         x-transition:leave="transition duration-150"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        data-bio="{{ $learnerProfile->about ?? '' }}"
+        data-bio="{{ $learnerProfile->bio ?? '' }}"
         data-username="{{ $learnerProfile->username ?? '' }}"
         x-init="init()"
     >
@@ -187,11 +187,11 @@
                     x-model="bio"
                     @input="bioLength = bio.length"
                     rows="3"
-                    maxlength="255"
+                    maxlength="500"
                     placeholder="Tell us a bit about yourself..."
                     class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition resize-none"
                 ></textarea>
-                <p x-show="(profileErrors.about ?? []).length" x-cloak class="text-xs text-red-500 mt-1" x-text="(profileErrors.about ?? [])[0]"></p>
+                <p x-show="(profileErrors.bio ?? []).length" x-cloak class="text-xs text-red-500 mt-1" x-text="(profileErrors.bio ?? [])[0]"></p>
             </div>
 
             {{-- Save button --}}
@@ -525,6 +525,28 @@ function editProfileModal() {
             this.bio      = this.$el.dataset.bio || '';
             this.username = this.$el.dataset.username || '';
             this.bioLength = this.bio.length;
+
+            const pendingToast = sessionStorage.getItem('learner_post_reload_toast');
+            if (pendingToast) {
+                sessionStorage.removeItem('learner_post_reload_toast');
+                if (window.toast?.success) {
+                    window.toast.success(pendingToast);
+                }
+            }
+        },
+
+        closeModalAndRefresh(successMessage = 'Profile updated successfully!') {
+            sessionStorage.setItem('learner_post_reload_toast', successMessage);
+
+            if (typeof this.$store.modals.closeEditProfile === 'function') {
+                this.$store.modals.closeEditProfile();
+            } else {
+                this.$store.modals.editProfile = false;
+            }
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 250);
         },
 
         selectAvatar() {
@@ -557,7 +579,7 @@ function editProfileModal() {
             const fd = new FormData();
             fd.append('_method',  'PUT');
             fd.append('username', this.username);
-            fd.append('about',    this.bio);
+            fd.append('bio',      this.bio);
             if (this.avatarFile) fd.append('avatar', this.avatarFile);
             fd.append('_token', document.querySelector('meta[name=csrf-token]').content);
 
@@ -570,9 +592,10 @@ function editProfileModal() {
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    this.profileSuccess = data.message;
                     this.avatarFile     = null;
                     if (data.data?.avatar_url) this.avatarPreview = data.data.avatar_url;
+                    this.profileErrors = {};
+                    this.closeModalAndRefresh(data.message || 'Profile updated successfully!');
                 } else {
                     this.profileErrors = data.errors ?? {};
                 }
@@ -605,10 +628,11 @@ function editProfileModal() {
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    this.passwordSuccess  = data.message;
                     this.currentPassword  = '';
                     this.newPassword      = '';
                     this.confirmPassword  = '';
+                    this.passwordErrors = {};
+                    this.closeModalAndRefresh(data.message || 'Password updated successfully!');
                 } else {
                     this.passwordErrors = data.errors ?? {};
                 }

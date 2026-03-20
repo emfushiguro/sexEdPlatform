@@ -116,7 +116,7 @@ class TestSubscriptionCommand extends Command
             $subscription->payments()->create([
                 'user_id' => $user->id,
                 'amount' => 1.00,
-                'method' => 'test_command',
+                'method' => 'card',
                 'status' => PaymentStatus::Completed,
                 'transaction_id' => 'TEST-' . strtoupper(uniqid()),
                 'payment_details' => [

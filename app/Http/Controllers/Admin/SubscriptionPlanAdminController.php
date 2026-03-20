@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreSubscriptionPlanRequest;
+use App\Http\Requests\Admin\UpdateSubscriptionPlanRequest;
 use App\Models\SubscriptionPlan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -44,19 +46,9 @@ class SubscriptionPlanAdminController extends Controller
         return view('admin.subscription-plans.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreSubscriptionPlanRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'trial_days' => 'nullable|integer|min:0|max:365',
-            'max_modules' => 'nullable|integer|min:0',
-            'feature_keys' => 'array',
-            'feature_keys.*' => 'nullable|string|max:255',
-            'is_active' => 'boolean',
-            'sort_order' => 'nullable|integer|min:0',
-        ]);
+        $validated = $request->validated();
 
         $validated['slug'] = Str::slug($validated['name']);
         $originalSlug = $validated['slug'];
@@ -102,19 +94,9 @@ class SubscriptionPlanAdminController extends Controller
         return view('admin.subscription-plans.edit', compact('subscriptionPlan'));
     }
 
-    public function update(Request $request, SubscriptionPlan $subscriptionPlan)
+    public function update(UpdateSubscriptionPlanRequest $request, SubscriptionPlan $subscriptionPlan)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'trial_days' => 'nullable|integer|min:0|max:365',
-            'max_modules' => 'nullable|integer|min:0',
-            'feature_keys' => 'array',
-            'feature_keys.*' => 'nullable|string|max:255',
-            'is_active' => 'boolean',
-            'sort_order' => 'nullable|integer|min:0',
-        ]);
+        $validated = $request->validated();
 
         if ($subscriptionPlan->name !== $validated['name']) {
             $newSlug = Str::slug($validated['name']);

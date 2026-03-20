@@ -2,8 +2,8 @@
 
 @section('content')
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
+            <div class="rounded-2xl bg-white shadow-sm border border-gray-100">
+                <div class="p-6 space-y-6">
                     <!-- Display Validation Errors -->
                     @if($errors->any())
                         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -37,7 +37,7 @@
                                     id="insertBlankBtn"
                                     onclick="insertBlank()"
                                     style="display: none;"
-                                    class="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded transition">
+                                    class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition">
                                     Insert Blank (_____)
                                 </button>
                             </div>
@@ -47,10 +47,10 @@
                                 rows="3" 
                                 required
                                 oninput="updateBlankCount()"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                class="w-full rounded-xl border-gray-200 shadow-sm focus:border-purple-400 focus:ring-purple-300"
                                 placeholder="Enter your question here...">{{ old('question_text', $question->question_text) }}</textarea>
                             <div id="blankCountHint" style="display: none;" class="mt-1 text-xs">
-                                <span class="text-blue-600 font-medium">Blanks detected: <span id="blankCount">0</span></span>
+                                <span class="text-purple-700 font-medium">Blanks detected: <span id="blankCount">0</span></span>
                                 <span class="text-gray-500 ml-3">Use <code class="px-1 bg-gray-100 rounded">_____</code> (5 underscores) to create blanks</span>
                             </div>
                             @error('question_text')
@@ -68,7 +68,7 @@
                                 name="question_type" 
                                 required
                                 onchange="updateQuestionType()"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                class="w-full rounded-xl border-gray-200 shadow-sm focus:border-purple-400 focus:ring-purple-300">
                                 <option value="">Select question type...</option>
                                 <option value="multiple_choice" {{ old('question_type', $question->question_type) === 'multiple_choice' ? 'selected' : '' }}>
                                     Multiple Choice (Single Answer)
@@ -106,7 +106,7 @@
                                 min="1" 
                                 value="{{ old('points', $question->points) }}"
                                 required
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                class="w-full rounded-xl border-gray-200 shadow-sm focus:border-purple-400 focus:ring-purple-300">
                             @error('points')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -121,7 +121,7 @@
                                 <button 
                                     type="button" 
                                     onclick="addAcceptableAnswer()" 
-                                    class="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 text-white rounded">
+                                    class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition">
                                     + Add Answer
                                 </button>
                             </div>
@@ -134,13 +134,13 @@
                             @enderror
 
                             <!-- Case Sensitive Toggle -->
-                            <div class="mt-4 flex items-start gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div class="mt-4 flex items-start gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
                                 <input 
                                     type="checkbox" 
                                     id="case_sensitive" 
                                     name="case_sensitive" 
                                     value="1"
-                                    class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    class="mt-1 w-4 h-4 text-purple-700 border-gray-200 rounded focus:ring-purple-300">
                                 <div>
                                     <label for="case_sensitive" class="text-sm font-medium text-gray-700">
                                         Case Sensitive
@@ -161,7 +161,7 @@
                                 id="word_bank" 
                                 name="word_bank" 
                                 placeholder="E.g., hydrogen, oxygen, nitrogen, carbon"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                class="w-full rounded-xl border-gray-200 shadow-sm focus:border-purple-400 focus:ring-purple-300">
                             <p class="mt-1 text-xs text-gray-600">Use _____ in question text for each blank. Add the correct words below in the exact order they should appear.</p>
                             @error('word_bank')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -176,7 +176,7 @@
                                     <button 
                                         type="button" 
                                         onclick="addWordBankAnswer()" 
-                                        class="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 text-white rounded">
+                                        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition">
                                         + Add Answer
                                     </button>
                                 </div>
@@ -201,7 +201,7 @@
                                 id="image" 
                                 name="image" 
                                 accept="image/*"
-                                class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 transition">
                             @error('image')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
@@ -217,7 +217,7 @@
                                     type="button" 
                                     id="addOptionBtn"
                                     onclick="addOption()" 
-                                    class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
+                                    class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition">
                                     + Add Option
                                 </button>
                             </div>
@@ -233,11 +233,12 @@
                         <!-- Submit Button -->
                         <div class="flex gap-4">
                             <a href="{{ route('instructor.quizzes.show', $quiz) }}" 
-                               class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition">
+                               class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-xl transition">
                                 Cancel
                             </a>
-                            <button type="submit" 
-                                    class="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
+                                <button type="submit"
+                                    class="flex-1 flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-white rounded-xl transition hover:opacity-90 active:scale-[0.98]"
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                                 Update Question
                             </button>
                         </div>
@@ -332,12 +333,12 @@
         function addOption(text = '', readonly = false) {
             const optionsList = document.getElementById('optionsList');
             const div = document.createElement('div');
-            div.className = 'flex items-center gap-3';
+            div.className = 'flex items-center gap-3 p-3 rounded-xl border bg-gray-50/60 border-gray-100';
             div.innerHTML = `
                 <div class="flex items-center">
                     ${questionType === 'multiple_select' 
-                        ? `<input type="checkbox" name="correct_options[]" value="${optionIndex}" class="w-5 h-5 text-blue-600 rounded">`
-                        : `<input type="radio" name="correct_options[]" value="${optionIndex}" class="w-5 h-5 text-blue-600" required>`
+                        ? `<input type="checkbox" name="correct_options[]" value="${optionIndex}" class="w-5 h-5 text-purple-700 rounded">`
+                        : `<input type="radio" name="correct_options[]" value="${optionIndex}" class="w-5 h-5 text-purple-700" required>`
                     }
                 </div>
                 <input 
@@ -347,7 +348,7 @@
                     ${readonly ? 'readonly' : ''}
                     placeholder="Option ${optionIndex + 1}"
                     required
-                    class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${readonly ? 'bg-gray-50' : ''}">
+                    class="flex-1 rounded-xl border-gray-200 shadow-sm focus:border-purple-400 focus:ring-purple-300 ${readonly ? 'bg-gray-50' : ''}">
                 ${readonly ? '' : `
                     <button 
                         type="button" 
@@ -373,7 +374,7 @@
                     value="${text}"
                     placeholder="Acceptable answer ${currentCount + 1}"
                     required
-                    class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    class="flex-1 rounded-xl border-gray-200 shadow-sm focus:border-purple-400 focus:ring-purple-300">
                 <button 
                     type="button" 
                     onclick="this.parentElement.remove()" 
@@ -397,7 +398,7 @@
                     value="${text}"
                     placeholder="Correct word for blank ${currentCount + 1}"
                     required
-                    class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    class="flex-1 rounded-xl border-gray-200 shadow-sm focus:border-purple-400 focus:ring-purple-300">
                 <button 
                     type="button" 
                     onclick="this.parentElement.remove()" 
@@ -487,3 +488,4 @@
         @endif
     </script>
 @endsection
+

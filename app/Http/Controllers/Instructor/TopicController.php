@@ -485,7 +485,7 @@ class TopicController extends Controller
     public function uploadImage(Request $request)
     {
         $request->validate([
-            'file' => 'required|image|max:2048'
+            'file' => 'required|file|mimes:jpeg,jpg,png,gif,webp|max:5120'
         ]);
 
         if ($request->hasFile('file')) {

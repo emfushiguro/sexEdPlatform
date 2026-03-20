@@ -9,6 +9,14 @@
         billingMode: 'monthly',
         startDate: '',
         endDate: '',
+        openCreatePlanModal() {
+            this.showCreatePlanModal = true;
+            window.adminSidebarLock?.lock();
+        },
+        closeCreatePlanModal() {
+            this.showCreatePlanModal = false;
+            window.adminSidebarLock?.unlock();
+        },
         previewRangeText() {
             const format = (dateValue) => new Date(dateValue).toLocaleDateString('en-PH', { month: 'short', day: '2-digit', year: 'numeric' });
             if (this.billingMode === 'custom') {
@@ -28,14 +36,15 @@
             end.setDate(end.getDate() - 1);
             return `${format(start)} to ${format(end)}`;
         }
-    }">
+    }"
+    @keydown.escape.window="if (showCreatePlanModal) { closeCreatePlanModal(); }">
     {{-- Page Header --}}
     <div class="flex items-center justify-between mb-6">
         <div>
         </div>
         <button type="button"
            data-testid="open-create-plan-modal"
-           @click="showCreatePlanModal = true"
+              @click="openCreatePlanModal()"
            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-theme-xs">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -45,15 +54,19 @@
     </div>
 
     {{-- Create Plan Modal --}}
-    <div x-show="showCreatePlanModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/40" @click="showCreatePlanModal = false"></div>
-        <div class="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+    <div x-show="showCreatePlanModal"
+         x-cloak
+         data-testid="create-plan-fullscreen-modal"
+         data-sidebar-lock-hook="create-plan-modal"
+         class="fixed inset-0 z-[100000]">
+        <div class="absolute inset-0 bg-black/50" @click="closeCreatePlanModal()"></div>
+        <div class="relative h-full w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl overflow-y-auto">
+            <div class="sticky top-0 flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Create Subscription Plan</h2>
-                <button type="button" @click="showCreatePlanModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">&times;</button>
+                <button type="button" @click="closeCreatePlanModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">&times;</button>
             </div>
 
-            <form method="POST" action="{{ route('admin.subscribers.store-plan') }}" class="p-6 space-y-5">
+            <form method="POST" action="{{ route('admin.subscribers.store-plan') }}" class="mx-auto w-full max-w-5xl p-6 space-y-5">
                 @csrf
                 <div>
                     <label for="modal-plan-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan Name</label>
@@ -135,7 +148,7 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Learning Access</p>
                         <div class="grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-200">
-                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[certificate_pdf_download]" value="1" class="rounded border-gray-300"> Certificate PDF Download</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[certificate_pdf_download_access]" value="1" class="rounded border-gray-300"> Certificate PDF Download</label>
                             <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[premium_module_access]" value="1" class="rounded border-gray-300"> Premium Module Access</label>
                             <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[lesson_attachment_downloads]" value="1" class="rounded border-gray-300"> Lesson Attachment Downloads</label>
                             <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[advanced_topic_bundles]" value="1" class="rounded border-gray-300"> Advanced Topic Bundles</label>
@@ -145,7 +158,7 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Quiz and Practice</p>
                         <div class="grid grid-cols-1 gap-3 text-sm text-gray-700 dark:text-gray-200">
-                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[unlimited_quiz_retaking]" value="1" class="rounded border-gray-300"> Unlimited Shields / Unlimited Quiz Retaking</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[unlimited_shields]" value="1" class="rounded border-gray-300"> Unlimited Shields / Unlimited Quiz Retaking</label>
                             <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
                                 <label class="inline-flex items-center gap-2"><input type="checkbox" name="entitlement_enabled[monthly_streak_savers]" value="1" class="rounded border-gray-300"> Monthly Streak Savers</label>
                                 <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"><input type="checkbox" name="entitlement_unlimited[monthly_streak_savers]" value="1" class="rounded border-gray-300"> Unlimited</label>
@@ -160,7 +173,7 @@
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-2">
-                    <button type="button" @click="showCreatePlanModal = false"
+                    <button type="button" @click="closeCreatePlanModal()"
                             class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                         Cancel
                     </button>
@@ -315,7 +328,7 @@
                         <tr>
                             <td colspan="6" class="px-5 py-12 text-center">
                                 <p class="text-sm text-gray-400 dark:text-gray-500">No subscription plans found.</p>
-                                <button type="button" @click="showCreatePlanModal = true" class="mt-2 inline-block text-sm text-brand-500 hover:text-brand-600">Create your first plan →</button>
+                                <button type="button" @click="openCreatePlanModal()" class="mt-2 inline-block text-sm text-brand-500 hover:text-brand-600">Create your first plan →</button>
                             </td>
                         </tr>
                     @endforelse

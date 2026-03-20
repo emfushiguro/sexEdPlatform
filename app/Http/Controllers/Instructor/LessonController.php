@@ -65,6 +65,11 @@ class LessonController extends Controller
     {
         $lesson->load(['module', 'topics' => fn($q) => $q->orderBy('order'), 'quizzes.questions']);
 
+        $modules = Module::where('created_by', auth()->id())
+            ->with(['lessons:id,module_id,title'])
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
         $enrolledCount = $lesson->module
             ? $lesson->module->enrollments()->where('status', 'approved')->count()
             : 0;
@@ -77,7 +82,7 @@ class LessonController extends Controller
             ? round(($completedCount / $enrolledCount) * 100)
             : 0;
 
-        return view('instructor.lessons.show', compact('lesson', 'enrolledCount', 'completedCount', 'completionRate'));
+        return view('instructor.lessons.show', compact('lesson', 'modules', 'enrolledCount', 'completedCount', 'completionRate'));
     }
 
     public function edit(Lesson $lesson)

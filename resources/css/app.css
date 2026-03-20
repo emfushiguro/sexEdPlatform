@@ -10,6 +10,18 @@
 @tailwind components;
 @tailwind utilities;
 
+[x-cloak] {
+    display: none !important;
+}
+
+body.admin-sidebar-locked aside {
+    pointer-events: none;
+}
+
+body.admin-sidebar-locked {
+    overflow: hidden;
+}
+
 /* Global custom styles */
 @layer base {
     /* Smooth scrolling */

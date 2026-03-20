@@ -100,7 +100,9 @@
         <div class="flex-1 overflow-y-auto">
             <form method="POST" :action="formAction" id="lessonSlideoutForm" class="p-6 space-y-5">
                 @csrf
-                <input x-show="isEdit" type="hidden" name="_method" value="PUT">
+                <template x-if="isEdit">
+                    <input type="hidden" name="_method" value="PUT">
+                </template>
 
                 {{-- Module Selector --}}
                 <div>

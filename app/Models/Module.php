@@ -107,8 +107,15 @@ class Module extends Model
      */
     public function scopeForAge($query, int $age)
     {
-        return $query->where('min_age', '<=', $age)
-                     ->where('max_age', '>=', $age);
+        return $query->where(function ($q) use ($age) {
+            $q->where(function ($normal) use ($age) {
+                $normal->where('min_age', '<=', $age)
+                    ->where('max_age', '>=', $age);
+            })->orWhere(function ($swapped) use ($age) {
+                $swapped->where('max_age', '<=', $age)
+                    ->where('min_age', '>=', $age);
+            });
+        });
     }
 
     /**
@@ -142,7 +149,14 @@ class Module extends Model
      */
     public function isAppropriateForAge(int $age): bool
     {
-        return $age >= $this->min_age && $age <= $this->max_age;
+        if ($this->min_age === null || $this->max_age === null) {
+            return false;
+        }
+
+        $minAge = min((int) $this->min_age, (int) $this->max_age);
+        $maxAge = max((int) $this->min_age, (int) $this->max_age);
+
+        return $age >= $minAge && $age <= $maxAge;
     }
 
     /**

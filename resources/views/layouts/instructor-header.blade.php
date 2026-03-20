@@ -17,14 +17,14 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
 @endphp
 
 <header
-    class="sticky top-0 z-[9998] bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 h-16 flex items-center px-4 md:px-6 gap-4"
+    class="sticky top-0 z-[9998] bg-white border-b border-gray-200 h-16 flex items-center px-4 md:px-6 gap-4"
     x-data="instructorSearch()"
 >
 
     {{-- ── Sidebar toggle (desktop) ── --}}
     <button
         @click="$store.instructorSidebar.toggleExpanded()"
-        class="hidden xl:flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        class="hidden xl:flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
         title="Toggle sidebar"
     >
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -35,7 +35,7 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
     {{-- ── Sidebar toggle (mobile) ── --}}
     <button
         @click="$store.instructorSidebar.toggleMobileOpen()"
-        class="flex xl:hidden items-center justify-center w-9 h-9 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        class="flex xl:hidden items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
         title="Open menu"
     >
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -59,7 +59,7 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
                 @focus="open = true"
                 @click.away="open = false"
                 placeholder="Search modules, lessons, learners..."
-                class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all"
+                class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all"
                 autocomplete="off"
             >
         </div>
@@ -69,7 +69,7 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
             x-show="open && (results.modules.length || results.lessons.length || results.learners.length)"
             x-cloak
             @click.away="open = false"
-            class="absolute top-full mt-1 left-0 right-0 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 z-50 overflow-hidden"
+            class="absolute top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden"
         >
             <template x-if="results.modules.length">
                 <div class="p-2">
@@ -120,27 +120,11 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
 
     <div class="flex items-center gap-3 ml-auto">
 
-        {{-- ── Dark mode toggle ── --}}
-        <button
-            @click="$store.theme.toggle()"
-            class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            title="Toggle dark mode"
-        >
-            {{-- Sun icon (shown in dark mode) --}}
-            <svg x-show="$store.theme.mode === 'dark'" x-cloak class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M18.364 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-            </svg>
-            {{-- Moon icon (shown in light mode) --}}
-            <svg x-show="$store.theme.mode !== 'dark'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
-        </button>
-
         {{-- ── Notification bell ── --}}
         <div class="relative" x-data="{ open: false }">
             <button
                 @click="open = !open"
-                class="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                class="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
                 title="Notifications"
             >
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -164,7 +148,7 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
                 x-transition:leave="transition ease-in duration-75"
                 x-transition:leave-start="opacity-100 scale-100"
                 x-transition:leave-end="opacity-0 scale-95"
-                class="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 z-50 overflow-hidden"
+                class="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden"
             >
                 <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-gray-900">Notification Center</h3>
@@ -261,15 +245,15 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
                 x-transition:leave="transition ease-in duration-75"
                 x-transition:leave-start="opacity-100 scale-100"
                 x-transition:leave-end="opacity-0 scale-95"
-                class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 z-50 overflow-hidden py-1"
+                class="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden py-1"
             >
-                <div class="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
-                    <p class="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{{ Auth::user()->first_name ?? Auth::user()->name }}</p>
-                    <p class="text-[11px] text-gray-400 dark:text-gray-500 truncate">Instructor</p>
+                <div class="px-4 py-2 border-b border-gray-100">
+                    <p class="text-xs font-semibold text-gray-900 truncate">{{ Auth::user()->first_name ?? Auth::user()->name }}</p>
+                    <p class="text-[11px] text-gray-400 truncate">Instructor</p>
                 </div>
                 <form method="POST" action="{{ route('instructor.logout') }}">
                     @csrf
-                    <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2">
+                    <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>

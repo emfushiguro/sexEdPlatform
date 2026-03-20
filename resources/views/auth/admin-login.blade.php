@@ -7,21 +7,13 @@
             <div class="mb-6">
                 <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-36 w-auto mx-auto mb-3 drop-shadow-lg">
             </div>
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 border border-white/20 mb-4">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-            </div>
-            <p class="text-xs uppercase tracking-[0.28em] text-purple-100/80">Admin Authentication</p>
-            <h2 class="mt-3 text-4xl font-extrabold tracking-tight">Control Room Login</h2>
-            <p class="mt-3 max-w-sm text-sm text-purple-100/85">
-                Operational access for billing, users, and platform health. Every login is tracked and audited.
+            <h2 class="mt-3 text-4xl font-extrabold tracking-tight">Admin Authentication</h2>
             </p>
         </div>
     </x-slot>
 
     <div class="mb-8">
-        <h1 class="text-4xl font-bold text-purple-900">Administrator Command Center</h1>
+        <h1 class="text-4xl font-bold text-purple-900">Administrator Login</h1>
         <p class="mt-2 text-sm text-gray-600">Secure access for platform operators</p>
     </div>
 
@@ -29,7 +21,7 @@
         @csrf
 
         <div>
-            <label for="email" class="block text-sm font-semibold text-gray-700 mb-1">Admin Email</label>
+            <label for="email" class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
             <input
                 id="email"
                 type="email"
@@ -45,7 +37,7 @@
         </div>
 
         <div>
-            <label for="password" class="block text-sm font-semibold text-gray-700 mb-1">Admin Password</label>
+            <label for="password" class="block text-sm font-semibold text-gray-700 mb-1">Password</label>
             <div class="relative">
                 <input
                     id="password"
@@ -86,9 +78,5 @@
             </svg>
             <span x-text="loading ? 'Checking credentials...' : 'Enter Secure Panel'">Enter Secure Panel</span>
         </button>
-
-        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Authorized personnel only. Suspicious sign-ins are rate-limited and logged.
-        </div>
     </form>
 </x-auth-split-layout>

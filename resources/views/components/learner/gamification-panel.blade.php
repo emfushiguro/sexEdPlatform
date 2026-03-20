@@ -19,6 +19,9 @@
 ])
 
 @php
+    use App\Services\EntitlementService;
+    use App\Support\SubscriptionFeatureKeys;
+
     $displayName = $learnerProfile?->username ?? $user->name;
     $avatarUrl   = $learnerProfile?->avatar_path
         ? asset('storage/' . $learnerProfile->avatar_path)
@@ -27,6 +30,7 @@
     $streak      = $gamification?->streak_count ?? 0;
     $totalPoints = $gamification?->total_points ?? 0;
     $isPremium   = $user->isPremium();
+    $hasUnlimitedShields = app(EntitlementService::class)->canAccessFeature($user, SubscriptionFeatureKeys::UNLIMITED_SHIELDS);
 @endphp
 
 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
@@ -147,10 +151,15 @@
             <span class="text-xs font-medium text-purple-700 dark:text-purple-300">Shields Today</span>
         </div>
         <div class="flex items-center gap-1" @click="$dispatch('open-shields-modal')" style="cursor:pointer">
-            @for($i = 0; $i < 3; $i++)
-                <x-icons.shield :state="$i < $shieldsRemaining ? 'full' : 'empty'" :size="20" />
-            @endfor
-            <span class="text-xs text-purple-600 dark:text-purple-400 ml-1">{{ $shieldsRemaining }}/3</span>
+            @if($hasUnlimitedShields)
+                <span class="text-sm font-bold text-purple-700 dark:text-purple-300">∞</span>
+                <span class="text-xs text-purple-600 dark:text-purple-400 ml-1">Unli Shields</span>
+            @else
+                @for($i = 0; $i < 3; $i++)
+                    <x-icons.shield :state="$i < $shieldsRemaining ? 'full' : 'empty'" :size="20" />
+                @endfor
+                <span class="text-xs text-purple-600 dark:text-purple-400 ml-1">{{ $shieldsRemaining }}/3</span>
+            @endif
         </div>
     </div>
 

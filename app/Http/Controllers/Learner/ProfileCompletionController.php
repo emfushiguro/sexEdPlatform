@@ -138,9 +138,14 @@ class ProfileCompletionController extends Controller
         $validated = $request->validate([
             'username' => 'nullable|string|min:3|max:30|unique:learner_profiles,username,' . $learnerProfile->id,
             'school' => 'nullable|string|max:255',
-            'about' => 'nullable|string|max:500',
+            'bio' => 'nullable|string|max:500',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // 2MB max
         ]);
+
+        // Backward compatibility for clients still sending "about"
+        if ($request->filled('about') && !isset($validated['bio'])) {
+            $validated['bio'] = $request->input('about');
+        }
 
         // Handle username change with premium/free logic
         if ($request->filled('username') && $request->username !== $learnerProfile->username) {
@@ -190,7 +195,7 @@ class ProfileCompletionController extends Controller
                 'message' => 'Profile updated successfully!',
                 'data' => [
                     'username'   => $fresh->username,
-                    'about'      => $fresh->about,
+                    'bio'        => $fresh->bio,
                     'avatar_url' => $fresh->avatar_path
                         ? asset('storage/' . $fresh->avatar_path) : null,
                 ],

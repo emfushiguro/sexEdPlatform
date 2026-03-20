@@ -7,6 +7,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\LessonTopicProgress;
+use App\Models\QuizAttempt;
 use App\Models\UserProgress;
 use App\Services\GamificationService;
 use Illuminate\Http\Request;
@@ -92,6 +93,47 @@ class LessonController extends Controller
             ->where('completed', true)
             ->pluck('lesson_id')
             ->toArray();
+
+        $moduleCertificate = $user->certificates()
+            ->where('module_id', $module->id)
+            ->first();
+
+        $allLessonsCompleted = $allLessons->count() > 0 && count($completedLessonIds) === $allLessons->count();
+
+        $topicIds = $allLessons->flatMap(fn ($moduleLesson) => $moduleLesson->topics->pluck('id'))->unique();
+        $completedModuleTopicIds = LessonTopicProgress::where('user_id', $user->id)
+            ->whereIn('lesson_topic_id', $topicIds)
+            ->where('completed', true)
+            ->pluck('lesson_topic_id')
+            ->unique();
+        $allTopicsCompleted = $topicIds->isEmpty() || $completedModuleTopicIds->count() === $topicIds->count();
+
+        $lessonQuizIds = $allLessons
+            ->pluck('quiz')
+            ->filter()
+            ->pluck('id')
+            ->unique();
+        $passedLessonQuizIds = QuizAttempt::where('user_id', $user->id)
+            ->whereIn('quiz_id', $lessonQuizIds)
+            ->where('passed', true)
+            ->pluck('quiz_id')
+            ->unique();
+        $allLessonQuizzesPassed = $lessonQuizIds->isEmpty() || $passedLessonQuizIds->count() === $lessonQuizIds->count();
+
+        $finalQuizPassed = true;
+        if ($module->final_quiz_id) {
+            $bestFinalAttempt = QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_id', $module->final_quiz_id)
+                ->orderByDesc('score')
+                ->first();
+
+            $finalQuizPassed = $bestFinalAttempt && $bestFinalAttempt->score >= $module->certificate_pass_score;
+        }
+
+        $certificateEligible = $allLessonsCompleted
+            && $allTopicsCompleted
+            && $allLessonQuizzesPassed
+            && $finalQuizPassed;
 
         // Get all completed topic IDs across the entire module (for sidebar display)
         $allModuleTopicIds = $allLessons->flatMap(fn($l) => $l->topics->pluck('id'));
@@ -216,6 +258,9 @@ class LessonController extends Controller
             'allLessons',
             'isLessonCompleted',
             'completedLessonIds',
+            'moduleCertificate',
+            'allLessonsCompleted',
+            'certificateEligible',
             'allCompletedTopicIds',
             'lessonQuiz',
             'quizAttempt',

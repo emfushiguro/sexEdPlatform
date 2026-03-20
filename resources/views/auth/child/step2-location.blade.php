@@ -36,14 +36,36 @@
     <form method="POST" action="{{ route('parent.create-child.location.store') }}"
           x-data="{
               cityCode: '{{ old('city_code', $preFilledCity ?? '') }}',
+              selectedBarangayCode: '{{ old('barangay_code', $preFilledBarangay ?? '') }}',
               barangays: [],
               loading: false,
               async loadBarangays(code) {
-                  if (!code) { this.barangays = []; return; }
+                  if (!code) {
+                      this.barangays = [];
+                      this.selectedBarangayCode = '';
+                      return;
+                  }
+
                   this.loading = true;
                   try {
-                      const res = await fetch('/api/barangays/' + code);
-                      this.barangays = await res.json();
+                      const res = await fetch('/api/barangays/' + code, {
+                          headers: { 'Accept': 'application/json' },
+                      });
+
+                      if (!res.ok) {
+                          throw new Error('Failed to load barangays');
+                      }
+
+                      const data = await res.json();
+                      this.barangays = Array.isArray(data) ? data : [];
+
+                      if (this.selectedBarangayCode && !this.barangays.some((b) => b.code === this.selectedBarangayCode)) {
+                          this.selectedBarangayCode = '';
+                      }
+                  } catch (error) {
+                      this.barangays = [];
+                      this.selectedBarangayCode = '';
+                      console.error(error);
                   } finally {
                       this.loading = false;
                   }
@@ -94,15 +116,12 @@
                 Barangay <span class="text-red-500">*</span>
             </label>
             <select id="barangay_code" name="barangay_code" required
+                    x-model="selectedBarangayCode"
                     class="{{ $locSelectClass }}"
                     :disabled="!cityCode || loading">
-                <option value="">
-                    <span x-show="!cityCode">Select a city first</span>
-                    <span x-show="cityCode && loading">Loading…</span>
-                    <span x-show="cityCode && !loading">Select barangay</span>
-                </option>
+                <option value="" x-text="!cityCode ? 'Select a city first' : (loading ? 'Loading...' : 'Select barangay')"></option>
                 <template x-for="b in barangays" :key="b.code">
-                    <option :value="b.code" :selected="b.code === '{{ old('barangay_code', $preFilledBarangay ?? '') }}'" x-text="b.name"></option>
+                    <option :value="b.code" x-text="b.name"></option>
                 </template>
             </select>
             @error('barangay_code')

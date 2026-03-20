@@ -23,13 +23,56 @@
     <div class="rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
          @click.stop
          x-data="{
-             thumbnailPreview: null,
+             mode: 'create',
+             editModuleId: null,
+             title: '',
+             description: '',
+             ageBracket: '',
+             enrollmentMode: 'auto',
              isPublished: true,
+             thumbnailPreview: null,
+             actionBase: '{{ url('instructor/modules') }}',
+             syncFromStore() {
+                 const draft = $store.modals.moduleModalDraft;
+                 if (!draft) {
+                     this.mode = 'create';
+                     this.editModuleId = null;
+                     this.title = '';
+                     this.description = '';
+                     this.ageBracket = '';
+                     this.enrollmentMode = 'auto';
+                     this.isPublished = true;
+                     this.thumbnailPreview = null;
+                     return;
+                 }
+
+                 this.mode = 'edit';
+                 this.editModuleId = draft.id;
+                 this.title = draft.title || '';
+                 this.description = draft.description || '';
+                 this.ageBracket = draft.age_bracket || '';
+                 this.enrollmentMode = draft.enrollment_mode || 'auto';
+                 this.isPublished = !!draft.is_published;
+                 this.thumbnailPreview = draft.thumbnail_url || null;
+             },
+             get isEdit() {
+                 return this.mode === 'edit' && this.editModuleId !== null;
+             },
+             get formAction() {
+                 return this.isEdit ? `${this.actionBase}/${this.editModuleId}` : '{{ route('instructor.modules.store') }}';
+             },
              previewImage(event) {
                  const file = event.target.files[0];
                  if (file) {
                      this.thumbnailPreview = URL.createObjectURL(file);
                  }
+             },
+             init() {
+                 this.syncFromStore();
+                 this.$watch('$store.modals.moduleModalDraft', () => { this.syncFromStore(); });
+                 this.$watch('$store.modals.moduleModal', open => {
+                     if (open) this.syncFromStore();
+                 });
              }
          }">
 
@@ -43,8 +86,8 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-bold text-gray-900 dark:text-white">Create New Module</h3>
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Fill in the details below to create your module</p>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white" x-text="isEdit ? 'Edit Module' : 'Create New Module'"></h3>
+                    <p class="text-xs text-gray-400 dark:text-gray-500" x-text="isEdit ? 'Update module details and status' : 'Fill in the details below to create your module'"></p>
                 </div>
             </div>
             <button @click="$store.modals.closeModuleModal()"
@@ -56,15 +99,18 @@
         </div>
 
         {{-- Modal Body --}}
-        <form method="POST" action="{{ route('instructor.modules.store') }}" enctype="multipart/form-data" class="p-6 space-y-5">
+        <form method="POST" :action="formAction" enctype="multipart/form-data" class="p-6 space-y-5">
             @csrf
+            <template x-if="isEdit">
+                <input type="hidden" name="_method" value="PUT">
+            </template>
 
             {{-- Title --}}
             <div>
                 <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
                     Module Title <span class="text-red-500">*</span>
                 </label>
-                <input type="text" name="title" value="{{ old('title') }}" required
+                  <input type="text" name="title" x-model="title" required
                        placeholder="e.g., Understanding Your Body"
                        class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
                 @error('title')
@@ -77,9 +123,9 @@
                 <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
                     Description <span class="text-red-500">*</span>
                 </label>
-                <textarea name="description" rows="3" required
+                <textarea name="description" x-model="description" rows="3" required
                           placeholder="Briefly describe what learners will discover in this module..."
-                          class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors resize-none">{{ old('description') }}</textarea>
+                          class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors resize-none"></textarea>
                 @error('description')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
@@ -124,12 +170,12 @@
                     <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
                         Age Group <span class="text-red-500">*</span>
                     </label>
-                    <select name="age_bracket" required
+                    <select name="age_bracket" x-model="ageBracket" required
                             class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
                         <option value="">— Select —</option>
-                        <option value="kids" {{ old('age_bracket') === 'kids' ? 'selected' : '' }}>Kids (5–12)</option>
-                        <option value="teens" {{ old('age_bracket') === 'teens' ? 'selected' : '' }}>Teens (13–17)</option>
-                        <option value="adults" {{ old('age_bracket') === 'adults' ? 'selected' : '' }}>Adults (18+)</option>
+                        <option value="kids">Kids (5–12)</option>
+                        <option value="teens">Teens (13–17)</option>
+                        <option value="adults">Adults (18+)</option>
                     </select>
                     @error('age_bracket')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -140,10 +186,10 @@
                     <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
                         Enrollment Mode <span class="text-red-500">*</span>
                     </label>
-                    <select name="enrollment_mode" required
+                    <select name="enrollment_mode" x-model="enrollmentMode" required
                             class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
-                        <option value="auto" {{ old('enrollment_mode', 'auto') === 'auto' ? 'selected' : '' }}>Auto (open enrollment)</option>
-                        <option value="manual" {{ old('enrollment_mode') === 'manual' ? 'selected' : '' }}>Manual (requires approval)</option>
+                        <option value="auto">Auto (open enrollment)</option>
+                        <option value="manual">Manual (requires approval)</option>
                     </select>
                     @error('enrollment_mode')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -159,7 +205,8 @@
                         <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">New modules default to active. Turn this off to save as inactive.</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                        <input type="checkbox" class="sr-only peer" x-model="isPublished" name="is_published" value="1" checked>
+                        <input type="hidden" name="is_published" :value="isPublished ? 1 : 0">
+                        <input type="checkbox" class="sr-only peer" x-model="isPublished">
                         <div class="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:ring-2 peer-focus:ring-purple-400/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r"
                              :style="isPublished ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1)' : ''"></div>
                     </label>
@@ -178,7 +225,7 @@
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                     </svg>
-                    Create Module
+                    <span x-text="isEdit ? 'Save Module Changes' : 'Create Module'"></span>
                 </button>
             </div>
         </form>

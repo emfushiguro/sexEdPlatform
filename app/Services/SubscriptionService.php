@@ -157,7 +157,8 @@ class SubscriptionService
             $subscription->payments()->create([
                 'user_id'         => $user->id,
                 'amount'          => $price,
-                'method'          => 'pending',
+                // Method is selected later in PaymentController::process().
+                'method'          => null,
                 'status'          => 'pending',
                 'transaction_id'  => 'TXN-' . strtoupper(uniqid()),
                 'payment_details' => [

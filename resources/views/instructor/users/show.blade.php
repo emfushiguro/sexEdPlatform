@@ -138,19 +138,9 @@
 
                     <!-- Action Buttons -->
                     <div class="mt-6 pt-6 border-t border-gray-200 flex justify-end gap-4">
-                        <a href="{{ route('instructor.users.edit', $user) }}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
-                            Edit User
+                        <a href="{{ route('instructor.users.index') }}" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                            Back to Learners
                         </a>
-                        @if($user->id !== auth()->id())
-                        <form action="{{ route('instructor.users.destroy', $user) }}" method="POST" class="inline">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                                onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')">
-                                Delete User
-                            </button>
-                        </form>
-                        @endif
                     </div>
                 </div>
             </div>

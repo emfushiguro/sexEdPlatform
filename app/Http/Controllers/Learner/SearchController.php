@@ -26,11 +26,8 @@ class SearchController extends Controller
 
         $learnerAge = $learnerProfile->getAge();
 
-        $modules = Module::where('is_published', true)
-            ->where(function ($query) use ($learnerAge) {
-                $query->where('min_age', '<=', $learnerAge)
-                      ->where('max_age', '>=', $learnerAge);
-            })
+        $modules = Module::published()
+            ->forAge($learnerAge)
             ->where('title', 'like', "%{$q}%")
             ->limit(6)
             ->get(['id', 'title', 'is_premium'])

@@ -82,7 +82,11 @@ class LearnerSubscriptionParityTest extends TestCase
             ->get(route('subscription.index'))
             ->assertOk()
             ->assertSee('Subscription Status', false)
-            ->assertSee('Active', false);
+            ->assertSee('Active', false)
+            ->assertSee('Current', false)
+            ->assertSee('Cancel current plan to switch', false)
+            ->assertSee(route('subscription.subscribe'), false)
+            ->assertSee('Continue to payment process', false);
     }
 
     private function ensureNormalizedTables(): void

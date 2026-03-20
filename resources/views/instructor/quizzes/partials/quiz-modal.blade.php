@@ -108,7 +108,7 @@
                            x-model="title" 
                            required
                            placeholder="e.g., Module 1 Quiz: Growing Up"
-                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-400 focus:ring-purple-300">
                     @error('title')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -121,24 +121,24 @@
                               x-model="description"
                               rows="3"
                               placeholder="Optional description for the quiz..."
-                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-400 focus:ring-purple-300"></textarea>
                 </div>
 
                 <!-- Quiz Attachment — cascading module → lesson -->
-                <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 class="text-sm font-semibold text-blue-900 mb-1">📌 Quiz Attachment</h4>
-                    <p class="text-xs text-blue-600 mb-4" x-text="isEdit ? 'Update where this quiz appears in the learning flow.' : 'Select a module, then optionally narrow down to a specific lesson within it.'"></p>
+                <div class="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <h4 class="text-sm font-semibold text-purple-900 mb-1">Quiz Attachment</h4>
+                    <p class="text-xs text-purple-700 mb-4" x-text="isEdit ? 'Update where this quiz appears in the learning flow.' : 'Select a module, then optionally narrow down to a specific lesson within it.'"></p>
 
                     <!-- Step 1: Module -->
                     <div class="mb-3">
                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                            📘 Module
+                            Module
                             <span class="text-xs font-normal text-gray-500">(quiz appears after all lessons)</span>
                         </label>
                         <select name="module_id"
                                 x-model="selectedModule"
                                 @change="onModuleChange()"
-                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-400 focus:ring-purple-300">
                             <option value="">— Select a Module —</option>
                             @foreach($modules as $module)
                             <option value="{{ $module->id }}">{{ $module->title }}</option>
@@ -149,23 +149,23 @@
                     <!-- Step 2: Lesson (only shown when a module is selected) -->
                     <div x-show="selectedModule !== ''" x-cloak>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                            📗 Specific Lesson
+                            Specific Lesson
                             <span class="text-xs font-normal text-gray-500">(optional — leave blank to attach to the whole module)</span>
                         </label>
                         <select name="lesson_id"
                                 x-model="selectedLesson"
                                 @change="if(selectedLesson) { $el.closest('form').querySelector('[name=module_id]').value = '' }"
-                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-400 focus:ring-purple-300">
                             <option value="">None — attach to module level</option>
                             <template x-for="lesson in filteredLessons" :key="lesson.id">
                                 <option :value="lesson.id" x-text="lesson.title"></option>
                             </template>
                         </select>
-                        <p class="mt-1.5 text-xs text-blue-700" x-show="selectedLesson !== ''" x-cloak>
-                            ✅ Quiz will appear after completing all topics in the selected lesson.
+                        <p class="mt-1.5 text-xs text-purple-700" x-show="selectedLesson !== ''" x-cloak>
+                            Quiz will appear after completing all topics in the selected lesson.
                         </p>
-                        <p class="mt-1.5 text-xs text-blue-700" x-show="selectedLesson === ''" x-cloak>
-                            ✅ Quiz will appear after completing all lessons in the module.
+                        <p class="mt-1.5 text-xs text-purple-700" x-show="selectedLesson === ''" x-cloak>
+                            Quiz will appear after completing all lessons in the module.
                         </p>
                     </div>
 
@@ -183,7 +183,7 @@
                            required 
                            min="0" 
                            max="100"
-                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-400 focus:ring-purple-300">
                     @error('passing_score')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -199,7 +199,8 @@
                         <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
                             <input type="hidden" name="is_active" :value="isActive ? 1 : 0">
                             <input type="checkbox" class="sr-only peer" x-model="isActive">
-                            <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div class="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:ring-2 peer-focus:ring-purple-400/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
+                                 :style="isActive ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1);' : ''"></div>
                         </label>
                     </div>
                 </div>
@@ -212,7 +213,8 @@
                         Cancel
                     </button>
                     <button type="submit" 
-                            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center gap-2">
+                            class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
+                            style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="!isEdit">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
