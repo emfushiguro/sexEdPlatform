@@ -93,6 +93,40 @@
             </div>
         </div>
         @endif
+
+        {{-- Certificates --}}
+        @if($user->role === 'learner')
+        <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <h3 class="text-base font-semibold text-gray-900 dark:text-white">Certificates</h3>
+            </div>
+
+            @if($user->certificates->isEmpty())
+                <div class="px-6 py-5 text-sm text-gray-500 dark:text-gray-400">No certificates earned yet.</div>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-800">
+                        <thead class="bg-gray-50 dark:bg-white/[0.02]">
+                            <tr>
+                                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Certificate #</th>
+                                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Module</th>
+                                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Issued</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                            @foreach($user->certificates->sortByDesc('issued_at') as $certificate)
+                            <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                                <td class="px-5 py-3 text-sm font-mono text-gray-900 dark:text-white">{{ $certificate->certificate_number }}</td>
+                                <td class="px-5 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $certificate->module_title }}</td>
+                                <td class="px-5 py-3 text-sm text-gray-500 dark:text-gray-400">{{ optional($certificate->issued_at)->format('M d, Y') }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+        @endif
     </div>
 
     {{-- Quick Actions Sidebar --}}

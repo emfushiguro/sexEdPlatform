@@ -7,10 +7,11 @@ use App\Models\Module;
 use App\Models\Certificate;
 use App\Models\QuizAttempt;
 use App\Models\UserProgress;
+use App\Services\CertificatePdfService;
 use App\Services\GamificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class CertificateController extends Controller
 {
@@ -31,11 +32,6 @@ class CertificateController extends Controller
     public function check(Module $module)
     {
         $user = Auth::user();
-
-        // Premium check
-        if (!$user->isPremium()) {
-            return back()->with('error', 'Certificates are only available for Premium members. Upgrade now!');
-        }
 
         // Check if already has certificate
         if (Certificate::where('user_id', $user->id)->where('module_id', $module->id)->exists()) {
@@ -83,13 +79,11 @@ class CertificateController extends Controller
     {
         $user = Auth::user();
 
-        // Generate unique certificate number
-        $certificateNumber = 'CERT-' . strtoupper(Str::random(8)) . '-' . date('Y');
-
         $certificate = Certificate::create([
             'user_id' => $user->id,
             'module_id' => $module->id,
-            'certificate_number' => $certificateNumber,
+            'learner_name_snapshot' => $user->name,
+            'module_title_snapshot' => $module->title,
             'issued_at' => now(),
         ]);
 
@@ -114,6 +108,8 @@ class CertificateController extends Controller
             abort(403);
         }
 
+        $certificate->loadMissing('module');
+
         return view('learner.certificates.show', compact('certificate'));
     }
 
@@ -129,8 +125,9 @@ class CertificateController extends Controller
             abort(403);
         }
 
-        // TODO: Generate PDF certificate
-        // For now, just return the view
-        return view('learner.certificates.pdf', compact('certificate'));
+        $pdfPath = app(CertificatePdfService::class)->ensureStoredPdf($certificate);
+        $downloadName = 'certificate-' . $certificate->certificate_number . '.pdf';
+
+        return response()->download(Storage::disk('public')->path($pdfPath), $downloadName);
     }
 }

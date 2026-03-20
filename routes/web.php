@@ -134,11 +134,13 @@ Route::middleware('auth')->group(function () {
         // Gamification rules page
         Route::get('/gamification', [\App\Http\Controllers\Learner\GamificationController::class, 'rules'])->name('gamification');
 
-        // Certificates (Premium only)
+        // Certificates
+        Route::get('/certificates', [\App\Http\Controllers\Learner\CertificateController::class, 'index'])->name('certificates.index');
+        Route::post('/modules/{module}/certificate', [\App\Http\Controllers\Learner\CertificateController::class, 'check'])->name('certificates.check');
+        Route::get('/certificates/{certificate}', [\App\Http\Controllers\Learner\CertificateController::class, 'show'])->name('certificates.show');
+
+        // Certificate downloads remain premium-only
         Route::middleware('premium')->group(function () {
-            Route::get('/certificates', [\App\Http\Controllers\Learner\CertificateController::class, 'index'])->name('certificates.index');
-            Route::post('/modules/{module}/certificate', [\App\Http\Controllers\Learner\CertificateController::class, 'check'])->name('certificates.check');
-            Route::get('/certificates/{certificate}', [\App\Http\Controllers\Learner\CertificateController::class, 'show'])->name('certificates.show');
             Route::get('/certificates/{certificate}/download', [\App\Http\Controllers\Learner\CertificateController::class, 'download'])->name('certificates.download');
         });
     });

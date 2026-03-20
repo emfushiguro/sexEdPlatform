@@ -27,11 +27,11 @@
                         <div class="text-center mb-8">
                             <p class="text-lg text-gray-700 mb-4">This is to certify that</p>
                             <h2 class="text-3xl font-bold text-gray-800 mb-6">
-                                {{ $certificate->user->name }}
+                                {{ $certificate->learner_name }}
                             </h2>
                             <p class="text-lg text-gray-700 mb-2">has successfully completed the module</p>
                             <h3 class="text-2xl font-bold text-blue-600 mb-6">
-                                {{ $certificate->module->title }}
+                                {{ $certificate->module_title }}
                             </h3>
                             <p class="text-gray-600 mb-2">
                                 Demonstrating knowledge and understanding of the course material
@@ -61,10 +61,17 @@
                            class="flex-1 text-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
                             ← Back to Certificates
                         </a>
-                        <a href="{{ route('learner.certificates.download', $certificate) }}" 
-                           class="flex-1 text-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                            Download PDF
-                        </a>
+                        @if(auth()->user()->isPremium())
+                            <a href="{{ route('learner.certificates.download', $certificate) }}" 
+                               class="flex-1 text-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                Download PDF
+                            </a>
+                        @else
+                            <a href="{{ route('subscription.upgrade') }}" 
+                               class="flex-1 text-center px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                                Upgrade to Download
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>

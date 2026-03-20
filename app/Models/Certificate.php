@@ -11,6 +11,9 @@ class Certificate extends Model
         'user_id',
         'module_id',
         'certificate_number',
+        'learner_name_snapshot',
+        'module_title_snapshot',
+        'pdf_path',
         'issued_at',
     ];
 
@@ -33,6 +36,18 @@ class Certificate extends Model
         return $this->belongsTo(Module::class);
     }
 
+    // Accessors
+
+    public function getLearnerNameAttribute(): ?string
+    {
+        return $this->learner_name_snapshot ?: $this->user?->name;
+    }
+
+    public function getModuleTitleAttribute(): ?string
+    {
+        return $this->module_title_snapshot ?: $this->module?->title;
+    }
+
     // Boot method
 
     protected static function boot()
@@ -40,19 +55,30 @@ class Certificate extends Model
         parent::boot();
 
         static::creating(function ($certificate) {
-            if (empty($certificate->certificate_number)) {
-                $certificate->certificate_number = static::generateCertificateNumber();
-            }
             if (empty($certificate->issued_at)) {
                 $certificate->issued_at = now();
+            }
+
+            if (empty($certificate->certificate_number)) {
+                $certificate->certificate_number = static::generateCertificateNumber($certificate->issued_at);
             }
         });
     }
 
     // Helper Methods
 
-    public static function generateCertificateNumber(): string
+    public static function generateCertificateNumber($issuedAt = null): string
     {
-        return 'CERT-' . strtoupper(Str::random(12));
+        $year = now()->format('Y');
+
+        if (!empty($issuedAt)) {
+            $timestamp = strtotime((string) $issuedAt);
+
+            if ($timestamp !== false) {
+                $year = date('Y', $timestamp);
+            }
+        }
+
+        return 'CC-' . $year . '-' . strtoupper(Str::random(8));
     }
 }

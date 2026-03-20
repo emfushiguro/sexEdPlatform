@@ -256,10 +256,35 @@ class DashboardController extends Controller
             ->values()
             ->toArray();
 
+        $quizAttemptsLast24h = DB::table('quiz_attempts')
+            ->join('quizzes', 'quizzes.id', '=', 'quiz_attempts.quiz_id')
+            ->whereIn('quizzes.module_id', $myModuleIds)
+            ->where('quiz_attempts.created_at', '>=', now()->subDay())
+            ->count();
+
+        $distinctLearnersLast24h = DB::table('quiz_attempts')
+            ->join('quizzes', 'quizzes.id', '=', 'quiz_attempts.quiz_id')
+            ->whereIn('quizzes.module_id', $myModuleIds)
+            ->where('quiz_attempts.created_at', '>=', now()->subDay())
+            ->distinct('quiz_attempts.user_id')
+            ->count('quiz_attempts.user_id');
+
+        $quizTakingSummary = [
+            'attempt_count' => $quizAttemptsLast24h,
+            'learner_count' => $distinctLearnersLast24h,
+        ];
+
+        $instructorNotifications = Auth::user()
+            ->notifications()
+            ->latest()
+            ->limit(8)
+            ->get();
+
         return view('instructor.dashboard', compact(
             'stats', 'recentActivities', 'pendingEnrollments',
             'moduleStats', 'quizStats', 'instructorModules', 'calendarDates',
-            'statCards', 'avgQuizScoreScopes', 'dashboardHero'
+            'statCards', 'avgQuizScoreScopes', 'dashboardHero',
+            'quizTakingSummary', 'instructorNotifications'
         ));
     }
 }

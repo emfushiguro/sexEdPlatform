@@ -18,6 +18,10 @@ class AdminLoginPageUiTest extends TestCase
             ->assertSee('Admin Email', false)
             ->assertSee('Admin Password', false)
             ->assertSee('Enter Secure Panel', false)
+            ->assertSee('#A30EB2', false)
+            ->assertSee('#730DB1', false)
+            ->assertSee('#3B0CB1', false)
+            ->assertDontSee('#0F172A', false)
             ->assertSee(route('admin.login.submit'), false);
     }
 }

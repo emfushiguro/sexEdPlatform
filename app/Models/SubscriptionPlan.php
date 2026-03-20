@@ -14,6 +14,12 @@ class SubscriptionPlan extends Model
         'description',
         'price',
         'features',
+        'plan_audience',
+        'billing_mode',
+        'availability_starts_on',
+        'availability_ends_on',
+        'admin_preview_starts_on',
+        'admin_preview_ends_on',
         'trial_days',
         'max_users',
         'max_modules',
@@ -26,6 +32,10 @@ class SubscriptionPlan extends Model
         return [
             'price'    => 'decimal:2',
             'features' => 'array',
+            'availability_starts_on' => 'date',
+            'availability_ends_on' => 'date',
+            'admin_preview_starts_on' => 'date',
+            'admin_preview_ends_on' => 'date',
             'is_active' => 'boolean',
         ];
     }

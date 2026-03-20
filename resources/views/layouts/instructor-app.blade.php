@@ -32,6 +32,8 @@
         (TailAdmin pattern: stores for a layout live in the layout head)
     --}}
     <script>
+        window.instructorSidebar = {};
+
         document.addEventListener('alpine:init', () => {
             Alpine.store('instructorSidebar', {
                 isExpanded: window.innerWidth >= 1280,
@@ -59,7 +61,7 @@
 
 <body
     class="font-[Poppins] antialiased bg-gray-50 dark:bg-gray-900 h-full"
-    x-data
+    x-data="instructorSidebar"
     x-init="
         $store.instructorSidebar.isExpanded = window.innerWidth >= 1280;
         const _checkInstructorMobile = () => {
@@ -118,7 +120,7 @@
                     x-cloak
                     class="overflow-hidden"
                 >
-                    <p class="text-white font-bold text-sm leading-tight whitespace-nowrap">ConciousConnections</p>
+                    <p class="text-white font-bold text-sm leading-tight whitespace-nowrap">Conscious Connections</p>
                     <p class="text-purple-200 text-[10px] tracking-widest uppercase mt-0.5">Instructor Panel</p>
                 </div>
             </div>
@@ -145,6 +147,7 @@
                             ['label' => 'Modules',     'route' => 'instructor.modules.index',     'active' => request()->routeIs('instructor.modules.*'),     'badge' => 0,            'icon' => 'book'],
                             ['label' => 'Lessons',     'route' => 'instructor.lessons.index',     'active' => request()->routeIs('instructor.lessons.*'),     'badge' => 0,            'icon' => 'document'],
                             ['label' => 'Quizzes',     'route' => 'instructor.quizzes.index',     'active' => request()->routeIs('instructor.quizzes.*'),     'badge' => 0,            'icon' => 'clipboard'],
+                            ['label' => 'Assessment Logs', 'route' => 'instructor.assessments.index', 'active' => request()->routeIs('instructor.assessments.*'), 'badge' => 0,            'icon' => 'chart'],
                             ['label' => 'Enrollments',  'route' => 'instructor.enrollments.index', 'active' => request()->routeIs('instructor.enrollments.*'), 'badge' => $pendingCount, 'icon' => 'chart'],
                         ],
                     ],
