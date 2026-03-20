@@ -29,4 +29,24 @@ class AdminDashboardMetricsTest extends TestCase
             ->assertSee('View Subscribers', false)
             ->assertSee('View Payments', false);
     }
+
+    public function test_admin_sidebar_hides_unimplemented_navigation_items(): void
+    {
+        $this->withoutVite();
+
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertDontSee('Calendar', false)
+            ->assertDontSee('Seminars', false)
+            ->assertDontSee('Messages', false)
+            ->assertDontSee('Organizations', false)
+            ->assertDontSee('Communication', false);
+    }
 }
