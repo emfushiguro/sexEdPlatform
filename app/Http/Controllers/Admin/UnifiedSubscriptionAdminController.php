@@ -384,6 +384,11 @@ class UnifiedSubscriptionAdminController extends Controller
                 'value_type' => 'boolean',
                 'category' => 'learning_access',
             ],
+            'certificate_pdf_download_access' => [
+                'name' => 'Certificate PDF Download Access',
+                'value_type' => 'boolean',
+                'category' => 'learning_access',
+            ],
             'premium_module_access' => [
                 'name' => 'Premium Module Access',
                 'value_type' => 'boolean',
@@ -401,6 +406,11 @@ class UnifiedSubscriptionAdminController extends Controller
             ],
             'unlimited_quiz_retaking' => [
                 'name' => 'Unlimited Shields / Unlimited Quiz Retaking',
+                'value_type' => 'boolean',
+                'category' => 'quiz_practice',
+            ],
+            'unlimited_shields' => [
+                'name' => 'Unlimited Shields',
                 'value_type' => 'boolean',
                 'category' => 'quiz_practice',
             ],

@@ -20,10 +20,11 @@
     
     <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
          @click.stop
+         @php($quizModalModules = $modules ?? collect())
          x-data="{ 
             selectedModule: '',
             selectedLesson: '{{ $lesson->id }}',
-            allLessons: {{ json_encode($modules->flatMap(function($module) {
+            allLessons: {{ json_encode($quizModalModules->flatMap(function($module) {
                 return $module->lessons->map(function($lesson) use ($module) {
                     return [
                         'id' => $lesson->id,

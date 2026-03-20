@@ -26,6 +26,12 @@
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M3.25 4A.75.75 0 0 1 4 3.25h16a.75.75 0 0 1 .75.75v14a.75.75 0 0 1-.75.75H4a.75.75 0 0 1-.75-.75V4Zm1.5.75v12.5h14V4.75H4.75ZM7 8.25a.75.75 0 0 0 0 1.5h10a.75.75 0 0 0 0-1.5H7Zm0 4a.75.75 0 0 0 0 1.5h6a.75.75 0 0 0 0-1.5H7Z"/></svg>',
         ],
         [
+            'label'  => 'Gamification',
+            'route'  => 'learner.gamification',
+            'active' => request()->routeIs('learner.gamification'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l2.82 5.72L21 8.62l-4.5 4.39 1.06 6.22L12 16.34l-5.56 2.89 1.06-6.22L3 8.62l6.18-.9L12 2Z"/><circle cx="12" cy="12" r="2.25" fill="white"/></svg>',
+        ],
+        [
             'label'  => 'Certificates',
             'route'  => 'learner.certificates.index',
             'active' => request()->routeIs('learner.certificates.*'),
@@ -62,7 +68,7 @@
         :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'justify-center' : 'justify-start'"
     >
         <a href="{{ route('learner.dashboard') }}" class="flex items-center gap-3">
-            {{-- Full logo (expanded) --}}
+            {{-- Brand logo + text (expanded) --}}
             <img
                 src="/media/Logo.png"
                 alt="Concious Connections"
@@ -70,9 +76,14 @@
                 x-transition:enter="transition-opacity duration-200"
                 x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100"
-                class="h-10 w-auto object-contain"
+                class="h-10 w-10 object-contain"
                 x-cloak
             >
+            <span
+                x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                x-cloak
+                class="text-sm font-semibold text-gray-900"
+            >Concious Connections</span>
             {{-- Icon-only logo (collapsed) --}}
             <img
                 src="/media/Logo.png"

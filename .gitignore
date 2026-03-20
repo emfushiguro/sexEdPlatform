@@ -29,3 +29,21 @@ Homestead.yaml
 Thumbs.db
 
 .worktrees/
+
+# Local scratch files
+content*.txt
+temp_*.txt
+test*.txt
+fix-index.cjs
+
+# Local agent/tooling folders
+\!claude-code/
+\!github/
+\!skills/
+\!tail-admin/
+
+# Keep user-facing assets/media trackable
+!/public/media/
+!/public/media/**
+!/storage/app/public/
+!/storage/app/public/**

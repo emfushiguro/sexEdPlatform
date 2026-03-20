@@ -50,7 +50,7 @@
     @if($modules->isEmpty())
         <div class="rounded-xl border border-dashed border-gray-200 p-8 text-center">
             <p class="text-sm text-gray-400 mb-3">No modules yet</p>
-            <a href="{{ route('instructor.modules.create') }}" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl text-white" style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">+ Create Module</a>
+            <a href="{{ route('instructor.modules.index', ['create_module' => 1]) }}" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl text-white" style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">+ Create Module</a>
         </div>
     @else
         <div class="overflow-hidden">
@@ -71,7 +71,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
                                     </a>
-                                    <a href="{{ route('instructor.modules.edit', $module) }}"
+                                                <a href="{{ route('instructor.modules.index', ['edit_module' => $module->id]) }}"
                                        aria-label="Edit module"
                                        class="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

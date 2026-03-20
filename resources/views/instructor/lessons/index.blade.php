@@ -34,7 +34,13 @@
     }
 }"
 @if($prefillLesson)
-    x-init='$store.modals.openLessonSlideout({{ $prefillLesson->module_id }}, { id: {{ $prefillLesson->id }}, module_id: {{ $prefillLesson->module_id }}, title: @js($prefillLesson->title), description: @js($prefillLesson->description), is_published: {{ $prefillLesson->is_published ? 'true' : 'false' }} })'
+    x-init="$store.modals.openLessonSlideout({{ $prefillLesson->module_id }}, {{ Js::from([
+        'id' => $prefillLesson->id,
+        'module_id' => $prefillLesson->module_id,
+        'title' => $prefillLesson->title,
+        'description' => $prefillLesson->description,
+        'is_published' => (bool) $prefillLesson->is_published,
+    ]) }})"
 @endif
  class="space-y-5">
     <span class="sr-only table-standard-numbering">Table numbering standard enabled</span>
@@ -175,9 +181,15 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                             </svg>
                         </a>
-                        <button type="button"
-                           data-edit-lesson-trigger
-                           @click='$store.modals.openLessonSlideout({{ $lesson->module_id }}, { id: {{ $lesson->id }}, module_id: {{ $lesson->module_id }}, title: @js($lesson->title), description: @js($lesson->description), is_published: {{ $lesson->is_published ? 'true' : 'false' }} })'
+                                <button type="button"
+                                    data-edit-lesson-trigger
+                                    @click="$store.modals.openLessonSlideout({{ $lesson->module_id }}, {{ Js::from([
+                                         'id' => $lesson->id,
+                                         'module_id' => $lesson->module_id,
+                                         'title' => $lesson->title,
+                                         'description' => $lesson->description,
+                                         'is_published' => (bool) $lesson->is_published,
+                                    ]) }})"
                            title="Edit"
                            class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors action-icon-standard">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

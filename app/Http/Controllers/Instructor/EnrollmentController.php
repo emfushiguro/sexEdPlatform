@@ -21,7 +21,11 @@ class EnrollmentController extends Controller
     {
         // Get all modules (instructor can see all for now)
         // TODO: Filter by instructor's modules when instructor relationship is added
-        $pendingEnrollments = ModuleEnrollment::with(['user.learnerProfile', 'module'])
+        $pendingEnrollments = ModuleEnrollment::with([
+            'user.learnerProfile.city',
+            'user.learnerProfile.barangay',
+            'module' => fn ($query) => $query->withCount('lessons'),
+        ])
             ->pending()
             ->latest()
             ->paginate(20);

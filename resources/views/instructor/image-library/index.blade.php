@@ -99,7 +99,7 @@
         </section>
 
         <aside id="image-metadata-drawer" class="rounded-3xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-5 h-fit">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-white">Metadata</h2>
+            <h2 class="text-base font-semibold text-gray-900 dark:text-white">Preview (Image Information)</h2>
             <template x-if="selectedImage">
                 <div class="mt-4 space-y-4">
                     <div class="rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-700">

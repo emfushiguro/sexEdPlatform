@@ -288,6 +288,32 @@
             @endforeach
         </div>{{-- end scrollable --}}
 
+          <div class="px-3 py-3 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+            <div class="rounded-xl border border-purple-100 dark:border-purple-800/40 bg-purple-50/60 dark:bg-purple-900/20 p-3">
+                <p class="text-xs font-semibold uppercase tracking-wide text-purple-700">Module Certificate</p>
+
+                @if($moduleCertificate && $certificateEligible)
+                    <a href="{{ route('learner.certificates.show', $moduleCertificate) }}"
+                       class="mt-2 inline-flex w-full items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white transition hover:opacity-90"
+                       style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                        View Certificate
+                    </a>
+                @elseif($certificateEligible)
+                    <form method="POST" action="{{ route('learner.certificates.check', $module) }}" class="mt-2">
+                        @csrf
+                        <button type="submit"
+                                class="inline-flex w-full items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/25 border border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/35 transition-colors">
+                            Get Certificate
+                        </button>
+                    </form>
+                @else
+                    <p class="mt-2 text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                        Complete all lessons, lesson topics, and quizzes to unlock your certificate.
+                    </p>
+                @endif
+            </div>
+        </div>
+
         {{-- Footer: Back to Module --}}
         <div class="flex-shrink-0 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
             <a href="{{ route('learner.modules.show', $module) }}"

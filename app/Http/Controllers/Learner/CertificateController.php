@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\Certificate;
+use App\Models\LessonTopicProgress;
 use App\Models\QuizAttempt;
 use App\Models\UserProgress;
 use App\Services\CertificatePdfService;
@@ -38,34 +40,10 @@ class CertificateController extends Controller
             return back()->with('info', 'You already have a certificate for this module.');
         }
 
-        // Check enrollment
-        if (!$user->moduleEnrollments()->where('module_id', $module->id)->exists()) {
-            return back()->with('error', 'You must be enrolled in this module.');
-        }
+        $eligibilityError = $this->getEligibilityError($user->id, $module);
 
-        // Check all lessons completed
-        $totalLessons = $module->lessons()->where('is_published', true)->count();
-        $completedLessons = UserProgress::where('user_id', $user->id)
-            ->where('module_id', $module->id)
-            ->where('completed', true)
-            ->count();
-
-        if ($completedLessons < $totalLessons) {
-            return back()->with('error', 'You must complete all lessons before getting a certificate.');
-        }
-
-        // Check final quiz requirement
-        if ($module->final_quiz_id) {
-            $bestAttempt = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $module->final_quiz_id)
-                ->orderBy('score', 'desc')
-                ->first();
-
-            if (!$bestAttempt || $bestAttempt->score < $module->certificate_pass_score) {
-                $required = $module->certificate_pass_score;
-                $current = $bestAttempt ? $bestAttempt->score : 0;
-                return back()->with('error', "You need to pass the final quiz with {$required}% or higher. Your best score: {$current}%");
-            }
+        if ($eligibilityError) {
+            return back()->with('error', $eligibilityError);
         }
 
         // Generate certificate
@@ -110,7 +88,16 @@ class CertificateController extends Controller
 
         $certificate->loadMissing('module');
 
-        return view('learner.certificates.show', compact('certificate'));
+        $eligibilityError = $this->getEligibilityError($user->id, $certificate->module);
+        if ($eligibilityError) {
+            return redirect()
+                ->route('learner.modules.show', $certificate->module)
+                ->with('error', $eligibilityError);
+        }
+
+        $templateImageUrl = app(CertificatePdfService::class)->getTemplatePublicUrl();
+
+        return view('learner.certificates.show', compact('certificate', 'templateImageUrl'));
     }
 
     /**
@@ -129,5 +116,83 @@ class CertificateController extends Controller
         $downloadName = 'certificate-' . $certificate->certificate_number . '.pdf';
 
         return response()->download(Storage::disk('public')->path($pdfPath), $downloadName);
+    }
+
+    private function getEligibilityError(int $userId, Module $module): ?string
+    {
+        if (!Auth::user()->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
+            ->exists()) {
+            return 'You must be enrolled in this module.';
+        }
+
+        $lessons = $module->lessons()
+            ->where('is_published', true)
+            ->with([
+                'topics',
+                'quiz' => fn ($query) => $query->where('is_active', true),
+            ])
+            ->get();
+
+        if ($lessons->isEmpty()) {
+            return 'No published lessons are available yet for this module.';
+        }
+
+        $completedLessonIds = UserProgress::where('user_id', $userId)
+            ->where('module_id', $module->id)
+            ->where('completed', true)
+            ->pluck('lesson_id')
+            ->unique();
+
+        if ($completedLessonIds->count() < $lessons->count()) {
+            return 'You must complete all lessons before getting a certificate.';
+        }
+
+        $topicIds = $lessons->flatMap(fn ($lesson) => $lesson->topics->pluck('id'))->unique();
+        if ($topicIds->isNotEmpty()) {
+            $completedTopicIds = LessonTopicProgress::where('user_id', $userId)
+                ->whereIn('lesson_topic_id', $topicIds)
+                ->where('completed', true)
+                ->pluck('lesson_topic_id')
+                ->unique();
+
+            if ($completedTopicIds->count() < $topicIds->count()) {
+                return 'You must complete all lesson topics before getting a certificate.';
+            }
+        }
+
+        $lessonQuizIds = $lessons
+            ->pluck('quiz')
+            ->filter()
+            ->pluck('id')
+            ->unique();
+
+        if ($lessonQuizIds->isNotEmpty()) {
+            $passedLessonQuizIds = QuizAttempt::where('user_id', $userId)
+                ->whereIn('quiz_id', $lessonQuizIds)
+                ->where('passed', true)
+                ->pluck('quiz_id')
+                ->unique();
+
+            if ($passedLessonQuizIds->count() < $lessonQuizIds->count()) {
+                return 'You must pass all lesson quizzes before getting a certificate.';
+            }
+        }
+
+        if ($module->final_quiz_id) {
+            $bestAttempt = QuizAttempt::where('user_id', $userId)
+                ->where('quiz_id', $module->final_quiz_id)
+                ->orderByDesc('score')
+                ->first();
+
+            if (!$bestAttempt || $bestAttempt->score < $module->certificate_pass_score) {
+                $required = $module->certificate_pass_score;
+                $current = $bestAttempt ? $bestAttempt->score : 0;
+                return "You need to pass the final quiz with {$required}% or higher. Your best score: {$current}%";
+            }
+        }
+
+        return null;
     }
 }

@@ -18,7 +18,7 @@
     $thumbnail       = $module->thumbnail ? asset('storage/' . $module->thumbnail) : null;
     $continueUrl     = $nextLesson
         ? route('learner.lessons.show', $nextLesson)
-        : route('learner.modules.index');   
+        : route('learner.modules.show', $module);
     $isCompleted     = !is_null($enrollment->completed_at);
 @endphp
 

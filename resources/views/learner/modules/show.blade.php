@@ -4,7 +4,13 @@
 
 @section('content')
 @php
-    $gami    = Auth::user()->gamification;
+    use App\Services\EntitlementService;
+    use App\Support\SubscriptionFeatureKeys;
+
+    /** @var \App\Models\User $authUser */
+    $authUser = auth()->user();
+    $gami    = $authUser->gamification;
+    $hasUnlimitedShields = app(EntitlementService::class)->canAccessFeature($authUser, SubscriptionFeatureKeys::UNLIMITED_SHIELDS);
 @endphp
 
 <div class="space-y-5">
@@ -42,8 +48,13 @@
             <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
             </svg>
-            <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $shieldsRemaining }}</span>
-            <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Shields</span>
+            @if($hasUnlimitedShields)
+                <span class="text-sm font-bold text-gray-900 dark:text-white">∞</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Unli Shields</span>
+            @else
+                <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $shieldsRemaining }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Shields</span>
+            @endif
         </div>
         {{-- Points --}}
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40">
@@ -315,6 +326,55 @@
                     @endforeach
                 </div>
             </div>
+
+            @if($isEnrolled)
+                <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
+                            </svg>
+                            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Module Certificate</h3>
+                        </div>
+                        @if($moduleCertificate)
+                            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">Issued</span>
+                        @endif
+                    </div>
+
+                    <div class="p-5">
+                        @if($moduleCertificate && $certificateEligible)
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Certificate number</p>
+                            <p class="text-sm font-mono font-semibold text-gray-800 dark:text-gray-100 mt-0.5">{{ $moduleCertificate->certificate_number }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Issued {{ $moduleCertificate->issued_at->format('F d, Y') }}</p>
+
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <a href="{{ route('learner.certificates.show', $moduleCertificate) }}"
+                                   class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-white px-4 py-2.5 rounded-xl transition hover:opacity-90"
+                                   style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                                    View Certificate
+                                </a>
+                                @if(auth()->user()->isPremium())
+                                    <a href="{{ route('learner.certificates.download', $moduleCertificate) }}"
+                                       class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors">
+                                        Download PDF
+                                    </a>
+                                @endif
+                            </div>
+                        @elseif($certificateEligible)
+                            <p class="text-sm text-gray-600 dark:text-gray-400">You completed this module. Generate your certificate now.</p>
+                            <form method="POST" action="{{ route('learner.certificates.check', $module) }}" class="mt-4">
+                                @csrf
+                                <button type="submit"
+                                        class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors">
+                                    Get Certificate
+                                </button>
+                            </form>
+                        @else
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Complete all lessons, lesson topics, and quizzes to unlock this certificate.</p>
+                        @endif
+                    </div>
+                </div>
+            @endif
             @endif
 
         </div>{{-- end left col --}}
@@ -353,20 +413,16 @@
                     @endif
 
                     {{-- Certificate section --}}
-                    @php
-                        $hasCertificate      = Auth::user()->certificates()->where('module_id', $module->id)->exists();
-                        $allLessonsCompleted = $lessons->count() > 0 && count($completedLessonIds) === $lessons->count();
-                    @endphp
                     <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        @if($hasCertificate)
-                            <a href="{{ route('learner.certificates.index') }}"
+                        @if($moduleCertificate && $certificateEligible)
+                            <a href="{{ route('learner.certificates.show', $moduleCertificate) }}"
                                class="flex items-center gap-2 w-full text-sm font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 px-4 py-2.5 rounded-xl hover:bg-amber-100 transition-colors justify-center">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
                                 </svg>
                                 View Certificate
                             </a>
-                        @elseif($allLessonsCompleted)
+                        @elseif($certificateEligible)
                             <form method="POST" action="{{ route('learner.certificates.check', $module) }}">
                                 @csrf
                                 <button type="submit"
@@ -382,7 +438,7 @@
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
                                 </svg>
-                                Complete all lessons to unlock your certificate
+                                Complete all lessons, topics, and quizzes to unlock your certificate
                             </p>
                         @endif
                     </div>

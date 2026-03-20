@@ -9,7 +9,7 @@
         @method('PUT')
 
         <!-- Basic Information Card -->
-        <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Basic Information</h2>
 
             <!-- Topic Title -->
@@ -22,7 +22,7 @@
                     name="title" 
                     id="title" 
                     value="{{ old('title', $topic->title) }}"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('title') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('title') border-red-500 @enderror"
                     required
                 >
                 @error('title')
@@ -41,7 +41,7 @@
                     id="duration" 
                     value="{{ old('duration', $topic->duration) }}"
                     min="1"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('duration') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('duration') border-red-500 @enderror"
                     required
                 >
                 @error('duration')
@@ -58,10 +58,10 @@
                         id="is_prerequisite" 
                         value="1"
                         {{ old('is_prerequisite', $topic->is_prerequisite) ? 'checked' : '' }}
-                        class="w-5 h-5 mt-0.5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer transition-all hover:border-blue-400"
+                        class="w-5 h-5 mt-0.5 text-purple-700 border-2 border-gray-200 rounded focus:ring-2 focus:ring-purple-300 focus:ring-offset-0 cursor-pointer transition-all hover:border-purple-300"
                     >
                     <div class="flex-1">
-                        <span class="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <span class="text-sm font-semibold text-gray-900 group-hover:text-purple-700 transition-colors">
                             Mark as Prerequisite Topic
                         </span>
                         <p class="text-xs text-gray-600 mt-1 leading-relaxed">
@@ -78,7 +78,7 @@
                 </label>
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <!-- Video Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors topic-type-card">
+                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -94,7 +94,7 @@
                     </label>
 
                     <!-- Text Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors topic-type-card">
+                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -110,7 +110,7 @@
                     </label>
 
                     <!-- Worksheet Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors topic-type-card">
+                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -126,7 +126,7 @@
                     </label>
 
                     <!-- Quiz Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors topic-type-card">
+                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -142,7 +142,7 @@
                     </label>
 
                     <!-- Interactive Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors topic-type-card">
+                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -165,7 +165,7 @@
         </div>
 
         <!-- Video Content Section -->
-        <div id="videoContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
+        <div id="videoContent" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 content-section hidden">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Video Content</h2>
 
             <!-- Video Source Selection -->
@@ -177,7 +177,7 @@
                             type="radio" 
                             name="video_source" 
                             value="url" 
-                            class="text-blue-600 focus:ring-blue-500"
+                            class="text-purple-700 focus:ring-purple-300"
                             {{ old('video_source', $topic->video_provider !== 'local' ? 'url' : '') === 'url' ? 'checked' : '' }}
                         >
                         <span class="text-sm text-gray-700">URL (YouTube/Vimeo)</span>
@@ -187,7 +187,7 @@
                             type="radio" 
                             name="video_source" 
                             value="upload" 
-                            class="text-blue-600 focus:ring-blue-500"
+                            class="text-purple-700 focus:ring-purple-300"
                             {{ old('video_source', $topic->video_provider === 'local' ? 'upload' : '') === 'upload' ? 'checked' : '' }}
                         >
                         <span class="text-sm text-gray-700">Upload File</span>
@@ -206,7 +206,7 @@
                     id="video_url" 
                     value="{{ old('video_url', $topic->video_provider !== 'local' ? $topic->video_url : '') }}"
                     placeholder="https://www.youtube.com/watch?v=... or https://vimeo.com/..."
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('video_url') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('video_url') border-red-500 @enderror"
                 >
                 <p class="mt-1 text-sm text-gray-500">Enter a YouTube or Vimeo URL</p>
                 @error('video_url')
@@ -217,10 +217,10 @@
             <!-- Video File Upload -->
             <div id="videoFileInput" class="mb-6 hidden">
                 @if($topic->video_file_path)
-                    <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-3">
-                                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-8 h-8 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                                 </svg>
                                 <div>
@@ -240,7 +240,7 @@
                     name="video_file" 
                     id="video_file" 
                     accept="video/*"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('video_file') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('video_file') border-red-500 @enderror"
                 >
                 <p class="mt-1 text-sm text-gray-500">Supported formats: MP4, WebM, OGG (Max: 100MB)</p>
                 @error('video_file')
@@ -250,7 +250,7 @@
         </div>
 
         <!-- Text Content Section -->
-        <div id="textContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
+        <div id="textContent" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 content-section hidden">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Text Content</h2>
 
             <!-- Text Editor -->
@@ -262,7 +262,7 @@
                     name="text_content" 
                     id="text_content" 
                     rows="15"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('text_content') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('text_content') border-red-500 @enderror"
                 >{{ old('text_content', $topic->text_content) }}</textarea>
                 @error('text_content')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -276,14 +276,14 @@
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         @foreach($topic->image_attachments as $index => $image)
                             <div class="relative group">
-                                <img src="{{ Storage::url($image['path']) }}" alt="Image {{ $index + 1 }}" class="w-full h-32 object-cover rounded-lg border border-gray-300">
+                                <img src="{{ Storage::url($image['path']) }}" alt="Image {{ $index + 1 }}" class="w-full h-32 object-cover rounded-xl border border-gray-200">
                                 <div class="absolute top-2 right-2">
                                     <label class="flex items-center space-x-1 bg-white rounded px-2 py-1 shadow-sm">
                                         <input 
                                             type="checkbox" 
                                             name="delete_images[]" 
                                             value="{{ $index }}"
-                                            class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                            class="w-4 h-4 text-red-600 border-gray-200 rounded focus:ring-red-500"
                                         >
                                         <span class="text-xs text-red-600 font-medium">Delete</span>
                                     </label>
@@ -305,23 +305,23 @@
                     id="image_attachments" 
                     accept="image/*"
                     multiple
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
                 >
                 <p class="mt-1 text-sm text-gray-500">Max 5 images. Supported: JPG, PNG, GIF</p>
-                <p class="mt-1 text-xs text-blue-500 font-medium">ðŸ“¸ Both Gallery & Slideshow views available to learners</p>
+                <p class="mt-1 text-xs text-purple-600 font-medium">ðŸ“¸ Both Gallery & Slideshow views available to learners</p>
             </div>
         </div>
 
         <!-- Worksheet Content Section -->
-        <div id="worksheetContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
+        <div id="worksheetContent" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 content-section hidden">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Worksheet Content</h2>
 
             <!-- Current Worksheet File -->
             @if($topic->worksheet_file_path)
-                <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-xl">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
-                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-8 h-8 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
                             <div>
@@ -332,7 +332,7 @@
                         <a 
                             href="{{ Storage::url($topic->worksheet_file_path) }}" 
                             target="_blank"
-                            class="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            class="px-3 py-1 text-sm text-purple-700 hover:text-purple-700 font-medium"
                         >
                             Download
                         </a>
@@ -350,7 +350,7 @@
                     name="worksheet_file" 
                     id="worksheet_file" 
                     accept=".pdf,.doc,.docx"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('worksheet_file') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('worksheet_file') border-red-500 @enderror"
                 >
                 <p class="mt-1 text-sm text-gray-500">Supported formats: PDF, DOC, DOCX (Max: 10MB)</p>
                 @error('worksheet_file')
@@ -367,7 +367,7 @@
                     name="worksheet_instructions" 
                     id="worksheet_instructions" 
                     rows="6"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('worksheet_instructions') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('worksheet_instructions') border-red-500 @enderror"
                     placeholder="Enter instructions for completing this worksheet..."
                 >{{ old('worksheet_instructions', $topic->text_content) }}</textarea>
                 @error('worksheet_instructions')
@@ -377,11 +377,11 @@
         </div>
 
         <!-- Quiz Content Section -->
-        <div id="quizContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
+        <div id="quizContent" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 content-section hidden">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Quiz Content</h2>
 
-            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p class="text-sm text-blue-800">
+            <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                <p class="text-sm text-purple-800">
                     <svg class="inline w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                     </svg>
@@ -396,7 +396,7 @@
                 <select 
                     name="quiz_id" 
                     id="quiz_id"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('quiz_id') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('quiz_id') border-red-500 @enderror"
                 >
                     <option value="">-- Select a Quiz --</option>
                     @foreach($quizzes as $quiz)
@@ -412,7 +412,7 @@
         </div>
 
         <!-- Interactive Content Section -->
-        <div id="interactiveContent" class="bg-white rounded-lg shadow-md p-6 content-section hidden">
+        <div id="interactiveContent" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 content-section hidden">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Interactive Content</h2>
 
             <!-- Activity Type -->
@@ -426,7 +426,7 @@
                 <select 
                     name="activity_type" 
                     id="activity_type"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('activity_type') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('activity_type') border-red-500 @enderror"
                 >
                     <option value="">-- Select Activity Type --</option>
                     <option value="activity" {{ $interactiveType === 'activity' ? 'selected' : '' }}>Activity</option>
@@ -450,7 +450,7 @@
                     name="interactive_instructions" 
                     id="interactive_instructions" 
                     rows="8"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('interactive_instructions') border-red-500 @enderror"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('interactive_instructions') border-red-500 @enderror"
                     placeholder="Enter detailed instructions for this interactive activity..."
                 >{{ $interactiveInstructions }}</textarea>
                 @error('interactive_instructions')
@@ -463,13 +463,14 @@
         <div class="flex items-center justify-end space-x-4">
             <a 
                 href="{{ route('instructor.lessons.show', $topic->lesson->id) }}" 
-                class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                class="px-6 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
             >
                 Cancel
             </a>
-            <button 
-                type="submit" 
-                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            <button
+                type="submit"
+                class="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
+                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
             >
                 Update Topic
             </button>
@@ -511,11 +512,11 @@ document.addEventListener('DOMContentLoaded', function() {
         typeCards.forEach(card => {
             const radio = card.querySelector('.topic-type-radio');
             if (radio.checked) {
-                card.classList.add('border-blue-600', 'bg-blue-50');
-                card.classList.remove('border-gray-300');
+                card.classList.add('border-purple-400', 'bg-purple-50');
+                card.classList.remove('border-gray-200');
             } else {
-                card.classList.remove('border-blue-600', 'bg-blue-50');
-                card.classList.add('border-gray-300');
+                card.classList.remove('border-purple-400', 'bg-purple-50');
+                card.classList.add('border-gray-200');
             }
         });
     }
@@ -591,3 +592,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endsection
+
+

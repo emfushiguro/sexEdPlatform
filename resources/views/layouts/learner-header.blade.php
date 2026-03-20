@@ -38,7 +38,7 @@
             </button>
 
             {{-- ── Live Search (hidden on My Modules page — it has its own search) ── --}}
-            @unless(request()->routeIs('learner.modules.index'))
+            @unless(request()->routeIs(['learner.modules.index', 'subscription.*', 'payment.*']))
             <div class="relative hidden sm:block" x-data="learnerSearch()" @click.outside="open = false">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24">

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 use Illuminate\Validation\Rules\Password;
 use Carbon\Carbon;
+use Spatie\Permission\Models\Role;
 
 class ParentRegistrationController extends Controller
 {
@@ -120,6 +121,7 @@ class ParentRegistrationController extends Controller
             'password'       => Hash::make($validated['password']),
         ]);
 
+        Role::findOrCreate('learner', 'web');
         $parent->assignRole('learner');
 
         event(new Registered($parent));
@@ -303,6 +305,7 @@ class ParentRegistrationController extends Controller
             'email_verified_at' => now(),
         ]);
 
+        Role::findOrCreate('learner', 'web');
         $child->assignRole('learner');
 
         $child->learnerProfile()->create([

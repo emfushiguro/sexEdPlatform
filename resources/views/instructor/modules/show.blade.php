@@ -18,7 +18,7 @@
             <p class="text-xs text-gray-400 dark:text-gray-500">Module Details</p>
         </div>
     </div>
-    <a href="{{ route('instructor.modules.edit', $module) }}"
+    <a href="{{ route('instructor.modules.index', ['edit_module' => $module->id]) }}"
        class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
        style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -332,7 +332,7 @@
 </div>
 
 {{-- ══  Section 3: Lessons List  ══ --}}
-<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6" x-data="{}">
 
     {{-- Section Header --}}
     <div class="flex items-center justify-between mb-4">
@@ -406,13 +406,21 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                     </svg>
                 </a>
-                <a href="{{ route('instructor.lessons.edit', $lesson) }}"
+                <button type="button"
+                   data-edit-lesson-trigger
+                   @click="$store.modals.openLessonSlideout({{ $lesson->module_id }}, {{ Js::from([
+                       'id' => $lesson->id,
+                       'module_id' => $lesson->module_id,
+                       'title' => $lesson->title,
+                       'description' => $lesson->description,
+                       'is_published' => (bool) $lesson->is_published,
+                   ]) }})"
                    title="Edit lesson"
                    class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                     </svg>
-                </a>
+                </button>
                 <form action="{{ route('instructor.lessons.destroy', $lesson) }}" method="POST" class="inline-flex"
                       x-data @submit.prevent="if(confirm('Delete this lesson and all its topics?')) $el.submit()">
                     @csrf @method('DELETE')

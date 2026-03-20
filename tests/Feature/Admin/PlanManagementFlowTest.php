@@ -29,7 +29,9 @@ class PlanManagementFlowTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.subscription-plans.index'))
             ->assertOk()
+            ->assertSee('data-testid="create-plan-fullscreen-modal"', false)
             ->assertSee('data-testid="open-create-plan-modal"', false)
+            ->assertSee('data-sidebar-lock-hook="create-plan-modal"', false)
             ->assertSee(route('admin.subscribers.store-plan'), false)
             ->assertDontSee(route('admin.subscription-plans.create'), false);
     }
@@ -297,5 +299,36 @@ class PlanManagementFlowTest extends TestCase
             'quota_value' => 5,
             'is_unlimited' => 0,
         ]);
+    }
+
+    public function test_admin_create_plan_persists_phase1_boolean_entitlement_flags(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $payload = [
+            'name' => 'Phase 1 Learner Access',
+            'description' => 'Phase 1 booleans',
+            'plan_audience' => 'learner',
+            'billing_mode' => 'monthly',
+            'price' => '199.00',
+            'is_active' => true,
+            'entitlement_enabled' => [
+                'unlimited_shields' => '1',
+                'certificate_pdf_download_access' => '1',
+            ],
+            'entitlement_unlimited' => [
+                'unlimited_shields' => '1',
+            ],
+        ];
+
+        $this->actingAs($admin)
+            ->post(route('admin.subscribers.store-plan'), $payload)
+            ->assertRedirect(route('admin.subscription-plans.index'));
+
+        $plan = SubscriptionPlan::query()->where('slug', 'phase-1-learner-access')->first();
+        $this->assertNotNull($plan);
+
+        $this->assertContains('unlimited_shields', $plan->features ?? []);
+        $this->assertContains('certificate_pdf_download_access', $plan->features ?? []);
     }
 }

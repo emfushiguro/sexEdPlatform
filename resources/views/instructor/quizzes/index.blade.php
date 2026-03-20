@@ -28,6 +28,8 @@
     if (request()->filled('edit_quiz')) {
         $prefillQuiz = $quizzes->firstWhere('id', (int) request('edit_quiz'));
     }
+
+    $openCreateQuiz = request()->boolean('create_quiz');
 @endphp
 
 @push('scripts')
@@ -84,7 +86,9 @@ function quizTable() {
 
 @section('content')
 <div x-data="quizTable()"
-@if($prefillQuiz)
+@if($openCreateQuiz)
+    x-init="$store.modals.openQuizModal()"
+@elseif($prefillQuiz)
     x-init='$store.modals.openQuizModal({ id: {{ $prefillQuiz->id }}, title: @js($prefillQuiz->title), description: @js($prefillQuiz->description), module_id: {{ $prefillQuiz->module_id ?? 'null' }}, lesson_id: {{ $prefillQuiz->lesson_id ?? 'null' }}, passing_score: {{ $prefillQuiz->passing_score }}, is_active: {{ $prefillQuiz->is_active ? 'true' : 'false' }} })'
 @endif
  class="space-y-5">

@@ -7,6 +7,8 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\ParentChildAccount;
+use App\Models\QuizAttempt;
+use App\Models\LessonTopicProgress;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use Illuminate\Http\Request;
@@ -37,9 +39,7 @@ class ModuleController extends Controller
         // Show active age-appropriate modules plus enrolled modules (including deactivated) for history visibility.
         $modules = Module::where(function ($query) use ($learnerAge, $enrolledModuleIds) {
                 $query->where(function ($inner) use ($learnerAge) {
-                    $inner->where('is_published', true)
-                        ->where('min_age', '<=', $learnerAge)
-                        ->where('max_age', '>=', $learnerAge);
+                    $inner->published()->forAge($learnerAge);
                 });
 
                 if ($enrolledModuleIds->isNotEmpty()) {
@@ -169,6 +169,41 @@ class ModuleController extends Controller
             ->get()
             ->groupBy('quiz_id');
 
+        $moduleCertificate = $user->certificates()->where('module_id', $module->id)->first();
+
+        $topicIds = $lessons->flatMap(fn ($lesson) => $lesson->topics->pluck('id'))->unique();
+        $completedTopicIds = LessonTopicProgress::where('user_id', $user->id)
+            ->whereIn('lesson_topic_id', $topicIds)
+            ->where('completed', true)
+            ->pluck('lesson_topic_id')
+            ->unique();
+        $allTopicsCompleted = $topicIds->isEmpty() || $completedTopicIds->count() === $topicIds->count();
+
+        $lessonQuizIds = collect($lessonQuizzes)->pluck('id')->unique();
+        $passedLessonQuizIds = QuizAttempt::where('user_id', $user->id)
+            ->whereIn('quiz_id', $lessonQuizIds)
+            ->where('passed', true)
+            ->pluck('quiz_id')
+            ->unique();
+        $allLessonQuizzesPassed = $lessonQuizIds->isEmpty() || $passedLessonQuizIds->count() === $lessonQuizIds->count();
+
+        $finalQuizPassed = true;
+        if ($module->final_quiz_id) {
+            $bestFinalAttempt = QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_id', $module->final_quiz_id)
+                ->orderByDesc('score')
+                ->first();
+
+            $finalQuizPassed = $bestFinalAttempt && $bestFinalAttempt->score >= $module->certificate_pass_score;
+        }
+
+        $certificateEligible = $isEnrolled
+            && $totalLessons > 0
+            && count($completedLessonIds) === $totalLessons
+            && $allTopicsCompleted
+            && $allLessonQuizzesPassed
+            && $finalQuizPassed;
+
         $shieldsRemaining = UserDailyShield::getShields($user);
 
         return view('learner.modules.show', compact(
@@ -181,6 +216,8 @@ class ModuleController extends Controller
             'moduleQuizzes',
             'lessonQuizzes',
             'quizAttempts',
+            'moduleCertificate',
+            'certificateEligible',
             'shieldsRemaining'
         ));
     }
@@ -274,7 +311,6 @@ class ModuleController extends Controller
      */
     private function canAccessModule(Module $module, int $learnerAge): bool
     {
-        // Check if learner's age falls within module's age range
-        return $learnerAge >= $module->min_age && $learnerAge <= $module->max_age;
+        return $module->isAppropriateForAge($learnerAge);
     }
 }

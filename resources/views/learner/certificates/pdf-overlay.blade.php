@@ -41,9 +41,9 @@
             top: 9.37cm;
             width: 11.3cm;
             text-align: center;
-            font-size: 32pt;
+            font-size: 40pt;
             font-weight: 700;
-            line-height: 1.05;
+            line-height: 1.02;
         }
 
         .module-name {
@@ -51,9 +51,9 @@
             top: 13.56cm;
             width: 15.7cm;
             text-align: center;
-            font-size: 22pt;
+            font-size: 26pt;
             font-weight: 500;
-            line-height: 1.15;
+            line-height: 1.1;
         }
 
         .issued-date {
@@ -87,7 +87,7 @@
 
         <div class="field learner-name">{{ $certificate->learner_name }}</div>
         <div class="field module-name">{{ $certificate->module_title }}</div>
-        <div class="field issued-date">{{ $certificate->issued_at->format('F d, Y') }}</div>
+        <div class="field issued-date">Issued {{ $certificate->issued_at->format('F d, Y') }}</div>
         <div class="field certificate-id">{{ $certificate->certificate_number }}</div>
     </div>
 </body>

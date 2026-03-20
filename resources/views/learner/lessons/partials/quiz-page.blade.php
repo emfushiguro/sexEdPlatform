@@ -1,9 +1,12 @@
 @php
   use App\Models\QuizAttempt;
   use App\Models\UserDailyShield;
+  use App\Services\EntitlementService;
+  use App\Support\SubscriptionFeatureKeys;
 
   $user         = auth()->user();
-  $shieldsLeft  = $user->isPremium() ? null : UserDailyShield::getShields($user);
+  $hasUnlimitedShields = app(EntitlementService::class)->canAccessFeature($user, SubscriptionFeatureKeys::UNLIMITED_SHIELDS);
+  $shieldsLeft  = $hasUnlimitedShields ? null : UserDailyShield::getShields($user);
   $total        = $lessonQuiz->questions->count();
   $questionMeta = $lessonQuiz->questions
       ->map(fn($q) => ['id' => $q->id, 'type' => $q->question_type])
@@ -289,8 +292,8 @@
       </div>
       @endif
 
-      {{-- Shield cost notice (free users only) --}}
-      @if(!$user->isPremium())
+      {{-- Shield cost notice --}}
+      @if(!$hasUnlimitedShields)
       <div class="rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-900/20 p-4">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center"
@@ -323,12 +326,26 @@
         </div>
       </div>
       @endif
+      @else
+      <div class="rounded-xl border border-green-200 dark:border-green-800/60 bg-green-50 dark:bg-green-900/20 p-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center bg-green-600">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/>
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-green-900 dark:text-green-200">Unli Shields Active</p>
+            <p class="text-xs text-green-700 dark:text-green-400 mt-0.5">You can retry quizzes without consuming daily shields.</p>
+          </div>
+        </div>
+      </div>
       @endif
 
       {{-- Start button --}}
       <button
         @click="startQuiz()"
-        @if(!$user->isPremium() && $shieldsLeft <= 0) disabled @endif
+        @if(!$hasUnlimitedShields && $shieldsLeft <= 0) disabled @endif
         class="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.01] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
         style="background:linear-gradient(135deg,#A30EB2,#730DB1,#3B0CB1)">
         @if($quizAttempt)
@@ -683,7 +700,7 @@
             </div>
           </div>
 
-          @if(!$user->isPremium())
+          @if(!$hasUnlimitedShields)
           <div class="flex items-start gap-3 px-4 py-3 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20">
             <svg class="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -694,6 +711,16 @@
               <p class="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
                 Pass ≥{{ $lessonQuiz->passing_score }}% and it's refunded. You have {{ $shieldsLeft }}/3 today.
               </p>
+            </div>
+          </div>
+          @else
+          <div class="flex items-start gap-3 px-4 py-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+            <svg class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/>
+            </svg>
+            <div>
+              <p class="text-sm font-bold text-green-800 dark:text-green-200">Unli Shields Active</p>
+              <p class="text-xs text-green-700 dark:text-green-400 mt-0.5">Submit and retry without shield limits.</p>
             </div>
           </div>
           @endif
@@ -781,7 +808,7 @@
               <span class="text-xs font-bold text-amber-700 dark:text-amber-300">+{{ $xpEarned }} XP</span>
             </div>
             @endif
-            @if(!$user->isPremium())
+            @if(!$hasUnlimitedShields)
               @if($shieldDelta === 0)
               <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
                 <svg class="w-3.5 h-3.5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -804,7 +831,7 @@
               <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z"/>
               </svg>
-              <span class="text-xs font-bold text-amber-700 dark:text-amber-300">Premium — Unlimited</span>
+              <span class="text-xs font-bold text-amber-700 dark:text-amber-300">Unli Shields</span>
             </div>
             @endif
           </div>
@@ -827,7 +854,7 @@
 
           {{-- Action buttons --}}
           <div class="flex items-stretch gap-3 w-full mt-5">
-            @php $canRetry = $user->isPremium() || (($shieldsLeft ?? 0) > 0); @endphp
+            @php $canRetry = $hasUnlimitedShields || (($shieldsLeft ?? 0) > 0); @endphp
 
             <button type="button" @click="pageState = 'landing'"
                     class="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-150 active:scale-95">

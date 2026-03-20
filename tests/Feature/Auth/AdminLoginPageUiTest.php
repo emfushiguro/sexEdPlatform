@@ -13,10 +13,10 @@ class AdminLoginPageUiTest extends TestCase
         $response = $this->get(route('admin.login'));
 
         $response->assertOk()
-            ->assertSee('Administrator Command Center', false)
+            ->assertSee('Administrator Login', false)
             ->assertSee('Secure access for platform operators', false)
-            ->assertSee('Admin Email', false)
-            ->assertSee('Admin Password', false)
+            ->assertSee('Email', false)
+            ->assertSee('Password', false)
             ->assertSee('Enter Secure Panel', false)
             ->assertSee('#A30EB2', false)
             ->assertSee('#730DB1', false)

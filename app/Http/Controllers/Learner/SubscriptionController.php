@@ -114,7 +114,26 @@ class SubscriptionController extends Controller
 
         $subscriptionSummary = $this->entitlementService->getSubscriptionSummary($user);
 
-        return view('subscriptions.index', compact('subscription', 'canRequestRefund', 'latestPaidPayment', 'subscriptionSummary'));
+        $availablePlans = SubscriptionPlan::active()
+            ->ordered()
+            ->with(['planPrices' => function ($q) {
+                $q->where('is_active', true)
+                    ->orderByDesc('is_default')
+                    ->orderBy('duration_count');
+            }])
+            ->get();
+
+        $planCards = $this->buildPlanCards($availablePlans, $subscription);
+        $comparisonFeatures = $this->buildComparisonFeatures($planCards);
+
+        return view('subscriptions.index', compact(
+            'subscription',
+            'canRequestRefund',
+            'latestPaidPayment',
+            'subscriptionSummary',
+            'planCards',
+            'comparisonFeatures'
+        ));
     }
 
     /**
@@ -325,5 +344,141 @@ class SubscriptionController extends Controller
             'end_date' => $subscription?->end_date,
             'days_remaining' => $subscription?->daysUntilExpiry(),
         ]);
+    }
+
+    /**
+     * Build normalized plan cards payload for the learner subscription UI.
+     */
+    private function buildPlanCards($plans, ?Subscription $currentSubscription): array
+    {
+        $labelMap = config('subscription_features.labels', []);
+        $hiddenKeys = config('subscription_features.hidden', ['test_mode', 'duration_minutes']);
+        $hasActiveSubscription = $currentSubscription && $currentSubscription->status === SubscriptionStatus::Active;
+        $today = now()->startOfDay();
+
+        $cards = collect($plans)->map(function ($plan) use ($currentSubscription, $hasActiveSubscription, $today, $labelMap, $hiddenKeys) {
+            $isCurrentPlan = $currentSubscription?->plan_id === $plan->id;
+
+            $prices = collect($plan->planPrices ?? [])->map(function ($price) {
+                $label = $price->duration_label
+                    ?: ucfirst((string) ($price->duration_unit ?? 'Plan'));
+
+                $amountMinor = (int) ($price->amount_minor ?? 0);
+
+                return [
+                    'id' => $price->id,
+                    'label' => $label,
+                    'duration_unit' => $price->duration_unit,
+                    'duration_count' => (int) ($price->duration_count ?? 1),
+                    'amount_minor' => $amountMinor,
+                    'amount_display' => number_format($amountMinor / 100, 2),
+                    'is_default' => (bool) ($price->is_default ?? false),
+                ];
+            })->values()->all();
+
+            $defaultPrice = collect($prices)->firstWhere('is_default', true)
+                ?? (count($prices) > 0 ? $prices[0] : null);
+
+            $featureLabels = $this->flattenFeatureLabels((array) ($plan->features ?? []), $labelMap, $hiddenKeys);
+
+            $isEligible = true;
+            $ineligibleReason = null;
+
+            if ($plan->availability_starts_on && $today->lt($plan->availability_starts_on->copy()->startOfDay())) {
+                $isEligible = false;
+                $ineligibleReason = 'Available on ' . $plan->availability_starts_on->format('M d, Y');
+            }
+
+            if ($plan->availability_ends_on && $today->gt($plan->availability_ends_on->copy()->endOfDay())) {
+                $isEligible = false;
+                $ineligibleReason = 'Enrollment period ended';
+            }
+
+            if ($isCurrentPlan) {
+                $isEligible = false;
+                $ineligibleReason = 'Current plan';
+            } elseif ($hasActiveSubscription) {
+                $isEligible = false;
+                $ineligibleReason = 'Cancel current plan to switch';
+            }
+
+            return [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'slug' => $plan->slug,
+                'description' => $plan->description,
+                'is_free' => $plan->isFree(),
+                'is_current' => $isCurrentPlan,
+                'is_eligible' => $isEligible,
+                'ineligible_reason' => $ineligibleReason,
+                'prices' => $prices,
+                'default_price' => $defaultPrice,
+                'feature_labels' => $featureLabels,
+                'feature_keys' => array_keys($featureLabels),
+            ];
+        })->values();
+
+        $recommendedPlanId = $cards
+            ->first(fn ($card) => !$card['is_free'] && !$card['is_current'] && $card['is_eligible'])['id'] ?? null;
+
+        return $cards->map(function ($card) use ($recommendedPlanId) {
+            $card['is_recommended'] = $recommendedPlanId !== null && $card['id'] === $recommendedPlanId;
+            return $card;
+        })->all();
+    }
+
+    /**
+     * Flatten mixed feature formats to key => label map for rendering.
+     */
+    private function flattenFeatureLabels(array $features, array $labelMap, array $hiddenKeys): array
+    {
+        $output = [];
+
+        foreach ($features as $groupOrIndex => $value) {
+            if (is_array($value)) {
+                foreach ($value as $key => $innerValue) {
+                    if (in_array($key, $hiddenKeys, true)) {
+                        continue;
+                    }
+
+                    if ($innerValue === true || (is_numeric($innerValue) && (int) $innerValue > 0) || (is_string($innerValue) && !in_array(strtolower($innerValue), ['false', '0', 'off', ''], true))) {
+                        $output[$key] = $labelMap[$key] ?? ucwords(str_replace('_', ' ', $key));
+                    }
+                }
+                continue;
+            }
+
+            if (is_string($groupOrIndex) && !in_array($groupOrIndex, $hiddenKeys, true) && ($value === true || $value === 1 || $value === '1')) {
+                $output[$groupOrIndex] = $labelMap[$groupOrIndex] ?? ucwords(str_replace('_', ' ', $groupOrIndex));
+                continue;
+            }
+
+            if (is_int($groupOrIndex) && is_string($value) && !in_array($value, $hiddenKeys, true)) {
+                $output[$value] = $labelMap[$value] ?? ucwords(str_replace('_', ' ', $value));
+            }
+        }
+
+        return $output;
+    }
+
+    /**
+     * Build comparison row metadata for the feature matrix.
+     */
+    private function buildComparisonFeatures(array $planCards): array
+    {
+        $features = [];
+
+        foreach ($planCards as $card) {
+            foreach (($card['feature_labels'] ?? []) as $featureKey => $featureLabel) {
+                if (!isset($features[$featureKey])) {
+                    $features[$featureKey] = [
+                        'key' => $featureKey,
+                        'label' => $featureLabel,
+                    ];
+                }
+            }
+        }
+
+        return array_values($features);
     }
 }

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 use Carbon\Carbon;
+use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
 {
@@ -93,6 +94,7 @@ class RegisteredUserController extends Controller
             'password'       => Hash::make($account['password']),
         ]);
 
+        Role::findOrCreate('learner', 'web');
         $user->assignRole('learner');
 
         event(new Registered($user));

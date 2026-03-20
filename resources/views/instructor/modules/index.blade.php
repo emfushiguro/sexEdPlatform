@@ -3,6 +3,24 @@
 @section('title', 'Manage Modules')
 
 @section('content')
+@php
+    $prefillModule = null;
+    $prefillModulePayload = null;
+    if (request()->filled('edit_module')) {
+        $prefillModule = $modules->firstWhere('id', (int) request('edit_module'));
+        if ($prefillModule) {
+            $prefillModulePayload = [
+                'id' => $prefillModule->id,
+                'title' => $prefillModule->title,
+                'description' => $prefillModule->description,
+                'age_bracket' => $prefillModule->min_age >= 18 ? 'adults' : ($prefillModule->min_age >= 13 ? 'teens' : 'kids'),
+                'enrollment_mode' => $prefillModule->enrollment_mode,
+                'is_published' => (bool) $prefillModule->is_published,
+                'thumbnail_url' => $prefillModule->thumbnail ? asset('storage/' . $prefillModule->thumbnail) : null,
+            ];
+        }
+    }
+@endphp
 <div x-data="{
     q: '',
     deleteModalOpen: false,
@@ -20,7 +38,12 @@
             this.deleteForm.submit();
         }
     }
-}">
+}"
+@if(request()->boolean('create_module'))
+    x-init="$store.modals.openModuleModal()"
+@elseif($prefillModule)
+    x-init="$store.modals.openModuleModal({{ Js::from($prefillModulePayload) }})"
+@endif>
 
     {{-- Page Header --}}
     <div class="flex items-center justify-between mb-6">
@@ -90,6 +113,15 @@
         @forelse($modules as $module)
         @php
             $searchKey = strtolower($module->title . ' ' . strip_tags($module->description ?? ''));
+            $moduleModalPayload = [
+                'id' => $module->id,
+                'title' => $module->title,
+                'description' => $module->description,
+                'age_bracket' => $module->min_age >= 18 ? 'adults' : ($module->min_age >= 13 ? 'teens' : 'kids'),
+                'enrollment_mode' => $module->enrollment_mode,
+                'is_published' => (bool) $module->is_published,
+                'thumbnail_url' => $module->thumbnail ? asset('storage/' . $module->thumbnail) : null,
+            ];
         @endphp
 
         <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
@@ -104,7 +136,6 @@
                     <img src="{{ asset('storage/' . $module->thumbnail) }}"
                          alt="{{ $module->title }}"
                          class="w-full h-full object-cover">
-                    <div class="absolute inset-0" style="background: linear-gradient(135deg, rgba(163,14,178,0.65) 0%, rgba(59,12,177,0.65) 100%);"></div>
                 @else
                     <div class="absolute inset-0" style="background: linear-gradient(135deg, #A30EB2 0%, #730DB1 50%, #3B0CB1 100%);"></div>
                     <div class="absolute inset-0 opacity-10"
@@ -203,13 +234,15 @@
                     </a>
 
                     {{-- Edit --}}
-                    <a href="{{ route('instructor.modules.edit', $module) }}"
-                       title="Edit module"
+                    <button type="button"
+                            data-edit-module-trigger
+                            @click="$store.modals.openModuleModal({{ Js::from($moduleModalPayload) }})"
+                            title="Edit module"
                               class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors action-icon-standard">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                         </svg>
-                    </a>
+                    </button>
 
                     {{-- Activate / Deactivate --}}
                     @if($module->is_published)

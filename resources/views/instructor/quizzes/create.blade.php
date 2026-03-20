@@ -27,7 +27,7 @@
                         <!-- Helper Text -->
                         <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
                             <p class="text-sm text-blue-800">
-                                â„¹ï¸ You can attach this quiz to either a <strong>module</strong> (for module-level assessment) 
+                                 You can attach this quiz to either a <strong>module</strong> (for module-level assessment) 
                                 or a <strong>lesson</strong> (for topic-specific quiz), but not both.
                             </p>
                         </div>

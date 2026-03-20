@@ -4,135 +4,112 @@
     <meta charset="utf-8">
     <title>Certificate - {{ $certificate->certificate_number }}</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @page {
+            margin: 24px;
+            size: A4 landscape;
         }
+
         body {
-            font-family: 'Arial', sans-serif;
-            padding: 40px;
-            background: white;
+            margin: 0;
+            font-family: DejaVu Sans, sans-serif;
+            color: #111827;
         }
+
         .certificate {
-            border: 12px double #d97706;
-            padding: 60px;
-            background: linear-gradient(to bottom right, #fef3c7, white);
-            max-width: 800px;
-            margin: 0 auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 28px 34px;
         }
-        .header {
+
+        .title {
             text-align: center;
-            margin-bottom: 40px;
+            font-size: 28pt;
+            font-weight: 700;
+            margin-bottom: 8px;
         }
-        .logo {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        h1 {
-            font-size: 36px;
-            color: #1f2937;
-            margin-bottom: 10px;
-        }
+
         .subtitle {
-            color: #6b7280;
-            font-size: 14px;
-        }
-        .divider {
-            border-top: 2px solid #d97706;
-            margin: 40px 0;
-        }
-        .content {
             text-align: center;
-            margin-bottom: 40px;
+            font-size: 12pt;
+            color: #4b5563;
+            margin-bottom: 26px;
         }
-        .content p {
-            font-size: 16px;
+
+        .learner {
+            text-align: center;
+            font-size: 30pt;
+            font-weight: 700;
+            margin: 6px 0 16px;
+        }
+
+        .module {
+            text-align: center;
+            font-size: 22pt;
+            font-weight: 600;
+            margin: 10px 0 24px;
+        }
+
+        .body-copy {
+            text-align: center;
+            font-size: 12pt;
+            line-height: 1.55;
             color: #374151;
-            margin-bottom: 20px;
         }
-        .recipient-name {
-            font-size: 32px;
-            font-weight: bold;
-            color: #1f2937;
-            margin: 30px 0;
-            border-bottom: 2px solid #374151;
-            display: inline-block;
-            padding-bottom: 5px;
+
+        .meta {
+            margin-top: 28px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+            display: table;
+            width: 100%;
         }
-        .module-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2563eb;
-            margin: 30px 0;
+
+        .meta-left,
+        .meta-right {
+            display: table-cell;
+            width: 50%;
         }
-        .description {
-            color: #6b7280;
-            font-size: 14px;
-        }
-        .footer {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 60px;
-            padding-top: 30px;
-            border-top: 2px solid #d1d5db;
-        }
-        .footer-item {
-            text-align: left;
-        }
-        .footer-item:last-child {
+
+        .meta-right {
             text-align: right;
         }
-        .footer-label {
-            font-size: 12px;
+
+        .label {
+            font-size: 10pt;
             color: #6b7280;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
-        .footer-value {
-            font-weight: bold;
-            color: #1f2937;
+
+        .value {
+            font-size: 12pt;
+            font-weight: 600;
         }
-        .cert-number {
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
+
+        .mono {
+            font-family: DejaVu Sans Mono, monospace;
         }
     </style>
 </head>
 <body>
     <div class="certificate">
-        <div class="header">
-            <div class="logo">🏆</div>
-            <h1>Certificate of Completion</h1>
-            <p class="subtitle">Sexual and Reproductive Health Education Platform</p>
-        </div>
+        <div class="title">Certificate of Completion</div>
+        <p class="subtitle">Conscious Connections</p>
 
-        <div class="divider"></div>
+        <p class="body-copy">This certifies that</p>
+        <div class="learner">{{ $certificate->learner_name }}</div>
+        <p class="body-copy">has successfully completed the module</p>
+        <div class="module">{{ $certificate->module_title }}</div>
 
-        <div class="content">
-            <p>This is to certify that</p>
-            <div class="recipient-name">{{ $certificate->learner_name }}</div>
-            <p>has successfully completed the module</p>
-            <div class="module-title">{{ $certificate->module_title }}</div>
-            <p class="description">Demonstrating knowledge and understanding of the course material</p>
-        </div>
-
-        <div class="footer">
-            <div class="footer-item">
-                <div class="footer-label">Certificate Number:</div>
-                <div class="footer-value cert-number">{{ $certificate->certificate_number }}</div>
+        <div class="meta">
+            <div class="meta-left">
+                <div class="label">Certificate Number</div>
+                <div class="value mono">{{ $certificate->certificate_number }}</div>
             </div>
-            <div class="footer-item">
-                <div class="footer-label">Date Issued:</div>
-                <div class="footer-value">{{ $certificate->issued_at->format('F d, Y') }}</div>
+            <div class="meta-right">
+                <div class="label">Issued</div>
+                <div class="value">{{ $certificate->issued_at->format('F d, Y') }}</div>
             </div>
         </div>
     </div>
-
-    <script>
-        // Auto-print when PDF view is opened
-        window.onload = function() {
-            window.print();
-        };
-    </script>
 </body>
 </html>

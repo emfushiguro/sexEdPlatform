@@ -14,7 +14,7 @@
 
     <div class="mb-5">
         <h2 class="text-2xl font-bold text-purple-900">Complete Your Profile</h2>
-        <p class="mt-1 text-sm text-gray-500">Welcome, {{ Auth::user()->first_name ?? Auth::user()->name }}! Just a few details to get started.</p>
+        <p class="mt-1 text-sm text-gray-500">Welcome, {{ Auth::user()->first_name ?? 'Learner' }}! Just a few details to get started.</p>
     </div>
 
     @if ($errors->any())
@@ -30,15 +30,39 @@
     <form method="POST" action="{{ route('profile.store') }}"
           x-data="{
               cityCode: '{{ old('city_code', $learnerProfile?->city_code) }}',
+              selectedBarangayCode: '{{ old('barangay_code', $learnerProfile?->barangay_code) }}',
               barangays: [],
               loading: false,
               async loadBarangays(code) {
-                  if (!code) { this.barangays = []; return; }
+                  if (!code) {
+                      this.barangays = [];
+                      this.selectedBarangayCode = '';
+                      return;
+                  }
+
                   this.loading = true;
                   try {
-                      const res = await fetch('/api/barangays/' + code);
-                      this.barangays = await res.json();
-                  } finally { this.loading = false; }
+                      const res = await fetch('/api/barangays/' + code, {
+                          headers: { 'Accept': 'application/json' },
+                      });
+
+                      if (!res.ok) {
+                          throw new Error('Failed to load barangays');
+                      }
+
+                      const data = await res.json();
+                      this.barangays = Array.isArray(data) ? data : [];
+
+                      if (this.selectedBarangayCode && !this.barangays.some((b) => b.code === this.selectedBarangayCode)) {
+                          this.selectedBarangayCode = '';
+                      }
+                  } catch (error) {
+                      this.barangays = [];
+                      this.selectedBarangayCode = '';
+                      console.error(error);
+                  } finally {
+                      this.loading = false;
+                  }
               }
           }"
           x-init="if (cityCode) loadBarangays(cityCode)">
@@ -55,7 +79,7 @@
                     <input id="username" name="username" type="text" required
                            value="{{ old('username', $learnerProfile?->username) }}"
                            placeholder="e.g., cool_learner_123"
-                           pattern="[a-z0-9_-]+" minlength="3" maxlength="30"
+                              pattern="^[a-z0-9_\-]{3,30}$" minlength="3" maxlength="30"
                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                     <p class="mt-1 text-xs text-gray-500">3–30 chars: including letters, numbers, symbol</p>
                     @error('username')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
@@ -100,20 +124,15 @@
                         Barangay <span class="text-red-500">*</span>
                     </label>
                     <select id="barangay_code" name="barangay_code" required
+                            x-model="selectedBarangayCode"
                             :disabled="!cityCode || loading"
                             class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition disabled:opacity-50">
-                        <option value="">
-                            <template x-if="!cityCode">Select city first</template>
-                            <template x-if="cityCode && loading">Loading</template>
-                            <template x-if="cityCode && !loading">Select barangay</template>
-                        </option>
+                        <option value="" x-text="!cityCode ? 'Select city first' : (loading ? 'Loading...' : 'Select barangay')"></option>
                         <template x-for="b in barangays" :key="b.code">
-                            <option :value="b.code"
-                                    :selected="b.code === '{{ old('barangay_code', $learnerProfile?->barangay_code) }}'"
-                                    x-text="b.name"></option>
+                            <option :value="b.code" x-text="b.name"></option>
                         </template>
                         @if(old('barangay_code', $learnerProfile?->barangay_code))
-                            @foreach($barangays ?? [] as $barangay)
+                            @foreach(collect($barangays ?? [])->filter() as $barangay)
                                 <option value="{{ $barangay->code }}"
                                     {{ old('barangay_code', $learnerProfile?->barangay_code) === $barangay->code ? 'selected' : '' }}>
                                     {{ $barangay->name }}

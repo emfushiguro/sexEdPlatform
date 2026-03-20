@@ -85,9 +85,9 @@ class WebhookController extends Controller
         $paymentData = $event['attributes']['data'] ?? [];
         $attributes = $paymentData['attributes'] ?? [];
 
-        // Extract payment source type (gcash, grab_pay, paymaya, etc.)
+        // Extract and normalize payment source type to an enum-safe value.
         $source = $attributes['source'] ?? [];
-        $paymentMethod = $source['type'] ?? 'paymongo';
+        $paymentMethod = $this->normalizePaymentMethod($source['type'] ?? null);
 
         // Get metadata for subscription lookup
         $metadata = $attributes['metadata'] ?? [];
@@ -113,7 +113,10 @@ class WebhookController extends Controller
 
         // Find the most recent pending/paymongo payment for this subscription
         $payment = Payment::where('subscription_id', $subscription->id)
-            ->whereIn('method', ['paymongo', 'pending'])
+            ->where(function ($query) {
+                $query->whereNull('method')
+                    ->orWhere('method', 'paymongo');
+            })
             ->whereIn('status', [PaymentStatus::Pending, PaymentStatus::Processing])
             ->orderByDesc('id')
             ->first();
@@ -160,5 +163,13 @@ class WebhookController extends Controller
 
         $computedSignature = hash_hmac('sha256', $payload, $secret);
         return hash_equals($computedSignature, $signature);
+    }
+
+    private function normalizePaymentMethod(?string $sourceType): string
+    {
+        return match ($sourceType) {
+            'gcash', 'paymaya', 'grab_pay', 'card', 'bank_transfer' => $sourceType,
+            default => 'paymongo',
+        };
     }
 }

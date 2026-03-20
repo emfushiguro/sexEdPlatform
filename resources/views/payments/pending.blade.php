@@ -3,129 +3,98 @@
 @section('title', 'Payment Pending')
 
 @section('content')
-<div class="max-w-3xl mx-auto">
-            @if(session('info'))
-                <div class="mb-6 bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
-                    {{ session('info') }}
-                </div>
-            @endif
+<div class="max-w-3xl mx-auto space-y-6 py-6">
+    @if(session('info'))
+        <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            {{ session('info') }}
+        </div>
+    @endif
 
-            @if(session('paymongo_checkout_url') && $payment->isPending())
-            <!-- PayMongo Redirect Banner — shown immediately after submitting the payment form -->
-            <div id="checkout-banner" class="mb-6 bg-indigo-50 border border-indigo-300 rounded-lg p-6 text-center">
-                <div class="flex items-center justify-center mb-3">
-                    <svg class="animate-spin h-6 w-6 text-indigo-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="text-indigo-800 font-semibold text-lg">Opening payment page…</span>
-                </div>
-                <p class="text-indigo-700 text-sm mb-4">You are being redirected to PayMongo to complete your payment. <strong>Do not close this tab</strong> — your subscription will activate automatically here once payment is confirmed.</p>
+    @if(session('paymongo_checkout_url') && $payment->isPending())
+        <div id="checkout-banner" class="rounded-2xl border border-indigo-200 bg-indigo-50 px-6 py-5">
+            <div class="flex items-center justify-center gap-3 mb-2">
+                <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="text-indigo-900 font-semibold">Opening secure payment page...</span>
+            </div>
+            <p class="text-indigo-700 text-sm text-center">
+                You are being redirected to PayMongo. Keep this tab open so your subscription can auto-activate once payment is confirmed.
+            </p>
+            <div class="text-center mt-4">
                 <a id="paymongo-link" href="{{ session('paymongo_checkout_url') }}"
-                   class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded transition">
-                    Continue to Payment →
-                </a>
-            </div>
-            @endif
-
-            <!-- Payment Status Card -->
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                <div class="p-6">
-                    <div class="text-center mb-6">
-                        <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Payment Pending</h3>
-                        <p class="text-gray-600">Your payment is being processed. Please wait for confirmation.</p>
-                    </div>
-
-                    <!-- Payment Details -->
-                    <div class="border-t border-gray-200 pt-4">
-                        <dl class="space-y-3">
-                            <div class="flex justify-between">
-                                <dt class="text-gray-500">Transaction ID</dt>
-                                <dd class="font-medium text-gray-900">{{ $payment->transaction_id }}</dd>
-                            </div>
-                            <div class="flex justify-between">
-                                <dt class="text-gray-500">Amount</dt>
-                                <dd class="font-medium text-gray-900">₱{{ number_format($payment->amount, 2) }}</dd>
-                            </div>
-                            <div class="flex justify-between">
-                                <dt class="text-gray-500">Payment Method</dt>
-                                <dd class="font-medium text-gray-900">{{ ucfirst($payment->method) }}</dd>
-                            </div>
-                            <div class="flex justify-between">
-                                <dt class="text-gray-500">Status</dt>
-                                <dd>
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full 
-                                        {{ $payment->status->value === 'completed' ? 'bg-green-100 text-green-800' : 
-                                           ($payment->status->value === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                        {{ ucfirst($payment->status->value) }}
-                                    </span>
-                                </dd>
-                            </div>
-                            <div class="flex justify-between">
-                                <dt class="text-gray-500">Created</dt>
-                                <dd class="font-medium text-gray-900">{{ $payment->created_at->format('M d, Y h:i A') }}</dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Instructions -->
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-                <h4 class="font-semibold text-blue-900 mb-2">What happens next?</h4>
-                <ul class="text-blue-800 text-sm space-y-2">
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                        </svg>
-                        <span>Once your payment is confirmed, your subscription will be activated automatically.</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                        </svg>
-                        <span>You will receive an email confirmation once the payment is processed.</span>
-                    </li>
-                    <li class="flex items-start">
-                        <svg class="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                        </svg>
-                        <span>If you have any issues, please contact our support team.</span>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Development Only: Simulate Success -->
-            @if(app()->environment('local'))
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-                    <h4 class="font-semibold text-yellow-800 mb-2">🧪 Development Mode</h4>
-                    <p class="text-yellow-700 text-sm mb-4">
-                        In production, payments are processed automatically via PayMongo webhooks.
-                        For testing, you can simulate a successful payment below.
-                    </p>
-                    <a href="{{ route('payment.simulate-success', $payment) }}" 
-                       class="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition">
-                        ✓ Simulate Successful Payment
-                    </a>
-                </div>
-            @endif
-
-            <!-- Actions -->
-            <div class="flex justify-between items-center">
-                <a href="{{ route('subscription.index') }}" class="text-blue-600 hover:text-blue-800">
-                    ← Back to Subscription
-                </a>
-                <a href="{{ route('payment.history') }}" class="text-blue-600 hover:text-blue-800">
-                    View Payment History →
+                   class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">
+                    Continue to Payment
                 </a>
             </div>
         </div>
+    @endif
+
+    <div class="rounded-2xl border border-purple-200/60 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 text-white" style="background: linear-gradient(135deg, #A30EB2 0%, #730DB1 45%, #3B0CB1 100%);">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-purple-100">Payment Status</p>
+            <h1 class="mt-1 text-2xl font-extrabold tracking-tight">{{ $payment->isPending() ? 'Payment Pending' : 'Payment Update' }}</h1>
+            <p class="mt-1 text-sm text-purple-100">We are checking your transaction in real time.</p>
+        </div>
+
+        <div class="bg-white px-6 py-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="rounded-xl border border-gray-200 p-4 bg-gray-50/70">
+                    <p class="text-xs text-gray-500">Transaction ID</p>
+                    <p class="mt-1 text-sm font-semibold text-gray-900 break-all">{{ $payment->transaction_id }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 p-4 bg-gray-50/70">
+                    <p class="text-xs text-gray-500">Amount</p>
+                    <p class="mt-1 text-sm font-semibold text-gray-900">PHP {{ number_format($payment->amount, 2) }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 p-4 bg-gray-50/70">
+                    <p class="text-xs text-gray-500">Payment Method</p>
+                    <p class="mt-1 text-sm font-semibold text-gray-900">{{ $payment->method ? ucwords(str_replace('_', ' ', $payment->method)) : 'To be selected' }}</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 p-4 bg-gray-50/70">
+                    <p class="text-xs text-gray-500">Status</p>
+                    <p class="mt-1">
+                        <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ $payment->status->value === 'completed' ? 'bg-emerald-100 text-emerald-700' : ($payment->status->value === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700') }}">
+                            {{ ucfirst($payment->status->value) }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-4 rounded-xl border border-gray-200 p-4">
+                <p class="text-sm font-semibold text-gray-900 mb-2">What happens next?</p>
+                <ul class="space-y-2 text-sm text-gray-600">
+                    <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>Once payment is confirmed, your subscription activates automatically.</span></li>
+                    <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>You can stay on this page while we poll for status updates.</span></li>
+                    <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>Need to leave? You can return anytime from Payment History.</span></li>
+                </ul>
+            </div>
+        </div>
     </div>
+
+    @if(app()->environment('local'))
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+            <p class="text-sm font-semibold text-amber-800">Development Mode</p>
+            <p class="text-sm text-amber-700 mt-1 mb-3">Use simulation for local testing when gateway callbacks are unavailable.</p>
+            <a href="{{ route('payment.simulate-success', $payment) }}"
+               class="inline-flex items-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors">
+                Simulate Successful Payment
+            </a>
+        </div>
+    @endif
+
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <a href="{{ route('subscription.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <i class="fi fi-rr-arrow-small-left"></i>
+            Back to Subscription
+        </a>
+        <a href="{{ route('payment.history') }}" class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors">
+            View Payment History
+            <i class="fi fi-rr-arrow-small-right"></i>
+        </a>
+    </div>
+</div>
 
     @if($payment->isPending())
     <script>
@@ -166,9 +135,9 @@
             // Floating status badge
             const indicator = document.createElement('div');
             indicator.id = 'poll-indicator';
-            indicator.className = 'fixed bottom-4 right-4 bg-white border border-gray-200 shadow-lg rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-gray-600 z-50';
+            indicator.className = 'fixed bottom-4 right-4 bg-white border border-purple-100 shadow-lg rounded-xl px-4 py-3 flex items-center gap-3 text-sm text-gray-600 z-50';
             indicator.innerHTML = `
-                <svg class="animate-spin h-4 w-4 text-blue-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg class="animate-spin h-4 w-4 text-purple-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
