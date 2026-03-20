@@ -20,6 +20,7 @@ _ide_helper_models.php
 /node_modules
 /public/build
 /public/hot
+/public/storage
 /storage/*.key
 /storage/pail
 /vendor
@@ -42,8 +43,6 @@ fix-index.cjs
 \!tail-admin/
 
 # Keep user-facing assets/media trackable
-!/public/storage/
-!/public/storage/**
 !/public/media/
 !/public/media/**
 !/storage/app/public/
