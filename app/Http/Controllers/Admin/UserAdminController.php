@@ -105,7 +105,7 @@ class UserAdminController extends Controller
      */
     public function show(User $user)
     {
-        $user->load(['subscription', 'gamification', 'moduleEnrollments', 'quizAttempts', 'certificates', 'payments']);
+        $user->load(['subscription', 'gamification', 'moduleEnrollments', 'quizAttempts', 'certificates.module', 'payments']);
         
         // Get user stats
         $stats = [

@@ -33,11 +33,6 @@ class CertificateController extends Controller
     {
         $user = Auth::user();
 
-        // Premium check
-        if (!$user->isPremium()) {
-            return back()->with('error', 'Certificates are only available for Premium members. Upgrade now!');
-        }
-
         // Check if already has certificate
         if (Certificate::where('user_id', $user->id)->where('module_id', $module->id)->exists()) {
             return back()->with('info', 'You already have a certificate for this module.');
@@ -133,6 +128,6 @@ class CertificateController extends Controller
         $pdfPath = app(CertificatePdfService::class)->ensureStoredPdf($certificate);
         $downloadName = 'certificate-' . $certificate->certificate_number . '.pdf';
 
-        return Storage::disk('public')->download($pdfPath, $downloadName);
+        return response()->download(Storage::disk('public')->path($pdfPath), $downloadName);
     }
 }

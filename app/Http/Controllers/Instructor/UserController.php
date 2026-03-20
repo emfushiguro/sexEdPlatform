@@ -60,7 +60,7 @@ class UserController extends Controller
                 ->whereHas('module', fn ($moduleQuery) => $moduleQuery->where('created_by', $instructorId))
                 ->with('module'),
             'quizAttempts',
-            'certificates',
+            'certificates.module',
         ]);
 
         return view('instructor.users.show', compact('user'));

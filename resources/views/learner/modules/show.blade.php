@@ -353,48 +353,39 @@
                     @endif
 
                     {{-- Certificate section --}}
-                    @if(Auth::user()->isPremium())
-                        @php
-                            $hasCertificate      = Auth::user()->certificates()->where('module_id', $module->id)->exists();
-                            $allLessonsCompleted = $lessons->count() > 0 && count($completedLessonIds) === $lessons->count();
-                        @endphp
-                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                            @if($hasCertificate)
-                                <a href="{{ route('learner.certificates.index') }}"
-                                   class="flex items-center gap-2 w-full text-sm font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 px-4 py-2.5 rounded-xl hover:bg-amber-100 transition-colors justify-center">
+                    @php
+                        $hasCertificate      = Auth::user()->certificates()->where('module_id', $module->id)->exists();
+                        $allLessonsCompleted = $lessons->count() > 0 && count($completedLessonIds) === $lessons->count();
+                    @endphp
+                    <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        @if($hasCertificate)
+                            <a href="{{ route('learner.certificates.index') }}"
+                               class="flex items-center gap-2 w-full text-sm font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 px-4 py-2.5 rounded-xl hover:bg-amber-100 transition-colors justify-center">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
+                                </svg>
+                                View Certificate
+                            </a>
+                        @elseif($allLessonsCompleted)
+                            <form method="POST" action="{{ route('learner.certificates.check', $module) }}">
+                                @csrf
+                                <button type="submit"
+                                        class="flex items-center gap-2 w-full text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors justify-center">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
                                     </svg>
-                                    View Certificate
-                                </a>
-                            @elseif($allLessonsCompleted)
-                                <form method="POST" action="{{ route('learner.certificates.check', $module) }}">
-                                    @csrf
-                                    <button type="submit"
-                                            class="flex items-center gap-2 w-full text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors justify-center">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
-                                        </svg>
-                                        Get Certificate
-                                    </button>
-                                </form>
-                            @else
-                                <p class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
-                                    </svg>
-                                    Complete all lessons to unlock your certificate
-                                </p>
-                            @endif
-                        </div>
-                    @elseif($progress->completed_lessons === $progress->total_lessons && $progress->total_lessons > 0)
-                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
-                            <p class="text-xs text-gray-600 dark:text-gray-400">Upgrade to earn a certificate</p>
-                            <a href="{{ route('subscription.upgrade') }}"
-                               class="flex-shrink-0 text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
-                               style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">Upgrade</a>
-                        </div>
-                    @endif
+                                    Get Certificate
+                                </button>
+                            </form>
+                        @else
+                            <p class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
+                                </svg>
+                                Complete all lessons to unlock your certificate
+                            </p>
+                        @endif
+                    </div>
 
                 @elseif($enrollmentStatus === 'pending')
                     <div class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">

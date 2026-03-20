@@ -40,10 +40,17 @@
                                            class="flex-1 text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                                             View
                                         </a>
-                                        <a href="{{ route('learner.certificates.download', $certificate) }}" 
-                                           class="flex-1 text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                                            Download
-                                        </a>
+                                        @if(auth()->user()->isPremium())
+                                            <a href="{{ route('learner.certificates.download', $certificate) }}" 
+                                               class="flex-1 text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                                Download
+                                            </a>
+                                        @else
+                                            <a href="{{ route('subscription.upgrade') }}" 
+                                               class="flex-1 text-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                                                Upgrade to Download
+                                            </a>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach

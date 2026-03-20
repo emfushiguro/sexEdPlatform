@@ -61,10 +61,17 @@
                            class="flex-1 text-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
                             ← Back to Certificates
                         </a>
-                        <a href="{{ route('learner.certificates.download', $certificate) }}" 
-                           class="flex-1 text-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                            Download PDF
-                        </a>
+                        @if(auth()->user()->isPremium())
+                            <a href="{{ route('learner.certificates.download', $certificate) }}" 
+                               class="flex-1 text-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                Download PDF
+                            </a>
+                        @else
+                            <a href="{{ route('subscription.upgrade') }}" 
+                               class="flex-1 text-center px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                                Upgrade to Download
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>
