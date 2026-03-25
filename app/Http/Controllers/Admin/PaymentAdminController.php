@@ -6,20 +6,12 @@ use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Services\AdminActivityLogService;
-use App\Services\RefundService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PaymentAdminController extends Controller
 {
-    public function __construct(
-        protected RefundService $refundService,
-        protected SubscriptionService $subscriptionService
-    ) {}
-
     public function index(Request $request)
     {
         $query = Payment::with(['user', 'subscription']);
@@ -56,8 +48,6 @@ class PaymentAdminController extends Controller
         $stats = [
             'total_revenue' => Payment::where('status', PaymentStatus::Completed)->sum('amount'),
             'completed' => Payment::where('status', PaymentStatus::Completed)->count(),
-            'failed' => Payment::where('status', PaymentStatus::Failed)->count(),
-            'refunded' => Payment::where('status', PaymentStatus::Refunded)->count(),
         ];
         
         return view('admin.payments.index', compact('payments', 'stats'));
@@ -67,60 +57,6 @@ class PaymentAdminController extends Controller
     {
         $payment->load(['user', 'subscription', 'refunds']);
         return view('admin.payments.show', compact('payment'));
-    }
-
-    public function processRefund(Request $request, Payment $payment)
-    {
-        $before = $payment->only(['id', 'status', 'amount', 'subscription_id']);
-
-        if ($payment->status !== PaymentStatus::Completed) {
-            return back()->with('error', 'Only completed payments can be refunded.');
-        }
-
-        $request->validate([
-            'reason' => 'required|string|max:500',
-        ]);
-
-        try {
-            // bypassTimeLimit: true — admins can refund beyond the 3-day user window
-            $refund = $this->refundService->processRefund(
-                payment: $payment,
-                amount: null,          // full refund
-                reason: $request->reason,
-                adminNotes: 'Refund initiated by admin: ' . Auth::user()->name,
-                bypassTimeLimit: true
-            );
-
-            $statusMsg = match ($refund->status) {
-                'completed'         => 'Refund processed successfully via PayMongo. Subscription deactivated.',
-                'manual_processing' => 'Refund has been logged for manual processing (no PayMongo payment ID found). Please process the refund directly in your PayMongo dashboard.',
-                default             => 'Refund recorded with status: ' . $refund->status,
-            };
-
-            app(AdminActivityLogService::class)->logModelMutation(
-                action: 'payments.refund',
-                entity: $payment,
-                before: $before,
-                after: $payment->fresh()->only(['id', 'status', 'amount', 'subscription_id']),
-                meta: ['reason' => $request->reason, 'refund_id' => $refund->id],
-                request: $request,
-            );
-
-            return redirect()->route('admin.payments.show', $payment)
-                ->with('success', $statusMsg);
-
-        } catch (\RuntimeException $e) {
-            // Duplicate refund or business rule violation
-            return back()->with('error', $e->getMessage());
-        } catch (\InvalidArgumentException $e) {
-            return back()->with('error', $e->getMessage());
-        } catch (\Exception $e) {
-            Log::error('Admin refund failed', [
-                'payment_id' => $payment->id,
-                'error'      => $e->getMessage(),
-            ]);
-            return back()->with('error', 'Refund failed: ' . $e->getMessage());
-        }
     }
 
     /**
@@ -177,4 +113,5 @@ class PaymentAdminController extends Controller
             return back()->with('error', 'Failed to complete payment: ' . $e->getMessage());
         }
     }
+
 }

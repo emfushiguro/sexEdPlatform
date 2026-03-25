@@ -6,9 +6,11 @@
 @section('content')
     {{-- Back link --}}
     <div class="mb-5">
-        <a href="{{ route('admin.subscription-plans.show', $subscriptionPlan) }}"
-           class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition-colors">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <a
+            href="{{ route('admin.subscription-plans.show', $subscriptionPlan) }}"
+            class="inline-flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-brand-500"
+        >
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
             Back to {{ $subscriptionPlan->name }}
@@ -16,17 +18,17 @@
     </div>
 
     <div class="max-w-2xl">
-        <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Edit Plan Details</h2>
+        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs">
+            <h2 class="mb-6 text-lg font-semibold text-gray-900">Edit Plan Details</h2>
 
             <form method="POST" action="{{ route('admin.subscription-plans.update', $subscriptionPlan) }}" x-data="planForm()">
                 @csrf
                 @method('PUT')
 
                 @if($errors->any())
-                    <div class="mb-5 rounded-xl bg-error-50 dark:bg-error-500/10 border border-error-200 dark:border-error-500/20 p-4">
-                        <p class="text-sm font-medium text-error-700 dark:text-error-400 mb-1">Please fix the following errors:</p>
-                        <ul class="list-disc list-inside text-sm text-error-600 dark:text-error-400 space-y-1">
+                    <div class="mb-5 rounded-xl border border-error-200 bg-error-50 p-4">
+                        <p class="mb-1 text-sm font-medium text-error-700">Please fix the following errors:</p>
+                        <ul class="list-inside list-disc space-y-1 text-sm text-error-600">
                             @foreach($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
@@ -36,72 +38,120 @@
 
                 {{-- Name --}}
                 <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Plan Name <span class="text-error-500">*</span></label>
-                    <input type="text" name="name" value="{{ old('name', $subscriptionPlan->name) }}" required
-                           class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('name') border-error-400 @enderror"/>
-                    @error('name')<p class="mt-1 text-xs text-error-500">{{ $message }}</p>@enderror
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700">Plan Name <span class="text-error-500">*</span></label>
+                    <input
+                        type="text"
+                        name="name"
+                        value="{{ old('name', $subscriptionPlan->name) }}"
+                        required
+                        class="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('name') border-error-400 @enderror"
+                    />
+                    @error('name')
+                        <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 {{-- Description --}}
                 <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
-                    <textarea name="description" rows="3"
-                              class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 resize-none">{{ old('description', $subscriptionPlan->description) }}</textarea>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                        name="description"
+                        rows="3"
+                        class="w-full resize-none rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                    >{{ old('description', $subscriptionPlan->description) }}</textarea>
                 </div>
 
                 {{-- Price & Trial --}}
-                <div class="grid grid-cols-2 gap-4 mb-5">
+                <div class="mb-5 grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Price (₱/month) <span class="text-error-500">*</span></label>
-                        <input type="number" name="price" value="{{ old('price', $subscriptionPlan->price) }}" min="0" step="0.01" required
-                               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('price') border-error-400 @enderror"/>
-                        @error('price')<p class="mt-1 text-xs text-error-500">{{ $message }}</p>@enderror
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Price (₱/month) <span class="text-error-500">*</span></label>
+                        <input
+                            type="number"
+                            name="price"
+                            value="{{ old('price', $subscriptionPlan->price) }}"
+                            min="0"
+                            step="0.01"
+                            required
+                            class="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('price') border-error-400 @enderror"
+                        />
+                        @error('price')
+                            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Trial Days</label>
-                        <input type="number" name="trial_days" value="{{ old('trial_days', $subscriptionPlan->trial_days ?? 0) }}" min="0" max="365"
-                               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Trial Days</label>
+                        <input
+                            type="number"
+                            name="trial_days"
+                            value="{{ old('trial_days', $subscriptionPlan->trial_days ?? 0) }}"
+                            min="0"
+                            max="365"
+                            class="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                        />
                     </div>
                 </div>
 
                 {{-- Max Modules & Sort Order --}}
-                <div class="grid grid-cols-2 gap-4 mb-5">
+                <div class="mb-5 grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Max Modules <span class="text-xs text-gray-400">(0 = unlimited)</span></label>
-                        <input type="number" name="max_modules" value="{{ old('max_modules', $subscriptionPlan->max_modules ?? 0) }}" min="0"
-                               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Max Modules <span class="text-xs text-gray-400">(0 = unlimited)</span></label>
+                        <input
+                            type="number"
+                            name="max_modules"
+                            value="{{ old('max_modules', $subscriptionPlan->max_modules ?? 0) }}"
+                            min="0"
+                            class="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                        />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Sort Order</label>
-                        <input type="number" name="sort_order" value="{{ old('sort_order', $subscriptionPlan->sort_order) }}" min="0"
-                               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Sort Order</label>
+                        <input
+                            type="number"
+                            name="sort_order"
+                            value="{{ old('sort_order', $subscriptionPlan->sort_order) }}"
+                            min="0"
+                            class="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                        />
                     </div>
                 </div>
 
                 {{-- Features --}}
                 <div class="mb-5">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Features</label>
+                    <label class="mb-2 block text-sm font-medium text-gray-700">Features</label>
                     <div x-ref="featureList" class="space-y-2">
                         @php
                             $existingFeatures = old('feature_keys', $subscriptionPlan->features ?? ['']);
-                            if (empty($existingFeatures)) $existingFeatures = [''];
+                            if (empty($existingFeatures)) {
+                                $existingFeatures = [''];
+                            }
                         @endphp
                         @foreach($existingFeatures as $feature)
                             <div class="flex gap-2">
-                                <input type="text" name="feature_keys[]" value="{{ $feature }}" placeholder="e.g. Unlimited quizzes"
-                                       class="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
-                                <button type="button" @click="removeRow($el.closest('div'))"
-                                        class="p-2 text-gray-400 hover:text-error-500 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/10 transition-colors">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <input
+                                    type="text"
+                                    name="feature_keys[]"
+                                    value="{{ $feature }}"
+                                    placeholder="e.g. Unlimited quizzes"
+                                    class="flex-1 rounded-xl border border-gray-200 bg-transparent px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                                />
+                                <button
+                                    type="button"
+                                    @click="removeRow($el.closest('div'))"
+                                    class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-error-50 hover:text-error-500"
+                                >
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                     </svg>
                                 </button>
                             </div>
                         @endforeach
                     </div>
-                    <button type="button" @click="addRow"
-                            class="mt-2 inline-flex items-center gap-1.5 text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400 font-medium">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button
+                        type="button"
+                        @click="addRow"
+                        class="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-brand-500 hover:text-brand-600"
+                    >
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
                         Add Feature
@@ -109,21 +159,31 @@
                 </div>
 
                 {{-- Active toggle --}}
-                <div class="flex items-center gap-3 mb-6">
+                <div class="mb-6 flex items-center gap-3">
                     <input type="hidden" name="is_active" value="0"/>
-                    <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', $subscriptionPlan->is_active) ? 'checked' : '' }}
-                           class="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"/>
-                    <label for="is_active" class="text-sm font-medium text-gray-700 dark:text-gray-300">Active (visible to learners)</label>
+                    <input
+                        type="checkbox"
+                        name="is_active"
+                        id="is_active"
+                        value="1"
+                        {{ old('is_active', $subscriptionPlan->is_active) ? 'checked' : '' }}
+                        class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                    />
+                    <label for="is_active" class="text-sm font-medium text-gray-700">Active (visible to learners)</label>
                 </div>
 
                 {{-- Actions --}}
                 <div class="flex items-center gap-3">
-                    <button type="submit"
-                            class="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-theme-xs">
+                    <button
+                        type="submit"
+                        class="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-theme-xs transition-colors hover:bg-brand-600"
+                    >
                         Save Changes
                     </button>
-                    <a href="{{ route('admin.subscription-plans.show', $subscriptionPlan) }}"
-                       class="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                    <a
+                        href="{{ route('admin.subscription-plans.show', $subscriptionPlan) }}"
+                        class="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                    >
                         Cancel
                     </a>
                 </div>
@@ -142,10 +202,10 @@ function planForm() {
             div.className = 'flex gap-2';
             div.innerHTML = `
                 <input type="text" name="feature_keys[]" placeholder="e.g. Unlimited quizzes"
-                       class="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
+                    class="flex-1 rounded-xl border border-gray-200 bg-transparent px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
                 <button type="button" onclick="this.closest('div').remove()"
-                        class="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>`;

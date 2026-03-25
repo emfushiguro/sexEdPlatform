@@ -194,9 +194,20 @@
                     </div>
                 </section>
 
+                <!-- Payments and Refunds -->
+                <section>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">10. Payments and Refund Policy</h2>
+                    <div class="space-y-3 text-gray-700">
+                        <p class="leading-relaxed">
+                            All subscription and payment transactions on the platform are final. We do not accept refunds,
+                            and no refund processing is offered once payment has been completed.
+                        </p>
+                    </div>
+                </section>
+
                 <!-- Termination -->
                 <section>
-                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">10. Termination</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">11. Termination</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             We reserve the right to suspend or terminate accounts that violate these Terms of Service. 
@@ -210,7 +221,7 @@
 
                 <!-- Changes to Terms -->
                 <section>
-                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">11. Changes to Terms</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">12. Changes to Terms</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             We may update these Terms of Service from time to time. Significant changes will be communicated via 
@@ -221,7 +232,7 @@
 
                 <!-- Contact -->
                 <section>
-                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">12. Contact Information</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">13. Contact Information</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
                             If you have questions about these Terms of Service, please contact us at:

@@ -10,6 +10,7 @@ use App\Models\ModuleEnrollment;
 use App\Models\RewardLog;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
+use App\Models\InstructorApplication;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -159,6 +160,15 @@ class DashboardController extends Controller
             $usernameCooldownDays = $daysSince < 7 ? (7 - (int) $daysSince) : 0;
         }
 
+        $latestInstructorApplication = InstructorApplication::query()
+            ->where('user_id', $user->id)
+            ->latest()
+            ->first();
+        $hasPendingInstructorApplication = $latestInstructorApplication?->status === 'pending';
+        $canApplyAsInstructor = $user->isLearner()
+            && ! $user->children()->exists()
+            && ! $hasPendingInstructorApplication;
+
         return view('learner.dashboard', compact(
             'learnerProfile',
             'enrollmentData',
@@ -179,6 +189,9 @@ class DashboardController extends Controller
             'currentSubscription',
             'currentPlan',
             'usernameCooldownDays',
+            'latestInstructorApplication',
+            'hasPendingInstructorApplication',
+            'canApplyAsInstructor',
         ));
     }
 }

@@ -274,6 +274,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'organization';
     }
 
+    public function isInstructor(): bool
+    {
+        return $this->role === 'instructor';
+    }
+
     /**
      * Get user's full name
      */
@@ -366,5 +371,25 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isLearner(): bool
     {
         return $this->role === 'learner';
+    }
+
+    public function instructorApplication()
+    {
+        return $this->hasOne(InstructorApplication::class)->latestOfMany();
+    }
+
+    public function instructorApplications()
+    {
+        return $this->hasMany(InstructorApplication::class);
+    }
+
+    public function instructorProfile()
+    {
+        return $this->hasOne(InstructorProfile::class);
+    }
+
+    public function roleTransitions()
+    {
+        return $this->hasMany(RoleTransition::class);
     }
 }

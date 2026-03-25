@@ -9,6 +9,7 @@ use App\Http\Controllers\Learner\SubscriptionController;
 use App\Http\Controllers\Learner\QuizController;
 use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
+use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
 use App\Http\Controllers\Api\LocationController;
 use Illuminate\Support\Facades\Route;
 
@@ -113,6 +114,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/search', [\App\Http\Controllers\Learner\SearchController::class, 'index'])->name('search');
 
         // Notifications
+        Route::get('/notifications', [\App\Http\Controllers\Learner\NotificationController::class, 'index'])->name('notifications.index');
         Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Learner\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
         Route::get('/notifications/{id}/read', [\App\Http\Controllers\Learner\NotificationController::class, 'markRead'])->name('notifications.read');
 
@@ -142,6 +144,14 @@ Route::middleware('auth')->group(function () {
         // Certificate downloads remain premium-only
         Route::middleware('premium')->group(function () {
             Route::get('/certificates/{certificate}/download', [\App\Http\Controllers\Learner\CertificateController::class, 'download'])->name('certificates.download');
+        });
+
+        // Instructor application (learners only)
+        Route::middleware('role:learner')->prefix('instructor')->name('instructor.')->group(function () {
+            Route::get('apply', [LearnerInstructorApplicationController::class, 'showForm'])->name('apply');
+            Route::post('apply', [LearnerInstructorApplicationController::class, 'submit'])->name('apply.submit');
+            Route::get('submitted', [LearnerInstructorApplicationController::class, 'submitted'])->name('submitted');
+            Route::delete('withdraw', [LearnerInstructorApplicationController::class, 'withdraw'])->name('withdraw');
         });
     });
 
@@ -175,99 +185,6 @@ Route::middleware('auth')->group(function () {
             ->name('children.enrollments.reject');
     });
 
-    // Instructor routes (Content Management)
-    Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
-        // Instructor Dashboard
-        Route::get('/dashboard', [\App\Http\Controllers\Instructor\DashboardController::class, 'index'])->name('dashboard');
-        
-        // Learner Management (view-only)
-        Route::resource('users', \App\Http\Controllers\Instructor\UserController::class)->only(['index', 'show']);
-        
-        // Module Management
-        Route::resource('modules', \App\Http\Controllers\Instructor\ModuleController::class);
-        Route::patch('modules/{module}/activate', [\App\Http\Controllers\Instructor\ModuleController::class, 'activate'])->name('modules.activate');
-        Route::patch('modules/{module}/deactivate', [\App\Http\Controllers\Instructor\ModuleController::class, 'deactivate'])->name('modules.deactivate');
-        Route::patch('modules/{id}/restore', [\App\Http\Controllers\Instructor\ModuleController::class, 'restore'])->name('modules.restore');
-        
-        // Enrollment Management
-        Route::get('enrollments', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'index'])
-            ->name('enrollments.index');
-        Route::get('enrollments/{enrollment}', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'show'])
-            ->name('enrollments.show');
-        Route::patch('enrollments/{enrollment}/approve', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'approve'])
-            ->name('enrollments.approve');
-        Route::patch('enrollments/{enrollment}/reject', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'reject'])
-            ->name('enrollments.reject');
-        Route::get('modules/{module}/enrollments', [\App\Http\Controllers\Instructor\EnrollmentController::class, 'moduleEnrollments'])
-            ->name('modules.enrollments');
-        
-        // Lesson Management
-        Route::patch('lessons/reorder', [\App\Http\Controllers\Instructor\LessonController::class, 'reorder'])->name('lessons.reorder');
-        Route::resource('lessons', \App\Http\Controllers\Instructor\LessonController::class);
-        Route::patch('lessons/{lesson}/move', [\App\Http\Controllers\Instructor\LessonController::class, 'move'])
-            ->name('lessons.move');
-        
-        // Topic Management (Lesson Topics)
-        Route::patch('topics/reorder', [\App\Http\Controllers\Instructor\TopicController::class, 'reorder'])->name('topics.reorder');
-        Route::get('topics/create', [\App\Http\Controllers\Instructor\TopicController::class, 'create'])
-            ->name('topics.create');
-        Route::post('topics', [\App\Http\Controllers\Instructor\TopicController::class, 'store'])
-            ->name('topics.store');
-        Route::get('topics/{topic}/edit', [\App\Http\Controllers\Instructor\TopicController::class, 'edit'])
-            ->name('topics.edit');
-        Route::get('topics/{topic}/preview', [\App\Http\Controllers\Instructor\TopicController::class, 'preview'])
-            ->name('topics.preview');
-        Route::put('topics/{topic}', [\App\Http\Controllers\Instructor\TopicController::class, 'update'])
-            ->name('topics.update');
-        Route::delete('topics/{topic}', [\App\Http\Controllers\Instructor\TopicController::class, 'destroy'])
-            ->name('topics.destroy');
-        
-        // Image upload for TinyMCE
-        Route::post('upload/image', [\App\Http\Controllers\Instructor\TopicController::class, 'uploadImage'])
-            ->name('upload.image');
-        
-        // Quiz Management
-        Route::resource('quizzes', \App\Http\Controllers\Instructor\QuizManagementController::class);
-        Route::get('quizzes/{quiz}/add-question', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'addQuestion'])
-            ->name('quizzes.add-question');
-        Route::post('quizzes/{quiz}/store-question', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'storeQuestion'])
-            ->name('quizzes.store-question');
-        Route::get('quizzes/{quiz}/questions/{question}/edit', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'editQuestion'])
-            ->name('quizzes.edit-question');
-        Route::put('quizzes/{quiz}/questions/{question}', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'updateQuestion'])
-            ->name('quizzes.update-question');
-        Route::delete('quizzes/{quiz}/questions/{question}', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'deleteQuestion'])
-            ->name('quizzes.delete-question');
-        
-        // CSV Import
-        Route::get('quizzes/{quiz}/import/template', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'downloadTemplate'])
-            ->name('quizzes.import.template');
-        Route::post('quizzes/{quiz}/import/preview', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'previewImport'])
-            ->name('quizzes.import.preview');
-        Route::post('quizzes/{quiz}/import/confirm', [\App\Http\Controllers\Instructor\QuizManagementController::class, 'confirmImport'])
-            ->name('quizzes.import.confirm');
-        
-        // Image Library
-        Route::get('image-library', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'index'])
-            ->name('image-library.index');
-        Route::get('image-library/json', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'indexJson'])
-            ->name('image-library.json');
-        Route::post('image-library/upload', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'upload'])
-            ->name('image-library.upload');
-        Route::delete('image-library/{filename}', [\App\Http\Controllers\Instructor\ImageLibraryController::class, 'delete'])
-            ->name('image-library.delete');
-    });
-
-    // Admin routes (System Management) - TODO: To be built
-    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
-        Route::get('/dashboard', function() {
-            return view('admin.dashboard');
-        })->name('dashboard');
-        
-        // TODO: Subscription management routes
-        // TODO: User management routes  
-        // TODO: Platform settings routes
-    });
 });
 
 // Paymongo webhook (outside auth middleware)

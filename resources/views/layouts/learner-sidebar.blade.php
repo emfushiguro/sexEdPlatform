@@ -32,6 +32,12 @@
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l2.82 5.72L21 8.62l-4.5 4.39 1.06 6.22L12 16.34l-5.56 2.89 1.06-6.22L3 8.62l6.18-.9L12 2Z"/><circle cx="12" cy="12" r="2.25" fill="white"/></svg>',
         ],
         [
+            'label'  => 'Notifications',
+            'route'  => 'learner.notifications.index',
+            'active' => request()->routeIs('learner.notifications.*'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.437L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>',
+        ],
+        [
             'label'  => 'Certificates',
             'route'  => 'learner.certificates.index',
             'active' => request()->routeIs('learner.certificates.*'),
@@ -82,8 +88,9 @@
             <span
                 x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                 x-cloak
-                class="text-sm font-semibold text-gray-900"
-            >Concious Connections</span>
+                class="text-lg font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500 whitespace-nowrap"
+            >Conscious <br>
+            Connections</span>
             {{-- Icon-only logo (collapsed) --}}
             <img
                 src="/media/Logo.png"

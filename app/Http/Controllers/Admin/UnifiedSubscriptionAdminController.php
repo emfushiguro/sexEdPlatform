@@ -33,7 +33,7 @@ class UnifiedSubscriptionAdminController extends Controller
 
         $plan = DB::transaction(function () use ($validated) {
             $slug = $this->generateUniqueSlug($validated['name']);
-            $sortOrder = $validated['sort_order'] ?? ((SubscriptionPlan::max('sort_order') ?? 0) + 10);
+            $sortOrder = $validated['sort_order'] ?? 0;
             $billingMode = $validated['billing_mode'] ?? 'monthly';
 
             $previewStart = Carbon::today();
@@ -324,11 +324,14 @@ class UnifiedSubscriptionAdminController extends Controller
             }
 
             if (array_key_exists('price', $validated)) {
-                $subscriptionPlan->price = (float) $validated['price'];
+                $subscriptionPlan->setAttribute('price', (float) $validated['price']);
             } elseif ($subscriptionPlan->planPrices()->exists()) {
                 $default = $subscriptionPlan->planPrices()->where('is_default', true)->first()
                     ?? $subscriptionPlan->planPrices()->orderBy('id')->first();
-                $subscriptionPlan->price = $default ? ((int) $default->amount_minor) / 100 : $subscriptionPlan->price;
+                $subscriptionPlan->setAttribute(
+                    'price',
+                    $default ? ((int) $default->amount_minor) / 100 : $subscriptionPlan->price
+                );
             }
 
             $subscriptionPlan->features = array_values(array_unique(array_filter(array_map('trim', $validated['feature_keys'] ?? []))));
@@ -363,6 +366,27 @@ class UnifiedSubscriptionAdminController extends Controller
 
     private function learnerEntitlementDefinitions(): array
     {
+        $catalogDefinitions = FeatureCatalog::query()
+            ->where('is_active', true)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get(['key', 'name', 'value_type', 'unit_label', 'category'])
+            ->mapWithKeys(function (FeatureCatalog $feature) {
+                return [
+                    $feature->key => [
+                        'name' => $feature->name,
+                        'value_type' => $feature->value_type,
+                        'unit_label' => $feature->unit_label,
+                        'category' => $feature->category,
+                    ],
+                ];
+            })
+            ->toArray();
+
+        if (!empty($catalogDefinitions)) {
+            return $catalogDefinitions;
+        }
+
         return [
             'unlimited_username_changes' => [
                 'name' => 'Unlimited Username Changes',

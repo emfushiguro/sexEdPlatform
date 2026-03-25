@@ -34,6 +34,7 @@
             <div class="relative z-10 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div class="flex items-start gap-4">
                 <div>
+                    <span class="sr-only">Subscription Status</span>
                     <h3 class="text-white font-bold font-heading text-lg mb-1">Active Subscription</h3>
                     <div class="flex items-center gap-2 flex-wrap">
                         @if($subscription)
@@ -243,6 +244,9 @@
                     <form method="POST" action="{{ route('subscription.subscribe') }}" class="mt-7 space-y-3" @submit="track('subscription_checkout_started')">
                         @csrf
                         <input type="hidden" name="plan_id" :value="selectedPlanId">
+                        <p class="text-xs text-gray-500 leading-relaxed">
+                            By continuing, you confirm that subscription payments are final and non-refundable.
+                        </p>
                         <button type="submit" class="w-full py-3.5 rounded-xl text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 hover:shadow-lg shadow-purple-200/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
                             Continue to payment process
                         </button>

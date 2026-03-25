@@ -11,6 +11,7 @@ use App\Models\Clinic;
 use App\Models\Seminar;
 use App\Models\UserProgress;
 use App\Models\Payment;
+use App\Models\InstructorApplication;
 use App\Services\PayMongoPaymentLinkService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
@@ -28,6 +29,7 @@ class DashboardController extends Controller
         // Route to role-specific dashboard
         return match($user->role) {
             'admin' => $this->adminDashboard(),
+            'instructor' => redirect()->route('instructor.dashboard'),
             'counselor' => $this->counselorDashboard(),
             'clinic' => $this->clinicDashboard(),
             'organization' => $this->organizationDashboard(),
@@ -43,6 +45,7 @@ class DashboardController extends Controller
             'totalModules' => Module::count(),
             'pendingCounselors' => Counselor::pending()->count(),
             'pendingClinics' => Clinic::pending()->count(),
+            'pendingInstructors' => InstructorApplication::pending()->count(),
             'recentUsers' => User::latest()->take(10)->get(),
         ];
 
