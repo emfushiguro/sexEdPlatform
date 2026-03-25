@@ -50,12 +50,14 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
-    // Instructor login (separate portal)
-    Route::get('instructor/login', [InstructorAuthController::class, 'showLoginForm'])
-        ->name('instructor.login');
-    
-    Route::post('instructor/login', [InstructorAuthController::class, 'login'])
-        ->name('instructor.login.submit');
+    Route::get('instructor/login', function () {
+        return redirect()->route('login')
+            ->with('info', 'Please use the main login page. Instructors and learners now share one login.');
+    })->name('instructor.login');
+
+    Route::post('instructor/login', function () {
+        return redirect()->route('login');
+    })->name('instructor.login.submit');
 
     // Secure admin login (hidden route with hash for security)
     Route::get('secure-panel-access', [AdminAuthController::class, 'showLoginForm'])

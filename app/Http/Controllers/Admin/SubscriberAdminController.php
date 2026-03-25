@@ -8,7 +8,6 @@ use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\AdminActivityLogService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Handles subscriber (subscription record) management in the admin panel.
@@ -133,4 +132,5 @@ class SubscriberAdminController extends Controller
 
         return redirect()->back()->with('success', 'Subscription cancelled.');
     }
+
 }

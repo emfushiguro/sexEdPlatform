@@ -131,7 +131,14 @@ window.adminSidebarLock = {
             return;
         }
 
-        sidebar.lock();
+        if (typeof sidebar.lock === 'function') {
+            sidebar.lock();
+        } else {
+            // Fallback for pages where the sidebar store was defined without lock/unlock helpers.
+            sidebar.isLocked = true;
+            sidebar.isMobileOpen = false;
+            sidebar.isHovered = false;
+        }
         document.body.classList.add('admin-sidebar-locked');
     },
     unlock() {
@@ -142,7 +149,11 @@ window.adminSidebarLock = {
 
         const sidebar = Alpine.store('sidebar');
         if (sidebar) {
-            sidebar.unlock();
+            if (typeof sidebar.unlock === 'function') {
+                sidebar.unlock();
+            } else {
+                sidebar.isLocked = false;
+            }
         }
         document.body.classList.remove('admin-sidebar-locked');
     },

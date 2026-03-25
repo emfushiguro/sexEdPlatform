@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\InstructorApplication;
 use App\Services\AdminDashboardService;
 
 class DashboardController extends Controller
@@ -19,6 +20,7 @@ class DashboardController extends Controller
             'riskMetrics' => $metrics['risk'],
             'leakageMetrics' => $metrics['leakage'],
             'growthMetrics' => $metrics['growth'],
+            'pendingInstructorApplications' => InstructorApplication::pending()->count(),
         ]);
     }
 }

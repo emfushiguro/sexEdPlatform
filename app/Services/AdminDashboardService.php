@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Models\InstructorApplication;
 use Illuminate\Support\Facades\Schema;
 
 class AdminDashboardService
@@ -53,14 +54,20 @@ class AdminDashboardService
                 [
                     'label' => 'Active Learners',
                     'value' => User::role('learner')->where('status', 'active')->count(),
-                    'cta_label' => 'View Users',
-                    'cta_route' => route('admin.users.index', ['role' => 'learner']),
+                    'cta_label' => 'View Subscribers',
+                    'cta_route' => route('admin.subscribers.index', ['status' => 'active']),
                 ],
                 [
                     'label' => 'Active Plans',
                     'value' => SubscriptionPlan::where('is_active', true)->count(),
                     'cta_label' => 'View Plans',
                     'cta_route' => route('admin.subscription-plans.index'),
+                ],
+                [
+                    'label' => 'Pending Instructor Applications',
+                    'value' => InstructorApplication::pending()->count(),
+                    'cta_label' => 'Review Applications',
+                    'cta_route' => route('admin.instructor-applications.index'),
                 ],
             ],
         ];

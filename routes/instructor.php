@@ -29,6 +29,12 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
 
     // Module Management
     Route::resource('modules', Instructor\ModuleController::class);
+    Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
+        ->name('modules.activate');
+    Route::patch('modules/{module}/deactivate', [Instructor\ModuleController::class, 'deactivate'])
+        ->name('modules.deactivate');
+    Route::patch('modules/{id}/restore', [Instructor\ModuleController::class, 'restore'])
+        ->name('modules.restore');
 
     // Enrollment Management
     Route::get('enrollments', [Instructor\EnrollmentController::class, 'index'])
@@ -43,11 +49,15 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
         ->name('modules.enrollments');
 
     // Lesson Management
+    Route::patch('lessons/reorder', [Instructor\LessonController::class, 'reorder'])
+        ->name('lessons.reorder');
     Route::resource('lessons', Instructor\LessonController::class);
     Route::patch('lessons/{lesson}/move', [Instructor\LessonController::class, 'move'])
         ->name('lessons.move');
 
     // Topic Management (Lesson Topics)
+    Route::patch('topics/reorder', [Instructor\TopicController::class, 'reorder'])
+        ->name('topics.reorder');
     Route::get('topics/create', [Instructor\TopicController::class, 'create'])
         ->name('topics.create');
     Route::post('topics', [Instructor\TopicController::class, 'store'])
@@ -89,6 +99,8 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
     // Image Library
     Route::get('image-library', [Instructor\ImageLibraryController::class, 'index'])
         ->name('image-library.index');
+    Route::get('image-library/json', [Instructor\ImageLibraryController::class, 'indexJson'])
+        ->name('image-library.json');
     Route::post('image-library/upload', [Instructor\ImageLibraryController::class, 'upload'])
         ->name('image-library.upload');
     Route::delete('image-library/{filename}', [Instructor\ImageLibraryController::class, 'delete'])

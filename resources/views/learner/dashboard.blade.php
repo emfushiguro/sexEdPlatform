@@ -62,6 +62,23 @@
             </div>
         </div>
 
+        @if($hasPendingInstructorApplication)
+            <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <h2 class="text-base font-semibold text-amber-800">Instructor Application Pending</h2>
+                <p class="mt-1 text-sm text-amber-700">Your application is under review. Submitted on {{ optional($latestInstructorApplication?->created_at)->format('M d, Y') }}.</p>
+            </section>
+        @elseif($canApplyAsInstructor)
+            <section class="rounded-2xl border border-indigo-200 bg-indigo-50 p-5">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-base font-semibold text-indigo-900">Become an Instructor</h2>
+                        <p class="mt-1 text-sm text-indigo-800">Share your expertise by applying as a verified instructor and create learning modules for the community.</p>
+                    </div>
+                    <a href="{{ route('learner.instructor.apply') }}" class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Apply Now</a>
+                </div>
+            </section>
+        @endif
+
         {{-- Active Learning Modules --}}
         <section class="bg-purple-50/40 dark:bg-purple-900/10 rounded-2xl p-5 border border-purple-100/60 dark:border-purple-800/30">
             <div class="flex items-center justify-between mb-4">

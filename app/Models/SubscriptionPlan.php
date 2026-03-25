@@ -24,6 +24,7 @@ class SubscriptionPlan extends Model
         'max_users',
         'max_modules',
         'is_active',
+        'archived_at',
         'sort_order',
     ];
 
@@ -37,6 +38,7 @@ class SubscriptionPlan extends Model
             'admin_preview_starts_on' => 'date',
             'admin_preview_ends_on' => 'date',
             'is_active' => 'boolean',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -64,12 +66,22 @@ class SubscriptionPlan extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('is_active', true)->whereNull('archived_at');
+    }
+
+    public function scopeArchived($query)
+    {
+        return $query->whereNotNull('archived_at');
+    }
+
+    public function scopeNotArchived($query)
+    {
+        return $query->whereNull('archived_at');
     }
 
     public function scopeOrdered($query)
     {
-        return $query->orderBy('sort_order');
+        return $query->orderBy('sort_order')->orderByDesc('id');
     }
 
     public function getPrice(): float
@@ -131,5 +143,10 @@ class SubscriptionPlan extends Model
     public function isFree(): bool
     {
         return $this->price == 0;
+    }
+
+    public function isArchived(): bool
+    {
+        return !is_null($this->archived_at);
     }
 }

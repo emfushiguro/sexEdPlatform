@@ -17,8 +17,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Dashboard
     Route::get('/dashboard', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
-    // User Management
-    Route::resource('users', Admin\UserAdminController::class);
+    // User management
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/', [Admin\UserAdminController::class, 'index'])->name('index');
+        Route::get('/create', [Admin\UserAdminController::class, 'create'])->name('create');
+        Route::post('/', [Admin\UserAdminController::class, 'store'])->name('store');
+        Route::get('/{user}', [Admin\UserAdminController::class, 'show'])->name('show');
+        Route::get('/{user}/edit', [Admin\UserAdminController::class, 'edit'])->name('edit');
+        Route::put('/{user}', [Admin\UserAdminController::class, 'update'])->name('update');
+        Route::delete('/{user}', [Admin\UserAdminController::class, 'destroy'])->name('destroy');
+    });
 
     // Subscriber management (subscription records)
     Route::prefix('subscribers')->name('subscribers.')->group(function () {
@@ -37,9 +45,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/{subscription}', [Admin\SubscriberAdminController::class, 'show'])->name('show');
     });
 
+    // API endpoints for plan wizard
+    Route::get('/api/features', [Admin\SubscriptionPlanAdminController::class, 'getFeatures'])->name('api.features');
+
     // Subscription Plans (backward compatibility & advanced features)
     Route::prefix('subscription-plans')->name('subscription-plans.')->group(function () {
         Route::get('/', [Admin\SubscriptionPlanAdminController::class, 'index'])->name('index');
+        Route::get('/archived', [Admin\SubscriptionPlanAdminController::class, 'archived'])->name('archived');
         Route::get('/create', [Admin\SubscriptionPlanAdminController::class, 'create'])->name('create');
         Route::post('/', [Admin\SubscriptionPlanAdminController::class, 'store'])->name('store');
         Route::get('/{subscriptionPlan}', [Admin\SubscriptionPlanAdminController::class, 'show'])->name('show');
@@ -47,6 +59,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::put('/{subscriptionPlan}', [Admin\SubscriptionPlanAdminController::class, 'update'])->name('update');
         Route::delete('/{subscriptionPlan}', [Admin\SubscriptionPlanAdminController::class, 'destroy'])->name('delete');
         Route::post('/{subscriptionPlan}/toggle', [Admin\SubscriptionPlanAdminController::class, 'toggle'])->name('toggle');
+        Route::get('/{subscriptionPlan}/impact', [Admin\SubscriptionPlanAdminController::class, 'impact'])->name('impact');
+        Route::post('/{subscriptionPlan}/archive', [Admin\SubscriptionPlanAdminController::class, 'archive'])->name('archive');
+        Route::post('/{subscriptionPlan}/restore', [Admin\SubscriptionPlanAdminController::class, 'restore'])->name('restore');
         Route::post('/reorder', [Admin\SubscriptionPlanAdminController::class, 'reorder'])->name('reorder');
     });
 
@@ -54,8 +69,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('/', [Admin\PaymentAdminController::class, 'index'])->name('index');
         Route::get('/{payment}', [Admin\PaymentAdminController::class, 'show'])->name('show');
-        Route::post('/{payment}/refund', [Admin\PaymentAdminController::class, 'processRefund'])->name('refund');
         Route::post('/{payment}/complete', [Admin\PaymentAdminController::class, 'markAsCompleted'])->name('complete');
+    });
+
+    Route::prefix('instructor-applications')->name('instructor-applications.')->group(function () {
+        Route::get('/', [Admin\InstructorApplicationController::class, 'index'])->name('index');
+        Route::get('/{application}', [Admin\InstructorApplicationController::class, 'show'])->name('show');
+        Route::post('/{application}/approve', [Admin\InstructorApplicationController::class, 'approve'])->name('approve');
+        Route::post('/{application}/reject', [Admin\InstructorApplicationController::class, 'reject'])->name('reject');
     });
 
 
@@ -71,12 +92,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     // Messages
     Route::get('/messages', fn() => view('admin.messages.index'))->name('messages.index');
-
-    // Email Announcements
-    Route::prefix('emails')->name('emails.')->group(function () {
-        Route::get('/', fn() => view('admin.emails.index'))->name('index');
-        Route::get('/compose', fn() => view('admin.emails.compose'))->name('compose');
-    });
 
     // Organizations
     Route::prefix('organizations')->name('organizations.')->group(function () {

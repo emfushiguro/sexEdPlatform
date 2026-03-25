@@ -246,7 +246,7 @@
                     </div>
                     <form
                         method="POST"
-                        action="{{ route('instructor.logout') }}"
+                        action="{{ route('logout') }}"
                         x-show="$store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered || $store.instructorSidebar.isMobileOpen"
                         x-cloak
                     >

@@ -123,7 +123,12 @@
             </section>
 
             <section>
-                <h3 class="text-base font-semibold text-purple-900 mb-2">10. Changes to Terms</h3>
+                <h3 class="text-base font-semibold text-purple-900 mb-2">10. Payments and Refund Policy</h3>
+                <p>All subscription and payment transactions are final. We do not accept refunds, and no refund processing is offered after payment is completed.</p>
+            </section>
+
+            <section>
+                <h3 class="text-base font-semibold text-purple-900 mb-2">11. Changes to Terms</h3>
                 <p>We may update these Terms from time to time. Significant changes will be communicated via email to registered users. Continued use after changes constitutes acceptance of the new terms.</p>
             </section>
 

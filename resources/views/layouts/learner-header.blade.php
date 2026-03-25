@@ -86,6 +86,21 @@
         {{-- ─── Right: Dark mode + Notifications + User ─── --}}
         <div class="flex items-center gap-2 sm:gap-3">
 
+            @if(auth()->user()->isLearner() && !auth()->user()->isInstructor())
+                @if(auth()->user()->instructorApplications()->where('status', 'pending')->exists())
+                    <a href="{{ route('learner.instructor.submitted') }}" class="hidden sm:inline-flex items-center gap-2 rounded-lg bg-orange-100 text-orange-700 px-3 py-2 text-xs font-semibold hover:bg-orange-200 transition-colors">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Application Pending
+                    </a>
+                @else
+                     <a href="{{ route('learner.instructor.apply') }}" class="hidden sm:inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-xs font-semibold text-white hover:shadow-md transition-all">
+                        Apply as Instructor
+                    </a>
+                @endif
+            @endif
+
             {{-- Dark mode toggle --}}
             <button
                 class="flex items-center justify-center w-10 h-10 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -154,7 +169,13 @@
                                 @php
                                     $isUnread = is_null($notif->read_at);
                                     $notifType = $notif->data['type'] ?? '';
-                                    $iconColor = $notifType === 'enrollment_approved' ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-500';
+                                    
+                                    $iconColor = match($notifType) {
+                                        'enrollment_approved' => 'bg-green-100 text-green-600',
+                                        'instructor_application_approved' => 'bg-purple-100 text-purple-600',
+                                        'instructor_application_rejected' => 'bg-red-100 text-red-600',
+                                        default => 'bg-gray-100 text-gray-600' // Neutral default instead of red
+                                    };
                                 @endphp
                                 <a
                                     href="{{ route('learner.notifications.read', $notif->id) }}"
@@ -163,8 +184,12 @@
                                     <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {{ $iconColor }}">
                                         @if($notifType === 'enrollment_approved')
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 13 4 4L19 7"/></svg>
+                                        @elseif($notifType === 'instructor_application_approved')
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        @elseif($notifType === 'instructor_application_rejected')
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                         @else
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"/></svg>
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a1 1 0 1 0-2 0v1.083A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.437L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>
                                         @endif
                                     </div>
                                     <div class="flex-1 min-w-0">
@@ -220,6 +245,16 @@
                     class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
                     x-cloak
                 >
+                    @if(Auth::user()->hasRole('instructor'))
+                        <a
+                            href="{{ route('instructor.dashboard') }}"
+                            class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-purple-700 bg-purple-50/50 hover:bg-purple-100/80 transition-colors border-l-4 border-purple-500"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+                            Instructor Dashboard
+                        </a>
+                        <div class="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
+                    @endif
                     <a
                         href="{{ route('profile.learner.edit') }}"
                         class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

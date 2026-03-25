@@ -331,4 +331,97 @@ class PlanManagementFlowTest extends TestCase
         $this->assertContains('unlimited_shields', $plan->features ?? []);
         $this->assertContains('certificate_pdf_download_access', $plan->features ?? []);
     }
+
+    public function test_plans_index_exposes_shared_three_step_wizard_markers_for_create_and_edit(): void
+    {
+        $admin = $this->createAdminUser();
+
+        SubscriptionPlan::create([
+            'name' => 'Wizard Marker Plan',
+            'slug' => 'wizard-marker-plan',
+            'description' => 'Wizard marker',
+            'price' => 149,
+            'features' => ['certificate_pdf_download_access'],
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.subscription-plans.index'))
+            ->assertOk()
+            ->assertSee('data-testid="plan-wizard-step-1"', false)
+            ->assertSee('data-testid="plan-wizard-step-2"', false)
+            ->assertSee('data-testid="plan-wizard-step-3"', false)
+                ->assertSee('data-testid="plan-wizard-billing-preview"', false)
+            ->assertSee('data-testid="open-edit-plan-modal"', false)
+            ->assertSee('data-testid="plan-wizard-mode"', false);
+    }
+
+    public function test_admin_can_archive_and_restore_plan_with_inactive_restore_default(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Lifecycle Plan',
+            'slug' => 'lifecycle-plan',
+            'description' => 'Lifecycle testing',
+            'price' => 129,
+            'features' => ['unlimited_shields'],
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.subscription-plans.archive', $plan))
+            ->assertRedirect();
+
+        $this->assertNotNull($plan->fresh()->archived_at);
+
+        $this->actingAs($admin)
+            ->post(route('admin.subscription-plans.restore', $plan->fresh()))
+            ->assertRedirect();
+
+        $restored = $plan->fresh();
+        $this->assertNull($restored->archived_at);
+        $this->assertFalse((bool) $restored->is_active);
+    }
+
+    public function test_plan_lifecycle_impact_endpoint_returns_subscriber_counts(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Impact Plan',
+            'slug' => 'impact-plan',
+            'description' => 'Impact testing',
+            'price' => 99,
+            'features' => ['certificate_pdf_download_access'],
+            'is_active' => true,
+        ]);
+
+        $subscriber = User::factory()->create();
+        
+        \App\Models\Subscription::create([
+            'user_id' => $subscriber->id,
+            'plan_id' => $plan->id,
+            'plan' => 'premium',
+            'status' => 'active',
+            'price_paid' => 99,
+        ]);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.subscription-plans.impact', $plan))
+            ->assertOk()
+            ->assertJsonPath('data.total_subscribers', 1)
+            ->assertJsonPath('data.active_subscribers', 1);
+    }
+
+    public function test_plans_index_renders_lifecycle_impact_confirmation_modal_note(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $this->actingAs($admin)
+            ->get(route('admin.subscription-plans.index'))
+            ->assertOk()
+            ->assertSee('data-testid="plan-impact-modal"', false)
+            ->assertSee('Existing subscribers keep their current entitlement until renewal or expiry.', false);
+    }
 }
