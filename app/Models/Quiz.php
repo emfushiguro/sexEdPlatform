@@ -15,6 +15,7 @@ class Quiz extends Model
         'description',
         'passing_score',
         'time_limit',
+        'attempt_limit',
         'is_active',
     ];
 
@@ -23,6 +24,7 @@ class Quiz extends Model
         return [
             'passing_score' => 'integer',
             'time_limit' => 'integer',
+            'attempt_limit' => 'integer',
             'is_active' => 'boolean',
         ];
     }
