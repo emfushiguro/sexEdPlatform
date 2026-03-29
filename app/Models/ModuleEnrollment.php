@@ -62,6 +62,11 @@ class ModuleEnrollment extends Model
         return $query->where('status', EnrollmentStatus::Approved);
     }
 
+    public function scopeApprovedForModule($query, int $moduleId)
+    {
+        return $query->approved()->where('module_id', $moduleId);
+    }
+
     public function scopePending($query)
     {
         return $query->where('status', EnrollmentStatus::Pending);
