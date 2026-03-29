@@ -67,6 +67,34 @@
                             @error('enrollment_mode')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">Access Type <span class="text-red-500">*</span></label>
+                            <select name="access_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+                                <option value="free" {{ old('access_type', 'free') === 'free' ? 'selected' : '' }}>Free</option>
+                                <option value="paid" {{ old('access_type') === 'paid' ? 'selected' : '' }}>Paid</option>
+                            </select>
+                            @error('access_type')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="mb-4 grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Price Amount (PHP)</label>
+                                <input type="number" name="price_amount" min="0.01" step="0.01" value="{{ old('price_amount') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                @error('price_amount')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Price Currency</label>
+                                <input type="text" name="price_currency" value="{{ old('price_currency', 'PHP') }}" maxlength="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                @error('price_currency')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700">Enrollment Limit</label>
+                            <input type="number" name="enrollment_limit" min="1" value="{{ old('enrollment_limit') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Leave empty for unlimited">
+                            @error('enrollment_limit')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        </div>
+
                         <div class="flex items-center justify-end gap-4 mt-6">
                             <button type="submit" name="action" value="draft" 
                                 class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded transition">
