@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Instructor\StoreQuizRequest;
+use App\Http\Requests\Instructor\UpdateQuizRequest;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
 use App\Models\QuizOption;
@@ -43,16 +45,9 @@ class QuizManagementController extends Controller
         return view('instructor.quizzes.create', compact('modules', 'lessonId'));
     }
 
-    public function store(Request $request)
+    public function store(StoreQuizRequest $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'module_id' => 'nullable|exists:modules,id',
-            'lesson_id' => 'nullable|exists:lessons,id',
-            'passing_score' => 'required|integer|min:0|max:100',
-            'is_active' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         // Set null defaults for optional fields
         $validated['module_id'] = $validated['module_id'] ?? null;
@@ -64,7 +59,11 @@ class QuizManagementController extends Controller
         }
 
         $validated['slug'] = Str::slug($validated['title']);
-        $validated['time_limit'] = null;
+        $validated['time_limit'] = $this->normalizeTimeLimit(
+            $request->integer('time_limit_hours', 0),
+            $request->integer('time_limit_minutes', 0),
+            $request->integer('time_limit_seconds', 0),
+        );
         $validated['is_active'] = $request->has('is_active')
             ? $request->boolean('is_active')
             : true;
@@ -89,16 +88,9 @@ class QuizManagementController extends Controller
         ]);
     }
 
-    public function update(Request $request, Quiz $quiz)
+    public function update(UpdateQuizRequest $request, Quiz $quiz)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'module_id' => 'nullable|exists:modules,id',
-            'lesson_id' => 'nullable|exists:lessons,id',
-            'passing_score' => 'required|integer|min:0|max:100',
-            'is_active' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         // Set null defaults for optional fields
         $validated['module_id'] = $validated['module_id'] ?? null;
@@ -109,7 +101,11 @@ class QuizManagementController extends Controller
         }
 
         $validated['slug'] = Str::slug($validated['title']);
-        $validated['time_limit'] = null;
+        $validated['time_limit'] = $this->normalizeTimeLimit(
+            $request->integer('time_limit_hours', 0),
+            $request->integer('time_limit_minutes', 0),
+            $request->integer('time_limit_seconds', 0),
+        );
 
         if ($request->has('is_active')) {
             $validated['is_active'] = $request->boolean('is_active');
@@ -121,6 +117,13 @@ class QuizManagementController extends Controller
 
         return redirect()->route('instructor.quizzes.index')
             ->with('success', 'Quiz updated successfully!');
+    }
+
+    private function normalizeTimeLimit(int $hours, int $minutes, int $seconds): ?int
+    {
+        $totalSeconds = ($hours * 3600) + ($minutes * 60) + $seconds;
+
+        return $totalSeconds > 0 ? $totalSeconds : null;
     }
 
     public function destroy(Quiz $quiz)
