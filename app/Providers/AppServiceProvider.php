@@ -11,8 +11,10 @@ use App\Listeners\HandleSubscriptionExpired;
 use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\InstructorProfile;
 use App\Models\User;
 use App\Observers\PaymentObserver;
+use App\Policies\InstructorProfilePolicy;
 use App\Policies\ParentChildPolicy;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(User::class, ParentChildPolicy::class);
+        Gate::policy(InstructorProfile::class, InstructorProfilePolicy::class);
 
         Payment::observe(PaymentObserver::class);
 

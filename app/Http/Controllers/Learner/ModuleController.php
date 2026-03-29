@@ -287,6 +287,23 @@ class ModuleController extends Controller
                 ->with('success', 'Enrollment request submitted! Waiting for parental approval.');
         }
 
+        $isAtCapacity = $module->enrollment_limit !== null
+            && ModuleEnrollment::query()
+                ->approvedForModule($module->id)
+                ->count() >= (int) $module->enrollment_limit;
+
+        if ($isAtCapacity) {
+            ModuleEnrollment::create([
+                'user_id' => $user->id,
+                'module_id' => $module->id,
+                'status' => EnrollmentStatus::Pending,
+                'enrolled_at' => null,
+            ]);
+
+            return redirect()->route('learner.modules.show', $module)
+                ->with('success', 'Module capacity has been reached. Your enrollment is queued for manual review.');
+        }
+
         // Check enrollment mode
         if ($module->enrollment_mode === 'manual') {
             // Manual approval - create pending enrollment

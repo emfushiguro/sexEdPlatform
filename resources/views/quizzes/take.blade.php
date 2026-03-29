@@ -17,7 +17,7 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ --}}
 <div
   x-data="quizWizard()"
-  x-init="init({{ $total }}, {{ $questionMeta->toJson() }}, {{ $quiz->time_limit ? $quiz->time_limit * 60 : 'null' }})"
+  x-init="init({{ $total }}, {{ $questionMeta->toJson() }}, {{ $quiz->time_limit ?? 'null' }})"
   @quiz-blank-change.window="updateBlankAnswer($event.detail)"
   class="max-w-2xl mx-auto space-y-4">
 
@@ -97,6 +97,8 @@
   {{-- ── QUESTION CARDS + FORM ───────────────────────────────────── --}}
   <form method="POST" action="{{ route('quizzes.submit', $quiz) }}" id="quizForm">
     @csrf
+    <input type="hidden" name="started_at" value="{{ now()->timestamp }}">
+    <input type="hidden" name="auto_submit" id="auto_submit" value="0">
 
     @foreach($questions as $index => $question)
     {{-- Each question panel: shown when current === index and not in review mode --}}
@@ -500,6 +502,10 @@ function quizWizard() {
         this.timerInterval = setInterval(() => {
           if (this.timeLeft <= 0) {
             clearInterval(this.timerInterval);
+            const autoSubmitInput = document.getElementById('auto_submit');
+            if (autoSubmitInput) {
+              autoSubmitInput.value = '1';
+            }
             document.getElementById('quizForm').submit();
             return;
           }

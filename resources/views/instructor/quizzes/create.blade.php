@@ -87,6 +87,26 @@
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                         </div>
 
+                        <div class="mb-4 grid gap-4 sm:grid-cols-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Hours</label>
+                                <input type="number" name="time_limit_hours" min="0" value="{{ old('time_limit_hours', 0) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Minutes</label>
+                                <input type="number" name="time_limit_minutes" min="0" max="59" value="{{ old('time_limit_minutes', 0) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Seconds</label>
+                                <input type="number" name="time_limit_seconds" min="0" max="59" value="{{ old('time_limit_seconds', 0) }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">Attempt Limit</label>
+                            <input type="number" name="attempt_limit" min="1" value="{{ old('attempt_limit') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Leave empty for unlimited">
+                        </div>
+
                         <div class="flex items-center justify-end gap-4 mt-6">
                             @if($lessonId)
                                 @php

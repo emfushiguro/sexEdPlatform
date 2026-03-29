@@ -3,13 +3,20 @@
 namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Instructor\StoreModuleRequest;
+use App\Http\Requests\Instructor\UpdateModuleRequest;
 use App\Models\Module;
+use App\Services\EntitlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ModuleController extends Controller
 {
+    public function __construct(private readonly EntitlementService $entitlementService)
+    {
+    }
+
     public function index(Request $request)
     {
         $status = $request->get('status', 'all');
@@ -46,17 +53,13 @@ class ModuleController extends Controller
         return view('instructor.modules.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreModuleRequest $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'thumbnail' => 'nullable|image|max:2048',
-            'age_bracket' => 'required|in:kids,teens,adults',
-            'enrollment_mode' => 'required|in:auto,manual',
-            'order' => 'nullable|integer|min:0',
-            'is_published' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
+
+        $validated['access_type'] = $validated['access_type'] ?? 'free';
+
+        $this->guardPaidAccess($validated['access_type'] ?? 'free');
 
         if ($request->hasFile('thumbnail')) {
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
@@ -74,6 +77,14 @@ class ModuleController extends Controller
         unset($validated['age_bracket']);
 
         $validated['is_published'] = false;
+
+        $validated['price_currency'] = strtoupper($validated['price_currency'] ?? 'PHP');
+        if (($validated['access_type'] ?? 'free') === 'paid') {
+            $validated['is_premium'] = true;
+        } else {
+            $validated['is_premium'] = false;
+            $validated['price_amount'] = null;
+        }
         
         // Duration will be auto-calculated from lessons
         $validated['duration_minutes'] = 0;
@@ -114,17 +125,13 @@ class ModuleController extends Controller
         return view('instructor.modules.edit', compact('module'));
     }
 
-    public function update(Request $request, Module $module)
+    public function update(UpdateModuleRequest $request, Module $module)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'thumbnail' => 'nullable|image|max:2048',
-            'age_bracket' => 'required|in:kids,teens,adults',
-            'enrollment_mode' => 'required|in:auto,manual',
-            'order' => 'nullable|integer|min:0',
-            'is_published' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
+
+        $validated['access_type'] = $validated['access_type'] ?? ($module->access_type ?? 'free');
+
+        $this->guardPaidAccess($validated['access_type'] ?? 'free');
 
         if ($request->hasFile('thumbnail')) {
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
@@ -143,6 +150,14 @@ class ModuleController extends Controller
 
         $validated['is_published'] = false;
         $validated['content_owner_type'] = $module->content_owner_type ?? 'instructor';
+
+        $validated['price_currency'] = strtoupper($validated['price_currency'] ?? 'PHP');
+        if (($validated['access_type'] ?? 'free') === 'paid') {
+            $validated['is_premium'] = true;
+        } else {
+            $validated['is_premium'] = false;
+            $validated['price_amount'] = null;
+        }
         
         // Duration is auto-calculated, but update it now
         $module->duration_minutes = $module->lessons()->sum('duration');
@@ -186,5 +201,24 @@ class ModuleController extends Controller
         abort_unless((int) $module->created_by === (int) Auth::id(), 403);
         $module->restore();
         return back()->with('success', 'Module restored successfully.');
+    }
+
+    private function guardPaidAccess(string $accessType): void
+    {
+        if ($accessType !== 'paid') {
+            return;
+        }
+
+        $user = Auth::user();
+
+        if ($user->hasRole('admin')) {
+            return;
+        }
+
+        if (! $this->entitlementService->canAccessFeature($user, 'instructor_paid_modules')) {
+            throw ValidationException::withMessages([
+                'access_type' => 'Paid modules require an active entitlement.',
+            ]);
+        }
     }
 }
