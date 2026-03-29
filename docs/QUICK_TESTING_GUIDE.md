@@ -4,6 +4,26 @@ This is a quick reference for testing the new authentication system.
 
 ---
 
+## Instructor Profile And Module/Quiz Configuration Smoke Tests
+
+Run these after migrations to verify the instructor profile rollout and scalable module/quiz settings:
+
+```bash
+php artisan test --testsuite=Feature --filter=Instructor
+php artisan test --filter=LearnerQuiz
+php artisan test --filter=ModuleCapacity
+php artisan test
+```
+
+Target checks covered by these suites:
+
+- Instructor profile schema, page rendering, and secure profile updates
+- Module pricing, enrollment limit, and paid entitlement gate
+- Quiz attempt limits, timer normalization, and auto-submit fallback behavior
+- Learner-side attempt cap and module capacity queue routing
+
+---
+
 ## ⚡ QUICK START
 
 ### 1. Configure Gmail SMTP (One-Time Setup)
