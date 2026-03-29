@@ -24,6 +24,14 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
     Route::get('/assessments', [Instructor\AssessmentLogController::class, 'index'])
         ->name('assessments.index');
 
+    // Instructor Profile
+    Route::get('/profile', [Instructor\ProfileController::class, 'show'])
+        ->name('profile.show');
+    Route::get('/profile/edit', [Instructor\ProfileController::class, 'edit'])
+        ->name('profile.edit');
+    Route::put('/profile', [Instructor\ProfileController::class, 'update'])
+        ->name('profile.update');
+
     // Learner Management (view-only)
     Route::resource('users', Instructor\UserController::class)->only(['index', 'show']);
 
