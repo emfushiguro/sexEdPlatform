@@ -93,6 +93,8 @@ class InstructorApplicationService
                 ['user_id' => $user->id],
                 [
                     'bio' => $application->bio,
+                    'educational_background' => $application->educational_background,
+                    'professional_background' => $application->bio,
                     'credentials' => [
                         'government_id_path' => $application->government_id_path,
                         'clearance_path' => $application->clearance_path,

@@ -8,6 +8,7 @@ use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\UserDailyShield;
 use App\Services\GamificationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -46,6 +47,11 @@ class QuizController extends Controller
                 ->with('error', 'This module is currently deactivated. Quiz attempts are temporarily unavailable.');
         }
 
+        if (!$this->canStartAttempt($quiz, $user->id)) {
+            return redirect()->route('learner.modules.show', $moduleId)
+                ->with('error', 'You have reached the maximum number of attempts for this quiz.');
+        }
+
         // Check shields for free users (premium users have unlimited attempts)
         if (!$user->isPremium()) {
             if (UserDailyShield::getShields($user) <= 0) {
@@ -65,11 +71,20 @@ class QuizController extends Controller
      */
     public function submit(Request $request, Quiz $quiz)
     {
-        $request->validate([
-            'answers' => 'required|array',
-        ]);
-
         $user = auth()->user();
+
+        if (!$this->canStartAttempt($quiz, $user->id)) {
+            return redirect()->route('quizzes.start', $quiz)
+                ->with('error', 'You have reached the maximum number of attempts for this quiz.');
+        }
+
+        $startedAt = Carbon::createFromTimestamp((int) $request->input('started_at', now()->timestamp));
+        $expired = $quiz->time_limit !== null
+            && now()->greaterThanOrEqualTo($startedAt->copy()->addSeconds((int) $quiz->time_limit));
+
+        $request->validate([
+            'answers' => $expired ? 'nullable|array' : 'required|array',
+        ]);
 
         // Verify enrollment
         $moduleId = $quiz->module_id ?? $quiz->lesson?->module_id;
@@ -100,7 +115,7 @@ class QuizController extends Controller
 
             foreach ($quiz->questions as $question) {
                 $isCorrect = false;
-                $selectedAnswer = $request->answers[$question->id] ?? null;
+                $selectedAnswer = ($request->input('answers', []))[$question->id] ?? null;
                 $correctOptions = $question->options->where('is_correct', true);
 
                 if ($question->question_type === 'multiple_select') {
@@ -316,7 +331,7 @@ class QuizController extends Controller
                 'score' => $score,
                 'passed' => $passed,
                 'answers' => $userAnswers,
-                'started_at' => now(),
+                'started_at' => $startedAt,
                 'completed_at' => now(),
             ]);
 
@@ -446,5 +461,18 @@ class QuizController extends Controller
             // Award completion bonus
             $this->gamificationService->awardPoints($user, 'module_completed', 100);
         }
+    }
+
+    private function canStartAttempt(Quiz $quiz, int $userId): bool
+    {
+        if ($quiz->attempt_limit === null) {
+            return true;
+        }
+
+        $attemptCount = QuizAttempt::where('quiz_id', $quiz->id)
+            ->where('user_id', $userId)
+            ->count();
+
+        return $attemptCount < (int) $quiz->attempt_limit;
     }
 }

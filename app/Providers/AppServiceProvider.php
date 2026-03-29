@@ -8,9 +8,11 @@ use App\Events\SubscriptionExpired;
 use App\Listeners\HandlePaymentSuccessful;
 use App\Listeners\HandleSubscriptionCreated;
 use App\Listeners\HandleSubscriptionExpired;
+use App\Models\InstructorProfile;
 use App\Models\Payment;
 use App\Models\User;
 use App\Observers\PaymentObserver;
+use App\Policies\InstructorProfilePolicy;
 use App\Policies\ParentChildPolicy;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Policy registrations
         Gate::policy(User::class, ParentChildPolicy::class);
+        Gate::policy(InstructorProfile::class, InstructorProfilePolicy::class);
 
         // Model observers
         Payment::observe(PaymentObserver::class);

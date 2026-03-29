@@ -13,6 +13,7 @@ class InstructorApplicationApprovalTest extends TestCase
         return InstructorApplication::create([
             'user_id' => $learner->id,
             'status' => 'pending',
+            'educational_background' => 'Bachelor of Secondary Education',
             'government_id_path' => 'instructor-applications/id.pdf',
             'clearance_path' => 'instructor-applications/clearance.pdf',
             'bio' => str_repeat('B', 120),
@@ -44,6 +45,8 @@ class InstructorApplicationApprovalTest extends TestCase
         ]);
         $this->assertDatabaseHas('instructor_profiles', [
             'user_id' => $learner->id,
+            'educational_background' => 'Bachelor of Secondary Education',
+            'professional_background' => str_repeat('B', 120),
         ]);
         $this->assertDatabaseHas('role_transitions', [
             'user_id' => $learner->id,
