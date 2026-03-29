@@ -20,7 +20,7 @@
                 <tbody class="divide-y divide-gray-100 bg-white">
                     @forelse ($reviewRequests as $reviewRequest)
                         <tr>
-                            <td class="px-4 py-3 text-sm text-gray-900">{{ $reviewRequest->module->title }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-900">{{ $reviewRequest->module_title }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $reviewRequest->status }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ optional($reviewRequest->submitted_at)->diffForHumans() }}</td>
                             <td class="px-4 py-3 text-right">

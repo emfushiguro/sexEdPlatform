@@ -11,21 +11,12 @@ class InstructorProfile extends Model
         'bio',
         'specialization',
         'credentials',
-        'educational_background',
-        'professional_background',
-        'primary_expertise',
-        'expertise_tags',
-        'years_experience',
-        'certifications',
-        'profile_photo_path',
     ];
 
     protected function casts(): array
     {
         return [
             'credentials' => 'array',
-            'expertise_tags' => 'array',
-            'certifications' => 'array',
         ];
     }
 

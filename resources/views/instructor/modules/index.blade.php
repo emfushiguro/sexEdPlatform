@@ -16,7 +16,7 @@
                 'age_bracket' => $prefillModule->min_age >= 18 ? 'adults' : ($prefillModule->min_age >= 13 ? 'teens' : 'kids'),
                 'enrollment_mode' => $prefillModule->enrollment_mode,
                 'is_published' => (bool) $prefillModule->is_published,
-                'thumbnail_url' => $prefillModule->thumbnail ? asset('storage/' . $prefillModule->thumbnail) : null,
+                'thumbnail_url' => $prefillModule->thumbnail_url,
             ];
         }
     }
@@ -120,7 +120,7 @@
                 'age_bracket' => $module->min_age >= 18 ? 'adults' : ($module->min_age >= 13 ? 'teens' : 'kids'),
                 'enrollment_mode' => $module->enrollment_mode,
                 'is_published' => (bool) $module->is_published,
-                'thumbnail_url' => $module->thumbnail ? asset('storage/' . $module->thumbnail) : null,
+                'thumbnail_url' => $module->thumbnail_url,
             ];
         @endphp
 
@@ -132,8 +132,8 @@
 
             {{-- Card Top Zone: gradient bg + optional thumbnail --}}
             <div class="relative h-36 overflow-hidden flex-shrink-0">
-                @if($module->thumbnail)
-                    <img src="{{ asset('storage/' . $module->thumbnail) }}"
+                @if($module->thumbnail_url)
+                    <img src="{{ $module->thumbnail_url }}"
                          alt="{{ $module->title }}"
                          class="w-full h-full object-cover">
                 @else

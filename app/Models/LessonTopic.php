@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class LessonTopic extends Model
 {
@@ -120,5 +122,33 @@ class LessonTopic extends Model
         }
 
         return \App\Helpers\VideoEmbedHelper::getThumbnailUrl($this->video_provider, $this->video_id);
+    }
+
+    public function getVideoFileUrlAttribute(): ?string
+    {
+        return $this->resolvePublicMediaUrl($this->video_file_path, 'videos');
+    }
+
+    private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://', '//'])) {
+            return $path;
+        }
+
+        $normalized = ltrim($path, '/');
+
+        if (Str::startsWith($normalized, 'storage/')) {
+            $normalized = substr($normalized, 8);
+        }
+
+        if (!str_contains($normalized, '/') && $defaultDirectory !== '') {
+            $normalized = trim($defaultDirectory, '/') . '/' . $normalized;
+        }
+
+        return Storage::url($normalized);
     }
 }

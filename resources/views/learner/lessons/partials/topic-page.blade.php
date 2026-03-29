@@ -38,14 +38,14 @@
         @if($currentTopic->type === 'video')
             <!-- Video Content -->
             <div class="space-y-4">
-                @if($currentTopic->video_file_path)
+                @if($currentTopic->video_file_url)
                     {{-- Plyr.js Video Player (bundled via npm) --}}
                     <div class="rounded-2xl overflow-hidden bg-black" style="aspect-ratio: 16/9;">
                         <video id="plyr-video-{{ $currentTopic->id }}"
                                class="plyr-video w-full h-full"
                                playsinline
                                title="{{ $currentTopic->title }}">
-                            <source src="{{ asset('storage/' . $currentTopic->video_file_path) }}" type="video/mp4">
+                            <source src="{{ $currentTopic->video_file_url }}" type="video/mp4">
                             @if($currentTopic->caption_file_path)
                                 <track kind="subtitles"
                                        label="Subtitles"

@@ -3,7 +3,7 @@
 @section('content')
     <div class="space-y-6">
         <div>
-            <h1 class="text-xl font-semibold text-gray-900">{{ $reviewRequest->module->title }}</h1>
+            <h1 class="text-xl font-semibold text-gray-900">{{ $reviewRequest->module_title }}</h1>
             <p class="text-sm text-gray-500">Review status: {{ $reviewRequest->status }}</p>
         </div>
 

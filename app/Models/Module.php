@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Module extends Model
 {
@@ -238,5 +240,36 @@ class Module extends Model
         }
 
         return $this;
+    }
+
+    /**
+     * Get a resilient public URL for module thumbnails.
+     */
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        return $this->resolvePublicMediaUrl($this->thumbnail, 'modules');
+    }
+
+    private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://', '//'])) {
+            return $path;
+        }
+
+        $normalized = ltrim($path, '/');
+
+        if (Str::startsWith($normalized, 'storage/')) {
+            $normalized = substr($normalized, 8);
+        }
+
+        if (!str_contains($normalized, '/') && $defaultDirectory !== '') {
+            $normalized = trim($defaultDirectory, '/') . '/' . $normalized;
+        }
+
+        return Storage::url($normalized);
     }
 }

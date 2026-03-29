@@ -39,6 +39,20 @@ class AdminContentReviewUiTest extends DatabaseTestCase
             ->assertSee('Required rejection feedback', false);
     }
 
+    public function test_admin_review_queue_renders_when_module_is_soft_deleted(): void
+    {
+        $admin = $this->createUserWithRole('admin');
+        $reviewRequest = $this->createPendingReviewRequest();
+
+        $reviewRequest->module->delete();
+
+        $this->actingAs($admin)
+            ->get(route('admin.content-reviews.index'))
+            ->assertOk()
+            ->assertSee('Pending Content Reviews', false)
+            ->assertSee($reviewRequest->module_title, false);
+    }
+
     private function createPendingReviewRequest(): ModuleReviewRequest
     {
         $instructor = $this->createUserWithRole('instructor');

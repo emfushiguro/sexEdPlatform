@@ -31,7 +31,7 @@ class ModuleReviewRequest extends Model
 
     public function module(): BelongsTo
     {
-        return $this->belongsTo(Module::class);
+        return $this->belongsTo(Module::class)->withTrashed();
     }
 
     public function revision(): BelongsTo
@@ -47,5 +47,19 @@ class ModuleReviewRequest extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function getModuleTitleAttribute(): string
+    {
+        if ($this->module?->title) {
+            return $this->module->title;
+        }
+
+        $snapshotTitle = data_get($this->revision?->snapshot_payload, 'module.title');
+        if (is_string($snapshotTitle) && trim($snapshotTitle) !== '') {
+            return $snapshotTitle;
+        }
+
+        return 'Untitled module #' . (string) $this->module_id;
     }
 }

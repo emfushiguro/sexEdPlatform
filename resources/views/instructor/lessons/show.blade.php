@@ -44,12 +44,12 @@
         let content = `<div class="space-y-4"><div class="bg-gray-50 p-4 rounded-xl"><h4 class="text-lg font-semibold text-gray-900">${topic.title}</h4><div class="flex gap-3 mt-2"><span class="px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(topic.type)}">${capitalizeFirst(topic.type)}</span><span class="text-sm text-gray-500">${topic.duration} min</span></div></div>`;
         if (topic.type === 'video') {
             if (topic.video_url) content += `<div class="aspect-video bg-black rounded-xl overflow-hidden"><iframe src="${topic.video_url}" class="w-full h-full" allowfullscreen></iframe></div>`;
-            else if (topic.video_file_path) content += `<video controls class="w-full rounded-xl"><source src="/storage/${topic.video_file_path}" type="video/mp4"></video>`;
+            else if (topic.video_file_url) content += `<video controls class="w-full rounded-xl"><source src="${topic.video_file_url}" type="video/mp4"></video>`;
             if (topic.video_description) content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-xl">${topic.video_description}</div>`;
         } else if (topic.type === 'text') {
             content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-xl">${topic.text_content || ''}</div>`;
         } else if (topic.type === 'worksheet') {
-            content += `<div class="flex items-center gap-4 p-4 bg-blue-50 rounded-xl"><svg class="w-10 h-10 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg><div><p class="font-medium text-gray-900">Worksheet File</p><a href="/storage/${topic.worksheet_file_path}" target="_blank" class="text-blue-600 hover:underline text-sm">Download</a></div></div>`;
+            content += `<div class="flex items-center gap-4 p-4 bg-blue-50 rounded-xl"><svg class="w-10 h-10 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg><div><p class="font-medium text-gray-900">Worksheet File</p><a href="${topic.worksheet_file_url || '#'}" target="_blank" class="text-blue-600 hover:underline text-sm">Download</a></div></div>`;
         }
         content += `</div>`;
         return content;

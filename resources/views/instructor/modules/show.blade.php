@@ -34,8 +34,8 @@
 
         {{-- Thumbnail --}}
         <div class="flex-shrink-0 w-full sm:w-48 h-32 sm:h-36 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700">
-            @if($module->thumbnail)
-                <img src="{{ asset('storage/' . $module->thumbnail) }}"
+            @if($module->thumbnail_url)
+                <img src="{{ $module->thumbnail_url }}"
                      alt="{{ $module->title }}"
                      class="w-full h-full object-cover">
             @else
