@@ -16,7 +16,10 @@ class InstructorApplicationStatusUpdate extends Notification
      */
     public function __construct(
         public string $status,
-        public ?string $remarks = null
+        public ?string $remarks = null,
+        public ?string $reasonCode = null,
+        public ?string $reasonLabel = null,
+        public ?string $reasonNote = null
     ) {}
 
     /**
@@ -43,6 +46,9 @@ class InstructorApplicationStatusUpdate extends Notification
             ->view('emails.instructor-application-status', [
                 'status' => $this->status,
                 'remarks' => $this->remarks,
+                'reasonCode' => $this->reasonCode,
+                'reasonLabel' => $this->reasonLabel,
+                'reasonNote' => $this->reasonNote,
                 'user' => $notifiable
             ]);
     }
@@ -62,6 +68,10 @@ class InstructorApplicationStatusUpdate extends Notification
                 : 'Your application was not approved. Check your email for details.',
             'status' => $this->status,
             'remarks' => $this->remarks,
+            'reason_code' => $this->reasonCode,
+            'reason_label' => $this->reasonLabel,
+            'reason_note' => $this->reasonNote,
+            'readable_reason' => $this->remarks,
             'module_url' => $this->status === 'approved' ? route('instructor.dashboard') : null,
         ];
     }

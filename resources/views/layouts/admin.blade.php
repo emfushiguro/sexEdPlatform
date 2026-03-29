@@ -136,6 +136,64 @@
                         </ul>
                     </div>
 
+                    {{-- MODERATION --}}
+                    <div>
+                        <h2 x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                            x-cloak
+                            class="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            Moderation
+                        </h2>
+                        <ul class="flex flex-col gap-1">
+                            <li>
+                                <a href="{{ route('admin.instructor-applications.index') }}"
+                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
+                                          {{ request()->routeIs('admin.instructor-applications.*') ? 'bg-brand-50 text-brand-500' : 'text-gray-700 hover:bg-gray-100' }}"
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                    <span class="flex-shrink-0 {{ request()->routeIs('admin.instructor-applications.*') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H4v-1a4 4 0 014-4h5m0 5v-1a4 4 0 00-4-4H8m5 5h1a4 4 0 004-4v-1m-5-5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="whitespace-nowrap">Instructor Applications</span>
+                                    @if(($adminModerationCounts['pending_instructor_applications'] ?? 0) > 0)
+                                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                              x-cloak
+                                              data-testid="admin-nav-badge-instructor-applications"
+                                              class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                                            {{ $adminModerationCounts['pending_instructor_applications'] }}
+                                        </span>
+                                    @endif
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('admin.content-reviews.index') }}"
+                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
+                                          {{ request()->routeIs('admin.content-reviews.*') ? 'bg-brand-50 text-brand-500' : 'text-gray-700 hover:bg-gray-100' }}"
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                    <span class="flex-shrink-0 {{ request()->routeIs('admin.content-reviews.*') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="whitespace-nowrap">Module Published Review</span>
+                                    @if(($adminModerationCounts['pending_module_reviews'] ?? 0) > 0)
+                                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                              x-cloak
+                                              data-testid="admin-nav-badge-module-reviews"
+                                              class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-700">
+                                            {{ $adminModerationCounts['pending_module_reviews'] }}
+                                        </span>
+                                    @endif
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
                     {{-- MANAGEMENT --}}
                     <div>
                         <h2 x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"

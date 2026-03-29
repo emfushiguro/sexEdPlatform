@@ -12,6 +12,8 @@ use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\InstructorProfile;
+use App\Models\InstructorApplication;
+use App\Models\ModuleReviewRequest;
 use App\Models\User;
 use App\Observers\PaymentObserver;
 use App\Policies\InstructorProfilePolicy;
@@ -40,6 +42,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(SubscriptionExpired::class, HandleSubscriptionExpired::class);
 
         View::composer('layouts.admin', function ($view): void {
+            $moderationCounts = [
+                'pending_instructor_applications' => InstructorApplication::query()->where('status', 'pending')->count(),
+                'pending_module_reviews' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
+            ];
+
             $notificationItems = collect([
                 [
                     'label' => 'Pending payments',
@@ -68,6 +75,7 @@ class AppServiceProvider extends ServiceProvider
                 'items' => $notificationItems->all(),
                 'unread_count' => (int) $notificationItems->sum('value'),
             ]);
+            $view->with('adminModerationCounts', $moderationCounts);
         });
     }
 }

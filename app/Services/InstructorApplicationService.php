@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\InstructorApplicationRejectionReason;
 use App\Models\InstructorApplication;
 use App\Models\InstructorProfile;
 use App\Models\RoleTransition;
@@ -110,6 +111,8 @@ class InstructorApplicationService
                 'approved_by' => Auth::id(),
                 'approved_at' => now(),
                 'rejection_reason' => null,
+                'rejection_reason_code' => null,
+                'rejection_reason_note' => null,
             ]);
 
             $this->notifySafely($user, new InstructorApplicationStatusUpdate('approved'));
@@ -120,17 +123,26 @@ class InstructorApplicationService
         });
     }
 
-    public function reject(InstructorApplication $application, string $reason): void
+    public function reject(InstructorApplication $application, string $reasonCode, ?string $reasonNote = null): void
     {
+        $resolvedReason = InstructorApplicationRejectionReason::tryFrom($reasonCode);
+        $reasonLabel = $resolvedReason?->label() ?? str_replace('_', ' ', $reasonCode);
+        $composedReason = trim($reasonLabel . (! empty($reasonNote) ? ': ' . trim($reasonNote) : ''));
+
         $application->update([
             'status' => 'rejected',
-            'rejection_reason' => $reason,
+            'rejection_reason_code' => $reasonCode,
+            'rejection_reason_note' => $reasonNote,
+            'rejection_reason' => $composedReason,
             'approved_by' => Auth::id(),
             'approved_at' => now(),
         ]);
 
         $application->loadMissing('user');
-        $this->notifySafely($application->user, new InstructorApplicationStatusUpdate('rejected', $reason));
+        $this->notifySafely(
+            $application->user,
+            new InstructorApplicationStatusUpdate('rejected', $composedReason, $reasonCode, $reasonLabel, $reasonNote)
+        );
     }
 
     private function storeDocument(mixed $file, string $basePath, string $prefix): ?string

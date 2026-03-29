@@ -19,19 +19,38 @@ class InstructorApplicationController extends Controller
     public function index(Request $request): View
     {
         $status = $request->string('status')->toString() ?: 'pending';
+        $search = trim((string) $request->string('search'));
         if (! in_array($status, ['pending', 'approved', 'rejected'], true)) {
             $status = 'pending';
         }
 
         $applications = InstructorApplication::query()
-            ->with('user')
+            ->with([
+                'user.learnerProfile.city',
+                'user.learnerProfile.barangayLocation',
+            ])
             ->when($status, fn ($query) => $query->where('status', $status))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($nested) use ($search): void {
+                    $nested->where('educational_background', 'like', '%' . $search . '%')
+                        ->orWhere('bio', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', function ($userQuery) use ($search): void {
+                            $userQuery->where('name', 'like', '%' . $search . '%')
+                                ->orWhere('email', 'like', '%' . $search . '%')
+                                ->orWhereHas('learnerProfile', function ($profileQuery) use ($search): void {
+                                    $profileQuery->where('username', 'like', '%' . $search . '%')
+                                        ->orWhere('barangay', 'like', '%' . $search . '%');
+                                });
+                        });
+                });
+            })
             ->latest()
             ->paginate(20)
             ->withQueryString();
 
         return view('admin.instructor-applications.index', [
             'status' => $status,
+            'search' => $search,
             'applications' => $applications,
             'pendingCount' => InstructorApplication::pending()->count(),
             'approvedCount' => InstructorApplication::approved()->count(),
@@ -67,7 +86,11 @@ class InstructorApplicationController extends Controller
 
     public function reject(RejectInstructorApplicationRequest $request, InstructorApplication $application): RedirectResponse
     {
-        $this->service->reject($application, (string) $request->string('rejection_reason'));
+        $this->service->reject(
+            $application,
+            (string) $request->string('rejection_reason_code'),
+            $request->filled('rejection_reason_note') ? (string) $request->string('rejection_reason_note') : null
+        );
 
         return redirect()->back()->with('success', 'Instructor application rejected successfully.');
     }

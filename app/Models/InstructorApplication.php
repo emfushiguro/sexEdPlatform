@@ -22,6 +22,8 @@ class InstructorApplication extends Model
         'approved_by',
         'approved_at',
         'rejection_reason',
+        'rejection_reason_code',
+        'rejection_reason_note',
         'application_metadata',
     ];
 

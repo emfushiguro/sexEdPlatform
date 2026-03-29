@@ -63,8 +63,21 @@
  @elseif($application->status === 'approved')
  <p class="text-sm text-emerald-700">Approved by {{ $application->approvedBy?->name ?? 'N/A' }} on {{ optional($application->approved_at)->format('M d, Y h:i A') }}.</p>
  @else
+ @php
+ $reasonCode = $application->rejection_reason_code;
+ $reasonLabel = $reasonCode
+ ? (\App\Enums\InstructorApplicationRejectionReason::tryFrom($reasonCode)?->label() ?? \Illuminate\Support\Str::headline(str_replace('_', ' ', $reasonCode)))
+ : null;
+ @endphp
  <p class="text-sm text-rose-700">Rejected by {{ $application->approvedBy?->name ?? 'N/A' }} on {{ optional($application->approved_at)->format('M d, Y h:i A') }}.</p>
- <p class="mt-2 text-sm text-gray-700"><span class="font-medium">Reason:</span> {{ $application->rejection_reason }}</p>
+ @if($reasonLabel)
+ <p class="mt-2 text-sm text-gray-700"><span class="font-medium">Reason Category:</span> {{ $reasonLabel }}</p>
+ @endif
+ @if($application->rejection_reason_note)
+ <p class="mt-1 text-sm text-gray-700"><span class="font-medium">Admin Note:</span> {{ $application->rejection_reason_note }}</p>
+ @elseif($application->rejection_reason)
+ <p class="mt-1 text-sm text-gray-700"><span class="font-medium">Reason:</span> {{ $application->rejection_reason }}</p>
+ @endif
  @endif
  </div>
 
