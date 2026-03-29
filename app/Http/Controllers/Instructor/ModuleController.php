@@ -76,7 +76,13 @@ class ModuleController extends Controller
         $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
         unset($validated['age_bracket']);
 
-        $validated['is_published'] = false;
+        if ($request->has('is_published')) {
+            $validated['is_published'] = $request->boolean('is_published');
+        } elseif ($request->filled('action')) {
+            $validated['is_published'] = $request->input('action') === 'publish';
+        } else {
+            $validated['is_published'] = true;
+        }
 
         $validated['price_currency'] = strtoupper($validated['price_currency'] ?? 'PHP');
         if (($validated['access_type'] ?? 'free') === 'paid') {
@@ -96,7 +102,9 @@ class ModuleController extends Controller
 
         $module = Module::create($validated);
 
-        $message = 'Module saved as draft. Submit it for admin review when it is ready.';
+        $message = $validated['is_published']
+            ? 'Module created and published successfully!'
+            : 'Module saved as draft. Add your first lesson below.';
 
         return redirect()->route('instructor.modules.show', $module)
             ->with('success', $message);
@@ -109,7 +117,6 @@ class ModuleController extends Controller
         $module->load([
             'lessons' => fn ($q) => $q->orderBy('order'),
             'quizzes',
-            'reviewRequests' => fn ($query) => $query->latest(),
             'enrollments' => fn ($query) => $query
                 ->latest()
                 ->with('user:id,name,first_name,last_name,email'),
@@ -148,7 +155,13 @@ class ModuleController extends Controller
         $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
         unset($validated['age_bracket']);
 
-        $validated['is_published'] = false;
+        if ($request->has('is_published')) {
+            $validated['is_published'] = $request->boolean('is_published');
+        } elseif ($request->filled('action')) {
+            $validated['is_published'] = $request->input('action') === 'publish';
+        } else {
+            unset($validated['is_published']);
+        }
         $validated['content_owner_type'] = $module->content_owner_type ?? 'instructor';
 
         $validated['price_currency'] = strtoupper($validated['price_currency'] ?? 'PHP');
@@ -180,12 +193,9 @@ class ModuleController extends Controller
     public function activate(Module $module)
     {
         abort_unless((int) $module->created_by === (int) Auth::id(), 403);
-        $module->update([
-            'is_published' => false,
-            'current_review_status' => $module->current_review_status ?? 'draft',
-        ]);
+        $module->update(['is_published' => true]);
 
-        return back()->with('info', 'Instructor modules now require admin approval before publication.');
+        return back()->with('success', 'Module activated successfully.');
     }
 
     public function deactivate(Module $module)
