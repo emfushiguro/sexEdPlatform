@@ -33,4 +33,17 @@ class AdminLayoutBrandAlignmentTest extends TestCase
             ->assertSee('/media/Logo.png', false)
             ->assertSee('data-testid="admin-sidebar-branding"', false);
     }
+
+    public function test_admin_layout_uses_toastify_for_flash_messages(): void
+    {
+        $this->withoutVite();
+        $admin = $this->createAdminUser();
+
+        $this->actingAs($admin)
+            ->withSession(['success' => 'Saved'])
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('window.toast.success', false)
+            ->assertDontSee('bg-success-50 border border-success-500/30', false);
+    }
 }

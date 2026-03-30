@@ -430,34 +430,6 @@
             </header>
             {{-- END HEADER --}}
 
-            {{-- Flash messages --}}
-            @if(session('success'))
-                <div class="mx-4 mt-4 flex items-center gap-3 p-4 rounded-xl bg-success-50 border border-success-500/30">
-                    <svg class="w-5 h-5 flex-shrink-0 text-success-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="text-sm font-medium text-success-700">{{ session('success') }}</p>
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="mx-4 mt-4 flex items-center gap-3 p-4 rounded-xl bg-error-50 border border-error-500/30">
-                    <svg class="w-5 h-5 flex-shrink-0 text-error-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="text-sm font-medium text-error-700">{{ session('error') }}</p>
-                </div>
-            @endif
-
-            @if(session('warning'))
-                <div class="mx-4 mt-4 flex items-center gap-3 p-4 rounded-xl bg-warning-50 border border-warning-500/30">
-                    <svg class="w-5 h-5 flex-shrink-0 text-warning-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                    </svg>
-                    <p class="text-sm font-medium text-warning-700">{{ session('warning') }}</p>
-                </div>
-            @endif
-
             {{-- Page content --}}
             <main class="p-4 md:p-6 max-w-[1536px] mx-auto">
                 @yield('content')
@@ -469,6 +441,40 @@
     </div>
 
     @stack('scripts')
+
+    {{-- Flash toast notifications --}}
+    @if(session('success') || session('error') || session('info') || session('warning') || session('status') || $errors->any())
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function fireToasts() {
+                if (typeof window.toast === 'undefined') {
+                    return setTimeout(fireToasts, 80);
+                }
+                @if(session('success'))
+                    window.toast.success("{{ addslashes(session('success')) }}");
+                @endif
+                @if(session('error'))
+                    window.toast.error("{{ addslashes(session('error')) }}");
+                @endif
+                @if(session('info'))
+                    window.toast.info("{{ addslashes(session('info')) }}");
+                @endif
+                @if(session('warning'))
+                    window.toast.warning("{{ addslashes(session('warning')) }}");
+                @endif
+                @if(session('status'))
+                    window.toast.info("{{ addslashes(session('status')) }}");
+                @endif
+                @if($errors->any())
+                    @foreach($errors->all() as $error)
+                        window.toast.error("{{ addslashes($error) }}");
+                    @endforeach
+                @endif
+            }
+            fireToasts();
+        });
+    </script>
+    @endif
 
 </body>
 </html>
