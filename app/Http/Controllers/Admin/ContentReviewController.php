@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfirmInstructorPenaltyRequest;
 use App\Http\Requests\Admin\RejectModuleReviewRequest;
 use App\Models\ModuleReviewRequest;
+use App\Services\AdminModuleReviewWorkspaceService;
 use App\Services\ContentGovernanceService;
 use App\Services\InstructorModerationPenaltyService;
 use Illuminate\Http\RedirectResponse;
@@ -16,6 +17,7 @@ class ContentReviewController extends Controller
     public function __construct(
         private readonly ContentGovernanceService $contentGovernanceService,
         private readonly InstructorModerationPenaltyService $instructorModerationPenaltyService,
+        private readonly AdminModuleReviewWorkspaceService $workspaceService,
     ) {
     }
 
@@ -33,7 +35,9 @@ class ContentReviewController extends Controller
     {
         $reviewRequest->load(['module.publisher', 'module.publishedRevision', 'revision.submitter', 'reviewer']);
 
-        return view('admin.content-reviews.show', compact('reviewRequest'));
+        $workspace = $this->workspaceService->compose($reviewRequest);
+
+        return view('admin.content-reviews.show', compact('reviewRequest', 'workspace'));
     }
 
     public function approve(ModuleReviewRequest $reviewRequest): RedirectResponse
