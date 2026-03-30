@@ -1180,14 +1180,47 @@
                     return this.impactAction === 'activate' ? 'Activate Plan' : 'Deactivate Plan';
                 },
 
+                notifyValidation(type, message) {
+                    if (typeof window.toast !== 'undefined') {
+                        if (type === 'warning' && typeof window.toast.warning === 'function') {
+                            window.toast.warning(message);
+                            return;
+                        }
+                        if (type === 'error' && typeof window.toast.error === 'function') {
+                            window.toast.error(message);
+                            return;
+                        }
+                        if (type === 'info' && typeof window.toast.info === 'function') {
+                            window.toast.info(message);
+                            return;
+                        }
+                        if (type === 'success' && typeof window.toast.success === 'function') {
+                            window.toast.success(message);
+                            return;
+                        }
+
+                        if (typeof window.toast.info === 'function') {
+                            window.toast.info(message);
+                            return;
+                        }
+                    }
+
+                    if (type === 'warning') {
+                        console.warn('[admin.subscription-plans] Toast notifier unavailable:', message);
+                        return;
+                    }
+
+                    console.error('[admin.subscription-plans] Toast notifier unavailable:', message);
+                },
+
                 nextStep() {
                     if (this.currentStep === 1) {
                         if (!this.form.name || !this.form.name.trim()) {
-                            alert('Please enter a plan name.');
+                            this.notifyValidation('warning', 'Please enter a plan name.');
                             return;
                         }
                         if (!this.form.plan_audience) {
-                            alert('Please select a target audience.');
+                            this.notifyValidation('warning', 'Please select a target audience.');
                             return;
                         }
                         this.currentStep++;
@@ -1196,31 +1229,31 @@
 
                     if (this.currentStep === 2) {
                         if (!this.form.billing_mode) {
-                            alert('Please select a billing mode.');
+                            this.notifyValidation('warning', 'Please select a billing mode.');
                             return;
                         }
 
                         if (this.form.billing_mode === 'monthly' && (!this.form.prices.monthly.amount_decimal || this.form.prices.monthly.amount_decimal <= 0)) {
-                            alert('Please enter a valid monthly price.');
+                            this.notifyValidation('error', 'Please enter a valid monthly price.');
                             return;
                         }
 
                         if (this.form.billing_mode === 'annual' && (!this.form.prices.yearly.amount_decimal || this.form.prices.yearly.amount_decimal <= 0)) {
-                            alert('Please enter a valid annual price.');
+                            this.notifyValidation('error', 'Please enter a valid annual price.');
                             return;
                         }
 
                         if (this.form.billing_mode === 'custom') {
                             if (!this.form.prices.custom.amount_decimal || this.form.prices.custom.amount_decimal <= 0) {
-                                alert('Please enter a valid price.');
+                                this.notifyValidation('error', 'Please enter a valid price.');
                                 return;
                             }
                             if (!this.form.prices.custom.duration_count || this.form.prices.custom.duration_count < 1) {
-                                alert('Please set a valid duration count.');
+                                this.notifyValidation('error', 'Please set a valid duration count.');
                                 return;
                             }
                             if (!this.form.prices.custom.duration_unit) {
-                                alert('Please select a duration unit.');
+                                this.notifyValidation('warning', 'Please select a duration unit.');
                                 return;
                             }
                         }

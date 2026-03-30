@@ -33,6 +33,8 @@ class PlanManagementFlowTest extends TestCase
             ->assertSee('data-testid="open-create-plan-modal"', false)
             ->assertSee('data-sidebar-lock-hook="create-plan-modal"', false)
             ->assertSee(route('admin.subscribers.store-plan'), false)
+                ->assertDontSee('alert(', false)
+                ->assertSee('window.toast.warning(', false)
             ->assertDontSee(route('admin.subscription-plans.create'), false);
     }
 
