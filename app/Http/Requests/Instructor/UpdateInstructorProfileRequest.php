@@ -23,7 +23,9 @@ class UpdateInstructorProfileRequest extends FormRequest
             'years_experience' => ['nullable', 'integer', 'min:0'],
             'certifications' => ['nullable', 'array'],
             'certifications.*' => ['string', 'max:255'],
-            'profile_photo_path' => ['nullable', 'string', 'max:255'],
+            'credentials' => ['nullable', 'array'],
+            'credentials.*' => ['string', 'max:255'],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ];
     }
 }

@@ -71,7 +71,22 @@ class ProfileController extends Controller
 
         $this->authorize('update', $profile);
 
-        $profile->update($request->validated());
+        $validated = $request->validated();
+        
+        if ($request->hasFile('profile_photo')) {
+            if ($profile->profile_photo_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($profile->profile_photo_path);
+            }
+            $validated['profile_photo_path'] = $request->file('profile_photo')->store('avatars', 'public');
+        }
+        
+        unset($validated['profile_photo']);
+
+        $validated['expertise_tags'] = $validated['expertise_tags'] ?? [];
+        $validated['certifications'] = $validated['certifications'] ?? [];
+        $validated['credentials'] = $validated['credentials'] ?? [];
+
+        $profile->update($validated);
 
         return redirect()->route('instructor.profile.show')
             ->with('success', 'Instructor profile updated successfully.');
