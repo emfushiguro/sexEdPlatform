@@ -88,20 +88,20 @@
                @mouseenter="$store.sidebar.setHovered(true)"
                @mouseleave="$store.sidebar.setHovered(false)">
 
-            {{-- Logo --}}
-            <div class="flex items-center px-5 pt-8 pb-7"
+            {{-- Logo + Branding --}}
+            <div class="flex items-center px-5 pt-6 pb-6 border-b border-gray-100"
+                 data-testid="admin-sidebar-branding"
                  :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : 'justify-start'">
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 min-w-0">
-                    <div class="flex-shrink-0 w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center shadow-theme-sm">
-                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                        </svg>
-                    </div>
+                    <img src="/media/Logo.png"
+                         alt="{{ config('app.name') }}"
+                         class="h-10 w-10 object-contain flex-shrink-0">
+
                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                           x-cloak
-                          class="text-base font-bold text-gray-900 whitespace-nowrap overflow-hidden">
-                        {{ config('app.name') }}
+                          class="flex flex-col min-w-0">
+                        <span class="text-sm font-bold text-gray-900 leading-tight truncate">{{ config('app.name') }}</span>
+                        <span class="text-[10px] font-semibold uppercase tracking-widest text-brand-600 mt-0.5">Administrator Dashboard</span>
                     </span>
                 </a>
             </div>
