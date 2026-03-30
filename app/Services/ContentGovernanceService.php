@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ModuleRevision;
 use App\Models\User;
+use App\Notifications\InstructorModuleReviewDecisionNotification;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -112,6 +113,17 @@ class ContentGovernanceService
                 'current_review_status' => 'approved',
             ])->save();
 
+            $instructor = $module->created_by
+                ? User::query()->find($module->created_by)
+                : null;
+
+            if ($instructor) {
+                $instructor->notify(new InstructorModuleReviewDecisionNotification(
+                    status: 'approved',
+                    reviewRequest: $reviewRequest,
+                ));
+            }
+
             $this->adminActivityLogService->logModelMutation(
                 action: 'content_reviews.approve',
                 entity: $reviewRequest,
@@ -177,6 +189,14 @@ class ContentGovernanceService
                     $reasonCode ?? 'other',
                     trim($guidanceNote ?? '') !== '' ? $guidanceNote : $feedback,
                 );
+
+                $instructor->notify(new InstructorModuleReviewDecisionNotification(
+                    status: 'needs_revision',
+                    reviewRequest: $reviewRequest,
+                    reasonCode: $reasonCode,
+                    guidanceNote: trim($guidanceNote ?? '') !== '' ? $guidanceNote : $feedback,
+                    penaltySummary: $violation?->suggested_penalty_action,
+                ));
             }
 
             $this->adminActivityLogService->logModelMutation(
