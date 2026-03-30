@@ -87,4 +87,66 @@ class AdminModuleReviewWorkspaceService
 
         return $reviewRequest->revision?->submitter;
     }
+
+    public function resolvePreviewNode(ModuleReviewRequest $reviewRequest, string $nodeType, int $nodeId): ?array
+    {
+        $snapshot = $reviewRequest->revision?->snapshot_payload ?? [];
+
+        if ($nodeType === 'topic') {
+            foreach ((array) ($snapshot['lessons'] ?? []) as $lesson) {
+                foreach ((array) data_get($lesson, 'topics', []) as $topic) {
+                    if ((int) data_get($topic, 'id') !== $nodeId) {
+                        continue;
+                    }
+
+                    return [
+                        'type' => 'topic',
+                        'id' => $nodeId,
+                        'title' => data_get($topic, 'title'),
+                        'topic_type' => data_get($topic, 'type'),
+                        'text_content' => $this->sanitizeRichContent((string) data_get($topic, 'text_content', '')),
+                        'file_path' => data_get($topic, 'file_path'),
+                        'video_id' => data_get($topic, 'video_id'),
+                        'video_provider' => data_get($topic, 'video_provider'),
+                    ];
+                }
+            }
+
+            return null;
+        }
+
+        if ($nodeType === 'quiz') {
+            foreach ((array) ($snapshot['quizzes'] ?? []) as $quiz) {
+                if ((int) data_get($quiz, 'attributes.id') !== $nodeId) {
+                    continue;
+                }
+
+                return [
+                    'type' => 'quiz',
+                    'id' => $nodeId,
+                    'title' => data_get($quiz, 'attributes.title'),
+                    'description' => data_get($quiz, 'attributes.description'),
+                    'passing_score' => data_get($quiz, 'attributes.passing_score'),
+                    'time_limit' => data_get($quiz, 'attributes.time_limit'),
+                    'attempt_limit' => data_get($quiz, 'attributes.attempt_limit'),
+                    'questions' => array_values((array) data_get($quiz, 'questions', [])),
+                ];
+            }
+
+            return null;
+        }
+
+        return null;
+    }
+
+    private function sanitizeRichContent(string $content): string
+    {
+        if ($content === '') {
+            return '';
+        }
+
+        $content = preg_replace('#<script(.*?)>(.*?)</script>#is', '', $content) ?? '';
+
+        return strip_tags($content, '<p><br><strong><em><ul><ol><li><a><img><h1><h2><h3><h4><h5><h6><blockquote>');
+    }
 }
