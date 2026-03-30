@@ -6,15 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Instructor\StoreModuleRequest;
 use App\Http\Requests\Instructor\UpdateModuleRequest;
 use App\Models\Module;
-use App\Services\EntitlementService;
+use App\Support\InstructorRestrictionGate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 
 class ModuleController extends Controller
 {
-    public function __construct(private readonly EntitlementService $entitlementService)
-    {
+    public function __construct(
+        private readonly InstructorRestrictionGate $instructorRestrictionGate,
+    ) {
     }
 
     public function index(Request $request)
@@ -50,16 +50,25 @@ class ModuleController extends Controller
 
     public function create()
     {
+        $user = Auth::user();
+        if ($user && $this->instructorRestrictionGate->isRestricted($user)) {
+            return redirect()->route('instructor.modules.index')
+                ->with('error', $this->instructorRestrictionGate->restrictionMessage($user));
+        }
+
         return view('instructor.modules.create');
     }
 
     public function store(StoreModuleRequest $request)
     {
+        if ($this->instructorRestrictionGate->isRestricted($request->user())) {
+            return redirect()->route('instructor.modules.index')
+                ->with('error', $this->instructorRestrictionGate->restrictionMessage($request->user()));
+        }
+
         $validated = $request->validated();
 
         $validated['access_type'] = $validated['access_type'] ?? 'free';
-
-        $this->guardPaidAccess($validated['access_type'] ?? 'free');
 
         if ($request->hasFile('thumbnail')) {
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
@@ -131,8 +140,6 @@ class ModuleController extends Controller
 
         $validated['access_type'] = $validated['access_type'] ?? ($module->access_type ?? 'free');
 
-        $this->guardPaidAccess($validated['access_type'] ?? 'free');
-
         if ($request->hasFile('thumbnail')) {
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
         }
@@ -201,24 +208,5 @@ class ModuleController extends Controller
         abort_unless((int) $module->created_by === (int) Auth::id(), 403);
         $module->restore();
         return back()->with('success', 'Module restored successfully.');
-    }
-
-    private function guardPaidAccess(string $accessType): void
-    {
-        if ($accessType !== 'paid') {
-            return;
-        }
-
-        $user = Auth::user();
-
-        if ($user->hasRole('admin')) {
-            return;
-        }
-
-        if (! $this->entitlementService->canAccessFeature($user, 'instructor_paid_modules')) {
-            throw ValidationException::withMessages([
-                'access_type' => 'Paid modules require an active entitlement.',
-            ]);
-        }
     }
 }
