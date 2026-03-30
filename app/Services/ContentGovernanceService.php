@@ -13,6 +13,7 @@ class ContentGovernanceService
 {
     public function __construct(
         private readonly AdminActivityLogService $adminActivityLogService,
+        private readonly InstructorModerationPenaltyService $instructorModerationPenaltyService,
     ) {
     }
 
@@ -129,13 +130,19 @@ class ContentGovernanceService
         });
     }
 
-    public function rejectReview(ModuleReviewRequest $reviewRequest, User $admin, string $feedback): ModuleRevision
+    public function rejectReview(
+        ModuleReviewRequest $reviewRequest,
+        User $admin,
+        string $feedback,
+        ?string $reasonCode = null,
+        ?string $guidanceNote = null,
+    ): ModuleRevision
     {
         if (trim($feedback) === '') {
             throw new InvalidArgumentException('Review feedback is required when rejecting a module submission.');
         }
 
-        return DB::transaction(function () use ($reviewRequest, $admin, $feedback) {
+        return DB::transaction(function () use ($reviewRequest, $admin, $feedback, $reasonCode, $guidanceNote) {
             $reviewRequest->loadMissing('module', 'revision');
 
             $revision = $reviewRequest->revision;
@@ -159,6 +166,19 @@ class ContentGovernanceService
                 'current_review_status' => 'needs_revision',
             ])->save();
 
+            $instructor = User::query()->find($module->created_by);
+
+            $violation = null;
+            if ($instructor) {
+                $violation = $this->instructorModerationPenaltyService->recordViolation(
+                    $instructor,
+                    $module,
+                    $reviewRequest,
+                    $reasonCode ?? 'other',
+                    trim($guidanceNote ?? '') !== '' ? $guidanceNote : $feedback,
+                );
+            }
+
             $this->adminActivityLogService->logModelMutation(
                 action: 'content_reviews.reject',
                 entity: $reviewRequest,
@@ -169,6 +189,9 @@ class ContentGovernanceService
                 ],
                 meta: [
                     'feedback' => $feedback,
+                    'reason_code' => $reasonCode,
+                    'guidance_note' => $guidanceNote,
+                    'suggested_penalty_action' => $violation?->suggested_penalty_action,
                 ],
                 adminUserId: $admin->id,
             );
