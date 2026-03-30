@@ -185,6 +185,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Module::class, 'created_by');
     }
 
+    public function moderationProfile()
+    {
+        return $this->hasOne(InstructorModerationProfile::class);
+    }
+
+    public function violationHistories()
+    {
+        return $this->hasMany(InstructorViolationHistory::class);
+    }
+
     public function moduleReviewsSubmitted()
     {
         return $this->hasMany(ModuleRevision::class, 'submitted_by');

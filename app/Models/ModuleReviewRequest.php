@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ModuleReviewRequest extends Model
 {
@@ -47,6 +48,11 @@ class ModuleReviewRequest extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function violationRecords(): HasMany
+    {
+        return $this->hasMany(InstructorViolationHistory::class, 'module_review_request_id');
     }
 
     public function getModuleTitleAttribute(): string
