@@ -20,6 +20,7 @@ class ModuleController extends Controller
     public function index(Request $request)
     {
         $status = $request->get('status', 'all');
+        $user = Auth::user();
 
         if ($status === 'archived') {
             $query = Module::onlyTrashed()->where('created_by', Auth::id());
@@ -45,7 +46,20 @@ class ModuleController extends Controller
             ->whereHas('module', fn ($q) => $q->where('created_by', Auth::id()))
             ->count();
 
-        return view('instructor.modules.index', compact('modules', 'pendingCount', 'status'));
+        $restrictionProfile = $user ? $this->instructorRestrictionGate->activeRestrictionProfile($user) : null;
+        $isRestricted = $restrictionProfile !== null;
+        $restrictionMessage = $isRestricted
+            ? $this->instructorRestrictionGate->restrictionMessage($user)
+            : null;
+
+        return view('instructor.modules.index', compact(
+            'modules',
+            'pendingCount',
+            'status',
+            'isRestricted',
+            'restrictionProfile',
+            'restrictionMessage',
+        ));
     }
 
     public function create()
@@ -56,7 +70,11 @@ class ModuleController extends Controller
                 ->with('error', $this->instructorRestrictionGate->restrictionMessage($user));
         }
 
-        return view('instructor.modules.create');
+        return view('instructor.modules.create', [
+            'isRestricted' => false,
+            'restrictionProfile' => null,
+            'restrictionMessage' => null,
+        ]);
     }
 
     public function store(StoreModuleRequest $request)
@@ -131,7 +149,15 @@ class ModuleController extends Controller
 
     public function edit(Module $module)
     {
-        return view('instructor.modules.edit', compact('module'));
+        $user = Auth::user();
+        $restrictionProfile = $user ? $this->instructorRestrictionGate->activeRestrictionProfile($user) : null;
+
+        return view('instructor.modules.edit', [
+            'module' => $module,
+            'isRestricted' => $restrictionProfile !== null,
+            'restrictionProfile' => $restrictionProfile,
+            'restrictionMessage' => $restrictionProfile ? $this->instructorRestrictionGate->restrictionMessage($user) : null,
+        ]);
     }
 
     public function update(UpdateModuleRequest $request, Module $module)
