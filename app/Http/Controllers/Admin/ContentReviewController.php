@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ConfirmInstructorPenaltyRequest;
 use App\Http\Requests\Admin\RejectModuleReviewRequest;
 use App\Models\ModuleReviewRequest;
 use App\Services\ContentGovernanceService;
+use App\Services\InstructorModerationPenaltyService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -13,6 +15,7 @@ class ContentReviewController extends Controller
 {
     public function __construct(
         private readonly ContentGovernanceService $contentGovernanceService,
+        private readonly InstructorModerationPenaltyService $instructorModerationPenaltyService,
     ) {
     }
 
@@ -47,9 +50,39 @@ class ContentReviewController extends Controller
             $reviewRequest,
             $request->user(),
             $request->string('feedback')->toString(),
+            $request->input('reason_code'),
+            $request->input('guidance_note'),
         );
 
         return redirect()->route('admin.content-reviews.show', $reviewRequest)
             ->with('success', 'Content review rejected with feedback.');
+    }
+
+    public function confirmPenalty(ConfirmInstructorPenaltyRequest $request, ModuleReviewRequest $reviewRequest): RedirectResponse
+    {
+        $reviewRequest->loadMissing(['module', 'violationRecords']);
+
+        $instructor = $reviewRequest->module?->created_by
+            ? \App\Models\User::query()->find($reviewRequest->module->created_by)
+            : null;
+
+        $latestViolation = $reviewRequest->violationRecords()
+            ->latest('id')
+            ->first();
+
+        if (!$instructor || !$latestViolation) {
+            return redirect()->route('admin.content-reviews.show', $reviewRequest)
+                ->with('error', 'No violation record available for penalty confirmation.');
+        }
+
+        $this->instructorModerationPenaltyService->applyConfirmedAction(
+            $instructor,
+            $latestViolation,
+            $request->string('action')->toString(),
+            $request->user(),
+        );
+
+        return redirect()->route('admin.content-reviews.show', $reviewRequest)
+            ->with('success', 'Penalty action confirmed.');
     }
 }

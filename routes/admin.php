@@ -22,6 +22,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/{reviewRequest}', [Admin\ContentReviewController::class, 'show'])->name('show');
         Route::post('/{reviewRequest}/approve', [Admin\ContentReviewController::class, 'approve'])->name('approve');
         Route::post('/{reviewRequest}/reject', [Admin\ContentReviewController::class, 'reject'])->name('reject');
+        Route::post('/{reviewRequest}/penalty/confirm', [Admin\ContentReviewController::class, 'confirmPenalty'])->name('penalty.confirm');
     });
 
     Route::resource('modules', Admin\AdminModuleController::class)->except(['destroy']);
