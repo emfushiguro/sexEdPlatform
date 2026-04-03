@@ -3,19 +3,6 @@
 @section('page-title', 'User Management')
 @section('content')
 
-@if(session('success'))
-<div class="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl bg-success-50 border border-success-200 text-success-700 text-sm">
- <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
- {{ session('success') }}
-</div>
-@endif
-@if(session('error'))
-<div class="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl bg-error-50 border border-error-200 text-error-700 text-sm">
- <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
- {{ session('error') }}
-</div>
-@endif
-
 {{-- Stat Cards --}}
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
  @php

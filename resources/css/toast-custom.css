@@ -14,7 +14,7 @@
     max-width: 500px !important;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
     position: fixed !important;
-    z-index: 9999 !important;
+    z-index: 100001 !important;
     line-height: 1.5 !important;
     backdrop-filter: blur(10px);
     animation: toastSlideIn 0.4s cubic-bezier(0.21, 1.02, 0.73, 1) forwards !important;
@@ -456,5 +456,5 @@
 
 /* Ensure proper z-index layering */
 .toastify {
-    z-index: 9999 !important;
+    z-index: 100001 !important;
 }

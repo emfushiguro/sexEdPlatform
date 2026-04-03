@@ -32,7 +32,7 @@ class LessonController extends Controller
             abort(404);
         }
 
-        if (!$module->is_published) {
+        if (!$module->isLearnerVisible()) {
             return redirect()->route('learner.modules.show', $module)
                 ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
         }
@@ -287,7 +287,7 @@ class LessonController extends Controller
             abort(404);
         }
 
-        if (!$module->is_published) {
+        if (!$module->isLearnerVisible()) {
             return redirect()->route('learner.modules.show', $module)
                 ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
         }
@@ -343,7 +343,7 @@ class LessonController extends Controller
             abort(404);
         }
 
-        if (!$module->is_published) {
+        if (!$module->isLearnerVisible()) {
             return redirect()->route('learner.modules.show', $module)
                 ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
         }
@@ -415,7 +415,7 @@ class LessonController extends Controller
             abort(404);
         }
 
-        if (!$module->is_published) {
+        if (!$module->isLearnerVisible()) {
             return redirect()->route('learner.modules.show', $module)
                 ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
         }

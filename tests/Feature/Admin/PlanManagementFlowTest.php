@@ -33,6 +33,8 @@ class PlanManagementFlowTest extends TestCase
             ->assertSee('data-testid="open-create-plan-modal"', false)
             ->assertSee('data-sidebar-lock-hook="create-plan-modal"', false)
             ->assertSee(route('admin.subscribers.store-plan'), false)
+                ->assertDontSee('alert(', false)
+                ->assertSee('window.toast.warning(', false)
             ->assertDontSee(route('admin.subscription-plans.create'), false);
     }
 
@@ -243,6 +245,49 @@ class PlanManagementFlowTest extends TestCase
             ->post(route('admin.subscribers.store-plan'), $precisionPayload)
             ->assertRedirect(route('admin.subscription-plans.index'))
             ->assertSessionHasErrors(['price']);
+    }
+
+    public function test_admin_can_create_custom_price_plan_with_minute_duration_unit(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $payload = [
+            'name' => 'Quick Test Duration Plan',
+            'description' => 'Supports short subscription test windows',
+            'plan_audience' => 'learner',
+            'billing_mode' => 'custom',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(7)->toDateString(),
+            'is_active' => true,
+            'prices' => [
+                [
+                    'duration_mode' => 'custom',
+                    'duration_unit' => 'minute',
+                    'duration_count' => 1,
+                    'duration_label' => 'Every 1 minute',
+                    'amount_minor' => 10000,
+                    'currency' => 'PHP',
+                    'is_default' => true,
+                    'is_active' => true,
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($admin)
+            ->post(route('admin.subscription-plans.store'), $payload);
+
+        $plan = SubscriptionPlan::query()->where('slug', 'quick-test-duration-plan')->first();
+
+        $this->assertNotNull($plan);
+        $response->assertRedirect(route('admin.subscription-plans.index', ['highlight_plan' => $plan->id]));
+
+        $this->assertDatabaseHas('plan_prices', [
+            'plan_id' => $plan->id,
+            'duration_unit' => 'minute',
+            'duration_count' => 1,
+            'amount_minor' => 10000,
+            'is_default' => 1,
+        ]);
     }
 
     public function test_admin_can_create_plan_with_simplified_learner_entitlement_payload(): void

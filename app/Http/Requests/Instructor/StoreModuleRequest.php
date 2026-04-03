@@ -6,6 +6,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreModuleRequest extends FormRequest
 {
+    private const ENROLLMENT_LIMIT_CAP = 20;
+
     public function authorize(): bool
     {
         return true;
@@ -24,7 +26,7 @@ class StoreModuleRequest extends FormRequest
             'access_type' => 'nullable|in:free,paid',
             'price_amount' => 'nullable|numeric|min:0.01|required_if:access_type,paid',
             'price_currency' => 'nullable|string|size:3',
-            'enrollment_limit' => 'nullable|integer|min:1',
+            'enrollment_limit' => 'nullable|integer|min:1|max:' . self::ENROLLMENT_LIMIT_CAP,
         ];
     }
 }

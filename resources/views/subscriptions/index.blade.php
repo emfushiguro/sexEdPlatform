@@ -73,7 +73,7 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-10 text-center">
             <h2 class="text-xl font-semibold text-gray-900 mb-2">No plans are currently available</h2>
             <p class="text-gray-500 text-sm mb-6">New plans may be published soon. You can continue using available free learning content in the meantime.</p>
-            <a href="{{ route('dashboard') }}" class="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+            <a href="{{ route('learner.dashboard') }}" class="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                 Back to dashboard
             </a>
         </div>

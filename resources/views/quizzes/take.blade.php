@@ -282,9 +282,9 @@
 
         {{-- ── Identification ── --}}
         @elseif($question->question_type === 'identification')
-          @if($question->image_path)
+          @if($question->image_url)
             <div class="flex justify-center mb-3">
-              <img src="{{ asset('storage/' . $question->image_path) }}"
+              <img src="{{ $question->image_url }}"
                    alt="Question image"
                    class="max-w-full max-h-56 rounded-xl border-2 border-gray-200 dark:border-gray-600 object-contain shadow-sm">
             </div>

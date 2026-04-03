@@ -2,6 +2,7 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import './toast'; // Toast notification system
+import './chat/store';
 
 // Heavy libraries are loaded on-demand to keep the main bundle small.
 let cachedPdfJsLib = null;

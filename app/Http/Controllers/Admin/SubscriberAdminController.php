@@ -20,22 +20,9 @@ class SubscriberAdminController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Subscription::with(['user', 'payments', 'plan']);
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        if ($request->filled('plan_id')) {
-            $query->where('plan_id', $request->plan_id);
-        }
-        if ($request->filled('search')) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        $subscriptions = $query->latest()->paginate(15);
+        $subscriptions = Subscription::with(['user', 'payments', 'plan', 'planPrice'])
+            ->latest()
+            ->get();
         $plans = SubscriptionPlan::active()->ordered()->get();
 
         $subscriptionStats = [
@@ -46,7 +33,7 @@ class SubscriberAdminController extends Controller
             'past_due'       => Subscription::where('status', 'past_due')->count(),
             'trialing'       => Subscription::where('status', 'trialing')->count(),
             'total_revenue'  => Subscription::where('status', 'active')->sum('price_paid'),
-            'expiring_soon'  => Subscription::expiringSoon()->count(),
+            'new_this_month' => Subscription::where('created_at', '>=', now()->startOfMonth())->count(),
         ];
 
         $planStats = [
@@ -68,7 +55,17 @@ class SubscriberAdminController extends Controller
      */
     public function show(Subscription $subscription)
     {
-        $subscription->load(['user', 'plan', 'payments']);
+        $subscription->load([
+            'user.profile',
+            'user.learnerProfile.city',
+            'user.learnerProfile.barangay',
+            'user.gamification',
+            'plan.planPrices',
+            'planPrice',
+            'payments' => function ($query) {
+                $query->latest();
+            },
+        ]);
         $plans = SubscriptionPlan::active()->ordered()->get();
         $user  = $subscription->user;
         $plan  = $subscription->plan;

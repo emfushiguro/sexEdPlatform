@@ -66,13 +66,16 @@ class InstructorApplicationApprovalTest extends TestCase
 
         $response = $this->actingAs($admin)
             ->post(route('admin.instructor-applications.reject', $application), [
-                'rejection_reason' => 'Missing verifiable supporting documents.',
+                'rejection_reason_code' => 'invalid_credentials',
+                'rejection_reason_note' => 'Missing verifiable supporting documents.',
             ]);
 
         $response->assertRedirect();
         $this->assertDatabaseHas('instructor_applications', [
             'id' => $application->id,
             'status' => 'rejected',
+            'rejection_reason_code' => 'invalid_credentials',
+            'rejection_reason_note' => 'Missing verifiable supporting documents.',
         ]);
     }
 }

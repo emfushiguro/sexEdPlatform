@@ -4,7 +4,7 @@
 @section('page-title', 'Subscription Plans')
 
 @section('content')
-    <div x-data="subscriptionPlansPage(@js($plans->items()), '{{ route('admin.subscription-plans.store') }}')"
+    <div x-data="subscriptionPlansPage(@js($plans), '{{ route('admin.subscription-plans.store') }}', @js($stats))"
          x-init="init()"
          @keydown.escape.window="if (showCreatePlanModal) { closeCreatePlanModal(); }">
     <span class="hidden" data-testid="plan-wizard-mode" x-text="wizardMode"></span>
@@ -14,24 +14,24 @@
     <span class="hidden">{{ route('admin.subscribers.store-plan') }}</span>
 
     {{-- Page Header --}}
-    <div class="flex items-center justify-between mb-6 gap-3">
+    <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
-             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Subscription Management</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage subscriber lifecycle, plan pricing, and entitlements.</p>
+             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Plans Management</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage plans, plan pricing, and entitlements.</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3">
             <a href="{{ route('admin.subscription-plans.archived') }}"
-               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                Archived Plans
-                <span class="inline-flex min-w-5 justify-center rounded-full bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-xs font-semibold text-gray-600 dark:text-gray-200">
-                    {{ $stats['archived'] ?? 0 }}
-                </span>
+               class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50">
+                <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
+                </svg>
+                <span>Archived Plans</span>
+                <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">{{ $stats['archived'] ?? 0 }}</span>
             </a>
-
             <button type="button"
                data-testid="open-create-plan-modal"
                   @click="openCreatePlanModal()"
-               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-theme-xs">
+               class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition-colors shadow-theme-xs hover:bg-brand-600">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
@@ -40,6 +40,64 @@
         </div>
     </div>
 
+    <div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-[28px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5 shadow-theme-xs">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Total Plans</p>
+                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.total)"></p>
+                    <p class="mt-2 text-sm text-gray-500">All active and inactive plans currently available in admin.</p>
+                </div>
+                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 7h10M7 12h10M7 17h6M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
+                    </svg>
+                </span>
+            </div>
+        </div>
+        <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Active Plans</p>
+                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.active)"></p>
+                    <p class="mt-2 text-sm text-gray-500">Plans that can currently be subscribed to.</p>
+                </div>
+                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-200">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                    </svg>
+                </span>
+            </div>
+        </div>
+        <div class="rounded-[28px] border border-rose-100 bg-gradient-to-br from-rose-50 via-white to-orange-50 p-5 shadow-theme-xs">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-rose-600">Inactive Plans</p>
+                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.inactive)"></p>
+                    <p class="mt-2 text-sm text-gray-500">Plans kept in admin but not currently available.</p>
+                </div>
+                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-200">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.5 6h9m-9 6h9m-9 6h9M4.5 6h.008v.008H4.5V6Zm0 6h.008v.008H4.5V12Zm0 6h.008v.008H4.5V18Z"/>
+                    </svg>
+                </span>
+            </div>
+        </div>
+        <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Archived</p>
+                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.archived)"></p>
+                    <p class="mt-2 text-sm text-gray-500">Plans removed from the active working catalog.</p>
+                </div>
+                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
+                    </svg>
+                </span>
+            </div>
+        </div>
+    </div>
     {{-- Create/Edit Plan Wizard Modal --}}
     <div x-show="showCreatePlanModal"
          x-cloak
@@ -195,7 +253,8 @@
                         </div>
 
                         {{-- Pricing Inputs (Conditional based on billing_mode) --}}
-                        <div x-show="form.billing_mode === 'monthly'" x-transition.opacity class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                        <template x-if="form.billing_mode === 'monthly'">
+                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
                             <div class="flex items-center gap-3 mb-4">
                                 <span class="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300">₱</span>
                                 <h3 class="font-semibold text-gray-900 dark:text-white">Monthly Pricing</h3>
@@ -222,8 +281,10 @@
                                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Enter amount in pesos (e.g., 199.99 for ₱199.99/month)</p>
                             </div>
                         </div>
+                        </template>
 
-                        <div x-show="form.billing_mode === 'annual'" x-transition.opacity class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                        <template x-if="form.billing_mode === 'annual'">
+                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
                             <div class="flex items-center gap-3 mb-4">
                                 <span class="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300">₱</span>
                                 <h3 class="font-semibold text-gray-900 dark:text-white">Annual Pricing</h3>
@@ -250,8 +311,10 @@
                                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Enter amount in pesos (e.g., 1999.99 for ₱1,999.99/year)</p>
                             </div>
                         </div>
+                        </template>
 
-                        <div x-show="form.billing_mode === 'custom'" x-transition.opacity class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                        <template x-if="form.billing_mode === 'custom'">
+                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
                             <div class="flex items-center gap-3 mb-4">
                                 <span class="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300">⏱</span>
                                 <h3 class="font-semibold text-gray-900 dark:text-white">Custom Period Pricing</h3>
@@ -271,6 +334,8 @@
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Duration Unit <span class="text-red-500">*</span></label>
                                         <select x-model="form.prices.custom.duration_unit"
                                                 class="w-full px-3 py-2.5 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:border-purple-500 focus:ring-purple-500/20">
+                                            <option value="minute">Minutes</option>
+                                            <option value="hour">Hours</option>
                                             <option value="day">Days</option>
                                             <option value="week">Weeks</option>
                                             <option value="month">Months</option>
@@ -304,6 +369,7 @@
                                 <input type="hidden" name="prices[0][currency]" value="PHP">
                             </div>
                         </div>
+                        </template>
                     </div>
 
                     {{-- STEP 3: Entitlements (Dynamic based on plan_audience) --}}
@@ -493,8 +559,193 @@
         </div>
     </div>
 
+    <section class="mb-8 overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
+        <div class="border-b border-gray-100 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(244,114,182,0.12),_transparent_28%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-6">
+            <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                    <div data-testid="admin-table-filter-bar" class="hidden"></div>
+                    <h2 class="mt-2 text-xl font-bold text-gray-900">Plans Table</h2>
+                    <p class="mt-1 text-sm text-gray-500">Search plan names, descriptions, billing labels, prices, statuses, and subscriber counts in real time.</p>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <label class="block xl:col-span-2">
+                        <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
+                        <input x-model.debounce.150ms="filters.search"
+                               type="text"
+                               placeholder="Plan, audience, billing, status..."
+                               class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
+                        <select x-model="filters.status"
+                                class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                            <option value="">All statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Audience</span>
+                        <select x-model="filters.audience"
+                                class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                            <option value="">All audiences</option>
+                            <option value="learner">Learner</option>
+                            <option value="instructor">Instructor</option>
+                            <option value="connectors">Connectors</option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Billing</span>
+                        <select x-model="filters.billing"
+                                class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                            <option value="">All billing modes</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="annual">Annual</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+            <div>
+                <p class="text-sm font-semibold text-gray-900"><span x-text="filteredPlans.length"></span> matching plans</p>
+                <p class="text-xs text-gray-500">Results update instantly as you type and refine the filters.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button type="button"
+                        @click="resetFilters()"
+                        class="inline-flex items-center rounded-2xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
+                    Reset Filters
+                </button>
+                <a href="{{ route('admin.subscription-plans.archived') }}"
+                   class="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
+                    </svg>
+                    <span>Archived Plans</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No.</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Plan</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Audience</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Billing</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Default Price</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Subscribers</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Status</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 bg-white">
+                    <template x-for="(plan, index) in filteredPlans" :key="plan.id">
+                        <tr class="transition hover:bg-sky-50/50">
+                            <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="index + 1"></td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-100 text-sm font-bold text-sky-700"
+                                          x-text="plan.name.charAt(0).toUpperCase()"></span>
+                                    <div class="space-y-1">
+                                        <p class="text-sm font-semibold text-gray-900" x-text="plan.name"></p>
+                                        <p class="line-clamp-2 text-xs text-gray-500" x-text="plan.description || 'No description added yet.'"></p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold capitalize"
+                                      :class="audienceClass(plan.plan_audience)"
+                                      x-text="plan.plan_audience || 'learner'"></span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm font-semibold text-gray-900" x-text="formatLabel(plan.billing_mode || 'monthly')"></p>
+                                <p class="text-xs text-gray-500" x-text="defaultPriceLabel(plan)"></p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm font-bold text-gray-900" x-text="formatCurrency(defaultPrice(plan).amount)"></p>
+                                <p class="text-xs text-gray-500" x-text="defaultPrice(plan).label"></p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-sm font-semibold text-gray-900" x-text="formatNumber(plan.subscriptions_count || 0)"></p>
+                                <p class="text-xs text-gray-500"><span x-text="formatNumber(plan.active_subscriptions_count || 0)"></span> active</p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
+                                      :class="statusClass(plan.is_active)"
+                                      x-text="plan.is_active ? 'Active' : 'Inactive'"></span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a :href="plan.show_url"
+                                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+                                       title="View">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                    </a>
+                                    <button type="button"
+                                            data-testid="open-edit-plan-modal"
+                                            @click="openEditPlanModal(plan.id)"
+                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
+                                            title="Edit">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </button>
+                                    <button type="button"
+                                            @click="openImpactModal(plan.id, plan.name, plan.is_active ? 'deactivate' : 'activate')"
+                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition"
+                                            :class="plan.is_active ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'"
+                                            :title="plan.is_active ? 'Deactivate' : 'Activate'">
+                                        <template x-if="plan.is_active">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                            </svg>
+                                        </template>
+                                        <template x-if="!plan.is_active">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                        </template>
+                                    </button>
+                                    <button type="button"
+                                            @click="openImpactModal(plan.id, plan.name, 'archive')"
+                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100"
+                                            title="Archive">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="filteredPlans.length === 0" x-cloak>
+                        <td colspan="8" class="px-6 py-14 text-center">
+                            <div class="mx-auto max-w-sm">
+                                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 7h10M7 12h10M7 17h6M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="mt-4 text-sm font-semibold text-gray-900">No plans match these filters</h3>
+                                <p class="mt-1 text-sm text-gray-500">Try broadening the search or resetting the column filters.</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     {{-- Main Table Section --}}
-    <div class="rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs p-6 mb-8">
+    <div class="hidden rounded-2xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-gray-800 shadow-theme-xs p-6 mb-8">
         <div data-testid="admin-table-filter-bar" class="hidden"></div>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
@@ -510,9 +761,9 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                     @forelse($plans as $plan)
-                        <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors {{ (int)($highlightPlanId ?? 0) === (int)$plan->id ? 'bg-brand-50/60 dark:bg-brand-500/10' : '' }}">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
                             <td class="px-5 py-4 text-sm font-semibold text-gray-500 dark:text-gray-400">
-                                {{ (($plans->currentPage() - 1) * $plans->perPage()) + $loop->iteration }}
+                                {{ $loop->iteration }}
                             </td>
                             <td class="px-5 py-4">
                                 <p class="font-semibold text-gray-900 dark:text-white text-sm">{{ $plan->name }}</p>
@@ -591,18 +842,19 @@
             </table>
         </div>
 
-        @if($plans->hasPages())
+        @if(false)
             <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-800">
                 <div class="flex items-center justify-between gap-4">
                     <p class="text-xs text-gray-500 dark:text-gray-400">Showing {{ $plans->firstItem() }}-{{ $plans->lastItem() }} of {{ $plans->total() }}</p>
                     {{ $plans->withQueryString()->links() }}
                 </div>
             </div>
-        @endif>    </div>
+        @endif
+    </div>
     </div>
 
     <script>
-        function subscriptionPlansPage(plans, storeRoute) {
+        function subscriptionPlansPage(plans, storeRoute, stats) {
             const defaultForm = () => ({
                 id: null,
                 name: '',
@@ -611,12 +863,38 @@
                 billing_mode: 'monthly',
                 is_active: true,
                 prices: {
-                    monthly: { amount: 0, amount_decimal: 0, label: 'Monthly' },
-                    yearly: { amount: 0, amount_decimal: 0, label: 'Yearly' },
-                    custom: { amount: 0, amount_decimal: 0, duration_count: 1, duration_unit: 'month', label: 'Custom Period' }
+                    monthly: { amount: 0, amount_decimal: '', label: 'Monthly' },
+                    yearly: { amount: 0, amount_decimal: '', label: 'Yearly' },
+                    custom: { amount: 0, amount_decimal: '', duration_count: 1, duration_unit: 'month', label: 'Custom Period' }
                 },
                 entitlements: {}
             });
+
+            const mapPlan = (plan) => {
+                const priceRows = Array.isArray(plan?.plan_prices) ? plan.plan_prices : [];
+                const defaultPrice = priceRows.find((price) => price.is_default && price.is_active) || priceRows[0] || null;
+                const durationLabel = defaultPrice?.duration_label
+                    || (defaultPrice?.duration_unit ? `Every ${defaultPrice.duration_count || 1} ${defaultPrice.duration_unit}${Number(defaultPrice.duration_count || 1) > 1 ? 's' : ''}` : 'No pricing');
+                const amount = defaultPrice ? Number(defaultPrice.amount_minor || 0) / 100 : Number(plan?.price || 0);
+
+                return {
+                    ...plan,
+                    show_url: `/admin/subscription-plans/${plan.id}`,
+                    default_price_amount: amount,
+                    default_price_label: durationLabel,
+                    search_blob: [
+                        plan?.name,
+                        plan?.description,
+                        plan?.plan_audience,
+                        plan?.billing_mode,
+                        plan?.is_active ? 'active' : 'inactive',
+                        durationLabel,
+                        amount,
+                        plan?.subscriptions_count,
+                        plan?.active_subscriptions_count,
+                    ].filter(Boolean).join(' ').toLowerCase(),
+                };
+            };
 
             return {
                 showCreatePlanModal: false,
@@ -628,7 +906,14 @@
                     total_subscribers: 0,
                     active_subscribers: 0,
                 },
-                plans: Array.isArray(plans) ? plans : [],
+                stats: stats || {},
+                plans: Array.isArray(plans) ? plans.map(mapPlan) : [],
+                filters: {
+                    search: '',
+                    status: '',
+                    audience: '',
+                    billing: '',
+                },
                 wizardMode: 'create',
                 currentStep: 1,
                 form: defaultForm(),
@@ -637,6 +922,66 @@
                 get availableFeatures() {
                     if (!this.form.plan_audience) return [];
                     return this.featureCatalog;
+                },
+
+                get filteredPlans() {
+                    return this.plans.filter((plan) => {
+                        const search = this.filters.search.trim().toLowerCase();
+                        const matchesSearch = !search || plan.search_blob.includes(search);
+                        const matchesStatus = !this.filters.status || (this.filters.status === 'active' ? !!plan.is_active : !plan.is_active);
+                        const matchesAudience = !this.filters.audience || String(plan.plan_audience || '') === this.filters.audience;
+                        const matchesBilling = !this.filters.billing || String(plan.billing_mode || '') === this.filters.billing;
+
+                        return matchesSearch && matchesStatus && matchesAudience && matchesBilling;
+                    });
+                },
+
+                resetFilters() {
+                    this.filters.search = '';
+                    this.filters.status = '';
+                    this.filters.audience = '';
+                    this.filters.billing = '';
+                },
+
+                formatNumber(value) {
+                    return new Intl.NumberFormat('en-US').format(Number(value || 0));
+                },
+
+                formatCurrency(value) {
+                    return new Intl.NumberFormat('en-PH', {
+                        style: 'currency',
+                        currency: 'PHP',
+                        minimumFractionDigits: 2,
+                    }).format(Number(value || 0));
+                },
+
+                formatLabel(value) {
+                    return String(value || '')
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, (char) => char.toUpperCase());
+                },
+
+                defaultPrice(plan) {
+                    return {
+                        amount: Number(plan?.default_price_amount || 0),
+                        label: plan?.default_price_label || 'No pricing',
+                    };
+                },
+
+                defaultPriceLabel(plan) {
+                    return plan?.default_price_label || 'No pricing configured';
+                },
+
+                statusClass(isActive) {
+                    return isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600';
+                },
+
+                audienceClass(audience) {
+                    return {
+                        learner: 'bg-sky-100 text-sky-700',
+                        instructor: 'bg-teal-100 text-teal-700',
+                        connectors: 'bg-fuchsia-100 text-fuchsia-700',
+                    }[audience] || 'bg-gray-100 text-gray-600';
                 },
 
                 getFeatureDescription(feature) {
@@ -649,18 +994,26 @@
                 },
 
                 normalizeMoney(rawValue) {
-                    const sanitized = String(rawValue ?? '')
+                    const incoming = String(rawValue ?? '').trim();
+                    const isNegative = incoming.startsWith('-');
+                    const unsigned = incoming
                         .replace(/[^\d.]/g, '')
                         .replace(/(\..*)\./g, '$1');
 
-                    if (sanitized === '') {
-                        return { decimal: '', minor: 0 };
+                    if (unsigned === '') {
+                        return { decimal: isNegative ? '-' : '', minor: 0 };
                     }
 
-                    const [whole, fractional = ''] = sanitized.split('.');
+                    const [whole, fractional = ''] = unsigned.split('.');
+                    const safeWhole = whole === '' ? '0' : whole;
                     const trimmedFractional = fractional.slice(0, 2);
-                    const decimal = trimmedFractional.length > 0 ? `${whole}.${trimmedFractional}` : whole;
-                    const numeric = Number(decimal);
+                    const hasDecimalPoint = unsigned.includes('.');
+                    const numericUnsigned = hasDecimalPoint ? `${safeWhole}.${trimmedFractional}` : safeWhole;
+                    const displayUnsigned = hasDecimalPoint && unsigned.endsWith('.') && trimmedFractional.length === 0
+                        ? `${safeWhole}.`
+                        : numericUnsigned;
+                    const decimal = isNegative ? `-${displayUnsigned}` : displayUnsigned;
+                    const numeric = Number(isNegative ? `-${numericUnsigned}` : numericUnsigned);
 
                     return {
                         decimal,
@@ -752,17 +1105,17 @@
                         prices: {
                             monthly: {
                                 amount: monthly ? Number(monthly.amount_minor) : 0,
-                                amount_decimal: monthly ? (Number(monthly.amount_minor) / 100).toFixed(2) : 0,
+                                amount_decimal: monthly ? (Number(monthly.amount_minor) / 100).toFixed(2) : '',
                                 label: 'Monthly'
                             },
                             yearly: {
                                 amount: yearly ? Number(yearly.amount_minor) : 0,
-                                amount_decimal: yearly ? (Number(yearly.amount_minor) / 100).toFixed(2) : 0,
+                                amount_decimal: yearly ? (Number(yearly.amount_minor) / 100).toFixed(2) : '',
                                 label: 'Yearly'
                             },
                             custom: {
                                 amount: custom ? Number(custom.amount_minor) : 0,
-                                amount_decimal: custom ? (Number(custom.amount_minor) / 100).toFixed(2) : 0,
+                                amount_decimal: custom ? (Number(custom.amount_minor) / 100).toFixed(2) : '',
                                 duration_count: custom ? Number(custom.duration_count || 1) : 1,
                                 duration_unit: custom ? (custom.duration_unit || 'month') : 'month',
                                 label: 'Custom Period'
@@ -827,14 +1180,47 @@
                     return this.impactAction === 'activate' ? 'Activate Plan' : 'Deactivate Plan';
                 },
 
+                notifyValidation(type, message) {
+                    if (typeof window.toast !== 'undefined') {
+                        if (type === 'warning' && typeof window.toast.warning === 'function') {
+                            window.toast.warning(message);
+                            return;
+                        }
+                        if (type === 'error' && typeof window.toast.error === 'function') {
+                            window.toast.error(message);
+                            return;
+                        }
+                        if (type === 'info' && typeof window.toast.info === 'function') {
+                            window.toast.info(message);
+                            return;
+                        }
+                        if (type === 'success' && typeof window.toast.success === 'function') {
+                            window.toast.success(message);
+                            return;
+                        }
+
+                        if (typeof window.toast.info === 'function') {
+                            window.toast.info(message);
+                            return;
+                        }
+                    }
+
+                    if (type === 'warning') {
+                        console.warn('[admin.subscription-plans] Toast notifier unavailable:', message);
+                        return;
+                    }
+
+                    console.error('[admin.subscription-plans] Toast notifier unavailable:', message);
+                },
+
                 nextStep() {
                     if (this.currentStep === 1) {
                         if (!this.form.name || !this.form.name.trim()) {
-                            alert('Please enter a plan name.');
+                            this.notifyValidation('warning', 'Please enter a plan name.');
                             return;
                         }
                         if (!this.form.plan_audience) {
-                            alert('Please select a target audience.');
+                            this.notifyValidation('warning', 'Please select a target audience.');
                             return;
                         }
                         this.currentStep++;
@@ -843,31 +1229,31 @@
 
                     if (this.currentStep === 2) {
                         if (!this.form.billing_mode) {
-                            alert('Please select a billing mode.');
+                            this.notifyValidation('warning', 'Please select a billing mode.');
                             return;
                         }
 
                         if (this.form.billing_mode === 'monthly' && (!this.form.prices.monthly.amount_decimal || this.form.prices.monthly.amount_decimal <= 0)) {
-                            alert('Please enter a valid monthly price.');
+                            this.notifyValidation('error', 'Please enter a valid monthly price.');
                             return;
                         }
 
                         if (this.form.billing_mode === 'annual' && (!this.form.prices.yearly.amount_decimal || this.form.prices.yearly.amount_decimal <= 0)) {
-                            alert('Please enter a valid annual price.');
+                            this.notifyValidation('error', 'Please enter a valid annual price.');
                             return;
                         }
 
                         if (this.form.billing_mode === 'custom') {
                             if (!this.form.prices.custom.amount_decimal || this.form.prices.custom.amount_decimal <= 0) {
-                                alert('Please enter a valid price.');
+                                this.notifyValidation('error', 'Please enter a valid price.');
                                 return;
                             }
                             if (!this.form.prices.custom.duration_count || this.form.prices.custom.duration_count < 1) {
-                                alert('Please set a valid duration count.');
+                                this.notifyValidation('error', 'Please set a valid duration count.');
                                 return;
                             }
                             if (!this.form.prices.custom.duration_unit) {
-                                alert('Please select a duration unit.');
+                                this.notifyValidation('warning', 'Please select a duration unit.');
                                 return;
                             }
                         }

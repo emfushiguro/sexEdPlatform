@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-theme-lock="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,6 +11,7 @@
     {{-- Instructor UI is locked to light mode. --}}
     <script>
         (function () {
+            localStorage.setItem('theme', 'light');
             document.documentElement.classList.remove('dark');
         })();
     </script>
@@ -129,6 +130,7 @@
                         'label' => 'MAIN',
                         'items' => [
                             ['label' => 'Dashboard', 'route' => 'instructor.dashboard', 'active' => request()->routeIs('instructor.dashboard'), 'badge' => 0, 'icon' => 'grid'],
+                            ['label' => 'Profile', 'route' => 'instructor.profile.show', 'active' => request()->routeIs('instructor.profile.*'), 'badge' => 0, 'icon' => 'users'],
                         ],
                     ],
                     [
@@ -145,6 +147,8 @@
                     [
                         'label' => 'EXTRAS',
                         'items' => [
+                            ['label' => 'Chat', 'route' => 'chat.page', 'active' => request()->routeIs('chat.*'), 'badge' => 0, 'icon' => 'chat'],
+                            ['label' => 'Earnings', 'route' => 'instructor.earnings.index', 'active' => request()->routeIs('instructor.earnings.*'), 'badge' => 0, 'icon' => 'wallet'],
                             ['label' => 'Image Library', 'route' => 'instructor.image-library.index', 'active' => request()->routeIs('instructor.image-library.*'), 'badge' => 0, 'icon' => 'sparkles'],
                         ],
                     ],
@@ -195,6 +199,14 @@
                                     @elseif($item['icon'] === 'sparkles')
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                    </svg>
+                                    @elseif($item['icon'] === 'wallet')
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2m0-6h3m0 0v6m0-6a2 2 0 100-4h-3a2 2 0 000 4h3z" />
+                                    </svg>
+                                    @elseif($item['icon'] === 'chat')
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8m-8 4h5m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     @elseif($item['icon'] === 'enrollments')
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

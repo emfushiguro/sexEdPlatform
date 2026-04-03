@@ -1,0 +1,52 @@
+<?php
+
+namespace Tests\Feature\Chat;
+
+use App\Models\User;
+use Tests\TestCase;
+
+class ChatPageRenderTest extends TestCase
+{
+    public function test_admin_instructor_and_learner_can_open_shared_chat_page(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->assignRole('admin');
+
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+
+        $learner = User::factory()->create(['role' => 'learner']);
+        $learner->assignRole('learner');
+
+        $this->actingAs($admin)
+            ->get(route('chat.page'))
+            ->assertOk()
+            ->assertSee('data-chat-root', false)
+            ->assertSee('data-chat-conversation-list', false)
+            ->assertSee('data-chat-conversation-panel', false);
+
+        $this->actingAs($instructor)
+            ->get(route('chat.page'))
+            ->assertOk()
+            ->assertSee('data-chat-root', false)
+            ->assertSee('data-chat-request-list', false);
+
+        $this->actingAs($learner)
+            ->get(route('chat.page'))
+            ->assertOk()
+            ->assertSee('data-chat-root', false)
+            ->assertSee('data-chat-request-list', false);
+    }
+
+    public function test_admin_messages_page_uses_shared_data_driven_chat_container(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->get(route('admin.messages.index'))
+            ->assertOk()
+            ->assertSee('data-chat-root', false)
+            ->assertDontSee('Real-time messaging backend coming soon', false);
+    }
+}

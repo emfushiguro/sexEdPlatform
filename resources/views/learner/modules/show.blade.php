@@ -11,6 +11,25 @@
     $authUser = auth()->user();
     $gami    = $authUser->gamification;
     $hasUnlimitedShields = app(EntitlementService::class)->canAccessFeature($authUser, SubscriptionFeatureKeys::UNLIMITED_SHIELDS);
+
+    $isPaidModule = $isPaidModule ?? $module->isPaidAccess();
+    $hasPurchased = $hasPurchased ?? false;
+    $approvedEnrollmentsCount = $approvedEnrollmentsCount ?? 0;
+    $isAtCapacity = $isAtCapacity ?? false;
+    $canPurchase = $canPurchase ?? false;
+    $needsParentApproval = $needsParentApproval ?? false;
+    $isParentApprovedForPurchase = $isParentApprovedForPurchase ?? false;
+
+    $creator = $module->creator;
+    $instructorProfile = $creator?->instructorProfile;
+    $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
+    $instructorPhoto = $instructorProfile?->profile_photo_path
+        ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
+        : null;
+
+    $enrollmentCapacityLabel = $module->enrollment_limit !== null
+        ? sprintf('%d / %d Enrolled', $approvedEnrollmentsCount, (int) $module->enrollment_limit)
+        : sprintf('%d Enrolled', $approvedEnrollmentsCount);
 @endphp
 
 <div class="space-y-5">
@@ -443,6 +462,31 @@
                         @endif
                     </div>
 
+                @elseif($enrollmentStatus === 'pending' && $isPaidModule && !$hasPurchased)
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3 p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/40 rounded-xl">
+                            <svg class="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-2.761 0-5 2.239-5 5m5-5c2.761 0 5 2.239 5 5m-5-5v10m0 0l-3-3m3 3l3-3"/>
+                            </svg>
+                            <div>
+                                <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-300">Parent Approved. Payment Required.</p>
+                                <p class="text-xs text-indigo-700 dark:text-indigo-400 mt-0.5">Continue to checkout to unlock this paid module.</p>
+                            </div>
+                        </div>
+
+                        @if($isAtCapacity)
+                            <div class="p-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-semibold text-center">
+                                Enrollment Closed
+                            </div>
+                        @else
+                            <a href="{{ route('learner.modules.purchase.form', $module) }}"
+                               class="flex items-center justify-center gap-2 w-full text-sm font-semibold text-white py-3 px-4 rounded-xl transition hover:opacity-90"
+                               style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                                Pay {{ $module->display_price }}
+                            </a>
+                        @endif
+                    </div>
+
                 @elseif($enrollmentStatus === 'pending')
                     <div class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">
                         <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -468,30 +512,68 @@
                 @else
                     {{-- Not enrolled yet --}}
                     <div class="text-center mb-5">
-                        <p class="text-base font-semibold text-gray-900 dark:text-white mb-1">Enroll in this module</p>
+                        <p class="text-base font-semibold text-gray-900 dark:text-white mb-1">{{ $isPaidModule ? 'Unlock this module' : 'Enroll in this module' }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ $module->enrollment_mode === 'manual' ? 'Requires instructor approval' : 'Free access  start immediately' }}
+                            @if($isPaidModule)
+                                {{ $hasPurchased ? 'Purchase completed. Continue with enrollment steps below.' : 'Review details then complete secure checkout to access content.' }}
+                            @else
+                                {{ $module->enrollment_mode === 'manual' ? 'Requires instructor approval' : 'Free access start immediately' }}
+                            @endif
                         </p>
                     </div>
 
-                    <form method="POST" action="{{ route('learner.modules.enroll', $module) }}">
-                        @csrf
-                        <button type="submit"
-                                class="flex items-center justify-center gap-2 w-full text-sm font-semibold text-white py-3 px-4 rounded-xl transition hover:opacity-90"
-                                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
-                            @if($module->enrollment_mode === 'manual')
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                    @if($isPaidModule)
+                        @if($needsParentApproval && !$isParentApprovedForPurchase)
+                            <div class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">
+                                <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 3h.01M5.2 19h13.6c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.468 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
-                                Request Enrollment
-                            @else
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-                                </svg>
-                                Enroll Now  Free
-                            @endif
-                        </button>
-                    </form>
+                                <div>
+                                    <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">Parent approval required before payment</p>
+                                    <p class="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Request approval first, then return to complete checkout.</p>
+                                </div>
+                            </div>
+                            <form method="POST" action="{{ route('learner.modules.purchase', $module) }}" class="mt-3">
+                                @csrf
+                                <button type="submit"
+                                        class="flex items-center justify-center gap-2 w-full text-sm font-semibold text-white py-3 px-4 rounded-xl transition hover:opacity-90"
+                                        style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                                    Request Parent Approval
+                                </button>
+                            </form>
+                        @elseif($isAtCapacity)
+                            <div class="p-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-semibold text-center">
+                                Enrollment Closed
+                            </div>
+                        @elseif($canPurchase)
+                            <a href="{{ route('learner.modules.purchase.form', $module) }}"
+                               class="flex items-center justify-center gap-2 w-full text-sm font-semibold text-white py-3 px-4 rounded-xl transition hover:opacity-90"
+                               style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                                Pay {{ $module->display_price }}
+                            </a>
+                        @else
+                            <p class="text-xs text-gray-500 dark:text-gray-400 text-center">Checkout is not available right now.</p>
+                        @endif
+                    @else
+                        <form method="POST" action="{{ route('learner.modules.enroll', $module) }}">
+                            @csrf
+                            <button type="submit"
+                                    class="flex items-center justify-center gap-2 w-full text-sm font-semibold text-white py-3 px-4 rounded-xl transition hover:opacity-90"
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                                @if($module->enrollment_mode === 'manual')
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                                    </svg>
+                                    Request Enrollment
+                                @else
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                                    </svg>
+                                    Enroll Now · Free
+                                @endif
+                            </button>
+                        </form>
+                    @endif
 
                     <ul class="mt-4 space-y-2 text-xs text-gray-500 dark:text-gray-400">
                         <li class="flex items-center gap-2">
@@ -506,15 +588,55 @@
                             </svg>
                             Track your progress
                         </li>
-                        @if($module->is_premium)
+                        @if($isPaidModule)
                         <li class="flex items-center gap-2">
                             <svg class="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                             </svg>
-                            Premium module  upgrade for certificate
+                            Price: {{ $module->display_price }}
                         </li>
                         @endif
                     </ul>
+                @endif
+            </div>
+
+            {{-- Instructor info card --}}
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Instructor Information</h4>
+                <div class="flex items-start gap-3">
+                    @if($instructorPhoto)
+                        <img src="{{ $instructorPhoto }}" alt="{{ $instructorName }}" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-600">
+                    @else
+                        <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-base font-bold">
+                            {{ strtoupper(substr($instructorName, 0, 1)) }}
+                        </div>
+                    @endif
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $instructorName }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-3">
+                            {{ $instructorProfile?->professional_background ?: ($instructorProfile?->bio ?: 'Instructor background details are being updated.') }}
+                        </p>
+                    </div>
+                </div>
+                @if($creator)
+                    <a href="{{ route('learner.instructors.show', $creator) }}"
+                       class="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline">
+                        View Full Background
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+
+                    <a
+                        href="{{ route('chat.page', [
+                            'target_user_id' => $creator->id,
+                            'conversation_type' => 'module_chat',
+                            'module_id' => $module->id,
+                        ]) }}"
+                        class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 transition-colors hover:bg-blue-100"
+                    >
+                        Message Instructor About This Module
+                    </a>
                 @endif
             </div>
 
@@ -548,13 +670,25 @@
                         <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
                         </svg>
-                        <span>{{ $module->is_premium ? 'Premium' : 'Free' }}</span>
+                        <span>{{ $module->display_price }}</span>
                     </li>
                     <li class="flex items-center gap-3">
                         <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                         </svg>
                         <span>{{ $module->enrollment_mode === 'manual' ? 'Approval required' : 'Open enrollment' }}</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5V4H2v16h5m10 0v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6m10 0H7"/>
+                        </svg>
+                        <span>{{ $enrollmentCapacityLabel }}</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>{{ $isAtCapacity ? 'Enrollment Closed' : 'Enrollment Open' }}</span>
                     </li>
                 </ul>
             </div>

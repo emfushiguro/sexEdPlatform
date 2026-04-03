@@ -8,14 +8,19 @@ use App\Events\SubscriptionExpired;
 use App\Listeners\HandlePaymentSuccessful;
 use App\Listeners\HandleSubscriptionCreated;
 use App\Listeners\HandleSubscriptionExpired;
-use App\Models\InstructorProfile;
 use App\Models\Payment;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
+use App\Models\InstructorProfile;
+use App\Models\InstructorApplication;
+use App\Models\ModuleReviewRequest;
 use App\Models\User;
 use App\Observers\PaymentObserver;
 use App\Policies\InstructorProfilePolicy;
 use App\Policies\ParentChildPolicy;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,16 +32,50 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Policy registrations
         Gate::policy(User::class, ParentChildPolicy::class);
         Gate::policy(InstructorProfile::class, InstructorProfilePolicy::class);
 
-        // Model observers
         Payment::observe(PaymentObserver::class);
 
-        // Event → Listener bindings
-        Event::listen(PaymentSuccessful::class,   HandlePaymentSuccessful::class);
+        Event::listen(PaymentSuccessful::class, HandlePaymentSuccessful::class);
         Event::listen(SubscriptionCreated::class, HandleSubscriptionCreated::class);
         Event::listen(SubscriptionExpired::class, HandleSubscriptionExpired::class);
+
+        View::composer('layouts.admin', function ($view): void {
+            $moderationCounts = [
+                'pending_instructor_applications' => InstructorApplication::query()->where('status', 'pending')->count(),
+                'pending_module_reviews' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
+            ];
+
+            $notificationItems = collect([
+                [
+                    'label' => 'Pending payments',
+                    'value' => Payment::query()->whereIn('status', ['pending', 'processing'])->count(),
+                    'href' => route('admin.payments.index', ['status' => 'pending']),
+                    'tone' => 'amber',
+                    'message' => 'Payments waiting for review or reconciliation.',
+                ],
+                [
+                    'label' => 'Subscriptions expiring soon',
+                    'value' => Subscription::query()->expiringSoon()->count(),
+                    'href' => route('admin.subscribers.index'),
+                    'tone' => 'blue',
+                    'message' => 'Active subscribers nearing the end of their access window.',
+                ],
+                [
+                    'label' => 'Inactive plans',
+                    'value' => SubscriptionPlan::query()->notArchived()->where('is_active', false)->count(),
+                    'href' => route('admin.subscription-plans.index'),
+                    'tone' => 'rose',
+                    'message' => 'Plans saved in admin but not currently visible to learners.',
+                ],
+            ]);
+
+            $view->with('adminNotifications', [
+                'items' => $notificationItems->all(),
+                'unread_count' => (int) $notificationItems->sum('value'),
+            ]);
+            $view->with('adminModerationCounts', $moderationCounts);
+        });
     }
 }

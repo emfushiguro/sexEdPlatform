@@ -17,6 +17,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Dashboard
     Route::get('/dashboard', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
+    Route::prefix('content-reviews')->name('content-reviews.')->group(function () {
+        Route::get('/', [Admin\ContentReviewController::class, 'index'])->name('index');
+        Route::get('/{reviewRequest}', [Admin\ContentReviewController::class, 'show'])->name('show');
+        Route::get('/{reviewRequest}/preview', Admin\ContentReviewPreviewController::class)->name('preview');
+        Route::post('/{reviewRequest}/approve', [Admin\ContentReviewController::class, 'approve'])->name('approve');
+        Route::post('/{reviewRequest}/reject', [Admin\ContentReviewController::class, 'reject'])->name('reject');
+        Route::post('/{reviewRequest}/archive', [Admin\ContentReviewController::class, 'archive'])->name('archive');
+        Route::post('/{reviewRequest}/penalty/confirm', [Admin\ContentReviewController::class, 'confirmPenalty'])->name('penalty.confirm');
+    });
+
+    Route::resource('modules', Admin\AdminModuleController::class)->except(['destroy']);
+
     // User management
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [Admin\UserAdminController::class, 'index'])->name('index');
@@ -69,7 +81,22 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('/', [Admin\PaymentAdminController::class, 'index'])->name('index');
         Route::get('/{payment}', [Admin\PaymentAdminController::class, 'show'])->name('show');
+        Route::get('/{payment}/receipt', [Admin\PaymentAdminController::class, 'receipt'])->name('receipt');
         Route::post('/{payment}/complete', [Admin\PaymentAdminController::class, 'markAsCompleted'])->name('complete');
+    });
+
+    // Monetization
+    Route::prefix('monetization')->name('monetization.')->group(function () {
+        Route::get('/commission-settings', [Admin\CommissionSettingsController::class, 'index'])
+            ->name('commission-settings.index');
+        Route::post('/commission-settings', [Admin\CommissionSettingsController::class, 'store'])
+            ->name('commission-settings.store');
+        Route::put('/commission-settings/{commissionPolicy}', [Admin\CommissionSettingsController::class, 'update'])
+            ->name('commission-settings.update');
+        Route::get('/module-revenue', [Admin\ModuleRevenueController::class, 'index'])
+            ->name('module-revenue.index');
+        Route::patch('/module-revenue/{moduleSaleLedger}/payout-status', [Admin\ModuleRevenueController::class, 'updatePayoutStatus'])
+            ->name('module-revenue.payout.update');
     });
 
     Route::prefix('instructor-applications')->name('instructor-applications.')->group(function () {

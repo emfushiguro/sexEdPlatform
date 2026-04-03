@@ -6,14 +6,14 @@ use App\Models\Lesson;
 use App\Models\Module;
 use App\Models\Quiz;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Tests\DatabaseTestCase;
 
-class InstructorModuleStatusLifecycleTest extends TestCase
+class InstructorModuleStatusLifecycleTest extends DatabaseTestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
-    public function test_create_defaults_to_active_for_module_lesson_and_quiz(): void
+    public function test_create_defaults_to_governed_draft_for_module_while_lessons_and_quizzes_stay_active(): void
     {
         $instructor = $this->createInstructor();
 
@@ -25,7 +25,9 @@ class InstructorModuleStatusLifecycleTest extends TestCase
         ])->assertRedirect();
 
         $module = Module::query()->latest('id')->firstOrFail();
-        $this->assertTrue((bool) $module->is_published);
+        $this->assertFalse((bool) $module->is_published);
+        $this->assertSame('draft', $module->current_review_status);
+        $this->assertSame('instructor', $module->content_owner_type);
 
         $this->actingAs($instructor)->post(route('instructor.lessons.store'), [
             'module_id' => $module->id,
@@ -47,7 +49,7 @@ class InstructorModuleStatusLifecycleTest extends TestCase
         $this->assertTrue((bool) $quiz->is_active);
     }
 
-    public function test_edit_can_deactivate_module_lesson_and_quiz(): void
+    public function test_edit_keeps_module_offline_under_governance_and_can_deactivate_lesson_and_quiz(): void
     {
         $instructor = $this->createInstructor();
 
@@ -75,7 +77,6 @@ class InstructorModuleStatusLifecycleTest extends TestCase
             'description' => $module->description,
             'age_bracket' => 'teens',
             'enrollment_mode' => 'auto',
-            'is_published' => 0,
         ])->assertRedirect();
 
         $this->actingAs($instructor)->put(route('instructor.lessons.update', $lesson), [
@@ -94,6 +95,7 @@ class InstructorModuleStatusLifecycleTest extends TestCase
         ])->assertRedirect();
 
         $this->assertFalse((bool) $module->fresh()->is_published);
+        $this->assertSame('instructor', $module->fresh()->content_owner_type);
         $this->assertFalse((bool) $lesson->fresh()->is_published);
         $this->assertFalse((bool) $quiz->fresh()->is_active);
     }

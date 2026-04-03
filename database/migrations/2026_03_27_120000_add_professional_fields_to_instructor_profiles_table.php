@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('instructor_profiles', function (Blueprint $table) {
-            $table->string('educational_background')->nullable()->after('credentials');
+            $table->string('educational_background')->nullable()->after('bio');
             $table->text('professional_background')->nullable()->after('educational_background');
-            $table->string('primary_expertise')->nullable()->after('professional_background');
+            $table->string('primary_expertise')->nullable()->after('specialization');
             $table->json('expertise_tags')->nullable()->after('primary_expertise');
             $table->unsignedInteger('years_experience')->nullable()->after('expertise_tags');
             $table->json('certifications')->nullable()->after('years_experience');

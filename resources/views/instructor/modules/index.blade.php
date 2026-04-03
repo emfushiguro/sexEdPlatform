@@ -15,8 +15,12 @@
                 'description' => $prefillModule->description,
                 'age_bracket' => $prefillModule->min_age >= 18 ? 'adults' : ($prefillModule->min_age >= 13 ? 'teens' : 'kids'),
                 'enrollment_mode' => $prefillModule->enrollment_mode,
+                'access_type' => $prefillModule->access_type,
+                'price_amount' => $prefillModule->price_amount,
+                'price_currency' => $prefillModule->price_currency,
+                'enrollment_limit' => $prefillModule->enrollment_limit,
                 'is_published' => (bool) $prefillModule->is_published,
-                'thumbnail_url' => $prefillModule->thumbnail ? asset('storage/' . $prefillModule->thumbnail) : null,
+                'thumbnail_url' => $prefillModule->thumbnail_url,
             ];
         }
     }
@@ -51,22 +55,46 @@
             <h1 class="text-xl font-bold text-gray-900 dark:text-white">Manage Modules</h1>
             <p class="text-xs text-gray-400 dark:text-gray-500">Build and manage your learning modules</p>
         </div>
-        <button @click="$store.modals.openModuleModal()"
-                class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
-                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-            Create Module
-        </button>
+        @if(($isRestricted ?? false) === true)
+            <button type="button"
+                    data-testid="create-module-disabled"
+                    disabled
+                    class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-500 bg-gray-200 rounded-xl cursor-not-allowed opacity-80"
+                    title="{{ $restrictionMessage }}">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636"/>
+                </svg>
+                Create Module (Restricted)
+            </button>
+        @else
+            <button @click="$store.modals.openModuleModal()"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
+                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Create Module
+            </button>
+        @endif
     </div>
+
+    @if(($isRestricted ?? false) === true)
+        <div class="rounded-2xl bg-rose-50 border border-rose-200 px-5 py-3.5 mb-5">
+            <p class="text-sm font-semibold text-rose-900">Module actions are temporarily restricted</p>
+            <p class="text-xs text-rose-700 mt-1">{{ $restrictionMessage }}</p>
+            <p class="text-xs text-rose-700 mt-1">
+                Restriction ends:
+                {{ optional($restrictionProfile?->restriction_ends_at)->toDayDateTimeString() ?? 'until further notice' }}
+            </p>
+        </div>
+    @endif
 
     {{-- Controls: Tabs + Search --}}
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
 
         {{-- Tab Filter (server-side URL params) --}}
         <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 flex-shrink-0">
-            @foreach([['all','All'], ['published','Published'], ['draft','Draft'], ['archived','Archived']] as [$val, $label])
+        @foreach([['all','All'], ['published','Published'], ['draft','Draft'], ['archived','Archived']] as [$val, $label])
             <a href="{{ request()->fullUrlWithQuery(['status' => $val]) }}"
                class="{{ $status === $val
                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm font-semibold'
@@ -119,8 +147,12 @@
                 'description' => $module->description,
                 'age_bracket' => $module->min_age >= 18 ? 'adults' : ($module->min_age >= 13 ? 'teens' : 'kids'),
                 'enrollment_mode' => $module->enrollment_mode,
+                'access_type' => $module->access_type,
+                'price_amount' => $module->price_amount,
+                'price_currency' => $module->price_currency,
+                'enrollment_limit' => $module->enrollment_limit,
                 'is_published' => (bool) $module->is_published,
-                'thumbnail_url' => $module->thumbnail ? asset('storage/' . $module->thumbnail) : null,
+                'thumbnail_url' => $module->thumbnail_url,
             ];
         @endphp
 
@@ -132,8 +164,8 @@
 
             {{-- Card Top Zone: gradient bg + optional thumbnail --}}
             <div class="relative h-36 overflow-hidden flex-shrink-0">
-                @if($module->thumbnail)
-                    <img src="{{ asset('storage/' . $module->thumbnail) }}"
+                @if($module->thumbnail_url)
+                    <img src="{{ $module->thumbnail_url }}"
                          alt="{{ $module->title }}"
                          class="w-full h-full object-cover">
                 @else
@@ -169,13 +201,17 @@
             <div class="p-4 flex-1 flex flex-col gap-2">
                 <h3 class="font-semibold text-sm text-gray-900 dark:text-white leading-snug line-clamp-2">{{ $module->title }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{{ Str::limit(strip_tags($module->description ?? 'No description provided.'), 120) }}</p>
+                <div class="rounded-xl border border-purple-100 bg-purple-50/60 px-3 py-2 dark:border-purple-900/40 dark:bg-purple-900/10">
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-purple-500">Review Status</p>
+                    <p class="mt-1 text-xs font-medium text-purple-800 dark:text-purple-200">{{ $module->current_review_status ?? 'approved' }}</p>
+                </div>
 
                 {{-- Stats Row --}}
                 <div class="flex items-center gap-2 mt-auto pt-2 flex-wrap">
                     <span class="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium module-meta-status-inline">
-                        @if($module->is_published)
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            Active
+                    @if($module->is_published)
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Active
                         @else
                             <span class="w-2 h-2 rounded-full bg-gray-400"></span>
                             Inactive
@@ -256,15 +292,27 @@
                             </button>
                         </form>
                     @else
-                        <form action="{{ route('instructor.modules.activate', $module) }}" method="POST" class="inline-flex">
-                            @csrf @method('PATCH')
-                            <button type="submit" title="Publish / activate module"
-                                    class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors action-icon-standard">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9"/>
-                                </svg>
-                            </button>
-                        </form>
+                        @if($module->current_review_status === 'needs_revision')
+                            <form action="{{ route('instructor.modules.review.resubmit', $module) }}" method="POST" class="inline-flex">
+                                @csrf
+                                <button type="submit" title="Resubmit for review"
+                                        class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors action-icon-standard">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M5 9a7 7 0 0111.95-4.95L20 7M19 15a7 7 0 01-11.95 4.95L4 17"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        @else
+                            <form action="{{ route('instructor.modules.review.submit', $module) }}" method="POST" class="inline-flex">
+                                @csrf
+                                <button type="submit" title="Submit for review"
+                                        class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors action-icon-standard">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        @endif
                     @endif
 
                     <div class="flex-1"></div>
@@ -317,14 +365,26 @@
                     @endif
                 </p>
                 @if($status === 'all')
-                <button @click="$store.modals.openModuleModal()"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition-opacity shadow-sm"
-                        style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Create First Module
-                </button>
+                    @if(($isRestricted ?? false) === true)
+                        <button type="button"
+                                data-testid="create-module-disabled"
+                                disabled
+                                class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-500 bg-gray-200 rounded-xl cursor-not-allowed opacity-80">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636"/>
+                            </svg>
+                            Create First Module (Restricted)
+                        </button>
+                    @else
+                        <button @click="$store.modals.openModuleModal()"
+                                class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+                                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Create First Module
+                        </button>
+                    @endif
                 @endif
             </div>
         </div>

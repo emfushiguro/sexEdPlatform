@@ -65,6 +65,16 @@ class Payment extends Model
         return $this->hasOne(Invoice::class);
     }
 
+    public function modulePurchase(): HasOne
+    {
+        return $this->hasOne(ModulePurchase::class);
+    }
+
+    public function moduleSaleLedger(): HasOne
+    {
+        return $this->hasOne(ModuleSaleLedger::class);
+    }
+
     // Scopes
 
     public function scopeCompleted($query)
@@ -92,6 +102,11 @@ class Payment extends Model
     public function isFailed(): bool
     {
         return $this->status === PaymentStatus::Failed;
+    }
+
+    public function isModulePurchase(): bool
+    {
+        return (string) data_get($this->payment_details, 'payment_scope') === 'module_purchase';
     }
 
     public function markAsCompleted(string $transactionId = null): void

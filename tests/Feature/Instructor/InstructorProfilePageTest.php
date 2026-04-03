@@ -15,10 +15,10 @@ class InstructorProfilePageTest extends TestCase
         $this->actingAs($instructor)
             ->get(route('instructor.profile.show'))
             ->assertOk()
-            ->assertSee('Personal Information')
+            ->assertSee($instructor->name)
             ->assertSee('Educational Background')
             ->assertSee('Professional Background')
-            ->assertSee('Instructor Overview');
+            ->assertSee('Impact Overview');
     }
 
     public function test_learner_cannot_access_instructor_profile_route(): void

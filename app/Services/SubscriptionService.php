@@ -124,13 +124,22 @@ class SubscriptionService
             'cancellation_reason' => 'Superseded by new subscription attempt',
         ]);
 
-        $price     = $plan->getPrice();
+        $defaultPrice = $plan->defaultPlanPrice()->first()
+            ?? $plan->planPrices()->where('is_active', true)->orderByDesc('is_default')->orderBy('id')->first();
+
+        $price = $defaultPrice ? ((int) $defaultPrice->amount_minor) / 100 : $plan->getPrice();
         $startDate = now();
         $trialDays = $plan->trial_days ?? 0;
         $trialEnds = $trialDays > 0 ? $startDate->copy()->addDays($trialDays) : null;
 
         // End date — support short-duration test plans via 'duration_minutes' feature
-        if ($plan->hasFeature('duration_minutes')) {
+        if ($defaultPrice) {
+            $endDate = $this->resolvePlanEndDate(
+                $startDate,
+                (string) $defaultPrice->duration_unit,
+                (int) $defaultPrice->duration_count
+            );
+        } elseif ($plan->hasFeature('duration_minutes')) {
             $durationMinutes = (int) $plan->getFeatureValue('duration_minutes', 10);
             $endDate = $startDate->copy()->addMinutes($durationMinutes);
         } elseif ($trialDays > 0) {
@@ -145,6 +154,7 @@ class SubscriptionService
             $subscription = Subscription::create([
                 'user_id'       => $user->id,
                 'plan_id'       => $plan->id,
+                'plan_price_id' => $defaultPrice?->id,
                 'plan'          => $plan->slug,
                 'status'        => 'pending',
                 'start_date'    => $startDate,
@@ -183,6 +193,20 @@ class SubscriptionService
             Log::error('SubscriptionService::create failed', ['error' => $e->getMessage()]);
             throw new \RuntimeException('Failed to create subscription: ' . $e->getMessage(), 0, $e);
         }
+    }
+
+    private function resolvePlanEndDate(CarbonInterface $startDate, string $durationUnit, int $durationCount): CarbonInterface
+    {
+        $count = max(1, $durationCount);
+
+        return match ($durationUnit) {
+            'minute' => $startDate->copy()->addMinutes($count),
+            'hour' => $startDate->copy()->addHours($count),
+            'day' => $startDate->copy()->addDays($count),
+            'week' => $startDate->copy()->addWeeks($count),
+            'year' => $startDate->copy()->addYears($count),
+            default => $startDate->copy()->addMonths($count),
+        };
     }
 
     /**

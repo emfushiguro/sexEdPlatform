@@ -19,14 +19,17 @@
 
     @php
         $details = (array) ($payment->payment_details ?? []);
+        $isModulePayment = $payment->isModulePurchase() || isset($details['module_id']);
         $paymongoRef = $details['paymongo_payment_id'] ?? $details['paymongo_link_id'] ?? null;
         $reference = $payment->transaction_id ?: ($paymongoRef ? strtoupper(substr((string) $paymongoRef, -10)) : (string) $payment->id);
         $datePaid = $payment->paid_at ?? $payment->created_at;
         $method = strtoupper((string) ($payment->method ?? $details['payment_method'] ?? 'N/A'));
-        $planName = $payment->subscription?->plan?->name
-            ?? ($details['plan_name'] ?? $payment->subscription?->getPlanLabel() ?? 'Subscription Plan');
-        $billingCycle = ucfirst((string) ($details['billing_cycle'] ?? 'monthly'));
-        $validUntil = $payment->subscription?->end_date?->format('M d, Y') ?? 'N/A';
+        $itemName = $isModulePayment
+            ? ($payment->modulePurchase?->module?->title ?? ($details['module_title'] ?? 'Module Purchase'))
+            : ($payment->subscription?->plan?->name
+                ?? ($details['plan_name'] ?? $payment->subscription?->getPlanLabel() ?? 'Subscription Plan'));
+        $billingCycle = $isModulePayment ? 'One-time purchase' : ucfirst((string) ($details['billing_cycle'] ?? 'monthly'));
+        $validUntil = $isModulePayment ? 'Lifetime access' : ($payment->subscription?->end_date?->format('M d, Y') ?? 'N/A');
     @endphp
 
     {{-- Main Receipt Card --}}
@@ -56,7 +59,7 @@
                 </div>
                 <div class="flex items-start justify-between gap-8 py-3">
                     <span class="font-medium">Learner Name</span>
-                    <span class="text-right">{{ auth()->user()->name }}</span>
+                    <span class="text-right">{{ $payment->user?->name ?? 'N/A' }}</span>
                 </div>
                 <div class="flex items-start justify-between gap-8 py-3">
                     <span class="font-medium">Payment Method</span>
@@ -68,15 +71,15 @@
 
             <div class="text-sm divide-y divide-gray-100">
                 <div class="flex items-start justify-between gap-8 py-3">
-                    <span class="font-medium">Plan Level</span>
-                    <span class="text-right">{{ $planName }}</span>
+                    <span class="font-medium">{{ $isModulePayment ? 'Module' : 'Plan Level' }}</span>
+                    <span class="text-right">{{ $itemName }}</span>
                 </div>
                 <div class="flex items-start justify-between gap-8 py-3">
-                    <span class="font-medium">Billing Cycle</span>
+                    <span class="font-medium">{{ $isModulePayment ? 'Purchase Type' : 'Billing Cycle' }}</span>
                     <span class="text-right">{{ $billingCycle }}</span>
                 </div>
                 <div class="flex items-start justify-between gap-8 py-3">
-                    <span class="font-medium">Valid Until</span>
+                    <span class="font-medium">{{ $isModulePayment ? 'Access Duration' : 'Valid Until' }}</span>
                     <span class="text-right">{{ $validUntil }}</span>
                 </div>
             </div>
@@ -98,8 +101,8 @@
             <i class="fi fi-rr-print"></i> Print Receipt
         </button>
 
-        <a href="{{ route('subscription.index') }}" class="py-3 px-6 rounded-xl font-bold bg-brand-500 hover:bg-brand-600 text-white transition-all hover:shadow-lg hover:shadow-brand-500/25 flex items-center justify-center gap-2">
-            <i class="fi fi-rr-rocket-lunch"></i> Back to Subscriptions
+        <a href="{{ $isModulePayment ? route('payment.history') : route('subscription.index') }}" class="py-3 px-6 rounded-xl font-bold bg-brand-500 hover:bg-brand-600 text-white transition-all hover:shadow-lg hover:shadow-brand-500/25 flex items-center justify-center gap-2">
+            <i class="fi fi-rr-rocket-lunch"></i> {{ $isModulePayment ? 'Back to Payment History' : 'Back to Subscriptions' }}
         </a>
     </div>
 </div>
@@ -133,4 +136,3 @@
     }
 </style>
 @endsection
-

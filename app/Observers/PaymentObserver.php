@@ -25,16 +25,23 @@ class PaymentObserver
     public function updated(Payment $payment): void
     {
         if ($payment->isDirty('status') && $payment->status === PaymentStatus::Completed) {
-            // Fire PaymentSuccessful event (invoice + receipt email queued)
-            event(new PaymentSuccessful($payment));
+            if ($payment->isModulePurchase()) {
+                Log::info('Module purchase payment completed', [
+                    'payment_id' => $payment->id,
+                    'user_id' => $payment->user_id,
+                ]);
+            } else {
+                // Fire PaymentSuccessful event (invoice + receipt email queued)
+                event(new PaymentSuccessful($payment));
 
-            // Activate subscription via service.
-            // Always load a FRESH instance from the DB so the idempotency guard inside
-            // activate() sees the real current status, not a stale in-memory value.
-            // activate() is idempotent — safe to call even if already active.
-            $subscription = $payment->subscription()->first();
-            if ($subscription) {
-                app(SubscriptionService::class)->activate($subscription);
+                // Activate subscription via service.
+                // Always load a FRESH instance from the DB so the idempotency guard inside
+                // activate() sees the real current status, not a stale in-memory value.
+                // activate() is idempotent — safe to call even if already active.
+                $subscription = $payment->subscription()->first();
+                if ($subscription) {
+                    app(SubscriptionService::class)->activate($subscription);
+                }
             }
         }
 

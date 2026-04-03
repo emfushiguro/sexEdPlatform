@@ -32,10 +32,10 @@ class StorePlanRequest extends FormRequest
             // Normalized multi-price path
             'prices' => ['nullable', 'array', 'min:1'],
             'prices.*.duration_mode' => ['required_with:prices', 'in:preset,custom'],
-            'prices.*.duration_unit' => ['required_with:prices', 'in:day,week,month,year'],
+            'prices.*.duration_unit' => ['required_with:prices', 'in:minute,hour,day,week,month,year'],
             'prices.*.duration_count' => ['required_with:prices', 'integer', 'min:1'],
             'prices.*.duration_label' => ['required_with:prices', 'string', 'max:255'],
-            'prices.*.amount_minor' => ['required_with:prices', 'integer', 'min:0'],
+            'prices.*.amount_minor' => ['required_with:prices', 'integer', 'min:1'],
             'prices.*.currency' => ['nullable', 'string', 'size:3', 'in:PHP'],
             'prices.*.compare_at_minor' => ['nullable', 'integer', 'min:0'],
             'prices.*.is_default' => ['nullable', 'boolean'],

@@ -4,6 +4,14 @@
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
+                    @if(($isRestricted ?? false) === true)
+                        <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
+                            <p class="text-sm font-semibold text-rose-900">Module actions are temporarily restricted</p>
+                            <p class="mt-1 text-xs text-rose-700">{{ $restrictionMessage }}</p>
+                            <p class="mt-1 text-xs text-rose-700">Restriction ends: {{ optional($restrictionProfile?->restriction_ends_at)->toDayDateTimeString() ?? 'until further notice' }}</p>
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('instructor.modules.store') }}" enctype="multipart/form-data">
                         @csrf
 
@@ -89,19 +97,33 @@
                             </div>
                         </div>
 
+                        @if(!empty($effectiveCommissionPolicy))
+                            <div class="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
+                                <p class="text-sm font-semibold text-indigo-900">
+                                    Platform commission currently applied to your paid modules: {{ number_format((float) $effectiveCommissionPolicy['commission_percent'], 2) }}%
+                                </p>
+                                <p class="mt-1 text-xs text-indigo-800">
+                                    Estimated net earnings per sale: Price - (Price x {{ number_format((float) $effectiveCommissionPolicy['commission_percent'], 2) }}%).
+                                </p>
+                            </div>
+                        @endif
+
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-gray-700">Enrollment Limit</label>
-                            <input type="number" name="enrollment_limit" min="1" value="{{ old('enrollment_limit') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Leave empty for unlimited">
+                            <input type="number" name="enrollment_limit" min="1" max="20" value="{{ old('enrollment_limit') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Leave empty for unlimited">
+                            <p class="mt-1 text-xs text-gray-500">Temporary cap: up to 20 learners per module.</p>
                             @error('enrollment_limit')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
                         <div class="flex items-center justify-end gap-4 mt-6">
                             <button type="submit" name="action" value="draft" 
-                                class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded transition">
+                                @disabled(($isRestricted ?? false) === true)
+                                class="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded transition">
                                  Save as Draft
                             </button>
                             <button type="submit" name="action" value="publish" 
-                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded transition">
+                                @disabled(($isRestricted ?? false) === true)
+                                class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded transition">
                                 Create & Publish
                             </button>
                         </div>

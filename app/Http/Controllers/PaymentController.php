@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Api\WebhookController;
 use App\Http\Requests\ProcessPaymentRequest;
 use App\Models\Payment;
 use App\Models\Subscription;
+use App\Models\User;
 use App\Services\PayMongoPaymentLinkService;
 use App\Enums\PaymentStatus;
+use App\Services\ModulePurchaseService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,8 +19,14 @@ use Illuminate\Support\Facades\Log;
 class PaymentController extends Controller
 {
     public function __construct(
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionService $subscriptionService,
+        protected ModulePurchaseService $modulePurchaseService,
     ) {}
+
+    public function webhook(Request $request, WebhookController $webhookController)
+    {
+        return $webhookController->paymongo($request);
+    }
 
     /**
      * Show payment form
@@ -99,7 +108,8 @@ class PaymentController extends Controller
                         'plan' => $subscription->plan,
                     ],
                     successUrl: route('payment.paymongo.success', ['subscription' => $subscription->id]),
-                    failedUrl: route('payment.paymongo.failed', ['subscription' => $subscription->id])
+                    failedUrl: route('payment.paymongo.failed', ['subscription' => $subscription->id]),
+                    preferredPaymentMethod: $request->payment_method,
                 );
 
                 $checkoutUrl = $response['data']['attributes']['checkout_url'] ?? null;
@@ -155,27 +165,45 @@ class PaymentController extends Controller
      */
     public function pending(Payment $payment)
     {
-        // Guard: orphaned payment (no subscription linked)
-        if (!$payment->subscription) {
-            return redirect()->route('payment.history')
-                ->with('error', 'This payment record has no associated subscription.');
-        }
+        $isModulePayment = $payment->isModulePurchase();
 
-        // Verify payment belongs to authenticated user
-        if ($payment->subscription->user_id !== Auth::id()) {
-            abort(403);
+        if ($isModulePayment) {
+            if ($payment->user_id !== Auth::id()) {
+                abort(403);
+            }
+        } else {
+            // Guard: orphaned payment (no subscription linked)
+            if (!$payment->subscription) {
+                return redirect()->route('payment.history')
+                    ->with('error', 'This payment record has no associated subscription.');
+            }
+
+            if ($payment->subscription->user_id !== Auth::id()) {
+                abort(403);
+            }
         }
 
         // Auto-activate if PayMongo already processed this payment
         if ($payment->status === PaymentStatus::Pending) {
-            $activated = $this->verifyAndActivateIfPaid($payment);
-            if ($activated) {
-                return redirect()->route('subscription.index')
-                    ->with('success', 'Payment confirmed! Your subscription is now active. 🎉');
+            if ($isModulePayment) {
+                $completed = $this->modulePurchaseService->verifyAndCompletePendingPayment($payment);
+                if ($completed) {
+                    return redirect($this->resolvePaymentRedirectUrl($payment))
+                        ->with('success', 'Payment confirmed! Your module access is now available.');
+                }
+            } else {
+                $activated = $this->verifyAndActivateIfPaid($payment);
+                if ($activated) {
+                    return redirect()->route('subscription.index')
+                        ->with('success', 'Payment confirmed! Your subscription is now active. 🎉');
+                }
             }
         }
 
-        return view('payments.pending', compact('payment'));
+        $paymentContext = $isModulePayment ? 'module' : 'subscription';
+        $redirectUrl = $this->resolvePaymentRedirectUrl($payment);
+
+        return view('payments.pending', compact('payment', 'paymentContext', 'redirectUrl'));
     }
 
     /**
@@ -184,24 +212,41 @@ class PaymentController extends Controller
      */
     public function checkStatus(Payment $payment)
     {
-        if (!$payment->subscription) {
-            return response()->json(['error' => 'No subscription linked to this payment'], 422);
-        }
+        $isModulePayment = $payment->isModulePurchase();
 
-        if ($payment->subscription->user_id !== Auth::id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        if ($isModulePayment) {
+            if ($payment->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+        } else {
+            if (!$payment->subscription) {
+                return response()->json(['error' => 'No subscription linked to this payment'], 422);
+            }
+
+            if ($payment->subscription->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
         }
 
         // Already completed in DB
         if ($payment->status === PaymentStatus::Completed) {
-            return response()->json(['status' => 'completed', 'redirect' => route('subscription.index')]);
+            return response()->json(['status' => 'completed', 'redirect' => $this->resolvePaymentRedirectUrl($payment)]);
         }
 
-        // Ask PayMongo API
+        if ($isModulePayment) {
+            $completed = $this->modulePurchaseService->verifyAndCompletePendingPayment($payment);
+            if ($completed) {
+                return response()->json(['status' => 'completed', 'redirect' => $this->resolvePaymentRedirectUrl($payment)]);
+            }
+
+            return response()->json(['status' => (string) $payment->status->value]);
+        }
+
+        // Ask PayMongo API for subscription payments
         $activated = $this->verifyAndActivateIfPaid($payment);
 
         if ($activated) {
-            return response()->json(['status' => 'completed', 'redirect' => route('subscription.index')]);
+            return response()->json(['status' => 'completed', 'redirect' => $this->resolvePaymentRedirectUrl($payment)]);
         }
 
         return response()->json(['status' => $payment->status]);
@@ -292,11 +337,15 @@ class PaymentController extends Controller
                 'paid_at' => now(),
             ]);
 
-            $this->subscriptionService->activate($payment->subscription);
+            if ($payment->isModulePurchase()) {
+                $this->modulePurchaseService->completePayment($payment, 'paymongo', null);
+            } else {
+                $this->subscriptionService->activate($payment->subscription);
+            }
         });
 
-        return redirect()->route('subscription.index')
-            ->with('success', 'Payment simulated! Your subscription is now active.');
+        return redirect($this->resolvePaymentRedirectUrl($payment))
+            ->with('success', 'Payment simulated successfully.');
     }
 
     /**
@@ -304,8 +353,15 @@ class PaymentController extends Controller
      */
     public function history()
     {
-        $payments = Auth::user()->payments()
-            ->with(['subscription.plan'])
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            abort(403);
+        }
+
+        $payments = $user->payments()
+            ->with(['subscription.plan', 'modulePurchase.module'])
             ->latest()
             ->paginate(10);
 
@@ -317,13 +373,19 @@ class PaymentController extends Controller
      */
     public function receipt(Payment $payment)
     {
-        // Verify payment belongs to authenticated user
-        if ($payment->subscription->user_id !== Auth::id()) {
-            abort(403);
+        if ($payment->isModulePurchase()) {
+            if ($payment->user_id !== Auth::id()) {
+                abort(403);
+            }
+        } else {
+            // Verify payment belongs to authenticated user
+            if (!$payment->subscription || $payment->subscription->user_id !== Auth::id()) {
+                abort(403);
+            }
         }
 
         // Eager-load the plan relationship for the subscription
-        $payment->load(['subscription.plan']);
+        $payment->load(['subscription.plan', 'modulePurchase.module']);
 
         return view('payments.receipt', compact('payment'));
     }
@@ -434,5 +496,19 @@ class PaymentController extends Controller
             ->first();
 
         return view('payments.cancel', compact('premiumPlan'));
+    }
+
+    private function resolvePaymentRedirectUrl(Payment $payment): string
+    {
+        if ($payment->isModulePurchase()) {
+            $moduleId = (int) data_get($payment->payment_details, 'module_id');
+            if ($moduleId > 0) {
+                return route('learner.modules.show', $moduleId);
+            }
+
+            return route('learner.modules.index');
+        }
+
+        return route('subscription.index');
     }
 }

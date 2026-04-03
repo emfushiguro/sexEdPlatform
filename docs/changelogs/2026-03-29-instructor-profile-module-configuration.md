@@ -45,4 +45,7 @@ Broader verification:
 
 Result:
 
-- 218 passed, 0 failed
+- Focused suites: 65 passed, 0 failed
+- Instructor suite: 61 passed (242 assertions)
+- Learner quiz suite: 3 passed (8 assertions)
+- Module capacity suite: 1 passed (4 assertions)

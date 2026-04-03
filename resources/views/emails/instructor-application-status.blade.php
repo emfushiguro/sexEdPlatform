@@ -56,10 +56,17 @@
                     Thank you for your interest in joining our instructor community. Our team has reviewed your application, and unfortunately, we are unable to approve it at this time.
                 </p>
                 
-                @if($remarks)
+                @if($reasonLabel || $reasonNote || $remarks)
                     <div class="remarks-wrapper">
                         <div class="remarks-label">Waitlist / Rejection Reason</div>
-                        <div class="remarks-content">"{{ $remarks }}"</div>
+                        @if($reasonLabel)
+                            <div class="remarks-content"><strong>{{ $reasonLabel }}</strong></div>
+                        @endif
+                        @if($reasonNote)
+                            <div class="remarks-content" style="margin-top: 8px;">{{ $reasonNote }}</div>
+                        @elseif($remarks)
+                            <div class="remarks-content" style="margin-top: 8px;">{{ $remarks }}</div>
+                        @endif
                     </div>
                 @endif
                 

@@ -23,34 +23,27 @@ class SubscriptionPlanAdminController extends Controller
 
         $query = SubscriptionPlan::query()
             ->with(['planPrices', 'featureEntitlements.feature'])
+            ->withCount(['subscriptions', 'subscriptions as active_subscriptions_count' => function ($subscriptionQuery) {
+                $subscriptionQuery->where('status', 'active');
+            }])
             ->notArchived();
-
-        if ($request->filled('status')) {
-            if ($request->status === 'active') {
-                $query->where('is_active', true);
-            } elseif ($request->status === 'inactive') {
-                $query->where('is_active', false);
-            }
-        }
-
-        if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', '%'.$request->search.'%')
-                  ->orWhere('description', 'like', '%'.$request->search.'%');
-            });
-        }
 
         if ($highlightPlanId > 0) {
             $query->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$highlightPlanId]);
         }
 
-        $plans = $query->ordered()->paginate(15);
+        $plans = $query->ordered()->get();
 
         $stats = [
             'total' => SubscriptionPlan::query()->notArchived()->count(),
             'active' => SubscriptionPlan::query()->notArchived()->where('is_active', true)->count(),
             'inactive' => SubscriptionPlan::query()->notArchived()->where('is_active', false)->count(),
             'archived' => SubscriptionPlan::query()->archived()->count(),
+            'learner' => SubscriptionPlan::query()->notArchived()->where('plan_audience', 'learner')->count(),
+            'instructor' => SubscriptionPlan::query()->notArchived()->where('plan_audience', 'instructor')->count(),
+            'connectors' => SubscriptionPlan::query()->notArchived()->where('plan_audience', 'connectors')->count(),
+            'subscribers' => \App\Models\Subscription::query()->where('status', 'active')->count(),
+            'average_price' => (float) SubscriptionPlan::query()->notArchived()->avg('price'),
         ];
 
         return view('admin.subscription-plans.index', compact('plans', 'stats', 'highlightPlanId'));
@@ -58,7 +51,12 @@ class SubscriptionPlanAdminController extends Controller
 
     public function archived(Request $request)
     {
-        $query = SubscriptionPlan::query()->archived();
+        $query = SubscriptionPlan::query()
+            ->with(['planPrices'])
+            ->withCount(['subscriptions', 'subscriptions as active_subscriptions_count' => function ($subscriptionQuery) {
+                $subscriptionQuery->where('status', 'active');
+            }])
+            ->archived();
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -162,16 +160,22 @@ class SubscriptionPlanAdminController extends Controller
 
     public function show(SubscriptionPlan $subscriptionPlan)
     {
-        $subscriptionPlan->load(['subscriptions' => function ($query) {
+        $subscriptionPlan->load([
+            'planPrices',
+            'featureEntitlements.feature',
+            'subscriptions' => function ($query) {
             $query->with('user')->latest();
         }]);
 
         $stats = [
             'total_subscribers' => $subscriptionPlan->subscriptions()->count(),
             'active_subscribers' => $subscriptionPlan->subscriptions()->where('status', 'active')->count(),
+            'inactive_subscribers' => $subscriptionPlan->subscriptions()->where('status', '!=', 'active')->count(),
             'monthly_revenue' => $subscriptionPlan->subscriptions()
                 ->where('status', 'active')
                 ->sum('price_paid'),
+            'price_points' => $subscriptionPlan->planPrices()->count(),
+            'enabled_entitlements' => $subscriptionPlan->featureEntitlements()->where('is_enabled', true)->count(),
         ];
 
         return view('admin.subscription-plans.show', compact('subscriptionPlan', 'stats'));

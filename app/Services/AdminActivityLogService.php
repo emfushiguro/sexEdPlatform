@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\CommissionPolicy;
+use App\Models\CommissionPolicyAudit;
 use App\Models\AdminActivityLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -55,5 +57,28 @@ class AdminActivityLogService
             request: $request,
             adminUserId: $adminUserId,
         );
+    }
+
+    public function logCommissionPolicyMutation(
+        string $actionType,
+        ?CommissionPolicy $before,
+        CommissionPolicy $after,
+        ?Request $request = null,
+        ?int $adminUserId = null,
+    ): CommissionPolicyAudit {
+        $request ??= request();
+        $adminUserId ??= Auth::id();
+
+        return CommissionPolicyAudit::query()->create([
+            'actor_admin_id' => $adminUserId,
+            'action_type' => $actionType,
+            'before_payload' => $before?->toArray(),
+            'after_payload' => $after->toArray(),
+            'request_meta' => [
+                'ip_address' => $request?->ip(),
+                'user_agent' => $request?->userAgent(),
+            ],
+            'occurred_at' => now(),
+        ]);
     }
 }

@@ -75,14 +75,30 @@
                             <td class="px-4 py-3 text-gray-700 dark:text-gray-300 font-medium">{{ $user->instructor_modules_enrolled_count }}</td>
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-300 max-w-[340px] truncate" title="{{ $lastActivityPage }}">{{ $lastActivityPage }}</td>
                             <td class="px-4 py-3 text-right">
-                                <a href="{{ route('instructor.users.show', $user) }}"
-                                              class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors action-icon-standard"
-                                   title="View learner">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                        <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                </a>
+                                <div class="inline-flex items-center gap-1">
+                                    <a
+                                        href="{{ route('chat.page', [
+                                            'target_user_id' => $user->id,
+                                            'conversation_type' => 'direct',
+                                        ]) }}"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors action-icon-standard"
+                                        title="Message learner"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6m-8 8 3.7-3H19a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                        </svg>
+                                    </a>
+
+                                    <a href="{{ route('instructor.users.show', $user) }}"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors action-icon-standard"
+                                        title="View learner"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     @empty

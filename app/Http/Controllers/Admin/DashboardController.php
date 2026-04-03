@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\InstructorApplication;
 use App\Services\AdminDashboardService;
 
 class DashboardController extends Controller
@@ -14,13 +13,12 @@ class DashboardController extends Controller
 
     public function index()
     {
-        $metrics = $this->dashboardService->getHybridCommandCenterMetrics();
+        $payload = $this->dashboardService->getCommandCenterPayload();
 
         return view('admin.dashboard', [
-            'riskMetrics' => $metrics['risk'],
-            'leakageMetrics' => $metrics['leakage'],
-            'growthMetrics' => $metrics['growth'],
-            'pendingInstructorApplications' => InstructorApplication::pending()->count(),
+            'snapshotMetrics' => $payload['snapshot_metrics'],
+            'moderationQueues' => $payload['moderation_queues'],
+            'recentActivity' => $payload['recent_activity'],
         ]);
     }
 }

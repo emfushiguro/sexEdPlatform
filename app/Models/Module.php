@@ -4,7 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Module extends Model
 {
@@ -28,6 +32,10 @@ class Module extends Model
         'enrollment_limit',
         'enrollment_mode',
         'final_quiz_id',
+        'published_revision_id',
+        'published_by_admin_id',
+        'content_owner_type',
+        'current_review_status',
         'certificate_pass_score',
         'created_by',
     ];
@@ -47,6 +55,10 @@ class Module extends Model
             'price_currency' => 'string',
             'enrollment_limit' => 'integer',
             'enrollment_mode' => 'string',
+            'published_revision_id' => 'integer',
+            'published_by_admin_id' => 'integer',
+            'content_owner_type' => 'string',
+            'current_review_status' => 'string',
             'certificate_pass_score' => 'integer',
         ];
     }
@@ -73,6 +85,21 @@ class Module extends Model
         return $this->hasMany(ModuleEnrollment::class);
     }
 
+    public function purchases()
+    {
+        return $this->hasMany(ModulePurchase::class);
+    }
+
+    public function moduleSaleLedgers(): HasMany
+    {
+        return $this->hasMany(ModuleSaleLedger::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function userProgress()
     {
         return $this->hasMany(UserProgress::class);
@@ -88,11 +115,40 @@ class Module extends Model
         return $this->hasMany(ModuleAttachment::class);
     }
 
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(ModuleRevision::class);
+    }
+
+    public function reviewRequests(): HasMany
+    {
+        return $this->hasMany(ModuleReviewRequest::class);
+    }
+
+    public function publishedRevision(): BelongsTo
+    {
+        return $this->belongsTo(ModuleRevision::class, 'published_revision_id');
+    }
+
+    public function publisher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'published_by_admin_id');
+    }
+
     // Scopes
 
     public function scopePublished($query)
     {
         return $query->where('is_published', true);
+    }
+
+    public function scopeLearnerVisible($query)
+    {
+        return $query->where('is_published', true)
+            ->where(function ($inner) {
+                $inner->whereNotNull('published_revision_id')
+                    ->orWhereNull('current_review_status');
+            });
     }
 
     public function scopeFree($query)
@@ -177,5 +233,85 @@ class Module extends Model
         }
 
         return $this->age_specific_content[$ageBracket] ?? null;
+    }
+
+    public function isLearnerVisible(): bool
+    {
+        if (!$this->is_published) {
+            return false;
+        }
+
+        return $this->published_revision_id !== null || $this->current_review_status === null;
+    }
+
+    public function publishedSnapshot(): ?array
+    {
+        return $this->publishedRevision?->snapshot_payload;
+    }
+
+    public function applyPublishedSnapshot(): static
+    {
+        $snapshot = $this->publishedSnapshot();
+        $moduleData = $snapshot['module'] ?? null;
+
+        if (!is_array($moduleData)) {
+            return $this;
+        }
+
+        foreach ($moduleData as $key => $value) {
+            $this->setAttribute($key, $value);
+        }
+
+        return $this;
+    }
+
+    public function isPaidAccess(): bool
+    {
+        return $this->access_type === 'paid' && (float) ($this->price_amount ?? 0) > 0;
+    }
+
+    public function getDisplayPriceAttribute(): string
+    {
+        if (!$this->isPaidAccess()) {
+            return 'Free';
+        }
+
+        $amount = (float) ($this->price_amount ?? 0);
+        $formatted = fmod($amount, 1.0) === 0.0
+            ? number_format($amount, 0)
+            : number_format($amount, 2);
+
+        return '₱' . $formatted;
+    }
+
+    /**
+     * Get a resilient public URL for module thumbnails.
+     */
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        return $this->resolvePublicMediaUrl($this->thumbnail, 'modules');
+    }
+
+    private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://', '//'])) {
+            return $path;
+        }
+
+        $normalized = ltrim($path, '/');
+
+        if (Str::startsWith($normalized, 'storage/')) {
+            $normalized = substr($normalized, 8);
+        }
+
+        if (!str_contains($normalized, '/') && $defaultDirectory !== '') {
+            $normalized = trim($defaultDirectory, '/') . '/' . $normalized;
+        }
+
+        return Storage::url($normalized);
     }
 }

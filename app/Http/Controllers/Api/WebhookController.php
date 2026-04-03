@@ -6,6 +6,7 @@ use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Subscription;
+use App\Services\ModulePurchaseService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\Log;
 class WebhookController extends Controller
 {
     public function __construct(
-        protected SubscriptionService $subscriptionService
+        protected SubscriptionService $subscriptionService,
+        protected ModulePurchaseService $modulePurchaseService,
     ) {}
 
     /**
@@ -91,15 +93,42 @@ class WebhookController extends Controller
 
         // Get metadata for subscription lookup
         $metadata = $attributes['metadata'] ?? [];
+        $paymentScope = $metadata['payment_scope'] ?? null;
+        $paymentId = $metadata['payment_id'] ?? null;
         $subscriptionId = $metadata['subscription_id'] ?? null;
         $userId = $metadata['user_id'] ?? null;
 
         Log::info('PayMongo Payment Paid', [
+            'payment_scope' => $paymentScope,
+            'payment_id' => $paymentId,
             'subscription_id' => $subscriptionId,
             'user_id' => $userId,
             'payment_method' => $paymentMethod,
             'amount' => $attributes['amount'] ?? 0,
         ]);
+
+        if ($paymentScope === 'module_purchase') {
+            $payment = $paymentId
+                ? Payment::query()->find($paymentId)
+                : Payment::query()
+                    ->where('user_id', $userId)
+                    ->where('status', PaymentStatus::Pending)
+                    ->where('payment_details->payment_scope', 'module_purchase')
+                    ->latest('id')
+                    ->first();
+
+            if (!$payment) {
+                return;
+            }
+
+            $this->modulePurchaseService->completePayment(
+                payment: $payment,
+                paymentMethod: $paymentMethod,
+                paymongoPaymentId: (string) ($paymentData['id'] ?? ''),
+            );
+
+            return;
+        }
 
         if (!$subscriptionId) {
             return;
@@ -161,6 +190,38 @@ class WebhookController extends Controller
             return false;
         }
 
+        // PayMongo standard header format: t=<timestamp>,te=<test_sig>,li=<live_sig>
+        if (str_contains($signature, 't=')) {
+            $timestamp = null;
+            $candidates = [];
+
+            foreach (explode(',', $signature) as $part) {
+                [$key, $value] = array_pad(explode('=', trim($part), 2), 2, null);
+                if ($key === 't') {
+                    $timestamp = $value;
+                }
+
+                if (in_array($key, ['te', 'li'], true) && is_string($value) && $value !== '') {
+                    $candidates[] = $value;
+                }
+            }
+
+            if (!$timestamp || $candidates === []) {
+                return false;
+            }
+
+            $computed = hash_hmac('sha256', $timestamp . '.' . $payload, $secret);
+
+            foreach ($candidates as $candidate) {
+                if (hash_equals($computed, $candidate)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Backward-compatible fallback for legacy local tests that send a raw hash.
         $computedSignature = hash_hmac('sha256', $payload, $secret);
         return hash_equals($computedSignature, $signature);
     }

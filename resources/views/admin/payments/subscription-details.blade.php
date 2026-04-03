@@ -3,6 +3,11 @@
 @section('content')
 <div class="max-w-3xl mx-auto px-4 py-10">
  <h1 class="text-2xl font-bold text-gray-900 mb-8">Subscription Details</h1>
+ @php
+ $currentPlan = $subscription->relationLoaded('plan')
+ ? $subscription->getRelation('plan')
+ : $subscription->plan()->first();
+ @endphp
 
  <div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-8 mb-8">
  <h2 class="text-lg font-bold text-gray-900 mb-6">Subscription Information</h2>
@@ -13,7 +18,7 @@
  </div>
  <div>
  <label class="block text-xs font-semibold text-gray-500 mb-1">Plan Slug</label>
- <div class="font-mono text-xs text-gray-600 ">{{ $subscription->plan->slug ?? ($subscription->plan_id ? 'n/a' : 'free') }}</div>
+ <div class="font-mono text-xs text-gray-600 ">{{ $currentPlan?->slug ?? ($subscription->plan_id ? 'n/a' : 'free') }}</div>
  </div>
  <div>
  <label class="block text-xs font-semibold text-gray-500 mb-1">Plan</label>

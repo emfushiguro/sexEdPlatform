@@ -2,109 +2,161 @@
 
 namespace App\Services;
 
+use App\Models\InstructorApplication;
+use App\Models\Module;
+use App\Models\ModuleReviewRequest;
 use App\Models\Payment;
 use App\Models\Subscription;
-use App\Models\SubscriptionPlan;
 use App\Models\User;
-use App\Models\InstructorApplication;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Collection;
 
 class AdminDashboardService
 {
-    public function getHybridCommandCenterMetrics(): array
+    public function getCommandCenterPayload(): array
     {
         return [
-            'risk' => [
+            'snapshot_metrics' => [
                 [
-                    'label' => 'Failed Renewals Today',
-                    'value' => Payment::where('status', 'failed')->whereDate('created_at', today())->count(),
-                    'cta_label' => 'View Payments',
-                    'cta_route' => route('admin.payments.index', ['status' => 'failed']),
+                    'label' => 'Total Users',
+                    'value' => User::query()->count(),
+                    'description' => 'All accounts currently present in the platform.',
+                    'accent' => 'sky',
                 ],
                 [
-                    'label' => 'Grace Ending in 72h',
-                    'value' => $this->countGraceEndingSoon(),
-                    'cta_label' => 'View Subscribers',
-                    'cta_route' => route('admin.subscribers.index', ['status' => 'grace_period']),
-                ],
-            ],
-            'leakage' => [
-                [
-                    'label' => 'Cancelled Subscriptions',
-                    'value' => Subscription::where('status', 'cancelled')->count(),
-                    'cta_label' => 'View Subscribers',
-                    'cta_route' => route('admin.subscribers.index', ['status' => 'cancelled']),
+                    'label' => 'Total Instructors',
+                    'value' => User::role('instructor')->count(),
+                    'description' => 'Approved instructors with publishing privileges.',
+                    'accent' => 'violet',
                 ],
                 [
-                    'label' => 'Past Due Subscriptions',
-                    'value' => $this->countPastDueLike(),
-                    'cta_label' => 'View Subscribers',
-                    'cta_route' => route('admin.subscribers.index', ['status' => 'past_due']),
-                ],
-            ],
-            'growth' => [
-                [
-                    'label' => 'New Premium Conversions (30d)',
-                    'value' => Subscription::where('created_at', '>=', now()->subDays(30))
-                        ->whereHas('plan', fn ($q) => $q->where('price', '>', 0))
-                        ->count(),
-                    'cta_label' => 'View Subscribers',
-                    'cta_route' => route('admin.subscribers.index'),
+                    'label' => 'Total Learners',
+                    'value' => User::role('learner')->count(),
+                    'description' => 'Learner accounts currently enrolled in the platform.',
+                    'accent' => 'emerald',
                 ],
                 [
-                    'label' => 'Active Learners',
-                    'value' => User::role('learner')->where('status', 'active')->count(),
-                    'cta_label' => 'View Subscribers',
-                    'cta_route' => route('admin.subscribers.index', ['status' => 'active']),
+                    'label' => 'Total Modules',
+                    'value' => Module::query()->count(),
+                    'description' => 'All learning modules across instructor and admin ownership.',
+                    'accent' => 'amber',
                 ],
                 [
-                    'label' => 'Active Plans',
-                    'value' => SubscriptionPlan::where('is_active', true)->count(),
-                    'cta_label' => 'View Plans',
-                    'cta_route' => route('admin.subscription-plans.index'),
+                    'label' => 'Active Subscriptions',
+                    'value' => Subscription::query()->where('status', 'active')->count(),
+                    'description' => 'Subscribers with active billing and access entitlement.',
+                    'accent' => 'fuchsia',
                 ],
                 [
                     'label' => 'Pending Instructor Applications',
-                    'value' => InstructorApplication::pending()->count(),
-                    'cta_label' => 'Review Applications',
-                    'cta_route' => route('admin.instructor-applications.index'),
+                    'value' => InstructorApplication::query()->where('status', 'pending')->count(),
+                    'description' => 'Learner applications waiting for instructor approval.',
+                    'accent' => 'orange',
+                ],
+                [
+                    'label' => 'Pending Module Reviews',
+                    'value' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
+                    'description' => 'Submitted modules currently queued for moderation.',
+                    'accent' => 'indigo',
+                ],
+                [
+                    'label' => 'Payments Needing Review',
+                    'value' => Payment::query()->whereIn('status', ['pending', 'processing'])->count(),
+                    'description' => 'Transactions pending reconciliation or completion.',
+                    'accent' => 'rose',
                 ],
             ],
+            'moderation_queues' => [
+                [
+                    'label' => 'Instructor Applications',
+                    'count' => InstructorApplication::query()->where('status', 'pending')->count(),
+                    'cta_label' => 'Open Queue',
+                    'cta_route' => route('admin.instructor-applications.index', ['status' => 'pending']),
+                    'description' => 'Review learner requests to become instructors.',
+                    'accent' => 'amber',
+                ],
+                [
+                    'label' => 'Module Published Review',
+                    'count' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
+                    'cta_label' => 'Open Queue',
+                    'cta_route' => route('admin.content-reviews.index'),
+                    'description' => 'Moderate instructor module submissions before publish.',
+                    'accent' => 'sky',
+                ],
+            ],
+            'recent_activity' => $this->getRecentSystemActivity(),
         ];
     }
 
-    private function countGraceEndingSoon(): int
+    private function getRecentSystemActivity(): Collection
     {
-        $query = Subscription::query();
+        $applicationEvents = InstructorApplication::query()
+            ->with('user')
+            ->latest('updated_at')
+            ->limit(6)
+            ->get()
+            ->map(function (InstructorApplication $application): array {
+                $status = (string) $application->status;
+                $tone = $status === 'approved' ? 'emerald' : ($status === 'rejected' ? 'rose' : 'amber');
 
-        if (!Schema::hasColumn('subscribers', 'status')) {
-            return 0;
-        }
+                return [
+                    'type' => 'Instructor Application',
+                    'title' => ($application->user?->name ?? 'Learner') . ' application is ' . str_replace('_', ' ', $status),
+                    'meta' => 'Application #' . $application->id,
+                    'occurred_at' => $application->updated_at,
+                    'href' => route('admin.instructor-applications.index', [
+                        'status' => $status,
+                        'focus' => $application->id,
+                    ]),
+                    'tone' => $tone,
+                ];
+            })
+            ->all();
 
-        if (Schema::hasColumn('subscribers', 'grace_ends_at')) {
-            return $query->where('status', 'grace_period')
-                ->whereNotNull('grace_ends_at')
-                ->whereBetween('grace_ends_at', [now(), now()->addHours(72)])
-                ->count();
-        }
+        $moduleReviewEvents = ModuleReviewRequest::query()
+            ->with('module')
+            ->latest('updated_at')
+            ->limit(6)
+            ->get()
+            ->map(function (ModuleReviewRequest $reviewRequest): array {
+                $status = (string) $reviewRequest->status;
+                $tone = $status === 'approved' ? 'emerald' : ($status === 'rejected' ? 'rose' : 'sky');
 
-        if (Schema::hasColumn('subscribers', 'grace_period_ends')) {
-            return $query->where('status', 'past_due')
-                ->whereNotNull('grace_period_ends')
-                ->whereBetween('grace_period_ends', [now(), now()->addHours(72)])
-                ->count();
-        }
+                return [
+                    'type' => 'Module Review',
+                    'title' => ($reviewRequest->module_title ?: 'Module') . ' review is ' . str_replace('_', ' ', $status),
+                    'meta' => 'Review #' . $reviewRequest->id,
+                    'occurred_at' => $reviewRequest->updated_at,
+                    'href' => route('admin.content-reviews.show', $reviewRequest),
+                    'tone' => $tone,
+                ];
+            })
+            ->all();
 
-        return 0;
-    }
+        $paymentEvents = Payment::query()
+            ->with('user')
+            ->latest('updated_at')
+            ->limit(6)
+            ->get()
+            ->map(function (Payment $payment): array {
+                $status = is_object($payment->status) ? $payment->status->value : (string) $payment->status;
+                $tone = $status === 'completed' ? 'emerald' : ($status === 'failed' ? 'rose' : 'amber');
 
-    private function countPastDueLike(): int
-    {
-        if (!Schema::hasColumn('subscribers', 'status')) {
-            return 0;
-        }
+                return [
+                    'type' => 'Payment',
+                    'title' => 'Payment #' . $payment->id . ' is ' . str_replace('_', ' ', $status),
+                    'meta' => $payment->user?->name ?? 'Unknown user',
+                    'occurred_at' => $payment->updated_at,
+                    'href' => route('admin.payments.show', $payment),
+                    'tone' => $tone,
+                ];
+            })
+            ->all();
 
-        // Use legacy-safe statuses so this metric works during migration windows.
-        return Subscription::whereIn('status', ['past_due', 'grace_period'])->count();
+        return collect($applicationEvents)
+            ->concat($moduleReviewEvents)
+            ->concat($paymentEvents)
+            ->sortByDesc(fn (array $event) => $event['occurred_at'])
+            ->take(12)
+            ->values();
     }
 }

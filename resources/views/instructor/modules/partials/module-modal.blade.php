@@ -29,7 +29,11 @@
              description: '',
              ageBracket: '',
              enrollmentMode: 'auto',
-             isPublished: true,
+             accessType: 'free',
+             priceAmount: '',
+             priceCurrency: 'PHP',
+             enrollmentLimit: '',
+             isPublished: false,
              thumbnailPreview: null,
              actionBase: '{{ url('instructor/modules') }}',
              syncFromStore() {
@@ -41,7 +45,11 @@
                      this.description = '';
                      this.ageBracket = '';
                      this.enrollmentMode = 'auto';
-                     this.isPublished = true;
+                     this.accessType = 'free';
+                     this.priceAmount = '';
+                     this.priceCurrency = 'PHP';
+                     this.enrollmentLimit = '';
+                     this.isPublished = false;
                      this.thumbnailPreview = null;
                      return;
                  }
@@ -52,6 +60,10 @@
                  this.description = draft.description || '';
                  this.ageBracket = draft.age_bracket || '';
                  this.enrollmentMode = draft.enrollment_mode || 'auto';
+                 this.accessType = draft.access_type || 'free';
+                 this.priceAmount = draft.price_amount ?? '';
+                 this.priceCurrency = draft.price_currency || 'PHP';
+                 this.enrollmentLimit = draft.enrollment_limit ?? '';
                  this.isPublished = !!draft.is_published;
                  this.thumbnailPreview = draft.thumbnail_url || null;
              },
@@ -197,18 +209,82 @@
                 </div>
             </div>
 
+            {{-- Access Type + Pricing + Capacity --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
+                        Access Type <span class="text-red-500">*</span>
+                    </label>
+                    <select name="access_type" x-model="accessType" required
+                            class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
+                        <option value="free">Free</option>
+                        <option value="paid">Paid</option>
+                    </select>
+                    @error('access_type')
+                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
+                        Enrollment Limit
+                        <span class="text-[10px] font-normal normal-case tracking-normal text-gray-400 ml-1">(max 20 learners)</span>
+                    </label>
+                    <input type="number" name="enrollment_limit" x-model="enrollmentLimit" min="1" max="20"
+                           placeholder="Leave blank for unlimited"
+                           class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
+                    @error('enrollment_limit')
+                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" x-show="accessType === 'paid'" x-cloak>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
+                        Price Amount (PHP)
+                    </label>
+                    <input type="number" name="price_amount" x-model="priceAmount" min="0.01" step="0.01"
+                           class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
+                    @error('price_amount')
+                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
+                        Price Currency
+                    </label>
+                    <input type="text" name="price_currency" x-model="priceCurrency" maxlength="3"
+                           @input="priceCurrency = ($event.target.value || '').toUpperCase()"
+                           class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
+                    @error('price_currency')
+                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                @if(!empty($effectiveCommissionPolicy))
+                    <div class="sm:col-span-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+                        <p class="text-sm font-semibold text-indigo-900">
+                            Platform commission currently applied to your paid modules: {{ number_format((float) $effectiveCommissionPolicy['commission_percent'], 2) }}%
+                        </p>
+                        <p class="mt-1 text-xs text-indigo-800">
+                            Estimated net earnings per sale: Price - (Price x {{ number_format((float) $effectiveCommissionPolicy['commission_percent'], 2) }}%).
+                        </p>
+                    </div>
+                @endif
+            </div>
+
             {{-- Status Toggle --}}
             <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50/50 dark:bg-gray-800/50">
                 <div class="flex items-center justify-between gap-4">
                     <div>
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">Active module</p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">New modules default to active. Turn this off to save as inactive.</p>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">Governed publication</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Instructor modules save as drafts and become learner-visible only after admin approval.</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                        <input type="hidden" name="is_published" :value="isPublished ? 1 : 0">
-                        <input type="checkbox" class="sr-only peer" x-model="isPublished">
-                        <div class="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:ring-2 peer-focus:ring-purple-400/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r"
-                             :style="isPublished ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1)' : ''"></div>
+                        <input type="hidden" name="is_published" value="0">
+                        <div class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600">Draft</div>
                     </label>
                 </div>
             </div>

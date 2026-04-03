@@ -214,10 +214,10 @@
                             @endif
 
                             {{-- Image preview --}}
-                            @if($question->image_path)
+                            @if($question->image_url)
                             <div class="mt-2">
                                 <img
-                                    src="{{ asset('storage/' . $question->image_path) }}"
+                                    src="{{ $question->image_url }}"
                                     alt="Question image"
                                     class="h-16 w-auto rounded-xl border border-gray-100 object-cover"
                                 >

@@ -37,6 +37,10 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
 
     // Module Management
     Route::resource('modules', Instructor\ModuleController::class);
+    Route::post('modules/{module}/review/submit', [Instructor\ModuleReviewController::class, 'submit'])
+        ->name('modules.review.submit');
+    Route::post('modules/{module}/review/resubmit', [Instructor\ModuleReviewController::class, 'resubmit'])
+        ->name('modules.review.resubmit');
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
         ->name('modules.activate');
     Route::patch('modules/{module}/deactivate', [Instructor\ModuleController::class, 'deactivate'])
@@ -55,6 +59,14 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
         ->name('enrollments.reject');
     Route::get('modules/{module}/enrollments', [Instructor\EnrollmentController::class, 'moduleEnrollments'])
         ->name('modules.enrollments');
+
+    // Earnings
+    Route::get('earnings', [Instructor\ModuleEarningsController::class, 'index'])
+        ->name('earnings.index');
+    Route::get('earnings/{moduleSaleLedger}', [Instructor\ModuleEarningsController::class, 'show'])
+        ->name('earnings.show');
+    Route::delete('earnings/{moduleSaleLedger}/visibility', [Instructor\ModuleEarningsController::class, 'destroyVisibility'])
+        ->name('earnings.visibility.destroy');
 
     // Lesson Management
     Route::patch('lessons/reorder', [Instructor\LessonController::class, 'reorder'])

@@ -7,7 +7,6 @@ use App\Enums\SubscriptionStatus;
 use App\Models\User;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
-use App\Services\AnalyticsService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 

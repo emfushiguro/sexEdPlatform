@@ -16,38 +16,15 @@ class PaymentAdminController extends Controller
     {
         $query = Payment::with(['user', 'subscription']);
 
-        // Filter by status
-        if ($request->filled('status') && $request->status != 'all') {
-            $query->where('status', $request->status);
-        }
-        
-        // Filter by payment method
-        if ($request->filled('method') && $request->input('method') != 'all') {
-            $query->where('method', $request->input('method'));
-        }
-        
-        // Date range filter
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-        
-        // Search by user
-        if ($request->filled('search')) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%'.$request->search.'%')
-                  ->orWhere('email', 'like', '%'.$request->search.'%');
-            });
-        }
-
-        $payments = $query->latest()->paginate(15);
+        $payments = $query->latest()->get();
         
         // Payment statistics
         $stats = [
             'total_revenue' => Payment::where('status', PaymentStatus::Completed)->sum('amount'),
             'completed' => Payment::where('status', PaymentStatus::Completed)->count(),
+            'pending' => Payment::where('status', PaymentStatus::Pending)->count(),
+            'processing' => Payment::where('status', PaymentStatus::Processing)->count(),
+            'failed' => Payment::where('status', PaymentStatus::Failed)->count(),
         ];
         
         return view('admin.payments.index', compact('payments', 'stats'));
@@ -55,8 +32,25 @@ class PaymentAdminController extends Controller
 
     public function show(Payment $payment)
     {
-        $payment->load(['user', 'subscription', 'refunds']);
+        $payment->load([
+            'user.profile',
+            'user.learnerProfile.city',
+            'user.learnerProfile.barangay',
+            'user.gamification',
+            'subscription.plan',
+            'subscription.planPrice',
+            'refunds',
+            'invoice',
+        ]);
+
         return view('admin.payments.show', compact('payment'));
+    }
+
+    public function receipt(Payment $payment)
+    {
+        $payment->load(['user', 'subscription.plan']);
+
+        return view('payments.receipt', compact('payment'));
     }
 
     /**

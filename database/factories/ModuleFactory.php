@@ -27,6 +27,10 @@ class ModuleFactory extends Factory
             'is_premium' => false,
             'enrollment_mode' => 'auto',
             'final_quiz_id' => null,
+            'published_revision_id' => null,
+            'published_by_admin_id' => null,
+            'content_owner_type' => 'instructor',
+            'current_review_status' => null,
             'certificate_pass_score' => 70,
         ];
     }

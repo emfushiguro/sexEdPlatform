@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class QuizQuestion extends Model
 {
@@ -43,5 +45,33 @@ class QuizQuestion extends Model
     public function correctOptions()
     {
         return $this->hasMany(QuizOption::class)->where('is_correct', true);
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->resolvePublicMediaUrl($this->image_path, 'quiz-images');
+    }
+
+    private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://', '//'])) {
+            return $path;
+        }
+
+        $normalized = ltrim($path, '/');
+
+        if (Str::startsWith($normalized, 'storage/')) {
+            $normalized = substr($normalized, 8);
+        }
+
+        if (!str_contains($normalized, '/') && $defaultDirectory !== '') {
+            $normalized = trim($defaultDirectory, '/') . '/' . $normalized;
+        }
+
+        return Storage::url($normalized);
     }
 }

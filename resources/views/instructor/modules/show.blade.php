@@ -34,8 +34,8 @@
 
         {{-- Thumbnail --}}
         <div class="flex-shrink-0 w-full sm:w-48 h-32 sm:h-36 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700">
-            @if($module->thumbnail)
-                <img src="{{ asset('storage/' . $module->thumbnail) }}"
+            @if($module->thumbnail_url)
+                <img src="{{ $module->thumbnail_url }}"
                      alt="{{ $module->title }}"
                      class="w-full h-full object-cover">
             @else
@@ -78,6 +78,38 @@
                     @endif
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-5">
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-purple-500">Review Status</p>
+            <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $module->current_review_status ?? 'approved' }}</p>
+            @if(optional($module->reviewRequests->sortByDesc('id')->first())->feedback)
+                <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Review feedback</p>
+                    <p class="mt-1 text-sm text-amber-900">{{ $module->reviewRequests->sortByDesc('id')->first()->feedback }}</p>
+                </div>
+            @endif
+        </div>
+        <div class="flex gap-3">
+            @if($module->current_review_status === 'needs_revision')
+                <form method="POST" action="{{ route('instructor.modules.review.resubmit', $module) }}">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition-all shadow-sm" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                        Resubmit for Review
+                    </button>
+                </form>
+            @elseif(!$module->is_published)
+                <form method="POST" action="{{ route('instructor.modules.review.submit', $module) }}">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition-all shadow-sm" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                        Submit for Review
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
 </div>

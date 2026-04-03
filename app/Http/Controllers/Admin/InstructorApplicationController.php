@@ -19,19 +19,57 @@ class InstructorApplicationController extends Controller
     public function index(Request $request): View
     {
         $status = $request->string('status')->toString() ?: 'pending';
+        $search = trim((string) $request->string('search'));
         if (! in_array($status, ['pending', 'approved', 'rejected'], true)) {
             $status = 'pending';
         }
 
         $applications = InstructorApplication::query()
-            ->with('user')
+            ->with([
+                'approvedBy',
+                'user' => function ($userQuery): void {
+                    $userQuery->withCount([
+                        'moduleEnrollments as enrolled_modules_count',
+                        'moduleEnrollments as finished_modules_count' => fn ($enrollmentQuery) => $enrollmentQuery->whereNotNull('completed_at'),
+                        'certificates as certificates_earned_count',
+                    ])->with([
+                        'learnerProfile.city',
+                        'learnerProfile.barangayLocation',
+                        'moduleEnrollments' => fn ($enrollmentQuery) => $enrollmentQuery
+                            ->whereNotNull('completed_at')
+                            ->with('module:id,title')
+                            ->latest('completed_at'),
+                    ]);
+                },
+            ])
             ->when($status, fn ($query) => $query->where('status', $status))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($nested) use ($search): void {
+                    $nested->where('educational_background', 'like', '%' . $search . '%')
+                        ->orWhere('bio', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', function ($userQuery) use ($search): void {
+                            $userQuery->where('name', 'like', '%' . $search . '%')
+                                ->orWhere('email', 'like', '%' . $search . '%')
+                                ->orWhereHas('learnerProfile', function ($profileQuery) use ($search): void {
+                                    $profileQuery->where('username', 'like', '%' . $search . '%')
+                                        ->orWhere('barangay', 'like', '%' . $search . '%');
+                                });
+                        });
+                });
+            })
             ->latest()
             ->paginate(20)
             ->withQueryString();
 
+        $focusApplicationId = $request->integer('focus');
+        if ($focusApplicationId <= 0) {
+            $focusApplicationId = null;
+        }
+
         return view('admin.instructor-applications.index', [
             'status' => $status,
+            'search' => $search,
+            'focusApplicationId' => $focusApplicationId,
             'applications' => $applications,
             'pendingCount' => InstructorApplication::pending()->count(),
             'approvedCount' => InstructorApplication::approved()->count(),
@@ -39,22 +77,11 @@ class InstructorApplicationController extends Controller
         ]);
     }
 
-    public function show(InstructorApplication $application): View
+    public function show(InstructorApplication $application): RedirectResponse
     {
-        $application->load(['user.learnerProfile', 'user.gamification', 'approvedBy']);
-        $user = $application->user;
-
-        $snapshot = [
-            'enrolled_modules_count' => $user->moduleEnrollments()->count(),
-            'certificates_earned' => $user->certificates()->count(),
-            'gamification_level' => $user->gamification?->level,
-            'gamification_score' => $user->gamification?->score,
-            'subscription_status' => $user->subscription?->status ?? 'none',
-        ];
-
-        return view('admin.instructor-applications.show', [
-            'application' => $application,
-            'snapshot' => $snapshot,
+        return redirect()->route('admin.instructor-applications.index', [
+            'status' => $application->status,
+            'focus' => $application->id,
         ]);
     }
 
@@ -67,7 +94,11 @@ class InstructorApplicationController extends Controller
 
     public function reject(RejectInstructorApplicationRequest $request, InstructorApplication $application): RedirectResponse
     {
-        $this->service->reject($application, (string) $request->string('rejection_reason'));
+        $this->service->reject(
+            $application,
+            (string) $request->string('rejection_reason_code'),
+            $request->filled('rejection_reason_note') ? (string) $request->string('rejection_reason_note') : null
+        );
 
         return redirect()->back()->with('success', 'Instructor application rejected successfully.');
     }

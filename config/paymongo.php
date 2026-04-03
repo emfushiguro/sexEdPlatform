@@ -17,6 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Environment Safety
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, PayMongo integration will refuse to boot unless test keys
+    | are configured. Keep this enabled for local/testing environments so real
+    | transactions are never processed while developing.
+    |
+    */
+
+    'enforce_test_mode' => env('PAYMONGO_ENFORCE_TEST_MODE', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | PayMongo API Base URL
     |--------------------------------------------------------------------------
     |
@@ -38,6 +51,12 @@ return [
     'payment_link' => [
         'currency' => 'PHP',
         'description_prefix' => 'SexEd Platform - ',
+        'allowed_payment_method_types' => [
+            'gcash',
+            'paymaya',
+            'grab_pay',
+            'card',
+        ],
     ],
 
     /*

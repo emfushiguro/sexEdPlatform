@@ -7,7 +7,7 @@ use Tests\TestCase;
 
 class InstructorProfileSchemaTest extends TestCase
 {
-    public function test_instructor_profiles_have_professional_fields(): void
+    public function test_instructor_profiles_table_has_professional_identity_columns(): void
     {
         $this->assertTrue(Schema::hasColumns('instructor_profiles', [
             'educational_background',

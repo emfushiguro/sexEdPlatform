@@ -1,150 +1,350 @@
 @extends('layouts.admin')
+
 @section('title', 'Payment Management')
 @section('page-title', 'Payment Management')
+
+@php
+    $paymentRows = $payments->values()->map(function ($payment) {
+        $status = is_object($payment->status) ? $payment->status->value : (string) $payment->status;
+        $method = (string) ($payment->method ?? 'unknown');
+
+        return [
+            'id' => $payment->id,
+            'user' => $payment->user?->name ?? 'Unknown user',
+            'email' => $payment->user?->email ?? 'No email',
+            'amount' => (float) ($payment->amount ?? 0),
+            'method' => $method,
+            'status' => $status,
+            'created_at' => $payment->created_at?->format('M d, Y') ?? 'Unknown date',
+            'created_at_value' => $payment->created_at?->format('Y-m-d') ?? null,
+            'reference' => $payment->transaction_id ?? '-',
+            'show_url' => route('admin.payments.show', $payment),
+            'complete_url' => route('admin.payments.complete', $payment),
+            'can_complete' => method_exists($payment, 'isPending')
+                ? ($payment->isPending() || $status === 'processing')
+                : in_array($status, ['pending', 'processing'], true),
+            'search_blob' => strtolower(implode(' ', array_filter([
+                $payment->id,
+                $payment->user?->name,
+                $payment->user?->email,
+                $payment->amount,
+                $method,
+                $status,
+                $payment->transaction_id,
+                $payment->created_at?->format('Y-m-d'),
+            ]))),
+        ];
+    });
+@endphp
+
 @section('content')
+    <div x-data="paymentManagementPage({
+            payments: @js($paymentRows),
+            stats: @js($stats),
+        })"
+         class="space-y-8">
 
-@foreach(['success','error','warning'] as $type)
- @if(session($type))
- @php $cfg = ['success'=>['bg'=>'bg-success-50 border-success-200 text-success-700 ','icon'=>'M5 13l4 4L19 7'],'error'=>['bg'=>'bg-error-50 border-error-200 text-error-700 ','icon'=>'M6 18L18 6M6 6l12 12'],'warning'=>['bg'=>'bg-warning-50 border-warning-200 text-warning-700 ','icon'=>'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z']]; @endphp
- <div class="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl border {{ $cfg[$type]['bg'] }} text-sm">
- <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $cfg[$type]['icon'] }}"/></svg>
- {{ session($type) }}
- </div>
- @endif
-@endforeach
+        @foreach(['success','error','warning'] as $type)
+            @if(session($type))
+                @php
+                    $cfg = [
+                        'success' => ['bg' => 'bg-success-50 border-success-200 text-success-700', 'icon' => 'M5 13l4 4L19 7'],
+                        'error' => ['bg' => 'bg-error-50 border-error-200 text-error-700', 'icon' => 'M6 18L18 6M6 6l12 12'],
+                        'warning' => ['bg' => 'bg-warning-50 border-warning-200 text-warning-700', 'icon' => 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'],
+                    ];
+                @endphp
+                <div class="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm {{ $cfg[$type]['bg'] }}">
+                    <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $cfg[$type]['icon'] }}"/>
+                    </svg>
+                    {{ session($type) }}
+                </div>
+            @endif
+        @endforeach
 
-{{-- Stat Cards --}}
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
- @php
- $pCards = [
- ['label'=>'Total Revenue', 'value'=>'&#8369;'.number_format($stats['total_revenue'],2), 'bg'=>'bg-success-50 ','color'=>'text-success-600 ','icon'=>'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
- ['label'=>'Completed', 'value'=>$stats['completed'], 'bg'=>'bg-brand-50 ', 'color'=>'text-brand-600 ', 'icon'=>'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'],
- ];
- @endphp
- @foreach($pCards as $c)
- <div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-5">
- <div class="w-10 h-10 rounded-xl {{ $c['bg'] }} flex items-center justify-center mb-3">
- <svg class="w-5 h-5 {{ $c['color'] }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $c['icon'] }}"/></svg>
- </div>
- <p class="text-xl font-bold text-gray-900 ">{!! $c['value'] !!}</p>
- <p class="text-xs text-gray-400 mt-0.5">{{ $c['label'] }}</p>
- </div>
- @endforeach
-</div>
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            @php
+                $cards = [
+                    ['label' => 'Total Revenue', 'value' => null, 'valueKey' => 'total_revenue', 'type' => 'currency', 'accent' => 'emerald', 'description' => 'Completed payments currently recorded in admin.'],
+                    ['label' => 'Completed', 'value' => null, 'valueKey' => 'completed', 'type' => 'number', 'accent' => 'sky', 'description' => 'Transactions that already activated successfully.'],
+                    ['label' => 'Needs Review', 'value' => null, 'valueKey' => null, 'type' => 'computed-review', 'accent' => 'amber', 'description' => 'Pending and processing records waiting for reconciliation.'],
+                    ['label' => 'Failed', 'value' => null, 'valueKey' => 'failed', 'type' => 'number', 'accent' => 'rose', 'description' => 'Payments that require follow-up or retry support.'],
+                ];
+            @endphp
 
-{{-- Table Card --}}
-<div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs overflow-hidden">
- <div class="px-6 py-4 border-b border-gray-100 ">
- <h3 class="text-base font-semibold text-gray-900 ">All Payments</h3>
- </div>
- @include('admin.partials.table-filter-bar', ['label' => 'Payments Filters', 'hint' => 'Filter by method, status, date range, and user'])
- <form method="GET" class="px-6 py-4 border-b border-gray-100 ">
- <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
- <input type="text" name="search" value="{{ request('search') }}" placeholder="Search user..."
- class="px-3 py-2 rounded-lg border border-gray-200 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
- <select name="method" class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
- <option value="all">All Methods</option>
- <option value="gcash" @selected(request('method')=='gcash')>GCash</option>
- <option value="paymaya" @selected(request('method')=='paymaya')>PayMaya</option>
- <option value="grab_pay" @selected(request('method')=='grab_pay')>GrabPay</option>
- <option value="card" @selected(request('method')=='card')>Card</option>
- <option value="billease" @selected(request('method')=='billease')>BillEase</option>
- <option value="bank_transfer" @selected(request('method')=='bank_transfer')>Bank Transfer</option>
- </select>
- <select name="status" class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
- <option value="all">All Status</option>
- <option value="pending" @selected(request('status')=='pending')>Pending</option>
- <option value="processing" @selected(request('status')=='processing')>Processing</option>
- <option value="completed" @selected(request('status')=='completed')>Completed</option>
- <option value="failed" @selected(request('status')=='failed')>Failed</option>
- <option value="refunded" @selected(request('status')=='refunded')>Refunded</option>
- </select>
- <input type="date" name="date_from" value="{{ request('date_from') }}"
- class="px-3 py-2 rounded-lg border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
- <div class="flex gap-2">
- <input type="date" name="date_to" value="{{ request('date_to') }}"
- class="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
- <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">Filter</button>
- <a href="{{ route('admin.payments.index') }}" class="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Clear</a>
- </div>
- </div>
- </form>
- <div class="overflow-x-auto">
- <table class="min-w-full divide-y divide-gray-100 ">
- <thead class="bg-gray-50 ">
- <tr>
- <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
- <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
- <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
- <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Method</th>
- <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
- <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
- <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ref</th>
- <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
- </tr>
- </thead>
- <tbody class="divide-y divide-gray-100 ">
- @php
- $methodLabels = ['gcash'=>'GCash','paymaya'=>'PayMaya','grab_pay'=>'GrabPay','card'=>'Card','billease'=>'BillEase','bank_transfer'=>'Bank Transfer','paymongo'=>'PayMongo'];
- $methodColors = ['gcash'=>'bg-brand-50 text-brand-700 ','paymaya'=>'bg-success-50 text-success-700 ','grab_pay'=>'bg-teal-50 text-teal-700 ','card'=>'bg-purple-50 text-purple-700 ','billease'=>'bg-indigo-50 text-indigo-700 ','bank_transfer'=>'bg-gray-100 text-gray-600 ','paymongo'=>'bg-brand-50 text-brand-700 '];
- $payStatusMap = ['completed'=>'bg-success-50 text-success-700 ','failed'=>'bg-error-50 text-error-700 ','refunded'=>'bg-gray-100 text-gray-500 ','pending'=>'bg-warning-50 text-warning-700 ','processing'=>'bg-brand-50 text-brand-700 '];
- @endphp
- @forelse($payments as $payment)
- @php $pv = is_object($payment->status) ? $payment->status->value : $payment->status; @endphp
- <tr class="hover:bg-gray-50 transition-colors">
- <td class="px-5 py-3 text-sm font-semibold text-gray-500 ">
- {{ (($payments->currentPage() - 1) * $payments->perPage()) + $loop->iteration }}
- </td>
- <td class="px-5 py-3">
- <div class="flex items-center gap-2.5">
- <div class="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 text-xs font-bold flex-shrink-0">
- {{ strtoupper(substr($payment->user->name ?? 'U', 0, 1)) }}
- </div>
- <div>
- <p class="text-sm font-semibold text-gray-900 leading-none">{{ $payment->user->name ?? 'N/A' }}</p>
- <p class="text-xs text-gray-400 mt-0.5">{{ $payment->user->email ?? '' }}</p>
- </div>
- </div>
- </td>
- <td class="px-5 py-3 text-sm font-semibold text-gray-900 ">&#8369;{{ number_format($payment->amount,2) }}</td>
- <td class="px-5 py-3">
- <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $methodColors[$payment->method] ?? 'bg-gray-100 text-gray-500 ' }}">{{ $methodLabels[$payment->method] ?? ucfirst($payment->method) }}</span>
- </td>
- <td class="px-5 py-3">
- <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $payStatusMap[$pv] ?? 'bg-gray-100 text-gray-500 ' }}">{{ ucfirst($pv) }}</span>
- </td>
- <td class="px-5 py-3 text-sm text-gray-500 ">{{ $payment->created_at->format('M d, Y') }}</td>
- <td class="px-5 py-3 text-xs font-mono text-gray-400 ">{{ Str::limit($payment->transaction_id ?? '-', 12) }}</td>
- <td class="px-5 py-3">
- <div class="flex items-center justify-end gap-1">
- <a href="{{ route('admin.payments.show', $payment) }}" title="View" class="p-1.5 rounded-lg text-gray-400 hover:bg-brand-50 hover:text-brand-600 transition-colors">
- <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
- </a>
- @if($payment->isPending() || $pv === 'processing')
- <form method="POST" action="{{ route('admin.payments.complete', $payment) }}" class="inline" onsubmit="return confirm('Mark as completed and activate subscription?')">
- @csrf
- <button type="submit" title="Reconcile" class="p-1.5 rounded-lg text-gray-400 hover:bg-success-50 hover:text-success-600 transition-colors">
- <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
- </button>
- </form>
- @endif
- </div>
- </td>
- </tr>
- @empty
- <tr><td colspan="8" class="px-5 py-12 text-center text-sm text-gray-400 ">No payments found.</td></tr>
- @endforelse
- </tbody>
- </table>
- </div>
- @if($payments->hasPages())
- <div class="px-6 py-4 border-t border-gray-100 ">
- <div class="flex items-center justify-between gap-4">
- <p class="text-xs text-gray-500 ">Showing {{ $payments->firstItem() }}-{{ $payments->lastItem() }} of {{ $payments->total() }}</p>
- {{ $payments->withQueryString()->links() }}
- </div>
- </div>
- @endif
-</div>
+            @foreach($cards as $card)
+                <div class="rounded-[28px] border p-5 shadow-theme-xs {{ $card['accent'] === 'emerald' ? 'border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50' : ($card['accent'] === 'sky' ? 'border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50' : ($card['accent'] === 'amber' ? 'border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50' : 'border-rose-100 bg-gradient-to-br from-rose-50 via-white to-orange-50')) }}">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.24em] {{ $card['accent'] === 'emerald' ? 'text-emerald-600' : ($card['accent'] === 'sky' ? 'text-sky-600' : ($card['accent'] === 'amber' ? 'text-amber-600' : 'text-rose-600')) }}">{{ $card['label'] }}</p>
+                            <p class="mt-3 text-3xl font-bold text-gray-900">
+                                @if($card['type'] === 'currency')
+                                    <span x-text="formatCurrency(stats.{{ $card['valueKey'] }})"></span>
+                                @elseif($card['type'] === 'computed-review')
+                                    <span x-text="formatNumber((stats.pending || 0) + (stats.processing || 0))"></span>
+                                @else
+                                    <span x-text="formatNumber(stats.{{ $card['valueKey'] }})"></span>
+                                @endif
+                            </p>
+                            <p class="mt-2 text-sm text-gray-500">{{ $card['description'] }}</p>
+                        </div>
+                        <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg {{ $card['accent'] === 'emerald' ? 'bg-emerald-500 shadow-emerald-200' : ($card['accent'] === 'sky' ? 'bg-sky-500 shadow-sky-200' : ($card['accent'] === 'amber' ? 'bg-amber-500 shadow-amber-200' : 'bg-rose-500 shadow-rose-200')) }}">
+                            @if($card['accent'] === 'emerald')
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            @elseif($card['accent'] === 'sky')
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                            @elseif($card['accent'] === 'amber')
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                            @else
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                            @endif
+                        </span>
+                    </div>
+                </div>
+            @endforeach
+        </div>
 
+        <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
+            <div class="border-b border-gray-100 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.10),_transparent_30%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-6">
+                <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                    <div>
+                        @include('admin.partials.table-filter-bar', ['label' => 'Payments Filters', 'hint' => 'Search every visible column and narrow results with live column filters'])
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Live Filters</p>
+                        <h2 class="mt-2 text-xl font-bold text-gray-900">Payments Table</h2>
+                        <p class="mt-1 text-sm text-gray-500">Search user names, emails, references, methods, and statuses while filtering the full admin payments dataset in real time.</p>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                        <label class="block xl:col-span-2">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
+                            <input x-model.debounce.150ms="filters.search"
+                                   type="text"
+                                   placeholder="User, email, method, status, ref..."
+                                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Method</span>
+                            <select x-model="filters.method"
+                                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                <option value="">All methods</option>
+                                <option value="gcash">GCash</option>
+                                <option value="paymaya">PayMaya</option>
+                                <option value="grab_pay">GrabPay</option>
+                                <option value="card">Card</option>
+                                <option value="billease">BillEase</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="paymongo">PayMongo</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
+                            <select x-model="filters.status"
+                                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                <option value="">All statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="processing">Processing</option>
+                                <option value="completed">Completed</option>
+                                <option value="failed">Failed</option>
+                                <option value="refunded">Refunded</option>
+                            </select>
+                        </label>
+                        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+                            <label class="block">
+                                <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Date From</span>
+                                <input x-model="filters.dateFrom"
+                                       type="date"
+                                       class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                            </label>
+                            <label class="block">
+                                <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Date To</span>
+                                <input x-model="filters.dateTo"
+                                       type="date"
+                                       class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+                <div>
+                    <p class="text-sm font-semibold text-gray-900"><span x-text="filteredPayments.length"></span> matching payments</p>
+                    <p class="text-xs text-gray-500">Results update instantly as you type or change the filters.</p>
+                </div>
+                <button type="button"
+                        @click="resetFilters()"
+                        class="inline-flex items-center rounded-2xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
+                    Reset Filters
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No.</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">User</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Amount</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Method</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Status</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Date</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Ref</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        <template x-for="(payment, index) in filteredPayments" :key="payment.id">
+                            <tr class="transition hover:bg-sky-50/40">
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="index + 1"></td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100 text-sm font-bold text-sky-700"
+                                              x-text="payment.user.charAt(0).toUpperCase()"></span>
+                                        <div>
+                                            <p class="text-sm font-semibold text-gray-900" x-text="payment.user"></p>
+                                            <p class="text-xs text-gray-500" x-text="payment.email"></p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="formatCurrency(payment.amount)"></td>
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold"
+                                          :class="methodClass(payment.method)"
+                                          x-text="methodLabel(payment.method)"></span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold"
+                                          :class="statusClass(payment.status)"
+                                          x-text="formatLabel(payment.status)"></span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-600" x-text="payment.created_at"></td>
+                                <td class="px-6 py-4 text-xs font-mono text-gray-500" x-text="truncate(payment.reference, 16)"></td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a :href="payment.show_url"
+                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+                                           title="View payment">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </a>
+                                        <template x-if="payment.can_complete">
+                                            <form :action="payment.complete_url" method="POST" @submit="return confirm('Mark as completed and activate subscription?')">
+                                                @csrf
+                                                <button type="submit"
+                                                        class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100"
+                                                        title="Complete payment">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </template>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="filteredPayments.length === 0" x-cloak>
+                            <td colspan="8" class="px-6 py-14 text-center">
+                                <div class="mx-auto max-w-sm">
+                                    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                                        <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <h3 class="mt-4 text-sm font-semibold text-gray-900">No payments match these filters</h3>
+                                    <p class="mt-1 text-sm text-gray-500">Try broadening the search or resetting one of the filter fields.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function paymentManagementPage(config) {
+            return {
+                payments: config.payments || [],
+                stats: config.stats || {},
+                filters: {
+                    search: '',
+                    method: '',
+                    status: '',
+                    dateFrom: '',
+                    dateTo: '',
+                },
+                get filteredPayments() {
+                    return this.payments.filter((payment) => {
+                        const search = this.filters.search.trim().toLowerCase();
+                        const matchesSearch = !search || payment.search_blob.includes(search);
+                        const matchesMethod = !this.filters.method || payment.method === this.filters.method;
+                        const matchesStatus = !this.filters.status || payment.status === this.filters.status;
+                        const matchesDateFrom = !this.filters.dateFrom || (payment.created_at_value && payment.created_at_value >= this.filters.dateFrom);
+                        const matchesDateTo = !this.filters.dateTo || (payment.created_at_value && payment.created_at_value <= this.filters.dateTo);
+
+                        return matchesSearch && matchesMethod && matchesStatus && matchesDateFrom && matchesDateTo;
+                    });
+                },
+                resetFilters() {
+                    this.filters.search = '';
+                    this.filters.method = '';
+                    this.filters.status = '';
+                    this.filters.dateFrom = '';
+                    this.filters.dateTo = '';
+                },
+                formatNumber(value) {
+                    return new Intl.NumberFormat('en-US').format(Number(value || 0));
+                },
+                formatCurrency(value) {
+                    return new Intl.NumberFormat('en-PH', {
+                        style: 'currency',
+                        currency: 'PHP',
+                        minimumFractionDigits: 2,
+                    }).format(Number(value || 0));
+                },
+                formatLabel(value) {
+                    return String(value || '')
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, (char) => char.toUpperCase());
+                },
+                methodLabel(method) {
+                    return {
+                        gcash: 'GCash',
+                        paymaya: 'PayMaya',
+                        grab_pay: 'GrabPay',
+                        card: 'Card',
+                        billease: 'BillEase',
+                        bank_transfer: 'Bank Transfer',
+                        paymongo: 'PayMongo',
+                    }[method] || this.formatLabel(method);
+                },
+                methodClass(method) {
+                    return {
+                        gcash: 'bg-sky-100 text-sky-700',
+                        paymaya: 'bg-emerald-100 text-emerald-700',
+                        grab_pay: 'bg-teal-100 text-teal-700',
+                        card: 'bg-violet-100 text-violet-700',
+                        billease: 'bg-indigo-100 text-indigo-700',
+                        bank_transfer: 'bg-gray-100 text-gray-600',
+                        paymongo: 'bg-sky-100 text-sky-700',
+                    }[method] || 'bg-gray-100 text-gray-600';
+                },
+                statusClass(status) {
+                    return {
+                        completed: 'bg-emerald-100 text-emerald-700',
+                        failed: 'bg-rose-100 text-rose-700',
+                        refunded: 'bg-gray-100 text-gray-600',
+                        pending: 'bg-amber-100 text-amber-700',
+                        processing: 'bg-sky-100 text-sky-700',
+                    }[status] || 'bg-gray-100 text-gray-600';
+                },
+                truncate(value, length = 16) {
+                    const text = String(value || '-');
+                    return text.length > length ? `${text.slice(0, length)}...` : text;
+                },
+            };
+        }
+    </script>
 @endsection
