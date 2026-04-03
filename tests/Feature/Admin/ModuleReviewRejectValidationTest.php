@@ -29,7 +29,7 @@ class ModuleReviewRejectValidationTest extends DatabaseTestCase
             ->assertSessionHasErrors(['reason_code']);
     }
 
-    public function test_reject_requires_guidance_note(): void
+    public function test_reject_requires_custom_reason_when_reason_is_other(): void
     {
         $admin = $this->createUserWithRole('admin');
         $reviewRequest = $this->createPendingReviewRequest();
@@ -37,11 +37,24 @@ class ModuleReviewRejectValidationTest extends DatabaseTestCase
         $this->actingAs($admin)
             ->from(route('admin.content-reviews.show', $reviewRequest))
             ->post(route('admin.content-reviews.reject', $reviewRequest), [
-                'reason_code' => ModuleReviewRejectionReason::QuizErrors->value,
+                'reason_code' => ModuleReviewRejectionReason::Other->value,
                 'guidance_note' => '',
             ])
             ->assertRedirect(route('admin.content-reviews.show', $reviewRequest))
             ->assertSessionHasErrors(['guidance_note']);
+    }
+
+    public function test_reject_accepts_reason_without_custom_reason_for_non_other_reason(): void
+    {
+        $admin = $this->createUserWithRole('admin');
+        $reviewRequest = $this->createPendingReviewRequest();
+
+        $this->actingAs($admin)
+            ->post(route('admin.content-reviews.reject', $reviewRequest), [
+                'reason_code' => ModuleReviewRejectionReason::QuizErrors->value,
+                'guidance_note' => '',
+            ])
+            ->assertRedirect(route('admin.content-reviews.show', $reviewRequest));
     }
 
     public function test_reject_accepts_structured_reason_payload(): void

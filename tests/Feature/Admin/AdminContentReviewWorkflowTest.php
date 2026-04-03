@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\ModuleReviewRejectionReason;
 use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ModuleRevision;
@@ -47,14 +48,55 @@ class AdminContentReviewWorkflowTest extends DatabaseTestCase
 
         $this->actingAs($admin)
             ->post(route('admin.content-reviews.reject', $reviewRequest), [
+                'reason_code' => ModuleReviewRejectionReason::PoorModuleStructure->value,
                 'feedback' => 'Please tighten the lesson package.',
             ])
             ->assertRedirect(route('admin.content-reviews.show', $reviewRequest));
 
         $this->assertDatabaseHas('module_review_requests', [
             'id' => $reviewRequest->id,
-            'status' => 'needs_revision',
+            'status' => 'rejected',
             'feedback' => 'Please tighten the lesson package.',
+        ]);
+    }
+
+    public function test_admin_cannot_moderate_finalized_submission(): void
+    {
+        $admin = $this->createUserWithRole('admin');
+        $reviewRequest = $this->createPendingReviewRequest();
+
+        $reviewRequest->forceFill([
+            'status' => 'approved',
+            'reviewed_by' => $admin->id,
+            'reviewed_at' => now(),
+        ])->save();
+
+        $this->actingAs($admin)
+            ->post(route('admin.content-reviews.reject', $reviewRequest), [
+                'reason_code' => ModuleReviewRejectionReason::PoorModuleStructure->value,
+            ])
+            ->assertRedirect(route('admin.content-reviews.show', $reviewRequest))
+            ->assertSessionHas('warning');
+
+        $this->assertDatabaseHas('module_review_requests', [
+            'id' => $reviewRequest->id,
+            'status' => 'approved',
+        ]);
+    }
+
+    public function test_admin_can_archive_pending_submission(): void
+    {
+        $admin = $this->createUserWithRole('admin');
+        $reviewRequest = $this->createPendingReviewRequest();
+
+        $this->actingAs($admin)
+            ->post(route('admin.content-reviews.archive', $reviewRequest))
+            ->assertRedirect(route('admin.content-reviews.index'));
+
+        $this->assertDatabaseHas('module_review_requests', [
+            'id' => $reviewRequest->id,
+            'status' => 'archived',
+            'reviewed_by' => $admin->id,
         ]);
     }
 

@@ -29,7 +29,8 @@ class AdminLayoutBrandAlignmentTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('Administrator Dashboard', false)
+            ->assertSee('Concious', false)
+            ->assertSee('Connections', false)
             ->assertSee('/media/Logo.png', false)
             ->assertSee('data-testid="admin-sidebar-branding"', false);
     }

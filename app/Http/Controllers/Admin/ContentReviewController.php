@@ -24,9 +24,11 @@ class ContentReviewController extends Controller
     public function index(): View
     {
         $reviewRequests = ModuleReviewRequest::query()
-            ->with(['module', 'revision'])
+            ->with(['module', 'revision', 'submitter'])
+            ->where('status', 'in_review')
             ->latest('submitted_at')
-            ->get();
+            ->paginate(12)
+            ->withQueryString();
 
         return view('admin.content-reviews.index', compact('reviewRequests'));
     }
@@ -42,7 +44,20 @@ class ContentReviewController extends Controller
 
     public function approve(ModuleReviewRequest $reviewRequest): RedirectResponse
     {
-        $this->contentGovernanceService->approveReview($reviewRequest, request()->user());
+        if ($reviewRequest->status !== 'in_review') {
+            return redirect()->route('admin.content-reviews.show', $reviewRequest)
+                ->with('warning', 'This submission is finalized and can no longer be moderated.');
+        }
+
+        $validated = request()->validate([
+            'moderation_notes' => ['nullable', 'string', 'max:10000'],
+        ]);
+
+        $this->contentGovernanceService->approveReview(
+            $reviewRequest,
+            request()->user(),
+            $validated['moderation_notes'] ?? null,
+        );
 
         return redirect()->route('admin.content-reviews.show', $reviewRequest)
             ->with('success', 'Content review approved.');
@@ -50,16 +65,40 @@ class ContentReviewController extends Controller
 
     public function reject(RejectModuleReviewRequest $request, ModuleReviewRequest $reviewRequest): RedirectResponse
     {
+        if ($reviewRequest->status !== 'in_review') {
+            return redirect()->route('admin.content-reviews.show', $reviewRequest)
+                ->with('warning', 'This submission is finalized and can no longer be moderated.');
+        }
+
         $this->contentGovernanceService->rejectReview(
             $reviewRequest,
             $request->user(),
             $request->string('feedback')->toString(),
             $request->input('reason_code'),
             $request->input('guidance_note'),
+            $request->boolean('issue_warning'),
+            $request->input('moderation_notes'),
         );
 
         return redirect()->route('admin.content-reviews.show', $reviewRequest)
             ->with('success', 'Content review rejected with feedback.');
+    }
+
+    public function archive(ModuleReviewRequest $reviewRequest): RedirectResponse
+    {
+        if ($reviewRequest->status !== 'in_review') {
+            return redirect()->route('admin.content-reviews.show', $reviewRequest)
+                ->with('warning', 'This submission is finalized and can no longer be moderated.');
+        }
+
+        $this->contentGovernanceService->archiveReview(
+            $reviewRequest,
+            request()->user(),
+            'Submission archived by admin moderation.',
+        );
+
+        return redirect()->route('admin.content-reviews.index')
+            ->with('success', 'Content review archived.');
     }
 
     public function confirmPenalty(ConfirmInstructorPenaltyRequest $request, ModuleReviewRequest $reviewRequest): RedirectResponse

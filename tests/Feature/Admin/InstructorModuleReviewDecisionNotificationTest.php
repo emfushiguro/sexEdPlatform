@@ -51,7 +51,7 @@ class InstructorModuleReviewDecisionNotificationTest extends DatabaseTestCase
         Notification::assertSentTo(
             [$instructor],
             InstructorModuleReviewDecisionNotification::class,
-            fn (InstructorModuleReviewDecisionNotification $notification) => $notification->status === 'needs_revision'
+            fn (InstructorModuleReviewDecisionNotification $notification) => $notification->status === 'rejected'
                 && $notification->reasonCode === ModuleReviewRejectionReason::QuizErrors->value
                 && $notification->guidanceNote === 'Please correct quiz answer keys and scoring.'
         );

@@ -56,6 +56,13 @@
                     $pct         = $prog->progress_percentage;
                     $isCompleted = $enrollment?->completed_at !== null;
                     $isDeactivated = !$module->is_published;
+                    $creator = $module->creator;
+                    $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
+                    $priceLabel = $module->display_price ?? 'Free';
+                    $approvedCount = (int) ($module->approved_enrollments_count ?? 0);
+                    $enrollmentLabel = $module->enrollment_limit !== null
+                        ? sprintf('%d / %d Enrolled', $approvedCount, (int) $module->enrollment_limit)
+                        : sprintf('%d Enrolled', $approvedCount);
                 @endphp
                 <div
                     x-show="!query.trim() || '{{ addslashes(strtolower($module->title)) }}'.includes(query.toLowerCase().trim())"
@@ -94,6 +101,9 @@
                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2">{{ $module->title }}</h3>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                 {{ $prog->completed_lessons }}/{{ $prog->total_lessons }} {{ Str::plural('lesson', $prog->total_lessons) }} completed
+                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {{ $instructorName }} · {{ $priceLabel }} · {{ $enrollmentLabel }}
                             </p>
                         </div>
                         <div>

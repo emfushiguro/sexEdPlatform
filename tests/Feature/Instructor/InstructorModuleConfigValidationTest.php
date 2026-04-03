@@ -49,7 +49,7 @@ class InstructorModuleConfigValidationTest extends TestCase
         ]);
     }
 
-    public function test_enrollment_limit_accepts_null_or_positive_integer(): void
+    public function test_enrollment_limit_accepts_null_or_up_to_twenty(): void
     {
         $instructor = User::factory()->create(['role' => 'instructor']);
         $instructor->assignRole('instructor');
@@ -74,13 +74,34 @@ class InstructorModuleConfigValidationTest extends TestCase
                 'age_bracket' => 'kids',
                 'enrollment_mode' => 'manual',
                 'access_type' => 'free',
-                'enrollment_limit' => 30,
+                'enrollment_limit' => 20,
             ])
             ->assertRedirect();
 
         $this->assertDatabaseHas('modules', [
             'id' => $module->id,
-            'enrollment_limit' => 30,
+            'enrollment_limit' => 20,
+        ]);
+    }
+
+    public function test_enrollment_limit_above_twenty_is_rejected(): void
+    {
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.modules.store'), [
+                'title' => 'Over cap module',
+                'description' => 'desc',
+                'age_bracket' => 'kids',
+                'enrollment_mode' => 'manual',
+                'access_type' => 'free',
+                'enrollment_limit' => 21,
+            ])
+            ->assertSessionHasErrors(['enrollment_limit']);
+
+        $this->assertDatabaseMissing('modules', [
+            'title' => 'Over cap module',
         ]);
     }
 }

@@ -103,10 +103,14 @@ class AdminDashboardService
                     'title' => ($application->user?->name ?? 'Learner') . ' application is ' . str_replace('_', ' ', $status),
                     'meta' => 'Application #' . $application->id,
                     'occurred_at' => $application->updated_at,
-                    'href' => route('admin.instructor-applications.show', $application),
+                    'href' => route('admin.instructor-applications.index', [
+                        'status' => $status,
+                        'focus' => $application->id,
+                    ]),
                     'tone' => $tone,
                 ];
-            });
+            })
+            ->all();
 
         $moduleReviewEvents = ModuleReviewRequest::query()
             ->with('module')
@@ -125,7 +129,8 @@ class AdminDashboardService
                     'href' => route('admin.content-reviews.show', $reviewRequest),
                     'tone' => $tone,
                 ];
-            });
+            })
+            ->all();
 
         $paymentEvents = Payment::query()
             ->with('user')
@@ -144,11 +149,12 @@ class AdminDashboardService
                     'href' => route('admin.payments.show', $payment),
                     'tone' => $tone,
                 ];
-            });
+            })
+            ->all();
 
-        return $applicationEvents
-            ->merge($moduleReviewEvents)
-            ->merge($paymentEvents)
+        return collect($applicationEvents)
+            ->concat($moduleReviewEvents)
+            ->concat($paymentEvents)
             ->sortByDesc(fn (array $event) => $event['occurred_at'])
             ->take(12)
             ->values();

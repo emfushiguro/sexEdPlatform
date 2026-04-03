@@ -2,6 +2,8 @@
 
 @php
     $quizzesForTable = $quizzes->map(function ($q) {
+        $timeLimit = (int) ($q->time_limit ?? 0);
+
         return [
             'id' => $q->id,
             'title' => $q->title,
@@ -12,6 +14,11 @@
             'lesson_title' => $q->lesson?->title ?? '',
             'questions_count' => $q->questions_count,
             'passing_score' => $q->passing_score,
+            'time_limit' => $q->time_limit,
+            'time_limit_hours' => $timeLimit > 0 ? intdiv($timeLimit, 3600) : 0,
+            'time_limit_minutes' => $timeLimit > 0 ? intdiv($timeLimit % 3600, 60) : 0,
+            'time_limit_seconds' => $timeLimit > 0 ? $timeLimit % 60 : 0,
+            'attempt_limit' => $q->attempt_limit,
             'is_active' => $q->is_active,
             'type' => $q->module_id ? 'module' : 'lesson',
         ];
@@ -89,7 +96,7 @@ function quizTable() {
 @if($openCreateQuiz)
     x-init="$store.modals.openQuizModal()"
 @elseif($prefillQuiz)
-    x-init='$store.modals.openQuizModal({ id: {{ $prefillQuiz->id }}, title: @js($prefillQuiz->title), description: @js($prefillQuiz->description), module_id: {{ $prefillQuiz->module_id ?? 'null' }}, lesson_id: {{ $prefillQuiz->lesson_id ?? 'null' }}, passing_score: {{ $prefillQuiz->passing_score }}, is_active: {{ $prefillQuiz->is_active ? 'true' : 'false' }} })'
+    x-init='$store.modals.openQuizModal({ id: {{ $prefillQuiz->id }}, title: @js($prefillQuiz->title), description: @js($prefillQuiz->description), module_id: {{ $prefillQuiz->module_id ?? 'null' }}, lesson_id: {{ $prefillQuiz->lesson_id ?? 'null' }}, passing_score: {{ $prefillQuiz->passing_score }}, time_limit: {{ $prefillQuiz->time_limit ?? 'null' }}, time_limit_hours: {{ $prefillQuiz->time_limit ? intdiv($prefillQuiz->time_limit, 3600) : 0 }}, time_limit_minutes: {{ $prefillQuiz->time_limit ? intdiv($prefillQuiz->time_limit % 3600, 60) : 0 }}, time_limit_seconds: {{ $prefillQuiz->time_limit ? $prefillQuiz->time_limit % 60 : 0 }}, attempt_limit: {{ $prefillQuiz->attempt_limit ?? 'null' }}, is_active: {{ $prefillQuiz->is_active ? 'true' : 'false' }} })'
 @endif
  class="space-y-5">
 

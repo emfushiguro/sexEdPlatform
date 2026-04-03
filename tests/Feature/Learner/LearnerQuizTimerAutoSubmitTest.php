@@ -67,4 +67,41 @@ class LearnerQuizTimerAutoSubmitTest extends TestCase
             'quiz_id' => $quiz->id,
         ]);
     }
+
+    public function test_server_uses_session_started_at_to_enforce_timer(): void
+    {
+        $learner = User::factory()->create(['role' => 'learner']);
+        $learner->assignRole('learner');
+
+        $module = Module::factory()->create(['is_published' => true]);
+        $quiz = Quiz::factory()->create([
+            'module_id' => $module->id,
+            'time_limit' => 1,
+        ]);
+
+        ModuleEnrollment::create([
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+            'status' => EnrollmentStatus::Approved,
+            'enrolled_at' => now(),
+        ]);
+
+        $this->actingAs($learner)->get(route('quizzes.start', $quiz))->assertOk();
+
+        $response = $this->actingAs($learner)
+            ->withSession([
+                'quiz.started_at.' . $quiz->id => now()->subSeconds(90)->timestamp,
+            ])
+            ->post(route('quizzes.submit', $quiz), [
+                'started_at' => now()->timestamp,
+                'auto_submit' => '1',
+            ]);
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('quiz_attempts', [
+            'user_id' => $learner->id,
+            'quiz_id' => $quiz->id,
+        ]);
+    }
 }

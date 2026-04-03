@@ -121,6 +121,19 @@
         <div>
           <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ $lessonQuiz->title }}</h2>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Test your knowledge from this lesson</p>
+
+            @if(($module->creator_id ?? null) && ($module->creator_id ?? null) !== auth()->id())
+            <a
+              href="{{ route('chat.page', [
+                  'target_user_id' => $module->creator_id,
+                  'conversation_type' => 'quiz_help',
+                  'quiz_id' => $lessonQuiz->id,
+              ]) }}"
+              class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-semibold text-blue-800 hover:bg-blue-100"
+            >
+              Need Help With This Quiz?
+            </a>
+            @endif
         </div>
       </div>
 

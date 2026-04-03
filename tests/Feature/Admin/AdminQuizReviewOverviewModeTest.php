@@ -13,7 +13,7 @@ class AdminQuizReviewOverviewModeTest extends DatabaseTestCase
 {
     use DatabaseTransactions;
 
-    public function test_quiz_review_renders_all_questions_with_correct_answer_indicators(): void
+    public function test_quiz_review_displays_preview_entry_and_returns_question_payload(): void
     {
         $admin = $this->createUserWithRole('admin');
         $reviewRequest = $this->createPendingReviewRequestWithQuizQuestions();
@@ -21,10 +21,16 @@ class AdminQuizReviewOverviewModeTest extends DatabaseTestCase
         $this->actingAs($admin)
             ->get(route('admin.content-reviews.show', $reviewRequest))
             ->assertOk()
-            ->assertSee('Quiz: Module Readiness Quiz', false)
-            ->assertSee('What is 2 + 2?', false)
-            ->assertSee('Four', false)
-            ->assertSee('Correct Answer', false);
+            ->assertSee('Final Quiz: Module Readiness Quiz', false)
+            ->assertSee('Preview Quiz', false);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.content-reviews.preview', $reviewRequest, false) . '?node_type=quiz&node_id=991')
+            ->assertOk()
+            ->assertJsonPath('node.title', 'Module Readiness Quiz')
+            ->assertJsonPath('node.questions.0.attributes.question_text', 'What is 2 + 2?')
+            ->assertJsonPath('node.questions.0.options.1.option_text', 'Four')
+            ->assertJsonPath('node.questions.0.options.1.is_correct', true);
     }
 
     private function createPendingReviewRequestWithQuizQuestions(): ModuleReviewRequest

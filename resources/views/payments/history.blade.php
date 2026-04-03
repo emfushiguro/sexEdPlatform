@@ -7,7 +7,7 @@
     <div class="mb-8 relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
             <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500">Payment History</h1>
-            <p class="text-sm text-gray-500 mt-2 font-medium">Track your subscription transactions and review receipts.</p>
+            <p class="text-sm text-gray-500 mt-2 font-medium">Track your subscription and module purchase transactions and review receipts.</p>
         </div>
         <a href="{{ route('subscription.index') }}" class="inline-flex items-center px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 bg-white shadow-sm hover:shadow-md hover:border-purple-300 hover:text-purple-700 hover:-translate-y-0.5 transition-all duration-300 group">
             <svg class="w-4 h-4 mr-2 text-gray-400 group-hover:text-purple-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -22,7 +22,8 @@
                     <thead class="bg-gradient-to-r from-purple-50/80 to-pink-50/80 border-b border-purple-100">
                         <tr>
                             <th class="px-6 py-4 text-left font-bold text-purple-900 tracking-wide uppercase text-xs">Transaction ID</th>
-                            <th class="px-6 py-4 text-left font-bold text-purple-900 tracking-wide uppercase text-xs">Plan</th>
+                            <th class="px-6 py-4 text-left font-bold text-purple-900 tracking-wide uppercase text-xs">Type</th>
+                            <th class="px-6 py-4 text-left font-bold text-purple-900 tracking-wide uppercase text-xs">Item</th>
                             <th class="px-6 py-4 text-left font-bold text-purple-900 tracking-wide uppercase text-xs">Amount</th>
                             <th class="px-6 py-4 text-left font-bold text-purple-900 tracking-wide uppercase text-xs">Method</th>
                             <th class="px-6 py-4 text-left font-bold text-purple-900 tracking-wide uppercase text-xs">Status</th>
@@ -32,21 +33,30 @@
                     </thead>
                     <tbody class="divide-y divide-purple-50 bg-white/50">
                         @foreach($payments as $payment)
+                            @php
+                                $details = (array) ($payment->payment_details ?? []);
+                                $isModulePayment = $payment->isModulePurchase() || isset($details['module_id']);
+                                $itemLabel = $isModulePayment
+                                    ? ($payment->modulePurchase?->module?->title ?? ($details['module_title'] ?? 'Module Purchase'))
+                                    : ($payment->subscription?->getPlanLabel() ?? 'Subscription Plan');
+                                $checkoutUrl = $details['checkout_url'] ?? null;
+                            @endphp
                             <tr class="group hover:bg-purple-50/40 transition-colors duration-200">
                                 <td class="px-6 py-5 whitespace-nowrap text-sm font-bold text-gray-900">
                                     {{ $payment->transaction_id }}
                                 </td>
                                 <td class="px-6 py-5 whitespace-nowrap text-sm text-gray-600 font-medium">
-                                    @if($payment->subscription)
-                                        {{ $payment->subscription->getPlanLabel() }}
-                                    @else
-                                        <span class="text-gray-400 italic">N/A</span>
-                                    @endif
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border {{ $isModulePayment ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-purple-50 text-purple-700 border-purple-200' }}">
+                                        {{ $isModulePayment ? 'Module Purchase' : 'Subscription' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-5 whitespace-nowrap text-sm text-gray-700 font-medium">
+                                    {{ $itemLabel }}
                                 </td>
                                 <td class="px-6 py-5 whitespace-nowrap text-sm font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-600">
                                     ₱{{ number_format($payment->amount, 2) }}
                                 </td>
-                                <td class="px-6 py-5 whitespace-nowrap text-sm text-gray-600 font-medium whitespace-nowrap">
+                                <td class="px-6 py-5 whitespace-nowrap text-sm text-gray-600 font-medium">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100 text-gray-700 shadow-sm">
                                         <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                                         {{ ucfirst($payment->method) }}
@@ -77,10 +87,18 @@
                                             <svg class="w-4 h-4 transform group-hover/link:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                                         </a>
                                     @elseif($payment->isPending())
-                                        <a href="{{ route('payment.pending', $payment) }}" class="inline-flex items-center gap-1.5 text-amber-600 hover:text-amber-800 transition-colors group/link bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100">
-                                            <span>Status</span>
-                                            <svg class="w-4 h-4 transform group-hover/link:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        </a>
+                                        @if($isModulePayment && $checkoutUrl)
+                                            <a href="{{ $checkoutUrl }}" target="_blank" rel="noopener"
+                                               class="inline-flex items-center gap-1.5 text-amber-600 hover:text-amber-800 transition-colors group/link bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100">
+                                                <span>Resume Checkout</span>
+                                                <svg class="w-4 h-4 transform group-hover/link:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5H19.5M19.5 4.5V10.5M19.5 4.5L10.5 13.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5h15"/></svg>
+                                            </a>
+                                        @else
+                                            <a href="{{ route('payment.pending', $payment) }}" class="inline-flex items-center gap-1.5 text-amber-600 hover:text-amber-800 transition-colors group/link bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100">
+                                                <span>Status</span>
+                                                <svg class="w-4 h-4 transform group-hover/link:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            </a>
+                                        @endif
                                     @else
                                         <span class="text-gray-300">-</span>
                                     @endif

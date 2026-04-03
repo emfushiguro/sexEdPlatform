@@ -93,7 +93,8 @@ class InstructorModerationPenaltyServiceTest extends DatabaseTestCase
             $admin,
             'Please correct the incorrect scoring logic.',
             ModuleReviewRejectionReason::QuizErrors->value,
-            'Quiz contains incorrect correct-answer markers.'
+            'Quiz contains incorrect correct-answer markers.',
+            true,
         );
 
         $this->assertDatabaseHas('instructor_violation_histories', [

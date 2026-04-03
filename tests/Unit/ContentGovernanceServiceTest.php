@@ -37,7 +37,7 @@ class ContentGovernanceServiceTest extends DatabaseTestCase
         ]);
     }
 
-    public function test_reject_review_requires_feedback_and_marks_revision_needs_revision(): void
+    public function test_reject_review_requires_feedback_and_marks_review_request_rejected(): void
     {
         $instructor = $this->createUserWithRole('instructor');
         $admin = $this->createUserWithRole('admin');
@@ -58,9 +58,37 @@ class ContentGovernanceServiceTest extends DatabaseTestCase
 
         $this->assertDatabaseHas('module_review_requests', [
             'id' => $reviewRequest->id,
-            'status' => 'needs_revision',
+            'status' => 'rejected',
             'reviewed_by' => $admin->id,
             'feedback' => 'Please improve the lesson flow.',
+        ]);
+
+        $this->assertDatabaseMissing('instructor_violation_histories', [
+            'module_review_request_id' => $reviewRequest->id,
+        ]);
+    }
+
+    public function test_reject_review_with_warning_creates_violation_record(): void
+    {
+        $instructor = $this->createUserWithRole('instructor');
+        $admin = $this->createUserWithRole('admin');
+        $module = $this->createInstructorModule($instructor);
+
+        $reviewRequest = app(ContentGovernanceService::class)->submitForReview($module, $instructor);
+
+        app(ContentGovernanceService::class)->rejectReview(
+            $reviewRequest,
+            $admin,
+            'Unsafe educational guidance detected.',
+            'inaccurate_educational_information',
+            'Please correct the unsafe educational guidance.',
+            true,
+        );
+
+        $this->assertDatabaseHas('instructor_violation_histories', [
+            'user_id' => $instructor->id,
+            'module_review_request_id' => $reviewRequest->id,
+            'reason_code' => 'inaccurate_educational_information',
         ]);
     }
 

@@ -345,6 +345,18 @@
                 </svg>
             </button>
             <span class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ $lesson->title }}</span>
+            @if($module->creator_id && $module->creator_id !== auth()->id())
+                <a
+                    href="{{ route('chat.page', [
+                        'target_user_id' => $module->creator_id,
+                        'conversation_type' => 'lesson_chat',
+                        'lesson_id' => $lesson->id,
+                    ]) }}"
+                    class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800 hover:bg-blue-100"
+                >
+                    Ask Instructor About This Lesson
+                </a>
+            @endif
         </div>
         {{-- Scrollable content --}}
         <div class="flex-1 min-h-0 overflow-y-auto">

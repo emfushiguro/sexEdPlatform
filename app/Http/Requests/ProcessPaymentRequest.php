@@ -15,7 +15,7 @@ class ProcessPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'payment_method' => ['required', 'string', 'in:gcash,paymaya,card'],
+            'payment_method' => ['required', 'string', 'in:gcash,paymaya,grab_pay,card'],
             'accept_terms'   => ['required', 'accepted'],
         ];
     }

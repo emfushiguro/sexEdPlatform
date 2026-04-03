@@ -130,6 +130,12 @@
                             {{ $unreadCount > 9 ? '9+' : $unreadCount }}
                         </span>
                     @endif
+                    <span
+                        data-chat-unread-badge
+                        data-chat-unread-badge-role="learner"
+                        hidden
+                        class="absolute -bottom-1 -right-1 min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-full bg-sky-500 text-white text-[9px] font-bold"
+                    >0</span>
                 </button>
 
                 {{-- Notification dropdown --}}

@@ -4,10 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class InstructorApplication extends Model
 {
     use SoftDeletes;
+
+    public const EDUCATIONAL_BACKGROUND_LABELS = [
+        'high_school' => 'High School Graduate',
+        'college_undergrad' => 'College Undergraduate',
+        'college_graduate' => 'College Graduate',
+        'masters' => "Master's Degree",
+        'doctorate' => 'Doctorate Degree',
+        'other' => 'Other',
+    ];
 
     protected $fillable = [
         'user_id',
@@ -68,5 +78,15 @@ class InstructorApplication extends Model
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    public function getEducationalBackgroundLabelAttribute(): ?string
+    {
+        if ($this->educational_background === null || $this->educational_background === '') {
+            return null;
+        }
+
+        return self::EDUCATIONAL_BACKGROUND_LABELS[$this->educational_background]
+            ?? Str::headline(str_replace('_', ' ', (string) $this->educational_background));
     }
 }

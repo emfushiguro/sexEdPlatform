@@ -63,6 +63,8 @@ class QuizController extends Controller
         // Load quiz with questions and options
         $quiz->load(['questions.options']);
 
+        session()->put($this->quizAttemptStartedAtSessionKey($quiz->id), now()->timestamp);
+
         return view('quizzes.take', compact('quiz'));
     }
 
@@ -78,7 +80,7 @@ class QuizController extends Controller
                 ->with('error', 'You have reached the maximum number of attempts for this quiz.');
         }
 
-        $startedAt = Carbon::createFromTimestamp((int) $request->input('started_at', now()->timestamp));
+        $startedAt = $this->resolveAttemptStartedAt($request, $quiz->id);
         $expired = $quiz->time_limit !== null
             && now()->greaterThanOrEqualTo($startedAt->copy()->addSeconds((int) $quiz->time_limit));
 
@@ -360,6 +362,8 @@ class QuizController extends Controller
 
             $this->gamificationService->updateStreak($user);
 
+            $this->clearAttemptStartedAt($quiz->id);
+
             DB::commit();
 
             // Redirect: lesson quizzes return to the lesson viewer; standalone go to result page
@@ -474,5 +478,31 @@ class QuizController extends Controller
             ->count();
 
         return $attemptCount < (int) $quiz->attempt_limit;
+    }
+
+    private function resolveAttemptStartedAt(Request $request, int $quizId): Carbon
+    {
+        $sessionStartedAt = session()->get($this->quizAttemptStartedAtSessionKey($quizId));
+
+        if (is_numeric($sessionStartedAt) && (int) $sessionStartedAt > 0) {
+            return Carbon::createFromTimestamp((int) $sessionStartedAt);
+        }
+
+        $requestStartedAt = $request->input('started_at');
+        if (is_numeric($requestStartedAt) && (int) $requestStartedAt > 0) {
+            return Carbon::createFromTimestamp((int) $requestStartedAt);
+        }
+
+        return now();
+    }
+
+    private function clearAttemptStartedAt(int $quizId): void
+    {
+        session()->forget($this->quizAttemptStartedAtSessionKey($quizId));
+    }
+
+    private function quizAttemptStartedAtSessionKey(int $quizId): string
+    {
+        return 'quiz.started_at.' . $quizId;
     }
 }

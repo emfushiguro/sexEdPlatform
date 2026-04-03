@@ -3,6 +3,11 @@
 @section('title', 'Payment Pending')
 
 @section('content')
+@php
+    $paymentContext = $paymentContext ?? 'subscription';
+    $redirectUrl = $redirectUrl ?? route('subscription.index');
+    $contextLabel = $paymentContext === 'module' ? 'module access' : 'subscription';
+@endphp
 <div class="max-w-3xl mx-auto space-y-6 py-6">
     @if(session('info'))
         <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
@@ -20,7 +25,7 @@
                 <span class="text-indigo-900 font-semibold">Opening secure payment page...</span>
             </div>
             <p class="text-indigo-700 text-sm text-center">
-                You are being redirected to PayMongo. Keep this tab open so your subscription can auto-activate once payment is confirmed.
+                You are being redirected to PayMongo. Keep this tab open so your {{ $contextLabel }} can auto-activate once payment is confirmed.
             </p>
             <div class="text-center mt-4">
                 <a id="paymongo-link" href="{{ session('paymongo_checkout_url') }}"
@@ -65,7 +70,7 @@
             <div class="mt-4 rounded-xl border border-gray-200 p-4">
                 <p class="text-sm font-semibold text-gray-900 mb-2">What happens next?</p>
                 <ul class="space-y-2 text-sm text-gray-600">
-                    <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>Once payment is confirmed, your subscription activates automatically.</span></li>
+                    <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>Once payment is confirmed, your {{ $contextLabel }} activates automatically.</span></li>
                     <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>You can stay on this page while we poll for status updates.</span></li>
                     <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>Need to leave? You can return anytime from Payment History.</span></li>
                 </ul>
@@ -85,9 +90,9 @@
     @endif
 
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <a href="{{ route('subscription.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        <a href="{{ $redirectUrl }}" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <i class="fi fi-rr-arrow-small-left"></i>
-            Back to Subscription
+            {{ $paymentContext === 'module' ? 'Back to Module' : 'Back to Subscription' }}
         </a>
         <a href="{{ route('payment.history') }}" class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors">
             View Payment History

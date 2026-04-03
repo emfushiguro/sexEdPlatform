@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\ModuleReviewRejectionReason;
 use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ModuleRevision;
@@ -35,6 +36,7 @@ class AdminContentGovernanceAuditTest extends DatabaseTestCase
 
         $this->actingAs($admin)
             ->post(route('admin.content-reviews.reject', $reviewRequest), [
+                'reason_code' => ModuleReviewRejectionReason::MissingContent->value,
                 'feedback' => 'Please revise the content package.',
             ])
             ->assertRedirect();

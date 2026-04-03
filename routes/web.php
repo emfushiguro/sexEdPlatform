@@ -10,6 +10,10 @@ use App\Http\Controllers\Learner\QuizController;
 use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
 use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
+use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
+use App\Http\Controllers\Chat\ConversationController as ChatConversationController;
+use App\Http\Controllers\Chat\MessageController as ChatMessageController;
+use App\Http\Controllers\Chat\MessageRequestController as ChatMessageRequestController;
 use App\Http\Controllers\Api\LocationController;
 use Illuminate\Support\Facades\Route;
 
@@ -122,6 +126,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/modules', [LearnerModuleController::class, 'index'])->name('modules.index');
         Route::get('/modules/{module}', [LearnerModuleController::class, 'show'])->name('modules.show');
         Route::post('/modules/{module}/enroll', [LearnerModuleController::class, 'enroll'])->name('modules.enroll');
+        Route::get('/modules/{module}/purchase', [LearnerModuleController::class, 'purchaseForm'])->name('modules.purchase.form');
+        Route::post('/modules/{module}/purchase', [LearnerModuleController::class, 'purchase'])->name('modules.purchase');
+        Route::post('/modules/{module}/purchase/process', [LearnerModuleController::class, 'processPurchase'])->name('modules.purchase.process');
+        Route::get('/modules/{module}/purchase/success', [LearnerModuleController::class, 'purchaseSuccess'])->name('modules.purchase.success');
+        Route::get('/modules/{module}/purchase/failed', [LearnerModuleController::class, 'purchaseFailed'])->name('modules.purchase.failed');
+        Route::get('/instructors/{instructor}', [LearnerInstructorProfileController::class, 'show'])->name('instructors.show');
 
         Route::get('/lessons/{lesson}', [LearnerLessonController::class, 'show'])->name('lessons.show');
         Route::post('/lessons/{lesson}/complete', [LearnerLessonController::class, 'complete'])->name('lessons.complete');
@@ -185,9 +195,28 @@ Route::middleware('auth')->group(function () {
             ->name('children.enrollments.reject');
     });
 
+    Route::prefix('chat')
+        ->name('chat.')
+        ->middleware('role:admin|instructor|learner')
+        ->group(function () {
+            Route::get('/', fn () => view('chat.page'))->name('page');
+            Route::get('/conversations', [ChatConversationController::class, 'index'])->name('conversations.index');
+            Route::get('/discovery', [ChatConversationController::class, 'discover'])->name('discovery');
+            Route::post('/conversations/start', [ChatConversationController::class, 'start'])->name('conversations.start');
+            Route::get('/conversations/{conversation}/messages', [ChatMessageController::class, 'index'])->name('messages.index');
+            Route::post('/conversations/{conversation}/messages', [ChatMessageController::class, 'store'])->name('messages.store');
+            Route::get('/conversations/{conversation}/messages/since/{lastMessageId}', [ChatMessageController::class, 'since'])->name('messages.since');
+            Route::post('/conversations/{conversation}/read', [ChatConversationController::class, 'markRead'])->name('conversations.read');
+            Route::get('/requests', [ChatMessageRequestController::class, 'index'])->name('requests.index');
+            Route::post('/requests/{messageRequest}/accept', [ChatMessageRequestController::class, 'accept'])->name('requests.accept');
+            Route::post('/requests/{messageRequest}/decline', [ChatMessageRequestController::class, 'decline'])->name('requests.decline');
+        });
+
 });
 
 // Paymongo webhook (outside auth middleware)
-Route::post('/webhook/paymongo', [PaymentController::class, 'webhook'])->name('webhook.paymongo');
+Route::post('/webhook/paymongo', [PaymentController::class, 'webhook'])
+    ->middleware('paymongo.webhook')
+    ->name('webhook.paymongo');
 
 require __DIR__.'/auth.php';

@@ -7,9 +7,9 @@
 
     <title>@yield('title', 'Admin') | {{ config('app.name') }}</title>
 
-    <!-- Outfit font -->
+    <!-- Poppins font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -89,20 +89,32 @@
                @mouseleave="$store.sidebar.setHovered(false)">
 
             {{-- Logo + Branding --}}
-            <div class="flex items-center px-5 pt-6 pb-6 border-b border-gray-100"
+            <div class="flex items-center px-5 py-5 border-b border-gray-100 flex-shrink-0 overflow-hidden"
                  data-testid="admin-sidebar-branding"
                  :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : 'justify-start'">
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 min-w-0">
+                    {{-- Brand logo + text (expanded) --}}
                     <img src="/media/Logo.png"
-                         alt="{{ config('app.name') }}"
-                         class="h-10 w-10 object-contain flex-shrink-0">
+                         alt="Concious Connections"
+                         x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                         x-transition:enter="transition-opacity duration-200"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         class="h-10 w-10 object-contain"
+                         x-cloak>
 
                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                           x-cloak
-                          class="flex flex-col min-w-0">
-                        <span class="text-sm font-bold text-gray-900 leading-tight truncate">{{ config('app.name') }}</span>
-                        <span class="text-[10px] font-semibold uppercase tracking-widest text-brand-600 mt-0.5">Administrator Dashboard</span>
+                          class="text-lg font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500 whitespace-nowrap leading-tight">
+                        Concious <br>
+                        Connections
                     </span>
+
+                    {{-- Icon-only logo (collapsed) --}}
+                    <img src="/media/Logo.png"
+                         alt="Logo"
+                         x-show="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen"
+                         class="h-9 w-9 object-contain">
                 </a>
             </div>
 
@@ -120,17 +132,44 @@
                         <ul class="flex flex-col gap-1">
                             <li>
                                 <a href="{{ route('admin.dashboard') }}"
-                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
-                                          {{ request()->routeIs('admin.dashboard') ? 'bg-brand-50 text-brand-500' : 'text-gray-700 hover:bg-gray-100' }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.dashboard') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.dashboard'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
-                                    <span class="flex-shrink-0 {{ request()->routeIs('admin.dashboard') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700' }}">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.dashboard') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="whitespace-nowrap">Dashboard</span>
+                                          x-cloak class="truncate">Dashboard</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('chat.page') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('chat.*') || request()->routeIs('admin.messages.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('chat.*') || request()->routeIs('admin.messages.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('chat.*') || request()->routeIs('admin.messages.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M8 10h8m-8 4h5m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Chat</span>
+                                    <span
+                                        data-chat-unread-badge
+                                        data-chat-unread-badge-role="admin"
+                                        hidden
+                                        class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-700"
+                                    >0</span>
                                 </a>
                             </li>
                         </ul>
@@ -146,17 +185,20 @@
                         <ul class="flex flex-col gap-1">
                             <li>
                                 <a href="{{ route('admin.instructor-applications.index') }}"
-                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
-                                          {{ request()->routeIs('admin.instructor-applications.*') ? 'bg-brand-50 text-brand-500' : 'text-gray-700 hover:bg-gray-100' }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.instructor-applications.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.instructor-applications.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
-                                    <span class="flex-shrink-0 {{ request()->routeIs('admin.instructor-applications.*') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700' }}">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.instructor-applications.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H4v-1a4 4 0 014-4h5m0 5v-1a4 4 0 00-4-4H8m5 5h1a4 4 0 004-4v-1m-5-5a3 3 0 11-6 0 3 3 0 016 0z"/>
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="whitespace-nowrap">Instructor Applications</span>
+                                          x-cloak class="truncate">Instructor Applications</span>
                                     @if(($adminModerationCounts['pending_instructor_applications'] ?? 0) > 0)
                                         <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                                               x-cloak
@@ -170,17 +212,20 @@
 
                             <li>
                                 <a href="{{ route('admin.content-reviews.index') }}"
-                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
-                                          {{ request()->routeIs('admin.content-reviews.*') ? 'bg-brand-50 text-brand-500' : 'text-gray-700 hover:bg-gray-100' }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.content-reviews.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.content-reviews.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
-                                    <span class="flex-shrink-0 {{ request()->routeIs('admin.content-reviews.*') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700' }}">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.content-reviews.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="whitespace-nowrap">Module Published Review</span>
+                                          x-cloak class="truncate">Module Published Review</span>
                                     @if(($adminModerationCounts['pending_module_reviews'] ?? 0) > 0)
                                         <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                                               x-cloak
@@ -205,51 +250,100 @@
                             {{-- Subscribers --}}
                             <li>
                                 <a href="{{ route('admin.subscribers.index') }}"
-                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
-                                          {{ request()->routeIs('admin.subscribers.*') ? 'bg-brand-50 text-brand-500' : 'text-gray-700 hover:bg-gray-100' }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.subscribers.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.subscribers.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
-                                    <span class="flex-shrink-0 {{ request()->routeIs('admin.subscribers.*') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700' }}">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.subscribers.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="whitespace-nowrap">Subscribers</span>
+                                          x-cloak class="truncate">Subscribers</span>
                                 </a>
                             </li>
 
                             {{-- Subscription Plans --}}
                             <li>
                                 <a href="{{ route('admin.subscription-plans.index') }}"
-                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
-                                          {{ request()->routeIs('admin.subscription-plans.*') ? 'bg-brand-50 text-brand-500' : 'text-gray-700 hover:bg-gray-100' }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.subscription-plans.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.subscription-plans.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
-                                    <span class="flex-shrink-0 {{ request()->routeIs('admin.subscription-plans.*') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700' }}">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.subscription-plans.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="whitespace-nowrap">Plans</span>
+                                          x-cloak class="truncate">Plans</span>
                                 </a>
                             </li>
 
                             {{-- Payments --}}
                             <li>
                                 <a href="{{ route('admin.payments.index') }}"
-                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group
-                                          {{ request()->routeIs('admin.payments.*') ? 'bg-brand-50 text-brand-500' : 'text-gray-700 hover:bg-gray-100' }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.payments.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.payments.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
-                                    <span class="flex-shrink-0 {{ request()->routeIs('admin.payments.*') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-700' }}">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.payments.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="whitespace-nowrap">Payments</span>
+                                          x-cloak class="truncate">Payments</span>
+                                </a>
+                            </li>
+
+                            {{-- Module Revenue --}}
+                            <li>
+                                <a href="{{ route('admin.monetization.module-revenue.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.monetization.module-revenue.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.monetization.module-revenue.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.monetization.module-revenue.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M11 3v18m-5-5h10M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Module Revenue</span>
+                                </a>
+                            </li>
+
+                            {{-- Commission Settings --}}
+                            <li>
+                                <a href="{{ route('admin.monetization.commission-settings.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.monetization.commission-settings.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.monetization.commission-settings.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.monetization.commission-settings.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 9v1m8-5a8 8 0 11-16 0 8 8 0 0116 0z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Commission Settings</span>
                                 </a>
                             </li>
 

@@ -23,11 +23,18 @@ class AdminContentReviewWorkspaceUiTest extends DatabaseTestCase
             ->get(route('admin.content-reviews.show', $reviewRequest))
             ->assertOk()
             ->assertSee('Module Overview', false)
+            ->assertSee('Module Structure Summary', false)
             ->assertSee('Instructor Credibility', false)
             ->assertSee('Content Structure', false)
+            ->assertSee('Learner Module Progression', false)
             ->assertSee('data-testid="review-tree-lesson-node"', false)
+            ->assertSee('Preview Topic', false)
+            ->assertSee('Prerequisite: No', false)
+            ->assertSee('View Instructor Profile', false)
+            ->assertSee('Instructor Evaluation', false)
             ->assertSee('name="reason_code"', false)
-            ->assertSee('name="guidance_note"', false);
+            ->assertSee('name="issue_warning"', false)
+            ->assertSee('name="moderation_notes"', false);
     }
 
     private function createPendingReviewRequest(): ModuleReviewRequest

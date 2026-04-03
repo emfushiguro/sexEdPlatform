@@ -60,6 +60,14 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
     Route::get('modules/{module}/enrollments', [Instructor\EnrollmentController::class, 'moduleEnrollments'])
         ->name('modules.enrollments');
 
+    // Earnings
+    Route::get('earnings', [Instructor\ModuleEarningsController::class, 'index'])
+        ->name('earnings.index');
+    Route::get('earnings/{moduleSaleLedger}', [Instructor\ModuleEarningsController::class, 'show'])
+        ->name('earnings.show');
+    Route::delete('earnings/{moduleSaleLedger}/visibility', [Instructor\ModuleEarningsController::class, 'destroyVisibility'])
+        ->name('earnings.visibility.destroy');
+
     // Lesson Management
     Route::patch('lessons/reorder', [Instructor\LessonController::class, 'reorder'])
         ->name('lessons.reorder');

@@ -6,14 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Instructor\StoreModuleRequest;
 use App\Http\Requests\Instructor\UpdateModuleRequest;
 use App\Models\Module;
+use App\Models\Quiz;
+use App\Models\User;
+use App\Services\Monetization\CommissionPolicyResolver;
 use App\Support\InstructorRestrictionGate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
 
 class ModuleController extends Controller
 {
     public function __construct(
         private readonly InstructorRestrictionGate $instructorRestrictionGate,
+        private readonly CommissionPolicyResolver $commissionPolicyResolver,
     ) {
     }
 
@@ -42,6 +47,34 @@ class ModuleController extends Controller
             ->latest()
             ->paginate(12);
 
+        // Include legacy lesson-attached quizzes that were stored with a null module_id.
+        $moduleIds = $modules->getCollection()->pluck('id');
+
+        if ($moduleIds->isNotEmpty()) {
+            $directQuizCounts = Quiz::query()
+                ->whereIn('module_id', $moduleIds)
+                ->selectRaw('module_id, COUNT(*) as total')
+                ->groupBy('module_id')
+                ->pluck('total', 'module_id');
+
+            $lessonQuizCounts = Quiz::query()
+                ->join('lessons', 'lessons.id', '=', 'quizzes.lesson_id')
+                ->whereNull('quizzes.module_id')
+                ->whereIn('lessons.module_id', $moduleIds)
+                ->selectRaw('lessons.module_id as module_id, COUNT(*) as total')
+                ->groupBy('lessons.module_id')
+                ->pluck('total', 'module_id');
+
+            $modules->setCollection(
+                $modules->getCollection()->map(function (Module $module) use ($directQuizCounts, $lessonQuizCounts) {
+                    $module->quizzes_count = (int) ($directQuizCounts[$module->id] ?? 0)
+                        + (int) ($lessonQuizCounts[$module->id] ?? 0);
+
+                    return $module;
+                })
+            );
+        }
+
         $pendingCount = \App\Models\ModuleEnrollment::where('status', 'pending')
             ->whereHas('module', fn ($q) => $q->where('created_by', Auth::id()))
             ->count();
@@ -52,6 +85,8 @@ class ModuleController extends Controller
             ? $this->instructorRestrictionGate->restrictionMessage($user)
             : null;
 
+        $effectiveCommissionPolicy = $this->resolveEffectiveCommissionPolicyPayload($user);
+
         return view('instructor.modules.index', compact(
             'modules',
             'pendingCount',
@@ -59,6 +94,7 @@ class ModuleController extends Controller
             'isRestricted',
             'restrictionProfile',
             'restrictionMessage',
+            'effectiveCommissionPolicy',
         ));
     }
 
@@ -74,6 +110,7 @@ class ModuleController extends Controller
             'isRestricted' => false,
             'restrictionProfile' => null,
             'restrictionMessage' => null,
+            'effectiveCommissionPolicy' => $this->resolveEffectiveCommissionPolicyPayload($user),
         ]);
     }
 
@@ -157,7 +194,27 @@ class ModuleController extends Controller
             'isRestricted' => $restrictionProfile !== null,
             'restrictionProfile' => $restrictionProfile,
             'restrictionMessage' => $restrictionProfile ? $this->instructorRestrictionGate->restrictionMessage($user) : null,
+            'effectiveCommissionPolicy' => $this->resolveEffectiveCommissionPolicyPayload($user),
         ]);
+    }
+
+    private function resolveEffectiveCommissionPolicyPayload(?User $user): ?array
+    {
+        if (!$user) {
+            return null;
+        }
+
+        try {
+            $policy = $this->commissionPolicyResolver->resolveForInstructor((int) $user->id);
+
+            return [
+                'commission_percent' => (float) $policy->commission_percent,
+                'tax_basis' => (string) $policy->tax_basis,
+                'refund_policy' => (string) $policy->refund_policy,
+            ];
+        } catch (RuntimeException) {
+            return null;
+        }
     }
 
     public function update(UpdateModuleRequest $request, Module $module)

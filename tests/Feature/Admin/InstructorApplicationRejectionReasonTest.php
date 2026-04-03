@@ -24,11 +24,12 @@ class InstructorApplicationRejectionReasonTest extends TestCase
         $application = $this->createPendingApplication();
 
         $this->actingAs($admin)
-            ->from(route('admin.instructor-applications.show', $application))
+            ->from(route('admin.instructor-applications.index'))
             ->post(route('admin.instructor-applications.reject', $application), [
                 'rejection_reason_code' => '',
+                'review_application_id' => $application->id,
             ])
-            ->assertRedirect(route('admin.instructor-applications.show', $application))
+            ->assertRedirect(route('admin.instructor-applications.index'))
             ->assertSessionHasErrors(['rejection_reason_code']);
     }
 
@@ -38,12 +39,13 @@ class InstructorApplicationRejectionReasonTest extends TestCase
         $application = $this->createPendingApplication();
 
         $this->actingAs($admin)
-            ->from(route('admin.instructor-applications.show', $application))
+            ->from(route('admin.instructor-applications.index'))
             ->post(route('admin.instructor-applications.reject', $application), [
                 'rejection_reason_code' => 'other',
                 'rejection_reason_note' => '',
+                'review_application_id' => $application->id,
             ])
-            ->assertRedirect(route('admin.instructor-applications.show', $application))
+            ->assertRedirect(route('admin.instructor-applications.index'))
             ->assertSessionHasErrors(['rejection_reason_note']);
     }
 

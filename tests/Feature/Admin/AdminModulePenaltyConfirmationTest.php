@@ -78,7 +78,7 @@ class AdminModulePenaltyConfirmationTest extends DatabaseTestCase
         $reviewRequest = ModuleReviewRequest::query()->create([
             'module_id' => $module->id,
             'module_revision_id' => $revision->id,
-            'status' => 'needs_revision',
+            'status' => 'rejected',
             'submitted_by' => $instructor->id,
             'submitted_at' => now(),
         ]);

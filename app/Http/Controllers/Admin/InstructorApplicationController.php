@@ -26,8 +26,21 @@ class InstructorApplicationController extends Controller
 
         $applications = InstructorApplication::query()
             ->with([
-                'user.learnerProfile.city',
-                'user.learnerProfile.barangayLocation',
+                'approvedBy',
+                'user' => function ($userQuery): void {
+                    $userQuery->withCount([
+                        'moduleEnrollments as enrolled_modules_count',
+                        'moduleEnrollments as finished_modules_count' => fn ($enrollmentQuery) => $enrollmentQuery->whereNotNull('completed_at'),
+                        'certificates as certificates_earned_count',
+                    ])->with([
+                        'learnerProfile.city',
+                        'learnerProfile.barangayLocation',
+                        'moduleEnrollments' => fn ($enrollmentQuery) => $enrollmentQuery
+                            ->whereNotNull('completed_at')
+                            ->with('module:id,title')
+                            ->latest('completed_at'),
+                    ]);
+                },
             ])
             ->when($status, fn ($query) => $query->where('status', $status))
             ->when($search !== '', function ($query) use ($search) {
@@ -48,9 +61,15 @@ class InstructorApplicationController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $focusApplicationId = $request->integer('focus');
+        if ($focusApplicationId <= 0) {
+            $focusApplicationId = null;
+        }
+
         return view('admin.instructor-applications.index', [
             'status' => $status,
             'search' => $search,
+            'focusApplicationId' => $focusApplicationId,
             'applications' => $applications,
             'pendingCount' => InstructorApplication::pending()->count(),
             'approvedCount' => InstructorApplication::approved()->count(),
@@ -58,22 +77,11 @@ class InstructorApplicationController extends Controller
         ]);
     }
 
-    public function show(InstructorApplication $application): View
+    public function show(InstructorApplication $application): RedirectResponse
     {
-        $application->load(['user.learnerProfile', 'user.gamification', 'approvedBy']);
-        $user = $application->user;
-
-        $snapshot = [
-            'enrolled_modules_count' => $user->moduleEnrollments()->count(),
-            'certificates_earned' => $user->certificates()->count(),
-            'gamification_level' => $user->gamification?->level,
-            'gamification_score' => $user->gamification?->score,
-            'subscription_status' => $user->subscription?->status ?? 'none',
-        ];
-
-        return view('admin.instructor-applications.show', [
-            'application' => $application,
-            'snapshot' => $snapshot,
+        return redirect()->route('admin.instructor-applications.index', [
+            'status' => $application->status,
+            'focus' => $application->id,
         ]);
     }
 

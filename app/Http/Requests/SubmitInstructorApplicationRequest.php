@@ -15,10 +15,6 @@ class SubmitInstructorApplicationRequest extends FormRequest
             return false;
         }
 
-        if ($user->children()->exists()) {
-            return false;
-        }
-
         $hasPending = $user->instructorApplications()
             ->where('status', 'pending')
             ->exists();

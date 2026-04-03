@@ -3,19 +3,27 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ProcessModulePaymentRequest;
 use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
+use App\Models\ModulePurchase;
 use App\Models\ParentChildAccount;
 use App\Models\QuizAttempt;
 use App\Models\LessonTopicProgress;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
+use App\Services\ModulePurchaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ModuleController extends Controller
 {
+    public function __construct(
+        private readonly ModulePurchaseService $modulePurchaseService,
+    ) {
+    }
+
     /**
      * Display all published modules filtered by learner's age
      */
@@ -46,7 +54,16 @@ class ModuleController extends Controller
                     $query->orWhereIn('id', $enrolledModuleIds);
                 }
             })
-            ->withCount('lessons')
+            ->withCount([
+                'lessons',
+                'enrollments as approved_enrollments_count' => fn ($query) => $query->where('status', EnrollmentStatus::Approved),
+            ])
+            ->with([
+                'creator.instructorProfile',
+                'purchases' => fn ($query) => $query
+                    ->where('user_id', $user->id)
+                    ->where('status', ModulePurchase::STATUS_COMPLETED),
+            ])
             ->with(['lessons' => function ($query) {
                 $query->where('is_published', true)->orderBy('order');
             }])
@@ -112,6 +129,7 @@ class ModuleController extends Controller
 
         $module->loadMissing('publishedRevision');
         $module->applyPublishedSnapshot();
+        $module->loadMissing('creator.instructorProfile');
 
         // Security: Check age-based access for non-enrolled learners.
         $learnerAge = $learnerProfile->getAge();
@@ -133,6 +151,31 @@ class ModuleController extends Controller
         // Check enrollment status
         $isEnrolled = $isApprovedEnrollment;
         $enrollmentStatus = $enrollment?->status?->value;
+
+        $isPaidModule = $module->isPaidAccess();
+        $modulePurchase = $this->modulePurchaseService->getCompletedPurchase($user, $module);
+        $hasPurchased = $modulePurchase !== null;
+
+        $approvedEnrollmentsCount = ModuleEnrollment::query()
+            ->approvedForModule($module->id)
+            ->count();
+
+        $isAtCapacity = $module->enrollment_limit !== null
+            && $approvedEnrollmentsCount >= (int) $module->enrollment_limit;
+
+        $needsParentApproval = ParentChildAccount::query()
+            ->where('child_user_id', $user->id)
+            ->where('can_approve_content', true)
+            ->exists();
+
+        $isParentApprovedForPurchase = !$needsParentApproval
+            || ($enrollment && in_array($enrollment->status, [EnrollmentStatus::Pending, EnrollmentStatus::Approved], true));
+
+        $canPurchase = $isPaidModule
+            && !$hasPurchased
+            && !$isAtCapacity
+            && $isParentApprovedForPurchase
+            && (!$enrollment || $enrollment->status !== EnrollmentStatus::Rejected);
 
         // Calculate progress
         $totalLessons = $lessons->count();
@@ -218,6 +261,14 @@ class ModuleController extends Controller
             'lessons', 
             'isEnrolled', 
             'enrollmentStatus',
+            'isPaidModule',
+            'modulePurchase',
+            'hasPurchased',
+            'approvedEnrollmentsCount',
+            'isAtCapacity',
+            'needsParentApproval',
+            'isParentApprovedForPurchase',
+            'canPurchase',
             'progress', 
             'completedLessonIds',
             'moduleQuizzes',
@@ -236,9 +287,17 @@ class ModuleController extends Controller
     {
         $user = Auth::user();
 
+        $module->loadMissing('publishedRevision');
+        $module->applyPublishedSnapshot();
+
         if (!$user->learnerProfile) {
             return redirect()->route('profile.complete')
                 ->with('error', 'Please complete your profile to access modules.');
+        }
+
+        if ($module->isPaidAccess() && !$this->modulePurchaseService->hasCompletedPurchase($user, $module)) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', 'This module requires payment before enrollment.');
         }
 
         // Security checks
@@ -328,6 +387,265 @@ class ModuleController extends Controller
 
         return redirect()->route('learner.modules.show', $module)
             ->with('success', 'Successfully enrolled in module!');
+    }
+
+    public function purchase(Module $module)
+    {
+        $user = Auth::user();
+
+        if (!$user->learnerProfile) {
+            return redirect()->route('profile.complete')
+                ->with('error', 'Please complete your profile to access modules.');
+        }
+
+        if (!$module->isLearnerVisible()) {
+            abort(404);
+        }
+
+        $module->loadMissing('publishedRevision');
+        $module->applyPublishedSnapshot();
+
+        if (!$module->isPaidAccess()) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', 'This module does not require payment.');
+        }
+
+        $learnerAge = $user->learnerProfile->getAge();
+        if (!$this->canAccessModule($module, $learnerAge)) {
+            return redirect()->route('learner.modules.index')
+                ->with('error', 'This module is not available for your age group.');
+        }
+
+        if ($this->modulePurchaseService->hasCompletedPurchase($user, $module)) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', 'You have already purchased this module.');
+        }
+
+        $existingEnrollment = $user->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->first();
+
+        $needsParentApproval = ParentChildAccount::query()
+            ->where('child_user_id', $user->id)
+            ->where('can_approve_content', true)
+            ->exists();
+
+        if ($needsParentApproval) {
+            if ($existingEnrollment?->status === EnrollmentStatus::PendingParentApproval) {
+                return redirect()->route('learner.modules.show', $module)
+                    ->with('info', 'Waiting for parent approval before payment.');
+            }
+
+            if ($existingEnrollment?->status === EnrollmentStatus::Rejected) {
+                return redirect()->route('learner.modules.show', $module)
+                    ->with('error', 'Parent approval was not granted for this module.');
+            }
+
+            if (!$existingEnrollment) {
+                ModuleEnrollment::query()->create([
+                    'user_id' => $user->id,
+                    'module_id' => $module->id,
+                    'status' => EnrollmentStatus::PendingParentApproval,
+                    'enrolled_at' => null,
+                ]);
+
+                return redirect()->route('learner.modules.show', $module)
+                    ->with('info', 'Request sent for parent approval. Complete payment after approval.');
+            }
+        }
+
+        $isAtCapacity = $module->enrollment_limit !== null
+            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= (int) $module->enrollment_limit;
+
+        if ($isAtCapacity) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'Enrollment Closed: this module is already full.');
+        }
+
+        return redirect()->route('learner.modules.purchase.form', $module);
+    }
+
+    public function purchaseForm(Module $module)
+    {
+        $user = Auth::user();
+
+        if (!$user->learnerProfile) {
+            return redirect()->route('profile.complete')
+                ->with('error', 'Please complete your profile to access modules.');
+        }
+
+        if (!$module->isLearnerVisible()) {
+            abort(404);
+        }
+
+        $module->loadMissing('publishedRevision');
+        $module->applyPublishedSnapshot();
+
+        if (!$module->isPaidAccess()) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', 'This module does not require payment.');
+        }
+
+        $learnerAge = $user->learnerProfile->getAge();
+        if (!$this->canAccessModule($module, $learnerAge)) {
+            return redirect()->route('learner.modules.index')
+                ->with('error', 'This module is not available for your age group.');
+        }
+
+        if ($this->modulePurchaseService->hasCompletedPurchase($user, $module)) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', 'You have already purchased this module.');
+        }
+
+        $existingEnrollment = $user->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->first();
+
+        $needsParentApproval = ParentChildAccount::query()
+            ->where('child_user_id', $user->id)
+            ->where('can_approve_content', true)
+            ->exists();
+
+        $isParentApprovedForPurchase = !$needsParentApproval
+            || ($existingEnrollment && in_array($existingEnrollment->status, [EnrollmentStatus::Pending, EnrollmentStatus::Approved], true));
+
+        if ($needsParentApproval && !$isParentApprovedForPurchase) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', 'Parent approval is required before payment.');
+        }
+
+        $isAtCapacity = $module->enrollment_limit !== null
+            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= (int) $module->enrollment_limit;
+
+        if ($isAtCapacity) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'Enrollment Closed: this module is already full.');
+        }
+
+        $secretKey = (string) config('paymongo.secret_key', '');
+        $paymongoMode = str_starts_with($secretKey, 'sk_test_')
+            ? 'sandbox'
+            : (str_starts_with($secretKey, 'sk_live_') ? 'live' : 'unknown');
+
+        $amount = (float) ($module->price_amount ?? 0);
+
+        return view('payments.module-create', [
+            'module' => $module,
+            'amount' => $amount,
+            'paymongoMode' => $paymongoMode,
+        ]);
+    }
+
+    public function processPurchase(ProcessModulePaymentRequest $request, Module $module)
+    {
+        $user = Auth::user();
+
+        if (!$user->learnerProfile) {
+            return redirect()->route('profile.complete')
+                ->with('error', 'Please complete your profile to access modules.');
+        }
+
+        if (!$module->isLearnerVisible()) {
+            abort(404);
+        }
+
+        $module->loadMissing('publishedRevision');
+        $module->applyPublishedSnapshot();
+
+        if (!$module->isPaidAccess()) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', 'This module does not require payment.');
+        }
+
+        $learnerAge = $user->learnerProfile->getAge();
+        if (!$this->canAccessModule($module, $learnerAge)) {
+            return redirect()->route('learner.modules.index')
+                ->with('error', 'This module is not available for your age group.');
+        }
+
+        if ($this->modulePurchaseService->hasCompletedPurchase($user, $module)) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', 'You have already purchased this module.');
+        }
+
+        $existingEnrollment = $user->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->first();
+
+        $needsParentApproval = ParentChildAccount::query()
+            ->where('child_user_id', $user->id)
+            ->where('can_approve_content', true)
+            ->exists();
+
+        $isParentApprovedForPurchase = !$needsParentApproval
+            || ($existingEnrollment && in_array($existingEnrollment->status, [EnrollmentStatus::Pending, EnrollmentStatus::Approved], true));
+
+        if ($needsParentApproval && !$isParentApprovedForPurchase) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', 'Parent approval is required before payment.');
+        }
+
+        $isAtCapacity = $module->enrollment_limit !== null
+            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= (int) $module->enrollment_limit;
+
+        if ($isAtCapacity) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'Enrollment Closed: this module is already full.');
+        }
+
+        $checkout = $this->modulePurchaseService->createCheckout(
+            $user,
+            $module,
+            (string) $request->string('payment_method'),
+            [
+                'name' => (string) $request->string('billing_name'),
+                'email' => (string) $request->string('billing_email'),
+                'phone' => (string) $request->string('billing_phone'),
+            ]
+        );
+
+        if (($checkout['status'] ?? null) !== 'checkout_created') {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('info', $checkout['message'] ?? 'Unable to start checkout right now.');
+        }
+
+        $paymentId = (int) ($checkout['payment_id'] ?? 0);
+        if ($paymentId > 0) {
+            return redirect()->route('payment.pending', ['payment' => $paymentId])
+                ->with('paymongo_checkout_url', (string) ($checkout['checkout_url'] ?? ''));
+        }
+
+        return redirect()->away((string) ($checkout['checkout_url'] ?? route('learner.modules.show', $module)));
+    }
+
+    public function purchaseSuccess(Module $module)
+    {
+        $user = Auth::user();
+
+        $payment = $user->payments()
+            ->where('status', \App\Enums\PaymentStatus::Pending)
+            ->where('payment_details->payment_scope', 'module_purchase')
+            ->where('payment_details->module_id', $module->id)
+            ->latest('id')
+            ->first();
+
+        if (!$payment) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('success', 'Payment completed. Access will unlock once confirmation is received.');
+        }
+
+        $completed = $this->modulePurchaseService->verifyAndCompletePendingPayment($payment);
+
+        return redirect()->route('learner.modules.show', $module)
+            ->with($completed ? 'success' : 'info', $completed
+                ? 'Payment confirmed. You now have access to this module.'
+                : 'Payment is still being confirmed. Please refresh in a moment.');
+    }
+
+    public function purchaseFailed(Module $module)
+    {
+        return redirect()->route('learner.modules.show', $module)
+            ->with('error', 'Payment was cancelled or failed. Please try again.');
     }
 
     /**

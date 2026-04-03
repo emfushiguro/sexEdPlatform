@@ -56,6 +56,12 @@ class InvoiceService
     private function getSubscriptionDescription(Payment $payment): string
     {
         $subscription = $payment->subscription;
+        if (!$subscription) {
+            $moduleTitle = (string) data_get($payment->payment_details, 'module_title', 'Learner Module');
+
+            return "Module Purchase - {$moduleTitle}";
+        }
+
         $plan = ucfirst($subscription->plan);
         
         return "{$plan} Subscription - {$subscription->start_date->format('M d, Y')} to {$subscription->end_date->format('M d, Y')}";

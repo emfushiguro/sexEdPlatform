@@ -28,11 +28,21 @@ class AdminContentReviewWorkspaceDataTest extends DatabaseTestCase
                     $workspace['module'],
                     $workspace['hierarchy'],
                     $workspace['instructor'],
-                    $workspace['moderation']
+                    $workspace['moderation'],
+                    $workspace['instructor_preview']
                 )
                 && isset($workspace['hierarchy']['lessons'])
+                && isset($workspace['hierarchy']['final_quizzes'])
+                && isset($workspace['hierarchy']['stepper'])
+                && isset($workspace['hierarchy']['lesson_topic_count'])
                 && isset($workspace['moderation']['warning_count'])
-                && isset($workspace['moderation']['recent_violations']);
+                && isset($workspace['moderation']['recent_violations'])
+                && isset($workspace['module']['status_label'])
+                && array_key_exists('thumbnail_url', $workspace['module'])
+                && isset($workspace['instructor_preview']['profile'])
+                && isset($workspace['instructor_preview']['indicators'])
+                && isset($workspace['instructor_preview']['moderation'])
+                && isset($workspace['instructor_preview']['module_portfolio']);
             });
     }
 
@@ -55,6 +65,11 @@ class AdminContentReviewWorkspaceDataTest extends DatabaseTestCase
                     'id' => $module->id,
                     'title' => $module->title,
                     'description' => $module->description,
+                    'access_type' => 'premium',
+                    'enrollment_mode' => 'manual_approval',
+                    'enrollment_limit' => 20,
+                    'price_amount' => '499.00',
+                    'price_currency' => 'PHP',
                 ],
                 'lessons' => [
                     [
@@ -78,12 +93,24 @@ class AdminContentReviewWorkspaceDataTest extends DatabaseTestCase
                     [
                         'attributes' => [
                             'id' => 301,
-                            'lesson_id' => null,
+                            'lesson_id' => 101,
                             'title' => 'Quiz One',
                             'description' => 'Quiz description',
                             'passing_score' => 75,
                             'time_limit' => 10,
                             'attempt_limit' => 3,
+                        ],
+                        'questions' => [],
+                    ],
+                    [
+                        'attributes' => [
+                            'id' => 302,
+                            'lesson_id' => null,
+                            'title' => 'Final Quiz',
+                            'description' => 'Final quiz description',
+                            'passing_score' => 80,
+                            'time_limit' => 12,
+                            'attempt_limit' => 2,
                         ],
                         'questions' => [],
                     ],

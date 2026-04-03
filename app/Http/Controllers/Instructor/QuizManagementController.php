@@ -53,6 +53,11 @@ class QuizManagementController extends Controller
         $validated['module_id'] = $validated['module_id'] ?? null;
         $validated['lesson_id'] = $validated['lesson_id'] ?? null;
 
+        if ($validated['lesson_id']) {
+            $lesson = Lesson::query()->select('id', 'module_id')->find($validated['lesson_id']);
+            $validated['module_id'] = $lesson?->module_id;
+        }
+
         // Ensure at least one of module_id or lesson_id is provided
         if (!$validated['module_id'] && !$validated['lesson_id']) {
             return back()->withErrors(['module_id' => 'Please select either a module or a lesson.'])->withInput();
@@ -95,6 +100,11 @@ class QuizManagementController extends Controller
         // Set null defaults for optional fields
         $validated['module_id'] = $validated['module_id'] ?? null;
         $validated['lesson_id'] = $validated['lesson_id'] ?? null;
+
+        if ($validated['lesson_id']) {
+            $lesson = Lesson::query()->select('id', 'module_id')->find($validated['lesson_id']);
+            $validated['module_id'] = $lesson?->module_id;
+        }
 
         if (!$validated['module_id'] && !$validated['lesson_id']) {
             return back()->withErrors(['module_id' => 'Please select either a module or a lesson.'])->withInput();

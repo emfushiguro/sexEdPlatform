@@ -138,6 +138,22 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Payment::class);
     }
 
+    public function instructorSaleLedgers()
+    {
+        return $this->hasMany(ModuleSaleLedger::class, 'instructor_id');
+    }
+
+    public function learnerSaleLedgers()
+    {
+        return $this->hasMany(ModuleSaleLedger::class, 'learner_id');
+    }
+
+    public function instructorOverridePolicies()
+    {
+        return $this->hasMany(CommissionPolicy::class, 'scope_id')
+            ->where('scope_type', CommissionPolicy::SCOPE_INSTRUCTOR);
+    }
+
     public function refunds()
     {
         return $this->hasMany(Refund::class);
@@ -178,6 +194,41 @@ class User extends Authenticatable implements MustVerifyEmail
     public function moduleEnrollments()
     {
         return $this->hasMany(ModuleEnrollment::class);
+    }
+
+    public function modulePurchases()
+    {
+        return $this->hasMany(ModulePurchase::class);
+    }
+
+    public function chatConversationsAsParticipantOne()
+    {
+        return $this->hasMany(Conversation::class, 'participant_one_id');
+    }
+
+    public function chatConversationsAsParticipantTwo()
+    {
+        return $this->hasMany(Conversation::class, 'participant_two_id');
+    }
+
+    public function chatMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function chatMessageRequestsCreated()
+    {
+        return $this->hasMany(MessageRequest::class, 'requester_id');
+    }
+
+    public function chatMessageRequestsAsInstructor()
+    {
+        return $this->hasMany(MessageRequest::class, 'instructor_id');
+    }
+
+    public function chatConversationReads()
+    {
+        return $this->hasMany(ConversationRead::class);
     }
 
     public function authoredModules()

@@ -43,6 +43,11 @@ class ParentController extends Controller
 
         $newStatus = $enrollment->module->enrollment_mode === 'manual' ? 'pending' : 'approved';
 
+        if ($enrollment->module->access_type === 'paid') {
+            // Paid modules require checkout completion before full access.
+            $newStatus = EnrollmentStatus::Pending->value;
+        }
+
         $enrollment->update([
             'status'      => $newStatus,
             'enrolled_at' => $newStatus === 'approved' ? now() : null,

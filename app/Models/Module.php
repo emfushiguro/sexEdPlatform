@@ -85,6 +85,21 @@ class Module extends Model
         return $this->hasMany(ModuleEnrollment::class);
     }
 
+    public function purchases()
+    {
+        return $this->hasMany(ModulePurchase::class);
+    }
+
+    public function moduleSaleLedgers(): HasMany
+    {
+        return $this->hasMany(ModuleSaleLedger::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function userProgress()
     {
         return $this->hasMany(UserProgress::class);
@@ -248,6 +263,25 @@ class Module extends Model
         }
 
         return $this;
+    }
+
+    public function isPaidAccess(): bool
+    {
+        return $this->access_type === 'paid' && (float) ($this->price_amount ?? 0) > 0;
+    }
+
+    public function getDisplayPriceAttribute(): string
+    {
+        if (!$this->isPaidAccess()) {
+            return 'Free';
+        }
+
+        $amount = (float) ($this->price_amount ?? 0);
+        $formatted = fmod($amount, 1.0) === 0.0
+            ? number_format($amount, 0)
+            : number_format($amount, 2);
+
+        return '₱' . $formatted;
     }
 
     /**

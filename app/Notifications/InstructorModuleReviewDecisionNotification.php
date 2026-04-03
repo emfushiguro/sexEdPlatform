@@ -26,6 +26,8 @@ class InstructorModuleReviewDecisionNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
+        $isApproved = $this->status === 'approved';
+
         return [
             'type' => 'module_review_decision',
             'status' => $this->status,
@@ -36,10 +38,10 @@ class InstructorModuleReviewDecisionNotification extends Notification
             'penalty_summary' => $this->penaltySummary,
             'review_request_id' => $this->reviewRequest->id,
             'url' => route('instructor.modules.show', $this->reviewRequest->module_id),
-            'title' => $this->status === 'approved' ? 'Module Approved' : 'Module Needs Revision',
-            'message' => $this->status === 'approved'
+            'title' => $isApproved ? 'Module Approved' : 'Module Rejected',
+            'message' => $isApproved
                 ? 'Your module has been approved and published for learners.'
-                : 'Your module requires revision. Review the guidance and resubmit.',
+                : 'Your module has been rejected. Review the guidance notes and resubmit when ready.',
         ];
     }
 }

@@ -15,6 +15,7 @@ class AdminInstructorApplicationsUiTest extends TestCase
     {
         $this->withoutVite();
 
+        /** @var User $admin */
         $admin = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
@@ -27,19 +28,21 @@ class AdminInstructorApplicationsUiTest extends TestCase
             ->get(route('admin.instructor-applications.index'))
             ->assertOk()
             ->assertSee($application->user->name, false)
-            ->assertSee('Username', false)
+            ->assertSee('data-testid="applications-col-applicant"', false)
             ->assertSee('Location', false)
             ->assertSee('Educational Background', false)
-            ->assertSee('Professional Background', false)
             ->assertSee('Date Applied', false)
             ->assertSee('Status', false)
+            ->assertDontSee('data-testid="applications-col-username"', false)
+            ->assertDontSee('data-testid="applications-col-professional-background"', false)
             ->assertSee('data-testid="admin-table-filter-bar"', false);
     }
 
-    public function test_instructor_application_show_displays_structured_reject_inputs(): void
+    public function test_instructor_application_review_modal_renders_structured_sections_and_reject_inputs(): void
     {
         $this->withoutVite();
 
+        /** @var User $admin */
         $admin = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
@@ -49,11 +52,17 @@ class AdminInstructorApplicationsUiTest extends TestCase
         $application = $this->createPendingApplication();
 
         $this->actingAs($admin)
-            ->get(route('admin.instructor-applications.show', $application))
+            ->get(route('admin.instructor-applications.index', ['focus' => $application->id]))
             ->assertOk()
+            ->assertSee('data-testid="review-application-button-' . $application->id . '"', false)
+            ->assertSee('data-testid="application-review-modal-' . $application->id . '"', false)
+            ->assertSee('Section 1 - Application Information', false)
+            ->assertSee('Section 2 - Submitted Documents', false)
+            ->assertSee('Section 3 - Learner Data Snapshot', false)
+            ->assertSee('Finished Modules Breakdown', false)
             ->assertSee('name="rejection_reason_code"', false)
             ->assertSee('name="rejection_reason_note"', false)
-            ->assertSee('Reject Instructor Application', false);
+                ->assertSee('Submit Rejection', false);
     }
 
     private function createPendingApplication(): InstructorApplication

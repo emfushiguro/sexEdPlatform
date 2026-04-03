@@ -87,6 +87,10 @@ class ContentGovernanceService
     public function approveReview(ModuleReviewRequest $reviewRequest, User $admin, ?string $notes = null): ModuleRevision
     {
         return DB::transaction(function () use ($reviewRequest, $admin, $notes) {
+            if ($reviewRequest->status !== 'in_review') {
+                throw new InvalidArgumentException('Only pending review submissions can be approved.');
+            }
+
             $reviewRequest->loadMissing('module', 'revision');
 
             $revision = $reviewRequest->revision;
@@ -121,6 +125,7 @@ class ContentGovernanceService
                 $instructor->notify(new InstructorModuleReviewDecisionNotification(
                     status: 'approved',
                     reviewRequest: $reviewRequest,
+                    guidanceNote: $notes,
                 ));
             }
 
@@ -148,13 +153,19 @@ class ContentGovernanceService
         string $feedback,
         ?string $reasonCode = null,
         ?string $guidanceNote = null,
+        bool $issueWarning = false,
+        ?string $moderationNotes = null,
     ): ModuleRevision
     {
         if (trim($feedback) === '') {
             throw new InvalidArgumentException('Review feedback is required when rejecting a module submission.');
         }
 
-        return DB::transaction(function () use ($reviewRequest, $admin, $feedback, $reasonCode, $guidanceNote) {
+        return DB::transaction(function () use ($reviewRequest, $admin, $feedback, $reasonCode, $guidanceNote, $issueWarning, $moderationNotes) {
+            if ($reviewRequest->status !== 'in_review') {
+                throw new InvalidArgumentException('Only pending review submissions can be rejected.');
+            }
+
             $reviewRequest->loadMissing('module', 'revision');
 
             $revision = $reviewRequest->revision;
@@ -168,7 +179,7 @@ class ContentGovernanceService
             ])->save();
 
             $reviewRequest->forceFill([
-                'status' => 'needs_revision',
+                'status' => 'rejected',
                 'reviewed_at' => now(),
                 'reviewed_by' => $admin->id,
                 'feedback' => $feedback,
@@ -179,23 +190,33 @@ class ContentGovernanceService
             ])->save();
 
             $instructor = User::query()->find($module->created_by);
+            $notificationGuidance = trim((string) ($moderationNotes ?? '')) !== ''
+                ? $moderationNotes
+                : (trim($guidanceNote ?? '') !== '' ? $guidanceNote : $feedback);
 
             $violation = null;
-            if ($instructor) {
+            if ($instructor && $issueWarning) {
                 $violation = $this->instructorModerationPenaltyService->recordViolation(
                     $instructor,
                     $module,
                     $reviewRequest,
                     $reasonCode ?? 'other',
-                    trim($guidanceNote ?? '') !== '' ? $guidanceNote : $feedback,
+                    trim($guidanceNote ?? '') !== '' ? $guidanceNote : strip_tags((string) $notificationGuidance),
                 );
 
                 $instructor->notify(new InstructorModuleReviewDecisionNotification(
-                    status: 'needs_revision',
+                    status: 'rejected',
                     reviewRequest: $reviewRequest,
                     reasonCode: $reasonCode,
-                    guidanceNote: trim($guidanceNote ?? '') !== '' ? $guidanceNote : $feedback,
+                    guidanceNote: $notificationGuidance,
                     penaltySummary: $violation?->suggested_penalty_action,
+                ));
+            } elseif ($instructor) {
+                $instructor->notify(new InstructorModuleReviewDecisionNotification(
+                    status: 'rejected',
+                    reviewRequest: $reviewRequest,
+                    reasonCode: $reasonCode,
+                    guidanceNote: $notificationGuidance,
                 ));
             }
 
@@ -205,18 +226,65 @@ class ContentGovernanceService
                 after: [
                     'module_id' => $module->id,
                     'module_revision_id' => $revision->id,
-                    'status' => 'needs_revision',
+                    'status' => 'rejected',
                 ],
                 meta: [
                     'feedback' => $feedback,
                     'reason_code' => $reasonCode,
                     'guidance_note' => $guidanceNote,
+                    'moderation_notes' => $moderationNotes,
+                    'issue_warning' => $issueWarning,
                     'suggested_penalty_action' => $violation?->suggested_penalty_action,
                 ],
                 adminUserId: $admin->id,
             );
 
             return $revision->fresh();
+        });
+    }
+
+    public function archiveReview(ModuleReviewRequest $reviewRequest, User $admin, ?string $notes = null): ModuleReviewRequest
+    {
+        return DB::transaction(function () use ($reviewRequest, $admin, $notes) {
+            if ($reviewRequest->status !== 'in_review') {
+                throw new InvalidArgumentException('Only pending review submissions can be archived.');
+            }
+
+            $reviewRequest->loadMissing('module', 'revision');
+
+            $reviewRequest->forceFill([
+                'status' => 'archived',
+                'reviewed_at' => now(),
+                'reviewed_by' => $admin->id,
+                'feedback' => $notes,
+            ])->save();
+
+            $reviewRequest->revision?->forceFill([
+                'status' => 'needs_revision',
+                'reviewed_at' => now(),
+                'reviewed_by' => $admin->id,
+                'review_feedback' => $notes,
+            ])->save();
+
+            $reviewRequest->module?->forceFill([
+                'current_review_status' => 'needs_revision',
+            ])->save();
+
+            $this->adminActivityLogService->logModelMutation(
+                action: 'content_reviews.archive',
+                entity: $reviewRequest,
+                after: [
+                    'module_id' => $reviewRequest->module_id,
+                    'module_revision_id' => $reviewRequest->module_revision_id,
+                    'status' => 'archived',
+                ],
+                meta: [
+                    'notes' => $notes,
+                ],
+                adminUserId: $admin->id,
+            );
+
+            return $reviewRequest->fresh();
         });
     }
 
@@ -261,6 +329,10 @@ class ContentGovernanceService
                 'duration_minutes',
                 'is_published',
                 'is_premium',
+                'access_type',
+                'price_amount',
+                'price_currency',
+                'enrollment_limit',
                 'enrollment_mode',
                 'final_quiz_id',
                 'certificate_pass_score',

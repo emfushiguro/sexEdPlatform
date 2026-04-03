@@ -58,18 +58,51 @@ class PayMongoPaymentLinkService
 {
     protected string $secretKey;
     protected string $apiBaseUrl;
+    protected string $mode;
 
     public function __construct()
     {
-        $secretKey = config('paymongo.secret_key');
-        $apiBaseUrl = config('paymongo.api_base_url');
+        $secretKey = (string) config('paymongo.secret_key', '');
+        $publicKey = (string) config('paymongo.public_key', '');
+        $apiBaseUrl = (string) config('paymongo.api_base_url', '');
 
         if (empty($secretKey)) {
             throw new \Exception('PayMongo Secret Key is not configured. Please set PAYMONGO_SECRET_KEY in your .env file.');
         }
 
+        $enforceTestMode = (bool) config('paymongo.enforce_test_mode', false) || app()->environment(['local', 'testing']);
+
+        if ($enforceTestMode) {
+            if (!str_starts_with($secretKey, 'sk_test_')) {
+                throw new \Exception('Sandbox mode enforced: PAYMONGO_SECRET_KEY must use a sk_test_ key in this environment.');
+            }
+
+            if ($publicKey !== '' && !str_starts_with($publicKey, 'pk_test_')) {
+                throw new \Exception('Sandbox mode enforced: PAYMONGO_PUBLIC_KEY must use a pk_test_ key in this environment.');
+            }
+        }
+
         $this->secretKey = $secretKey;
         $this->apiBaseUrl = $apiBaseUrl;
+        $this->mode = str_starts_with($secretKey, 'sk_test_')
+            ? 'sandbox'
+            : (str_starts_with($secretKey, 'sk_live_') ? 'live' : 'unknown');
+
+        Log::info('PayMongo mode initialized', [
+            'mode' => $this->mode,
+            'enforce_test_mode' => $enforceTestMode,
+            'api_base_url' => $this->apiBaseUrl,
+        ]);
+    }
+
+    public function currentMode(): string
+    {
+        return $this->mode;
+    }
+
+    public function isSandboxMode(): bool
+    {
+        return $this->mode === 'sandbox';
     }
 
     /**
@@ -90,11 +123,14 @@ class PayMongoPaymentLinkService
         ?string $remarks = null,
         array $metadata = [],
         ?string $successUrl = null,
-        ?string $failedUrl = null
+        ?string $failedUrl = null,
+        ?string $preferredPaymentMethod = null,
+        array $allowedPaymentMethods = [],
     ): array {
         try {
             // Convert amount to centavos (PayMongo expects amount in centavos)
             $amountInCentavos = (int) ($amount * 100);
+            $paymentMethodTypes = $this->resolvePaymentMethodTypes($preferredPaymentMethod, $allowedPaymentMethods);
 
             $payload = [
                 'data' => [
@@ -102,6 +138,7 @@ class PayMongoPaymentLinkService
                         'amount' => $amountInCentavos,
                         'description' => config('paymongo.payment_link.description_prefix') . $description,
                         'remarks' => $remarks ?? $description,
+                        'payment_method_types' => $paymentMethodTypes,
                     ]
                 ]
             ];
@@ -123,6 +160,8 @@ class PayMongoPaymentLinkService
                 'amount' => $amount,
                 'amount_centavos' => $amountInCentavos,
                 'description' => $description,
+                'mode' => $this->mode,
+                'payment_method_types' => $paymentMethodTypes,
             ]);
 
             /** @var Response $response */
@@ -186,7 +225,7 @@ class PayMongoPaymentLinkService
                 'plan'            => $planName,
             ],
             successUrl: route('payment.paymongo.success', ['subscription' => $subscriptionId]),
-            failedUrl:  route('payment.paymongo.failed',  ['subscription' => $subscriptionId])
+            failedUrl:  route('payment.paymongo.failed',  ['subscription' => $subscriptionId]),
         );
 
         return $response['data']['attributes']['checkout_url'];
@@ -252,6 +291,7 @@ class PayMongoPaymentLinkService
     public function getActualPaymentIdFromLink(string $linkId): ?string
     {
         try {
+            /** @var Response $response */
             $response = Http::withBasicAuth($this->secretKey, '')
                 ->get("{$this->apiBaseUrl}/links/{$linkId}");
 
@@ -319,5 +359,47 @@ class PayMongoPaymentLinkService
 
             throw $e;
         }
+    }
+
+    private function resolvePaymentMethodTypes(?string $preferredPaymentMethod, array $allowedPaymentMethods): array
+    {
+        $configured = config('paymongo.payment_link.allowed_payment_method_types', ['gcash', 'paymaya', 'grab_pay', 'card']);
+
+        $allowed = !empty($allowedPaymentMethods)
+            ? $allowedPaymentMethods
+            : (is_array($configured) ? $configured : []);
+
+        $normalized = collect($allowed)
+            ->map(fn ($method) => $this->normalizePaymentMethod($method))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($normalized === []) {
+            $normalized = ['gcash', 'paymaya', 'grab_pay', 'card'];
+        }
+
+        $preferred = $this->normalizePaymentMethod($preferredPaymentMethod);
+        if ($preferred && in_array($preferred, $normalized, true)) {
+            $normalized = array_values(array_unique(array_merge([$preferred], $normalized)));
+        }
+
+        return $normalized;
+    }
+
+    private function normalizePaymentMethod(mixed $method): ?string
+    {
+        if (!is_string($method) || trim($method) === '') {
+            return null;
+        }
+
+        return match (strtolower(trim($method))) {
+            'gcash' => 'gcash',
+            'paymaya', 'maya' => 'paymaya',
+            'grab_pay', 'grabpay' => 'grab_pay',
+            'card' => 'card',
+            default => null,
+        };
     }
 }

@@ -17,17 +17,18 @@ class RejectModuleReviewRequest extends FormRequest
     {
         return [
             'reason_code' => [
-                'required_without:feedback',
-                'nullable',
+                'required',
                 Rule::in(ModuleReviewRejectionReason::values()),
             ],
             'guidance_note' => [
-                'required_without:feedback',
                 'nullable',
                 'string',
                 'max:2000',
+                'required_if:reason_code,other',
             ],
             'feedback' => ['nullable', 'string', 'max:2000'],
+            'issue_warning' => ['nullable', 'boolean'],
+            'moderation_notes' => ['nullable', 'string', 'max:10000'],
         ];
     }
 
@@ -39,15 +40,27 @@ class RejectModuleReviewRequest extends FormRequest
 
         $reasonCode = $this->input('reason_code');
         $guidance = trim((string) $this->input('guidance_note', ''));
+        $moderationNotes = trim(strip_tags((string) $this->input('moderation_notes', '')));
 
-        if (!$reasonCode || $guidance === '') {
+        if (!$reasonCode) {
             return;
         }
 
         $reasonLabel = ModuleReviewRejectionReason::tryFrom($reasonCode)?->label() ?? 'Rejection reason';
+        $segments = [$reasonLabel];
+
+        if ($guidance !== '') {
+            $segments[] = $guidance;
+        }
+
+        if ($moderationNotes !== '') {
+            $segments[] = $moderationNotes;
+        }
+
+        $feedback = implode("\n\n", $segments);
 
         $this->merge([
-            'feedback' => $reasonLabel . ': ' . $guidance,
+            'feedback' => $feedback,
         ]);
     }
 }
