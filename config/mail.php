@@ -16,6 +16,9 @@ return [
 
     'default' => env('MAIL_MAILER', 'log'),
 
+    // Mailer used specifically for email verification notifications.
+    'verification_mailer' => env('MAIL_VERIFICATION_MAILER', env('MAIL_MAILER', 'log')),
+
     /*
     |--------------------------------------------------------------------------
     | Mailer Configurations
@@ -46,6 +49,17 @@ return [
             'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
+        'mailtrap' => [
+            'transport' => 'smtp',
+            'host' => env('MAILTRAP_SMTP_HOST', 'sandbox.smtp.mailtrap.io'),
+            'port' => env('MAILTRAP_SMTP_PORT', 2525),
+            'encryption' => env('MAILTRAP_SMTP_ENCRYPTION', 'tls'),
+            'username' => env('MAILTRAP_SMTP_USERNAME'),
+            'password' => env('MAILTRAP_SMTP_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],

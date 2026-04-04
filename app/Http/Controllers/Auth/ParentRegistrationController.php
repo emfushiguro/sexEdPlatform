@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Illuminate\Validation\Rules\Password;
 use Carbon\Carbon;
@@ -60,7 +61,7 @@ class ParentRegistrationController extends Controller
     /**
      * Show step 2 — account credentials
      */
-    public function createAccount(): View
+    public function createAccount(): View|RedirectResponse
     {
         if (!session('pending_parent_info')) {
             return redirect()->route('parent.register');
@@ -124,12 +125,29 @@ class ParentRegistrationController extends Controller
         Role::findOrCreate('learner', 'web');
         $parent->assignRole('learner');
 
-        event(new Registered($parent));
+        $verificationDispatchFailed = false;
+
+        try {
+            event(new Registered($parent));
+        } catch (\Throwable $e) {
+            $verificationDispatchFailed = true;
+
+            Log::warning('Verification email dispatch failed during parent registration.', [
+                'user_id' => $parent->id,
+                'email' => $parent->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         session()->forget('pending_parent_info');
         session(['is_parent_registration' => true]);
 
         Auth::login($parent);
+
+        if ($verificationDispatchFailed) {
+            return redirect()->route('verification.notice')
+                ->with('warning', 'Parent account created, but verification email could not be sent yet. Please click "Resend verification email".');
+        }
 
         return redirect()->route('verification.notice')
             ->with('success', 'Parent account created! Please verify your email before creating a child account.');

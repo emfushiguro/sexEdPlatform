@@ -10,6 +10,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Carbon\Carbon;
 use Spatie\Permission\Models\Role;
@@ -97,11 +98,28 @@ class RegisteredUserController extends Controller
         Role::findOrCreate('learner', 'web');
         $user->assignRole('learner');
 
-        event(new Registered($user));
+        $verificationDispatchFailed = false;
+
+        try {
+            event(new Registered($user));
+        } catch (\Throwable $e) {
+            $verificationDispatchFailed = true;
+
+            Log::warning('Verification email dispatch failed during registration.', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         session()->forget('pending_personal_info');
 
         Auth::login($user);
+
+        if ($verificationDispatchFailed) {
+            return redirect()->route('verification.notice')
+                ->with('warning', 'Account created, but we could not send the verification email yet. Please click "Resend verification email".');
+        }
 
         return redirect()->route('verification.notice')
             ->with('success', 'Registration successful! Please verify your email address.');

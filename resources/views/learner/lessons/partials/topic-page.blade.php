@@ -283,8 +283,98 @@
                 @endif
 
                 @if($currentTopic->text_content)
-                    <div class="prose dark:prose-invert max-w-none mt-6">
-                        {!! $currentTopic->text_content !!}
+                    <div class="mt-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40 p-4"
+                         x-data="{
+                            originalHtml: @js((string) $currentTopic->text_content),
+                            translatedHtml: null,
+                            selectedLanguage: 'tl',
+                            isTranslating: false,
+                            translationError: '',
+                            async translateTopic() {
+                                if (this.isTranslating) {
+                                    return;
+                                }
+
+                                this.translationError = '';
+                                this.isTranslating = true;
+
+                                try {
+                                    const response = await fetch('{{ route('learner.topics.translate', $currentTopic) }}', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content,
+                                        },
+                                        body: JSON.stringify({
+                                            target_language: this.selectedLanguage,
+                                        }),
+                                    });
+
+                                    const payload = await response.json();
+
+                                    if (!response.ok) {
+                                        throw new Error(payload.message || 'Translation failed.');
+                                    }
+
+                                    this.translatedHtml = payload.translated_html;
+                                } catch (error) {
+                                    this.translationError = error.message || 'Unable to translate this topic right now.';
+                                } finally {
+                                    this.isTranslating = false;
+                                }
+                            },
+                            showOriginal() {
+                                this.translatedHtml = null;
+                                this.translationError = '';
+                            },
+                            get hasTranslation() {
+                                return this.translatedHtml !== null;
+                            },
+                            renderedHtml() {
+                                return this.translatedHtml ?? this.originalHtml;
+                            }
+                         }">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Translate Lesson Text</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Choose a language and translate the current text topic.</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <select x-model="selectedLanguage"
+                                        class="text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400/50">
+                                    <option value="tl">Filipino (Tagalog)</option>
+                                    <option value="ceb">Cebuano</option>
+                                    <option value="ilo">Ilocano</option>
+                                    <option value="es">Spanish</option>
+                                    <option value="en">English</option>
+                                </select>
+                                <button type="button"
+                                        @click="translateTopic()"
+                                        :disabled="isTranslating"
+                                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                        style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                                    <svg x-show="!isTranslating" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 5.5A18.022 18.022 0 0015.588 9m-9.176 0a18.022 18.022 0 013.636 5.5m3.952 0A18.022 18.022 0 0117.588 9M13 21l3-9 3 9m-5.2-3h4.4"/>
+                                    </svg>
+                                    <svg x-show="isTranslating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                    <span x-text="isTranslating ? 'Translating...' : 'Translate'"></span>
+                                </button>
+                                <button type="button"
+                                        x-show="hasTranslation"
+                                        @click="showOriginal()"
+                                        class="px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                                    Show Original
+                                </button>
+                            </div>
+                        </div>
+
+                        <div x-show="translationError" class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" x-text="translationError"></div>
+
+                        <div class="prose dark:prose-invert max-w-none mt-4" x-html="renderedHtml()"></div>
                     </div>
                 @endif
             </div>
