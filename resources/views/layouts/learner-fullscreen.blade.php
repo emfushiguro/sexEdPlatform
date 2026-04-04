@@ -118,6 +118,7 @@
 
     @auth
         <x-learner.out-of-shields-modal :score="auth()->user()->gamification?->score ?? 0" />
+        @include('learner.partials.global-page-translator')
     @endauth
 
     {{-- Flash toast notifications (mirrors learner-app.blade.php) --}}
