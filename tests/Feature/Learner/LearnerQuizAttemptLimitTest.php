@@ -30,7 +30,7 @@ class LearnerQuizAttemptLimitTest extends TestCase
             'enrolled_at' => now(),
         ]);
 
-        QuizAttempt::create([
+        $existingAttempt = QuizAttempt::create([
             'user_id' => $learner->id,
             'quiz_id' => $quiz->id,
             'score' => 50,
@@ -42,7 +42,8 @@ class LearnerQuizAttemptLimitTest extends TestCase
 
         $this->actingAs($learner)
             ->get(route('quizzes.start', $quiz))
-            ->assertRedirect(route('learner.modules.show', $module->id))
-            ->assertSessionHas('error');
+            ->assertRedirect(route('quizzes.result', $existingAttempt))
+            ->assertSessionHas('attempt_limit_reached', true)
+            ->assertSessionHas('info');
     }
 }

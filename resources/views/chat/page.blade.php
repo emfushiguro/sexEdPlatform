@@ -9,8 +9,8 @@
 
 @extends($layout)
 
-@section('title', 'Messages')
-@section('page-title', 'Messages')
+@section('title', 'Connections')
+@section('page-title', 'Connections')
 
 @section('content')
     @include('chat.index')

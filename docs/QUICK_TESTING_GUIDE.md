@@ -24,6 +24,41 @@ Target checks covered by these suites:
 
 ---
 
+## Learner Checkout Refinement QA (2026-04-05)
+
+Run these commands to validate the summary-first learner checkout rollout:
+
+```bash
+php artisan test --filter=LearnerCheckoutFeatureFlagTest
+php artisan test --filter=LearnerCheckoutRoutingFlowTest
+php artisan test --filter=LearnerCheckoutSummaryViewTest
+php artisan test --filter=LearnerCheckoutPayloadContractTest
+php artisan test --filter=LearnerCheckoutCancelFailureFlowTest
+php artisan test --filter=LearnerCheckoutCompletionIdempotencyTest
+php artisan test --filter=LearnerModulePaymentWebhookTest
+php artisan test --filter=LearnerPaymentHistoryModuleTransactionsTest
+php artisan test --filter=LearnerSubscriptionCheckoutHistoryTest
+php artisan test --filter=PayMongoPaymentLinkServiceTest
+php artisan test --filter=Payment
+php artisan test --filter=Webhook
+```
+
+Focus checklist for manual QA:
+
+- Module checkout and subscription checkout open in summary-first pages before redirecting to PayMongo.
+- Checkout summary page has no sandbox banner, no local payment method picker, and no billing form fields.
+- PayMongo checkout displays multiple available methods (card, GCash, and other enabled options), not a locked QR-only path.
+- Checkout request payload targets `/v1/checkout_sessions` and contains `line_items`, `success_url`, `cancel_url`, and `payment_method_types`.
+- Failed/cancelled PayMongo returns users to the correct summary page with retry guidance.
+- Duplicate webhook events do not duplicate module enrollments, sale ledger rows, or post-payment queue behavior.
+- Payment History still shows both module and subscription transactions after rollout.
+
+Sandbox note:
+
+- PayMongo sandbox may still show QR-oriented hosted steps even for wallet selections. This is expected sandbox behavior; production method rendering can differ.
+
+---
+
 ## ⚡ QUICK START
 
 ### 1. Configure Gmail SMTP (One-Time Setup)

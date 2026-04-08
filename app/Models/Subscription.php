@@ -4,12 +4,14 @@ namespace App\Models;
 
 use App\Enums\SubscriptionStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Subscription extends Model
 {
+    use HasFactory;
     use SoftDeletes;
 
     /**
@@ -114,10 +116,21 @@ class Subscription extends Model
 
     public function scopeExpiringSoon($query, $days = 3)
     {
+        $windowEnd = now()->addDays($days);
+
         return $query->where('status', SubscriptionStatus::Active)
-            ->whereNotNull('end_date')
-            ->where('end_date', '<=', now()->addDays($days))
-            ->where('end_date', '>', now());
+            ->where(function ($q) use ($windowEnd) {
+                $q->where(function ($normalized) use ($windowEnd) {
+                    $normalized->whereNotNull('ends_at')
+                        ->where('ends_at', '<=', $windowEnd)
+                        ->where('ends_at', '>', now());
+                })->orWhere(function ($legacy) use ($windowEnd) {
+                    $legacy->whereNull('ends_at')
+                        ->whereNotNull('end_date')
+                        ->where('end_date', '<=', $windowEnd)
+                        ->where('end_date', '>', now());
+                });
+            });
     }
 
     /**
@@ -126,8 +139,16 @@ class Subscription extends Model
     public function scopeExpired($query)
     {
         return $query->where('status', SubscriptionStatus::Active)
-            ->whereNotNull('end_date')
-            ->where('end_date', '<', now());
+            ->where(function ($q) {
+                $q->where(function ($normalized) {
+                    $normalized->whereNotNull('ends_at')
+                        ->where('ends_at', '<', now());
+                })->orWhere(function ($legacy) {
+                    $legacy->whereNull('ends_at')
+                        ->whereNotNull('end_date')
+                        ->where('end_date', '<', now());
+                });
+            });
     }
 
     public function scopeInGracePeriod($query)
@@ -140,8 +161,10 @@ class Subscription extends Model
 
     public function isActive(): bool
     {
-        return $this->status === SubscriptionStatus::Active && 
-               ($this->end_date === null || $this->end_date->isAfter(now()));
+        $activeUntil = $this->ends_at ?? $this->end_date;
+
+        return $this->status === SubscriptionStatus::Active
+            && ($activeUntil === null || $activeUntil->isAfter(now()));
     }
 
     public function isPremium(): bool
@@ -184,11 +207,13 @@ class Subscription extends Model
 
     public function daysUntilExpiry(): int
     {
-        if (!$this->end_date) {
+        $activeUntil = $this->ends_at ?? $this->end_date;
+
+        if (!$activeUntil) {
             return 0;
         }
 
-        return max(0, now()->diffInDays($this->end_date, false));
+        return max(0, now()->diffInDays($activeUntil, false));
     }
 
     public function getAmount(): float
@@ -235,7 +260,9 @@ class Subscription extends Model
 
     public function canRenew(): bool
     {
-        return $this->isCancelled() && $this->end_date->isFuture();
+        $activeUntil = $this->ends_at ?? $this->end_date;
+
+        return $this->isCancelled() && $activeUntil?->isFuture();
     }
 
     public function getStatusLabel(): string

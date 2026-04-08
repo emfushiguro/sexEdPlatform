@@ -21,7 +21,7 @@ class PaymentFactory extends Factory
             'user_id' => User::factory(),
             'subscription_id' => Subscription::factory(),
             'amount' => fake()->randomFloat(2, 99, 999),
-            'method' => fake()->randomElement(['gcash', 'card', 'maya']),
+            'method' => fake()->randomElement(['gcash', 'card', 'paymaya']),
             'status' => PaymentStatus::Completed,
             'transaction_id' => fake()->uuid(),
             'payment_details' => null,

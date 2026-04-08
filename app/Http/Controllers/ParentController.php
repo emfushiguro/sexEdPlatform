@@ -5,8 +5,13 @@ namespace App\Http\Controllers;
 use App\Enums\EnrollmentStatus;
 use App\Models\ModuleEnrollment;
 use App\Models\User;
+use App\Notifications\Learner\ParentEnrollmentApprovedNotification;
+use App\Notifications\Learner\ParentEnrollmentRejectedNotification;
+use App\Notifications\Parent\ChildEnrollmentApprovedNotification;
+use App\Notifications\Parent\ChildEnrollmentRejectedNotification;
 use App\Services\ParentChildService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class ParentController extends Controller
 {
@@ -37,6 +42,9 @@ class ParentController extends Controller
     {
         $this->authorize('view', $child);
 
+        /** @var User $parent */
+        $parent = auth()->user();
+
         if ($enrollment->user_id !== $child->id || $enrollment->status !== EnrollmentStatus::PendingParentApproval) {
             abort(403);
         }
@@ -53,19 +61,33 @@ class ParentController extends Controller
             'enrolled_at' => $newStatus === 'approved' ? now() : null,
         ]);
 
+        $freshEnrollment = $enrollment->fresh(['module']);
+        $child->notify(new ParentEnrollmentApprovedNotification($freshEnrollment, $parent));
+        $parent->notify(new ChildEnrollmentApprovedNotification($freshEnrollment, $child));
+
         return redirect()->route('parent.children.show', $child)
             ->with('success', 'Enrollment approved.');
     }
 
-    public function rejectEnrollment(User $child, ModuleEnrollment $enrollment): RedirectResponse
+    public function rejectEnrollment(Request $request, User $child, ModuleEnrollment $enrollment): RedirectResponse
     {
         $this->authorize('view', $child);
+
+        /** @var User $parent */
+        $parent = auth()->user();
 
         if ($enrollment->user_id !== $child->id || $enrollment->status !== EnrollmentStatus::PendingParentApproval) {
             abort(403);
         }
 
         $enrollment->update(['status' => 'rejected']);
+
+        $reason = trim((string) $request->input('reason', ''));
+        $normalizedReason = $reason !== '' ? $reason : null;
+
+        $freshEnrollment = $enrollment->fresh(['module']);
+        $child->notify(new ParentEnrollmentRejectedNotification($freshEnrollment, $parent, $normalizedReason));
+        $parent->notify(new ChildEnrollmentRejectedNotification($freshEnrollment, $child, $normalizedReason));
 
         return redirect()->route('parent.children.show', $child)
             ->with('info', 'Enrollment request rejected.');

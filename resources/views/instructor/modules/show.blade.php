@@ -388,7 +388,7 @@
         @php
             $typeBadge = match($lesson->type ?? 'mixed') {
                 'video'       => 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400',
-                'text'        => 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
+                'text'        => 'bg-brand-100 text-brand-700 dark:bg-brand-900/20 dark:text-brand-400',
                 'worksheet'   => 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400',
                 'interactive' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400',
                 default       => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
@@ -448,7 +448,7 @@
                        'is_published' => (bool) $lesson->is_published,
                    ]) }})"
                    title="Edit lesson"
-                   class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                   class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                     </svg>

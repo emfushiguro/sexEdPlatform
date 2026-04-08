@@ -133,11 +133,12 @@ class InstructorModuleEarningsTest extends TestCase
             ->assertSee('Module Earnings', false)
             ->assertSee('Total Sales', false)
             ->assertSee('Paid Module A', false)
-            ->assertSee('View details', false);
+            ->assertSee('Your Earnings', false)
+            ->assertSee('title="View transaction details"', false);
 
         $indexHtml = $indexResponse->getContent();
-        $this->assertStringContainsString('Paid Module A</td>', $indexHtml);
-        $this->assertStringNotContainsString('Paid Module B</td>', $indexHtml);
+        $this->assertStringContainsString('Paid Module A', $indexHtml);
+        $this->assertStringNotContainsString('Paid Module B', $indexHtml);
 
         $this->actingAs($instructorA)
             ->get(route('instructor.earnings.show', $ledgerA))

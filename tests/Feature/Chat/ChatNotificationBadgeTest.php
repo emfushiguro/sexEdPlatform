@@ -23,18 +23,27 @@ class ChatNotificationBadgeTest extends TestCase
         $storeContents = File::get(resource_path('js/chat/store.js'));
         $chatViewContents = File::get(resource_path('views/chat/index.blade.php'));
 
-        $this->assertStringContainsString('chat.notifications.enabled', $storeContents);
-        $this->assertStringContainsString('toggleNotificationsEnabled', $storeContents);
-        $this->assertStringContainsString('localStorage.setItem', $storeContents);
-        $this->assertStringContainsString('data-chat-notification-toggle', $chatViewContents);
+        $this->assertStringNotContainsString('chat.notifications.enabled', $storeContents);
+        $this->assertStringNotContainsString('toggleNotificationsEnabled', $storeContents);
+        $this->assertStringNotContainsString('data-chat-notification-toggle', $chatViewContents);
     }
 
     public function test_active_focused_thread_suppresses_browser_notification_popup(): void
     {
         $storeContents = File::get(resource_path('js/chat/store.js'));
 
-        $this->assertStringContainsString('shouldSuppressBrowserNotification', $storeContents);
-        $this->assertStringContainsString("document.visibilityState === 'visible'", $storeContents);
-        $this->assertStringContainsString('this.activeConversationId !== payload.conversation_id', $storeContents);
+        $this->assertStringNotContainsString('shouldSuppressBrowserNotification', $storeContents);
+        $this->assertStringNotContainsString('maybeShowBrowserNotification', $storeContents);
+        $this->assertStringNotContainsString('new Notification(', $storeContents);
+    }
+
+    public function test_browser_notification_popup_flow_is_removed(): void
+    {
+        $storeContents = File::get(resource_path('js/chat/store.js'));
+        $chatViewContents = File::get(resource_path('views/chat/index.blade.php'));
+
+        $this->assertStringNotContainsString('new Notification(', $storeContents);
+        $this->assertStringNotContainsString('toggleNotificationsEnabled', $storeContents);
+        $this->assertStringNotContainsString('data-chat-notification-toggle', $chatViewContents);
     }
 }

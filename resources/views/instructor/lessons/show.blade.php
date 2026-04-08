@@ -49,14 +49,14 @@
         } else if (topic.type === 'text') {
             content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-xl">${topic.text_content || ''}</div>`;
         } else if (topic.type === 'worksheet') {
-            content += `<div class="flex items-center gap-4 p-4 bg-blue-50 rounded-xl"><svg class="w-10 h-10 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg><div><p class="font-medium text-gray-900">Worksheet File</p><a href="${topic.worksheet_file_url || '#'}" target="_blank" class="text-blue-600 hover:underline text-sm">Download</a></div></div>`;
+            content += `<div class="flex items-center gap-4 p-4 bg-brand-50 rounded-xl"><svg class="w-10 h-10 text-brand-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg><div><p class="font-medium text-gray-900">Worksheet File</p><a href="${topic.worksheet_file_url || '#'}" target="_blank" class="text-brand-600 hover:underline text-sm">Download</a></div></div>`;
         }
         content += `</div>`;
         return content;
     }
 
     function getTypeColor(type) {
-        const c = { video: 'bg-red-100 text-red-800', text: 'bg-blue-100 text-blue-800', worksheet: 'bg-green-100 text-green-800', interactive: 'bg-orange-100 text-orange-800' };
+        const c = { video: 'bg-red-100 text-red-800', text: 'bg-brand-100 text-brand-800', worksheet: 'bg-green-100 text-green-800', interactive: 'bg-orange-100 text-orange-800' };
         return c[type] ?? 'bg-gray-100 text-gray-800';
     }
     function capitalizeFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -207,7 +207,7 @@
                 {{-- Type badge --}}
                 <span class="hidden sm:inline-flex px-2 py-0.5 text-xs font-semibold rounded-full flex-shrink-0
                     @if($topic->type === 'video') bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
-                    @elseif($topic->type === 'text') bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400
+                    @elseif($topic->type === 'text') bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400
                     @elseif($topic->type === 'worksheet') bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
                     @elseif($topic->type === 'interactive') bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400
                     @else bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 @endif">
@@ -236,7 +236,7 @@
                     </button>
                     <a href="{{ route('instructor.topics.edit', $topic) }}"
                        title="Edit"
-                       class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                       class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
@@ -307,7 +307,7 @@
                         </svg>
                     </a>
                     <a href="{{ route('instructor.quizzes.edit', $lq) }}"
-                       class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                       class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>

@@ -13,7 +13,8 @@ $headerQuizTakingSummary = $quizTakingSummary ?? [
 ];
 $headerInstructorNotifications = $instructorNotifications ?? auth()->user()->notifications()->latest()->limit(8)->get();
 $headerUnreadCount = auth()->user()->unreadNotifications()->count();
-$notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQuizTakingSummary['attempt_count'] ?? 0) > 0 ? 1 : 0);
+$notificationBadgeCount = $headerUnreadCount;
+$payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
 @endphp
 
 <header
@@ -24,7 +25,7 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
     {{-- ── Sidebar toggle (desktop) ── --}}
     <button
         @click="$store.instructorSidebar.toggleExpanded()"
-        class="hidden xl:flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+        class="hidden xl:flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors"
         title="Toggle sidebar"
     >
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -35,7 +36,7 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
     {{-- ── Sidebar toggle (mobile) ── --}}
     <button
         @click="$store.instructorSidebar.toggleMobileOpen()"
-        class="flex xl:hidden items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+        class="flex xl:hidden items-center justify-center w-10 h-10 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors"
         title="Open menu"
     >
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -121,10 +122,18 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
     <div class="flex items-center gap-3 ml-auto">
 
         {{-- ── Notification bell ── --}}
-        <div class="relative" x-data="{ open: false }">
+        <div
+            class="relative"
+            x-data="{
+                open: false,
+                syncReadState() {
+                    window.axios.post('{{ route('instructor.notifications.dropdown-open') }}').catch(() => {});
+                }
+            }"
+        >
             <button
-                @click="open = !open"
-                class="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+                @click="open = !open; if (open) { syncReadState(); }"
+                class="relative w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 transition-colors"
                 title="Notifications"
             >
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -135,12 +144,6 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
                     {{ $notificationBadgeCount > 9 ? '9+' : $notificationBadgeCount }}
                 </span>
                 @endif
-                <span
-                    data-chat-unread-badge
-                    data-chat-unread-badge-role="instructor"
-                    hidden
-                    class="absolute -bottom-1 -right-1 min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-full bg-sky-500 text-white text-[9px] font-bold"
-                >0</span>
             </button>
 
             {{-- Notification dropdown --}}
@@ -156,17 +159,25 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
                 x-transition:leave-end="opacity-0 scale-95"
                 class="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden"
             >
-                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-gray-900">Notification Center</h3>
-                    @if($notificationBadgeCount > 0)
-                    <span class="text-xs font-medium text-purple-600">{{ $notificationBadgeCount }} items</span>
+                <div class="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-brand-50 via-white to-brand-100/70 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Notifications</h3>
+                        <p class="text-xs text-gray-500">Instructor-side updates and actions.</p>
+                    </div>
+                    @if($headerUnreadCount > 0)
+                    <form method="POST" action="{{ route('instructor.notifications.mark-all-read') }}">
+                        @csrf
+                        <button type="submit" class="text-xs font-medium text-brand-700 hover:text-brand-900 transition-colors">
+                            Mark all read
+                        </button>
+                    </form>
                     @endif
                 </div>
 
                 @if(($headerQuizTakingSummary['attempt_count'] ?? 0) > 0)
-                <div class="px-4 py-3 border-b border-gray-50 bg-indigo-50/40" data-testid="quiz-taking-summary">
-                    <p class="text-xs font-semibold text-indigo-700">New quiz taking</p>
-                    <p class="text-[11px] text-indigo-600 mt-0.5">
+                <div class="px-4 py-3 border-b border-gray-50 bg-brand-50/70" data-testid="quiz-taking-summary">
+                    <p class="text-xs font-semibold text-brand-700">New quiz activity</p>
+                    <p class="text-[11px] text-brand-700/80 mt-0.5">
                         {{ $headerQuizTakingSummary['attempt_count'] }} attempts from {{ $headerQuizTakingSummary['learner_count'] }} learners in the last 24 hours.
                     </p>
                 </div>
@@ -176,15 +187,25 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
                 <div class="divide-y divide-gray-50 max-h-56 overflow-y-auto">
                     @foreach($headerInstructorNotifications as $notification)
                     @php
-                        $title = data_get($notification->data, 'title', 'Instructor update');
-                        $message = data_get($notification->data, 'message', 'You have a new instructor notification.');
-                        $actionUrl = data_get($notification->data, 'action_url', route('instructor.dashboard'));
+                        $isUnread = is_null($notification->read_at);
+                        $normalized = $payloadNormalizer->normalize((array) $notification->data);
+
+                        $severityClass = match($normalized['severity']) {
+                            'success' => 'border-l-4 border-emerald-500',
+                            'error' => 'border-l-4 border-rose-500',
+                            default => 'border-l-4 border-slate-300',
+                        };
                     @endphp
-                    <a href="{{ $actionUrl }}" class="block px-4 py-3 hover:bg-gray-50 transition-colors">
-                        <p class="text-xs font-semibold text-gray-800">{{ $title }}</p>
-                        <p class="text-[11px] text-gray-600 mt-0.5 line-clamp-2">{{ $message }}</p>
+                    <a href="{{ route('instructor.notifications.read', $notification->id) }}" class="block px-4 py-3 hover:bg-gray-50 transition-colors {{ $severityClass }} {{ $isUnread ? 'bg-rose-50/40' : '' }}">
+                        <p class="text-xs font-semibold text-gray-800">{{ $normalized['title'] }}</p>
+                        <p class="text-[11px] text-gray-600 mt-0.5 line-clamp-2">{{ $normalized['message'] }}</p>
                     </a>
                     @endforeach
+                </div>
+                <div class="px-4 py-2 border-t border-gray-100">
+                    <a href="{{ route('instructor.notifications.index') }}" class="block text-center text-xs font-medium text-brand-700 hover:text-brand-900 transition-colors py-1">
+                        View all notifications ->
+                    </a>
                 </div>
                 @endif
 
@@ -211,18 +232,18 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
                         <div class="flex gap-2 mt-2 ml-11">
                             <form method="POST" action="{{ route('instructor.enrollments.approve', $enrollment) }}">
                                 @csrf @method('PATCH')
-                                <button type="submit" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors">Approve</button>
+                                <button type="submit" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors">Approve</button>
                             </form>
                             <form method="POST" action="{{ route('instructor.enrollments.reject', $enrollment) }}">
                                 @csrf @method('PATCH')
-                                <button type="submit" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">Reject</button>
+                                <button type="submit" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">Reject</button>
                             </form>
                         </div>
                     </div>
                     @endforeach
                 </div>
                 <div class="px-4 py-2 border-t border-gray-100">
-                    <a href="{{ route('instructor.enrollments.index') }}" class="block text-center text-xs font-medium text-purple-600 hover:text-purple-800 transition-colors py-1">
+                    <a href="{{ route('instructor.enrollments.index') }}" class="block text-center text-xs font-medium text-brand-700 hover:text-brand-900 transition-colors py-1">
                         View all requests →
                     </a>
                 </div>
@@ -234,11 +255,16 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
         <div class="relative" x-data="{ open: false }">
             <button
                 @click="open = !open"
-                class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);"
+                class="flex items-center gap-2 px-2 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors"
                 title="Account menu"
             >
-                {{ strtoupper(mb_substr(Auth::user()->first_name ?? Auth::user()->name, 0, 1)) }}
+                <span class="w-8 h-8 rounded-full inline-flex items-center justify-center text-white text-sm font-bold bg-gradient-to-r from-brand-500 to-brand-900">
+                    {{ strtoupper(mb_substr(Auth::user()->first_name ?? Auth::user()->name, 0, 1)) }}
+                </span>
+                <span class="hidden sm:block max-w-[110px] truncate text-sm font-medium text-gray-700">{{ Auth::user()->first_name ?? Auth::user()->name }}</span>
+                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
             </button>
 
             <div
@@ -257,6 +283,9 @@ $notificationBadgeCount = $headerPendingCount + $headerUnreadCount + (($headerQu
                     <p class="text-xs font-semibold text-gray-900 truncate">{{ Auth::user()->first_name ?? Auth::user()->name }}</p>
                     <p class="text-[11px] text-gray-400 truncate">Instructor</p>
                 </div>
+
+                @include('partials.chat-status-selector')
+
                 <form method="POST" action="{{ route('instructor.logout') }}">
                     @csrf
                     <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2">

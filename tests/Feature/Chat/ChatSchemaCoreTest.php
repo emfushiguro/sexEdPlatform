@@ -15,6 +15,9 @@ class ChatSchemaCoreTest extends TestCase
     {
         $this->assertTrue(Schema::hasTable('conversations'));
         $this->assertTrue(Schema::hasTable('messages'));
+        $this->assertTrue(Schema::hasTable('message_attachments'));
+        $this->assertTrue(Schema::hasTable('message_reports'));
+        $this->assertFalse(Schema::hasTable('message_reactions'));
 
         $this->assertTrue(Schema::hasColumns('conversations', [
             'participant_one_id',
@@ -24,6 +27,7 @@ class ChatSchemaCoreTest extends TestCase
             'status',
             'module_id',
             'lesson_id',
+            'lesson_topic_id',
             'quiz_id',
             'context_key',
             'last_message_at',
@@ -35,8 +39,15 @@ class ChatSchemaCoreTest extends TestCase
             'conversation_id',
             'sender_id',
             'message_body',
+            'edited_at',
+            'deleted_at',
+            'deleted_by_id',
             'created_at',
             'updated_at',
+        ]));
+
+        $this->assertTrue(Schema::hasColumns('users', [
+            'chat_status',
         ]));
     }
 

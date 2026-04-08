@@ -4,6 +4,7 @@ namespace Tests\Unit\Chat;
 
 use App\Models\Conversation;
 use App\Models\Lesson;
+use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\Quiz;
 use App\Services\Chat\ChatContextResolver;
@@ -89,6 +90,46 @@ class ChatContextResolverTest extends TestCase
             moduleId: $moduleB->id,
             lessonId: $lesson->id,
             quizId: $quiz->id,
+        );
+    }
+
+    public function test_lesson_topic_chat_resolves_with_valid_topic_and_rejects_mismatched_lesson(): void
+    {
+        $resolver = app(ChatContextResolver::class);
+
+        $module = Module::factory()->create();
+        $lesson = Lesson::factory()->create([
+            'module_id' => $module->id,
+        ]);
+        $topic = LessonTopic::factory()->create([
+            'lesson_id' => $lesson->id,
+        ]);
+
+        $resolved = $resolver->resolve(
+            conversationType: Conversation::TYPE_LESSON_TOPIC_CHAT,
+            moduleId: $module->id,
+            lessonId: $lesson->id,
+            quizId: null,
+            lessonTopicId: $topic->id,
+        );
+
+        $this->assertSame($module->id, $resolved['module_id']);
+        $this->assertSame($lesson->id, $resolved['lesson_id']);
+        $this->assertSame($topic->id, $resolved['lesson_topic_id']);
+        $this->assertSame(Conversation::TYPE_LESSON_TOPIC_CHAT.':'.$topic->id, $resolved['context_key']);
+
+        $otherLesson = Lesson::factory()->create([
+            'module_id' => $module->id,
+        ]);
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $resolver->resolve(
+            conversationType: Conversation::TYPE_LESSON_TOPIC_CHAT,
+            moduleId: $module->id,
+            lessonId: $otherLesson->id,
+            quizId: null,
+            lessonTopicId: $topic->id,
         );
     }
 }

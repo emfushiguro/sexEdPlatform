@@ -3,6 +3,7 @@
 namespace App\Events\Chat;
 
 use App\Models\Message;
+use App\Support\Chat\MessagePayloadFormatter;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -15,8 +16,15 @@ class MessageSent implements ShouldBroadcast
     use InteractsWithSockets;
     use SerializesModels;
 
+    public string $connection;
+
+    public string $queue = 'broadcasts';
+
     public function __construct(public Message $message)
     {
+        $this->connection = config('queue.default') === 'redis'
+            ? 'redis'
+            : config('queue.default', 'sync');
     }
 
     public function broadcastOn(): PrivateChannel
@@ -31,12 +39,6 @@ class MessageSent implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        return [
-            'id' => $this->message->id,
-            'conversation_id' => $this->message->conversation_id,
-            'sender_id' => $this->message->sender_id,
-            'message_body' => $this->message->message_body,
-            'created_at' => $this->message->created_at?->toIso8601String(),
-        ];
+        return app(MessagePayloadFormatter::class)->format($this->message);
     }
 }

@@ -83,7 +83,7 @@
             {{-- Brand logo + text (expanded) --}}
             <img
                 src="/media/Logo.png"
-                alt="Concious Connections"
+                alt="Conscious Connections"
                 x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                 x-transition:enter="transition-opacity duration-200"
                 x-transition:enter-start="opacity-0"
@@ -91,12 +91,15 @@
                 class="h-10 w-10 object-contain"
                 x-cloak
             >
-            <span
+            <div
                 x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                 x-cloak
-                class="text-lg font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500 whitespace-nowrap"
-            >Conscious <br>
-            Connections</span>
+                class="leading-tight"
+            >
+                <span class="text-lg font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500 whitespace-nowrap block">Conscious <br>
+                Connections</span>
+                <span class="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-600 mt-1 block">Learner Panel</span>
+            </div>
             {{-- Icon-only logo (collapsed) --}}
             <img
                 src="/media/Logo.png"

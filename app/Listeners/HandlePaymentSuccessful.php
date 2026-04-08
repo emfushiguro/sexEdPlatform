@@ -13,7 +13,23 @@ class HandlePaymentSuccessful implements ShouldQueue
 
     public function handle(PaymentSuccessful $event): void
     {
-        $payment = $event->payment;
+        $payment = $event->payment->fresh();
+        if (!$payment) {
+            return;
+        }
+
+        $details = is_array($payment->payment_details) ? $payment->payment_details : [];
+
+        if ((bool) data_get($details, 'post_payment_jobs_dispatched', false)) {
+            return;
+        }
+
+        $details['post_payment_jobs_dispatched'] = true;
+        $details['post_payment_jobs_dispatched_at'] = now()->toDateTimeString();
+
+        $payment->forceFill([
+            'payment_details' => $details,
+        ])->saveQuietly();
 
         // Kick off slow operations as background jobs
         GenerateInvoiceJob::dispatch($payment)->onQueue('invoices');

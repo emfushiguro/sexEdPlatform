@@ -2,10 +2,13 @@
 
 namespace Tests\Unit\Services;
 
+use App\Models\FeatureCatalog;
+use App\Models\PlanFeatureEntitlement;
 use App\Services\SubscriptionDunningService;
 use App\Services\SubscriptionService;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Support\SubscriptionFeatureKeys;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -60,6 +63,37 @@ class SubscriptionLifecycleStateTest extends TestCase
 
         $this->assertSame('active', $subscription->status->value);
         $this->assertNull($subscription->grace_ends_at);
+    }
+
+    public function test_expired_active_subscription_is_not_treated_as_entitled(): void
+    {
+        $subscription = $this->createSubscription('active');
+        $subscription->update([
+            'end_date' => now()->subMinute(),
+            'ends_at' => now()->subMinute(),
+        ]);
+
+        $feature = FeatureCatalog::create([
+            'key' => SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS,
+            'name' => 'Unlimited Quiz Shields',
+            'value_type' => 'boolean',
+            'category' => 'learner',
+            'is_active' => true,
+        ]);
+
+        PlanFeatureEntitlement::create([
+            'plan_id' => $subscription->plan_id,
+            'feature_id' => $feature->id,
+            'is_enabled' => true,
+            'is_unlimited' => true,
+        ]);
+
+        $service = app(SubscriptionService::class);
+
+        $this->assertFalse($service->isUserPremium($subscription->user));
+        $this->assertFalse(
+            $service->hasFeature($subscription->user, SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS)
+        );
     }
 
     private function createSubscription(string $status): Subscription

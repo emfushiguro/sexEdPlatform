@@ -17,6 +17,11 @@
     $learnerProfile = $user?->learnerProfile;
     $gamification = $user?->gamification;
     $subscription = $payment->subscription;
+    $modulePurchase = $payment->modulePurchase ?? $payment->moduleSaleLedger?->modulePurchase;
+    $module = $modulePurchase?->module ?? $payment->moduleSaleLedger?->module;
+    $moduleInstructor = $module?->creator ?? $payment->moduleSaleLedger?->instructor;
+    $isModulePurchase = (string) data_get($payment->payment_details, 'payment_scope') === 'module_purchase' || $modulePurchase !== null;
+    $transactionType = $isModulePurchase ? 'Module Purchase' : 'Subscription Payment';
     $receiptUrl = route('admin.payments.receipt', $payment);
     $profileLocation = $profile?->location;
     $learnerLocation = collect([$learnerProfile?->barangay?->name ?? null, $learnerProfile?->city?->name ?? null])->filter()->implode(', ');
@@ -32,12 +37,6 @@
         </a>
         <div class="flex items-center gap-3">
             <a href="{{ $receiptUrl }}" target="_blank" rel="noreferrer" class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 hover:bg-sky-100">View Receipt</a>
-            @if($payment->isPending() || $status === 'processing')
-                <form method="POST" action="{{ route('admin.payments.complete', $payment) }}" onsubmit="return confirm('Mark as completed and activate subscription?')">
-                    @csrf
-                    <button type="submit" class="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600">Mark as Completed</button>
-                </form>
-            @endif
         </div>
     </div>
 
@@ -52,6 +51,7 @@
                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold {{ $statusClasses[$status] ?? 'bg-gray-100 text-gray-600' }}">{{ ucfirst(str_replace('_', ' ', $status)) }}</span>
                 </div>
                 <div class="mt-6 grid gap-5 md:grid-cols-2">
+                    <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Transaction Type</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $transactionType }}</p></div>
                     <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Amount</p><p class="mt-2 text-3xl font-bold text-emerald-600">₱{{ number_format((float) $payment->amount, 2) }}</p></div>
                     <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Method</p><p class="mt-2 text-lg font-semibold text-gray-900">{{ ucfirst(str_replace('_', ' ', (string) ($payment->method ?? 'Unknown'))) }}</p></div>
                     <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Created</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $payment->created_at->format('M d, Y h:i A') }}</p></div>
@@ -63,10 +63,26 @@
                 </div>
             </div>
 
-            <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
-                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Subscription Information</p>
-                <h2 class="mt-2 text-xl font-bold text-gray-900">Linked Subscription</h2>
-                @if($subscription)
+            @if($isModulePurchase)
+                <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Module Purchase Information</p>
+                    <h2 class="mt-2 text-xl font-bold text-gray-900">Module Transaction Details</h2>
+                    @if($module)
+                        <div class="mt-6 grid gap-5 md:grid-cols-2">
+                            <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Module</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $module->title }}</p></div>
+                            <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Instructor</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $moduleInstructor?->name ?? 'Unknown instructor' }}</p></div>
+                            <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Module Purchase Status</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ ucfirst((string) ($modulePurchase?->status ?? 'N/A')) }}</p></div>
+                            <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Purchased At</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $modulePurchase?->purchased_at?->format('M d, Y h:i A') ?? 'N/A' }}</p></div>
+                        </div>
+                    @else
+                        <p class="mt-4 text-sm text-gray-500">No module purchase details are linked to this payment record.</p>
+                    @endif
+                </div>
+            @else
+                <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Subscription Information</p>
+                    <h2 class="mt-2 text-xl font-bold text-gray-900">Linked Subscription</h2>
+                    @if($subscription)
                     @php
                         $subscriptionStatus = is_object($subscription->status) ? $subscription->status->value : (string) $subscription->status;
                         $currentPlan = $subscription->relationLoaded('plan')
@@ -81,10 +97,11 @@
                         <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Price Paid</p><p class="mt-2 text-sm font-semibold text-gray-900">₱{{ number_format((float) ($subscription->price_paid ?? 0), 2) }}</p></div>
                         <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Plan Duration</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $subscription->planPrice?->duration_label ?? 'Standard cycle' }}</p></div>
                     </div>
-                @else
-                    <p class="mt-4 text-sm text-gray-500">No subscription is linked to this payment record.</p>
-                @endif
-            </div>
+                    @else
+                        <p class="mt-4 text-sm text-gray-500">No subscription is linked to this payment record.</p>
+                    @endif
+                </div>
+            @endif
         </section>
 
         <aside class="space-y-6">

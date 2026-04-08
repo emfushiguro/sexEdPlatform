@@ -27,6 +27,7 @@ class SubmitInstructorApplicationRequest extends FormRequest
         return [
             'government_id' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'clearance' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'cv_resume' => ['required', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
             'educational_background' => ['required', 'string', 'in:high_school,college_undergrad,college_graduate,masters,doctorate,other'],
             'educational_background_other' => ['required_if:educational_background,other', 'nullable', 'string', 'max:100'],
             'bio' => ['nullable', 'string', 'max:500'],
@@ -55,6 +56,7 @@ class SubmitInstructorApplicationRequest extends FormRequest
         return [
             'government_id.required' => 'A government-issued ID is required.',
             'clearance.required' => 'An NBI or police clearance is required.',
+            'cv_resume.required' => 'A CV or resume is required.',
             'educational_background.required' => 'Please select your educational background.',
             'educational_background_other.required_if' => 'Please specify your educational background.',
             'confirmation.accepted' => 'You must confirm that the submitted information is authentic.',

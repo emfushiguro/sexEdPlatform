@@ -1,8 +1,10 @@
 import './bootstrap';
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
+import persist from '@alpinejs/persist';
 import './toast'; // Toast notification system
 import './chat/store';
+import './chat/global-popup';
 
 // Heavy libraries are loaded on-demand to keep the main bundle small.
 let cachedPdfJsLib = null;
@@ -54,6 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 window.Alpine = Alpine;
 Alpine.plugin(collapse);
+Alpine.plugin(persist);
 
 // Theme store — dark / light mode, persisted in localStorage
 Alpine.store('theme', {

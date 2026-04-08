@@ -122,13 +122,13 @@
              x-transition:leave="ease-in duration-200"
              x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
              x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-             class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-900 shadow-2xl transition-all w-full max-w-4xl max-h-[90vh] flex flex-col">
+               class="relative transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all w-full max-w-4xl max-h-[90vh] flex flex-col">
 
             {{-- Modal Header with Stepper --}}
-            <div class="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex-shrink-0">
+            <div class="px-6 pt-6 pb-4 border-b border-gray-100 bg-gray-50/70 flex-shrink-0">
                 <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-white" id="modal-title" x-text="wizardMode === 'edit' ? 'Edit Plan' : 'Create New Subscription Plan'"></h2>
-                    <button type="button" @click="closeCreatePlanModal()" class="rounded-full p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-500 dark:hover:text-gray-300 transition-colors">
+                    <h2 class="text-xl font-bold text-gray-900" id="modal-title" x-text="wizardMode === 'edit' ? 'Edit Plan' : 'Create New Subscription Plan'"></h2>
+                    <button type="button" @click="closeCreatePlanModal()" class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 transition-colors">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
@@ -142,9 +142,9 @@
                                  @click="currentStep > s ? currentStep = s : null">
                                 <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm"
                                      :class="{
-                                         'bg-gradient-to-br from-purple-600 to-indigo-700 text-white ring-4 ring-purple-100 dark:ring-purple-900/50': currentStep === s,
+                                         'bg-gradient-to-br from-purple-600 to-indigo-700 text-white ring-4 ring-purple-100': currentStep === s,
                                          'bg-purple-600 text-white': currentStep > s,
-                                         'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-400': currentStep < s
+                                         'bg-white border-2 border-gray-200 text-gray-400': currentStep < s
                                      }">
                                     <template x-if="currentStep > s">
                                         <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
@@ -154,12 +154,12 @@
                                     </template>
                                 </div>
                                 <span class="mt-2 text-xs font-semibold uppercase tracking-wider text-center"
-                                      :class="currentStep >= s ? 'text-purple-700 dark:text-purple-400' : 'text-gray-400 dark:text-gray-600'"
+                                      :class="currentStep >= s ? 'text-purple-700' : 'text-gray-400'"
                                       x-text="s === 1 ? 'Basics' : (s === 2 ? 'Billing' : (s === 3 ? 'Features' : 'Review'))"></span>
                             </div>
                         </template>
                         <!-- Connecting Lines -->
-                        <div class="absolute top-5 left-12 right-12 h-0.5 bg-gray-200 dark:bg-gray-700 -z-10">
+                        <div class="absolute top-5 left-12 right-12 h-0.5 bg-gray-200 -z-10">
                             <div class="h-full bg-purple-600 transition-all duration-500 ease-in-out"
                                  :style="'width: ' + ((currentStep - 1) / 3 * 100) + '%'"></div>
                         </div>
@@ -174,166 +174,81 @@
                     <input type="hidden" name="_method" value="PUT">
                 </template>
 
-                <div class="p-6 overflow-y-auto flex-1 bg-white dark:bg-gray-900">
+                <div class="p-6 overflow-y-auto flex-1 bg-white">
                     {{-- STEP 1: Plan Basics + Audience --}}
                     <div x-show="currentStep === 1" x-transition.opacity class="space-y-6 max-w-2xl mx-auto">
                         <div class="mb-2">
-                            <h3 class="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800 pb-2">Plan Basics</h3>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Define the core identity and target audience for this plan.</p>
+                            <h3 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Plan Basics</h3>
+                            <p class="mt-2 text-sm text-gray-500">Define the core identity and target audience for this plan.</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Plan Name <span class="text-red-500">*</span></label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan Name <span class="text-red-500">*</span></label>
                             <input type="text" name="name" x-model="form.name" required
                                    placeholder="e.g., Premium Learner Plan"
-                                   class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all"/>
+                                class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all"/>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
                             <textarea name="description" x-model="form.description" rows="3"
                                       placeholder="Describe what makes this plan special for your audience..."
-                                      class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 resize-none transition-all"></textarea>
+                                      class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 resize-none transition-all"></textarea>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Plan For <span class="text-red-500">*</span></label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan For <span class="text-red-500">*</span></label>
                             <select name="plan_audience" x-model="form.plan_audience" required
-                                    class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all">
+                                    class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all">
                                 <option value="">-- Select Target Audience --</option>
                                 <option value="learner">Learner Plan</option>
                                 <option value="instructor">Instructor Plan</option>
-                                <option value="connectors">Connectors Plan (Organizations)</option>
                             </select>
-                            <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Choose who this plan is designed for</p>
+                            <p class="mt-1.5 text-xs text-gray-500">Choose who this plan is designed for</p>
                         </div>
                     </div>
 
-                    {{-- STEP 2: Billing Mode + Pricing --}}
+                    {{-- STEP 2: Flexible Billing Configuration --}}
                     <div x-show="currentStep === 2" x-transition.opacity class="space-y-6 max-w-3xl mx-auto" x-cloak>
                         <div class="mb-4">
-                            <h3 class="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800 pb-2">Billing Configuration</h3>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Choose billing frequency and set pricing.</p>
+                            <h3 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Billing Configuration</h3>
+                            <p class="mt-2 text-sm text-gray-500">Choose monthly, annual, or a custom billing period.</p>
                         </div>
 
-                        {{-- Billing Mode Selection --}}
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Billing Mode <span class="text-red-500">*</span></label>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <label class="relative flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
-                                       :class="form.billing_mode === 'monthly' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'">
-                                    <input type="radio" name="billing_mode" value="monthly" x-model="form.billing_mode" class="sr-only" required>
-                                    <div class="flex flex-col flex-1">
-                                        <span class="text-sm font-semibold" :class="form.billing_mode === 'monthly' ? 'text-purple-700 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'">Monthly</span>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">Billed every month</span>
-                                    </div>
-                                    <svg x-show="form.billing_mode === 'monthly'" class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                </label>
-
-                                <label class="relative flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
-                                       :class="form.billing_mode === 'annual' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'">
-                                    <input type="radio" name="billing_mode" value="annual" x-model="form.billing_mode" class="sr-only">
-                                    <div class="flex flex-col flex-1">
-                                        <span class="text-sm font-semibold" :class="form.billing_mode === 'annual' ? 'text-purple-700 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'">Annual</span>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">Billed every year</span>
-                                    </div>
-                                    <svg x-show="form.billing_mode === 'annual'" class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                </label>
-
-                                <label class="relative flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
-                                       :class="form.billing_mode === 'custom' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'">
-                                    <input type="radio" name="billing_mode" value="custom" x-model="form.billing_mode" class="sr-only">
-                                    <div class="flex flex-col flex-1">
-                                        <span class="text-sm font-semibold" :class="form.billing_mode === 'custom' ? 'text-purple-700 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'">Custom</span>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">Custom period</span>
-                                    </div>
-                                    <svg x-show="form.billing_mode === 'custom'" class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                </label>
-                            </div>
-                        </div>
-
-                        {{-- Pricing Inputs (Conditional based on billing_mode) --}}
-                        <template x-if="form.billing_mode === 'monthly'">
-                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                        <div class="bg-gray-50 rounded-xl border border-gray-200 p-5">
                             <div class="flex items-center gap-3 mb-4">
-                                <span class="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300">₱</span>
-                                <h3 class="font-semibold text-gray-900 dark:text-white">Monthly Pricing</h3>
+                                <span class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l2.5 2.5M12 3a9 9 0 100 18 9 9 0 000-18z" />
+                                    </svg>
+                                </span>
+                                <h3 class="font-semibold text-gray-900">Billing Period & Pricing</h3>
                             </div>
-                            <div>
-                                <input type="hidden" name="prices[0][duration_mode]" value="preset">
-                                <input type="hidden" name="prices[0][duration_unit]" value="month">
-                                <input type="hidden" name="prices[0][duration_count]" value="1">
-                                <input type="hidden" name="prices[0][is_default]" value="1">
-                                <input type="hidden" name="prices[0][duration_label]" value="Monthly">
-                                <input type="hidden" name="prices[0][currency]" value="PHP">
 
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Monthly Price (PHP) <span class="text-red-500">*</span></label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">₱</span>
-                                     <input type="text"
-                                         inputmode="decimal"
-                                           x-model="form.prices.monthly.amount_decimal"
-                                         @input="updateMoney('monthly', $event.target.value)"
-                                           placeholder="199.99"
-                                           class="w-full pl-8 pr-3 py-2.5 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:border-purple-500 focus:ring-purple-500/20">
-                                    <input type="hidden" name="prices[0][amount_minor]" :value="form.prices.monthly.amount">
-                                </div>
-                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Enter amount in pesos (e.g., 199.99 for ₱199.99/month)</p>
-                            </div>
-                        </div>
-                        </template>
-
-                        <template x-if="form.billing_mode === 'annual'">
-                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-                            <div class="flex items-center gap-3 mb-4">
-                                <span class="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300">₱</span>
-                                <h3 class="font-semibold text-gray-900 dark:text-white">Annual Pricing</h3>
-                            </div>
-                            <div>
-                                <input type="hidden" name="prices[0][duration_mode]" value="preset">
-                                <input type="hidden" name="prices[0][duration_unit]" value="year">
-                                <input type="hidden" name="prices[0][duration_count]" value="1">
-                                <input type="hidden" name="prices[0][is_default]" value="1">
-                                <input type="hidden" name="prices[0][duration_label]" value="Yearly">
-                                <input type="hidden" name="prices[0][currency]" value="PHP">
-
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Annual Price (PHP) <span class="text-red-500">*</span></label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">₱</span>
-                                     <input type="text"
-                                         inputmode="decimal"
-                                           x-model="form.prices.yearly.amount_decimal"
-                                         @input="updateMoney('yearly', $event.target.value)"
-                                           placeholder="1999.99"
-                                           class="w-full pl-8 pr-3 py-2.5 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:border-purple-500 focus:ring-purple-500/20">
-                                    <input type="hidden" name="prices[0][amount_minor]" :value="form.prices.yearly.amount">
-                                </div>
-                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Enter amount in pesos (e.g., 1999.99 for ₱1,999.99/year)</p>
-                            </div>
-                        </div>
-                        </template>
-
-                        <template x-if="form.billing_mode === 'custom'">
-                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-                            <div class="flex items-center gap-3 mb-4">
-                                <span class="w-8 h-8 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300">⏱</span>
-                                <h3 class="font-semibold text-gray-900 dark:text-white">Custom Period Pricing</h3>
-                            </div>
                             <div class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Duration Count <span class="text-red-500">*</span></label>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Billing Period <span class="text-red-500">*</span></label>
+                                    <select x-model="form.billing.mode"
+                                            class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
+                                        <option value="monthly">Monthly</option>
+                                        <option value="annual">Annually</option>
+                                        <option value="custom">Custom Period</option>
+                                    </select>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div x-show="form.billing.mode === 'custom'" x-cloak>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Value <span class="text-red-500">*</span></label>
                                         <input type="number"
-                                               x-model="form.prices.custom.duration_count"
+                                               x-model.number="form.billing.duration_count"
                                                min="1"
-                                               placeholder="e.g., 3"
-                                               class="w-full px-3 py-2.5 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:border-purple-500 focus:ring-purple-500/20">
-                                        <input type="hidden" name="prices[0][duration_count]" :value="form.prices.custom.duration_count">
+                                               placeholder="e.g., 1"
+                                               class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
                                     </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Duration Unit <span class="text-red-500">*</span></label>
-                                        <select x-model="form.prices.custom.duration_unit"
-                                                class="w-full px-3 py-2.5 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:border-purple-500 focus:ring-purple-500/20">
+                                    <div x-show="form.billing.mode === 'custom'" x-cloak>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Unit <span class="text-red-500">*</span></label>
+                                        <select x-model="form.billing.duration_unit"
+                                                class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
                                             <option value="minute">Minutes</option>
                                             <option value="hour">Hours</option>
                                             <option value="day">Days</option>
@@ -341,52 +256,59 @@
                                             <option value="month">Months</option>
                                             <option value="year">Years</option>
                                         </select>
-                                        <input type="hidden" name="prices[0][duration_unit]" :value="form.prices.custom.duration_unit">
+                                    </div>
+                                    <div x-show="form.billing.mode !== 'custom'" class="sm:col-span-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3" x-cloak>
+                                        <p class="text-sm text-blue-800">
+                                            <span class="font-semibold" x-text="form.billing.mode === 'monthly' ? 'Monthly preset selected.' : 'Annual preset selected.'"></span>
+                                            <span class="ml-1">You can switch to Custom Period if you need a different duration.</span>
+                                        </p>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Price (PHP) <span class="text-red-500">*</span></label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Price (PHP) <span class="text-red-500">*</span></label>
                                     <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">₱</span>
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₱</span>
                                         <input type="text"
                                                inputmode="decimal"
-                                               x-model="form.prices.custom.amount_decimal"
-                                               @input="updateMoney('custom', $event.target.value)"
+                                               x-model="form.billing.amount_decimal"
+                                               @input="updateMoney($event.target.value)"
                                                placeholder="499.99"
-                                               class="w-full pl-8 pr-3 py-2.5 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:border-purple-500 focus:ring-purple-500/20">
-                                        <input type="hidden" name="prices[0][amount_minor]" :value="form.prices.custom.amount">
+                                               class="w-full pl-8 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
                                     </div>
-                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
-                                        Renews every <span x-text="form.prices.custom.duration_count"></span>
-                                        <span x-text="form.prices.custom.duration_unit + (form.prices.custom.duration_count > 1 ? 's' : '')"></span>
+                                    <p class="text-xs text-gray-500 mt-1.5">
+                                        Renews every <span x-text="effectiveDurationCount()"></span>
+                                        <span x-text="durationUnitLabel(effectiveDurationUnit(), effectiveDurationCount())"></span>
                                     </p>
                                 </div>
 
-                                <input type="hidden" name="prices[0][duration_mode]" value="custom">
+                                <input type="hidden" name="billing_mode" :value="form.billing.mode || 'monthly'">
+                                <input type="hidden" name="prices[0][duration_mode]" :value="form.billing.mode === 'custom' ? 'custom' : 'preset'">
+                                <input type="hidden" name="prices[0][duration_unit]" :value="effectiveDurationUnit()">
+                                <input type="hidden" name="prices[0][duration_count]" :value="effectiveDurationCount()">
                                 <input type="hidden" name="prices[0][is_default]" value="1">
-                                <input type="hidden" name="prices[0][duration_label]" :value="'Every ' + form.prices.custom.duration_count + ' ' + form.prices.custom.duration_unit + (form.prices.custom.duration_count > 1 ? 's' : '')">
+                                <input type="hidden" name="prices[0][duration_label]" :value="durationLabel()">
                                 <input type="hidden" name="prices[0][currency]" value="PHP">
+                                <input type="hidden" name="prices[0][amount_minor]" :value="form.billing.amount">
                             </div>
                         </div>
-                        </template>
                     </div>
 
                     {{-- STEP 3: Entitlements (Dynamic based on plan_audience) --}}
                     <div x-show="currentStep === 3" x-transition.opacity class="space-y-6 max-w-4xl mx-auto" x-cloak>
                         <div class="mb-4">
-                            <h3 class="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-800 pb-2">Feature Entitlements</h3>
-                            <div class="mt-3 flex items-start gap-2 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-3 rounded-lg">
-                                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <p class="text-sm text-indigo-800 dark:text-indigo-300">Configure features available for <strong class="capitalize" x-text="form.plan_audience || 'selected audience'"></strong>. Toggle each feature or set quotas where applicable.</p>
+                            <h3 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Feature Entitlements</h3>
+                            <div class="mt-3 flex items-start gap-2 bg-indigo-50 border border-indigo-100 p-3 rounded-lg">
+                                <svg class="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <p class="text-sm text-indigo-800">Configure features available for <strong class="capitalize" x-text="form.plan_audience || 'selected audience'"></strong>. Toggle each feature or set quotas where applicable.</p>
                             </div>
                         </div>
 
                         {{-- Dynamic Entitlements Grid --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <template x-for="(feature, index) in availableFeatures" :key="feature.key">
-                                <div class="rounded-xl border-2 bg-white dark:bg-gray-800 p-4 shadow-sm hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
-                                     :class="form.entitlements[feature.key]?.is_enabled ? 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/10' : 'border-gray-200 dark:border-gray-700'">
+                                <div class="rounded-xl border-2 bg-white p-4 shadow-sm hover:border-purple-300 transition-colors"
+                                     :class="form.entitlements[feature.key]?.is_enabled ? 'border-purple-200 bg-purple-50' : 'border-gray-200'">
                                     <label class="flex items-start gap-3 cursor-pointer mb-3">
                                         <input type="checkbox"
                                                :name="'entitlements[' + index + '][is_enabled]'"
@@ -394,8 +316,8 @@
                                                x-model="form.entitlements[feature.key].is_enabled"
                                                class="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
                                         <div class="flex-1">
-                                            <span class="block font-medium text-gray-900 dark:text-white text-sm" x-text="feature.name"></span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400" x-text="feature.description || getFeatureDescription(feature)"></span>
+                                            <span class="block font-medium text-gray-900 text-sm" x-text="feature.name"></span>
+                                            <span class="text-xs text-gray-500" x-text="feature.description || getFeatureDescription(feature)"></span>
                                         </div>
                                     </label>
 
@@ -407,16 +329,16 @@
                                                    value="1"
                                                    x-model="form.entitlements[feature.key].is_unlimited"
                                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Unlimited</span>
+                                              <span class="text-xs font-medium text-gray-700">Unlimited</span>
                                         </div>
                                         <div x-show="!form.entitlements[feature.key].is_unlimited">
-                                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Quota Value</label>
+                                              <label class="block text-xs font-medium text-gray-600 mb-1">Quota Value</label>
                                             <input type="number"
                                                    :name="'entitlements[' + index + '][quota_value]'"
                                                    x-model="form.entitlements[feature.key].quota_value"
                                                    min="0"
                                                    :placeholder="'Enter ' + (feature.unit_label || 'quantity')"
-                                                   class="w-full rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:border-purple-500 focus:ring-purple-500/20">
+                                                  class="w-full rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
                                         </div>
                                     </div>
 
@@ -428,8 +350,8 @@
                                 </div>
                             </template>
 
-                            <div x-show="availableFeatures.length === 0" class="col-span-2 text-center py-8 text-gray-500 dark:text-gray-400">
-                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                            <div x-show="availableFeatures.length === 0" class="col-span-2 text-center py-8 text-gray-500">
+                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                                 <p class="text-sm">No features available for <span class="font-semibold capitalize" x-text="form.plan_audience"></span></p>
                             </div>
                         </div>
@@ -438,54 +360,52 @@
                     {{-- STEP 4: Review & Confirmation --}}
                     <div x-show="currentStep === 4" x-transition.opacity class="space-y-6 max-w-2xl mx-auto" x-cloak>
                         <div class="mb-4 text-center">
-                            <div class="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-500 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-gray-900 dark:text-white">Final Confirmation</h3>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">Review your plan configuration before saving.</p>
+                            <h3 class="text-xl font-bold text-gray-900">Final Confirmation</h3>
+                            <p class="mt-2 text-sm text-gray-500 max-w-md mx-auto">Review your plan configuration before saving.</p>
                         </div>
 
-                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-6 border border-gray-200 dark:border-gray-700 space-y-3">
-                            <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">Plan Name</span>
-                                <span class="font-semibold text-gray-900 dark:text-white" x-text="form.name || 'Untitled'"></span>
+                        <div class="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-3">
+                            <div class="flex justify-between items-center border-b border-gray-200 pb-3">
+                                <span class="text-sm text-gray-600">Plan Name</span>
+                                <span class="font-semibold text-gray-900" x-text="form.name || 'Untitled'"></span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">Target Audience</span>
-                                <span class="font-semibold text-gray-900 dark:text-white capitalize" x-text="form.plan_audience || 'Not set'"></span>
+                            <div class="flex justify-between items-center border-b border-gray-200 pb-3">
+                                <span class="text-sm text-gray-600">Target Audience</span>
+                                <span class="font-semibold text-gray-900 capitalize" x-text="form.plan_audience || 'Not set'"></span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">Billing Mode</span>
-                                <span class="font-semibold text-gray-900 dark:text-white capitalize" x-text="form.billing_mode || 'Not set'"></span>
+                            <div class="flex justify-between items-center border-b border-gray-200 pb-3">
+                                <span class="text-sm text-gray-600">Billing Duration</span>
+                                <span class="font-semibold text-gray-900" x-text="durationLabel()"></span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">Price</span>
-                                <span class="font-semibold text-gray-900 dark:text-white" data-testid="plan-wizard-billing-preview">
-                                    <span x-show="form.billing_mode === 'monthly'" x-text="'PHP ' + (form.prices.monthly.amount / 100).toFixed(2) + '/mo'"></span>
-                                    <span x-show="form.billing_mode === 'annual'" x-text="'PHP ' + (form.prices.yearly.amount / 100).toFixed(2) + '/yr'"></span>
-                                    <span x-show="form.billing_mode === 'custom'" x-text="'PHP ' + (form.prices.custom.amount / 100).toFixed(2)"></span>
+                            <div class="flex justify-between items-center border-b border-gray-200 pb-3">
+                                <span class="text-sm text-gray-600">Price</span>
+                                <span class="font-semibold text-gray-900" data-testid="plan-wizard-billing-preview">
+                                    <span x-text="'PHP ' + (Number(form.billing.amount || 0) / 100).toFixed(2)"></span>
                                 </span>
                             </div>
                             <div class="flex justify-between items-start pt-2">
-                                <span class="text-sm text-gray-600 dark:text-gray-400">Enabled Features</span>
+                                <span class="text-sm text-gray-600">Enabled Features</span>
                                 <div class="text-right">
                                     <template x-for="(data, key) in form.entitlements" :key="key">
-                                        <span x-show="data.is_enabled" class="block text-sm font-medium text-gray-900 dark:text-white mb-1" x-text="availableFeatures.find(f => f.key === key)?.name || key"></span>
+                                        <span x-show="data.is_enabled" class="block text-sm font-medium text-gray-900 mb-1" x-text="availableFeatures.find(f => f.key === key)?.name || key"></span>
                                     </template>
-                                    <span x-show="!Object.values(form.entitlements).some(e => e.is_enabled)" class="text-sm text-gray-400 dark:text-gray-500">No features enabled</span>
+                                    <span x-show="!Object.values(form.entitlements).some(e => e.is_enabled)" class="text-sm text-gray-400">No features enabled</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-200 dark:border-gray-700 mt-6">
+                        <div class="bg-gray-50 rounded-xl p-5 border border-gray-200 mt-6">
                             <label class="flex items-start gap-4 cursor-pointer group">
                                 <div class="flex items-center h-6">
                                     <input type="checkbox" name="is_active" value="1" x-model="form.is_active"
                                            class="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 transition-colors cursor-pointer">
                                 </div>
                                 <div class="flex-1">
-                                    <span class="block text-sm font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors">Make plan active immediately</span>
-                                    <span class="block text-sm text-gray-500 dark:text-gray-400">If checked, this plan will be visible to users right after creation.</span>
+                                    <span class="block text-sm font-semibold text-gray-900 mb-1 group-hover:text-purple-700 transition-colors">Make plan active immediately</span>
+                                    <span class="block text-sm text-gray-500">If checked, this plan will be visible to users right after creation.</span>
                                 </div>
                             </label>
                         </div>
@@ -493,18 +413,18 @@
                 </div>
 
                 {{-- Modal Footer --}}
-                <div class="p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between flex-shrink-0 rounded-b-2xl">
+                <div class="p-6 border-t border-gray-100 bg-gray-50 flex items-center justify-between flex-shrink-0 rounded-b-2xl">
                     <button type="button"
                             x-show="currentStep > 1"
                             @click="currentStep--"
-                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all shadow-sm">
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                         Back
                     </button>
                     <div x-show="currentStep === 1" class="w-20"></div>
 
                     <div class="flex items-center gap-3">
-                        <button type="button" @click="closeCreatePlanModal()" class="text-sm font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors px-4">Cancel</button>
+                        <button type="button" @click="closeCreatePlanModal()" class="text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors px-4">Cancel</button>
 
                         <button type="button"
                                 x-show="currentStep < 4"
@@ -591,7 +511,6 @@
                             <option value="">All audiences</option>
                             <option value="learner">Learner</option>
                             <option value="instructor">Instructor</option>
-                            <option value="connectors">Connectors</option>
                         </select>
                     </label>
                     <label class="block">
@@ -855,17 +774,48 @@
 
     <script>
         function subscriptionPlansPage(plans, storeRoute, stats) {
+            const learnerCoreFeatureKeys = [
+                'unlimited_username_change',
+                'unlimited_quiz_shields',
+                'downloadable_certificates',
+            ];
+
+            const learnerCoreFallbackCatalog = [
+                {
+                    key: 'unlimited_username_change',
+                    name: 'Unlimited Username Changes',
+                    description: 'Allow learners to change their username without cooldown limits.',
+                    value_type: 'boolean',
+                    category: 'learner',
+                },
+                {
+                    key: 'unlimited_quiz_shields',
+                    name: 'Unlimited Quiz Shields',
+                    description: 'Allow unlimited quiz retries without daily shield limits.',
+                    value_type: 'boolean',
+                    category: 'learner',
+                },
+                {
+                    key: 'downloadable_certificates',
+                    name: 'Downloadable PDF Certificates',
+                    description: 'Allow learners to download certificate PDFs.',
+                    value_type: 'boolean',
+                    category: 'learner',
+                },
+            ];
+
             const defaultForm = () => ({
                 id: null,
                 name: '',
                 description: '',
                 plan_audience: '',
-                billing_mode: 'monthly',
                 is_active: true,
-                prices: {
-                    monthly: { amount: 0, amount_decimal: '', label: 'Monthly' },
-                    yearly: { amount: 0, amount_decimal: '', label: 'Yearly' },
-                    custom: { amount: 0, amount_decimal: '', duration_count: 1, duration_unit: 'month', label: 'Custom Period' }
+                billing: {
+                    mode: 'monthly',
+                    duration_count: 1,
+                    duration_unit: 'month',
+                    amount: 0,
+                    amount_decimal: '',
                 },
                 entitlements: {}
             });
@@ -921,7 +871,22 @@
 
                 get availableFeatures() {
                     if (!this.form.plan_audience) return [];
-                    return this.featureCatalog;
+
+                    const catalog = Array.isArray(this.featureCatalog) && this.featureCatalog.length > 0
+                        ? this.featureCatalog
+                        : learnerCoreFallbackCatalog;
+
+                    if (this.form.plan_audience === 'learner') {
+                        return learnerCoreFeatureKeys
+                            .map((key) => catalog.find((feature) => feature.key === key))
+                            .filter(Boolean);
+                    }
+
+                    if (this.form.plan_audience === 'instructor') {
+                        return catalog.filter((feature) => ['instructor', 'general'].includes(String(feature.category || '').toLowerCase()));
+                    }
+
+                    return [];
                 },
 
                 get filteredPlans() {
@@ -980,7 +945,6 @@
                     return {
                         learner: 'bg-sky-100 text-sky-700',
                         instructor: 'bg-teal-100 text-teal-700',
-                        connectors: 'bg-fuchsia-100 text-fuchsia-700',
                     }[audience] || 'bg-gray-100 text-gray-600';
                 },
 
@@ -1021,10 +985,64 @@
                     };
                 },
 
-                updateMoney(mode, rawValue) {
+                updateMoney(rawValue) {
                     const normalized = this.normalizeMoney(rawValue);
-                    this.form.prices[mode].amount_decimal = normalized.decimal;
-                    this.form.prices[mode].amount = normalized.minor;
+                    this.form.billing.amount_decimal = normalized.decimal;
+                    this.form.billing.amount = normalized.minor;
+                },
+
+                durationUnitLabel(unit, count = 1) {
+                    const singular = {
+                        minute: 'minute',
+                        hour: 'hour',
+                        day: 'day',
+                        week: 'week',
+                        month: 'month',
+                        year: 'year',
+                    }[unit] || 'period';
+
+                    return Number(count) === 1 ? singular : `${singular}s`;
+                },
+
+                durationLabel() {
+                    const count = this.effectiveDurationCount();
+                    const unit = this.durationUnitLabel(this.effectiveDurationUnit(), count);
+                    return `Every ${count} ${unit}`;
+                },
+
+                effectiveDurationUnit() {
+                    if (this.form.billing.mode === 'monthly') {
+                        return 'month';
+                    }
+
+                    if (this.form.billing.mode === 'annual') {
+                        return 'year';
+                    }
+
+                    return this.form.billing.duration_unit || 'month';
+                },
+
+                effectiveDurationCount() {
+                    if (this.form.billing.mode === 'monthly' || this.form.billing.mode === 'annual') {
+                        return 1;
+                    }
+
+                    return Math.max(1, Number(this.form.billing.duration_count || 1));
+                },
+
+                billingModeFromDuration() {
+                    const count = this.effectiveDurationCount();
+                    const unit = this.effectiveDurationUnit();
+
+                    if (unit === 'month' && count === 1) {
+                        return 'monthly';
+                    }
+
+                    if (unit === 'year' && count === 1) {
+                        return 'annual';
+                    }
+
+                    return 'custom';
                 },
 
                 async init() {
@@ -1050,7 +1068,11 @@
                 },
 
                 initializeEntitlements() {
-                    this.featureCatalog.forEach(feature => {
+                    const featuresToInitialize = Array.isArray(this.featureCatalog) && this.featureCatalog.length > 0
+                        ? this.featureCatalog
+                        : learnerCoreFallbackCatalog;
+
+                    featuresToInitialize.forEach(feature => {
                         if (!this.form.entitlements[feature.key]) {
                             this.form.entitlements[feature.key] = {
                                 is_enabled: false,
@@ -1077,10 +1099,17 @@
                     this.wizardMode = 'edit';
                     this.currentStep = 1;
 
-                    const monthly = plan.plan_prices?.find(p => p.duration_unit === 'month');
-                    const yearly = plan.plan_prices?.find(p => p.duration_unit === 'year');
-                    const custom = plan.plan_prices?.find(p => p.duration_mode === 'custom')
-                        || plan.plan_prices?.find(p => !['month', 'year'].includes(p.duration_unit));
+                    const priceRows = Array.isArray(plan.plan_prices) ? plan.plan_prices : [];
+                    const defaultPrice = priceRows.find((price) => price.is_default && price.is_active)
+                        || priceRows.find((price) => price.is_active)
+                        || priceRows[0]
+                        || null;
+                    const resolvedDurationUnit = defaultPrice ? String(defaultPrice.duration_unit || 'month') : 'month';
+                    const resolvedDurationCount = defaultPrice ? Number(defaultPrice.duration_count || 1) : 1;
+                    const resolvedMode = (resolvedDurationUnit === 'month' && resolvedDurationCount === 1)
+                        ? 'monthly'
+                        : ((resolvedDurationUnit === 'year' && resolvedDurationCount === 1) ? 'annual' : 'custom');
+                    const fallbackAmountMinor = Math.round(Number(plan.price || 0) * 100);
 
                     const entitlements = {};
                     if (Array.isArray(plan.feature_entitlements)) {
@@ -1100,26 +1129,15 @@
                         name: plan.name,
                         description: plan.description || '',
                         plan_audience: plan.plan_audience || 'learner',
-                        billing_mode: plan.billing_mode || 'monthly',
                         is_active: !!plan.is_active,
-                        prices: {
-                            monthly: {
-                                amount: monthly ? Number(monthly.amount_minor) : 0,
-                                amount_decimal: monthly ? (Number(monthly.amount_minor) / 100).toFixed(2) : '',
-                                label: 'Monthly'
-                            },
-                            yearly: {
-                                amount: yearly ? Number(yearly.amount_minor) : 0,
-                                amount_decimal: yearly ? (Number(yearly.amount_minor) / 100).toFixed(2) : '',
-                                label: 'Yearly'
-                            },
-                            custom: {
-                                amount: custom ? Number(custom.amount_minor) : 0,
-                                amount_decimal: custom ? (Number(custom.amount_minor) / 100).toFixed(2) : '',
-                                duration_count: custom ? Number(custom.duration_count || 1) : 1,
-                                duration_unit: custom ? (custom.duration_unit || 'month') : 'month',
-                                label: 'Custom Period'
-                            }
+                        billing: {
+                            mode: plan.billing_mode || resolvedMode,
+                            duration_count: resolvedDurationCount,
+                            duration_unit: resolvedDurationUnit,
+                            amount: defaultPrice ? Number(defaultPrice.amount_minor || 0) : fallbackAmountMinor,
+                            amount_decimal: defaultPrice
+                                ? (Number(defaultPrice.amount_minor || 0) / 100).toFixed(2)
+                                : (fallbackAmountMinor > 0 ? (fallbackAmountMinor / 100).toFixed(2) : ''),
                         },
                         entitlements: entitlements
                     };
@@ -1228,34 +1246,19 @@
                     }
 
                     if (this.currentStep === 2) {
-                        if (!this.form.billing_mode) {
-                            this.notifyValidation('warning', 'Please select a billing mode.');
+                        if (!this.form.billing.amount_decimal || this.form.billing.amount_decimal <= 0) {
+                            this.notifyValidation('error', 'Please enter a valid plan price.');
                             return;
                         }
 
-                        if (this.form.billing_mode === 'monthly' && (!this.form.prices.monthly.amount_decimal || this.form.prices.monthly.amount_decimal <= 0)) {
-                            this.notifyValidation('error', 'Please enter a valid monthly price.');
+                        if (this.form.billing.mode === 'custom' && (!this.form.billing.duration_count || this.form.billing.duration_count < 1)) {
+                            this.notifyValidation('error', 'Please set a valid duration value.');
                             return;
                         }
 
-                        if (this.form.billing_mode === 'annual' && (!this.form.prices.yearly.amount_decimal || this.form.prices.yearly.amount_decimal <= 0)) {
-                            this.notifyValidation('error', 'Please enter a valid annual price.');
+                        if (this.form.billing.mode === 'custom' && !this.form.billing.duration_unit) {
+                            this.notifyValidation('warning', 'Please select a duration unit.');
                             return;
-                        }
-
-                        if (this.form.billing_mode === 'custom') {
-                            if (!this.form.prices.custom.amount_decimal || this.form.prices.custom.amount_decimal <= 0) {
-                                this.notifyValidation('error', 'Please enter a valid price.');
-                                return;
-                            }
-                            if (!this.form.prices.custom.duration_count || this.form.prices.custom.duration_count < 1) {
-                                this.notifyValidation('error', 'Please set a valid duration count.');
-                                return;
-                            }
-                            if (!this.form.prices.custom.duration_unit) {
-                                this.notifyValidation('warning', 'Please select a duration unit.');
-                                return;
-                            }
                         }
 
                         this.currentStep++;

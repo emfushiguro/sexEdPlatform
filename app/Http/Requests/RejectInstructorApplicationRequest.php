@@ -16,13 +16,15 @@ class RejectInstructorApplicationRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'review_application_id' => ['nullable', 'integer'],
             'rejection_reason_code' => ['required', 'string', Rule::in(InstructorApplicationRejectionReason::values())],
             'rejection_reason_note' => [
                 'nullable',
                 'string',
-                'max:1000',
+                'max:2000',
                 Rule::requiredIf(fn (): bool => (string) $this->input('rejection_reason_code') === InstructorApplicationRejectionReason::Other->value),
             ],
+            'admin_message' => ['required', 'string', 'max:10000'],
         ];
     }
 }

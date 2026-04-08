@@ -12,6 +12,33 @@ class FeatureCatalogSeeder extends Seeder
         $features = [
             // Learner-specific features
             [
+                'key' => 'unlimited_username_change',
+                'name' => 'Unlimited Username Changes',
+                'description' => 'Allow learners to change username any time without cooldown',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'learner',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'unlimited_quiz_shields',
+                'name' => 'Unlimited Quiz Shields',
+                'description' => 'Remove daily limit on quiz shields and retry protection',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'learner',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'downloadable_certificates',
+                'name' => 'Downloadable PDF Certificates',
+                'description' => 'Allow learners to download and print completion certificates as PDF',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'learner',
+                'is_active' => true,
+            ],
+            [
                 'key' => 'unlimited_shields',
                 'name' => 'Unlimited Quiz Shields',
                 'description' => 'Remove daily limit on learning shields for quiz attempts',

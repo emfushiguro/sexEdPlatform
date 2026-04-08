@@ -201,7 +201,7 @@ class DashboardController extends Controller
 
             if ($completedPayment) {
                 app(SubscriptionService::class)->activate($pendingSubscription);
-                session()->flash('success', 'Your subscription is now active! 🎉');
+                session()->flash('success', 'Your subscription is now active.');
                 return;
             }
 
@@ -216,16 +216,22 @@ class DashboardController extends Controller
                 return;
             }
 
-            $linkId = $pendingPayment->payment_details['paymongo_link_id'] ?? null;
-            if (!$linkId) {
+            $sessionId = (string) data_get($pendingPayment->payment_details, 'paymongo_checkout_session_id', '');
+            $linkId = (string) data_get($pendingPayment->payment_details, 'paymongo_link_id', '');
+
+            if ($sessionId === '' && $linkId === '') {
                 return;
             }
 
             $paymongoService = app(PayMongoPaymentLinkService::class);
-            $response = $paymongoService->retrievePaymentLink($linkId);
-            $pmStatus = $response['data']['attributes']['status'] ?? null;
+            $response = $sessionId !== ''
+                ? $paymongoService->retrieveCheckoutSession($sessionId)
+                : $paymongoService->retrievePaymentLink($linkId);
 
-            if ($pmStatus === 'paid') {
+            $pmStatus = strtolower((string) data_get($response, 'data.attributes.status', ''));
+            $hasPayments = !empty(data_get($response, 'data.attributes.payments', []));
+
+            if ($pmStatus === 'paid' || $pmStatus === 'completed' || $hasPayments) {
                 DB::transaction(function () use ($pendingPayment, $pendingSubscription) {
                     $pendingPayment->update([
                         'status'  => PaymentStatus::Completed,
@@ -237,7 +243,7 @@ class DashboardController extends Controller
                     ]);
                     app(SubscriptionService::class)->activate($pendingSubscription);
                 });
-                session()->flash('success', 'Your payment was confirmed! Subscription is now active. 🎉');
+                session()->flash('success', 'Your payment was confirmed. Subscription is now active.');
             }
         } catch (\Exception $e) {
             // Non-critical — don't break the dashboard if PayMongo is unavailable

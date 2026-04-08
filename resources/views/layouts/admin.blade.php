@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', 'Admin') | {{ config('app.name') }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" sizes="any">
 
     <!-- Poppins font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -95,7 +96,7 @@
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 min-w-0">
                     {{-- Brand logo + text (expanded) --}}
                     <img src="/media/Logo.png"
-                         alt="Concious Connections"
+                         alt="Conscious Connections"
                          x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                          x-transition:enter="transition-opacity duration-200"
                          x-transition:enter-start="opacity-0"
@@ -103,12 +104,13 @@
                          class="h-10 w-10 object-contain"
                          x-cloak>
 
-                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                          x-cloak
-                          class="text-lg font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500 whitespace-nowrap leading-tight">
-                        Concious <br>
-                        Connections
-                    </span>
+                    <div x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="leading-tight">
+                        <span class="text-lg font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500 whitespace-nowrap block">
+                            Conscious <br>
+                            Connections
+                        </span>
+                        <span class="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-600 mt-1 block">Admin Panel</span>
+                    </div>
 
                     {{-- Icon-only logo (collapsed) --}}
                     <img src="/media/Logo.png"
@@ -164,12 +166,6 @@
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                                           x-cloak class="truncate">Chat</span>
-                                    <span
-                                        data-chat-unread-badge
-                                        data-chat-unread-badge-role="admin"
-                                        hidden
-                                        class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-700"
-                                    >0</span>
                                 </a>
                             </li>
                         </ul>
@@ -247,6 +243,26 @@
                             Management
                         </h2>
                         <ul class="flex flex-col gap-1">
+                            {{-- Users Management --}}
+                            <li>
+                                <a href="{{ route('admin.users.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.users.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.users.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.users.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H4v-1a4 4 0 014-4h5m0 5v-1a4 4 0 00-4-4H8m5 5h1a4 4 0 004-4v-1m-5-5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Users</span>
+                                </a>
+                            </li>
+
                             {{-- Subscribers --}}
                             <li>
                                 <a href="{{ route('admin.subscribers.index') }}"
@@ -413,8 +429,12 @@
                     {{-- Right side --}}
                     <div class="flex items-center gap-2">
 
-                        <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open"
+                        @php
+                            $adminPayloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
+                        @endphp
+
+                        <div class="relative" x-data="{ open: false, syncReadState() { window.axios.post('{{ route('admin.notifications.dropdown-open') }}').catch(() => {}); } }">
+                            <button @click="open = !open; if (open) { syncReadState(); }"
                                     class="relative flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 transition-colors"
                                     aria-label="Open notifications">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -422,7 +442,7 @@
                                 </svg>
                                 @if(($adminNotifications['unread_count'] ?? 0) > 0)
                                     <span class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                        {{ min($adminNotifications['unread_count'], 99) }}
+                                        {{ $adminNotifications['unread_count'] > 9 ? '9+' : $adminNotifications['unread_count'] }}
                                     </span>
                                 @endif
                             </button>
@@ -438,28 +458,70 @@
                                  x-transition:leave-end="opacity-0 scale-95"
                                  class="absolute right-0 mt-2 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-md"
                                  style="z-index: 100;">
-                                <div class="border-b border-gray-100 bg-gradient-to-r from-sky-50 via-white to-rose-50 px-4 py-3">
-                                    <p class="text-sm font-semibold text-gray-900">Notifications</p>
-                                    <p class="mt-0.5 text-xs text-gray-500">Admin-side signals that need attention.</p>
+                                <div class="border-b border-gray-100 bg-gradient-to-r from-sky-50 via-white to-rose-50 px-4 py-3 flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900">Notifications</p>
+                                        <p class="mt-0.5 text-xs text-gray-500">Admin-side updates and system alerts.</p>
+                                    </div>
+                                    @if(($adminNotifications['unread_count'] ?? 0) > 0)
+                                        <form method="POST" action="{{ route('admin.notifications.mark-all-read') }}">
+                                            @csrf
+                                            <button type="submit" class="text-xs font-medium text-brand-700 hover:text-brand-900 transition-colors">
+                                                Mark all read
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                                 <div class="max-h-80 overflow-y-auto">
-                                    @forelse(($adminNotifications['items'] ?? []) as $item)
-                                        <a href="{{ $item['href'] }}"
-                                           class="flex gap-3 border-b border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50">
-                                            <span class="mt-0.5 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl
-                                                {{ $item['tone'] === 'amber' ? 'bg-amber-50 text-amber-600' : ($item['tone'] === 'blue' ? 'bg-sky-50 text-sky-600' : 'bg-rose-50 text-rose-600') }}">
-                                                <span class="text-sm font-bold">{{ $item['value'] }}</span>
+                                    @forelse(($adminNotifications['items'] ?? []) as $notification)
+                                        @php
+                                            $normalized = $adminPayloadNormalizer->normalize((array) $notification->data);
+                                            $isUnread = is_null($notification->read_at);
+
+                                            $toneClass = match($normalized['severity']) {
+                                                'success' => 'border-l-4 border-emerald-500',
+                                                'error' => 'border-l-4 border-rose-500',
+                                                default => 'border-l-4 border-slate-300',
+                                            };
+                                        @endphp
+                                        <a href="{{ route('admin.notifications.read', $notification->id) }}"
+                                           class="flex gap-3 border-b border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50 {{ $toneClass }} {{ $isUnread ? 'bg-rose-50/40' : '' }}">
+                                            <span class="min-w-0 flex-1">
+                                                <span class="block text-sm font-semibold text-gray-900">{{ $normalized['title'] }}</span>
+                                                <span class="mt-0.5 block text-xs leading-5 text-gray-500">{{ $normalized['message'] }}</span>
+                                                <span class="mt-1 block text-[11px] text-gray-400">{{ $notification->created_at->diffForHumans() }}</span>
                                             </span>
-                                            <span class="min-w-0">
-                                                <span class="block text-sm font-semibold text-gray-900">{{ $item['label'] }}</span>
-                                                <span class="mt-0.5 block text-xs leading-5 text-gray-500">{{ $item['message'] }}</span>
-                                            </span>
+                                            @if($isUnread)
+                                                <span class="mt-1 inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+                                            @endif
                                         </a>
                                     @empty
-                                        <div class="px-4 py-8 text-center text-sm text-gray-500">
+                                        <div class="px-4 py-6 text-center text-sm text-gray-500">
                                             No notifications right now.
                                         </div>
                                     @endforelse
+
+                                    @if(!empty($adminOperationalSignals['items'] ?? []))
+                                        <div class="border-t border-gray-100 bg-gray-50/70 px-4 py-2">
+                                            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Operational Signals</p>
+                                        </div>
+                                        @foreach(($adminOperationalSignals['items'] ?? []) as $item)
+                                            <a href="{{ $item['href'] }}" class="flex gap-3 border-b border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50">
+                                                <span class="mt-0.5 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl {{ $item['tone'] === 'amber' ? 'bg-amber-50 text-amber-600' : ($item['tone'] === 'blue' ? 'bg-sky-50 text-sky-600' : 'bg-rose-50 text-rose-600') }}">
+                                                    <span class="text-xs font-bold">{{ $item['value'] }}</span>
+                                                </span>
+                                                <span class="min-w-0">
+                                                    <span class="block text-sm font-semibold text-gray-900">{{ $item['label'] }}</span>
+                                                    <span class="mt-0.5 block text-xs leading-5 text-gray-500">{{ $item['message'] }}</span>
+                                                </span>
+                                            </a>
+                                        @endforeach
+                                    @endif
+                                </div>
+                                <div class="border-t border-gray-100 px-4 py-2">
+                                    <a href="{{ route('admin.notifications.index') }}" class="block text-center text-xs font-medium text-brand-700 hover:text-brand-900 transition-colors py-1">
+                                        View all notifications ->
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -494,7 +556,7 @@
                                     <p class="text-xs text-gray-500 truncate mt-0.5">{{ Auth::user()->email }}</p>
                                 </div>
                                 <div class="py-1">
-                                    <a href="{{ route('profile.edit') }}"
+                                                <a href="{{ route('admin.profile.show') }}"
                                        class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -503,6 +565,7 @@
                                         My Profile
                                     </a>
                                 </div>
+                                @include('partials.chat-status-selector')
                                 <div class="py-1 border-t border-gray-100">
                                     <form method="POST" action="{{ route('admin.logout') }}">
                                         @csrf
@@ -570,5 +633,6 @@
     </script>
     @endif
 
+    @include('chat.partials.global-popup')
 </body>
 </html>

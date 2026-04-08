@@ -49,7 +49,7 @@ class LearnerModuleCapacityBehaviorTest extends TestCase
 
         $this->actingAs($newLearner)
             ->post(route('learner.modules.enroll', $module))
-            ->assertRedirect(route('learner.modules.show', $module))
+            ->assertRedirect(route('learner.modules.index'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('module_enrollments', [

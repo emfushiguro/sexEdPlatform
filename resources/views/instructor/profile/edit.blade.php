@@ -18,7 +18,7 @@
             <div class="space-y-6">
                 <!-- Avatar Upload -->
                 <div x-data="{ photoName: null, photoPreview: null }" class="flex items-center gap-x-6">
-                    <div class="shrink-0 relative h-24 w-24 rounded-full overflow-hidden border-2 border-blue-100 bg-gray-50 flex items-center justify-center">
+                    <div class="shrink-0 relative h-24 w-24 rounded-full overflow-hidden border-2 border-brand-100 bg-gray-50 flex items-center justify-center">
                         <template x-if="!photoPreview">
                             <img src="{{ $profile->profile_photo_path ? Storage::url($profile->profile_photo_path) : 'https://ui-avatars.com/api/?name='.urlencode($user->name).'&color=1d4ed8&background=eff6ff' }}" class="h-full w-full object-cover">
                         </template>
@@ -33,7 +33,7 @@
                                 reader.onload = (e) => { photoPreview = e.target.result; };
                                 reader.readAsDataURL($refs.photo.files[0]);
                             ">
-                        <button type="button" @click="$refs.photo.click()" class="rounded-lg bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 shadow-sm ring-1 ring-inset ring-blue-200 hover:bg-blue-100 transition-colors">Change avatar</button>
+                        <button type="button" @click="$refs.photo.click()" class="rounded-lg bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 shadow-sm ring-1 ring-inset ring-brand-200 hover:bg-brand-100 transition-colors">Change avatar</button>
                         <p class="mt-2 text-xs text-gray-500">JPG, PNG or WEBP. Max 2MB.</p>
                         @error('profile_photo')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
@@ -41,19 +41,19 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Professional Bio</label>
-                    <textarea name="bio" rows="4" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('bio', $profile->bio) }}</textarea>
+                    <textarea name="bio" rows="4" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">{{ old('bio', $profile->bio) }}</textarea>
                     @error('bio')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Primary Expertise</label>
-                        <input type="text" name="primary_expertise" value="{{ old('primary_expertise', $profile->primary_expertise) }}" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <input type="text" name="primary_expertise" value="{{ old('primary_expertise', $profile->primary_expertise) }}" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">
                         @error('primary_expertise')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Years of Experience</label>
-                        <input type="number" min="0" name="years_experience" value="{{ old('years_experience', $profile->years_experience) }}" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <input type="number" min="0" name="years_experience" value="{{ old('years_experience', $profile->years_experience) }}" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">
                         @error('years_experience')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
                 </div>
@@ -66,12 +66,12 @@
             <div class="space-y-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Educational Background</label>
-                    <input type="text" name="educational_background" value="{{ old('educational_background', $profile->educational_background) }}" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <input type="text" name="educational_background" value="{{ old('educational_background', $profile->educational_background) }}" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     @error('educational_background')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Professional Background</label>
-                    <textarea name="professional_background" rows="4" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('professional_background', $profile->professional_background) }}</textarea>
+                    <textarea name="professional_background" rows="4" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">{{ old('professional_background', $profile->professional_background) }}</textarea>
                     @error('professional_background')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
             </div>
@@ -102,18 +102,18 @@
                             <span class="text-sm text-gray-400 italic">No tags added yet.</span>
                         </template>
                         <template x-for="(tag, index) in tags" :key="index">
-                            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-brand-700 bg-brand-50 border border-brand-200 rounded-lg">
                                 <input type="hidden" :name="`expertise_tags[${index}]`" :value="tag">
                                 <span x-text="tag"></span>
-                                <button type="button" @click="removeTag(index)" class="text-blue-500 hover:text-blue-800 transition-colors">
+                                <button type="button" @click="removeTag(index)" class="text-brand-500 hover:text-brand-800 transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                 </button>
                             </div>
                         </template>
                     </div>
                     <div class="flex items-center gap-2">
-                        <input type="text" x-model="newTag" @keydown.enter.prevent="addTag()" placeholder="Add a tag..." class="block w-full max-w-sm rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                        <button type="button" @click="addTag()" class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-blue-600 shadow-sm ring-1 ring-inset ring-blue-300 hover:bg-blue-50 transition-colors">Add</button>
+                        <input type="text" x-model="newTag" @keydown.enter.prevent="addTag()" placeholder="Add a tag..." class="block w-full max-w-sm rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
+                        <button type="button" @click="addTag()" class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-600 shadow-sm ring-1 ring-inset ring-brand-300 hover:bg-brand-50 transition-colors">Add</button>
                     </div>
                     @error('expertise_tags')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
@@ -148,7 +148,7 @@
                         </template>
                     </div>
                     <div class="flex items-center gap-2 max-w-2xl">
-                        <input type="text" x-model="newItem" @keydown.enter.prevent="addItem()" placeholder="Add certification..." class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        <input type="text" x-model="newItem" @keydown.enter.prevent="addItem()" placeholder="Add certification..." class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
                         <button type="button" @click="addItem()" class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors">Add</button>
                     </div>
                     @error('certifications')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
@@ -184,7 +184,7 @@
                         </template>
                     </div>
                     <div class="flex items-center gap-2 max-w-2xl">
-                        <input type="text" x-model="newItem" @keydown.enter.prevent="addItem()" placeholder="Add credential..." class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        <input type="text" x-model="newItem" @keydown.enter.prevent="addItem()" placeholder="Add credential..." class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm">
                         <button type="button" @click="addItem()" class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors">Add</button>
                     </div>
                     @error('credentials')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
@@ -195,7 +195,7 @@
 
         <div class="flex items-center justify-end gap-4 py-2">
             <a href="{{ route('instructor.profile.show') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Cancel</a>
-            <button type="submit" class="rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors">Save Profile Changes</button>
+            <button type="submit" class="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 transition-colors">Save Profile Changes</button>
         </div>
     </form>
 

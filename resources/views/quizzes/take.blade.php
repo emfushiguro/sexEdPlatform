@@ -10,6 +10,7 @@
   $user         = auth()->user();
   $shieldsLeft  = $user->isPremium() ? null : \App\Models\UserDailyShield::getShields($user);
   $questionMeta = $questions->map(fn($q) => ['id' => $q->id, 'type' => $q->question_type])->values();
+  $timeLimitMinutes = $quiz->time_limit ? (int) ceil(((int) $quiz->time_limit) / 60) : null;
 @endphp
 
 {{-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -59,6 +60,31 @@
         @endif
       </div>
     </div>
+
+    {{-- Quiz settings --}}
+    <div class="mb-3 flex flex-wrap gap-2 text-[11px]">
+      @if($quiz->attempt_limit !== null)
+        <span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40">
+          Attempt Limit: {{ $quiz->attempt_limit }}
+        </span>
+      @endif
+      @if($timeLimitMinutes)
+        <span class="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40">
+          Time Limit: {{ $timeLimitMinutes }} {{ \Illuminate\Support\Str::plural('minute', $timeLimitMinutes) }}
+        </span>
+      @endif
+      <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/40">
+        Passing Score: {{ $quiz->passing_score }}%
+      </span>
+    </div>
+
+    @if($quiz->time_limit)
+      <div x-show="timeLeft <= 10 && timeLeft > 0"
+           x-cloak
+           class="mb-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+        <span x-text="timeLeft + ' seconds remaining'"></span>
+      </div>
+    @endif
 
     {{-- Question dot tracker --}}
     <div class="flex items-center gap-1.5 flex-wrap">

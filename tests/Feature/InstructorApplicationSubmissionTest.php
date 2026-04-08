@@ -30,6 +30,7 @@ class InstructorApplicationSubmissionTest extends TestCase
             ->post(route('learner.instructor.apply.submit'), [
                 'government_id' => UploadedFile::fake()->create('id.pdf', 200, 'application/pdf'),
                 'clearance' => UploadedFile::fake()->create('clearance.pdf', 200, 'application/pdf'),
+                'cv_resume' => UploadedFile::fake()->create('cv_resume.pdf', 200, 'application/pdf'),
                 'educational_background' => 'college_graduate',
                 'bio' => str_repeat('A', 120),
                 'teaching_credential' => UploadedFile::fake()->create('teaching.pdf', 200, 'application/pdf'),
@@ -45,6 +46,7 @@ class InstructorApplicationSubmissionTest extends TestCase
         $application = InstructorApplication::where('user_id', $learner->id)->firstOrFail();
         $this->assertTrue(Storage::disk('public')->exists($application->government_id_path));
         $this->assertTrue(Storage::disk('public')->exists($application->clearance_path));
+        $this->assertTrue(Storage::disk('public')->exists($application->cv_resume_path));
     }
 
     public function test_application_requires_at_least_one_tier2_document(): void
@@ -60,6 +62,7 @@ class InstructorApplicationSubmissionTest extends TestCase
             ->post(route('learner.instructor.apply.submit'), [
                 'government_id' => UploadedFile::fake()->create('id.pdf', 200, 'application/pdf'),
                 'clearance' => UploadedFile::fake()->create('clearance.pdf', 200, 'application/pdf'),
+                'cv_resume' => UploadedFile::fake()->create('cv_resume.pdf', 200, 'application/pdf'),
                 'educational_background' => 'college_graduate',
                 'bio' => str_repeat('A', 120),
                 'confirmation' => '1',
@@ -95,6 +98,7 @@ class InstructorApplicationSubmissionTest extends TestCase
             ->post(route('learner.instructor.apply.submit'), [
                 'government_id' => UploadedFile::fake()->create('id.pdf', 200, 'application/pdf'),
                 'clearance' => UploadedFile::fake()->create('clearance.pdf', 200, 'application/pdf'),
+                'cv_resume' => UploadedFile::fake()->create('cv_resume.pdf', 200, 'application/pdf'),
                 'educational_background' => 'college_graduate',
                 'bio' => str_repeat('B', 120),
                 'sexed_certificate' => UploadedFile::fake()->create('sexed.pdf', 200, 'application/pdf'),

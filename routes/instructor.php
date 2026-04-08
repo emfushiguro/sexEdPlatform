@@ -20,6 +20,16 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
     // Search endpoint
     Route::get('/search', [Instructor\SearchController::class, 'index'])->name('search');
 
+    // Notifications
+    Route::get('/notifications', [Instructor\NotificationController::class, 'index'])
+        ->name('notifications.index');
+    Route::post('/notifications/mark-all-read', [Instructor\NotificationController::class, 'markAllRead'])
+        ->name('notifications.mark-all-read');
+    Route::post('/notifications/dropdown-open', [Instructor\NotificationController::class, 'markDropdownRead'])
+        ->name('notifications.dropdown-open');
+    Route::get('/notifications/{id}/read', [Instructor\NotificationController::class, 'markRead'])
+        ->name('notifications.read');
+
     // Assessment Insights
     Route::get('/assessments', [Instructor\AssessmentLogController::class, 'index'])
         ->name('assessments.index');
@@ -65,6 +75,10 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
         ->name('earnings.index');
     Route::get('earnings/{moduleSaleLedger}', [Instructor\ModuleEarningsController::class, 'show'])
         ->name('earnings.show');
+    Route::post('earnings/{moduleSaleLedger}/archive', [Instructor\ModuleEarningsController::class, 'archive'])
+        ->name('earnings.archive');
+    Route::delete('earnings/{moduleSaleLedger}/delete', [Instructor\ModuleEarningsController::class, 'delete'])
+        ->name('earnings.delete');
     Route::delete('earnings/{moduleSaleLedger}/visibility', [Instructor\ModuleEarningsController::class, 'destroyVisibility'])
         ->name('earnings.visibility.destroy');
 

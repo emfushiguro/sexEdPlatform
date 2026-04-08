@@ -11,6 +11,7 @@
   $questionMeta = $lessonQuiz->questions
       ->map(fn($q) => ['id' => $q->id, 'type' => $q->question_type])
       ->values();
+  $timeLimitMinutes = $lessonQuiz->time_limit ? (int) ceil(((int) $lessonQuiz->time_limit) / 60) : null;
 
   // Result state — populated from session after submit redirect
   $showResult    = session()->has('quiz_result');
@@ -48,13 +49,15 @@
     showReview: false,
     timeLeft: 0,
     timerInterval: null,
+    quizStartedAt: null,
 
     startQuiz() {
+      this.quizStartedAt = Math.floor(Date.now() / 1000);
       this.pageState = 'taking';
       this.$nextTick(() => this.initQuiz(
         {{ $total }},
         {{ $questionMeta->toJson() }},
-        {{ $lessonQuiz->time_limit ? $lessonQuiz->time_limit * 60 : 'null' }}
+        {{ $lessonQuiz->time_limit ?? 'null' }}
       ));
     },
 
@@ -69,6 +72,10 @@
         this.timerInterval = setInterval(() => {
           if (this.timeLeft <= 0) {
             clearInterval(this.timerInterval);
+            const autoSubmitInput = document.getElementById('lesson_auto_submit');
+            if (autoSubmitInput) {
+              autoSubmitInput.value = '1';
+            }
             document.getElementById('lessonQuizForm').submit();
             return;
           }
@@ -122,17 +129,20 @@
           <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ $lessonQuiz->title }}</h2>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Test your knowledge from this lesson</p>
 
-            @if(($module->creator_id ?? null) && ($module->creator_id ?? null) !== auth()->id())
-            <a
-              href="{{ route('chat.page', [
-                  'target_user_id' => $module->creator_id,
-                  'conversation_type' => 'quiz_help',
-                  'quiz_id' => $lessonQuiz->id,
-              ]) }}"
+            @if(($module->created_by ?? null) && ($module->created_by ?? null) !== auth()->id())
+            <button
+              type="button"
+              @click="$dispatch('open-global-chat', {
+                  target_user_id: {{ $module->created_by }},
+                  name: '{{ addslashes($module->creator?->name ?? 'Instructor') }}',
+                  avatar: 'https://ui-avatars.com/api/?name={{ urlencode($module->creator?->name ?? 'Instructor') }}&color=1D4ED8&background=EFF6FF',
+                  conversation_type: 'quiz_help',
+                  quiz_id: {{ $lessonQuiz->id }}
+              })"
               class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-semibold text-blue-800 hover:bg-blue-100"
             >
               Need Help With This Quiz?
-            </a>
+            </button>
             @endif
         </div>
       </div>
@@ -164,10 +174,10 @@
             </svg>
           </div>
           <p class="text-xl font-bold text-gray-900 dark:text-white">
-            {{ $lessonQuiz->time_limit ?? '—' }}
+            {{ $timeLimitMinutes ?? '—' }}
           </p>
           <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-            {{ $lessonQuiz->time_limit ? 'Minutes' : 'No Limit' }}
+            {{ $timeLimitMinutes ? \Illuminate\Support\Str::plural('Minute', $timeLimitMinutes) : 'No Limit' }}
           </p>
         </div>
 
@@ -181,6 +191,22 @@
           <p class="text-xl font-bold text-gray-900 dark:text-white">{{ $lessonQuiz->passing_score }}%</p>
           <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Pass Score</p>
         </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        @if($lessonQuiz->attempt_limit !== null)
+          <span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40 text-[11px]">
+            Attempt Limit: {{ $lessonQuiz->attempt_limit }}
+          </span>
+        @endif
+        @if($timeLimitMinutes)
+          <span class="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40 text-[11px]">
+            Time Limit: {{ $timeLimitMinutes }} {{ \Illuminate\Support\Str::plural('minute', $timeLimitMinutes) }}
+          </span>
+        @endif
+        <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/40 text-[11px]">
+          Passing Score: {{ $lessonQuiz->passing_score }}%
+        </span>
       </div>
 
       {{-- Question type breakdown chips --}}
@@ -429,6 +455,13 @@
         <span>Q<strong class="text-gray-700 dark:text-gray-200 ml-0.5" x-text="current + 1"></strong> / {{ $total }}</span>
         <span><span x-text="Object.values(answeredMap).filter(Boolean).length"></span> answered</span>
       </div>
+      @if($lessonQuiz->time_limit)
+      <div x-show="timeLeft <= 10 && timeLeft > 0"
+           x-cloak
+           class="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+        <span x-text="timeLeft + ' seconds remaining'"></span>
+      </div>
+      @endif
       <div class="mt-1 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
         <div class="h-full rounded-full transition-all duration-500"
              style="background:linear-gradient(90deg,#A30EB2,#3B0CB1)"
@@ -440,6 +473,8 @@
     <div class="flex-1 overflow-y-auto">
       <form method="POST" action="{{ route('quizzes.submit', $lessonQuiz) }}" id="lessonQuizForm">
         @csrf
+        <input type="hidden" name="started_at" :value="quizStartedAt ?? ''">
+        <input type="hidden" name="auto_submit" id="lesson_auto_submit" value="0">
 
         @foreach($lessonQuiz->questions as $index => $question)
         <div x-show="current === {{ $index }} && !showReview" x-cloak

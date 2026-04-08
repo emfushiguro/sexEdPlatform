@@ -6,7 +6,7 @@
     <!-- Hero Section Card -->
     <div class="bg-white shadow-sm sm:rounded-xl p-8 relative overflow-hidden">
         <!-- Abstract gradient background pattern (optional soft branding) -->
-        <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-blue-50 to-indigo-50"></div>
+        <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-brand-50 to-indigo-50"></div>
         
         <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-6 mt-12 md:mt-8">
             <div class="shrink-0 relative h-28 w-28 md:h-32 md:w-32 rounded-full overflow-hidden border-4 border-white shadow-md bg-white flex items-center justify-center">
@@ -33,7 +33,7 @@
                         </div>
                     </div>
                     
-                    <a href="{{ route('instructor.profile.edit') }}" class="inline-flex items-center rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-blue-600 border border-blue-200 shadow-sm hover:bg-blue-50 transition-colors whitespace-nowrap">
+                    <a href="{{ route('instructor.profile.edit') }}" class="inline-flex items-center rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-brand-600 border border-brand-200 shadow-sm hover:bg-brand-50 transition-colors whitespace-nowrap">
                         <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit Profile
                     </a>
@@ -42,7 +42,7 @@
                 @if(!empty($profile->expertise_tags) && count($profile->expertise_tags) > 0)
                 <div class="flex flex-wrap gap-2 mt-5">
                     @foreach($profile->expertise_tags as $tag)
-                        <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 shadow-sm">{{ $tag }}</span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-100 shadow-sm">{{ $tag }}</span>
                     @endforeach
                 </div>
                 @endif
@@ -54,8 +54,8 @@
     <div class="bg-white shadow-sm sm:rounded-xl p-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4 block md:hidden">Impact Overview</h2>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm"> 
-            <div class="rounded-xl bg-gray-50/50 border border-gray-100 p-5 flex flex-col items-center text-center justify-center transition-all hover:bg-blue-50/30">
-                <span class="p-3 bg-blue-100 text-blue-600 rounded-full mb-3">
+            <div class="rounded-xl bg-gray-50/50 border border-gray-100 p-5 flex flex-col items-center text-center justify-center transition-all hover:bg-brand-50/30">
+                <span class="p-3 bg-brand-100 text-brand-600 rounded-full mb-3">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                 </span>
                 <p class="text-3xl font-bold text-gray-900">{{ $overview['modules_created'] }}</p>
@@ -119,7 +119,7 @@
                 <ul class="space-y-3">
                     @foreach($profile->certifications as $cert)
                         <li class="flex items-start text-sm text-gray-700">
-                            <span class="mr-2 text-blue-500 mt-0.5">•</span>
+                            <span class="mr-2 text-brand-500 mt-0.5">•</span>
                             <span>{{ $cert }}</span>
                         </li>
                     @endforeach
@@ -136,7 +136,7 @@
                 <ul class="space-y-3">
                     @foreach($profile->credentials as $cred)
                         <li class="flex items-start text-sm text-gray-700">
-                            <span class="mr-2 text-blue-500 mt-0.5">•</span>
+                            <span class="mr-2 text-brand-500 mt-0.5">•</span>
                             <span>{{ $cred }}</span>
                         </li>
                     @endforeach

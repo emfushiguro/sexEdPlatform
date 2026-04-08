@@ -38,13 +38,30 @@ class PaymentController extends Controller
             abort(403);
         }
 
+        if ((bool) config('billing.features.learner_checkout_refinement', false)
+            && request()->routeIs('payment.create')) {
+            return redirect()->route('payment.checkout.summary', ['subscription' => $subscription->id]);
+        }
+
         // Eager-load the plan so getPlanLabel() returns the correct name (not "Free")
         $subscription->load('plan');
 
         // Get amount from subscription
         $amount = $subscription->getAmount();
 
-        return view('payments.create', compact('subscription', 'amount'));
+        $secretKey = (string) config('paymongo.secret_key', '');
+        $paymongoMode = str_starts_with($secretKey, 'sk_test_')
+            ? 'sandbox'
+            : (str_starts_with($secretKey, 'sk_live_') ? 'live' : 'unknown');
+
+        return view('payments.checkout-summary', [
+            'scope' => 'subscription',
+            'subscription' => $subscription,
+            'amount' => (float) $amount,
+            'paymongoMode' => $paymongoMode,
+            'submitUrl' => route('payment.checkout.proceed', $subscription),
+            'backUrl' => route('subscription.index'),
+        ]);
     }
 
     /**
@@ -60,9 +77,14 @@ class PaymentController extends Controller
         DB::beginTransaction();
 
         try {
+            $billingName = (string) ($request->input('billing_name') ?: (Auth::user()?->name ?? ''));
+            $billingEmail = (string) ($request->input('billing_email') ?: (Auth::user()?->email ?? ''));
+            $billingPhone = (string) ($request->input('billing_phone') ?: '');
+            $selectedMethod = (string) ($request->input('payment_method') ?: 'paymongo');
+
             // Get the pending payment for this subscription
             $payment = Payment::where('subscription_id', $subscription->id)
-                ->where('status', PaymentStatus::Pending)
+                ->where('status', PaymentStatus::Pending->value)
                 ->orderByDesc('id')
                 ->first();
             
@@ -71,20 +93,32 @@ class PaymentController extends Controller
                 $payment = $subscription->payments()->create([
                     'user_id' => Auth::id(),
                     'amount' => $subscription->getAmount(),
-                    'method' => $request->payment_method,
+                    'method' => $selectedMethod,
                     'status' => PaymentStatus::Pending,
                     'transaction_id' => 'TXN-' . strtoupper(uniqid()),
                     'payment_details' => [
+                        'payment_scope' => 'subscription',
                         'plan' => $subscription->plan,
-                        'payment_method' => $request->payment_method,
+                        'payment_method' => $selectedMethod,
+                        'billing' => [
+                            'name' => $billingName,
+                            'email' => $billingEmail,
+                            'phone' => $billingPhone,
+                        ],
                     ],
                 ]);
             } else {
                 // Update existing pending payment with selected method
                 $payment->update([
-                    'method' => $request->payment_method,
+                    'method' => $selectedMethod,
                     'payment_details' => array_merge($payment->payment_details ?? [], [
-                        'payment_method' => $request->payment_method,
+                        'payment_scope' => 'subscription',
+                        'payment_method' => $selectedMethod,
+                        'billing' => [
+                            'name' => $billingName,
+                            'email' => $billingEmail,
+                            'phone' => $billingPhone,
+                        ],
                     ]),
                 ]);
             }
@@ -97,23 +131,27 @@ class PaymentController extends Controller
                     ? (\App\Models\SubscriptionPlan::find($subscription->plan_id)?->name ?? 'Premium Subscription')
                     : ucfirst($subscription->plan) . ' Subscription';
                 
-                $response = $paymongoService->createPaymentLink(
+                $response = $paymongoService->createCheckoutSession(
                     amount: $subscription->getAmount(),
                     description: $planName,
                     remarks: "Subscription for " . Auth::user()->name,
                     metadata: [
+                        'payment_scope' => 'subscription',
                         'user_id' => Auth::id(),
                         'subscription_id' => $subscription->id,
                         'payment_id' => $payment->id,
                         'plan' => $subscription->plan,
+                        'billing_name' => $billingName,
+                        'billing_email' => $billingEmail,
                     ],
                     successUrl: route('payment.paymongo.success', ['subscription' => $subscription->id]),
-                    failedUrl: route('payment.paymongo.failed', ['subscription' => $subscription->id]),
-                    preferredPaymentMethod: $request->payment_method,
+                    cancelUrl: route('payment.paymongo.failed', ['subscription' => $subscription->id]),
+                    preferredPaymentMethod: $selectedMethod,
+                    lineItemName: $planName,
                 );
 
                 $checkoutUrl = $response['data']['attributes']['checkout_url'] ?? null;
-                $paymentLinkId = $response['data']['id'] ?? null;
+                $checkoutSessionId = $response['data']['id'] ?? null;
 
                 if (!$checkoutUrl) {
                     throw new \Exception('Failed to get checkout URL from PayMongo');
@@ -121,9 +159,9 @@ class PaymentController extends Controller
 
                 // Update payment with PayMongo reference
                 $payment->update([
-                    'paymongo_payment_id' => $paymentLinkId,
+                    'paymongo_payment_id' => $checkoutSessionId,
                     'payment_details' => array_merge($payment->payment_details ?? [], [
-                        'paymongo_link_id' => $paymentLinkId,
+                        'paymongo_checkout_session_id' => $checkoutSessionId,
                         'checkout_url' => $checkoutUrl,
                     ]),
                 ]);
@@ -195,7 +233,7 @@ class PaymentController extends Controller
                 $activated = $this->verifyAndActivateIfPaid($payment);
                 if ($activated) {
                     return redirect()->route('subscription.index')
-                        ->with('success', 'Payment confirmed! Your subscription is now active. 🎉');
+                        ->with('success', 'Payment confirmed. Your subscription is now active.');
                 }
             }
         }
@@ -260,25 +298,31 @@ class PaymentController extends Controller
     private function verifyAndActivateIfPaid(Payment $payment): bool
     {
         try {
-            $linkId = $payment->payment_details['paymongo_link_id'] ?? null;
+            $sessionId = (string) data_get($payment->payment_details, 'paymongo_checkout_session_id', '');
+            $linkId = (string) data_get($payment->payment_details, 'paymongo_link_id', '');
 
-            if (!$linkId) {
+            if ($sessionId === '' && $linkId === '') {
                 return false;
             }
 
             $paymongoService = app(PayMongoPaymentLinkService::class);
-            $response = $paymongoService->retrievePaymentLink($linkId);
+            $response = $sessionId !== ''
+                ? $paymongoService->retrieveCheckoutSession($sessionId)
+                : $paymongoService->retrievePaymentLink($linkId);
 
-            $status = $response['data']['attributes']['status'] ?? null;
+            $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
+            $hasPayments = !empty(data_get($response, 'data.attributes.payments', []));
 
             // PayMongo marks a paid link as 'paid'
-            if ($status !== 'paid') {
+            if ($status !== 'paid' && $status !== 'completed' && !$hasPayments) {
                 return false;
             }
 
             // Resolve the actual pay_xxxxx ID from the link so refunds work later.
             // The links/{id} endpoint includes data.attributes.payments[].
-            $actualPaymentId = $paymongoService->getActualPaymentIdFromLink($linkId);
+            $actualPaymentId = $sessionId !== ''
+                ? $paymongoService->getActualPaymentIdFromCheckoutSession($sessionId)
+                : $paymongoService->getActualPaymentIdFromLink($linkId);
 
             // Step 1: mark payment completed in its own transaction.
             // PaymentObserver fires inside this transaction and calls
@@ -326,8 +370,10 @@ class PaymentController extends Controller
      */
     public function simulateSuccess(Payment $payment)
     {
-        // Only allow in development
-        if (!app()->environment('local')) {
+        $allowedEnvs = (array) config('billing.payment.simulation_enabled_envs', ['local', 'testing', 'staging']);
+        $currentEnv = (string) config('app.env', app()->environment());
+
+        if (!in_array($currentEnv, $allowedEnvs, true)) {
             abort(404);
         }
 
@@ -358,6 +404,22 @@ class PaymentController extends Controller
 
         if (!$user) {
             abort(403);
+        }
+
+        // Reconcile stale pending records before rendering history table.
+        $pendingPayments = $user->payments()
+            ->where('status', PaymentStatus::Pending->value)
+            ->latest('id')
+            ->limit(20)
+            ->get();
+
+        foreach ($pendingPayments as $pendingPayment) {
+            if ($pendingPayment->isModulePurchase()) {
+                $this->modulePurchaseService->verifyAndCompletePendingPayment($pendingPayment);
+                continue;
+            }
+
+            $this->verifyAndActivateIfPaid($pendingPayment);
         }
 
         $payments = $user->payments()
@@ -406,7 +468,7 @@ class PaymentController extends Controller
             // Mark the most recent pending payment as completed.
             // PaymentObserver will call SubscriptionService::activate() automatically.
             $payment = Payment::where('subscription_id', $subscription->id)
-                ->whereIn('status', [PaymentStatus::Pending, PaymentStatus::Processing])
+                ->whereIn('status', [PaymentStatus::Pending->value, PaymentStatus::Processing->value])
                 ->orderByDesc('id')
                 ->first();
 
@@ -432,7 +494,7 @@ class PaymentController extends Controller
             $this->subscriptionService->activate($subscription);
 
             return redirect()->route('subscription.index')
-                ->with('success', 'Payment successful! Your subscription is now active. 🎉');
+                ->with('success', 'Payment successful. Your subscription is now active.');
 
         } catch (\Exception $e) {
             Log::error('PayMongo Success Callback Error', [
@@ -463,8 +525,8 @@ class PaymentController extends Controller
                 'user_id' => Auth::id(),
             ]);
 
-            return redirect()->route('subscription.upgrade')
-                ->with('error', 'Payment was cancelled or failed. Please try again or contact support if you need help.');
+            return redirect()->route('payment.checkout.summary', ['subscription' => $subscription->id])
+                ->with('error', 'Payment was cancelled or failed. Review your checkout details and try again.');
 
         } catch (\Exception $e) {
             Log::error('PayMongo Failed Callback Error', [
@@ -482,7 +544,158 @@ class PaymentController extends Controller
      */
     public function success()
     {
-        return view('payments.success');
+        $scope = (string) request('scope', 'subscription');
+        $moduleId = (int) request('module_id', 0);
+        $paymentId = (int) request('payment_id', 0);
+        $receiptUrl = route('payment.history');
+
+        if ($scope === 'subscription' && Auth::check()) {
+            /** @var User $user */
+            $user = Auth::user();
+
+            $pendingQuery = $user->payments()
+                ->where('status', PaymentStatus::Pending->value)
+                ->where(function ($query) {
+                    $query->where('payment_details->payment_scope', 'subscription')
+                        ->orWhereNotNull('subscription_id');
+                })
+                ->latest('id');
+
+            if ($paymentId > 0) {
+                $pendingQuery->where('id', $paymentId);
+            }
+
+            $pendingPayment = $pendingQuery->first();
+
+            if ($pendingPayment && $this->verifyAndActivateIfPaid($pendingPayment)) {
+                return redirect()->route('subscription.index')
+                    ->with('success', 'Payment confirmed. Your subscription is now active.');
+            }
+
+            $completedQuery = $user->payments()
+                ->where('status', PaymentStatus::Completed->value)
+                ->whereNotNull('subscription_id')
+                ->latest('id');
+
+            if ($paymentId > 0) {
+                $completedQuery->where('id', $paymentId);
+            }
+
+            $completedPayment = $completedQuery->first();
+
+            if ($completedPayment?->subscription) {
+                $this->subscriptionService->activate($completedPayment->subscription);
+
+                return redirect()->route('subscription.index')
+                    ->with('success', 'Your subscription is active.');
+            }
+        }
+
+        $module = null;
+        if ($scope === 'module_purchase' && $moduleId > 0) {
+            $module = \App\Models\Module::query()->find($moduleId);
+
+            if (Auth::check()) {
+                /** @var \App\Models\User $user */
+                $user = Auth::user();
+
+                $pendingQuery = $user->payments()
+                    ->where('status', PaymentStatus::Pending->value)
+                    ->where('payment_details->payment_scope', 'module_purchase')
+                    ->where('payment_details->module_id', $moduleId)
+                    ->latest('id');
+
+                if ($paymentId > 0) {
+                    $pendingQuery->where('id', $paymentId);
+                }
+
+                $pendingPayment = $pendingQuery->first();
+                if ($pendingPayment) {
+                    $this->modulePurchaseService->verifyAndCompletePendingPayment($pendingPayment);
+                }
+            }
+        }
+
+        if (Auth::check()) {
+            /** @var User $user */
+            $user = Auth::user();
+            $receiptPayment = $this->resolveSuccessReceiptPayment($user, $scope, $moduleId, $paymentId);
+            if ($receiptPayment) {
+                $receiptUrl = route('payment.receipt', $receiptPayment);
+            }
+        }
+
+        return view('payments.success', [
+            'scope' => $scope,
+            'module' => $module,
+            'receiptUrl' => $receiptUrl,
+        ]);
+    }
+
+    private function resolveSuccessReceiptPayment(User $user, string $scope, int $moduleId, int $paymentId): ?Payment
+    {
+        if ($paymentId > 0) {
+            $directPayment = $this->findScopedReceiptPayment($user, $scope, $moduleId, $paymentId);
+            if ($directPayment) {
+                return $directPayment;
+            }
+        }
+
+        return $this->findLatestScopedReceiptPayment($user, $scope, $moduleId);
+    }
+
+    private function findScopedReceiptPayment(User $user, string $scope, int $moduleId, int $paymentId): ?Payment
+    {
+        $payment = $user->payments()
+            ->where('status', PaymentStatus::Completed->value)
+            ->where('id', $paymentId)
+            ->first();
+
+        if (!$payment) {
+            return null;
+        }
+
+        if ($scope === 'module_purchase') {
+            if (!$payment->isModulePurchase()) {
+                return null;
+            }
+
+            if ($moduleId > 0 && (int) data_get($payment->payment_details, 'module_id') !== $moduleId) {
+                return null;
+            }
+
+            return $payment;
+        }
+
+        if ($payment->isModulePurchase()) {
+            return null;
+        }
+
+        return $payment;
+    }
+
+    private function findLatestScopedReceiptPayment(User $user, string $scope, int $moduleId): ?Payment
+    {
+        $query = $user->payments()
+            ->where('status', PaymentStatus::Completed->value)
+            ->latest('id');
+
+        if ($scope === 'module_purchase') {
+            $query->where('payment_details->payment_scope', 'module_purchase');
+
+            if ($moduleId > 0) {
+                $query->where('payment_details->module_id', $moduleId);
+            }
+
+            return $query->first();
+        }
+
+        return $query
+            ->where(function ($scopeQuery) {
+                $scopeQuery->where('payment_details->payment_scope', 'subscription')
+                    ->orWhereNotNull('subscription_id');
+            })
+            ->first();
     }
 
     /**
@@ -490,12 +703,24 @@ class PaymentController extends Controller
      */
     public function cancel()
     {
+        $scope = (string) request('scope', 'subscription');
+        $moduleId = (int) request('module_id', 0);
+
+        $module = null;
+        if ($scope === 'module_purchase' && $moduleId > 0) {
+            $module = \App\Models\Module::query()->find($moduleId);
+        }
+
         $premiumPlan = \App\Models\SubscriptionPlan::where('is_active', true)
             ->where('price', '>', 0)
             ->orderBy('sort_order')
             ->first();
 
-        return view('payments.cancel', compact('premiumPlan'));
+        return view('payments.cancel', [
+            'premiumPlan' => $premiumPlan,
+            'scope' => $scope,
+            'module' => $module,
+        ]);
     }
 
     private function resolvePaymentRedirectUrl(Payment $payment): string

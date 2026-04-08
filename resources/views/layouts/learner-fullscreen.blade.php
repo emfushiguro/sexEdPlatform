@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', 'Lesson') | Concious Connections</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" sizes="any">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -37,8 +38,12 @@
          FULLSCREEN TOP BAR
     ═══════════════════════════════════════════════════════════ --}}
     @php
+        use App\Services\EntitlementService;
+        use App\Support\SubscriptionFeatureKeys;
+
         $fsGami    = auth()->user()?->gamification;
         $fsShields = \App\Models\UserDailyShield::getShields(auth()->user());
+        $fsHasUnlimitedShields = app(EntitlementService::class)->canAccessFeature(auth()->user(), SubscriptionFeatureKeys::UNLIMITED_SHIELDS);
     @endphp
 
     <div class="flex-shrink-0 h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 gap-3">
@@ -81,7 +86,11 @@
                 <svg class="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
                 </svg>
-                <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{{ $fsShields }}</span>
+                @if($fsHasUnlimitedShields)
+                    <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">Unlimited Shields</span>
+                @else
+                    <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{{ $fsShields }}</span>
+                @endif
             </div>
             {{-- Points --}}
             <div class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/40">
@@ -169,5 +178,6 @@
     </script>
     @endif
 
+    @include('chat.partials.global-popup')
 </body>
 </html>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ApproveInstructorApplicationRequest;
 use App\Http\Requests\RejectInstructorApplicationRequest;
 use App\Models\InstructorApplication;
 use App\Services\InstructorApplicationService;
@@ -27,6 +28,10 @@ class InstructorApplicationController extends Controller
         $applications = InstructorApplication::query()
             ->with([
                 'approvedBy',
+                'latestReview.reviewedBy',
+                'reviews' => function ($reviewQuery): void {
+                    $reviewQuery->with('reviewedBy')->latest('reviewed_at');
+                },
                 'user' => function ($userQuery): void {
                     $userQuery->withCount([
                         'moduleEnrollments as enrolled_modules_count',
@@ -74,6 +79,9 @@ class InstructorApplicationController extends Controller
             'pendingCount' => InstructorApplication::pending()->count(),
             'approvedCount' => InstructorApplication::approved()->count(),
             'rejectedCount' => InstructorApplication::rejected()->count(),
+            'hasPendingOnPage' => $applications->getCollection()->contains(fn (InstructorApplication $application): bool => $application->status === 'pending'),
+            'defaultApprovalMessage' => InstructorApplicationService::defaultApprovalMessage(),
+            'defaultRejectionMessage' => InstructorApplicationService::defaultRejectionMessage(),
         ]);
     }
 
@@ -85,9 +93,12 @@ class InstructorApplicationController extends Controller
         ]);
     }
 
-    public function approve(InstructorApplication $application): RedirectResponse
+    public function approve(ApproveInstructorApplicationRequest $request, InstructorApplication $application): RedirectResponse
     {
-        $this->service->approve($application);
+        $this->service->approve(
+            $application,
+            (string) $request->string('admin_message')
+        );
 
         return redirect()->back()->with('success', 'Instructor application approved successfully.');
     }
@@ -97,7 +108,8 @@ class InstructorApplicationController extends Controller
         $this->service->reject(
             $application,
             (string) $request->string('rejection_reason_code'),
-            $request->filled('rejection_reason_note') ? (string) $request->string('rejection_reason_note') : null
+            $request->filled('rejection_reason_note') ? (string) $request->string('rejection_reason_note') : null,
+            (string) $request->string('admin_message')
         );
 
         return redirect()->back()->with('success', 'Instructor application rejected successfully.');

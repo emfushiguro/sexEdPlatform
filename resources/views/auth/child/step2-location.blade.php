@@ -40,15 +40,19 @@
               barangays: [],
               loading: false,
               async loadBarangays(code) {
+                  code = String(code || '').trim();
+
                   if (!code) {
                       this.barangays = [];
                       this.selectedBarangayCode = '';
                       return;
                   }
 
+                  this.cityCode = code;
+
                   this.loading = true;
                   try {
-                      const res = await fetch('/api/barangays/' + code, {
+                      const res = await fetch('/api/barangays/' + encodeURIComponent(code), {
                           headers: { 'Accept': 'application/json' },
                       });
 
@@ -96,7 +100,7 @@
             </label>
             <select id="city_code" name="city_code" required
                     x-model="cityCode"
-                    @change="loadBarangays(cityCode)"
+                    @change="loadBarangays($event.target.value)"
                     class="{{ $locSelectClass }}">
                 <option value="">Select municipality / city</option>
                 @foreach($cities as $city)

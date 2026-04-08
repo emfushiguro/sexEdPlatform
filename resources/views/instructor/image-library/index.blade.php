@@ -1,4 +1,4 @@
-﻿@extends('layouts.instructor-app')
+@extends('layouts.instructor-app')
 
 @section('content')
 <div x-data='{
@@ -44,7 +44,7 @@
 }' class="space-y-6">
 
     <div class="rounded-3xl border border-indigo-100 dark:border-indigo-900/40 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
-        <div class="bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-500 px-6 py-5 text-white">
+        <div class="bg-gradient-to-r from-indigo-500 via-brand-500 to-cyan-500 px-6 py-5 text-white">
             <h1 class="text-xl font-bold">Image Library</h1>
             <p class="text-sm text-white/90 mt-1">Curate quiz assets with quick copy, preview metadata, and safe deletion controls.</p>
         </div>

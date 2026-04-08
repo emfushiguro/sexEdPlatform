@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SubscriptionPlan extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'slug',
@@ -16,6 +19,7 @@ class SubscriptionPlan extends Model
         'features',
         'plan_audience',
         'billing_mode',
+        'renewal_warning_days',
         'availability_starts_on',
         'availability_ends_on',
         'admin_preview_starts_on',
@@ -33,6 +37,7 @@ class SubscriptionPlan extends Model
         return [
             'price'    => 'decimal:2',
             'features' => 'array',
+            'renewal_warning_days' => 'integer',
             'availability_starts_on' => 'date',
             'availability_ends_on' => 'date',
             'admin_preview_starts_on' => 'date',

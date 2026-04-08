@@ -126,7 +126,7 @@
                             <p class="mt-2 text-sm text-gray-500">Please provide your basic identity and background information.</p>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             <div x-data="{ fileName: null, previewUrl: null }">
                                 <label for="government_id" class="block text-sm font-semibold text-gray-700 mb-1">Government ID <span class="text-red-500">*</span></label>
                                 <div class="relative group">
@@ -205,6 +205,26 @@
                                 </div>
                                 <p class="mt-1 text-xs text-gray-400">Accepted: JPG, PNG, PDF. Max size: 5MB.</p>
                                 @error('clearance') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div x-data="{ fileName: null }">
+                                <label for="cv_resume" class="block text-sm font-semibold text-gray-700 mb-1">Upload CV or Resume <span class="text-red-500">*</span></label>
+                                <div>
+                                    <input id="cv_resume" name="cv_resume" type="file" accept=".pdf,.doc,.docx" x-bind:required="step === 1"
+                                           @change="
+                                                const file = $event.target.files && $event.target.files.length ? $event.target.files[0] : null;
+                                                fileName = file ? file.name : null;
+                                           "
+                                           class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 border border-gray-200 rounded-lg p-1.5 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all">
+                                </div>
+                                <div x-show="fileName" class="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-100 flex items-center gap-3" x-cloak>
+                                    <div class="h-10 w-10 flex items-center justify-center bg-gray-200 rounded-md border border-gray-300 text-gray-500">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    </div>
+                                    <span x-text="fileName" class="text-xs text-gray-600 font-medium truncate"></span>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-400">Accepted: PDF, DOC, DOCX. Max size: 5MB.</p>
+                                @error('cv_resume') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                         </div>
 

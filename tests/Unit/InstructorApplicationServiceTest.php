@@ -22,6 +22,7 @@ class InstructorApplicationServiceTest extends TestCase
         $application = $service->submitApplication($learner, [
             'government_id' => UploadedFile::fake()->create('id.pdf', 200, 'application/pdf'),
             'clearance' => UploadedFile::fake()->create('clearance.pdf', 200, 'application/pdf'),
+            'cv_resume' => UploadedFile::fake()->create('cv_resume.pdf', 200, 'application/pdf'),
             'bio' => str_repeat('C', 120),
             'professional_license' => UploadedFile::fake()->create('license.pdf', 200, 'application/pdf'),
         ]);
@@ -69,7 +70,7 @@ class InstructorApplicationServiceTest extends TestCase
             'professional_license_path' => 'instructor-applications/license.pdf',
         ]);
 
-        $service->reject($second, 'Please provide a clearer file scan.');
+        $service->reject($second, 'other', 'Please provide a clearer file scan.', '<p>Please provide a clearer file scan.</p>');
         $this->assertDatabaseHas('instructor_applications', [
             'id' => $second->id,
             'status' => 'rejected',

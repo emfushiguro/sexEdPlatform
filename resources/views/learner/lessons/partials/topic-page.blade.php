@@ -29,6 +29,23 @@
                     <span class="mx-1">·</span>{{ $currentTopic->duration }}m
                     <span class="mx-1">·</span>{{ ucfirst($currentTopic->type) }}
                 </p>
+                @if(($module->created_by ?? null) && ($module->created_by ?? null) !== auth()->id())
+                    <button
+                        type="button"
+                        @click="$dispatch('open-global-chat', {
+                            target_user_id: {{ $module->created_by }},
+                            name: '{{ addslashes($module->creator?->name ?? 'Instructor') }}',
+                            avatar: 'https://ui-avatars.com/api/?name={{ urlencode($module->creator?->name ?? 'Instructor') }}&color=1D4ED8&background=EFF6FF',
+                            conversation_type: 'lesson_topic_chat',
+                            lesson_topic_id: {{ $currentTopic->id }},
+                            lesson_id: {{ $lesson->id }},
+                            module_id: {{ $module->id }}
+                        })"
+                        class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800 hover:bg-blue-100"
+                    >
+                        Ask About This Topic
+                    </button>
+                @endif
             </div>
         </div>
     </div>

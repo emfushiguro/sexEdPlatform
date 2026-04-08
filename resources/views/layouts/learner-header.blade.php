@@ -1,4 +1,5 @@
 @php
+    /** @var \App\Models\User $headerUser */
     $headerUser    = Auth::user();
     $headerProfile = $headerUser->learnerProfile;
     $headerName    = $headerProfile?->username ?? $headerUser->name;
@@ -7,6 +8,7 @@
         : null;
     $unreadCount   = $headerUser->unreadNotifications()->count();
     $recentNotifs  = $headerUser->notifications()->latest()->limit(5)->get();
+    $payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
 @endphp
 
 <header class="sticky top-0 z-[9998] w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -116,9 +118,18 @@
             </button>
 
             {{-- ── Notifications ── --}}
-            <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+            <div
+                class="relative"
+                x-data="{
+                    open: false,
+                    syncReadState() {
+                        window.axios.post('{{ route('learner.notifications.dropdown-open') }}').catch(() => {});
+                    }
+                }"
+                @click.outside="open = false"
+            >
                 <button
-                    @click="open = !open"
+                    @click="open = !open; if (open) { syncReadState(); }"
                     class="relative flex items-center justify-center w-10 h-10 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     aria-label="Notifications"
                 >
@@ -130,12 +141,6 @@
                             {{ $unreadCount > 9 ? '9+' : $unreadCount }}
                         </span>
                     @endif
-                    <span
-                        data-chat-unread-badge
-                        data-chat-unread-badge-role="learner"
-                        hidden
-                        class="absolute -bottom-1 -right-1 min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-full bg-sky-500 text-white text-[9px] font-bold"
-                    >0</span>
                 </button>
 
                 {{-- Notification dropdown --}}
@@ -174,18 +179,19 @@
                             @foreach($recentNotifs as $notif)
                                 @php
                                     $isUnread = is_null($notif->read_at);
-                                    $notifType = $notif->data['type'] ?? '';
-                                    
-                                    $iconColor = match($notifType) {
-                                        'enrollment_approved' => 'bg-green-100 text-green-600',
-                                        'instructor_application_approved' => 'bg-purple-100 text-purple-600',
-                                        'instructor_application_rejected' => 'bg-red-100 text-red-600',
-                                        default => 'bg-gray-100 text-gray-600' // Neutral default instead of red
+                                    $normalized = $payloadNormalizer->normalize((array) $notif->data);
+                                    $notifType = $normalized['type'];
+                                    $severity = $normalized['severity'];
+
+                                    $iconColor = match($severity) {
+                                        'success' => 'bg-emerald-100 text-emerald-700',
+                                        'error' => 'bg-rose-100 text-rose-700',
+                                        default => 'bg-slate-100 text-slate-600',
                                     };
                                 @endphp
                                 <a
                                     href="{{ route('learner.notifications.read', $notif->id) }}"
-                                    class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors {{ $isUnread ? 'bg-purple-50/40 dark:bg-purple-900/10' : '' }}"
+                                    class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors {{ $isUnread ? 'bg-rose-50/50 dark:bg-rose-900/10' : '' }}"
                                 >
                                     <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {{ $iconColor }}">
                                         @if($notifType === 'enrollment_approved')
@@ -199,12 +205,12 @@
                                         @endif
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-semibold text-gray-900 dark:text-white">{{ $notif->data['title'] ?? 'Notification' }}</p>
-                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-snug mt-0.5">{{ $notif->data['message'] ?? '' }}</p>
+                                        <p class="text-xs font-semibold text-gray-900 dark:text-white">{{ $normalized['title'] }}</p>
+                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-snug mt-0.5">{{ $normalized['message'] }}</p>
                                         <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{{ $notif->created_at->diffForHumans() }}</p>
                                     </div>
                                     @if($isUnread)
-                                        <span class="w-2 h-2 rounded-full bg-purple-500 mt-1 flex-shrink-0"></span>
+                                        <span class="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0"></span>
                                     @endif
                                 </a>
                             @endforeach
@@ -251,7 +257,7 @@
                     class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
                     x-cloak
                 >
-                    @if(Auth::user()->hasRole('instructor'))
+                    @if($headerUser->hasRole('instructor'))
                         <a
                             href="{{ route('instructor.dashboard') }}"
                             class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-purple-700 bg-purple-50/50 hover:bg-purple-100/80 transition-colors border-l-4 border-purple-500"
@@ -279,6 +285,7 @@
                         </svg>
                         Subscription
                     </a>
+                    @include('partials.chat-status-selector')
                     <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf

@@ -32,13 +32,17 @@ class InstructorApplicationApprovalTest extends TestCase
         $application = $this->makePendingApplication($learner);
 
         $response = $this->actingAs($admin)
-            ->post(route('admin.instructor-applications.approve', $application));
+            ->post(route('admin.instructor-applications.approve', $application), [
+                'admin_message' => '<p>Congratulations! Your instructor application has been approved.</p>',
+            ]);
 
         $response->assertRedirect();
         $this->assertDatabaseHas('instructor_applications', [
             'id' => $application->id,
             'status' => 'approved',
         ]);
+        $approvedApplication = InstructorApplication::findOrFail($application->id);
+        $this->assertStringContainsString('Congratulations! Your instructor application has been approved.', (string) $approvedApplication->review_message);
         $this->assertDatabaseHas('users', [
             'id' => $learner->id,
             'role' => 'instructor',
@@ -51,6 +55,11 @@ class InstructorApplicationApprovalTest extends TestCase
         $this->assertDatabaseHas('role_transitions', [
             'user_id' => $learner->id,
             'to_role' => 'instructor',
+        ]);
+        $this->assertDatabaseHas('instructor_application_reviews', [
+            'instructor_application_id' => $application->id,
+            'status' => 'approved',
+            'reviewed_by' => $admin->id,
         ]);
     }
 
@@ -68,6 +77,7 @@ class InstructorApplicationApprovalTest extends TestCase
             ->post(route('admin.instructor-applications.reject', $application), [
                 'rejection_reason_code' => 'invalid_credentials',
                 'rejection_reason_note' => 'Missing verifiable supporting documents.',
+                'admin_message' => '<p>Your submission is missing verifiable supporting documents.</p>',
             ]);
 
         $response->assertRedirect();
@@ -76,6 +86,12 @@ class InstructorApplicationApprovalTest extends TestCase
             'status' => 'rejected',
             'rejection_reason_code' => 'invalid_credentials',
             'rejection_reason_note' => 'Missing verifiable supporting documents.',
+            'review_message' => '<p>Your submission is missing verifiable supporting documents.</p>',
+        ]);
+        $this->assertDatabaseHas('instructor_application_reviews', [
+            'instructor_application_id' => $application->id,
+            'status' => 'rejected',
+            'reviewed_by' => $admin->id,
         ]);
     }
 }

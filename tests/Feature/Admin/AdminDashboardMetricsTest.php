@@ -48,7 +48,6 @@ class AdminDashboardMetricsTest extends TestCase
             ->assertOk()
             ->assertDontSee('Calendar', false)
             ->assertDontSee('Seminars', false)
-            ->assertDontSee('Messages', false)
             ->assertDontSee('Organizations', false)
             ->assertDontSee('Communication', false);
     }

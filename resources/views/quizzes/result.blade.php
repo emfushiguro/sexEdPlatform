@@ -9,10 +9,25 @@
   $answerCount  = $attempt->answers ? count($attempt->answers) : 0;
   $correctCount = $attempt->answers ? collect($attempt->answers)->where('is_correct', true)->count() : 0;
   $wrongCount   = $answerCount - $correctCount;
-  $canRetry     = $user->isPremium() || ($remainingAttempts > 0);
+  $canRetry     = $canRetry ?? ($user->isPremium() || (($remainingAttempts ?? 0) > 0));
+  $timeLimitMinutes = $attempt->quiz->time_limit ? (int) ceil(((int) $attempt->quiz->time_limit) / 60) : null;
+  $attemptLimit = $attemptLimit ?? ($attempt->quiz->attempt_limit !== null ? (int) $attempt->quiz->attempt_limit : null);
+  $hasReachedAttemptLimit = $hasReachedAttemptLimit ?? false;
 @endphp
 
 <div class="max-w-3xl mx-auto space-y-5">
+
+  @if(session('quiz_time_expired'))
+    <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+      Time is up! Your quiz has been automatically submitted.
+    </div>
+  @endif
+
+  @if(session('attempt_limit_reached') || ($hasReachedAttemptLimit && !$attempt->passed))
+    <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+      You have reached the maximum attempt limit. Your result has been recorded as final.
+    </div>
+  @endif
 
   {{-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        HERO RESULT CARD
@@ -71,6 +86,18 @@
           {{ $correctCount }} of {{ $answerCount }} questions correct
           &nbsp;·&nbsp; Passing score: {{ $attempt->quiz->passing_score }}%
         </p>
+        <div class="mt-2 flex flex-wrap items-center justify-center gap-2 text-[11px]">
+          @if($attemptLimit !== null)
+            <span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40">
+              Attempt Limit: {{ $attemptLimit }}
+            </span>
+          @endif
+          @if($timeLimitMinutes)
+            <span class="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40">
+              Time Limit: {{ $timeLimitMinutes }} {{ \Illuminate\Support\Str::plural('minute', $timeLimitMinutes) }}
+            </span>
+          @endif
+        </div>
       </div>
 
       {{-- Gamification delta chips --}}
@@ -169,15 +196,23 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
               </svg>
-              Daily Limit Reached
+              {{ ($hasReachedAttemptLimit ?? false) ? 'Attempt Limit Reached' : 'Daily Limit Reached' }}
             </button>
           @endif
+        @endif
+
+        @if(($hasReachedAttemptLimit ?? false) && !$attempt->passed && isset($nextLesson) && $nextLesson)
+          <a href="{{ route('learner.lessons.show', $nextLesson) }}"
+             class="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+             style="background:linear-gradient(135deg,#A30EB2,#730DB1,#3B0CB1)">
+            Proceed to Next Lesson
+          </a>
         @endif
 
       </div>
 
       {{-- Out-of-shields upsell --}}
-      @if(!$attempt->passed && !$canRetry && !$user->isPremium())
+      @if(!$attempt->passed && !$user->isPremium() && $shieldsRemaining !== null && $shieldsRemaining <= 0)
       <div class="mt-4 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
         <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>

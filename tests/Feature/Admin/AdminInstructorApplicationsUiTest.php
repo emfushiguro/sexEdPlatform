@@ -29,12 +29,11 @@ class AdminInstructorApplicationsUiTest extends TestCase
             ->assertOk()
             ->assertSee($application->user->name, false)
             ->assertSee('data-testid="applications-col-applicant"', false)
-            ->assertSee('Location', false)
-            ->assertSee('Educational Background', false)
+            ->assertSee('data-testid="applications-col-email"', false)
             ->assertSee('Date Applied', false)
             ->assertSee('Status', false)
-            ->assertDontSee('data-testid="applications-col-username"', false)
-            ->assertDontSee('data-testid="applications-col-professional-background"', false)
+            ->assertSee('Reviewed By', false)
+            ->assertSee('Decision Date', false)
             ->assertSee('data-testid="admin-table-filter-bar"', false);
     }
 
@@ -59,10 +58,13 @@ class AdminInstructorApplicationsUiTest extends TestCase
             ->assertSee('Section 1 - Application Information', false)
             ->assertSee('Section 2 - Submitted Documents', false)
             ->assertSee('Section 3 - Learner Data Snapshot', false)
+            ->assertSee('Section 4 - Moderation History', false)
+            ->assertSee('Section 5 - Moderation Actions', false)
             ->assertSee('Finished Modules Breakdown', false)
             ->assertSee('name="rejection_reason_code"', false)
             ->assertSee('name="rejection_reason_note"', false)
-                ->assertSee('Submit Rejection', false);
+            ->assertSee('name="admin_message"', false)
+            ->assertSee('Reject Application', false);
     }
 
     private function createPendingApplication(): InstructorApplication
@@ -87,6 +89,7 @@ class AdminInstructorApplicationsUiTest extends TestCase
             'educational_background' => 'Bachelor of Secondary Education',
             'government_id_path' => 'instructor-applications/id.pdf',
             'clearance_path' => 'instructor-applications/clearance.pdf',
+            'cv_resume_path' => 'instructor-applications/cv_resume.pdf',
             'bio' => 'Professional educator focused on adolescent development and evidence-based facilitation.',
             'teaching_credential_path' => 'instructor-applications/teaching.pdf',
             'created_at' => now()->subDay(),

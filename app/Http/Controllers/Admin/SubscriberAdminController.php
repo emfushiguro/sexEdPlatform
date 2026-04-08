@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Enums\PaymentStatus;
+use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\AdminActivityLogService;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 
 /**
@@ -23,6 +27,17 @@ class SubscriberAdminController extends Controller
         $subscriptions = Subscription::with(['user', 'payments', 'plan', 'planPrice'])
             ->latest()
             ->get();
+
+        $subscriptions->each(function (Subscription $subscription): void {
+            $displayStartedAt = $this->resolveDisplayStartedAt($subscription);
+            $displayExpiresAt = $this->resolveDisplayExpiresAt($subscription);
+
+            $subscription->display_started_at = $displayStartedAt?->format('M d, Y h:i A');
+            $subscription->display_expires_at = $displayExpiresAt?->format('M d, Y h:i A');
+            $subscription->display_started_at_search = $displayStartedAt?->format('Y-m-d H:i');
+            $subscription->display_expires_at_search = $displayExpiresAt?->format('Y-m-d H:i');
+        });
+
         $plans = SubscriptionPlan::active()->ordered()->get();
 
         $subscriptionStats = [
@@ -32,7 +47,10 @@ class SubscriberAdminController extends Controller
             'expired'        => Subscription::where('status', 'expired')->count(),
             'past_due'       => Subscription::where('status', 'past_due')->count(),
             'trialing'       => Subscription::where('status', 'trialing')->count(),
-            'total_revenue'  => Subscription::where('status', 'active')->sum('price_paid'),
+            'total_revenue'  => Payment::query()
+                ->where('status', PaymentStatus::Completed->value)
+                ->whereNotNull('subscription_id')
+                ->sum('amount'),
             'new_this_month' => Subscription::where('created_at', '>=', now()->startOfMonth())->count(),
         ];
 
@@ -69,8 +87,10 @@ class SubscriberAdminController extends Controller
         $plans = SubscriptionPlan::active()->ordered()->get();
         $user  = $subscription->user;
         $plan  = $subscription->plan;
+        $displayStartedAt = $this->resolveDisplayStartedAt($subscription);
+        $displayExpiresAt = $this->resolveDisplayExpiresAt($subscription);
 
-        return view('admin.subscriber.show', compact('subscription', 'plans', 'user', 'plan'));
+        return view('admin.subscriber.show', compact('subscription', 'plans', 'user', 'plan', 'displayStartedAt', 'displayExpiresAt'));
     }
 
     /**
@@ -128,6 +148,29 @@ class SubscriberAdminController extends Controller
         );
 
         return redirect()->back()->with('success', 'Subscription cancelled.');
+    }
+
+    private function resolveDisplayStartedAt(Subscription $subscription): ?CarbonInterface
+    {
+        return $this->normalizeDisplayTimestamp($subscription->starts_at ?? $subscription->start_date);
+    }
+
+    private function resolveDisplayExpiresAt(Subscription $subscription): ?CarbonInterface
+    {
+        return $this->normalizeDisplayTimestamp($subscription->ends_at ?? $subscription->end_date);
+    }
+
+    private function normalizeDisplayTimestamp(mixed $value): ?CarbonInterface
+    {
+        if ($value instanceof CarbonInterface) {
+            return $value;
+        }
+
+        if (is_string($value) && trim($value) !== '') {
+            return Carbon::parse($value);
+        }
+
+        return null;
     }
 
 }

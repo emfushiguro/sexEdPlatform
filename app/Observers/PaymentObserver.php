@@ -6,6 +6,10 @@ use App\Enums\PaymentStatus;
 use App\Enums\SubscriptionStatus;
 use App\Events\PaymentSuccessful;
 use App\Models\Payment;
+use App\Models\User;
+use App\Notifications\Admin\NewPaymentTransactionNotification;
+use App\Notifications\Admin\NewSubscriptionPurchaseNotification;
+use App\Notifications\Learner\SubscriptionResultNotification;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Log;
 
@@ -25,6 +29,8 @@ class PaymentObserver
     public function updated(Payment $payment): void
     {
         if ($payment->isDirty('status') && $payment->status === PaymentStatus::Completed) {
+            $payment->loadMissing(['user', 'subscription.user']);
+
             if ($payment->isModulePurchase()) {
                 Log::info('Module purchase payment completed', [
                     'payment_id' => $payment->id,
@@ -42,7 +48,15 @@ class PaymentObserver
                 if ($subscription) {
                     app(SubscriptionService::class)->activate($subscription);
                 }
+
+                if ($payment->user) {
+                    $payment->user->notify(new SubscriptionResultNotification('completed', $subscription, $payment));
+                }
+
+                $this->notifyAdmins(new NewSubscriptionPurchaseNotification($payment));
             }
+
+            $this->notifyAdmins(new NewPaymentTransactionNotification($payment));
         }
 
         if ($payment->isDirty('status') && $payment->status === PaymentStatus::Failed) {
@@ -50,6 +64,14 @@ class PaymentObserver
                 'subscription_id' => $payment->subscription_id,
                 'payment_id'      => $payment->id,
             ]);
+
+            $payment->loadMissing(['user', 'subscription']);
+
+            if (!$payment->isModulePurchase() && $payment->user) {
+                $payment->user->notify(new SubscriptionResultNotification('failed', $payment->subscription, $payment));
+            }
+
+            $this->notifyAdmins(new NewPaymentTransactionNotification($payment));
         }
     }
 
@@ -86,5 +108,19 @@ class PaymentObserver
     public function forceDeleted(Payment $payment): void
     {
         $this->deleted($payment);
+    }
+
+    private function notifyAdmins(object $notification): void
+    {
+        try {
+            User::query()
+                ->role('admin')
+                ->get()
+                ->each(fn (User $admin) => $admin->notify($notification));
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to send admin payment notification', [
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 }

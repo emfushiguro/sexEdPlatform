@@ -40,8 +40,8 @@ class InstructorEnrollmentsRefinementTest extends TestCase
         $response->assertSee('data-enrollment-list', false);
         
         // Assert learner card section exists
-        $response->assertSee($learner->name ?? $learner->first_name, false);
-        $response->assertSee($module->title, false);
+        $response->assertSeeText($learner->name ?? $learner->first_name);
+        $response->assertSeeText($module->title);
     }
 
     public function test_enrollments_page_shows_status_filter_tabs()

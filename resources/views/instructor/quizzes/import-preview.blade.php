@@ -1,4 +1,4 @@
-﻿@extends('layouts.instructor-app')
+@extends('layouts.instructor-app')
 
 @section('content')
             <!-- Breadcrumb -->
@@ -48,7 +48,7 @@
                             <form method="POST" action="{{ route('instructor.quizzes.import.confirm', $quiz) }}" class="flex-1">
                                 @csrf
                                 <button type="submit" class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition">
-                                    âœ“ Confirm Import ({{ count($validRows) }} questions)
+                                    ✓ Confirm Import ({{ count($validRows) }} questions)
                                 </button>
                             </form>
                             <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="flex-1 text-center px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition">
@@ -69,7 +69,7 @@
             @if(count($validRows) > 0)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                     <div class="p-6">
-                        <h3 class="text-lg font-semibold text-green-700 mb-4">âœ“ Valid Questions ({{ count($validRows) }})</h3>
+                        <h3 class="text-lg font-semibold text-green-700 mb-4">✓ Valid Questions ({{ count($validRows) }})</h3>
                         
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -91,7 +91,7 @@
                                             </td>
                                             <td class="px-4 py-3 text-sm">
                                                 <span class="px-2 py-1 text-xs font-semibold rounded-full
-                                                    @if($row['data']['question_type'] === 'multiple_choice') bg-blue-100 text-blue-800
+                                                    @if($row['data']['question_type'] === 'multiple_choice') bg-brand-100 text-brand-800
                                                     @elseif($row['data']['question_type'] === 'true_false') bg-green-100 text-green-800
                                                     @elseif($row['data']['question_type'] === 'multiple_select') bg-purple-100 text-purple-800
                                                     @elseif($row['data']['question_type'] === 'fill_blank_text') bg-yellow-100 text-yellow-800
@@ -109,7 +109,7 @@
                                                     Blanks: {{ substr_count($row['data']['question_text'], '_____') }}
                                                 @elseif($row['data']['question_type'] === 'identification')
                                                     @if(!empty($row['data']['image_filename']))
-                                                        <span class="text-purple-600">ðŸ“· {{ $row['data']['image_filename'] }}</span>
+                                                        <span class="text-purple-600">📷 {{ $row['data']['image_filename'] }}</span>
                                                     @else
                                                         No image
                                                     @endif
@@ -128,7 +128,7 @@
             @if(count($invalidRows) > 0)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <h3 class="text-lg font-semibold text-red-700 mb-4">âœ— Invalid Questions ({{ count($invalidRows) }})</h3>
+                        <h3 class="text-lg font-semibold text-red-700 mb-4">✗ Invalid Questions ({{ count($invalidRows) }})</h3>
                         <p class="text-sm text-gray-600 mb-4">These questions will not be imported. Fix the errors in your CSV and upload again.</p>
                         
                         <div class="space-y-4">

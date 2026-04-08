@@ -9,14 +9,23 @@ use App\Models\Certificate;
 use App\Models\LessonTopicProgress;
 use App\Models\QuizAttempt;
 use App\Models\UserProgress;
+use App\Notifications\Instructor\LearnerCertificateIssuedNotification;
+use App\Notifications\Learner\CertificateIssuedNotification;
 use App\Services\CertificatePdfService;
 use App\Services\GamificationService;
+use App\Services\SubscriptionService;
+use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class CertificateController extends Controller
 {
+    public function __construct(
+        private readonly SubscriptionService $subscriptionService,
+    ) {
+    }
+
     /**
      * Display user's certificates
      */
@@ -65,6 +74,15 @@ class CertificateController extends Controller
             'issued_at' => now(),
         ]);
 
+        $certificate->loadMissing(['module', 'user']);
+
+        $user->notify(new CertificateIssuedNotification($certificate));
+
+        $moduleInstructor = $module->creator;
+        if ($moduleInstructor && (int) $moduleInstructor->id !== (int) $user->id) {
+            $moduleInstructor->notify(new LearnerCertificateIssuedNotification($certificate));
+        }
+
         // Award bonus points for certificate
         if ($user->gamification) {
             app(GamificationService::class)->awardPoints($user, 'certificate_earned', 50);
@@ -110,6 +128,17 @@ class CertificateController extends Controller
         // Security check
         if ($certificate->user_id !== $user->id) {
             abort(403);
+        }
+
+        $canDownloadCertificate = $this->subscriptionService->hasFeature(
+            $user,
+            SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES
+        );
+
+        if (!$canDownloadCertificate) {
+            return redirect()
+                ->route('subscription.upgrade')
+                ->with('error', 'Certificate PDF downloads are available only on plans with downloadable certificates.');
         }
 
         $pdfPath = app(CertificatePdfService::class)->ensureStoredPdf($certificate);
@@ -169,27 +198,58 @@ class CertificateController extends Controller
             ->unique();
 
         if ($lessonQuizIds->isNotEmpty()) {
-            $passedLessonQuizIds = QuizAttempt::where('user_id', $userId)
-                ->whereIn('quiz_id', $lessonQuizIds)
-                ->where('passed', true)
-                ->pluck('quiz_id')
-                ->unique();
+            $lessonQuizById = $lessons
+                ->pluck('quiz')
+                ->filter()
+                ->keyBy('id');
 
-            if ($passedLessonQuizIds->count() < $lessonQuizIds->count()) {
-                return 'You must pass all lesson quizzes before getting a certificate.';
+            $allLessonQuizzesCompleted = $lessonQuizIds->every(function ($quizId) use ($userId, $lessonQuizById) {
+                $attemptCount = QuizAttempt::where('user_id', $userId)
+                    ->where('quiz_id', $quizId)
+                    ->count();
+
+                if ($attemptCount === 0) {
+                    return false;
+                }
+
+                $hasPassed = QuizAttempt::where('user_id', $userId)
+                    ->where('quiz_id', $quizId)
+                    ->where('passed', true)
+                    ->exists();
+
+                if ($hasPassed) {
+                    return true;
+                }
+
+                $attemptLimit = $lessonQuizById->get($quizId)?->attempt_limit;
+
+                return $attemptLimit !== null && $attemptCount >= (int) $attemptLimit;
+            });
+
+            if (!$allLessonQuizzesCompleted) {
+                return 'You must complete all lesson quizzes before getting a certificate.';
             }
         }
 
         if ($module->final_quiz_id) {
-            $bestAttempt = QuizAttempt::where('user_id', $userId)
+            $finalAttemptCount = QuizAttempt::where('user_id', $userId)
                 ->where('quiz_id', $module->final_quiz_id)
-                ->orderByDesc('score')
-                ->first();
+                ->count();
 
-            if (!$bestAttempt || $bestAttempt->score < $module->certificate_pass_score) {
-                $required = $module->certificate_pass_score;
-                $current = $bestAttempt ? $bestAttempt->score : 0;
-                return "You need to pass the final quiz with {$required}% or higher. Your best score: {$current}%";
+            $hasPassedFinalQuiz = QuizAttempt::where('user_id', $userId)
+                ->where('quiz_id', $module->final_quiz_id)
+                ->where('passed', true)
+                ->exists();
+
+            $finalQuizAttemptLimit = $module->quizzes()
+                ->where('id', $module->final_quiz_id)
+                ->value('attempt_limit');
+
+            $isFinalQuizCompleted = $hasPassedFinalQuiz
+                || ($finalQuizAttemptLimit !== null && $finalAttemptCount >= (int) $finalQuizAttemptLimit);
+
+            if (!$isFinalQuizCompleted) {
+                return 'You must complete the final quiz before getting a certificate.';
             }
         }
 

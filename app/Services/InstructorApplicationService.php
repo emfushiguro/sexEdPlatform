@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\InstructorApplicationRejectionReason;
 use App\Models\InstructorApplication;
+use App\Models\InstructorApplicationReview;
 use App\Models\InstructorProfile;
 use App\Models\RoleTransition;
 use App\Models\User;
@@ -19,6 +20,10 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class InstructorApplicationService
 {
+    private const DEFAULT_APPROVAL_MESSAGE = '<p>Congratulations! Your instructor application has been approved.</p><p>You can now start creating and publishing learning modules on the platform.</p>';
+
+    private const DEFAULT_REJECTION_MESSAGE = '<p>Thank you for applying to become an instructor on our platform.</p><p>After reviewing your application, we regret to inform you that it has not been approved at this time.</p>';
+
     public function __construct(private readonly SubscriptionService $subscriptionService)
     {
     }
@@ -29,6 +34,7 @@ class InstructorApplicationService
         $paths = [
             'government_id_path' => $this->storeDocument(Arr::get($data, 'government_id'), $basePath, 'government_id'),
             'clearance_path' => $this->storeDocument(Arr::get($data, 'clearance'), $basePath, 'clearance'),
+            'cv_resume_path' => $this->storeDocument(Arr::get($data, 'cv_resume'), $basePath, 'cv_resume'),
             'teaching_credential_path' => $this->storeDocument(Arr::get($data, 'teaching_credential'), $basePath, 'teaching_credential'),
             'sexed_certificate_path' => $this->storeDocument(Arr::get($data, 'sexed_certificate'), $basePath, 'sexed_certificate'),
             'professional_license_path' => $this->storeDocument(Arr::get($data, 'professional_license'), $basePath, 'professional_license'),
@@ -60,11 +66,13 @@ class InstructorApplicationService
         return $application;
     }
 
-    public function approve(InstructorApplication $application): void
+    public function approve(InstructorApplication $application, ?string $adminMessage = null): void
     {
         DB::transaction(function () use ($application): void {
             $application->loadMissing('user');
             $user = $application->user;
+            $reviewedAt = now();
+            $sanitizedMessage = $this->sanitizeAdminMessage($adminMessage ?? self::DEFAULT_APPROVAL_MESSAGE, self::DEFAULT_APPROVAL_MESSAGE);
 
             $snapshot = [
                 'enrolled_modules_count' => $user->moduleEnrollments()->count(),
@@ -99,6 +107,7 @@ class InstructorApplicationService
                     'credentials' => [
                         'government_id_path' => $application->government_id_path,
                         'clearance_path' => $application->clearance_path,
+                        'cv_resume_path' => $application->cv_resume_path,
                         'teaching_credential_path' => $application->teaching_credential_path,
                         'sexed_certificate_path' => $application->sexed_certificate_path,
                         'professional_license_path' => $application->professional_license_path,
@@ -109,13 +118,22 @@ class InstructorApplicationService
             $application->update([
                 'status' => 'approved',
                 'approved_by' => Auth::id(),
-                'approved_at' => now(),
+                'approved_at' => $reviewedAt,
                 'rejection_reason' => null,
                 'rejection_reason_code' => null,
                 'rejection_reason_note' => null,
+                'review_message' => $sanitizedMessage,
             ]);
 
-            $this->notifySafely($user, new InstructorApplicationStatusUpdate('approved'));
+            InstructorApplicationReview::query()->create([
+                'instructor_application_id' => $application->id,
+                'status' => 'approved',
+                'reviewed_by' => Auth::id(),
+                'reviewed_at' => $reviewedAt,
+                'admin_message' => $sanitizedMessage,
+            ]);
+
+            $this->notifySafely($user, new InstructorApplicationStatusUpdate('approved', $sanitizedMessage));
 
             if ($user->subscription && $user->subscription->status === 'active') {
                 $this->subscriptionService->cancel($user->subscription, 'Role changed to instructor');
@@ -123,11 +141,13 @@ class InstructorApplicationService
         });
     }
 
-    public function reject(InstructorApplication $application, string $reasonCode, ?string $reasonNote = null): void
+    public function reject(InstructorApplication $application, string $reasonCode, ?string $reasonNote = null, ?string $adminMessage = null): void
     {
         $resolvedReason = InstructorApplicationRejectionReason::tryFrom($reasonCode);
         $reasonLabel = $resolvedReason?->label() ?? str_replace('_', ' ', $reasonCode);
+        $reviewedAt = now();
         $composedReason = trim($reasonLabel . (! empty($reasonNote) ? ': ' . trim($reasonNote) : ''));
+        $sanitizedMessage = $this->sanitizeAdminMessage($adminMessage ?? self::DEFAULT_REJECTION_MESSAGE, self::DEFAULT_REJECTION_MESSAGE);
 
         $application->update([
             'status' => 'rejected',
@@ -135,13 +155,25 @@ class InstructorApplicationService
             'rejection_reason_note' => $reasonNote,
             'rejection_reason' => $composedReason,
             'approved_by' => Auth::id(),
-            'approved_at' => now(),
+            'approved_at' => $reviewedAt,
+            'review_message' => $sanitizedMessage,
+        ]);
+
+        InstructorApplicationReview::query()->create([
+            'instructor_application_id' => $application->id,
+            'status' => 'rejected',
+            'reviewed_by' => Auth::id(),
+            'reviewed_at' => $reviewedAt,
+            'admin_message' => $sanitizedMessage,
+            'reason_code' => $reasonCode,
+            'reason_label' => $reasonLabel,
+            'reason_note' => $reasonNote,
         ]);
 
         $application->loadMissing('user');
         $this->notifySafely(
             $application->user,
-            new InstructorApplicationStatusUpdate('rejected', $composedReason, $reasonCode, $reasonLabel, $reasonNote)
+            new InstructorApplicationStatusUpdate('rejected', $sanitizedMessage, $reasonCode, $reasonLabel, $reasonNote)
         );
     }
 
@@ -160,6 +192,7 @@ class InstructorApplicationService
         $keys = [
             'government_id',
             'clearance',
+            'cv_resume',
             'teaching_credential',
             'sexed_certificate',
             'professional_license',
@@ -191,5 +224,22 @@ class InstructorApplicationService
                 'error' => $exception->getMessage(),
             ]);
         }
+    }
+
+    public static function defaultApprovalMessage(): string
+    {
+        return self::DEFAULT_APPROVAL_MESSAGE;
+    }
+
+    public static function defaultRejectionMessage(): string
+    {
+        return self::DEFAULT_REJECTION_MESSAGE;
+    }
+
+    private function sanitizeAdminMessage(string $message, string $fallback): string
+    {
+        $sanitized = strip_tags($message, '<p><br><strong><b><em><i><u><ul><ol><li><a><blockquote>');
+
+        return trim($sanitized) !== '' ? $sanitized : $fallback;
     }
 }

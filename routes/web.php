@@ -14,7 +14,10 @@ use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructo
 use App\Http\Controllers\Chat\ConversationController as ChatConversationController;
 use App\Http\Controllers\Chat\MessageController as ChatMessageController;
 use App\Http\Controllers\Chat\MessageRequestController as ChatMessageRequestController;
+use App\Http\Controllers\Chat\StatusController as ChatStatusController;
 use App\Http\Controllers\Api\LocationController;
+use App\Models\Conversation;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -87,8 +90,9 @@ Route::middleware('auth')->group(function () {
 
     // Payment routes
     Route::prefix('payment')->name('payment.')->group(function () {
+        Route::get('/checkout/{subscription}', [PaymentController::class, 'create'])->name('checkout.summary');
+        Route::post('/checkout/{subscription}', [PaymentController::class, 'process'])->name('checkout.proceed');
         Route::get('/create/{subscription}', [PaymentController::class, 'create'])->name('create');
-        Route::post('/process/{subscription}', [PaymentController::class, 'process'])->name('process');
         Route::get('/pending/{payment}', [PaymentController::class, 'pending'])->name('pending');
         Route::get('/status/{payment}', [PaymentController::class, 'checkStatus'])->name('status');
         Route::get('/history', [PaymentController::class, 'history'])->name('history');
@@ -102,8 +106,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/success', [PaymentController::class, 'success'])->name('success');
         Route::get('/cancel', [PaymentController::class, 'cancel'])->name('cancel');
 
-        // Development only - simulate payment success
-        if (app()->environment('local')) {
+        // Development/test/staging only - simulate payment success
+        if (app()->environment((array) config('billing.payment.simulation_enabled_envs', ['local', 'testing', 'staging']))) {
             Route::get('/simulate-success/{payment}', [PaymentController::class, 'simulateSuccess'])
                 ->name('simulate-success');
         }
@@ -120,11 +124,13 @@ Route::middleware('auth')->group(function () {
         // Notifications
         Route::get('/notifications', [\App\Http\Controllers\Learner\NotificationController::class, 'index'])->name('notifications.index');
         Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Learner\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+        Route::post('/notifications/dropdown-open', [\App\Http\Controllers\Learner\NotificationController::class, 'markDropdownRead'])->name('notifications.dropdown-open');
         Route::get('/notifications/{id}/read', [\App\Http\Controllers\Learner\NotificationController::class, 'markRead'])->name('notifications.read');
 
         // Module browsing and enrollment
         Route::get('/modules', [LearnerModuleController::class, 'index'])->name('modules.index');
         Route::get('/modules/{module}', [LearnerModuleController::class, 'show'])->name('modules.show');
+        Route::get('/modules/{module}/completion', [LearnerModuleController::class, 'completion'])->name('modules.completion');
         Route::post('/modules/{module}/enroll', [LearnerModuleController::class, 'enroll'])->name('modules.enroll');
         Route::get('/modules/{module}/purchase', [LearnerModuleController::class, 'purchaseForm'])->name('modules.purchase.form');
         Route::post('/modules/{module}/purchase', [LearnerModuleController::class, 'purchase'])->name('modules.purchase');
@@ -150,11 +156,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/certificates', [\App\Http\Controllers\Learner\CertificateController::class, 'index'])->name('certificates.index');
         Route::post('/modules/{module}/certificate', [\App\Http\Controllers\Learner\CertificateController::class, 'check'])->name('certificates.check');
         Route::get('/certificates/{certificate}', [\App\Http\Controllers\Learner\CertificateController::class, 'show'])->name('certificates.show');
-
-        // Certificate downloads remain premium-only
-        Route::middleware('premium')->group(function () {
-            Route::get('/certificates/{certificate}/download', [\App\Http\Controllers\Learner\CertificateController::class, 'download'])->name('certificates.download');
-        });
+        Route::get('/certificates/{certificate}/download', [\App\Http\Controllers\Learner\CertificateController::class, 'download'])->name('certificates.download');
 
         // Instructor application (learners only)
         Route::middleware('role:learner')->prefix('instructor')->name('instructor.')->group(function () {
@@ -200,12 +202,31 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin|instructor|learner')
         ->group(function () {
             Route::get('/', fn () => view('chat.page'))->name('page');
+            Route::get('/conversation/{conversation}', function (Request $request, Conversation $conversation) {
+                $userId = (int) $request->user()->id;
+                $isParticipant = in_array($userId, [
+                    (int) $conversation->participant_one_id,
+                    (int) $conversation->participant_two_id,
+                ], true);
+
+                abort_unless($isParticipant, 403);
+
+                return redirect()->route('chat.page', [
+                    'conversation_id' => $conversation->id,
+                ]);
+            })->name('conversation.open');
             Route::get('/conversations', [ChatConversationController::class, 'index'])->name('conversations.index');
             Route::get('/discovery', [ChatConversationController::class, 'discover'])->name('discovery');
             Route::post('/conversations/start', [ChatConversationController::class, 'start'])->name('conversations.start');
             Route::get('/conversations/{conversation}/messages', [ChatMessageController::class, 'index'])->name('messages.index');
-            Route::post('/conversations/{conversation}/messages', [ChatMessageController::class, 'store'])->name('messages.store');
+            Route::post('/conversations/{conversation}/messages', [ChatMessageController::class, 'store'])
+                ->middleware('throttle:chat-messages')
+                ->name('messages.store');
             Route::get('/conversations/{conversation}/messages/since/{lastMessageId}', [ChatMessageController::class, 'since'])->name('messages.since');
+            Route::patch('/status', [ChatStatusController::class, 'update'])->name('status.update');
+            Route::patch('/messages/{message}', [ChatMessageController::class, 'update'])->name('messages.update');
+            Route::delete('/messages/{message}', [ChatMessageController::class, 'destroy'])->name('messages.destroy');
+            Route::post('/messages/{message}/report', [ChatMessageController::class, 'report'])->name('messages.report');
             Route::post('/conversations/{conversation}/read', [ChatConversationController::class, 'markRead'])->name('conversations.read');
             Route::get('/requests', [ChatMessageRequestController::class, 'index'])->name('requests.index');
             Route::post('/requests/{messageRequest}/accept', [ChatMessageRequestController::class, 'accept'])->name('requests.accept');

@@ -4,6 +4,7 @@ namespace App\Services\Chat;
 
 use App\Models\Conversation;
 use App\Models\Lesson;
+use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\Quiz;
 use InvalidArgumentException;
@@ -11,29 +12,30 @@ use InvalidArgumentException;
 class ChatContextResolver
 {
     /**
-     * @return array{module_id: ?int, lesson_id: ?int, quiz_id: ?int, context_key: string}
+     * @return array{module_id: ?int, lesson_id: ?int, lesson_topic_id: ?int, quiz_id: ?int, context_key: string}
      */
-    public function resolve(string $conversationType, ?int $moduleId, ?int $lessonId, ?int $quizId): array
+    public function resolve(string $conversationType, ?int $moduleId, ?int $lessonId, ?int $quizId, ?int $lessonTopicId = null): array
     {
         if (!Conversation::isSupportedConversationType($conversationType)) {
             throw new InvalidArgumentException('Unsupported conversation type.');
         }
 
         if (in_array($conversationType, [Conversation::TYPE_DIRECT, Conversation::TYPE_ADMIN_SUPPORT], true)) {
-            if ($moduleId !== null || $lessonId !== null || $quizId !== null) {
+            if ($moduleId !== null || $lessonId !== null || $lessonTopicId !== null || $quizId !== null) {
                 throw new InvalidArgumentException('This conversation type cannot include context IDs.');
             }
 
             return [
                 'module_id' => null,
                 'lesson_id' => null,
+                'lesson_topic_id' => null,
                 'quiz_id' => null,
                 'context_key' => Conversation::makeContextKey($conversationType, null),
             ];
         }
 
         if ($conversationType === Conversation::TYPE_MODULE_CHAT) {
-            if ($moduleId === null || $lessonId !== null || $quizId !== null) {
+            if ($moduleId === null || $lessonId !== null || $lessonTopicId !== null || $quizId !== null) {
                 throw new InvalidArgumentException('Module chat requires only a module context.');
             }
 
@@ -46,13 +48,14 @@ class ChatContextResolver
             return [
                 'module_id' => $resolvedModule->id,
                 'lesson_id' => null,
+                'lesson_topic_id' => null,
                 'quiz_id' => null,
                 'context_key' => Conversation::makeContextKey(Conversation::TYPE_MODULE_CHAT, $resolvedModule->id),
             ];
         }
 
         if ($conversationType === Conversation::TYPE_LESSON_CHAT) {
-            if ($lessonId === null || $quizId !== null) {
+            if ($lessonId === null || $lessonTopicId !== null || $quizId !== null) {
                 throw new InvalidArgumentException('Lesson chat requires a lesson context and no quiz context.');
             }
 
@@ -69,9 +72,48 @@ class ChatContextResolver
             return [
                 'module_id' => (int) $resolvedLesson->module_id,
                 'lesson_id' => $resolvedLesson->id,
+                'lesson_topic_id' => null,
                 'quiz_id' => null,
                 'context_key' => Conversation::makeContextKey(Conversation::TYPE_LESSON_CHAT, $resolvedLesson->id),
             ];
+        }
+
+        if ($conversationType === Conversation::TYPE_LESSON_TOPIC_CHAT) {
+            if ($lessonTopicId === null || $quizId !== null) {
+                throw new InvalidArgumentException('Lesson topic chat requires a lesson topic context and no quiz context.');
+            }
+
+            $resolvedTopic = LessonTopic::query()->find($lessonTopicId);
+
+            if ($resolvedTopic === null) {
+                throw new InvalidArgumentException('Lesson topic context does not exist.');
+            }
+
+            $resolvedLesson = Lesson::query()->find((int) $resolvedTopic->lesson_id);
+
+            if ($resolvedLesson === null) {
+                throw new InvalidArgumentException('Lesson topic lesson lineage is invalid.');
+            }
+
+            if ($lessonId !== null && $lessonId !== (int) $resolvedLesson->id) {
+                throw new InvalidArgumentException('Lesson topic does not belong to the provided lesson.');
+            }
+
+            if ($moduleId !== null && $moduleId !== (int) $resolvedLesson->module_id) {
+                throw new InvalidArgumentException('Lesson topic does not belong to the provided module.');
+            }
+
+            return [
+                'module_id' => (int) $resolvedLesson->module_id,
+                'lesson_id' => (int) $resolvedLesson->id,
+                'lesson_topic_id' => (int) $resolvedTopic->id,
+                'quiz_id' => null,
+                'context_key' => Conversation::makeContextKey(Conversation::TYPE_LESSON_TOPIC_CHAT, (int) $resolvedTopic->id),
+            ];
+        }
+
+        if ($lessonTopicId !== null) {
+            throw new InvalidArgumentException('Quiz help chat cannot include lesson topic context.');
         }
 
         if ($quizId === null) {
@@ -112,6 +154,7 @@ class ChatContextResolver
         return [
             'module_id' => $resolvedModuleId ?? $moduleId,
             'lesson_id' => $resolvedLessonId ?? $lessonId,
+            'lesson_topic_id' => null,
             'quiz_id' => $resolvedQuiz->id,
             'context_key' => Conversation::makeContextKey(Conversation::TYPE_QUIZ_HELP, $resolvedQuiz->id),
         ];

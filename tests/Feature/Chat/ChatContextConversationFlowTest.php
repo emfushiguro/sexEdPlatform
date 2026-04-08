@@ -4,6 +4,7 @@ namespace Tests\Feature\Chat;
 
 use App\Models\Conversation;
 use App\Models\Lesson;
+use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\Quiz;
 use App\Models\User;
@@ -28,6 +29,10 @@ class ChatContextConversationFlowTest extends TestCase
 
         $quiz = Quiz::factory()->create([
             'module_id' => $module->id,
+            'lesson_id' => $lesson->id,
+        ]);
+
+        $topic = LessonTopic::factory()->create([
             'lesson_id' => $lesson->id,
         ]);
 
@@ -71,6 +76,27 @@ class ChatContextConversationFlowTest extends TestCase
             'conversation_type' => Conversation::TYPE_LESSON_CHAT,
             'module_id' => $module->id,
             'lesson_id' => $lesson->id,
+            'quiz_id' => null,
+        ]);
+
+        $topicStart = $this->actingAs($admin)
+            ->postJson(route('chat.conversations.start'), [
+                'target_user_id' => $instructor->id,
+                'conversation_type' => Conversation::TYPE_LESSON_TOPIC_CHAT,
+                'module_id' => $module->id,
+                'lesson_id' => $lesson->id,
+                'lesson_topic_id' => $topic->id,
+            ])
+            ->assertCreated();
+
+        $topicConversationId = (int) $topicStart->json('conversation.id');
+
+        $this->assertDatabaseHas('conversations', [
+            'id' => $topicConversationId,
+            'conversation_type' => Conversation::TYPE_LESSON_TOPIC_CHAT,
+            'module_id' => $module->id,
+            'lesson_id' => $lesson->id,
+            'lesson_topic_id' => $topic->id,
             'quiz_id' => null,
         ]);
 

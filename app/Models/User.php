@@ -15,6 +15,18 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable, SoftDeletes, HasRoles;
 
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_INACTIVE = 'inactive';
+    public const STATUS_SUSPENDED = 'suspended';
+    public const STATUS_ARCHIVED = 'archived';
+
+    public const ACCOUNT_TYPE_LEARNER_CHILD = 'learner-child';
+    public const ACCOUNT_TYPE_LEARNER_TEEN = 'learner-teen';
+    public const ACCOUNT_TYPE_LEARNER_ADULT = 'learner-adult';
+    public const ACCOUNT_TYPE_PARENT = 'parent';
+    public const ACCOUNT_TYPE_INSTRUCTOR = 'instructor';
+    public const ACCOUNT_TYPE_ADMIN = 'admin';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -32,6 +44,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'status',
+        'account_type',
+        'age_bracket_cached',
+        'chat_status',
         'verified',
     ];
 
@@ -325,9 +340,32 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isPremium(): bool
     {
-        // Force refresh subscription to avoid cached status issues
-        $this->load('subscription');
-        return $this->subscription?->isPremium() ?? false;
+        return $this->subscriptions()
+            ->where(function ($query) {
+                $query->where(function ($active) {
+                    $active->where('status', 'active')
+                        ->where(function ($window) {
+                            $window->where('ends_at', '>', now())
+                                ->orWhere(function ($fallback) {
+                                    $fallback->whereNull('ends_at')
+                                        ->where(function ($legacy) {
+                                            $legacy->whereNull('end_date')
+                                                ->orWhere('end_date', '>', now());
+                                        });
+                                });
+                        });
+                })->orWhere(function ($grace) {
+                    $grace->where('status', 'grace_period')
+                        ->where(function ($window) {
+                            $window->where('grace_ends_at', '>', now())
+                                ->orWhere(function ($fallback) {
+                                    $fallback->whereNull('grace_ends_at')
+                                        ->where('grace_period_ends', '>', now());
+                                });
+                        });
+                });
+            })
+            ->exists();
     }
 
     public function isAdmin(): bool
@@ -467,5 +505,71 @@ class User extends Authenticatable implements MustVerifyEmail
     public function roleTransitions()
     {
         return $this->hasMany(RoleTransition::class);
+    }
+
+    public function childLinks()
+    {
+        return $this->hasMany(ParentChildAccount::class, 'parent_user_id');
+    }
+
+    public function parentLinks()
+    {
+        return $this->hasMany(ParentChildAccount::class, 'child_user_id');
+    }
+
+    public function deriveAgeBracketCache(): ?string
+    {
+        if (! $this->isLearner()) {
+            return null;
+        }
+
+        $age = $this->calculateAge();
+
+        if ($age === null) {
+            return null;
+        }
+
+        if ($age <= 12) {
+            return 'kids';
+        }
+
+        if ($age <= 17) {
+            return 'teens';
+        }
+
+        return 'adults';
+    }
+
+    public function deriveAccountType(): string
+    {
+        if ($this->isAdmin()) {
+            return self::ACCOUNT_TYPE_ADMIN;
+        }
+
+        if ($this->isInstructor()) {
+            return self::ACCOUNT_TYPE_INSTRUCTOR;
+        }
+
+        if ($this->isParent()) {
+            return self::ACCOUNT_TYPE_PARENT;
+        }
+
+        if ($this->isLearner()) {
+            return match ($this->deriveAgeBracketCache()) {
+                'kids' => self::ACCOUNT_TYPE_LEARNER_CHILD,
+                'teens' => self::ACCOUNT_TYPE_LEARNER_TEEN,
+                default => self::ACCOUNT_TYPE_LEARNER_ADULT,
+            };
+        }
+
+        return (string) $this->role;
+    }
+
+    public function refreshClassificationCache(): void
+    {
+        $this->forceFill([
+            'age_bracket_cached' => $this->deriveAgeBracketCache(),
+            'account_type' => $this->deriveAccountType(),
+        ])->saveQuietly();
     }
 }

@@ -15,7 +15,10 @@
         .message { font-size: 16px; line-height: 1.6; color: #4b5563; margin-bottom: 24px; }
         .remarks-wrapper { background-color: #f9fafb; border-left: 4px solid {{ $status === 'approved' ? '#10b981' : '#ef4444' }}; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0; }
         .remarks-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; letter-spacing: 0.05em; }
-        .remarks-content { font-size: 15px; color: #374151; font-style: italic; }
+        .remarks-content { font-size: 15px; color: #374151; }
+        .remarks-content p { margin: 0 0 10px; }
+        .remarks-content p:last-child { margin-bottom: 0; }
+        .remarks-content ul, .remarks-content ol { margin: 8px 0 8px 20px; }
         .cta-button { display: inline-block; padding: 14px 32px; background: {{ $status === 'approved' ? '#7e22ce' : '#4b5563' }}; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px -1px rgba(126, 34, 206, 0.2); transition: background-color 0.2s; }
         .footer { background: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 13px; color: #9ca3af; line-height: 1.5; }
     </style>
@@ -40,7 +43,7 @@
                 @if($remarks)
                     <div class="remarks-wrapper">
                         <div class="remarks-label">Admin Note</div>
-                        <div class="remarks-content">"{{ $remarks }}"</div>
+                        <div class="remarks-content">{!! $remarks !!}</div>
                     </div>
                 @endif
                 
@@ -64,8 +67,9 @@
                         @endif
                         @if($reasonNote)
                             <div class="remarks-content" style="margin-top: 8px;">{{ $reasonNote }}</div>
-                        @elseif($remarks)
-                            <div class="remarks-content" style="margin-top: 8px;">{{ $remarks }}</div>
+                        @endif
+                        @if($remarks)
+                            <div class="remarks-content" style="margin-top: 8px;">{!! $remarks !!}</div>
                         @endif
                     </div>
                 @endif

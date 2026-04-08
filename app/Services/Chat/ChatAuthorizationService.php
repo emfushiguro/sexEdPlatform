@@ -56,7 +56,10 @@ class ChatAuthorizationService
             return false;
         }
 
-        return $conversation->status === Conversation::STATUS_ACTIVE;
+        return in_array((string) $conversation->status, [
+            Conversation::STATUS_ACTIVE,
+            Conversation::STATUS_ACCEPTED,
+        ], true);
     }
 
     public function canViewMessageRequest(User $user, MessageRequest $messageRequest): bool

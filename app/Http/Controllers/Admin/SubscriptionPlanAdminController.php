@@ -81,6 +81,7 @@ class SubscriptionPlanAdminController extends Controller
 
         $priceRows = is_array($request->input('prices')) ? $request->input('prices') : [];
         $defaultAmountMinor = $this->resolveDefaultAmountMinor($priceRows);
+        $validated['billing_mode'] = $this->resolveBillingModeFromPrices($priceRows, (string) ($validated['billing_mode'] ?? 'custom'));
 
         // Generate unique slug
         $validated['slug'] = Str::slug($validated['name']);
@@ -98,7 +99,8 @@ class SubscriptionPlanAdminController extends Controller
 
         // Handle legacy features (keep for backward compatibility but might be empty)
         $features = $request->input('feature_keys', []);
-        $featureNames = array_values(array_unique(array_filter(array_map('trim', $features))));
+        $entitlementFeatureKeys = $this->extractEnabledFeatureKeysFromEntitlements($request->input('entitlements', []));
+        $featureNames = array_values(array_unique(array_filter(array_map('trim', array_merge($features, $entitlementFeatureKeys)))));
         $validated['features'] = $featureNames;
         $validated['price'] = $defaultAmountMinor > 0 ? $defaultAmountMinor / 100 : 0;
         $validated['trial_days'] = 0;
@@ -192,6 +194,7 @@ class SubscriptionPlanAdminController extends Controller
 
         $priceRows = is_array($request->input('prices')) ? $request->input('prices') : [];
         $defaultAmountMinor = $this->resolveDefaultAmountMinor($priceRows);
+        $validated['billing_mode'] = $this->resolveBillingModeFromPrices($priceRows, (string) ($validated['billing_mode'] ?? ($subscriptionPlan->billing_mode ?? 'custom')));
 
         // Update slug if name changed
         if ($subscriptionPlan->name !== $validated['name']) {
@@ -209,7 +212,8 @@ class SubscriptionPlanAdminController extends Controller
 
         // Handle legacy features
         $features = $request->input('feature_keys', []);
-        $featureNames = array_values(array_unique(array_filter(array_map('trim', $features))));
+        $entitlementFeatureKeys = $this->extractEnabledFeatureKeysFromEntitlements($request->input('entitlements', []));
+        $featureNames = array_values(array_unique(array_filter(array_map('trim', array_merge($features, $entitlementFeatureKeys)))));
         $validated['features'] = $featureNames;
         $validated['trial_days'] = 0;
 
@@ -370,8 +374,18 @@ class SubscriptionPlanAdminController extends Controller
      */
     public function getFeatures(Request $request)
     {
+        $this->ensureCoreLearnerFeatures();
+
+        $audience = (string) $request->query('audience', '');
+
         $features = FeatureCatalog::query()
             ->where('is_active', true)
+            ->when(in_array($audience, ['learner', 'instructor'], true), function ($query) use ($audience) {
+                $query->where(function ($subQuery) use ($audience) {
+                    $subQuery->where('category', $audience)
+                        ->orWhere('category', 'general');
+                });
+            })
             ->orderBy('category')
             ->orderBy('name')
             ->get()
@@ -390,6 +404,46 @@ class SubscriptionPlanAdminController extends Controller
         return response()->json(['features' => $features]);
     }
 
+    private function ensureCoreLearnerFeatures(): void
+    {
+        $coreLearnerFeatures = [
+            [
+                'key' => 'unlimited_username_change',
+                'name' => 'Unlimited Username Changes',
+                'description' => 'Allow learners to change their username without cooldown limits.',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'learner',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'unlimited_quiz_shields',
+                'name' => 'Unlimited Quiz Shields',
+                'description' => 'Allow unlimited quiz retries without daily shield limits.',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'learner',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'downloadable_certificates',
+                'name' => 'Downloadable PDF Certificates',
+                'description' => 'Allow learners to download completion certificates as PDF files.',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'learner',
+                'is_active' => true,
+            ],
+        ];
+
+        foreach ($coreLearnerFeatures as $featureData) {
+            FeatureCatalog::updateOrCreate(
+                ['key' => $featureData['key']],
+                $featureData
+            );
+        }
+    }
+
     private function resolveDefaultAmountMinor(array $priceRows): int
     {
         if (empty($priceRows)) {
@@ -403,6 +457,48 @@ class SubscriptionPlanAdminController extends Controller
         }
 
         return (int) ($priceRows[0]['amount_minor'] ?? 0);
+    }
+
+    private function extractEnabledFeatureKeysFromEntitlements(array $entitlements): array
+    {
+        $keys = [];
+
+        foreach ($entitlements as $entitlement) {
+            if (!is_array($entitlement) || empty($entitlement['is_enabled'])) {
+                continue;
+            }
+
+            $featureKey = trim((string) ($entitlement['feature_key'] ?? ''));
+            if ($featureKey !== '') {
+                $keys[] = $featureKey;
+            }
+        }
+
+        return $keys;
+    }
+
+    private function resolveBillingModeFromPrices(array $priceRows, string $fallback = 'custom'): string
+    {
+        if (empty($priceRows)) {
+            return in_array($fallback, ['monthly', 'annual', 'custom'], true) ? $fallback : 'custom';
+        }
+
+        $defaultRow = collect($priceRows)->first(function (array $row) {
+            return !empty($row['is_default']);
+        }) ?? ($priceRows[0] ?? []);
+
+        $durationUnit = (string) ($defaultRow['duration_unit'] ?? '');
+        $durationCount = (int) ($defaultRow['duration_count'] ?? 0);
+
+        if ($durationUnit === 'month' && $durationCount === 1) {
+            return 'monthly';
+        }
+
+        if ($durationUnit === 'year' && $durationCount === 1) {
+            return 'annual';
+        }
+
+        return 'custom';
     }
 
     /**

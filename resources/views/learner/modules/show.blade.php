@@ -30,13 +30,14 @@
     $enrollmentCapacityLabel = $module->enrollment_limit !== null
         ? sprintf('%d / %d Enrolled', $approvedEnrollmentsCount, (int) $module->enrollment_limit)
         : sprintf('%d Enrolled', $approvedEnrollmentsCount);
+    $isModuleDeactivated = !$module->isLearnerVisible();
 @endphp
 
 <div class="space-y-5">
 
-    @if(!$module->is_published)
+    @if($isModuleDeactivated)
     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
-        This module is currently deactivated. You can review existing content, but lesson and quiz progression is temporarily unavailable.
+        This module is currently unavailable because it has been deactivated by the instructor.
     </div>
     @endif
 
@@ -55,21 +56,20 @@
     <div class="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm">
         {{-- Streak --}}
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/40">
-            <svg class="w-4 h-4 text-orange-500" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C12 2 8.5 6.5 8.5 10C8.5 11.933 9.567 13.6 11 14.5C10.5 13 11 11.5 12 10.5C13 11.5 13.5 13 13 14.5C14.433 13.6 15.5 11.933 15.5 10C15.5 6.5 12 2 12 2Z" fill="currentColor"/>
-                <path d="M12 14.5C10.343 14.5 9 15.843 9 17.5C9 19.985 10.791 22 13 22C15.209 22 17 19.985 17 17.5C17 15.843 15.657 14.5 14 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <svg class="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 23c-4.97 0-9-3.582-9-8 0-3.5 2-6.5 5-8-.5 1.5 0 3 1 4 .5-2 2-4 4-5-.5 2 1 4 2 5 .5-1 .5-2.5 0-3.5 2 1.5 3 4 3 7.5 1-1 1.5-2.5 1.5-4 1.5 1.5 2.5 3.5 2.5 6 0 4.418-4.03 8-9 8z"/>
             </svg>
             <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $gami?->current_streak ?? 0 }}</span>
             <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Day Streak</span>
         </div>
         {{-- Shields --}}
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/40">
-            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+            <svg class="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
             </svg>
             @if($hasUnlimitedShields)
                 <span class="text-sm font-bold text-gray-900 dark:text-white">∞</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Unli Shields</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Unlimited Shields</span>
             @else
                 <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $shieldsRemaining }}</span>
                 <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Shields</span>
@@ -78,7 +78,7 @@
         {{-- Points --}}
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40">
             <svg class="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="currentColor">
-                <path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354l-4.543 2.746c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd"/>
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
             </svg>
             <span class="text-sm font-bold text-gray-900 dark:text-white">{{ number_format($gami?->score ?? 0) }}</span>
             <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Points</span>
@@ -120,9 +120,6 @@
                                             : 'bg-red-400/90 text-red-900') }}">
                                     {{ ucfirst($module->difficulty_level) }}
                                 </span>
-                            @endif
-                            @if($module->is_premium)
-                                <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-400 text-amber-900">PREMIUM</span>
                             @endif
                         </div>
                         <h1 class="text-2xl font-bold text-white leading-tight">{{ $module->title }}</h1>
@@ -310,6 +307,7 @@
                             $attempts     = $quizAttempts->get($quiz->id, collect());
                             $bestAttempt  = $attempts->sortByDesc('score')->first();
                             $allCompleted = $progress->completed_lessons === $progress->total_lessons && $progress->total_lessons > 0;
+                            $timeLimitMinutes = $quiz->time_limit ? (int) ceil(((int) $quiz->time_limit) / 60) : null;
                         @endphp
                         <div class="rounded-xl border p-4 {{ $allCompleted ? 'bg-purple-50/50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800/40' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700' }}">
                             <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $quiz->title }}</h4>
@@ -319,7 +317,12 @@
                             <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
                                 <span>{{ $quiz->questions->count() }} questions</span>
                                 <span>Pass: {{ $quiz->passing_score }}%</span>
-                                @if($quiz->time_limit) <span>{{ $quiz->time_limit }} min limit</span> @endif
+                                @if($quiz->attempt_limit !== null)
+                                    <span>Attempt Limit: {{ $quiz->attempt_limit }}</span>
+                                @endif
+                                @if($timeLimitMinutes)
+                                    <span>Time Limit: {{ $timeLimitMinutes }} {{ \Illuminate\Support\Str::plural('minute', $timeLimitMinutes) }}</span>
+                                @endif
                             </div>
                             @if($bestAttempt)
                                 <div class="mt-3 flex items-center gap-2">
@@ -333,11 +336,9 @@
                                 </div>
                             @endif
                             @if($allCompleted)
-                                <a href="{{ route('quizzes.start', $quiz) }}"
-                                   class="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg transition hover:opacity-90"
-                                   style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
-                                    {{ $bestAttempt ? 'Retake Quiz' : 'Start Quiz' }}
-                                </a>
+                                <p class="mt-3 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                                    Assessment unlocked. Open your lesson quiz flow to continue.
+                                </p>
                             @else
                                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">Complete all lessons to unlock this assessment.</p>
                             @endif
@@ -421,14 +422,28 @@
                     </div>
 
                     @if($lessons->isNotEmpty())
-                    <a href="{{ route('learner.lessons.show', $lessons->first()) }}"
-                       class="flex items-center justify-center gap-2 w-full text-sm font-semibold text-white py-3 px-4 rounded-xl transition hover:opacity-90"
-                       style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/>
-                        </svg>
-                        {{ $progress->progress_percentage > 0 ? 'Continue Learning' : 'Start Learning' }}
-                    </a>
+                        @if($isModuleDeactivated)
+                            <button type="button"
+                                    disabled
+                                    class="flex items-center justify-center gap-2 w-full text-sm font-semibold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 py-3 px-4 rounded-xl cursor-not-allowed">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-12.728 12.728M9 12.75L11.25 15 15 9.75"/>
+                                </svg>
+                                Continue Learning Unavailable
+                            </button>
+                            <p class="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                                This module is currently unavailable because it has been deactivated by the instructor.
+                            </p>
+                        @else
+                            <a href="{{ route('learner.lessons.show', $lessons->first()) }}"
+                               class="flex items-center justify-center gap-2 w-full text-sm font-semibold text-white py-3 px-4 rounded-xl transition hover:opacity-90"
+                               style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/>
+                                </svg>
+                                {{ $progress->progress_percentage > 0 ? 'Continue Learning' : 'Start Learning' }}
+                            </a>
+                        @endif
                     @endif
 
                     {{-- Certificate section --}}
@@ -627,16 +642,19 @@
                         </svg>
                     </a>
 
-                    <a
-                        href="{{ route('chat.page', [
-                            'target_user_id' => $creator->id,
-                            'conversation_type' => 'module_chat',
-                            'module_id' => $module->id,
-                        ]) }}"
+                    <button
+                        type="button"
+                        @click="$dispatch('open-global-chat', {
+                            target_user_id: {{ $creator->id }},
+                            name: '{{ addslashes($creator->name) }}',
+                            avatar: 'https://ui-avatars.com/api/?name={{ urlencode($creator->name) }}&color=1D4ED8&background=EFF6FF',
+                            conversation_type: 'module_chat',
+                            module_id: {{ $module->id }}
+                        })"
                         class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 transition-colors hover:bg-blue-100"
                     >
                         Message Instructor About This Module
-                    </a>
+                    </button>
                 @endif
             </div>
 

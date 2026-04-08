@@ -11,10 +11,17 @@ use App\Models\RewardLog;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use App\Models\InstructorApplication;
+use App\Services\SubscriptionService;
+use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private readonly SubscriptionService $subscriptionService,
+    ) {
+    }
+
     public function index()
     {
         $user = Auth::user();
@@ -137,11 +144,11 @@ class DashboardController extends Controller
             ->filter();
 
         // ── Greeting ────────────────────────────────────────────────────
-        $hour     = now()->hour;
+        $hour     = now('Asia/Manila')->hour;
         $greeting = match (true) {
-            $hour < 12  => 'Good morning',
-            $hour < 17  => 'Good afternoon',
-            default     => 'Good evening',
+            $hour < 12  => 'Good Morning',
+            $hour < 17  => 'Good Afternoon',
+            default     => 'Good Evening',
         };
 
         // ── Profile modal data ───────────────────────────────────────────
@@ -155,10 +162,41 @@ class DashboardController extends Controller
             : null;
 
         $usernameCooldownDays = 0;
-        if (!$user->isPremium() && $learnerProfile->username_changed_at) {
+        $isPremium = $this->subscriptionService->isUserPremium($user);
+        $hasUnlimitedUsernameChanges = $this->subscriptionService->hasFeature(
+            $user,
+            SubscriptionFeatureKeys::UNLIMITED_USERNAME_CHANGE
+        );
+        $hasUnlimitedQuizShields = $this->subscriptionService->hasFeature(
+            $user,
+            SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS
+        );
+
+        if (!$hasUnlimitedUsernameChanges && $learnerProfile->username_changed_at) {
             $daysSince = now()->diffInDays($learnerProfile->username_changed_at);
             $usernameCooldownDays = $daysSince < 7 ? (7 - (int) $daysSince) : 0;
         }
+
+        $profileEntitlementHints = [
+            [
+                'key' => 'username_change',
+                'label' => 'Username changes',
+                'value' => $hasUnlimitedUsernameChanges ? 'Unlimited' : 'Every 7 days',
+                'description' => $hasUnlimitedUsernameChanges
+                    ? 'Your current plan removes the username cooldown.'
+                    : 'Free baseline applies a 7-day cooldown between username changes.',
+                'is_enabled' => $hasUnlimitedUsernameChanges,
+            ],
+            [
+                'key' => 'quiz_shields',
+                'label' => 'Quiz shields',
+                'value' => $hasUnlimitedQuizShields ? 'Unlimited' : '3 per day',
+                'description' => $hasUnlimitedQuizShields
+                    ? 'Retry quizzes without consuming daily shields.'
+                    : 'Free baseline includes 3 shields each day, then resets at midnight.',
+                'is_enabled' => $hasUnlimitedQuizShields,
+            ],
+        ];
 
         $latestInstructorApplication = InstructorApplication::query()
             ->where('user_id', $user->id)
@@ -188,7 +226,10 @@ class DashboardController extends Controller
             'greeting',
             'currentSubscription',
             'currentPlan',
+            'isPremium',
             'usernameCooldownDays',
+            'hasUnlimitedQuizShields',
+            'profileEntitlementHints',
             'latestInstructorApplication',
             'hasPendingInstructorApplication',
             'canApplyAsInstructor',

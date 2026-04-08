@@ -14,8 +14,10 @@ class InstructorApplicationRejectionReasonTest extends TestCase
 
     public function test_instructor_applications_table_has_structured_rejection_columns(): void
     {
+        $this->assertTrue(Schema::hasColumn('instructor_applications', 'cv_resume_path'));
         $this->assertTrue(Schema::hasColumn('instructor_applications', 'rejection_reason_code'));
         $this->assertTrue(Schema::hasColumn('instructor_applications', 'rejection_reason_note'));
+        $this->assertTrue(Schema::hasColumn('instructor_applications', 'review_message'));
     }
 
     public function test_reject_requires_reason_code(): void
@@ -27,6 +29,7 @@ class InstructorApplicationRejectionReasonTest extends TestCase
             ->from(route('admin.instructor-applications.index'))
             ->post(route('admin.instructor-applications.reject', $application), [
                 'rejection_reason_code' => '',
+                'admin_message' => '<p>Validation test message.</p>',
                 'review_application_id' => $application->id,
             ])
             ->assertRedirect(route('admin.instructor-applications.index'))
@@ -43,6 +46,7 @@ class InstructorApplicationRejectionReasonTest extends TestCase
             ->post(route('admin.instructor-applications.reject', $application), [
                 'rejection_reason_code' => 'other',
                 'rejection_reason_note' => '',
+                'admin_message' => '<p>Validation test message.</p>',
                 'review_application_id' => $application->id,
             ])
             ->assertRedirect(route('admin.instructor-applications.index'))

@@ -33,7 +33,7 @@
                                 </svg>
                             </div>
                             <div class="min-w-0">
-                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ $certificate->module_title }}</h3>
+                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-3 leading-snug">{{ $certificate->module_title }}</h3>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Issued {{ $certificate->issued_at->format('F d, Y') }}</p>
                             </div>
                         </div>

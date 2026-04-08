@@ -25,6 +25,7 @@ class InstructorApplication extends Model
         'educational_background',
         'government_id_path',
         'clearance_path',
+        'cv_resume_path',
         'bio',
         'teaching_credential_path',
         'sexed_certificate_path',
@@ -34,6 +35,7 @@ class InstructorApplication extends Model
         'rejection_reason',
         'rejection_reason_code',
         'rejection_reason_note',
+        'review_message',
         'application_metadata',
     ];
 
@@ -68,6 +70,16 @@ class InstructorApplication extends Model
     public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(InstructorApplicationReview::class);
+    }
+
+    public function latestReview()
+    {
+        return $this->hasOne(InstructorApplicationReview::class)->latestOfMany('reviewed_at');
     }
 
     public function isApproved(): bool

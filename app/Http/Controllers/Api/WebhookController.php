@@ -140,19 +140,27 @@ class WebhookController extends Controller
             return;
         }
 
-        // Find the most recent pending/paymongo payment for this subscription
-        $payment = Payment::where('subscription_id', $subscription->id)
-            ->where(function ($query) {
-                $query->whereNull('method')
-                    ->orWhere('method', 'paymongo');
-            })
-            ->whereIn('status', [PaymentStatus::Pending, PaymentStatus::Processing])
-            ->orderByDesc('id')
-            ->first();
+        $payment = null;
+
+        if ($paymentId) {
+            $payment = Payment::query()
+                ->where('id', (int) $paymentId)
+                ->where('subscription_id', $subscription->id)
+                ->first();
+        }
+
+        if (!$payment) {
+            // Fallback for older metadata payloads without payment_id
+            $payment = Payment::query()
+                ->where('subscription_id', $subscription->id)
+                ->whereIn('status', [PaymentStatus::Pending, PaymentStatus::Processing])
+                ->orderByDesc('id')
+                ->first();
+        }
 
         // Wrap payment completion + subscription activation in a single transaction.
         DB::transaction(function () use ($payment, $subscription, $paymentData, $paymentMethod) {
-            if ($payment) {
+            if ($payment && in_array($payment->status, [PaymentStatus::Pending, PaymentStatus::Processing], true)) {
                 $payment->update([
                     'status' => PaymentStatus::Completed,
                     'method' => $paymentMethod,

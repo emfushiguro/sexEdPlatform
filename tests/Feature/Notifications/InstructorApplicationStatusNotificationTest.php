@@ -25,6 +25,7 @@ class InstructorApplicationStatusNotificationTest extends TestCase
             ->post(route('admin.instructor-applications.reject', $application), [
                 'rejection_reason_code' => 'invalid_credentials',
                 'rejection_reason_note' => 'Professional license could not be verified from the issuing body.',
+                'admin_message' => '<p>Professional license could not be verified from the issuing body.</p>',
             ])
             ->assertRedirect();
 
@@ -36,7 +37,7 @@ class InstructorApplicationStatusNotificationTest extends TestCase
                 && $payload['reason_code'] === 'invalid_credentials'
                 && $payload['reason_label'] === 'Invalid or unverifiable credentials'
                 && $payload['reason_note'] === 'Professional license could not be verified from the issuing body.'
-                && str_contains((string) $payload['readable_reason'], 'Invalid or unverifiable credentials');
+                && str_contains((string) $payload['readable_reason'], 'Professional license could not be verified');
         });
     }
 

@@ -22,6 +22,7 @@
  <div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs overflow-hidden">
  <div class="px-6 py-4 border-b border-gray-100 ">
  <h3 class="text-base font-semibold text-gray-900 ">New User Details</h3>
+ <p class="text-xs text-gray-500 mt-1">Admin accounts created here have full phase-1 governance capability.</p>
  </div>
  <form method="POST" action="{{ route('admin.users.store') }}" class="p-6 space-y-5">
  @csrf
@@ -48,6 +49,11 @@
  </div>
  <div class="grid grid-cols-2 gap-4">
  <div>
+ <div>
+ <label for="birthdate" class="block text-sm font-medium text-gray-700 mb-1.5">Birthdate <span class="text-xs text-gray-400">(optional, used for age bracket filtering)</span></label>
+ <input type="date" name="birthdate" id="birthdate" value="{{ old('birthdate') }}"
+ class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
+ </div>
  <label for="role" class="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
  <select name="role" id="role" required class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
  <option value="">Select Role</option>
@@ -65,6 +71,7 @@
  <option value="active" @selected(old('status')=='active')>Active</option>
  <option value="inactive" @selected(old('status')=='inactive')>Inactive</option>
  <option value="suspended" @selected(old('status')=='suspended')>Suspended</option>
+ <option value="archived" @selected(old('status')=='archived')>Archived</option>
  </select>
  </div>
  </div>

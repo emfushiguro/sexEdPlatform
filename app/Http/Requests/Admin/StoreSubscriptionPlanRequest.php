@@ -8,7 +8,7 @@ class StoreSubscriptionPlanRequest extends StorePlanRequest
     {
         $rules = parent::rules();
 
-        $rules['plan_audience'] = ['required', 'in:learner,instructor,connectors'];
+        $rules['plan_audience'] = ['required', 'in:learner,instructor'];
         $rules['start_date'] = ['nullable', 'date'];
         $rules['end_date'] = ['nullable', 'date', 'after_or_equal:start_date'];
         $rules['prices.*.duration_unit'] = ['required_with:prices', 'in:minute,hour,day,week,month,year'];

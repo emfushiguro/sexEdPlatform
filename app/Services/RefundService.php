@@ -128,27 +128,36 @@ class RefundService
         //
         // Priority:
         //   1. paymongo_payment_id  → set by webhook (pay_xxxxx) — best case
-        //   2. paymongo_link_id     → stored on checkout; resolve via API to get pay_xxxxx
-        //   3. Neither              → mark as manual_processing
+        //   2. paymongo_checkout_session_id → resolve via API to get pay_xxxxx
+        //   3. paymongo_link_id     → legacy fallback; resolve via API to get pay_xxxxx
+        //   4. Neither              → mark as manual_processing
         $paymongo_payment_id = $payment->payment_details['paymongo_payment_id'] ?? null;
 
         if (!$paymongo_payment_id) {
-            $linkId = $payment->payment_details['paymongo_link_id'] ?? null;
-            if ($linkId) {
-                $paymongo_payment_id = $this->linkService->getActualPaymentIdFromLink($linkId);
-                // Persist the resolved ID so future refund attempts are instant
-                if ($paymongo_payment_id) {
-                    $payment->update([
-                        'payment_details' => array_merge($payment->payment_details ?? [], [
-                            'paymongo_payment_id' => $paymongo_payment_id,
-                        ]),
-                    ]);
-                    Log::info('RefundService: Resolved and stored paymongo_payment_id from link', [
-                        'payment_id'         => $payment->id,
-                        'link_id'            => $linkId,
-                        'paymongo_payment_id' => $paymongo_payment_id,
-                    ]);
+            $checkoutSessionId = $payment->payment_details['paymongo_checkout_session_id'] ?? null;
+            if ($checkoutSessionId) {
+                $paymongo_payment_id = $this->linkService->getActualPaymentIdFromCheckoutSession($checkoutSessionId);
+            }
+
+            if (!$paymongo_payment_id) {
+                $linkId = $payment->payment_details['paymongo_link_id'] ?? null;
+                if ($linkId) {
+                    $paymongo_payment_id = $this->linkService->getActualPaymentIdFromLink($linkId);
                 }
+            }
+
+            if ($paymongo_payment_id) {
+                // Persist the resolved ID so future refund attempts are instant
+                $payment->update([
+                    'payment_details' => array_merge($payment->payment_details ?? [], [
+                        'paymongo_payment_id' => $paymongo_payment_id,
+                    ]),
+                ]);
+                Log::info('RefundService: Resolved and stored paymongo_payment_id from checkout resource', [
+                    'payment_id' => $payment->id,
+                    'checkout_session_id' => $checkoutSessionId,
+                    'paymongo_payment_id' => $paymongo_payment_id,
+                ]);
             }
         }
 

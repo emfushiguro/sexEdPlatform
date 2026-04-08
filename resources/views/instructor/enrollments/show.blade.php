@@ -1,4 +1,4 @@
-﻿@extends('layouts.instructor-app')
+@extends('layouts.instructor-app')
 
 @section('content')
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -8,7 +8,7 @@
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
                             <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
                                 Learner Information
@@ -45,9 +45,9 @@
                                                 $isAgeAppropriate = $age >= $moduleMinAge && $age <= $moduleMaxAge;
                                             @endphp
                                             @if($isAgeAppropriate)
-                                                <span class="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">âœ“ Age-appropriate</span>
+                                                <span class="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">✓ Age-appropriate</span>
                                             @else
-                                                <span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">âš  Outside target age range</span>
+                                                <span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">⚠ Outside target age range</span>
                                             @endif
                                         @else
                                             -
@@ -127,9 +127,9 @@
                                     <p class="text-sm text-gray-600 mt-1">{{ Str::limit($enrollment->module->description, 150) }}</p>
                                     <div class="flex gap-3 mt-2 text-xs text-gray-500">
                                         <span>Age: {{ $enrollment->module->min_age }}-{{ $enrollment->module->max_age }} years</span>
-                                        <span>â€¢</span>
+                                        <span>•</span>
                                         <span>{{ $enrollment->module->lessons_count ?? 0 }} lessons</span>
-                                        <span>â€¢</span>
+                                        <span>•</span>
                                         <span>Requested {{ $enrollment->created_at->diffForHumans() }}</span>
                                     </div>
                                 </div>
@@ -161,7 +161,7 @@
                                                 @if($recent->completed_at)
                                                     <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Completed</span>
                                                 @else
-                                                    <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ $recent->completion_percentage }}% Progress</span>
+                                                    <span class="text-xs bg-brand-100 text-brand-800 px-2 py-1 rounded">{{ $recent->completion_percentage }}% Progress</span>
                                                 @endif
                                             </div>
                                         </div>
@@ -216,7 +216,7 @@
                                         <button type="submit" 
                                                 class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition"
                                                 onclick="return confirm('Approve this enrollment request?')">
-                                            âœ“ Approve Enrollment
+                                            ✓ Approve Enrollment
                                         </button>
                                     </form>
 
@@ -226,13 +226,13 @@
                                         <button type="submit" 
                                                 class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition"
                                                 onclick="return confirm('Reject this enrollment request? The learner will be notified.')">
-                                            âœ— Reject Request
+                                            ✗ Reject Request
                                         </button>
                                     </form>
 
                                     <a href="{{ route('instructor.enrollments.index') }}" 
                                        class="block w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition">
-                                        â† Back to Requests
+                                        ← Back to Requests
                                     </a>
                                 </div>
                             </div>
@@ -260,7 +260,7 @@
 
                                     <a href="{{ route('instructor.enrollments.index') }}" 
                                        class="block w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition mt-4">
-                                        â† Back to Requests
+                                        ← Back to Requests
                                     </a>
                                 </div>
                             </div>

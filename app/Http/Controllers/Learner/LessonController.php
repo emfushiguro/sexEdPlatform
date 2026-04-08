@@ -113,27 +113,60 @@ class LessonController extends Controller
             ->filter()
             ->pluck('id')
             ->unique();
-        $passedLessonQuizIds = QuizAttempt::where('user_id', $user->id)
-            ->whereIn('quiz_id', $lessonQuizIds)
-            ->where('passed', true)
-            ->pluck('quiz_id')
-            ->unique();
-        $allLessonQuizzesPassed = $lessonQuizIds->isEmpty() || $passedLessonQuizIds->count() === $lessonQuizIds->count();
+        $lessonQuizById = $allLessons
+            ->pluck('quiz')
+            ->filter()
+            ->keyBy('id');
+        $allLessonQuizzesCompleted = $lessonQuizIds->isEmpty() || $lessonQuizIds->every(function ($quizId) use ($user, $lessonQuizById) {
+            $attemptCount = QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_id', $quizId)
+                ->count();
 
-        $finalQuizPassed = true;
+            if ($attemptCount === 0) {
+                return false;
+            }
+
+            $hasPassed = QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_id', $quizId)
+                ->where('passed', true)
+                ->exists();
+
+            if ($hasPassed) {
+                return true;
+            }
+
+            $attemptLimit = $lessonQuizById->get($quizId)?->attempt_limit;
+
+            return $attemptLimit !== null && $attemptCount >= (int) $attemptLimit;
+        });
+
+        $finalQuizCompleted = true;
         if ($module->final_quiz_id) {
-            $bestFinalAttempt = QuizAttempt::where('user_id', $user->id)
+            $finalAttemptCount = QuizAttempt::where('user_id', $user->id)
                 ->where('quiz_id', $module->final_quiz_id)
-                ->orderByDesc('score')
-                ->first();
+                ->count();
 
-            $finalQuizPassed = $bestFinalAttempt && $bestFinalAttempt->score >= $module->certificate_pass_score;
+            if ($finalAttemptCount === 0) {
+                $finalQuizCompleted = false;
+            }
+
+            $hasPassedFinalQuiz = QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_id', $module->final_quiz_id)
+                ->where('passed', true)
+                ->exists();
+
+            $finalQuizAttemptLimit = $module->quizzes()
+                ->where('id', $module->final_quiz_id)
+                ->value('attempt_limit');
+
+            $finalQuizCompleted = $hasPassedFinalQuiz
+                || ($finalQuizAttemptLimit !== null && $finalAttemptCount >= (int) $finalQuizAttemptLimit);
         }
 
         $certificateEligible = $allLessonsCompleted
             && $allTopicsCompleted
-            && $allLessonQuizzesPassed
-            && $finalQuizPassed;
+            && $allLessonQuizzesCompleted
+            && $finalQuizCompleted;
 
         // Get all completed topic IDs across the entire module (for sidebar display)
         $allModuleTopicIds = $allLessons->flatMap(fn($l) => $l->topics->pluck('id'));

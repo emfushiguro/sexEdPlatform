@@ -28,6 +28,8 @@
     $learnerLocation = collect([$learnerProfile?->barangay?->name ?? null, $learnerProfile?->city?->name ?? null])->filter()->implode(', ');
     $location = $profileLocation ?: ($learnerLocation ?: 'Not provided');
     $latestPayment = $subscription->payments->first();
+    $displayStartedAt = $displayStartedAt ?? ($subscription->starts_at ?? $subscription->start_date);
+    $displayExpiresAt = $displayExpiresAt ?? ($subscription->ends_at ?? $subscription->end_date);
 @endphp
 
 @section('content')
@@ -77,8 +79,8 @@
             </div>
             <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Access Window</p>
-                <p class="mt-3 text-xl font-bold text-gray-900">{{ $subscription->start_date?->format('M d, Y') ?? 'Not started' }}</p>
-                <p class="mt-2 text-sm text-gray-500">Ends {{ $subscription->end_date?->format('M d, Y h:i A') ?? 'without expiry' }}</p>
+                <p class="mt-3 text-xl font-bold text-gray-900">{{ $displayStartedAt?->format('M d, Y') ?? 'Not started' }}</p>
+                <p class="mt-2 text-sm text-gray-500">Ends {{ $displayExpiresAt?->format('M d, Y h:i A') ?? 'without expiry' }}</p>
             </div>
             <div class="rounded-[28px] border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">Amount Paid</p>
@@ -101,8 +103,8 @@
                     <div class="mt-6 grid gap-5 md:grid-cols-2">
                         <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Subscription Status</p><p class="mt-2"><span class="inline-flex rounded-full px-3 py-1 text-xs font-bold {{ $statusClasses[$status] ?? 'bg-gray-100 text-gray-600' }}">{{ \Illuminate\Support\Str::headline($status) }}</span></p></div>
                         <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Billing Label</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $pricePoint?->duration_label ?? 'Standard cycle' }}</p></div>
-                        <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Start Date</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $subscription->start_date?->format('M d, Y h:i A') ?? 'Not started' }}</p></div>
-                        <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Expiry Date</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $subscription->end_date?->format('M d, Y h:i A') ?? 'No expiry date' }}</p></div>
+                        <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Start Date</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $displayStartedAt?->format('M d, Y h:i A') ?? 'Not started' }}</p></div>
+                        <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Expiry Date</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $displayExpiresAt?->format('M d, Y h:i A') ?? 'No expiry date' }}</p></div>
                         <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Source Provider</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $subscription->source_provider ? \Illuminate\Support\Str::headline($subscription->source_provider) : 'Not recorded' }}</p></div>
                         <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Source Reference</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $subscription->source_reference ?? 'Not recorded' }}</p></div>
                         <div><p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Grace Period Ends</p><p class="mt-2 text-sm font-semibold text-gray-900">{{ $subscription->grace_period_ends?->format('M d, Y h:i A') ?? $subscription->grace_ends_at?->format('M d, Y h:i A') ?? 'Not in grace period' }}</p></div>
