@@ -1,0 +1,51 @@
+{
+  "node_modules/pdfjs-dist/build/pdf.mjs": {
+    "file": "assets/pdf-vkbVaD7t.js",
+    "name": "pdf",
+    "src": "node_modules/pdfjs-dist/build/pdf.mjs",
+    "isDynamicEntry": true
+  },
+  "node_modules/pdfjs-dist/build/pdf.worker.mjs": {
+    "file": "assets/pdf.worker-CliDBb4N.mjs",
+    "src": "node_modules/pdfjs-dist/build/pdf.worker.mjs"
+  },
+  "node_modules/pdfjs-dist/build/pdf.worker.mjs?url": {
+    "file": "assets/pdf.worker-D6Qti-vA.js",
+    "name": "pdf.worker",
+    "src": "node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
+    "isDynamicEntry": true,
+    "assets": [
+      "assets/pdf.worker-CliDBb4N.mjs"
+    ]
+  },
+  "node_modules/plyr/dist/plyr.css": {
+    "file": "assets/plyr-CG92-drw.css",
+    "src": "node_modules/plyr/dist/plyr.css"
+  },
+  "node_modules/plyr/dist/plyr.mjs": {
+    "file": "assets/plyr-Cwtstkjp.js",
+    "name": "plyr",
+    "src": "node_modules/plyr/dist/plyr.mjs",
+    "isDynamicEntry": true
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-CR2V1Kiu.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-CCQ0wmP5.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "dynamicImports": [
+      "node_modules/pdfjs-dist/build/pdf.mjs",
+      "node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
+      "node_modules/plyr/dist/plyr.mjs"
+    ]
+  }
+}

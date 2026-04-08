@@ -1,4 +1,4 @@
-# Copilot Instructions — Sex Education Platform
+# Copilot Instructions - Sex Education Platform
 
 ## Project Vision
 A Philippine-focused sex education learning platform called Concious Connections. It delivers age-appropriate sexual health learning for kids, teens, and adults through modules, quizzes, gamification, and guided role workflows.
@@ -29,17 +29,19 @@ Core roles:
 - Keep existing Blade component patterns and UI language.
 - Run relevant tests and report actual output before handoff.
 
-## Current Snapshot (As of 2026-04-04)
+## Current Snapshot (As of 2026-04-09)
 - Phase: Beta refinement with governance hardening and cross-role real-time chat expansion
 - Branch: main
-- Latest observed commit: fb44268 (global pop-up chat implementation plan)
+- Latest observed commit: df6d7a8 (checkpoint all in-progress local work)
 - Current focus:
-  - global pop-up chat UX rollout
-  - real-time chat reliability
+  - global pop-up chat UX integration and reliability hardening
+  - learner payment checkout refinement
+  - subscription lifecycle stabilization
+  - notification refinement rollout
   - instructor application review workflow updates
   - monetization/chat integration stabilization
-- Latest changelog file in repo: docs/changelogs/2026-03-30-admin-module-review-system.md
-- Planning anchor: docs/plans/2026-04-04-global-popup-chat-system.md
+- Latest changelog file in repo: docs/changelogs/2026-04-05-learner-payment-checkout-refinement.md
+- Planning anchor: docs/plans/2026-04-06-subscription-lifecycle-stabilization-implementation-plan.md
 
 ## Project Stack
 | Layer | Technology |
@@ -112,19 +114,26 @@ Core roles:
 - PLATFORM_FEATURES_OVERVIEW.md
 - ADMIN_DEVELOPMENT_GUIDE.md
 - QUICK_TESTING_GUIDE.md
+- docs/changelogs/2026-04-05-learner-payment-checkout-refinement.md
 - docs/changelogs/2026-03-30-admin-module-review-system.md
 - docs/changelogs/2026-03-30-admin-ui-ux-alignment.md
 - docs/plans/2026-04-04-global-popup-chat-system-design.md
 - docs/plans/2026-04-04-global-popup-chat-system.md
+- docs/plans/2026-04-05-learner-payment-checkout-refinement-design.md
+- docs/plans/2026-04-05-learner-payment-checkout-refinement-implementation-plan.md
+- docs/plans/2026-04-06-notification-system-refinement-implementation-plan.md
+- docs/plans/2026-04-06-subscription-lifecycle-stabilization-implementation-plan.md
+- docs/plans/2026-04-06-admin-user-management-system-implementation-plan.md
 - docs/plans/2026-04-02-real-time-chat-system-design.md
 - docs/plans/2026-04-02-real-time-chat-system-implementation-plan.md
 - docs/plans/2026-03-31-learner-module-monetization-implementation-plan.md
 
 ## Execution Priorities
-1. docs/plans/2026-04-04-global-popup-chat-system.md
-2. docs/plans/2026-04-02-real-time-chat-system-implementation-plan.md
-3. docs/plans/2026-03-31-learner-module-monetization-implementation-plan.md
-4. docs/plans/2026-03-29-admin-moderation-dashboard-instructor-application-implementation-plan.md
+1. docs/plans/2026-04-06-subscription-lifecycle-stabilization-implementation-plan.md
+2. docs/plans/2026-04-05-learner-payment-checkout-refinement-implementation-plan.md
+3. docs/plans/2026-04-04-global-popup-chat-system.md
+4. docs/plans/2026-04-06-notification-system-refinement-implementation-plan.md
+5. docs/plans/2026-04-02-real-time-chat-system-implementation-plan.md
 
 ## Active Implementation Map
 - Routes: routes/admin.php, routes/instructor.php, routes/web.php, routes/channels.php
@@ -140,22 +149,23 @@ Core roles:
 - Learner quiz controller: app/Http/Controllers/Learner/QuizController.php
 - Popup chat partial: resources/views/chat/partials/global-popup.blade.php
 
-## Workspace Progress (As of 2026-04-04)
+## Workspace Progress (As of 2026-04-09)
 - Branch: main
-- Latest observed commit: fb44268
-- Latest changelog file in repo: docs/changelogs/2026-03-30-admin-module-review-system.md
+- Latest observed commit: df6d7a8
+- Latest changelog file in repo: docs/changelogs/2026-04-05-learner-payment-checkout-refinement.md
 - Latest planning wave:
-  - 2026-04-02 real-time chat
+  - 2026-04-06 subscription lifecycle and notification refinement
+  - 2026-04-05 learner payment checkout refinement
   - 2026-04-04 global pop-up chat
-  - 2026-03-31 monetization
-- Active WIP areas include chat events/controllers/models/migrations, popup UI wiring, instructor application review payload updates, and chat feature/unit tests.
+  - 2026-04-02 real-time chat
+- Active WIP areas include chat events/controllers/models/migrations, popup UI wiring, checkout refinement, instructor application review payload updates, notification/subscription stabilization tasks, and chat feature/unit tests.
 
 ## Current Reality Checks
 - Admin moderation and governance are active.
 - Several admin areas still ship as stubs.
 - Chat foundation is live; popup UX is still under implementation.
 - Interactive activities remain documented but not fully implemented.
-- Subscription/payment systems are implemented; current work is mostly chat + moderation + monetization UX layering.
+- Subscription/payment systems are implemented; current work is mostly checkout refinement + lifecycle stabilization layered on top of existing billing.
 - Paid module entitlement hard-gating is currently relaxed during rollout.
 - Preserve learner quiz timer fallback behavior.
 - Treat routes/admin.php and routes/instructor.php as canonical for new role-route additions.
