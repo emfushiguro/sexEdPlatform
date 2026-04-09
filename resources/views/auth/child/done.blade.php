@@ -1,12 +1,23 @@
 <x-auth-split-layout :showTabs="false">
+    @php
+        $resultStatus = $registrationResult['status'] ?? 'pending';
+        $isApproved = $resultStatus === 'approved';
+    @endphp
+
     <x-slot name="panel">
         <div class="h-full flex flex-col items-center justify-center p-12 text-center">
             <div class="mb-6">
                 <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-20 w-auto mx-auto mb-3">
                 <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
             </div>
-            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">You're all set!</h2>
-            <p class="text-white/80 text-lg max-w-xs">Here's how parental monitoring keeps your child safe.</p>
+            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">
+                {{ $isApproved ? 'Child account activated!' : 'Application submitted!' }}
+            </h2>
+            <p class="text-white/80 text-lg max-w-xs">
+                {{ $isApproved
+                    ? 'Monitoring access is now active.'
+                    : 'Your child account is now pending admin verification.' }}
+            </p>
         </div>
     </x-slot>
 
@@ -26,10 +37,12 @@
             </svg>
         </div>
         <h1 class="text-2xl font-bold text-purple-900">
-            {{ $childName }}'s account is ready!
+            {{ $isApproved ? $childName . "'s account is approved." : $childName . "'s account is under review." }}
         </h1>
         <p class="mt-2 text-sm text-gray-600">
-            They can now sign in and start learning. Here's what you can do as a parent.
+            {{ $isApproved
+                ? 'You can monitor progress and manage content approvals right away.'
+                : 'We will notify you when this child account is approved or rejected by the administrator.' }}
         </p>
     </div>
 
@@ -80,7 +93,7 @@
         <a href="{{ route('parent.children.index') }}"
            style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
            class="inline-block text-white font-semibold py-3 px-8 rounded-xl hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition shadow-lg text-sm">
-            Go to My Children →
+            Go to My Children
         </a>
     </div>
 

@@ -14,6 +14,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\InstructorProfile;
 use App\Models\InstructorApplication;
 use App\Models\ModuleReviewRequest;
+use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Observers\PaymentObserver;
 use App\Policies\InstructorProfilePolicy;
@@ -45,6 +46,16 @@ class AppServiceProvider extends ServiceProvider
             $moderationCounts = [
                 'pending_instructor_applications' => InstructorApplication::query()->where('status', 'pending')->count(),
                 'pending_module_reviews' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
+                'pending_parent_verifications' => User::query()
+                    ->where('is_parent_registration', true)
+                    ->where(function ($query): void {
+                        $query->where('parent_verification_status', 'pending')
+                            ->orWhereNull('parent_verification_status');
+                    })
+                    ->count(),
+                'pending_child_verifications' => ParentChildAccount::query()
+                    ->where('verification_status', 'pending')
+                    ->count(),
             ];
 
             $notificationItems = collect([

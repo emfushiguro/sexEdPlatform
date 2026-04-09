@@ -12,6 +12,13 @@ class ParentChildPolicy
      */
     public function view(User $parent, User $child): bool
     {
-        return $parent->children()->where('child_user_id', $child->id)->exists();
+        if ($parent->isParentRegistration() && ! $parent->isParentVerificationApproved()) {
+            return false;
+        }
+
+        return $parent->children()
+            ->where('child_user_id', $child->id)
+            ->wherePivot('verification_status', 'approved')
+            ->exists();
     }
 }

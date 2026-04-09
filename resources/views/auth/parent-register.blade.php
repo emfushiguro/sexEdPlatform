@@ -28,7 +28,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('parent.register.store') }}"
+    <form method="POST" action="{{ route('parent.register.store') }}" enctype="multipart/form-data"
           x-data="{
               birthdate: '{{ old('birthdate', $parentInfo['birthdate'] ?? '') }}',
               age: null,
@@ -112,6 +112,24 @@
                     </div>
                 </div>
                 @error('birthdate')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+
+            <!-- Government ID Upload -->
+            <div>
+                <label for="government_id" class="block text-sm font-medium text-gray-700 mb-1">
+                    Government-Issued ID <span class="text-red-500">*</span>
+                </label>
+                <input id="government_id" name="government_id" type="file"
+                       accept=".jpg,.jpeg,.png,.pdf"
+                       {{ $hasGovernmentIdUpload ? '' : 'required' }}
+                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-purple-700">
+                <p class="mt-1 text-xs text-gray-500">Upload one valid government ID (JPG, PNG, or PDF, max 5MB).</p>
+
+                @if($hasGovernmentIdUpload)
+                    <p class="mt-1 text-xs text-emerald-700">A document is already uploaded for this registration step. You can upload a new file to replace it.</p>
+                @endif
+
+                @error('government_id')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
 
             <!-- Continue button -->

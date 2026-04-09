@@ -10,7 +10,7 @@
          style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
         <div>
             <h1 class="text-2xl font-bold">My Children</h1>
-            <p class="text-white/80 text-sm mt-1">Manage and monitor your children's learning accounts.</p>
+            <p class="text-white/80 text-sm mt-1">Manage your child applications and monitor approved accounts.</p>
         </div>
         <a href="{{ route('parent.create-child') }}"
            class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-xl transition text-sm backdrop-blur-sm">
@@ -55,6 +55,10 @@
         {{-- Children cards grid --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             @foreach($children as $child)
+                @php
+                    $verificationStatus = $child->pivot->verification_status ?? 'pending';
+                    $isApprovedChild = $verificationStatus === 'approved';
+                @endphp
                 <div class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden">
 
                     {{-- Card top: avatar + info + badge --}}
@@ -79,13 +83,34 @@
                             @endif
                         </div>
 
-                        {{-- Consent badge --}}
-                        @if($child->learnerProfile?->requires_parental_consent)
-                            <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Under 13</span>
-                        @else
-                            <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Teen</span>
-                        @endif
+                        {{-- Consent + verification badges --}}
+                        <div class="flex flex-col items-end gap-1">
+                            @if($child->learnerProfile?->requires_parental_consent)
+                                <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Under 13</span>
+                            @else
+                                <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Teen</span>
+                            @endif
+
+                            <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full {{ $isApprovedChild ? 'bg-emerald-100 text-emerald-700' : ($verificationStatus === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700') }}">
+                                {{ ucfirst($verificationStatus) }}
+                            </span>
+                        </div>
                     </div>
+
+                    @if(!$isApprovedChild)
+                        <div class="px-5 py-3 border-t border-gray-100 {{ $verificationStatus === 'rejected' ? 'bg-rose-50' : 'bg-amber-50' }}">
+                            <p class="text-xs {{ $verificationStatus === 'rejected' ? 'text-rose-700' : 'text-amber-800' }}">
+                                @if($verificationStatus === 'rejected')
+                                    Child verification was rejected.
+                                    @if(!empty($child->pivot->verification_rejection_reason))
+                                        Reason: {{ $child->pivot->verification_rejection_reason }}
+                                    @endif
+                                @else
+                                    Child account is pending admin review. Monitoring features will unlock after approval.
+                                @endif
+                            </p>
+                        </div>
+                    @endif
 
                     {{-- Stats row --}}
                     <div class="border-t border-gray-100 grid grid-cols-3 divide-x divide-gray-100 text-center py-3 bg-gray-50/50">
@@ -125,34 +150,40 @@
 
                     {{-- Actions --}}
                     <div class="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
-                        <a href="{{ route('parent.children.show', $child->id) }}"
-                           class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                            </svg>
-                            View Progress
-                        </a>
-
-                        @if($child->quizAttempts()->count() > 0)
+                        @if($isApprovedChild)
                             <a href="{{ route('parent.children.show', $child->id) }}"
                                class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                                 </svg>
-                                Quiz Results
+                                View Progress
                             </a>
-                        @endif
 
-                        <a href="{{ route('parent.children.show', $child->id) }}"
-                           class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-                            </svg>
-                            Manage
-                        </a>
+                            @if($child->quizAttempts()->count() > 0)
+                                <a href="{{ route('parent.children.show', $child->id) }}"
+                                   class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    Quiz Results
+                                </a>
+                            @else
+                                <span class="text-sm text-gray-400">No quiz data yet</span>
+                            @endif
+
+                            <a href="{{ route('parent.children.show', $child->id) }}"
+                               class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                </svg>
+                                Manage
+                            </a>
+                        @else
+                            <span class="text-sm text-gray-500">Monitoring disabled until approved</span>
+                        @endif
                     </div>
                 </div>
             @endforeach

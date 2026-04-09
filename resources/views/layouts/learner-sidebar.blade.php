@@ -51,8 +51,8 @@
         ],
     ];
 
-    // Add My Children nav item for parents
-    if ($authUser->isParent()) {
+    // Add My Children nav item for verified parent accounts (even without existing children yet)
+    if ($authUser->isParent() || ($authUser->isParentRegistration() && $authUser->isParentVerificationApproved())) {
         $navItems[] = [
             'label'  => 'My Children',
             'route'  => 'parent.children.index',

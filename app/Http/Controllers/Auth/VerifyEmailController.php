@@ -16,10 +16,24 @@ class VerifyEmailController extends Controller
      */
     public function __invoke(Request $request): RedirectResponse
     {
-        $user = User::findOrFail((int) $request->route('id'));
+        if (! $request->hasValidSignature()) {
+            $message = 'This verification link is invalid or expired. Please request a new verification email.';
+
+            if ($request->user()) {
+                return redirect()->route('verification.notice')->with('verification_error', $message);
+            }
+
+            return redirect()->route('login')->with('verification_error', $message);
+        }
+
+        $user = User::find((int) $request->route('id'));
+
+        if (! $user) {
+            return redirect()->route('login')->with('verification_error', 'The account for this verification link no longer exists.');
+        }
 
         if (! hash_equals((string) $request->route('hash'), sha1($user->getEmailForVerification()))) {
-            abort(403);
+            return redirect()->route('login')->with('verification_error', 'This verification link is invalid. Please request a new one.');
         }
 
         $currentUser = $request->user();
@@ -35,14 +49,14 @@ class VerifyEmailController extends Controller
         }
 
         if ($user->hasVerifiedEmail()) {
-            return redirect(route('verification.notice') . '?verified=1');
+            return redirect()->route('verification.notice')->with('verified', true);
         }
 
         if ($user->markEmailAsVerified()) {
             event(new Verified($user));
         }
 
-        // Show the verify-email page with success state + countdown → profile
-        return redirect(route('verification.notice') . '?verified=1');
+        // Show the verify-email page with success state + countdown -> profile
+        return redirect()->route('verification.notice')->with('verified', true);
     }
 }

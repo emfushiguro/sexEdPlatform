@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
@@ -80,8 +81,12 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-    ->middleware(['signed', 'throttle:6,1'])
+    ->middleware(['throttle:6,1'])
     ->name('verification.verify');
+
+Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('parent.verification.approval-link');
 
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
@@ -108,6 +113,12 @@ Route::middleware('auth')->group(function () {
     // Admin logout
     Route::post('admin/logout', [AdminAuthController::class, 'logout'])
         ->name('admin.logout');
+
+    Route::get('parent/verification-status', [ParentRegistrationController::class, 'verificationStatus'])
+        ->name('parent.verification.status');
+
+    Route::get('child/verification-status', [ParentRegistrationController::class, 'childVerificationStatus'])
+        ->name('child.verification.status');
 
     // Parent routes (verified emails only)
     Route::middleware('verified')->group(function () {

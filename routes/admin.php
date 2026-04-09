@@ -106,6 +106,20 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::post('/{application}/reject', [Admin\InstructorApplicationController::class, 'reject'])->name('reject');
     });
 
+    Route::prefix('parent-verifications')->name('parent-verifications.')->group(function () {
+        Route::get('/', [Admin\ParentChildVerificationController::class, 'index'])->name('index');
+
+        Route::post('/parents/{user}/approve', [Admin\ParentChildVerificationController::class, 'approveParent'])
+            ->name('parents.approve');
+        Route::post('/parents/{user}/reject', [Admin\ParentChildVerificationController::class, 'rejectParent'])
+            ->name('parents.reject');
+
+        Route::post('/children/{parentChildAccount}/approve', [Admin\ParentChildVerificationController::class, 'approveChild'])
+            ->name('children.approve');
+        Route::post('/children/{parentChildAccount}/reject', [Admin\ParentChildVerificationController::class, 'rejectChild'])
+            ->name('children.reject');
+    });
+
 
     // Calendar
     Route::get('/calendar', fn() => view('admin.calendar.index'))->name('calendar.index');

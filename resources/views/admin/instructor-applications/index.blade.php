@@ -12,6 +12,10 @@
 <div class="mx-auto max-w-7xl px-4 py-8"
 	  x-data="{
 			activeReview: @js($initialReviewApplicationId),
+			documentPreviewOpen: false,
+			documentPreviewUrl: '',
+			documentPreviewTitle: '',
+			documentPreviewType: 'file',
 			expandedModules: {},
 			openReview(id) {
 				this.activeReview = id;
@@ -19,11 +23,23 @@
 			closeReview() {
 				this.activeReview = null;
 			},
+			openDocumentPreview(url, title, type) {
+				this.documentPreviewUrl = url;
+				this.documentPreviewTitle = title;
+				this.documentPreviewType = type;
+				this.documentPreviewOpen = true;
+			},
+			closeDocumentPreview() {
+				this.documentPreviewOpen = false;
+				this.documentPreviewUrl = '';
+				this.documentPreviewTitle = '';
+				this.documentPreviewType = 'file';
+			},
 			toggleFinishedModules(id) {
 				this.expandedModules[id] = !this.expandedModules[id];
 			}
 	  }">
-	<div :class="activeReview !== null ? 'blur-[2px] scale-[0.995] pointer-events-none select-none' : ''" class="space-y-8 transition duration-300 ease-out">
+	<div :class="(activeReview !== null || documentPreviewOpen) ? 'blur-[2px] scale-[0.995] pointer-events-none select-none' : ''" class="space-y-8 transition duration-300 ease-out">
 	<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 		<article class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
 			<p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Pending</p>
@@ -254,12 +270,16 @@
 												@endif
 
 												<div class="mt-3 flex gap-2">
-													<a href="{{ $documentUrl }}" target="_blank" rel="noopener" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100" title="Preview Document" aria-label="Preview Document">
+													<button type="button"
+															@click="openDocumentPreview(@js($documentUrl), @js($document['label']), @js($isImage ? 'image' : ($isPdf ? 'pdf' : 'file')))"
+															class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+															title="Preview Document"
+															aria-label="Preview Document">
 														<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
 															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
 														</svg>
-													</a>
+													</button>
 													<a href="{{ $documentUrl }}" download class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-100" title="Download Document" aria-label="Download Document">
 														<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1" />
@@ -301,12 +321,16 @@
 												@endif
 
 												<div class="mt-3 flex gap-2">
-													<a href="{{ $documentUrl }}" target="_blank" rel="noopener" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100" title="Preview Document" aria-label="Preview Document">
+													<button type="button"
+															@click="openDocumentPreview(@js($documentUrl), @js($document['label']), @js($isImage ? 'image' : ($isPdf ? 'pdf' : 'file')))"
+															class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+															title="Preview Document"
+															aria-label="Preview Document">
 														<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
 															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
 														</svg>
-													</a>
+													</button>
 													<a href="{{ $documentUrl }}" download class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-100" title="Download Document" aria-label="Download Document">
 														<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1" />
@@ -457,5 +481,55 @@
 			</div>
 		</div>
 	@endforeach
+
+	<div x-show="documentPreviewOpen"
+		 x-cloak
+		 @keydown.escape.window="if (documentPreviewOpen) closeDocumentPreview()"
+		 class="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 lg:p-8">
+		<div x-show="documentPreviewOpen"
+			 x-transition.opacity
+			 class="fixed inset-0 bg-gray-900/45 backdrop-blur-lg"
+			 @click="closeDocumentPreview()"></div>
+
+		<div x-show="documentPreviewOpen"
+			 x-transition:enter="ease-out duration-300"
+			 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+			 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+			 x-transition:leave="ease-in duration-200"
+			 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+			 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+			 class="relative z-50 w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+			<div class="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
+				<div class="flex items-center justify-between">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Document Preview</p>
+						<h2 class="mt-1 text-base font-bold text-gray-900" x-text="documentPreviewTitle"></h2>
+					</div>
+					<button type="button" @click="closeDocumentPreview()" class="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</button>
+				</div>
+			</div>
+
+			<div class="max-h-[80vh] space-y-4 overflow-y-auto bg-white px-6 py-6">
+				<template x-if="documentPreviewType === 'image'">
+					<img :src="documentPreviewUrl" alt="Document preview" class="w-full rounded-lg border border-gray-200 bg-white object-contain">
+				</template>
+
+				<template x-if="documentPreviewType === 'pdf'">
+					<iframe :src="documentPreviewUrl + '#toolbar=0&navpanes=0'" title="Document preview" class="h-[70vh] w-full rounded-lg border border-gray-200"></iframe>
+				</template>
+
+				<template x-if="documentPreviewType === 'file'">
+					<div class="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
+						<p>Inline preview is not available for this file type.</p>
+						<a :href="documentPreviewUrl" download class="mt-4 inline-flex items-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600">Download File</a>
+					</div>
+				</template>
+			</div>
+		</div>
+	</div>
 </div>
 @endsection

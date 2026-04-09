@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ParentChildAccount;
@@ -11,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Validation\Rules\Password;
 use Carbon\Carbon;
@@ -33,6 +35,7 @@ class ParentRegistrationController extends Controller
     {
         return view('auth.parent-register', [
             'parentInfo' => session('pending_parent_info', []),
+            'hasGovernmentIdUpload' => !empty(session('pending_parent_info.government_id_path')),
         ]);
     }
 
@@ -41,6 +44,8 @@ class ParentRegistrationController extends Controller
      */
     public function storePersonal(Request $request): RedirectResponse
     {
+        $hasExistingGovernmentId = !empty(session('pending_parent_info.government_id_path'));
+
         $validated = $request->validate([
             'first_name'   => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
             'middle_initial' => ['nullable', 'string', 'max:10', 'regex:/^[a-zA-Z.\s]+$/'],
@@ -51,7 +56,27 @@ class ParentRegistrationController extends Controller
                 'date',
                 'before:' . now()->subYears(18)->format('Y-m-d'),
             ],
+            'government_id' => [
+                $hasExistingGovernmentId ? 'nullable' : 'required',
+                'file',
+                'mimes:jpg,jpeg,png,pdf',
+                'max:5120',
+            ],
         ]);
+
+        $existingPath = session('pending_parent_info.government_id_path');
+
+        if ($request->hasFile('government_id')) {
+            if ($existingPath) {
+                Storage::disk('public')->delete($existingPath);
+            }
+
+            $validated['government_id_path'] = $request->file('government_id')->store('parent-verifications/temp', 'public');
+        } elseif ($existingPath) {
+            $validated['government_id_path'] = $existingPath;
+        }
+
+        unset($validated['government_id']);
 
         session(['pending_parent_info' => $validated]);
 
@@ -120,7 +145,17 @@ class ParentRegistrationController extends Controller
             'birthdate'      => $personalInfo['birthdate'],
             'age'            => $birthdate->age,
             'password'       => Hash::make($validated['password']),
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'pending',
+            'parent_id_document_path' => $personalInfo['government_id_path'] ?? null,
         ]);
+
+        if (!empty($personalInfo['government_id_path']) && Storage::disk('public')->exists($personalInfo['government_id_path'])) {
+            $extension = pathinfo($personalInfo['government_id_path'], PATHINFO_EXTENSION);
+            $finalPath = 'parent-verifications/' . $parent->id . '/government-id-' . now()->format('YmdHis') . '.' . $extension;
+            Storage::disk('public')->move($personalInfo['government_id_path'], $finalPath);
+            $parent->update(['parent_id_document_path' => $finalPath]);
+        }
 
         Role::findOrCreate('learner', 'web');
         $parent->assignRole('learner');
@@ -146,11 +181,11 @@ class ParentRegistrationController extends Controller
 
         if ($verificationDispatchFailed) {
             return redirect()->route('verification.notice')
-                ->with('warning', 'Parent account created, but verification email could not be sent yet. Please click "Resend verification email".');
+                ->with('warning', 'Parent account submitted and pending admin review, but verification email could not be sent yet. Please click "Resend verification email".');
         }
 
         return redirect()->route('verification.notice')
-            ->with('success', 'Parent account created! Please verify your email before creating a child account.');
+            ->with('success', 'Parent account submitted! Please verify your email. After verification, your application will remain pending admin review until approved.');
     }
 
     /**
@@ -166,13 +201,8 @@ class ParentRegistrationController extends Controller
      */
     public function createChildForm(): View|RedirectResponse
     {
-        if (!auth()->user()->hasVerifiedEmail()) {
-            return redirect()->route('verification.notice')
-                ->with('error', 'Please verify your email first.');
-        }
-
-        if (!auth()->user()->canBeParent()) {
-            abort(403, 'You must be 18 or older to create a child account.');
+        if ($redirect = $this->ensureApprovedParent()) {
+            return $redirect;
         }
 
         // Clear stale in-progress data from an abandoned session, but keep
@@ -189,12 +219,8 @@ class ParentRegistrationController extends Controller
      */
     public function storeChildInfo(Request $request): RedirectResponse
     {
-        if (!auth()->user()->hasVerifiedEmail()) {
-            return redirect()->route('verification.notice');
-        }
-
-        if (!auth()->user()->canBeParent()) {
-            abort(403);
+        if ($redirect = $this->ensureApprovedParent()) {
+            return $redirect;
         }
 
         $validated = $request->validate([
@@ -228,6 +254,10 @@ class ParentRegistrationController extends Controller
      */
     public function childLocationForm(): View|RedirectResponse
     {
+        if ($redirect = $this->ensureApprovedParent()) {
+            return $redirect;
+        }
+
         if (!session('child_step1')) {
             return redirect()->route('parent.create-child');
         }
@@ -247,6 +277,10 @@ class ParentRegistrationController extends Controller
      */
     public function storeChildLocation(Request $request): RedirectResponse
     {
+        if ($redirect = $this->ensureApprovedParent()) {
+            return $redirect;
+        }
+
         if (!session('child_step1')) {
             return redirect()->route('parent.create-child');
         }
@@ -266,6 +300,10 @@ class ParentRegistrationController extends Controller
      */
     public function childCredentialsForm(): View|RedirectResponse
     {
+        if ($redirect = $this->ensureApprovedParent()) {
+            return $redirect;
+        }
+
         if (!session('child_step1') || !session('child_step2')) {
             return redirect()->route('parent.create-child');
         }
@@ -288,6 +326,10 @@ class ParentRegistrationController extends Controller
      */
     public function storeChildCredentials(Request $request): RedirectResponse
     {
+        if ($redirect = $this->ensureApprovedParent()) {
+            return $redirect;
+        }
+
         $step1 = session('child_step1');
         $step2 = session('child_step2');
 
@@ -298,6 +340,7 @@ class ParentRegistrationController extends Controller
         $validated = $request->validate([
             'username' => ['required', 'string', 'min:3', 'max:30', 'unique:learner_profiles,username', 'regex:/^[a-z0-9_-]+$/'],
             'password' => ['required', 'confirmed', Password::min(8)],
+            'verification_document' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ]);
 
         $parent = auth()->user();
@@ -309,6 +352,8 @@ class ParentRegistrationController extends Controller
         }
 
         $barangay = \Schoolees\Psgc\Models\Barangay::where('code', $step2['barangay_code'])->first();
+        $verificationDocumentPath = $request->file('verification_document')
+            ->store('child-verifications/' . $parent->id, 'public');
 
         $child = User::create([
             'name'           => trim($step1['first_name'] . ' ' . $step1['last_name']),
@@ -343,11 +388,18 @@ class ParentRegistrationController extends Controller
             'can_view_progress'       => true,
             'can_view_quiz_answers'   => true,
             'can_approve_content'     => true,
-            'relationship_verified_at'=> now(),
+            'verification_status'     => VerificationStatus::Pending->value,
+            'verification_document_path' => $verificationDocumentPath,
+            'relationship_verified_at'=> null,
         ]);
 
         session()->forget(['child_step1', 'child_step2', 'pending_child_registration']);
-        session(['child_created_name' => $step1['first_name']]);
+        session([
+            'child_created_name' => $step1['first_name'],
+            'child_registration_result' => [
+                'status' => VerificationStatus::Pending->value,
+            ],
+        ]);
 
         return redirect()->route('parent.create-child.done');
     }
@@ -358,20 +410,99 @@ class ParentRegistrationController extends Controller
     public function childDone(): View
     {
         $childName = session('child_created_name', 'your child');
-        session()->forget('child_created_name');
+        $registrationResult = session('child_registration_result', [
+            'status' => VerificationStatus::Pending->value,
+        ]);
+        session()->forget(['child_created_name', 'child_registration_result']);
 
-        return view('auth.child.done', compact('childName'));
+        return view('auth.child.done', [
+            'childName' => $childName,
+            'registrationResult' => $registrationResult,
+        ]);
     }
 
     /**
      * Show parent's children list
      */
-    public function childrenIndex(): View
+    public function childrenIndex(): View|RedirectResponse
     {
+        if ($redirect = $this->ensureApprovedParent()) {
+            return $redirect;
+        }
+
         $children = auth()->user()->children()
             ->with('learnerProfile')
             ->get();
 
         return view('parent.children.index', compact('children'));
+    }
+
+    public function verificationStatus(): View|RedirectResponse
+    {
+        $user = auth()->user();
+
+        if (!$user->isParentRegistration()) {
+            return redirect()->route('learner.dashboard');
+        }
+
+        if (!$user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
+
+        if ($user->isParentVerificationApproved() && !$user->hasCompletedProfile()) {
+            return redirect()->route('profile.complete')
+                ->with('success', 'Your parent verification is approved. Please complete your profile.');
+        }
+
+        return view('auth.parent-verification-status', [
+            'user' => $user,
+            'isApproved' => $user->isParentVerificationApproved(),
+        ]);
+    }
+
+    public function childVerificationStatus(): View|RedirectResponse
+    {
+        $verification = ParentChildAccount::query()
+            ->where('child_user_id', auth()->id())
+            ->with('parent')
+            ->first();
+
+        if (!$verification) {
+            return redirect()->route('learner.dashboard');
+        }
+
+        if ($verification->verification_status === 'approved') {
+            return redirect()->route('learner.dashboard');
+        }
+
+        return view('auth.child-verification-status', [
+            'verification' => $verification,
+        ]);
+    }
+
+    private function ensureApprovedParent(): ?RedirectResponse
+    {
+        $parent = auth()->user();
+
+        if (!$parent->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice')
+                ->with('error', 'Please verify your email first.');
+        }
+
+        if (!$parent->canBeParent()) {
+            abort(403, 'You must be 18 or older to create a child account.');
+        }
+
+        if (!$parent->isParentRegistration() || !$parent->isParentVerificationApproved()) {
+            return redirect()->route('parent.verification.status')
+                ->with('warning', 'Your parent account is still under admin review.');
+        }
+
+        if (!$parent->hasCompletedProfile()) {
+            return redirect()->route('profile.complete')
+                ->with('warning', 'Please complete your profile before creating a child account.');
+        }
+
+        return null;
     }
 }

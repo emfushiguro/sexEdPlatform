@@ -13,6 +13,12 @@ class ParentChildAccount extends Model
         'can_view_progress',
         'can_view_quiz_answers',
         'can_approve_content',
+        'verification_status',
+        'verification_document_path',
+        'verification_rejection_reason',
+        'verification_reviewed_by',
+        'verification_reviewed_at',
+        'verification_approved_at',
         'relationship_verified_at',
     ];
 
@@ -20,6 +26,8 @@ class ParentChildAccount extends Model
         'can_view_progress' => 'boolean',
         'can_view_quiz_answers' => 'boolean',
         'can_approve_content' => 'boolean',
+        'verification_reviewed_at' => 'datetime',
+        'verification_approved_at' => 'datetime',
         'relationship_verified_at' => 'datetime',
     ];
 
@@ -52,6 +60,16 @@ class ParentChildAccount extends Model
      */
     public function isVerified(): bool
     {
-        return $this->relationship_verified_at !== null;
+        return $this->verification_status === 'approved' && $this->relationship_verified_at !== null;
+    }
+
+    public function isPending(): bool
+    {
+        return $this->verification_status === 'pending';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->verification_status === 'rejected';
     }
 }

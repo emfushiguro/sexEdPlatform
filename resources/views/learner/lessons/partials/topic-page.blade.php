@@ -285,21 +285,76 @@
                 @if($currentTopic->text_content)
                     <div class="mt-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40 p-4"
                          x-data="{
-                            originalHtml: @js((string) $currentTopic->text_content),
-                            translatedHtml: null,
-                            selectedLanguage: 'tl',
-                            isTranslating: false,
-                            translationError: '',
-                            async translateTopic() {
-                                if (this.isTranslating) {
+                            isPreparingAudio: false,
+                            isReading: false,
+                            ttsError: '',
+                            audioPlayer: null,
+                            ttsApiUrl: @js(route('learner.translator.tts')),
+                            initReader() {
+                                this.audioPlayer = new Audio();
+                                this.audioPlayer.preload = 'none';
+
+                                this.audioPlayer.addEventListener('ended', () => {
+                                    this.isReading = false;
+                                });
+
+                                this.audioPlayer.addEventListener('error', () => {
+                                    this.isReading = false;
+                                    this.ttsError = 'Failed to load audio source. Please try again.';
+                                });
+                            },
+                            getPreferredLanguageCode() {
+                                const preferred = localStorage.getItem('cc_page_translation_language') || 'en';
+                                return preferred === 'tl' ? 'fil-PH' : 'en-US';
+                            },
+                            getReadableLessonText() {
+                                const source = this.$refs.lessonContent?.textContent || '';
+                                return source.replace(/\s+/g, ' ').trim();
+                            },
+                            async resolvePlayableUrl(payload) {
+                                const candidates = [payload.audio_relative_url, payload.audio_url]
+                                    .filter((value) => typeof value === 'string' && value.trim() !== '')
+                                    .map((value) => value.trim());
+
+                                if (!candidates.length) {
+                                    throw new Error('No lesson audio URL returned.');
+                                }
+
+                                for (let i = 0; i < candidates.length; i++) {
+                                    const candidate = candidates[i];
+                                    try {
+                                        const response = await fetch(candidate, { method: 'GET', cache: 'no-store' });
+                                        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+                                        if (response.ok && (contentType.includes('audio') || contentType.includes('octet-stream'))) {
+                                            return candidate;
+                                        }
+                                    } catch (error) {
+                                        // Try the next candidate URL.
+                                    }
+                                }
+
+                                throw new Error('Generated lesson audio file is not reachable.');
+                            },
+                            async toggleReadLesson() {
+                                if (this.isReading) {
+                                    this.stopReading();
                                     return;
                                 }
 
-                                this.translationError = '';
-                                this.isTranslating = true;
+                                if (this.isPreparingAudio) {
+                                    return;
+                                }
+
+                                this.ttsError = '';
+                                this.isPreparingAudio = true;
 
                                 try {
-                                    const response = await fetch('{{ route('learner.topics.translate', $currentTopic) }}', {
+                                    const readableText = this.getReadableLessonText();
+                                    if (!readableText) {
+                                        throw new Error('No readable lesson text found.');
+                                    }
+
+                                    const response = await fetch(this.ttsApiUrl, {
                                         method: 'POST',
                                         headers: {
                                             'Content-Type': 'application/json',
@@ -307,74 +362,66 @@
                                             'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content,
                                         },
                                         body: JSON.stringify({
-                                            target_language: this.selectedLanguage,
+                                            text: readableText.slice(0, 5000),
+                                            language_code: this.getPreferredLanguageCode(),
+                                            speaking_rate: 1.0,
                                         }),
                                     });
 
                                     const payload = await response.json();
-
                                     if (!response.ok) {
-                                        throw new Error(payload.message || 'Translation failed.');
+                                        throw new Error(payload.message || 'Unable to generate lesson audio.');
                                     }
 
-                                    this.translatedHtml = payload.translated_html;
+                                    const playableUrl = await this.resolvePlayableUrl(payload);
+                                    this.audioPlayer.src = playableUrl + (playableUrl.includes('?') ? '&' : '?') + 'v=' + Date.now();
+                                    this.audioPlayer.load();
+                                    await this.audioPlayer.play();
+                                    this.isReading = true;
                                 } catch (error) {
-                                    this.translationError = error.message || 'Unable to translate this topic right now.';
+                                    this.ttsError = error.message || 'Unable to read this lesson right now.';
+                                    this.isReading = false;
                                 } finally {
-                                    this.isTranslating = false;
+                                    this.isPreparingAudio = false;
                                 }
                             },
-                            showOriginal() {
-                                this.translatedHtml = null;
-                                this.translationError = '';
-                            },
-                            get hasTranslation() {
-                                return this.translatedHtml !== null;
-                            },
-                            renderedHtml() {
-                                return this.translatedHtml ?? this.originalHtml;
+                            stopReading() {
+                                if (!this.audioPlayer) {
+                                    return;
+                                }
+
+                                this.audioPlayer.pause();
+                                this.audioPlayer.currentTime = 0;
+                                this.isReading = false;
                             }
-                         }">
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div>
-                                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Translate Lesson Text</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Choose a language and translate the current text topic.</p>
-                            </div>
+                         }"
+                         x-init="initReader()">
+                        <div class="flex items-center justify-between gap-3">
                             <div class="flex items-center gap-2">
-                                <select x-model="selectedLanguage"
-                                        class="text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400/50">
-                                    <option value="tl">Filipino (Tagalog)</option>
-                                    <option value="ceb">Cebuano</option>
-                                    <option value="ilo">Ilocano</option>
-                                    <option value="es">Spanish</option>
-                                    <option value="en">English</option>
-                                </select>
+                                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Lesson Reader</p>
                                 <button type="button"
-                                        @click="translateTopic()"
-                                        :disabled="isTranslating"
-                                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                                        style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
-                                    <svg x-show="!isTranslating" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 5.5A18.022 18.022 0 0015.588 9m-9.176 0a18.022 18.022 0 013.636 5.5m3.952 0A18.022 18.022 0 0117.588 9M13 21l3-9 3 9m-5.2-3h4.4"/>
+                                        @click="toggleReadLesson()"
+                                        :disabled="isPreparingAudio"
+                                        :title="isReading ? 'Stop reading lesson' : 'Read lesson text'"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-full border border-purple-300 text-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                                    <svg x-show="!isReading" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.383 3.076A1 1 0 0111 3.894v12.212a1 1 0 01-1.617.79L5.7 14H3a1 1 0 01-1-1V7a1 1 0 011-1h2.7l3.683-2.684z" />
+                                        <path d="M14.657 6.343a1 1 0 10-1.414 1.414A3 3 0 0114 10a3 3 0 01-.757 2.243 1 1 0 101.414 1.414A5 5 0 0016 10a5 5 0 00-1.343-3.657z" />
                                     </svg>
-                                    <svg x-show="isTranslating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    <svg x-show="isReading" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M6 6h3v8H6V6zm5 0h3v8h-3V6z" />
                                     </svg>
-                                    <span x-text="isTranslating ? 'Translating...' : 'Translate'"></span>
                                 </button>
-                                <button type="button"
-                                        x-show="hasTranslation"
-                                        @click="showOriginal()"
-                                        class="px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                                    Show Original
-                                </button>
+                                <span x-show="isPreparingAudio" class="text-[11px] text-gray-500">Preparing...</span>
                             </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Tap the speaker icon to read this lesson.</p>
                         </div>
 
-                        <div x-show="translationError" class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" x-text="translationError"></div>
+                        <div x-show="ttsError" class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" x-text="ttsError"></div>
 
-                        <div class="prose dark:prose-invert max-w-none mt-4" x-html="renderedHtml()"></div>
+                        <div x-ref="lessonContent" class="prose dark:prose-invert max-w-none mt-4">
+                            {!! $currentTopic->text_content !!}
+                        </div>
                     </div>
                 @endif
             </div>
