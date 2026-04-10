@@ -26,7 +26,9 @@ class LessonController extends Controller
 
     public function create()
     {
-        $modules = Module::all();
+        $modules = Module::where('created_by', auth()->id())
+            ->orderBy('title')
+            ->get();
         return view('instructor.lessons.create', compact('modules'));
     }
 

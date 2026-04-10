@@ -141,6 +141,14 @@
         @forelse($modules as $module)
         @php
             $searchKey = strtolower($module->title . ' ' . strip_tags($module->description ?? ''));
+            $moduleReviewStatus = (string) ($module->current_review_status ?? 'draft');
+            $moduleReviewLabel = match ($moduleReviewStatus) {
+                'submitted' => 'Submitted',
+                'in_review' => 'Under Review',
+                'needs_revision' => 'Needs Revision',
+                'approved' => 'Approved',
+                default => 'Draft',
+            };
             $moduleModalPayload = [
                 'id' => $module->id,
                 'title' => $module->title,
@@ -203,7 +211,7 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{{ Str::limit(strip_tags($module->description ?? 'No description provided.'), 120) }}</p>
                 <div class="rounded-xl border border-purple-100 bg-purple-50/60 px-3 py-2 dark:border-purple-900/40 dark:bg-purple-900/10">
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-purple-500">Review Status</p>
-                    <p class="mt-1 text-xs font-medium text-purple-800 dark:text-purple-200">{{ $module->current_review_status ?? 'approved' }}</p>
+                    <p class="mt-1 text-xs font-medium text-purple-800 dark:text-purple-200">{{ $moduleReviewLabel }}</p>
                 </div>
 
                 {{-- Stats Row --}}
@@ -292,7 +300,7 @@
                             </button>
                         </form>
                     @else
-                        @if($module->current_review_status === 'needs_revision')
+                        @if($moduleReviewStatus === 'needs_revision')
                             <form action="{{ route('instructor.modules.review.resubmit', $module) }}" method="POST" class="inline-flex">
                                 @csrf
                                 <button type="submit" title="Resubmit for review"
@@ -302,6 +310,23 @@
                                     </svg>
                                 </button>
                             </form>
+                        @elseif($moduleReviewStatus === 'submitted')
+                            <form action="{{ route('instructor.modules.review.withdraw', $module) }}" method="POST" class="inline-flex" onsubmit="return confirm('Withdraw this submission before admin review starts?');">
+                                @csrf
+                                <button type="submit" title="Withdraw submission"
+                                        class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors action-icon-standard">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 14l-4-4m0 0l4-4m-4 4h14"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        @elseif($moduleReviewStatus === 'in_review')
+                            <div title="Admin is currently reviewing this module"
+                                 class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-300 dark:text-gray-600 cursor-not-allowed">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
                         @else
                             <form action="{{ route('instructor.modules.review.submit', $module) }}" method="POST" class="inline-flex">
                                 @csrf

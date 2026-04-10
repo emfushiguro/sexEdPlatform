@@ -56,7 +56,7 @@
 
         <div class="flex items-center gap-2 flex-shrink-0">
             <a
-                href="{{ route('instructor.quizzes.edit', $quiz) }}"
+                href="{{ route('instructor.quizzes.index', ['edit_quiz' => $quiz->id]) }}"
                 class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-gray-50 transition"
             >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

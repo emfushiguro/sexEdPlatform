@@ -285,7 +285,7 @@ class TopicController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'type' => 'required|in:video,text,worksheet,quiz,interactive',
+            'type' => 'required|in:video,text,worksheet,interactive',
             'duration' => 'required|integer|min:1',
             'is_prerequisite' => 'nullable|boolean',
             
@@ -293,23 +293,43 @@ class TopicController extends Controller
             'video_source' => 'nullable|required_if:type,video|in:url,upload',
             'video_url' => 'nullable|string',
             'video_file' => 'nullable|file|mimetypes:video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm|max:102400',
+            'video_description' => 'nullable|string',
             
             // Text fields
             'text_content' => 'nullable|string',
             'image_attachments.*' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg|max:2048',
             'image_captions.*' => 'nullable|string',
+            'delete_images' => 'nullable|array',
+            'delete_images.*' => 'integer',
             
             // Worksheet fields
+            'worksheet_files.*' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'worksheet_file' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'worksheet_instructions' => 'nullable|string',
             
-            // Quiz fields
-            'quiz_id' => 'nullable|exists:quizzes,id',
-            
             // Interactive fields
-            'interactive_type' => 'nullable|in:activity,simulation,exercise',
+            'interactive_type' => 'nullable|required_if:type,interactive|in:activity,simulation,exercise',
+            'activity_type' => 'nullable|in:activity,simulation,exercise',
             'interactive_instructions' => 'nullable|string',
         ]);
+
+        if ($validated['type'] === 'text') {
+            $existingImages = is_array($topic->image_attachments) ? count($topic->image_attachments) : 0;
+            $imagesMarkedForDelete = count($request->input('delete_images', []));
+            $remainingExistingImages = max(0, $existingImages - $imagesMarkedForDelete);
+
+            if (empty($request->input('text_content')) && !$request->hasFile('image_attachments') && $remainingExistingImages === 0) {
+                return back()->withErrors([
+                    'text_content' => 'Please provide either text content or image attachments.',
+                ])->withInput();
+            }
+        }
+
+        if ($validated['type'] === 'worksheet' && !$request->hasFile('worksheet_files') && !$request->hasFile('worksheet_file') && empty($topic->worksheet_files) && empty($topic->file_path)) {
+            return back()->withErrors([
+                'worksheet_files' => 'Please upload at least one worksheet file.',
+            ])->withInput();
+        }
 
         // Handle video
         if ($validated['type'] === 'video') {
@@ -330,33 +350,44 @@ class TopicController extends Controller
                 }
                 $validated['video_file_path'] = null;
             }
+
+            $validated['text_content'] = $request->input('video_description');
         }
 
         // Handle image attachments for text topics
-        if ($request->hasFile('image_attachments')) {
-            // Delete old images
-            if ($topic->image_attachments) {
-                foreach ($topic->image_attachments as $oldImage) {
+        if ($validated['type'] === 'text') {
+            $currentImages = is_array($topic->image_attachments) ? $topic->image_attachments : [];
+            $deleteIndices = collect($request->input('delete_images', []))
+                ->filter(fn ($value) => is_numeric($value))
+                ->map(fn ($value) => (int) $value)
+                ->values();
+
+            $remainingImages = [];
+            foreach ($currentImages as $index => $oldImage) {
+                if ($deleteIndices->contains((int) $index)) {
                     if (isset($oldImage['path'])) {
                         Storage::disk('public')->delete($oldImage['path']);
                     }
+                    continue;
+                }
+
+                $remainingImages[] = $oldImage;
+            }
+
+            if ($request->hasFile('image_attachments')) {
+                $captions = $request->input('image_captions', []);
+
+                foreach ($request->file('image_attachments') as $index => $image) {
+                    $path = $image->store('lesson-images', 'public');
+                    $remainingImages[] = [
+                        'path' => $path,
+                        'caption' => $captions[$index] ?? null,
+                        'original_name' => $image->getClientOriginalName(),
+                    ];
                 }
             }
-            
-            $imagePaths = [];
-            $captions = $request->input('image_captions', []);
-            
-            foreach ($request->file('image_attachments') as $index => $image) {
-                $path = $image->store('lesson-images', 'public');
-                $imagePaths[] = [
-                    'path' => $path,
-                    'caption' => $captions[$index] ?? null,
-                    'original_name' => $image->getClientOriginalName(),
-                ];
-            }
-            $validated['image_attachments'] = $imagePaths;
-            
-            // Store data for both gallery and slideshow display (learner can toggle)
+
+            $validated['image_attachments'] = $remainingImages;
             $validated['slideshow_data'] = [
                 'enabled' => true,
                 'gallery_mode' => 'grid',
@@ -367,22 +398,53 @@ class TopicController extends Controller
             ];
         }
 
-        // Handle worksheet file upload
-        if ($request->hasFile('worksheet_file')) {
-            // Delete old file
+        // Handle worksheet file upload(s)
+        if ($request->hasFile('worksheet_files') || $request->hasFile('worksheet_file')) {
+            $worksheetUploads = [];
+
+            if ($request->hasFile('worksheet_files')) {
+                $worksheetUploads = array_merge($worksheetUploads, $request->file('worksheet_files'));
+            }
+
+            if ($request->hasFile('worksheet_file')) {
+                $worksheetUploads[] = $request->file('worksheet_file');
+            }
+
+            if ($topic->worksheet_files) {
+                foreach ($topic->worksheet_files as $oldFile) {
+                    if (isset($oldFile['path'])) {
+                        Storage::disk('public')->delete($oldFile['path']);
+                    }
+                }
+            }
+
             if ($topic->file_path) {
                 Storage::disk('public')->delete($topic->file_path);
             }
-            $validated['file_path'] = $request->file('worksheet_file')->store('worksheets', 'public');
+
+            $worksheetPaths = [];
+            foreach ($worksheetUploads as $file) {
+                $path = $file->store('worksheets', 'public');
+                $worksheetPaths[] = [
+                    'path' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                ];
+            }
+
+            $validated['worksheet_files'] = $worksheetPaths;
+            $validated['file_path'] = $worksheetPaths[0]['path'] ?? null;
+            $validated['text_content'] = $request->input('worksheet_instructions');
+        } elseif ($validated['type'] === 'worksheet') {
             $validated['text_content'] = $request->input('worksheet_instructions');
         }
 
-        // Handle quiz type - quiz_id is already in validated array, no additional processing needed
-
         // Handle interactive configuration
         if ($validated['type'] === 'interactive') {
+            $interactiveType = $request->input('interactive_type', $request->input('activity_type'));
             $validated['interactive_config'] = [
-                'type' => $request->input('interactive_type'),
+                'type' => $interactiveType,
                 'instructions' => $request->input('interactive_instructions'),
             ];
         }
@@ -398,7 +460,20 @@ class TopicController extends Controller
         ]);
 
         // Clean up temporary fields that shouldn't be stored in database
-        $temporaryFields = ['video_source', 'video_url', 'video_file', 'image_captions', 'worksheet_instructions', 'interactive_type', 'interactive_instructions'];
+        $temporaryFields = [
+            'video_source',
+            'video_url',
+            'video_file',
+            'video_description',
+            'image_captions',
+            'worksheet_instructions',
+            'worksheet_file',
+            'worksheet_files',
+            'interactive_type',
+            'activity_type',
+            'interactive_instructions',
+            'delete_images',
+        ];
         foreach ($temporaryFields as $field) {
             unset($validated[$field]);
         }
@@ -460,6 +535,45 @@ class TopicController extends Controller
     {
         // Ensure the topic belongs to a lesson the instructor owns
         // You might want to add authorization here
+        $worksheetFiles = [];
+
+        if (is_array($topic->worksheet_files) && count($topic->worksheet_files) > 0) {
+            $worksheetFiles = collect($topic->worksheet_files)
+                ->map(function ($file) {
+                    $path = is_array($file) ? ($file['path'] ?? null) : null;
+
+                    return [
+                        'name' => is_array($file) ? ($file['original_name'] ?? basename((string) $path)) : null,
+                        'url' => $path ? Storage::url($path) : null,
+                        'mime_type' => is_array($file) ? ($file['mime_type'] ?? null) : null,
+                    ];
+                })
+                ->filter(fn ($file) => !empty($file['url']))
+                ->values()
+                ->all();
+        }
+
+        if (empty($worksheetFiles) && $topic->file_path) {
+            $worksheetFiles[] = [
+                'name' => basename($topic->file_path),
+                'url' => Storage::url($topic->file_path),
+                'mime_type' => null,
+            ];
+        }
+
+        $imageAttachments = collect($topic->image_attachments ?? [])
+            ->map(function ($image) {
+                $path = is_array($image) ? ($image['path'] ?? null) : null;
+
+                return [
+                    'path' => $path,
+                    'caption' => is_array($image) ? ($image['caption'] ?? null) : null,
+                    'url' => $path ? Storage::url($path) : null,
+                ];
+            })
+            ->filter(fn ($image) => !empty($image['url']))
+            ->values()
+            ->all();
         
         return response()->json([
             'id' => $topic->id,
@@ -467,17 +581,22 @@ class TopicController extends Controller
             'type' => $topic->type,
             'duration' => $topic->duration,
             'is_prerequisite' => $topic->is_prerequisite,
-            'video_url' => $topic->video_url,
+            'video_url' => $topic->video_embed_url,
+            'video_provider' => $topic->video_provider,
+            'video_id' => $topic->video_id,
             'video_file_path' => $topic->video_file_path,
             'video_file_url' => $topic->video_file_url,
             'video_description' => $topic->video_description,
             'text_content' => $topic->text_content,
-            'image_attachments' => $topic->image_attachments,
+            'image_attachments' => $imageAttachments,
             'worksheet_file_path' => $topic->file_path,
             'worksheet_file_url' => $topic->file_path ? Storage::url($topic->file_path) : null,
+            'worksheet_files' => $worksheetFiles,
             'worksheet_instructions' => $topic->worksheet_instructions,
             'interactive_type' => $topic->interactive_config['type'] ?? null,
             'interactive_instructions' => $topic->interactive_instructions,
+            'interactive_config' => $topic->interactive_config,
+            'slideshow_data' => $topic->slideshow_data,
         ]);
     }
 
@@ -492,7 +611,7 @@ class TopicController extends Controller
 
         if ($request->hasFile('file')) {
             $path = $request->file('file')->store('tinymce-images', 'public');
-            $url = asset('storage/' . $path);
+            $url = Storage::url($path);
 
             return response()->json([
                 'location' => $url

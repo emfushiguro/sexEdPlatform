@@ -3,19 +3,28 @@
 @section('title', 'Module Earnings')
 
 @section('content')
+    @php
+        $commissionRate = number_format((float) ($effectiveCommissionPolicy['commission_percent'] ?? 0), 2);
+        $refundPolicy = (string) ($effectiveCommissionPolicy['refund_policy'] ?? 'disabled');
+        $refundPolicyLabel = str_replace('_', ' ', $refundPolicy);
+    @endphp
+
     <div x-data="earningsPage()" class="space-y-6">
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs">
-            <h1 class="text-2xl font-bold text-gray-900">Module Earnings</h1>
-            <p class="mt-1 text-sm text-gray-600">Track your paid module sales with clearer performance summaries and transaction details.</p>
-
-            <div class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
-                <p class="text-sm font-semibold text-indigo-900">Formula: Your Earnings = Sale amount - Platform fee.</p>
-                <p class="mt-1 text-xs text-indigo-800">Refund policy: module purchase refunds are currently disabled.</p>
-                @if(!empty($effectiveCommissionPolicy))
-                    <p class="mt-1 text-xs text-indigo-800">
-                        Current commission rate for new sales: {{ number_format((float) $effectiveCommissionPolicy['commission_percent'], 2) }}%.
-                    </p>
-                @endif
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Module Earnings</h1>
+                    <p class="mt-1 text-sm text-gray-600">Track your paid module sales with clearer performance summaries and transaction details.</p>
+                </div>
+                <button type="button"
+                        @click="policyModalOpen = true"
+                        class="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                        aria-label="View earnings policy">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    View Earnings Policy
+                </button>
             </div>
         </div>
 
@@ -189,11 +198,72 @@
                 </div>
             </div>
         </div>
+
+        <div x-show="policyModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div class="absolute inset-0 bg-gray-900/50" @click="policyModalOpen = false"></div>
+
+            <div class="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">Earnings Policy</h3>
+                        <p class="mt-1 text-sm text-gray-600">Understand how sale revenue, commission, and refund rules affect your instructor earnings.</p>
+                    </div>
+                    <button type="button"
+                            @click="policyModalOpen = false"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-700"
+                            aria-label="Close earnings policy modal">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mt-5 grid gap-4 md:grid-cols-2">
+                    <section class="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                        <h4 class="text-sm font-semibold uppercase tracking-[0.12em] text-indigo-800">Commission Rate</h4>
+                        <p class="mt-2 text-sm text-indigo-900">
+                            The platform commission for your new paid module sales is
+                            <span class="font-bold">{{ $commissionRate }}%</span>.
+                        </p>
+                        <p class="mt-2 text-xs text-indigo-800">Formula: Your Earnings = Sale amount - Platform fee.</p>
+                        <p class="mt-1 text-xs text-indigo-800">Estimated net earnings per sale: Price - (Price x {{ $commissionRate }}%).</p>
+                    </section>
+
+                    <section class="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                        <h4 class="text-sm font-semibold uppercase tracking-[0.12em] text-amber-800">Refund Policy</h4>
+                        <p class="mt-2 text-sm text-amber-900">
+                            Current policy status: <span class="font-bold">{{ ucfirst($refundPolicyLabel) }}</span>.
+                        </p>
+                        <p class="mt-2 text-xs text-amber-800">
+                            Refund policy: module purchase refunds are currently {{ strtolower($refundPolicyLabel) }}.
+                        </p>
+                        <p class="mt-1 text-xs text-amber-800">
+                            If refund rules are activated in the future, refunded transactions can reduce reported earnings and payout availability.
+                        </p>
+                    </section>
+                </div>
+
+                <div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <p class="text-xs text-gray-600">
+                        Note: Policy values shown here apply to new qualifying transactions. Historical records keep their own commission and policy snapshots for transparency.
+                    </p>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button type="button"
+                            @click="policyModalOpen = false"
+                            class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         function earningsPage() {
             return {
+                policyModalOpen: false,
                 confirmOpen: false,
                 confirmKind: 'archive',
                 confirmTitle: '',

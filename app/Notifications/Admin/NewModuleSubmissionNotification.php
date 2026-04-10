@@ -25,9 +25,9 @@ class NewModuleSubmissionNotification extends Notification
 
         return [
             'type' => 'new_module_submission',
-            'status' => 'in_review',
+            'status' => 'submitted',
             'title' => 'New Module Submission',
-            'message' => '"' . ($module?->title ?? 'Module') . '" was submitted for governance review.',
+            'message' => '"' . ($module?->title ?? 'Module') . '" was submitted and is waiting for review to start.',
             'review_request_id' => $this->reviewRequest->id,
             'module_id' => $module?->id,
             'module_title' => $module?->title,

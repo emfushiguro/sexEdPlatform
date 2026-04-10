@@ -17,7 +17,6 @@
     <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Plans Management</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage plans, plan pricing, and entitlements.</p>
         </div>
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.subscription-plans.archived') }}"
@@ -46,7 +45,6 @@
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Total Plans</p>
                     <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.total)"></p>
-                    <p class="mt-2 text-sm text-gray-500">All active and inactive plans currently available in admin.</p>
                 </div>
                 <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -60,7 +58,6 @@
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Active Plans</p>
                     <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.active)"></p>
-                    <p class="mt-2 text-sm text-gray-500">Plans that can currently be subscribed to.</p>
                 </div>
                 <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-200">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -74,7 +71,6 @@
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.24em] text-rose-600">Inactive Plans</p>
                     <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.inactive)"></p>
-                    <p class="mt-2 text-sm text-gray-500">Plans kept in admin but not currently available.</p>
                 </div>
                 <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-200">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -88,7 +84,6 @@
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Archived</p>
                     <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.archived)"></p>
-                    <p class="mt-2 text-sm text-gray-500">Plans removed from the active working catalog.</p>
                 </div>
                 <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -485,19 +480,19 @@
                 <div>
                     <div data-testid="admin-table-filter-bar" class="hidden"></div>
                     <h2 class="mt-2 text-xl font-bold text-gray-900">Plans Table</h2>
-                    <p class="mt-1 text-sm text-gray-500">Search plan names, descriptions, billing labels, prices, statuses, and subscriber counts in real time.</p>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                     <label class="block xl:col-span-2">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
-                        <input x-model.debounce.150ms="filters.search"
+                           <input x-model.debounce.150ms="filters.search"
+                               @input="page = 1"
                                type="text"
                                placeholder="Plan, audience, billing, status..."
                                class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
-                        <select x-model="filters.status"
+                        <select x-model="filters.status" @change="page = 1"
                                 class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
                             <option value="">All statuses</option>
                             <option value="active">Active</option>
@@ -506,7 +501,7 @@
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Audience</span>
-                        <select x-model="filters.audience"
+                        <select x-model="filters.audience" @change="page = 1"
                                 class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
                             <option value="">All audiences</option>
                             <option value="learner">Learner</option>
@@ -515,7 +510,7 @@
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Billing</span>
-                        <select x-model="filters.billing"
+                        <select x-model="filters.billing" @change="page = 1"
                                 class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
                             <option value="">All billing modes</option>
                             <option value="monthly">Monthly</option>
@@ -527,11 +522,7 @@
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
-            <div>
-                <p class="text-sm font-semibold text-gray-900"><span x-text="filteredPlans.length"></span> matching plans</p>
-                <p class="text-xs text-gray-500">Results update instantly as you type and refine the filters.</p>
-            </div>
+        <div class="flex flex-wrap items-center justify-end gap-3 px-6 py-4">
             <div class="flex items-center gap-3">
                 <button type="button"
                         @click="resetFilters()"
@@ -563,9 +554,9 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 bg-white">
-                    <template x-for="(plan, index) in filteredPlans" :key="plan.id">
+                    <template x-for="(plan, index) in paginatedPlans" :key="plan.id">
                         <tr class="transition hover:bg-sky-50/50">
-                            <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="index + 1"></td>
+                            <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="rowNumber(index)"></td>
                             <td class="px-6 py-4">
                                 <div class="flex items-start gap-3">
                                     <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-100 text-sm font-bold text-sky-700"
@@ -660,6 +651,14 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-end gap-3">
+            <div class="flex items-center gap-2">
+                <button type="button" @click="prevPage()" :disabled="page === 1" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                <span class="text-sm text-gray-600">Page <span class="font-semibold" x-text="safePage"></span> of <span class="font-semibold" x-text="totalPages"></span></span>
+                <button type="button" @click="nextPage()" :disabled="page >= totalPages" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+            </div>
         </div>
     </section>
 
@@ -864,6 +863,8 @@
                     audience: '',
                     billing: '',
                 },
+                page: 1,
+                perPage: 10,
                 wizardMode: 'create',
                 currentStep: 1,
                 form: defaultForm(),
@@ -901,11 +902,42 @@
                     });
                 },
 
+                get totalPages() {
+                    const pages = Math.ceil(this.filteredPlans.length / this.perPage);
+                    return pages > 0 ? pages : 1;
+                },
+
+                get safePage() {
+                    return Math.min(this.page, this.totalPages);
+                },
+
+                get paginatedPlans() {
+                    const start = (this.safePage - 1) * this.perPage;
+                    return this.filteredPlans.slice(start, start + this.perPage);
+                },
+
                 resetFilters() {
                     this.filters.search = '';
                     this.filters.status = '';
                     this.filters.audience = '';
                     this.filters.billing = '';
+                    this.page = 1;
+                },
+
+                rowNumber(index) {
+                    return ((this.safePage - 1) * this.perPage) + index + 1;
+                },
+
+                prevPage() {
+                    if (this.page > 1) {
+                        this.page -= 1;
+                    }
+                },
+
+                nextPage() {
+                    if (this.page < this.totalPages) {
+                        this.page += 1;
+                    }
                 },
 
                 formatNumber(value) {

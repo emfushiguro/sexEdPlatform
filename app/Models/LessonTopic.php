@@ -129,6 +129,16 @@ class LessonTopic extends Model
         return $this->resolvePublicMediaUrl($this->video_file_path, 'videos');
     }
 
+    public function getTextContentAttribute($value): ?string
+    {
+        return $this->normalizeEditorMediaPaths($value);
+    }
+
+    public function setTextContentAttribute($value): void
+    {
+        $this->attributes['text_content'] = $this->normalizeEditorMediaPaths($value);
+    }
+
     private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string
     {
         if (!$path) {
@@ -150,5 +160,42 @@ class LessonTopic extends Model
         }
 
         return Storage::url($normalized);
+    }
+
+    private function normalizeEditorMediaPaths($content): ?string
+    {
+        if ($content === null || $content === '') {
+            return $content;
+        }
+
+        $normalized = (string) $content;
+
+        // Normalize URLs that were saved with an incorrect "/instructor/storage" prefix.
+        $normalized = preg_replace(
+            '~((?:src|href)=["\']https?://[^"\']+)/instructor/storage/~i',
+            '$1/storage/',
+            $normalized,
+        );
+
+        $normalized = preg_replace(
+            '~((?:src|href)=["\'])/instructor/storage/~i',
+            '$1/storage/',
+            $normalized,
+        );
+
+        $normalized = preg_replace(
+            '~((?:src|href)=["\'])instructor/storage/~i',
+            '$1/storage/',
+            $normalized,
+        );
+
+        // Ensure storage URLs are root-relative to avoid route-prefix 404s.
+        $normalized = preg_replace(
+            '~((?:src|href)=["\'])(?!https?://|//|data:|mailto:|tel:|#|/)(storage/)~i',
+            '$1/$2',
+            $normalized,
+        );
+
+        return $normalized;
     }
 }

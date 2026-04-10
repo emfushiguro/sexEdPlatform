@@ -83,10 +83,38 @@
 </div>
 
 <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-5">
+    @php
+        $reviewStatus = (string) ($module->current_review_status ?? 'draft');
+        $latestReviewRequest = $module->reviewRequests->sortByDesc('id')->first();
+        $reviewStatusLabel = match ($reviewStatus) {
+            'submitted' => 'Submitted',
+            'in_review' => 'Under Review',
+            'needs_revision' => 'Needs Revision',
+            'approved' => 'Approved',
+            default => 'Draft',
+        };
+        $reviewStatusClass = match ($reviewStatus) {
+            'submitted' => 'bg-orange-100 text-orange-700 border-orange-200',
+            'in_review' => 'bg-amber-100 text-amber-700 border-amber-200',
+            'needs_revision' => 'bg-rose-100 text-rose-700 border-rose-200',
+            'approved' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
+            default => 'bg-gray-100 text-gray-700 border-gray-200',
+        };
+    @endphp
     <div class="flex items-center justify-between gap-4">
         <div>
             <p class="text-[10px] font-semibold uppercase tracking-widest text-purple-500">Review Status</p>
-            <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $module->current_review_status ?? 'approved' }}</p>
+            <span class="mt-2 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold {{ $reviewStatusClass }}">
+                {{ $reviewStatusLabel }}
+            </span>
+            @if($latestReviewRequest?->submitted_at)
+                <p class="mt-2 text-xs text-gray-500">Last submission: {{ $latestReviewRequest->submitted_at->format('M d, Y h:i A') }}</p>
+            @endif
+            @if($reviewStatus === 'submitted')
+                <p class="mt-1 text-xs text-gray-500">Your module is submitted and waiting for an admin to start review.</p>
+            @elseif($reviewStatus === 'in_review')
+                <p class="mt-1 text-xs text-gray-500">An admin is currently reviewing this module.</p>
+            @endif
             @if(optional($module->reviewRequests->sortByDesc('id')->first())->feedback)
                 <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                     <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Review feedback</p>
@@ -94,15 +122,22 @@
                 </div>
             @endif
         </div>
-        <div class="flex gap-3">
-            @if($module->current_review_status === 'needs_revision')
+        <div class="flex gap-3 flex-wrap justify-end">
+            @if($reviewStatus === 'needs_revision')
                 <form method="POST" action="{{ route('instructor.modules.review.resubmit', $module) }}">
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition-all shadow-sm" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                         Resubmit for Review
                     </button>
                 </form>
-            @elseif(!$module->is_published)
+            @elseif($reviewStatus === 'submitted')
+                <form method="POST" action="{{ route('instructor.modules.review.withdraw', $module) }}" onsubmit="return confirm('Withdraw this submission before admin review starts?');">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-xl hover:bg-gray-200 transition-all shadow-sm">
+                        Withdraw Submission
+                    </button>
+                </form>
+            @elseif(!$module->is_published && $reviewStatus !== 'in_review')
                 <form method="POST" action="{{ route('instructor.modules.review.submit', $module) }}">
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition-all shadow-sm" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
@@ -151,6 +186,14 @@
              if (res.ok) {
                  const i = this.enrollments.findIndex(e => e.id === id);
                  if (i > -1) this.enrollments[i].status = 'approved';
+                 if (window.toast) {
+                     window.toast.success('Enrollment approved.');
+                 }
+                 return;
+             }
+
+             if (window.toast) {
+                 window.toast.error('Unable to approve enrollment. Please try again.');
              }
          },
          openRejectModal(id) {
@@ -183,6 +226,9 @@
              if (res.status === 422) {
                  const payload = await res.json();
                  this.rejectErrors = payload.errors || {};
+                 if (window.toast) {
+                     window.toast.error('Please complete the rejection reason fields.');
+                 }
                  return;
              }
 
@@ -191,6 +237,14 @@
                  if (i > -1) this.enrollments[i].status = 'rejected';
                  this.rejectModalOpen = false;
                  this.rejectEnrollmentId = null;
+                 if (window.toast) {
+                     window.toast.success('Enrollment rejected.');
+                 }
+                 return;
+             }
+
+             if (window.toast) {
+                 window.toast.error('Unable to reject enrollment. Please try again.');
              }
          },
          async unenroll(id) {
@@ -201,6 +255,14 @@
              });
              if (res.ok) {
                  this.enrollments = this.enrollments.filter(e => e.id !== id);
+                 if (window.toast) {
+                     window.toast.success('Learner removed from module.');
+                 }
+                 return;
+             }
+
+             if (window.toast) {
+                 window.toast.error('Unable to remove learner right now.');
              }
          }
      }">

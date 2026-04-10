@@ -39,7 +39,9 @@ class QuizManagementController extends Controller
 
     public function create(Request $request)
     {
-        $modules = Module::with('lessons')->get();
+        $modules = Module::where('created_by', auth()->id())
+            ->with('lessons')
+            ->get();
         $lessonId = $request->query('lesson_id');
         
         return view('instructor.quizzes.create', compact('modules', 'lessonId'));

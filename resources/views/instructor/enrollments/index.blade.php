@@ -116,17 +116,18 @@
                     </div>
 
                     {{-- Actions --}}
-                    @if($enrollment->status === 'pending')
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                            <button type="button"
-                               @click='$store.modals.openEnrollmentReview(@js($reviewPayload))'
-                               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-900/60 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">
-                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                                Review Information
-                            </button>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                                <button type="button"
+                                    @click="$store.modals.openEnrollmentReview(@js($reviewPayload))"
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-900/60 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            Review Information
+                        </button>
+
+                        @if($enrollment->status === 'pending')
                             <form method="POST" action="{{ route('instructor.enrollments.approve', $enrollment) }}" class="inline" onsubmit="return confirm('Approve this enrollment?')">
                                 @csrf
                                 @method('PATCH')
@@ -146,10 +147,20 @@
                                     </svg>
                                     Reject
                             </button>
-                        </div>
-                    @else
-                        <div class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">No actions</div>
-                    @endif
+                        @else
+                            <form method="POST" action="{{ route('instructor.enrollments.destroy', $enrollment) }}" class="inline" onsubmit="return confirm('Remove this enrollment record?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-900/60 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    Remove
+                                </button>
+                            </form>
+                        @endif
+                    </div>
                 </div>
             @endforeach
         </div>

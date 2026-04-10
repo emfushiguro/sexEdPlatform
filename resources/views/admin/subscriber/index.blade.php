@@ -46,6 +46,10 @@
             subscriptions: @js($subscriptionRows),
             plans: @js($plans->map(fn ($plan) => ['id' => $plan->id, 'name' => $plan->name])->values()),
             stats: @js($subscriptionStats),
+            actionRoutes: {
+                archive: @js(route('admin.subscribers.archive', ['subscription' => '__ID__'])),
+                destroy: @js(route('admin.subscribers.destroy', ['subscription' => '__ID__'])),
+            },
             initial: {
                 search: @js((string) request('search', '')),
                 status: @js((string) request('status', '')),
@@ -67,7 +71,6 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Subscribers</p>
                         <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.total)"></p>
-                        <p class="mt-2 text-sm text-gray-500">All subscriber records currently tracked in admin.</p>
                     </div>
                     <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -82,7 +85,6 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Active</p>
                         <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.active)"></p>
-                        <p class="mt-2 text-sm text-gray-500">Subscribers with access currently enabled.</p>
                     </div>
                     <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,7 +99,6 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">Revenue</p>
                         <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatCurrency(stats.total_revenue)"></p>
-                        <p class="mt-2 text-sm text-gray-500">Lifetime completed subscription payments recorded.</p>
                     </div>
                     <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,7 +113,6 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">New This Month</p>
                         <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.new_this_month)"></p>
-                        <p class="mt-2 text-sm text-gray-500">Fresh subscriptions created during the current month.</p>
                     </div>
                     <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -128,21 +128,20 @@
                 <div data-testid="admin-table-filter-bar" class="hidden"></div>
                 <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Live Filters</p>
                         <h2 class="mt-2 text-xl font-bold text-gray-900">Subscribers Table</h2>
-                        <p class="mt-1 text-sm text-gray-500">Search every visible column in real time and narrow the table with column-specific filters.</p>
                     </div>
                     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
                             <input x-model.debounce.150ms="filters.search"
+                                   @input="page = 1"
                                    type="text"
                                    placeholder="Name, email, status, plan, date..."
                                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
                         </label>
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
-                            <select x-model="filters.status"
+                            <select x-model="filters.status" @change="page = 1"
                                     class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
                                 <option value="">All statuses</option>
                                 <option value="active">Active</option>
@@ -156,7 +155,7 @@
                         </label>
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Plan</span>
-                            <select x-model="filters.planId"
+                            <select x-model="filters.planId" @change="page = 1"
                                     class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
                                 <option value="">All plans</option>
                                 <template x-for="plan in plans" :key="plan.id">
@@ -175,17 +174,6 @@
                 </div>
             </div>
 
-            <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
-                <div>
-                    <p class="text-sm font-semibold text-gray-900"><span x-text="filteredSubscriptions.length"></span> matching subscribers</p>
-                    <p class="text-xs text-gray-500">Live filtering updates as you type and select columns.</p>
-                </div>
-                <div class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600">
-                    <span class="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                    <span>Showing current admin dataset</span>
-                </div>
-            </div>
-
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -201,9 +189,9 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
-                        <template x-for="(subscription, index) in filteredSubscriptions" :key="subscription.id">
+                        <template x-for="(subscription, index) in paginatedSubscriptions" :key="subscription.id">
                             <tr class="transition hover:bg-sky-50/50">
-                                <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="index + 1"></td>
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="rowNumber(index)"></td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
                                         <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100 text-sm font-bold text-sky-700"
@@ -227,14 +215,34 @@
                                 <td class="px-6 py-4 text-sm text-gray-600" x-text="subscription.started_at"></td>
                                 <td class="px-6 py-4 text-sm text-gray-600" x-text="subscription.expires_at"></td>
                                 <td class="px-6 py-4 text-right">
-                                    <a :href="subscription.details_url"
-                                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
-                                       title="View subscriber">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    </a>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a :href="subscription.details_url"
+                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+                                           title="View subscriber">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+
+                                        <button type="button"
+                                                @click="openActionModal('archive', subscription.id, subscription.subscriber)"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
+                                                title="Archive subscriber">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M6 8l1 10h10l1-10M9 8V6a1 1 0 011-1h4a1 1 0 011 1v2" />
+                                            </svg>
+                                        </button>
+
+                                        <button type="button"
+                                                @click="openActionModal('delete', subscription.id, subscription.subscriber)"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                                                title="Delete subscriber">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </template>
@@ -254,7 +262,36 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-end gap-3">
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="prevPage()" :disabled="page === 1" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                    <span class="text-sm text-gray-600">Page <span class="font-semibold" x-text="safePage"></span> of <span class="font-semibold" x-text="totalPages"></span></span>
+                    <button type="button" @click="nextPage()" :disabled="page >= totalPages" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                </div>
+            </div>
         </section>
+
+        <div x-show="confirmOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4" @keydown.escape.window="closeActionModal()">
+            <div class="absolute inset-0 bg-gray-900/50" @click="closeActionModal()"></div>
+            <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+                <h3 class="text-lg font-bold text-gray-900" x-text="confirmAction === 'delete' ? 'Delete Subscriber Record?' : 'Archive Subscriber Record?'"></h3>
+                <p class="mt-2 text-sm text-gray-600">
+                    <span x-show="confirmAction === 'archive'">Archive the subscriber record for </span>
+                    <span x-show="confirmAction === 'delete'">Permanently delete the subscriber record for </span>
+                    <span class="font-semibold" x-text="confirmTargetLabel || 'this subscriber'"></span>?
+                </p>
+                <div class="mt-6 flex items-center justify-end gap-2">
+                    <button type="button" @click="closeActionModal()" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="button" @click="submitAction()" :class="confirmAction === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'" class="rounded-lg px-4 py-2 text-sm font-semibold text-white">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" x-ref="actionForm" class="hidden">
+            @csrf
+            <input type="hidden" name="_method" value="POST" x-ref="actionMethod">
+        </form>
     </div>
 
     <script>
@@ -268,6 +305,13 @@
                     status: config.initial?.status || '',
                     planId: config.initial?.planId || '',
                 },
+                actionRoutes: config.actionRoutes || {},
+                page: 1,
+                perPage: 10,
+                confirmOpen: false,
+                confirmAction: 'archive',
+                confirmTargetId: null,
+                confirmTargetLabel: '',
                 get filteredSubscriptions() {
                     return this.subscriptions.filter((subscription) => {
                         const search = this.filters.search.trim().toLowerCase();
@@ -278,10 +322,60 @@
                         return matchesSearch && matchesStatus && matchesPlan;
                     });
                 },
+                get totalPages() {
+                    const pages = Math.ceil(this.filteredSubscriptions.length / this.perPage);
+                    return pages > 0 ? pages : 1;
+                },
+                get safePage() {
+                    return Math.min(this.page, this.totalPages);
+                },
+                get paginatedSubscriptions() {
+                    const currentPage = this.safePage;
+                    const start = (currentPage - 1) * this.perPage;
+                    return this.filteredSubscriptions.slice(start, start + this.perPage);
+                },
                 resetFilters() {
                     this.filters.search = '';
                     this.filters.status = '';
                     this.filters.planId = '';
+                    this.page = 1;
+                },
+                rowNumber(index) {
+                    return ((this.safePage - 1) * this.perPage) + index + 1;
+                },
+                prevPage() {
+                    if (this.page > 1) {
+                        this.page -= 1;
+                    }
+                },
+                nextPage() {
+                    if (this.page < this.totalPages) {
+                        this.page += 1;
+                    }
+                },
+                openActionModal(action, id, label) {
+                    this.confirmAction = action;
+                    this.confirmTargetId = id;
+                    this.confirmTargetLabel = label;
+                    this.confirmOpen = true;
+                },
+                closeActionModal() {
+                    this.confirmOpen = false;
+                    this.confirmTargetId = null;
+                    this.confirmTargetLabel = '';
+                },
+                submitAction() {
+                    if (!this.confirmTargetId) {
+                        return;
+                    }
+
+                    const routeTemplate = this.confirmAction === 'delete'
+                        ? this.actionRoutes.destroy
+                        : this.actionRoutes.archive;
+
+                    this.$refs.actionForm.action = routeTemplate.replace('__ID__', this.confirmTargetId);
+                    this.$refs.actionMethod.value = this.confirmAction === 'delete' ? 'DELETE' : 'POST';
+                    this.$refs.actionForm.submit();
                 },
                 formatNumber(value) {
                     return new Intl.NumberFormat('en-US').format(Number(value || 0));

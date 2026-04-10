@@ -44,6 +44,10 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
 
     // Learner Management (view-only)
     Route::resource('users', Instructor\UserController::class)->only(['index', 'show']);
+    Route::patch('users/{user}/archive', [Instructor\UserController::class, 'archive'])
+        ->name('users.archive');
+    Route::delete('users/{user}/remove', [Instructor\UserController::class, 'remove'])
+        ->name('users.remove');
 
     // Module Management
     Route::resource('modules', Instructor\ModuleController::class);
@@ -51,6 +55,8 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
         ->name('modules.review.submit');
     Route::post('modules/{module}/review/resubmit', [Instructor\ModuleReviewController::class, 'resubmit'])
         ->name('modules.review.resubmit');
+    Route::post('modules/{module}/review/withdraw', [Instructor\ModuleReviewController::class, 'withdraw'])
+        ->name('modules.review.withdraw');
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
         ->name('modules.activate');
     Route::patch('modules/{module}/deactivate', [Instructor\ModuleController::class, 'deactivate'])
@@ -67,6 +73,8 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
         ->name('enrollments.approve');
     Route::patch('enrollments/{enrollment}/reject', [Instructor\EnrollmentController::class, 'reject'])
         ->name('enrollments.reject');
+    Route::delete('enrollments/{enrollment}', [Instructor\EnrollmentController::class, 'destroy'])
+        ->name('enrollments.destroy');
     Route::get('modules/{module}/enrollments', [Instructor\EnrollmentController::class, 'moduleEnrollments'])
         ->name('modules.enrollments');
 

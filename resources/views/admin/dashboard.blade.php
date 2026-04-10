@@ -39,7 +39,6 @@
                 <article class="rounded-[28px] border p-5 shadow-theme-xs {{ $cardClass }}">
                     <p class="text-xs font-semibold uppercase tracking-[0.24em]">{{ $metric['label'] }}</p>
                     <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format((int) $metric['value']) }}</p>
-                    <p class="mt-2 text-sm text-gray-500">{{ $metric['description'] }}</p>
                 </article>
             @endforeach
         </div>

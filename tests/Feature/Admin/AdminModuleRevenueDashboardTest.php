@@ -133,7 +133,7 @@ class AdminModuleRevenueDashboardTest extends TestCase
             ->get(route('admin.monetization.module-revenue.index'))
             ->assertOk()
             ->assertSee('Module Revenue Dashboard', false)
-            ->assertSee('Total Module Sales', false)
+            ->assertSee('Total Transactions', false)
             ->assertSee('Module Alpha', false)
             ->assertSee('Module Beta', false)
             ->assertSee('Instructor A', false)

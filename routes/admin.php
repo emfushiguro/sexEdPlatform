@@ -30,6 +30,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/', [Admin\ContentReviewController::class, 'index'])->name('index');
         Route::get('/{reviewRequest}', [Admin\ContentReviewController::class, 'show'])->name('show');
         Route::get('/{reviewRequest}/preview', Admin\ContentReviewPreviewController::class)->name('preview');
+        Route::post('/{reviewRequest}/start-review', [Admin\ContentReviewController::class, 'startReview'])->name('start-review');
         Route::post('/{reviewRequest}/approve', [Admin\ContentReviewController::class, 'approve'])->name('approve');
         Route::post('/{reviewRequest}/reject', [Admin\ContentReviewController::class, 'reject'])->name('reject');
         Route::post('/{reviewRequest}/archive', [Admin\ContentReviewController::class, 'archive'])->name('archive');
@@ -101,6 +102,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/', [Admin\PaymentAdminController::class, 'index'])->name('index');
         Route::get('/{payment}', [Admin\PaymentAdminController::class, 'show'])->name('show');
         Route::get('/{payment}/receipt', [Admin\PaymentAdminController::class, 'receipt'])->name('receipt');
+        Route::post('/{payment}/archive', [Admin\PaymentAdminController::class, 'archive'])->name('archive');
+        Route::delete('/{payment}', [Admin\PaymentAdminController::class, 'destroy'])->name('destroy');
     });
 
     // Monetization
@@ -122,7 +125,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/{application}', [Admin\InstructorApplicationController::class, 'show'])->name('show');
         Route::post('/{application}/approve', [Admin\InstructorApplicationController::class, 'approve'])->name('approve');
         Route::post('/{application}/reject', [Admin\InstructorApplicationController::class, 'reject'])->name('reject');
+        Route::post('/{application}/archive', [Admin\InstructorApplicationController::class, 'archive'])->name('archive');
+        Route::delete('/{application}', [Admin\InstructorApplicationController::class, 'destroy'])->name('destroy');
     });
+
+    Route::post('/subscribers/{subscription}/archive', [Admin\SubscriberAdminController::class, 'archive'])
+        ->name('subscribers.archive');
+    Route::delete('/subscribers/{subscription}', [Admin\SubscriberAdminController::class, 'destroy'])
+        ->name('subscribers.destroy');
 
 
     // Calendar

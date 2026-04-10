@@ -13,6 +13,10 @@
      x-data="{
         activeReview: @js($initialReviewApplicationId),
         expandedModules: {},
+        confirmOpen: false,
+        confirmActionType: 'archive',
+        confirmApplicationId: null,
+        confirmApplicationName: '',
         openReview(id) {
             this.activeReview = id;
         },
@@ -26,6 +30,30 @@
             if (typeof tinymce !== 'undefined') {
                 tinymce.triggerSave();
             }
+        },
+        openActionModal(action, id, name) {
+            this.confirmActionType = action;
+            this.confirmApplicationId = id;
+            this.confirmApplicationName = name;
+            this.confirmOpen = true;
+        },
+        closeActionModal() {
+            this.confirmOpen = false;
+            this.confirmApplicationId = null;
+            this.confirmApplicationName = '';
+        },
+        submitAction() {
+            if (!this.confirmApplicationId) {
+                return;
+            }
+
+            const archiveUrl = @js(route('admin.instructor-applications.archive', ['application' => '__ID__']));
+            const deleteUrl = @js(route('admin.instructor-applications.destroy', ['application' => '__ID__']));
+            const actionUrl = this.confirmActionType === 'delete' ? deleteUrl : archiveUrl;
+
+            this.$refs.actionForm.action = actionUrl.replace('__ID__', this.confirmApplicationId);
+            this.$refs.actionMethod.value = this.confirmActionType === 'delete' ? 'DELETE' : 'POST';
+            this.$refs.actionForm.submit();
         }
      }">
     <div :class="activeReview !== null ? 'blur-[2px] scale-[0.995] pointer-events-none select-none' : ''" class="space-y-8 transition duration-300 ease-out">
@@ -88,6 +116,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No.</th>
                             <th data-testid="applications-col-applicant" class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Applicant Name</th>
                             <th data-testid="applications-col-email" class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Email</th>
                             <th data-testid="applications-col-date-applied" class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Application Date</th>
@@ -103,8 +132,10 @@
                                 $latestReview = $application->latestReview;
                                 $reviewedByName = $latestReview?->reviewedBy?->name ?? $application->approvedBy?->name;
                                 $decisionAt = $latestReview?->reviewed_at ?? $application->approved_at;
+                                $rowNumber = ($applications->firstItem() ?? 1) + $loop->index;
                             @endphp
                             <tr class="transition hover:bg-sky-50/40">
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-500">{{ $rowNumber }}</td>
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ $application->user->name }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $application->user->email }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $application->created_at->format('M d, Y') }}</td>
@@ -116,22 +147,44 @@
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $reviewedByName ?? 'Not reviewed yet' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $decisionAt ? $decisionAt->format('M d, Y h:i A') : 'Pending' }}</td>
                                 <td class="px-6 py-4 text-right">
-                                    <button type="button"
-                                            data-testid="review-application-button-{{ $application->id }}"
-                                            @click="openReview({{ $application->id }})"
-                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
-                                            title="Review Application"
-                                            aria-label="Review Application">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    </button>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button type="button"
+                                                data-testid="review-application-button-{{ $application->id }}"
+                                                @click="openReview({{ $application->id }})"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+                                                title="Review Application"
+                                                aria-label="Review Application">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </button>
+
+                                        <button type="button"
+                                                @click="openActionModal('archive', {{ $application->id }}, @js($application->user->name))"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
+                                                title="Archive Application"
+                                                aria-label="Archive Application">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M6 8l1 10h10l1-10M9 8V6a1 1 0 011-1h4a1 1 0 011 1v2" />
+                                            </svg>
+                                        </button>
+
+                                        <button type="button"
+                                                @click="openActionModal('delete', {{ $application->id }}, @js($application->user->name))"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                                                title="Delete Application"
+                                                aria-label="Delete Application">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-14 text-center">
+                                <td colspan="8" class="px-6 py-14 text-center">
                                     <div class="mx-auto max-w-sm">
                                         <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
                                             <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -153,6 +206,33 @@
             </div>
         </section>
     </div>
+
+    <div x-show="confirmOpen" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center px-4" @keydown.escape.window="closeActionModal()">
+        <div class="absolute inset-0 bg-gray-900/50" @click="closeActionModal()"></div>
+        <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-gray-900" x-text="confirmActionType === 'delete' ? 'Delete Application?' : 'Archive Application?'"></h3>
+            <p class="mt-2 text-sm text-gray-600">
+                <span x-show="confirmActionType === 'archive'">Archive this application for </span>
+                <span x-show="confirmActionType === 'delete'">Permanently delete this application for </span>
+                <span class="font-semibold" x-text="confirmApplicationName || 'this applicant'"></span>?
+            </p>
+
+            <div class="mt-6 flex items-center justify-end gap-2">
+                <button type="button" @click="closeActionModal()" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="button"
+                        @click="submitAction()"
+                        :class="confirmActionType === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'"
+                        class="rounded-lg px-4 py-2 text-sm font-semibold text-white">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" x-ref="actionForm" class="hidden">
+        @csrf
+        <input type="hidden" name="_method" x-ref="actionMethod" value="POST">
+    </form>
 
     @foreach($applications as $application)
         @php

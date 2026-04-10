@@ -41,16 +41,69 @@
     }
 
     function renderTopicPreview(topic) {
-        let content = `<div class="space-y-4"><div class="bg-gray-50 p-4 rounded-xl"><h4 class="text-lg font-semibold text-gray-900">${topic.title}</h4><div class="flex gap-3 mt-2"><span class="px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(topic.type)}">${capitalizeFirst(topic.type)}</span><span class="text-sm text-gray-500">${topic.duration} min</span></div></div>`;
+        let content = `<div class="space-y-4"><div class="bg-gray-50 p-4 rounded-xl"><h4 class="text-lg font-semibold text-gray-900">${escapeHtml(topic.title || '')}</h4><div class="flex gap-3 mt-2"><span class="px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(topic.type)}">${capitalizeFirst(topic.type || 'topic')}</span><span class="text-sm text-gray-500">${topic.duration || 0} min</span></div></div>`;
+
         if (topic.type === 'video') {
-            if (topic.video_url) content += `<div class="aspect-video bg-black rounded-xl overflow-hidden"><iframe src="${topic.video_url}" class="w-full h-full" allowfullscreen></iframe></div>`;
-            else if (topic.video_file_url) content += `<video controls class="w-full rounded-xl"><source src="${topic.video_file_url}" type="video/mp4"></video>`;
-            if (topic.video_description) content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-xl">${topic.video_description}</div>`;
+            if (topic.video_url) {
+                content += `<div class="aspect-video bg-black rounded-xl overflow-hidden"><iframe src="${topic.video_url}" class="w-full h-full" allowfullscreen></iframe></div>`;
+            } else if (topic.video_file_url) {
+                content += `<video controls class="w-full rounded-xl"><source src="${topic.video_file_url}" type="video/mp4"></video>`;
+            } else {
+                content += `<div class="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">No video source available for this topic.</div>`;
+            }
+
+            if (topic.text_content) {
+                content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-xl">${topic.text_content}</div>`;
+            }
         } else if (topic.type === 'text') {
-            content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-xl">${topic.text_content || ''}</div>`;
+            if (topic.text_content) {
+                content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-xl">${topic.text_content}</div>`;
+            }
+
+            if (Array.isArray(topic.image_attachments) && topic.image_attachments.length > 0) {
+                const imageTiles = topic.image_attachments
+                    .filter((image) => !!image.url)
+                    .map((image) => `
+                        <div class="rounded-lg overflow-hidden border border-gray-200 bg-white">
+                            <img src="${image.url}" alt="Topic image" class="w-full h-40 object-cover">
+                            ${image.caption ? `<p class="text-xs text-gray-600 p-2">${escapeHtml(image.caption)}</p>` : ''}
+                        </div>
+                    `)
+                    .join('');
+
+                if (imageTiles) {
+                    content += `<div><p class="text-sm font-semibold text-gray-700 mb-2">Images</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${imageTiles}</div></div>`;
+                }
+            }
         } else if (topic.type === 'worksheet') {
-            content += `<div class="flex items-center gap-4 p-4 bg-brand-50 rounded-xl"><svg class="w-10 h-10 text-brand-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/></svg><div><p class="font-medium text-gray-900">Worksheet File</p><a href="${topic.worksheet_file_url || '#'}" target="_blank" class="text-brand-600 hover:underline text-sm">Download</a></div></div>`;
+            const files = Array.isArray(topic.worksheet_files) ? topic.worksheet_files : [];
+            const fallbackFile = topic.worksheet_file_url
+                ? [{ name: 'Worksheet File', url: topic.worksheet_file_url }]
+                : [];
+            const worksheetFiles = files.length > 0 ? files : fallbackFile;
+
+            if (worksheetFiles.length > 0) {
+                const fileList = worksheetFiles
+                    .filter((file) => !!file.url)
+                    .map((file) => `<a href="${file.url}" target="_blank" class="block text-sm text-brand-700 hover:underline">${escapeHtml(file.name || 'Worksheet File')}</a>`)
+                    .join('');
+
+                content += `<div class="rounded-xl bg-brand-50 p-4"><p class="text-sm font-semibold text-gray-900 mb-2">Worksheet Files</p>${fileList}</div>`;
+            } else {
+                content += `<div class="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">No worksheet file attached.</div>`;
+            }
+
+            if (topic.text_content) {
+                content += `<div class="prose max-w-none p-4 bg-gray-50 rounded-xl">${topic.text_content}</div>`;
+            }
+        } else if (topic.type === 'interactive') {
+            const interactiveType = topic.interactive_type || topic.interactive_config?.type || 'interactive';
+            const interactiveInstructions = topic.interactive_instructions || topic.interactive_config?.instructions || topic.text_content || '';
+            content += `<div class="rounded-xl border border-orange-200 bg-orange-50 p-4"><p class="text-sm font-semibold text-orange-800">Interactive Type: ${escapeHtml(capitalizeFirst(interactiveType))}</p>${interactiveInstructions ? `<div class="prose max-w-none mt-3">${interactiveInstructions}</div>` : '<p class="text-sm text-orange-700 mt-2">No instructions provided.</p>'}</div>`;
+        } else {
+            content += `<div class="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">Preview is not available for this topic type yet.</div>`;
         }
+
         content += `</div>`;
         return content;
     }
@@ -58,6 +111,14 @@
     function getTypeColor(type) {
         const c = { video: 'bg-red-100 text-red-800', text: 'bg-brand-100 text-brand-800', worksheet: 'bg-green-100 text-green-800', interactive: 'bg-orange-100 text-orange-800' };
         return c[type] ?? 'bg-gray-100 text-gray-800';
+    }
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
     }
     function capitalizeFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
@@ -68,6 +129,36 @@
 @endpush
 
 @section('content')
+@php
+    $moduleReviewStatus = (string) ($lesson->module->current_review_status ?? 'draft');
+    $lessonStatusLabel = $lesson->is_published ? 'Published' : 'Draft';
+    $lessonStatusClass = $lesson->is_published
+        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+        : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300';
+    $lessonStatusDotClass = $lesson->is_published ? 'bg-green-500' : 'bg-gray-400';
+
+    if ($lesson->module->trashed()) {
+        $lessonStatusLabel = 'Module Archived';
+        $lessonStatusClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+        $lessonStatusDotClass = 'bg-red-500';
+    } elseif ($moduleReviewStatus === 'in_review') {
+        $lessonStatusLabel = 'Module Under Review';
+        $lessonStatusClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+        $lessonStatusDotClass = 'bg-amber-500';
+    } elseif ($moduleReviewStatus === 'submitted') {
+        $lessonStatusLabel = 'Submission Pending';
+        $lessonStatusClass = 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+        $lessonStatusDotClass = 'bg-orange-500';
+    } elseif ($moduleReviewStatus === 'needs_revision') {
+        $lessonStatusLabel = 'Needs Revision';
+        $lessonStatusClass = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
+        $lessonStatusDotClass = 'bg-rose-500';
+    } elseif (!$lesson->module->is_published) {
+        $lessonStatusLabel = 'Module Inactive';
+        $lessonStatusClass = 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
+        $lessonStatusDotClass = 'bg-gray-500';
+    }
+@endphp
 <div class="space-y-5">
 
     {{-- Page Header --}}
@@ -110,10 +201,9 @@
             </div>
             <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
                 <p class="text-xs text-gray-400 uppercase tracking-widest font-medium mb-1">Status</p>
-                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold rounded-full
-                    {{ $lesson->is_published ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300' }}">
-                    <span class="w-1.5 h-1.5 rounded-full {{ $lesson->is_published ? 'bg-green-500' : 'bg-gray-400' }}"></span>
-                    {{ $lesson->is_published ? 'Published' : 'Draft' }}
+                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold rounded-full {{ $lessonStatusClass }}">
+                    <span class="w-1.5 h-1.5 rounded-full {{ $lessonStatusDotClass }}"></span>
+                    {{ $lessonStatusLabel }}
                 </span>
             </div>
         </div>

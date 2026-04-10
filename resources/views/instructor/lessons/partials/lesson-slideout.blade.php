@@ -161,12 +161,14 @@
                         <div>
                             <p class="text-sm font-semibold text-gray-900 dark:text-white">Active lesson</p>
                             <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5" x-text="isEdit ? 'Toggle to activate or deactivate this lesson.' : 'New lessons default to active.'"></p>
+                            <p class="text-xs font-semibold mt-1" :class="isPublished ? 'text-emerald-600' : 'text-gray-500'" x-text="isPublished ? 'Enabled' : 'Disabled'"></p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
                             <input type="hidden" name="is_published" :value="isPublished ? 1 : 0">
                             <input type="checkbox" class="sr-only peer" x-model="isPublished">
-                            <div class="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:ring-2 peer-focus:ring-purple-400/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
-                                 style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);"></div>
+                            <div class="w-11 h-6 rounded-full peer-focus:ring-2 peer-focus:ring-purple-400/50 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
+                                 :class="isPublished ? 'peer-checked:after:translate-x-full peer-checked:after:border-white' : ''"
+                                 :style="isPublished ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1);' : 'background-color: #d1d5db';"></div>
                         </label>
                     </div>
                 </div>

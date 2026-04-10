@@ -343,7 +343,17 @@
                                 </a>
                             </li>
 
-                            {{-- Commission Settings --}}
+                        </ul>
+                    </div>
+
+                    {{-- SYSTEM CONTROL --}}
+                    <div>
+                        <h2 x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                            x-cloak
+                            class="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            System Control
+                        </h2>
+                        <ul class="flex flex-col gap-1">
                             <li>
                                 <a href="{{ route('admin.monetization.commission-settings.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
@@ -362,14 +372,36 @@
                                           x-cloak class="truncate">Commission Settings</span>
                                 </a>
                             </li>
-
                         </ul>
                     </div>
 
                 </nav>
             </div>
 
-            {{-- Sidebar footer: Sign out removed to avoid duplication; now only in user dropdown --}}
+            <div class="flex-shrink-0 border-t border-gray-100 px-3 py-4">
+                <div class="flex flex-col gap-2">
+                    <a href="{{ route('admin.profile.show') }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
+                       :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Edit Profile</span>
+                    </a>
+
+                    <form method="POST" action="{{ route('admin.logout') }}">
+                        @csrf
+                        <button type="submit"
+                                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                                :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                            <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Logout</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
 
         </aside>
         {{-- END SIDEBAR --}}

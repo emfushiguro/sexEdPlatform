@@ -19,16 +19,14 @@ class EnrollmentController extends Controller
      */
     public function index()
     {
-        // Get all modules (instructor can see all for now)
-        // TODO: Filter by instructor's modules when instructor relationship is added
         $pendingEnrollments = ModuleEnrollment::with([
             'user.learnerProfile.city',
             'user.learnerProfile.barangay',
             'module' => fn ($query) => $query->withCount('lessons'),
         ])
-            ->pending()
+            ->whereHas('module', fn ($query) => $query->where('created_by', Auth::id()))
             ->latest()
-            ->paginate(20);
+            ->get();
 
         return view('instructor.enrollments.index', compact('pendingEnrollments'));
     }
@@ -38,6 +36,8 @@ class EnrollmentController extends Controller
      */
     public function show(ModuleEnrollment $enrollment)
     {
+        $this->ensureEnrollmentBelongsToInstructor($enrollment);
+
         // Load relationships
         $enrollment->load([
             'user.learnerProfile.city', 
@@ -78,9 +78,17 @@ class EnrollmentController extends Controller
     /**
      * Approve an enrollment request
      */
-    public function approve(ModuleEnrollment $enrollment)
+    public function approve(Request $request, ModuleEnrollment $enrollment)
     {
+        $this->ensureEnrollmentBelongsToInstructor($enrollment);
+
         if ($enrollment->status !== EnrollmentStatus::Pending) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'This enrollment request is not pending.',
+                ], 422);
+            }
+
             return redirect()->back()
                 ->with('error', 'This enrollment request is not pending.');
         }
@@ -102,8 +110,14 @@ class EnrollmentController extends Controller
         // Note: UserProgress records are created per-lesson as learners progress,
         // not at enrollment time. The user_progress table tracks lesson-level completion.
 
-        return redirect()->back()
-            ->with('success', 'Enrollment request approved successfully!');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Enrollment request approved successfully!',
+                'status' => EnrollmentStatus::Approved->value,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Enrollment request approved successfully!');
     }
 
     /**
@@ -111,7 +125,15 @@ class EnrollmentController extends Controller
      */
     public function reject(RejectEnrollmentRequest $request, ModuleEnrollment $enrollment)
     {
+        $this->ensureEnrollmentBelongsToInstructor($enrollment);
+
         if ($enrollment->status !== EnrollmentStatus::Pending) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'This enrollment request is not pending.',
+                ], 422);
+            }
+
             return redirect()->back()
                 ->with('error', 'This enrollment request is not pending.');
         }
@@ -137,8 +159,14 @@ class EnrollmentController extends Controller
 
         $enrollment->user->notify(new EnrollmentRejectedNotification($enrollment, $instructorName));
 
-        return redirect()->back()
-            ->with('success', 'Enrollment request rejected.');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Enrollment request rejected.',
+                'status' => EnrollmentStatus::Rejected->value,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Enrollment request rejected.');
     }
 
     /**
@@ -146,11 +174,42 @@ class EnrollmentController extends Controller
      */
     public function moduleEnrollments(Module $module)
     {
+        abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+
         $enrollments = $module->enrollments()
             ->with(['user.learnerProfile'])
             ->latest()
             ->paginate(20);
 
         return view('instructor.enrollments.module', compact('module', 'enrollments'));
+    }
+
+    /**
+     * Remove an enrollment record owned by the instructor.
+     */
+    public function destroy(Request $request, ModuleEnrollment $enrollment)
+    {
+        $this->ensureEnrollmentBelongsToInstructor($enrollment);
+
+        $learnerName = $enrollment->user?->name ?? 'Learner';
+        $moduleTitle = $enrollment->module?->title ?? 'module';
+
+        $enrollment->delete();
+
+        $message = sprintf('%s was removed from %s enrollment records.', $learnerName, $moduleTitle);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+            ]);
+        }
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    private function ensureEnrollmentBelongsToInstructor(ModuleEnrollment $enrollment): void
+    {
+        $enrollment->loadMissing('module');
+        abort_unless((int) ($enrollment->module?->created_by ?? 0) === (int) Auth::id(), 403);
     }
 }

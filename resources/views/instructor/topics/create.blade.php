@@ -459,6 +459,10 @@
                 paste_data_images: false,
                 images_reuse_filename: true,
                 images_file_types: 'jpeg,jpg,png,gif,webp',
+                relative_urls: false,
+                remove_script_host: false,
+                convert_urls: true,
+                document_base_url: '{{ url('/') }}/',
                 images_upload_handler: async (blobInfo, progress) => {
                     progress(15);
                     const location = await uploadTinyMceImage(blobInfo.blob());
