@@ -1,4 +1,4 @@
-﻿@extends('layouts.instructor-app')
+@extends('layouts.instructor-app')
 
 @section('content')
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -21,7 +21,7 @@
                             <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700">Role</label>
                                 <p class="mt-1">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-brand-100 text-brand-800">
                                         {{ ucfirst($user->role) }}
                                     </span>
                                 </p>
@@ -93,9 +93,9 @@
                                 <div class="text-sm text-purple-600">Level</div>
                                 <div class="text-2xl font-bold text-purple-900">{{ $user->gamification->level }}</div>
                             </div>
-                            <div class="bg-blue-50 p-4 rounded-lg">
-                                <div class="text-sm text-blue-600">Total Score</div>
-                                <div class="text-2xl font-bold text-blue-900">{{ $user->gamification->score }}</div>
+                            <div class="bg-brand-50 p-4 rounded-lg">
+                                <div class="text-sm text-brand-600">Total Score</div>
+                                <div class="text-2xl font-bold text-brand-900">{{ $user->gamification->score }}</div>
                             </div>
                             <div class="bg-green-50 p-4 rounded-lg">
                                 <div class="text-sm text-green-600">Streak</div>

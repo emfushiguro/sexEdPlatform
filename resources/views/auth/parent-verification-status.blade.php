@@ -3,6 +3,13 @@
         $status = $user->parent_verification_status ?? 'pending';
         $isApproved = $isApproved ?? ($status === 'approved');
         $showApprovedModal = (bool) session('show_parent_approved_modal', false);
+        $parentReasonRaw = (string) ($user->parent_verification_rejection_reason ?? '');
+        $allowedReasonTags = '<p><br><strong><b><em><i><u><ul><ol><li><a>';
+        $parentRejectionReasonHtml = trim((string) strip_tags(
+            str_replace("\xC2\xA0", ' ', html_entity_decode($parentReasonRaw, ENT_QUOTES | ENT_HTML5, 'UTF-8')),
+            $allowedReasonTags
+        ));
+        $parentRejectionReasonText = trim((string) preg_replace('/\s+/u', ' ', strip_tags($parentRejectionReasonHtml)));
     @endphp
 
     <x-slot name="panel">
@@ -39,7 +46,14 @@
     @elseif($status === 'rejected')
         <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 mb-4">
             <p class="font-semibold">Verification result: Rejected</p>
-            <p class="mt-1">Reason: {{ $user->parent_verification_rejection_reason ?: 'No reason provided by administrator.' }}</p>
+            <div class="mt-1 break-words">
+                <span class="font-medium">Reason:</span>
+                @if($parentRejectionReasonText !== '')
+                    <div class="mt-1 [&_p]:m-0 [&_a]:underline [&_a]:break-all">{!! $parentRejectionReasonHtml !!}</div>
+                @else
+                    <span> No reason provided by administrator.</span>
+                @endif
+            </div>
         </div>
         <p class="text-sm text-gray-600 mb-6">
             Please contact support or register again with a valid government-issued ID.

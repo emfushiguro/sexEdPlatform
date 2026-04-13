@@ -192,7 +192,7 @@ class PlanManagementFlowTest extends TestCase
             ->assertSessionHasErrors(['end_date']);
     }
 
-    public function test_plan_audience_is_limited_to_learner_for_now(): void
+    public function test_plan_audience_allows_instructor_plans(): void
     {
         $admin = $this->createAdminUser();
 
@@ -206,10 +206,13 @@ class PlanManagementFlowTest extends TestCase
         ];
 
         $this->actingAs($admin)
-            ->from(route('admin.subscription-plans.index'))
             ->post(route('admin.subscribers.store-plan'), $payload)
-            ->assertRedirect(route('admin.subscription-plans.index'))
-            ->assertSessionHasErrors(['plan_audience']);
+            ->assertRedirect(route('admin.subscription-plans.index'));
+
+        $plan = SubscriptionPlan::query()->where('slug', 'instructor-future-plan')->first();
+
+        $this->assertNotNull($plan);
+        $this->assertSame('instructor', $plan->plan_audience);
     }
 
     public function test_price_must_be_non_negative_with_max_two_decimals(): void

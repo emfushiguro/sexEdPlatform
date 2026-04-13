@@ -81,7 +81,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>📊 {{ ucfirst($type) }} Analytics Report</h1>
+        <h1>{{ ucfirst($type) }} Analytics Report</h1>
         <p>{{ $generatedAt->format('F j, Y \a\t g:i A') }}</p>
     </div>
 
@@ -113,7 +113,7 @@
         </div>
 
         <!-- Detailed Metrics Table -->
-        <h3>📈 Detailed Metrics</h3>
+        <h3>Detailed Metrics</h3>
         <table class="summary-table">
             <thead>
                 <tr>
@@ -162,7 +162,7 @@
 
         <!-- Revenue Breakdown -->
         @if(isset($revenueMetrics) && !empty($revenueMetrics))
-        <h3>💰 Revenue Breakdown</h3>
+        <h3>Revenue Breakdown</h3>
         <div class="grid">
             @if(isset($revenueMetrics['subscription_revenue']))
             <div class="metric-card">
@@ -189,7 +189,7 @@
 
         <!-- Payment Analytics -->
         @if(isset($paymentAnalytics) && !empty($paymentAnalytics))
-        <h3>💳 Payment Analytics</h3>
+        <h3>Payment Analytics</h3>
         <div class="grid">
             @if(isset($paymentAnalytics['successful_payments']))
             <div class="metric-card">
@@ -217,45 +217,45 @@
         @endif
 
         <!-- Key Insights -->
-        <h3>🔍 Key Insights</h3>
+        <h3>Key Insights</h3>
         <div style="background: white; padding: 20px; border-radius: 8px; margin: 15px 0;">
             <ul style="margin: 0; padding-left: 20px;">
                 @if(($subscriptionMetrics['new_subscribers'] ?? 0) > 0)
-                    <li class="positive">✅ <strong>Growth:</strong> {{ number_format($subscriptionMetrics['new_subscribers']) }} new subscribers added this {{ $type === 'weekly' ? 'week' : 'month' }}</li>
+                    <li class="positive"><strong>Growth:</strong> {{ number_format($subscriptionMetrics['new_subscribers']) }} new subscribers added this {{ $type === 'weekly' ? 'week' : 'month' }}</li>
                 @endif
                 
                 @if(($paymentAnalytics['success_rate'] ?? 0) >= 95)
-                    <li class="positive">✅ <strong>Payment Health:</strong> Excellent payment success rate at {{ number_format($paymentAnalytics['success_rate'], 1) }}%</li>
+                    <li class="positive"><strong>Payment Health:</strong> Excellent payment success rate at {{ number_format($paymentAnalytics['success_rate'], 1) }}%</li>
                 @elseif(($paymentAnalytics['success_rate'] ?? 0) < 90)
-                    <li class="negative">⚠️ <strong>Payment Concern:</strong> Payment success rate below 90% ({{ number_format($paymentAnalytics['success_rate'], 1) }}%)</li>
+                    <li class="negative"><strong>Payment Concern:</strong> Payment success rate below 90% ({{ number_format($paymentAnalytics['success_rate'], 1) }}%)</li>
                 @endif
 
                 @if(($subscriptionMetrics['churn_rate'] ?? 0) <= 3)
-                    <li class="positive">✅ <strong>Retention:</strong> Low churn rate at {{ number_format($subscriptionMetrics['churn_rate'], 1) }}%</li>
+                    <li class="positive"><strong>Retention:</strong> Low churn rate at {{ number_format($subscriptionMetrics['churn_rate'], 1) }}%</li>
                 @elseif(($subscriptionMetrics['churn_rate'] ?? 0) > 5)
-                    <li class="negative">⚠️ <strong>Retention:</strong> High churn rate detected ({{ number_format($subscriptionMetrics['churn_rate'], 1) }}%)</li>
+                    <li class="negative"><strong>Retention:</strong> High churn rate detected ({{ number_format($subscriptionMetrics['churn_rate'], 1) }}%)</li>
                 @endif
 
                 @if(($revenueMetrics['total_revenue'] ?? 0) > 0)
-                    <li class="positive">💰 <strong>Revenue:</strong> Generated ₱{{ number_format($revenueMetrics['total_revenue'], 2) }} this period</li>
+                    <li class="positive"><strong>Revenue:</strong> Generated ₱{{ number_format($revenueMetrics['total_revenue'], 2) }} this period</li>
                 @endif
             </ul>
         </div>
 
         <!-- Action Items 
-        <h3>🎯 Recommended Actions</h3>
+        <h3>Recommended Actions</h3>
         <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 8px; margin: 15px 0;">
             <ul style="margin: 0; padding-left: 20px;">
                 @if(($subscriptionMetrics['churn_rate'] ?? 0) > 5)
-                    <li>🔍 <strong>Investigate churn:</strong> Review canceled subscriptions and conduct exit surveys</li>
+                    <li><strong>Investigate churn:</strong> Review canceled subscriptions and conduct exit surveys</li>
                 @endif
                 @if(($paymentAnalytics['success_rate'] ?? 0) < 90)
-                    <li>💳 <strong>Payment optimization:</strong> Review payment flow and consider alternative payment methods</li>
+                    <li><strong>Payment optimization:</strong> Review payment flow and consider alternative payment methods</li>
                 @endif
                 @if(($subscriptionMetrics['new_subscribers'] ?? 0) < 10)
-                    <li>📢 <strong>Acquisition boost:</strong> Focus on marketing campaigns and referral programs</li>
+                    <li><strong>Acquisition boost:</strong> Focus on marketing campaigns and referral programs</li>
                 @endif
-                <li>📊 <strong>Continue monitoring:</strong> Track these metrics closely next {{ $type === 'weekly' ? 'week' : 'month' }}</li>
+                <li><strong>Continue monitoring:</strong> Track these metrics closely next {{ $type === 'weekly' ? 'week' : 'month' }}</li>
             </ul>
         </div>-->
     </div>

@@ -20,6 +20,7 @@ class StartConversationRequest extends FormRequest
             'conversation_type' => ['required', 'string', Rule::in(Conversation::supportedConversationTypes())],
             'module_id' => ['nullable', 'integer', 'exists:modules,id'],
             'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
+            'lesson_topic_id' => ['nullable', 'integer', 'exists:lesson_topics,id'],
             'quiz_id' => ['nullable', 'integer', 'exists:quizzes,id'],
             'initial_message' => ['nullable', 'string', 'max:2000'],
         ];

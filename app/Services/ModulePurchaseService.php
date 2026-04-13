@@ -72,28 +72,56 @@ class ModulePurchaseService
                         ]
                     );
 
-                $payment = Payment::query()->create([
-                    'user_id' => $user->id,
-                    'subscription_id' => null,
-                    'amount' => (float) ($module->price_amount ?? 0),
-                    'method' => $paymentMethod,
-                    'status' => PaymentStatus::Pending,
-                    'transaction_id' => 'MOD-' . strtoupper(uniqid()),
-                    'payment_details' => [
-                        'payment_scope' => 'module_purchase',
-                        'payment_method' => $paymentMethod,
-                        'module_id' => $module->id,
-                        'module_title' => $module->title,
-                        'module_purchase_id' => $purchase->id,
-                        'billing' => [
-                            'name' => $billingName,
-                            'email' => $billingEmail,
-                            'phone' => $billingPhone,
-                        ],
-                    ],
-                ]);
+                $payment = Payment::query()
+                    ->where('user_id', $user->id)
+                    ->whereNull('subscription_id')
+                    ->where('status', PaymentStatus::Pending)
+                    ->where('payment_details->payment_scope', 'module_purchase')
+                    ->where('payment_details->module_purchase_id', $purchase->id)
+                    ->latest('id')
+                    ->first();
 
-                $response = $this->payMongoPaymentLinkService->createPaymentLink(
+                if (!$payment) {
+                    $payment = Payment::query()->create([
+                        'user_id' => $user->id,
+                        'subscription_id' => null,
+                        'amount' => (float) ($module->price_amount ?? 0),
+                        'method' => $paymentMethod,
+                        'status' => PaymentStatus::Pending,
+                        'transaction_id' => 'MOD-' . strtoupper(uniqid()),
+                        'payment_details' => [
+                            'payment_scope' => 'module_purchase',
+                            'payment_method' => $paymentMethod,
+                            'module_id' => $module->id,
+                            'module_title' => $module->title,
+                            'module_purchase_id' => $purchase->id,
+                            'billing' => [
+                                'name' => $billingName,
+                                'email' => $billingEmail,
+                                'phone' => $billingPhone,
+                            ],
+                        ],
+                    ]);
+                } else {
+                    $payment->update([
+                        'amount' => (float) ($module->price_amount ?? 0),
+                        'method' => $paymentMethod,
+                        'payment_details' => array_merge($payment->payment_details ?? [], [
+                            'payment_scope' => 'module_purchase',
+                            'payment_method' => $paymentMethod,
+                            'module_id' => $module->id,
+                            'module_title' => $module->title,
+                            'module_purchase_id' => $purchase->id,
+                            'billing' => [
+                                'name' => $billingName,
+                                'email' => $billingEmail,
+                                'phone' => $billingPhone,
+                            ],
+                        ]),
+                    ]);
+                }
+
+                $response = $this->payMongoPaymentLinkService->createCheckoutSession(
                     amount: (float) ($module->price_amount ?? 0),
                     description: 'Module Purchase: ' . $module->title,
                     remarks: 'Module purchase for ' . $user->name,
@@ -106,13 +134,22 @@ class ModulePurchaseService
                         'billing_name' => $billingName,
                         'billing_email' => $billingEmail,
                     ],
-                    successUrl: route('learner.modules.purchase.success', $module),
-                    failedUrl: route('learner.modules.purchase.failed', $module),
+                    successUrl: route('payment.success', [
+                        'scope' => 'module_purchase',
+                        'module_id' => $module->id,
+                        'payment_id' => $payment->id,
+                    ]),
+                    cancelUrl: route('payment.cancel', [
+                        'scope' => 'module_purchase',
+                        'module_id' => $module->id,
+                        'payment_id' => $payment->id,
+                    ]),
                     preferredPaymentMethod: $paymentMethod,
+                    lineItemName: $module->title,
                 );
 
                 $checkoutUrl = (string) data_get($response, 'data.attributes.checkout_url', '');
-                $paymongoLinkId = data_get($response, 'data.id');
+                $checkoutSessionId = data_get($response, 'data.id');
 
                 if ($checkoutUrl === '') {
                     throw new \RuntimeException('PayMongo did not return checkout URL.');
@@ -120,7 +157,7 @@ class ModulePurchaseService
 
                 $payment->update([
                     'payment_details' => array_merge($payment->payment_details ?? [], [
-                        'paymongo_link_id' => $paymongoLinkId,
+                        'paymongo_checkout_session_id' => $checkoutSessionId,
                         'checkout_url' => $checkoutUrl,
                         'payment_method' => $paymentMethod,
                         'billing' => [
@@ -134,7 +171,7 @@ class ModulePurchaseService
                 $purchase->update([
                     'payment_id' => $payment->id,
                     'metadata' => array_merge($purchase->metadata ?? [], [
-                        'paymongo_link_id' => $paymongoLinkId,
+                        'paymongo_checkout_session_id' => $checkoutSessionId,
                     ]),
                 ]);
 
@@ -254,19 +291,27 @@ class ModulePurchaseService
             return false;
         }
 
+        $sessionId = (string) data_get($payment->payment_details, 'paymongo_checkout_session_id', '');
         $linkId = (string) data_get($payment->payment_details, 'paymongo_link_id', '');
-        if ($linkId === '') {
+
+        if ($sessionId === '' && $linkId === '') {
             return false;
         }
 
-        $response = $this->payMongoPaymentLinkService->retrievePaymentLink($linkId);
-        $status = (string) data_get($response, 'data.attributes.status');
+        $response = $sessionId !== ''
+            ? $this->payMongoPaymentLinkService->retrieveCheckoutSession($sessionId)
+            : $this->payMongoPaymentLinkService->retrievePaymentLink($linkId);
 
-        if ($status !== 'paid') {
+        $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
+        $hasPayments = !empty(data_get($response, 'data.attributes.payments', []));
+
+        if ($status !== 'paid' && $status !== 'completed' && !$hasPayments) {
             return false;
         }
 
-        $actualPaymentId = $this->payMongoPaymentLinkService->getActualPaymentIdFromLink($linkId);
+        $actualPaymentId = $sessionId !== ''
+            ? $this->payMongoPaymentLinkService->getActualPaymentIdFromCheckoutSession($sessionId)
+            : $this->payMongoPaymentLinkService->getActualPaymentIdFromLink($linkId);
 
         return $this->completePayment($payment, $payment->method, $actualPaymentId);
     }

@@ -1,5 +1,5 @@
 @component('mail::message')
-# Welcome to Premium! 🎉
+# Welcome to Premium!
 
 Hi {{ $user->name }},
 

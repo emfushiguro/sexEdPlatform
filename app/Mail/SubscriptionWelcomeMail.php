@@ -18,7 +18,7 @@ class SubscriptionWelcomeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Welcome to Premium – Your Subscription is Active 🎉',
+            subject: 'Welcome to Premium - Your Subscription is Active',
             from: config('mail.from.address', 'noreply@sexedplatform.com')
         );
     }

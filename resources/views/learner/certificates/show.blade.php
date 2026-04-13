@@ -31,6 +31,11 @@
                             font-family: 'Poppins', 'Montserrat', 'Segoe UI', sans-serif;
                             font-weight: 500;
                             letter-spacing: 0.01em;
+                            display: -webkit-box;
+                            -webkit-line-clamp: 3;
+                            -webkit-box-orient: vertical;
+                            overflow: hidden;
+                            word-break: break-word;
                         }
 
                         .certificate-overlay-meta {
@@ -57,7 +62,7 @@
                                     {{ $certificate->learner_name }}
                                 </div>
 
-                                  <div class="absolute text-center text-slate-900 truncate certificate-overlay-module"
+                                  <div class="absolute text-center text-slate-900 certificate-overlay-module"
                                                                             style="left: 23.47%; top: 64.57%; width: 52.86%; font-size: clamp(10px, 3.20cqi, 36px); line-height: 1.1;">
                                     {{ $certificate->module_title }}
                                 </div>

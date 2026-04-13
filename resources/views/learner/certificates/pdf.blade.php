@@ -46,7 +46,10 @@
             text-align: center;
             font-size: 22pt;
             font-weight: 600;
-            margin: 10px 0 24px;
+            margin: 10px auto 24px;
+            max-width: 80%;
+            line-height: 1.25;
+            word-break: break-word;
         }
 
         .body-copy {

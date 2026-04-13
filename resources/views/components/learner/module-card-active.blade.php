@@ -39,13 +39,6 @@
             </div>
         @endif
 
-        {{-- Premium badge --}}
-        @if($module->is_premium)
-            <span class="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-amber-900">
-                PREMIUM
-            </span>
-        @endif
-
         {{-- Completed overlay --}}
         @if($isCompleted)
             <div class="absolute inset-0 bg-green-500/10 flex items-end p-2">

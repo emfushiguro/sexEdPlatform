@@ -10,6 +10,7 @@
 
 <div x-show="rejectModalOpen"
      x-cloak
+    x-effect="if (rejectModalOpen) { initModerationEditor('reject_moderation_notes') } else { destroyModerationEditor('reject_moderation_notes') }"
      class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 px-4"
      @click.self="rejectModalOpen = false">
     <div class="w-full max-w-xl rounded-2xl border border-gray-200 bg-white shadow-2xl">

@@ -1,8 +1,12 @@
 {{--
     Edit Profile Modal
     Props: $learnerProfile, $currentSubscription, $currentPlan,
-           $usernameCooldownDays, $isPremium
+           $usernameCooldownDays, $isPremium,
+           $hasUnlimitedQuizShields, $profileEntitlementHints
 --}}
+@php
+    $profileEntitlementHints = $profileEntitlementHints ?? [];
+@endphp
 <div
     x-data="editProfileModal()"
     x-show="$store.modals.editProfile"
@@ -44,6 +48,14 @@
                 <h2 class="text-base font-bold text-gray-900 dark:text-white">Edit Profile</h2>
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Manage your account settings</p>
             </div>
+            <div class="hidden sm:flex items-center gap-2 mr-3">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $isPremium ? 'text-amber-100 bg-amber-500/80' : 'text-gray-600 bg-gray-200 dark:text-gray-200 dark:bg-gray-700' }}">
+                    {{ $isPremium ? 'Premium' : 'Free' }}
+                </span>
+                @if($isPremium && $currentPlan)
+                    <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400">{{ $currentPlan->name }}</span>
+                @endif
+            </div>
             <button
                 @click="typeof $store.modals.closeEditProfile === 'function' ? $store.modals.closeEditProfile() : ($store.modals.editProfile = false)"
                 class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -61,7 +73,6 @@
                 ['key' => 'profile',      'label' => 'Profile'],
                 ['key' => 'password',     'label' => 'Password'],
                 ['key' => 'subscription', 'label' => 'Subscription'],
-                ['key' => 'danger',       'label' => 'Danger Zone'],
             ] as $tab)
             <button
                 @click="activeTab = '{{ $tab['key'] }}'"
@@ -346,11 +357,11 @@
                             <span class="text-gray-500 dark:text-gray-500 text-xs uppercase tracking-wide font-medium">Status</span>
                             <span class="font-semibold capitalize text-green-600 dark:text-green-400">{{ $currentSubscription->status }}</span>
                         </div>
-                        @if($currentSubscription->end_date)
+                        @if($currentSubscription->ends_at || $currentSubscription->end_date)
                             <div class="flex items-center justify-between py-1">
                                 <span class="text-gray-500 dark:text-gray-500 text-xs uppercase tracking-wide font-medium">Renews</span>
                                 <span class="font-semibold text-gray-700 dark:text-gray-200">
-                                    {{ \Carbon\Carbon::parse($currentSubscription->end_date)->format('M d, Y') }}
+                                    {{ ($currentSubscription->ends_at ?? $currentSubscription->end_date)?->format('M d, Y') }}
                                 </span>
                             </div>
                         @endif
@@ -370,6 +381,20 @@
                     </div>
                 @endif
 
+                @if(!empty($profileEntitlementHints))
+                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        @foreach($profileEntitlementHints as $hint)
+                            <div class="rounded-xl border px-3 py-2.5 {{ $hint['is_enabled'] ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-800 dark:bg-emerald-900/20' : 'border-gray-200 bg-white/80 dark:border-gray-700 dark:bg-gray-800/60' }}">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">{{ $hint['label'] }}</span>
+                                    <span class="text-[11px] font-bold {{ $hint['is_enabled'] ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-600 dark:text-gray-300' }}">{{ $hint['value'] }}</span>
+                                </div>
+                                <p class="mt-1 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">{{ $hint['description'] }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
             </div>
 
             <a
@@ -385,108 +410,6 @@
             </a>
 
         </div>{{-- /subscription tab --}}
-
-        {{-- ──────────────────────────────────────────────────── --}}
-        {{-- TAB: DANGER ZONE                                     --}}
-        {{-- ──────────────────────────────────────────────────── --}}
-        <div x-show="activeTab === 'danger'" x-cloak class="p-6 space-y-5">
-
-            {{-- Idle state --}}
-            <div x-show="!confirmDelete">
-                <div class="bg-red-50/60 dark:bg-red-900/10 rounded-2xl p-5 border border-red-100 dark:border-red-800/40">
-                    <div class="flex items-start gap-3 mb-4">
-                        <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-red-600 dark:text-red-400">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-semibold text-red-700 dark:text-red-400">Archive Account</h3>
-                            <p class="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5 leading-relaxed">
-                                Your account will be archived and you will be logged out. Your data is preserved — admins can restore it on request.
-                            </p>
-                        </div>
-                    </div>
-
-                    <ul class="text-xs text-red-600/70 dark:text-red-400/60 space-y-1.5 mb-4 ml-12">
-                        <li class="flex items-center gap-1.5">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                            Profile and progress will be hidden
-                        </li>
-                        <li class="flex items-center gap-1.5">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                            Active subscriptions will not be automatically refunded
-                        </li>
-                        <li class="flex items-center gap-1.5">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                            Login access will be revoked immediately
-                        </li>
-                    </ul>
-
-                    <button
-                        type="button"
-                        @click="confirmDelete = true; deleteError = null"
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                        </svg>
-                        Archive Account
-                    </button>
-                </div>
-            </div>
-
-            {{-- Confirming state --}}
-            <div x-show="confirmDelete" x-cloak>
-                <div class="bg-red-50/60 dark:bg-red-900/10 rounded-2xl p-5 border-2 border-red-300 dark:border-red-700">
-                    <p class="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Confirm archive</p>
-                    <p class="text-xs text-red-600/80 dark:text-red-400/70 mb-4">Enter your current password to confirm archiving your account.</p>
-
-                    {{-- Password error --}}
-                    <div x-show="deleteError" x-cloak
-                         class="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded-lg px-3 py-2 mb-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 flex-shrink-0">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                        </svg>
-                        <span x-text="deleteError"></span>
-                    </div>
-
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                    <input
-                        type="password"
-                        x-model="deletePassword"
-                        placeholder="Enter your password"
-                        @keydown.enter="deletePassword && archiveAccount()"
-                        class="w-full rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent transition mb-4"
-                    >
-
-                    <div class="flex items-center gap-3">
-                        <button
-                            type="button"
-                            @click="confirmDelete = false; deletePassword = ''; deleteError = null"
-                            class="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            @click="archiveAccount()"
-                            :disabled="deleteLoading || !deletePassword"
-                            class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <template x-if="deleteLoading">
-                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                </svg>
-                            </template>
-                            <span x-text="deleteLoading ? 'Archiving...' : 'Yes, archive my account'"></span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-        </div>{{-- /danger tab --}}
 
     </div>{{-- /panel --}}
 </div>{{-- /root --}}
@@ -514,12 +437,6 @@ function editProfileModal() {
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
-
-        // Danger zone
-        confirmDelete: false,
-        deletePassword: '',
-        deleteLoading: false,
-        deleteError: null,
 
         init() {
             this.bio      = this.$el.dataset.bio || '';
@@ -640,34 +557,6 @@ function editProfileModal() {
                 this.passwordErrors = { general: ['Something went wrong.'] };
             } finally {
                 this.passwordLoading = false;
-            }
-        },
-
-        async archiveAccount() {
-            this.deleteLoading = true;
-            this.deleteError   = null;
-
-            try {
-                const res  = await fetch('{{ route("profile.account.delete") }}', {
-                    method:  'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept':       'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                    },
-                    body: JSON.stringify({ password: this.deletePassword }),
-                });
-                const data = await res.json();
-
-                if (res.ok && data.success) {
-                    window.location.href = data.redirect;
-                } else {
-                    this.deleteError = data.errors?.password?.[0] ?? 'Incorrect password.';
-                }
-            } catch {
-                this.deleteError = 'Something went wrong.';
-            } finally {
-                this.deleteLoading = false;
             }
         },
     };

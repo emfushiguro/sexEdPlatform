@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ModuleRevision;
 use App\Models\User;
+use App\Notifications\Admin\NewModuleSubmissionNotification;
 use App\Notifications\InstructorModuleReviewDecisionNotification;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -34,6 +35,11 @@ class ContentGovernanceService
             $module->forceFill([
                 'current_review_status' => 'in_review',
             ])->save();
+
+            User::query()
+                ->role('admin')
+                ->get()
+                ->each(fn (User $admin) => $admin->notify(new NewModuleSubmissionNotification($reviewRequest->loadMissing('module'))));
 
             return $reviewRequest;
         });

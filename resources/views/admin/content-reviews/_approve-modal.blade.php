@@ -6,6 +6,7 @@
 
 <div x-show="approveModalOpen"
      x-cloak
+    x-effect="if (approveModalOpen) { initModerationEditor('approve_moderation_notes') } else { destroyModerationEditor('approve_moderation_notes') }"
      class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 px-4 backdrop-blur-sm"
      @click.self="approveModalOpen = false">
     <div class="w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">

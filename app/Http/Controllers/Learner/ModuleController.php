@@ -13,6 +13,7 @@ use App\Models\QuizAttempt;
 use App\Models\LessonTopicProgress;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
+use App\Notifications\Learner\ModulePurchaseResultNotification;
 use App\Services\ModulePurchaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -154,6 +155,20 @@ class ModuleController extends Controller
 
         $isPaidModule = $module->isPaidAccess();
         $modulePurchase = $this->modulePurchaseService->getCompletedPurchase($user, $module);
+
+        if ($isPaidModule && !$modulePurchase) {
+            $pendingPayment = $user->payments()
+                ->where('status', \App\Enums\PaymentStatus::Pending)
+                ->where('payment_details->payment_scope', 'module_purchase')
+                ->where('payment_details->module_id', $module->id)
+                ->latest('id')
+                ->first();
+
+            if ($pendingPayment && $this->modulePurchaseService->verifyAndCompletePendingPayment($pendingPayment)) {
+                $modulePurchase = $this->modulePurchaseService->getCompletedPurchase($user, $module);
+            }
+        }
+
         $hasPurchased = $modulePurchase !== null;
 
         $approvedEnrollmentsCount = ModuleEnrollment::query()
@@ -231,29 +246,58 @@ class ModuleController extends Controller
         $allTopicsCompleted = $topicIds->isEmpty() || $completedTopicIds->count() === $topicIds->count();
 
         $lessonQuizIds = collect($lessonQuizzes)->pluck('id')->unique();
-        $passedLessonQuizIds = QuizAttempt::where('user_id', $user->id)
-            ->whereIn('quiz_id', $lessonQuizIds)
-            ->where('passed', true)
-            ->pluck('quiz_id')
-            ->unique();
-        $allLessonQuizzesPassed = $lessonQuizIds->isEmpty() || $passedLessonQuizIds->count() === $lessonQuizIds->count();
+        $lessonQuizById = collect($lessonQuizzes)->keyBy('id');
+        $allLessonQuizzesCompleted = $lessonQuizIds->isEmpty() || $lessonQuizIds->every(function ($quizId) use ($user, $lessonQuizById) {
+            $attemptCount = QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_id', $quizId)
+                ->count();
 
-        $finalQuizPassed = true;
+            if ($attemptCount === 0) {
+                return false;
+            }
+
+            $hasPassed = QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_id', $quizId)
+                ->where('passed', true)
+                ->exists();
+
+            if ($hasPassed) {
+                return true;
+            }
+
+            $attemptLimit = $lessonQuizById->get($quizId)?->attempt_limit;
+
+            return $attemptLimit !== null && $attemptCount >= (int) $attemptLimit;
+        });
+
+        $finalQuizCompleted = true;
         if ($module->final_quiz_id) {
-            $bestFinalAttempt = QuizAttempt::where('user_id', $user->id)
+            $finalAttemptCount = QuizAttempt::where('user_id', $user->id)
                 ->where('quiz_id', $module->final_quiz_id)
-                ->orderByDesc('score')
-                ->first();
+                ->count();
 
-            $finalQuizPassed = $bestFinalAttempt && $bestFinalAttempt->score >= $module->certificate_pass_score;
+            if ($finalAttemptCount === 0) {
+                $finalQuizCompleted = false;
+            }
+
+            $hasPassedFinalQuiz = QuizAttempt::where('user_id', $user->id)
+                ->where('quiz_id', $module->final_quiz_id)
+                ->where('passed', true)
+                ->exists();
+
+            $finalQuizAttemptLimit = $moduleQuizzes
+                ->firstWhere('id', $module->final_quiz_id)?->attempt_limit;
+
+            $finalQuizCompleted = $hasPassedFinalQuiz
+                || ($finalQuizAttemptLimit !== null && $finalAttemptCount >= (int) $finalQuizAttemptLimit);
         }
 
         $certificateEligible = $isEnrolled
             && $totalLessons > 0
             && count($completedLessonIds) === $totalLessons
             && $allTopicsCompleted
-            && $allLessonQuizzesPassed
-            && $finalQuizPassed;
+            && $allLessonQuizzesCompleted
+            && $finalQuizCompleted;
 
         $shieldsRemaining = UserDailyShield::getShields($user);
 
@@ -343,8 +387,8 @@ class ModuleController extends Controller
                 'enrolled_at' => null,
             ]);
 
-            return redirect()->route('learner.modules.show', $module)
-                ->with('success', 'Enrollment request submitted! Waiting for parental approval.');
+            return redirect()->route('learner.modules.index')
+                ->with('success', 'Your enrollment request has been submitted. Please wait for parental approval.');
         }
 
         $isAtCapacity = $module->enrollment_limit !== null
@@ -360,7 +404,7 @@ class ModuleController extends Controller
                 'enrolled_at' => null,
             ]);
 
-            return redirect()->route('learner.modules.show', $module)
+            return redirect()->route('learner.modules.index')
                 ->with('success', 'Module capacity has been reached. Your enrollment is queued for manual review.');
         }
 
@@ -374,8 +418,8 @@ class ModuleController extends Controller
                 'enrolled_at' => null,
             ]);
 
-            return redirect()->route('learner.modules.show', $module)
-                ->with('success', 'Enrollment request submitted! Waiting for instructor approval.');
+            return redirect()->route('learner.modules.index')
+                ->with('success', 'Your enrollment request has been submitted. Please wait for instructor approval.');
         }
 
         // Auto approval - create approved enrollment
@@ -532,10 +576,15 @@ class ModuleController extends Controller
 
         $amount = (float) ($module->price_amount ?? 0);
 
-        return view('payments.module-create', [
+        $module->loadMissing('creator');
+
+        return view('payments.checkout-summary', [
+            'scope' => 'module_purchase',
             'module' => $module,
             'amount' => $amount,
             'paymongoMode' => $paymongoMode,
+            'submitUrl' => route('learner.modules.purchase.process', $module),
+            'backUrl' => route('learner.modules.show', $module),
         ]);
     }
 
@@ -600,11 +649,11 @@ class ModuleController extends Controller
         $checkout = $this->modulePurchaseService->createCheckout(
             $user,
             $module,
-            (string) $request->string('payment_method'),
+            (string) ($request->input('payment_method') ?: 'paymongo'),
             [
-                'name' => (string) $request->string('billing_name'),
-                'email' => (string) $request->string('billing_email'),
-                'phone' => (string) $request->string('billing_phone'),
+                'name' => (string) ($request->input('billing_name') ?: $user->name),
+                'email' => (string) ($request->input('billing_email') ?: ($user->email ?? '')),
+                'phone' => (string) ($request->input('billing_phone') ?: ''),
             ]
         );
 
@@ -640,6 +689,10 @@ class ModuleController extends Controller
 
         $completed = $this->modulePurchaseService->verifyAndCompletePendingPayment($payment);
 
+        if ($completed) {
+            $user->notify(new ModulePurchaseResultNotification($module, 'success'));
+        }
+
         return redirect()->route('learner.modules.show', $module)
             ->with($completed ? 'success' : 'info', $completed
                 ? 'Payment confirmed. You now have access to this module.'
@@ -648,8 +701,56 @@ class ModuleController extends Controller
 
     public function purchaseFailed(Module $module)
     {
-        return redirect()->route('learner.modules.show', $module)
-            ->with('error', 'Payment was cancelled or failed. Please try again.');
+        Auth::user()->notify(new ModulePurchaseResultNotification($module, 'failed'));
+
+        return redirect()->route('learner.modules.purchase.form', $module)
+            ->with('error', 'Payment was cancelled or failed. Review your details and try again.');
+    }
+
+    /**
+     * Show post-final-quiz completion page for an enrolled learner.
+     */
+    public function completion(Module $module)
+    {
+        $user = Auth::user();
+
+        if (!$user->learnerProfile) {
+            return redirect()->route('profile.complete')
+                ->with('error', 'Please complete your profile to access modules.');
+        }
+
+        $enrollment = $user->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->first();
+
+        if (!$enrollment || $enrollment->status !== EnrollmentStatus::Approved) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'You must be enrolled in this module to view completion details.');
+        }
+
+        if (!$module->final_quiz_id) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'This module does not have a final quiz completion flow.');
+        }
+
+        $hasPassedFinalQuiz = QuizAttempt::where('user_id', $user->id)
+            ->where('quiz_id', $module->final_quiz_id)
+            ->where('passed', true)
+            ->exists();
+
+        if (!$hasPassedFinalQuiz) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'Pass the final quiz first to unlock module completion.');
+        }
+
+        $module->loadMissing('publishedRevision');
+        $module->applyPublishedSnapshot();
+
+        $certificate = $user->certificates()
+            ->where('module_id', $module->id)
+            ->first();
+
+        return view('learner.modules.completion', compact('module', 'certificate'));
     }
 
     /**

@@ -24,8 +24,8 @@
             'plan' => $planName,
             'billing' => $billingLabel,
             'price_paid' => (float) ($subscription->price_paid ?? 0),
-            'started_at' => optional($subscription->start_date)->format('M d, Y h:i A') ?? 'Not started',
-            'expires_at' => optional($subscription->end_date)->format('M d, Y h:i A') ?? 'No expiry',
+            'started_at' => $subscription->display_started_at ?? 'Not started',
+            'expires_at' => $subscription->display_expires_at ?? 'No expiry',
             'details_url' => route('admin.subscribers.show', $subscription),
             'search_blob' => strtolower(implode(' ', array_filter([
                 $subscription->id,
@@ -34,8 +34,8 @@
                 $status,
                 $planName,
                 $billingLabel,
-                optional($subscription->start_date)->format('Y-m-d H:i'),
-                optional($subscription->end_date)->format('Y-m-d H:i'),
+                $subscription->display_started_at_search,
+                $subscription->display_expires_at_search,
             ]))),
         ];
     })->values();
@@ -97,7 +97,7 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">Revenue</p>
                         <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatCurrency(stats.total_revenue)"></p>
-                        <p class="mt-2 text-sm text-gray-500">Total active subscription value currently on record.</p>
+                        <p class="mt-2 text-sm text-gray-500">Lifetime completed subscription payments recorded.</p>
                     </div>
                     <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

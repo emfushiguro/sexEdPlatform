@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') | Instructor Panel</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" sizes="any">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -38,6 +39,9 @@
                 toggleMobileOpen() {
                     this.isMobileOpen = !this.isMobileOpen;
                 },
+                setMobileOpen(val) {
+                    this.isMobileOpen = val;
+                },
                 setHovered(val) {
                     if (window.innerWidth >= 1280 && !this.isExpanded) {
                         this.isHovered = val;
@@ -52,7 +56,7 @@
 </head>
 
 <body
-    class="font-[Poppins] antialiased bg-gray-50 h-full"
+    class="font-[Poppins] antialiased bg-gray-50 h-full instructor-theme-brand"
     x-data="instructorSidebar"
     x-init="
         $store.instructorSidebar.isExpanded = window.innerWidth >= 1280;
@@ -75,7 +79,7 @@
         <div
             x-show="$store.instructorSidebar.isMobileOpen"
             x-cloak
-            @click="$store.instructorSidebar.toggleMobileOpen()"
+            @click="$store.instructorSidebar.setMobileOpen(false)"
             x-transition:enter="transition-opacity ease-out duration-200"
             x-transition:enter-start="opacity-0"
             x-transition:enter-end="opacity-100"
@@ -90,11 +94,10 @@
         ══════════════════════════════════════ --}}
         <aside
             id="instructor-sidebar"
-            class="fixed top-0 left-0 h-screen z-[99999] flex flex-col transition-all duration-300 ease-in-out border-r border-purple-900/30"
-            style="background: linear-gradient(180deg, #A30EB2 0%, #730DB1 50%, #3B0CB1 100%);"
+            class="fixed top-0 left-0 h-screen z-[99999] flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out"
             :class="{
                 'w-[280px]': $store.instructorSidebar.isExpanded || $store.instructorSidebar.isMobileOpen || $store.instructorSidebar.isHovered,
-                'w-[72px]': !$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isMobileOpen && !$store.instructorSidebar.isHovered,
+                'w-[84px]': !$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isMobileOpen && !$store.instructorSidebar.isHovered,
                 'translate-x-0': $store.instructorSidebar.isMobileOpen,
                 '-translate-x-full xl:translate-x-0': !$store.instructorSidebar.isMobileOpen,
             }"
@@ -103,18 +106,24 @@
         >
             {{-- Logo --}}
             <div
-                class="flex items-center gap-3 px-4 py-6 border-b border-white/10"
+                class="flex items-center px-5 py-5 border-b border-gray-100 overflow-hidden"
                 :class="(!$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isHovered && !$store.instructorSidebar.isMobileOpen) ? 'justify-center' : 'justify-start'"
             >
-                <img src="/media/Logo.png" alt="Logo" class="w-9 h-9 flex-shrink-0 rounded-lg object-contain">
-                <div
-                    x-show="$store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered || $store.instructorSidebar.isMobileOpen"
-                    x-cloak
-                    class="overflow-hidden"
-                >
-                    <p class="text-white font-bold text-sm leading-tight whitespace-nowrap">Conscious Connections</p>
-                    <p class="text-purple-200 text-[10px] tracking-widest uppercase mt-0.5">Instructor Panel</p>
-                </div>
+                <a href="{{ route('instructor.dashboard') }}" class="flex items-center gap-3 min-w-0">
+                    <img
+                        src="/media/Logo.png"
+                        alt="Conscious Connections"
+                        class="w-10 h-10 flex-shrink-0 rounded-lg object-contain"
+                    >
+                    <div
+                        x-show="$store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered || $store.instructorSidebar.isMobileOpen"
+                        x-cloak
+                        class="overflow-hidden"
+                    >
+                        <p class="text-lg font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-brand-700 to-brand-500 leading-tight whitespace-nowrap">Conscious <br> Connections</p>
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-600 mt-1">Instructor Panel</p>
+                    </div>
+                </a>
             </div>
 
             {{-- Nav --}}
@@ -160,18 +169,18 @@
                     <p
                         x-show="$store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered || $store.instructorSidebar.isMobileOpen"
                         x-cloak
-                        class="px-3 mb-2 text-[10px] font-semibold tracking-widest text-purple-200 uppercase"
+                        class="px-3 mb-2 text-[10px] font-semibold tracking-[0.16em] text-gray-400 uppercase"
                     >{{ $group['label'] }}</p>
                     <ul class="space-y-1">
                         @foreach($group['items'] as $item)
                         <li>
                             <a
                                 href="{{ route($item['route']) }}"
-                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-white {{ $item['active'] ? 'bg-white/20' : 'hover:bg-white/10' }}"
+                                class="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden whitespace-nowrap {{ $item['active'] ? 'text-white shadow-sm bg-gradient-to-r from-brand-500 via-brand-700 to-brand-900' : 'text-gray-600 hover:bg-brand-50 hover:text-brand-700' }}"
                                 :class="(!$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isHovered && !$store.instructorSidebar.isMobileOpen) ? 'justify-center' : ''"
                             >
                                 {{-- Icon --}}
-                                <span class="flex-shrink-0 instructor-icon-readable">
+                                <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ $item['active'] ? 'text-white' : 'text-gray-500 group-hover:text-brand-600' }}">
                                     @if($item['icon'] === 'grid')
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -221,9 +230,9 @@
                                     x-cloak
                                     class="flex items-center justify-between flex-1 min-w-0"
                                 >
-                                    <span class="text-sm font-medium truncate">{{ $item['label'] }}</span>
+                                    <span class="truncate">{{ $item['label'] }}</span>
                                     @if($item['badge'] > 0)
-                                    <span class="ml-2 flex-shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">{{ $item['badge'] }}</span>
+                                    <span class="ml-2 flex-shrink-0 inline-flex items-center justify-center min-w-5 h-5 rounded-full bg-amber-100 text-amber-700 px-1.5 text-[10px] font-bold">{{ $item['badge'] }}</span>
                                     @endif
                                 </span>
                             </a>
@@ -236,14 +245,13 @@
             </nav>
 
             {{-- Bottom — Instructor profile + logout --}}
-            <div class="border-t border-white/10 p-4">
+            <div class="border-t border-gray-100 p-3 space-y-1">
                 <div
-                    class="flex items-center gap-3"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
                     :class="(!$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isHovered && !$store.instructorSidebar.isMobileOpen) ? 'justify-center' : ''"
                 >
                     {{-- Avatar --}}
-                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                         style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 bg-gradient-to-r from-brand-500 to-brand-900">
                         {{ strtoupper(mb_substr(Auth::user()->first_name ?? Auth::user()->name, 0, 1)) }}
                     </div>
 
@@ -253,17 +261,17 @@
                         x-cloak
                         class="flex-1 min-w-0"
                     >
-                        <p class="text-white text-xs font-semibold truncate">{{ Auth::user()->first_name ?? Auth::user()->name }}</p>
-                        <p class="text-purple-200 text-[10px] truncate">Instructor</p>
+                        <p class="text-xs font-semibold text-gray-900 truncate">{{ Auth::user()->first_name ?? Auth::user()->name }}</p>
+                        <p class="text-[10px] text-brand-600 truncate uppercase tracking-wider">Instructor</p>
                     </div>
                     <form
                         method="POST"
-                        action="{{ route('logout') }}"
+                        action="{{ route('instructor.logout') }}"
                         x-show="$store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered || $store.instructorSidebar.isMobileOpen"
                         x-cloak
                     >
                         @csrf
-                        <button type="submit" class="text-purple-200 hover:text-white transition-colors" title="Logout">
+                        <button type="submit" class="text-gray-400 hover:text-red-500 transition-colors" title="Logout">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                             </svg>
@@ -280,7 +288,7 @@
             class="flex-1 flex flex-col transition-all duration-300 ease-in-out"
             :class="{
                 'xl:ml-[280px]': $store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered,
-                'xl:ml-[72px]': !$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isHovered,
+                'xl:ml-[84px]': !$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isHovered,
             }"
         >
             {{-- ── HEADER ── --}}
@@ -330,5 +338,6 @@
     </script>
     @endif
 
+    @include('chat.partials.global-popup')
 </body>
 </html>

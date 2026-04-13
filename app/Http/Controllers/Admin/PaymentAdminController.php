@@ -14,7 +14,14 @@ class PaymentAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Payment::with(['user', 'subscription']);
+        $query = Payment::with([
+            'user.learnerProfile',
+            'subscription.plan',
+            'modulePurchase.module.creator',
+            'moduleSaleLedger.module.creator',
+            'moduleSaleLedger.instructor',
+            'moduleSaleLedger.learner',
+        ]);
 
         $payments = $query->latest()->get();
         
@@ -25,6 +32,8 @@ class PaymentAdminController extends Controller
             'pending' => Payment::where('status', PaymentStatus::Pending)->count(),
             'processing' => Payment::where('status', PaymentStatus::Processing)->count(),
             'failed' => Payment::where('status', PaymentStatus::Failed)->count(),
+            'module_purchase' => Payment::query()->where('payment_details->payment_scope', 'module_purchase')->count(),
+            'subscription_payment' => Payment::query()->where('payment_details->payment_scope', 'subscription')->count(),
         ];
         
         return view('admin.payments.index', compact('payments', 'stats'));
@@ -39,6 +48,10 @@ class PaymentAdminController extends Controller
             'user.gamification',
             'subscription.plan',
             'subscription.planPrice',
+            'modulePurchase.module.creator',
+            'moduleSaleLedger.module.creator',
+            'moduleSaleLedger.instructor',
+            'moduleSaleLedger.learner',
             'refunds',
             'invoice',
         ]);

@@ -19,6 +19,10 @@ class ChatRealtimeUiContractTest extends TestCase
         $contents = File::get(resource_path('js/app.js'));
 
         $this->assertStringContainsString("./chat/store", $contents);
+
+        $echoContents = File::get(resource_path('js/echo.js'));
+        $this->assertStringContainsString('.chat.message.updated', $echoContents);
+        $this->assertStringNotContainsString('.chat.message.reaction.updated', $echoContents);
     }
 
     public function test_chat_conversations_api_shape_matches_frontend_contract(): void
@@ -97,14 +101,19 @@ class ChatRealtimeUiContractTest extends TestCase
         $this->assertArrayHasKey('conversation_id', $sentPayload);
         $this->assertArrayHasKey('sender_id', $sentPayload);
         $this->assertArrayHasKey('message_body', $sentPayload);
+        $this->assertArrayHasKey('attachments', $sentPayload);
+        $this->assertArrayHasKey('is_deleted', $sentPayload);
 
         $this->assertArrayHasKey('id', $createdPayload);
         $this->assertArrayHasKey('requester_id', $createdPayload);
         $this->assertArrayHasKey('instructor_id', $createdPayload);
         $this->assertArrayHasKey('status', $createdPayload);
+        $this->assertArrayHasKey('conversation_id', $createdPayload);
 
         $this->assertArrayHasKey('id', $resolvedPayload);
         $this->assertArrayHasKey('status', $resolvedPayload);
+        $this->assertArrayHasKey('conversation_id', $resolvedPayload);
+        $this->assertArrayHasKey('conversation_status', $resolvedPayload);
         $this->assertArrayHasKey('accepted_conversation_id', $resolvedPayload);
     }
 }

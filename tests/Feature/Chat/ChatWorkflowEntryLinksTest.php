@@ -12,10 +12,15 @@ class ChatWorkflowEntryLinksTest extends TestCase
         $moduleShow = File::get(resource_path('views/learner/modules/show.blade.php'));
         $lessonShow = File::get(resource_path('views/learner/lessons/show.blade.php'));
         $quizPage = File::get(resource_path('views/learner/lessons/partials/quiz-page.blade.php'));
+        $topicPage = File::get(resource_path('views/learner/lessons/partials/topic-page.blade.php'));
 
-        $this->assertStringContainsString("'conversation_type' => 'module_chat'", $moduleShow);
-        $this->assertStringContainsString("'conversation_type' => 'lesson_chat'", $lessonShow);
-        $this->assertStringContainsString("'conversation_type' => 'quiz_help'", $quizPage);
+        $this->assertStringContainsString("conversation_type: 'module_chat'", $moduleShow);
+        $this->assertStringContainsString("conversation_type: 'lesson_chat'", $lessonShow);
+        $this->assertStringContainsString("conversation_type: 'lesson_topic_chat'", $topicPage);
+        $this->assertStringContainsString("conversation_type: 'quiz_help'", $quizPage);
+        $this->assertStringContainsString("target_user_id: {{ \$module->created_by }}", $lessonShow);
+        $this->assertStringContainsString("target_user_id: {{ \$module->created_by }}", $topicPage);
+        $this->assertStringContainsString("target_user_id: {{ \$module->created_by }}", $quizPage);
     }
 
     public function test_instructor_learner_management_page_contains_direct_chat_action(): void
@@ -34,3 +39,5 @@ class ChatWorkflowEntryLinksTest extends TestCase
         $this->assertStringContainsString("conversation_type: 'admin_support_chat'", $conversationList);
     }
 }
+
+

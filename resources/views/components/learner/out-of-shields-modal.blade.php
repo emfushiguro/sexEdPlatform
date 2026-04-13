@@ -4,8 +4,23 @@
 --}}
 @props(['score' => 0])
 
+@php
+    use App\Models\UserDailyShield;
+    use App\Services\EntitlementService;
+    use App\Support\SubscriptionFeatureKeys;
+
+    $modalUser = auth()->user();
+    $hasUnlimitedShields = $modalUser
+        ? app(EntitlementService::class)->canAccessFeature($modalUser, SubscriptionFeatureKeys::UNLIMITED_SHIELDS)
+        : false;
+    $shieldsRemaining = $hasUnlimitedShields || !$modalUser
+        ? null
+        : UserDailyShield::getShields($modalUser);
+    $isOutOfShields = !$hasUnlimitedShields && (int) ($shieldsRemaining ?? 0) <= 0;
+@endphp
+
 <div
-    x-data="{ open: {{ session('out_of_shields') ? 'true' : 'false' }} }"
+    x-data="{ open: {{ (session('out_of_shields') && $isOutOfShields) ? 'true' : 'false' }} }"
     x-on:open-shields-modal.window="open = true"
     x-show="open"
     x-cloak
@@ -43,16 +58,35 @@
                 </svg>
             </button>
             <x-icons.shield state="broken" :size="48" />
-            <h2 id="shields-modal-title" class="mt-3 text-xl font-bold text-white">Out of Shields!</h2>
-            <p class="mt-1 text-sm text-white/80">You've used all your quiz shields for today.</p>
+            @if($hasUnlimitedShields)
+                <h2 id="shields-modal-title" class="mt-3 text-xl font-bold text-white">Unlimited Shields Active</h2>
+                <p class="mt-1 text-sm text-white/80">Your premium entitlement gives you unlimited quiz shields.</p>
+            @elseif($isOutOfShields)
+                <h2 id="shields-modal-title" class="mt-3 text-xl font-bold text-white">Out of Shields!</h2>
+                <p class="mt-1 text-sm text-white/80">You've used all your quiz shields for today.</p>
+            @else
+                <h2 id="shields-modal-title" class="mt-3 text-xl font-bold text-white">Shields Available</h2>
+                <p class="mt-1 text-sm text-white/80">You have {{ $shieldsRemaining }} shield{{ (int) $shieldsRemaining === 1 ? '' : 's' }} remaining.</p>
+            @endif
         </div>
 
         {{-- Body --}}
         <div class="p-6">
-            <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-5">
-                Spend points to refill your shields and keep going, or come back tomorrow when they reset.
-            </p>
+            @if($hasUnlimitedShields)
+                <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-5">
+                    You're all set. Keep learning and retry quizzes anytime.
+                </p>
+            @elseif(!$isOutOfShields)
+                <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-5">
+                    You still have shields available for quiz retries today.
+                </p>
+            @else
+                <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-5">
+                    Spend points to refill your shields and keep going, or come back tomorrow when they reset.
+                </p>
+            @endif
 
+            @if($isOutOfShields)
             <div class="grid grid-cols-2 gap-4">
                 {{-- +1 Shield --}}
                 <form method="POST" action="{{ route('learner.shields.refill') }}">
@@ -94,6 +128,7 @@
                     </button>
                 </form>
             </div>
+            @endif
 
             <p class="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
                 Your current balance: <strong class="text-gray-700 dark:text-gray-300">⭐ {{ $score ?? 0 }} pts</strong>

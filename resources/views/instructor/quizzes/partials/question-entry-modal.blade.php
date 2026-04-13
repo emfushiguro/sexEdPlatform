@@ -95,8 +95,8 @@
                         [
                             'slug'  => 'multiple_choice',
                             'label' => 'Multiple Choice',
-                            'bg'    => 'bg-blue-50',
-                            'icon'  => 'text-blue-600',
+                            'bg'    => 'bg-brand-50',
+                            'icon'  => 'text-brand-600',
                             'desc'  => 'Learner picks ONE correct answer from A–D options. Classic single-select format.',
                             'path'  => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
                         ],
@@ -172,8 +172,8 @@
                 {{-- Step 1: Download Template --}}
                 <div class="rounded-2xl border border-gray-100 bg-white p-5">
                     <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center">
-                            <span class="text-xs font-bold text-blue-700">1</span>
+                        <div class="flex-shrink-0 w-8 h-8 bg-brand-100 rounded-xl flex items-center justify-center">
+                            <span class="text-xs font-bold text-brand-700">1</span>
                         </div>
                         <div class="flex-1">
                             <p class="text-sm font-semibold text-gray-900">Download the Template</p>

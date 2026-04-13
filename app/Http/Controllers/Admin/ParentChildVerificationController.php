@@ -102,7 +102,6 @@ class ParentChildVerificationController extends Controller
         $reason = $this->composeRejectionReason(
             (string) $request->string('reason_code'),
             $request->filled('custom_reason') ? (string) $request->string('custom_reason') : null,
-            $request->boolean('issue_warning')
         );
 
         $this->service->rejectParent($user, $reason);
@@ -142,7 +141,6 @@ class ParentChildVerificationController extends Controller
         $reason = $this->composeRejectionReason(
             (string) $request->string('reason_code'),
             $request->filled('custom_reason') ? (string) $request->string('custom_reason') : null,
-            $request->boolean('issue_warning')
         );
 
         $this->service->rejectChild($parentChildAccount, $reason);
@@ -156,21 +154,38 @@ class ParentChildVerificationController extends Controller
         );
     }
 
-    private function composeRejectionReason(string $reasonCode, ?string $customReason = null, bool $issueWarning = false): string
+    private function composeRejectionReason(string $reasonCode, ?string $customReason = null): string
     {
         $reason = ParentChildModerationReason::tryFrom($reasonCode);
 
         $baseReason = $reason?->label() ?? str($reasonCode)->replace('_', ' ')->title()->toString();
 
         if ($reason === ParentChildModerationReason::Others && trim((string) $customReason) !== '') {
-            $baseReason = trim((string) $customReason);
+            $sanitizedCustomReason = $this->sanitizeReasonHtml((string) $customReason);
+
+            if ($this->hasMeaningfulReasonText($sanitizedCustomReason)) {
+                $baseReason = $sanitizedCustomReason;
+            }
         }
 
-        if (! $issueWarning) {
-            return $baseReason;
-        }
+        return $baseReason;
+    }
 
-        return $baseReason."\n\nAdministrative warning issued to account holder.";
+    private function sanitizeReasonHtml(string $reason): string
+    {
+        $decoded = html_entity_decode($reason, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $normalizedSpacing = str_replace("\xC2\xA0", ' ', $decoded);
+        $allowedTags = '<p><br><strong><b><em><i><u><ul><ol><li><a>';
+        $sanitized = strip_tags($normalizedSpacing, $allowedTags);
+
+        return trim((string) $sanitized);
+    }
+
+    private function hasMeaningfulReasonText(string $reasonHtml): bool
+    {
+        $plainText = trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($reasonHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+
+        return $plainText !== '';
     }
 
     private function parentApplications()

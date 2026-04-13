@@ -7,12 +7,14 @@ use App\Http\Requests\CancelSubscriptionRequest;
 use App\Http\Requests\SubscribeRequest;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\User;
 use App\Services\PayMongoPaymentLinkService;
 use App\Services\RefundService;
 use App\Services\SubscriptionService;
 use App\Services\EntitlementService;
 use App\Enums\PaymentStatus;
 use App\Enums\SubscriptionStatus;
+use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +32,9 @@ class SubscriptionController extends Controller
      */
     public function index()
     {
+        /** @var User $user */
         $user = Auth::user();
+        $this->subscriptionService->reconcileLifecycleForUser($user);
 
         // Check for any pending subscription and try to verify payment with PayMongo API.
         // This handles the case where the user paid but the success redirect never fired
@@ -44,33 +48,39 @@ class SubscriptionController extends Controller
         if ($pendingSubscription) {
             // First check: payment already completed in DB (e.g. by observer)
             $completedPayment = $pendingSubscription->payments()
-                ->where('status', PaymentStatus::Completed)
+                ->where('status', PaymentStatus::Completed->value)
                 ->first();
 
             if ($completedPayment) {
                 try {
                     $this->subscriptionService->activate($pendingSubscription);
-                    session()->flash('success', 'Your subscription has been activated! Welcome to premium! 🎉');
+                    session()->flash('success', 'Your subscription has been activated. Welcome to premium access.');
                 } catch (\Exception $e) {
                     Log::warning('Auto-activation failed', ['error' => $e->getMessage()]);
                 }
             } else {
                 // Second check: ask PayMongo API directly if the link was paid
                 $pendingPayment = $pendingSubscription->payments()
-                    ->where('status', PaymentStatus::Pending)
+                    ->where('status', PaymentStatus::Pending->value)
                     ->whereNotNull('payment_details')
                     ->latest()
                     ->first();
 
                 if ($pendingPayment) {
                     try {
-                        $linkId = $pendingPayment->payment_details['paymongo_link_id'] ?? null;
-                        if ($linkId) {
-                            $paymongoService = app(PayMongoPaymentLinkService::class);
-                            $response = $paymongoService->retrievePaymentLink($linkId);
-                            $status = $response['data']['attributes']['status'] ?? null;
+                        $sessionId = (string) data_get($pendingPayment->payment_details, 'paymongo_checkout_session_id', '');
+                        $linkId = (string) data_get($pendingPayment->payment_details, 'paymongo_link_id', '');
 
-                            if ($status === 'paid') {
+                        if ($sessionId !== '' || $linkId !== '') {
+                            $paymongoService = app(PayMongoPaymentLinkService::class);
+                            $response = $sessionId !== ''
+                                ? $paymongoService->retrieveCheckoutSession($sessionId)
+                                : $paymongoService->retrievePaymentLink($linkId);
+
+                            $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
+                            $hasPayments = !empty(data_get($response, 'data.attributes.payments', []));
+
+                            if ($status === 'paid' || $status === 'completed' || $hasPayments) {
                                 DB::transaction(function () use ($pendingPayment, $pendingSubscription) {
                                     $pendingPayment->update([
                                         'status'  => PaymentStatus::Completed,
@@ -82,7 +92,7 @@ class SubscriptionController extends Controller
                                     ]);
                                     $this->subscriptionService->activate($pendingSubscription);
                                 });
-                                session()->flash('success', 'Your subscription has been activated! Welcome to premium! 🎉');
+                                session()->flash('success', 'Your subscription has been activated. Welcome to premium access.');
                             }
                         }
                     } catch (\Exception $e) {
@@ -93,18 +103,23 @@ class SubscriptionController extends Controller
             }
         }
 
-        $subscription = $user->subscription;
-        if ($subscription) {
-            $subscription->load('plan');
+        $latestSubscription = $user->subscriptions()->latest('id')->first();
+        if ($latestSubscription) {
+            $latestSubscription->load('plan');
         }
+
+        $subscription = $latestSubscription;
+        $activeSubscription = $subscription && $subscription->status === SubscriptionStatus::Active
+            ? $subscription
+            : null;
 
         // Compute refund eligibility in the controller — keeps Blade free of DB queries.
         $canRequestRefund  = false;
         $latestPaidPayment = null;
-        if ($subscription && $subscription->status === SubscriptionStatus::Active) {
+        if ($activeSubscription) {
             $refundWindowDays  = config('billing.subscription.refund_window_days', 3);
-            $latestPaidPayment = $subscription->payments()
-                ->where('status', PaymentStatus::Completed)
+            $latestPaidPayment = $activeSubscription->payments()
+                ->where('status', PaymentStatus::Completed->value)
                 ->whereNotNull('paid_at')
                 ->latest('paid_at')
                 ->first();
@@ -120,11 +135,14 @@ class SubscriptionController extends Controller
                 $q->where('is_active', true)
                     ->orderByDesc('is_default')
                     ->orderBy('duration_count');
-            }])
+            }, 'featureEntitlements.feature'])
             ->get();
 
-        $planCards = $this->buildPlanCards($availablePlans, $subscription);
+        $planCards = $this->buildPlanCards($availablePlans, $activeSubscription);
+        $planCards = $this->prependFreeBaselineCard($planCards, $activeSubscription);
         $comparisonFeatures = $this->buildComparisonFeatures($planCards);
+        $entitlementHighlights = $this->buildEntitlementHighlights($user);
+        $renewalNotice = $this->buildRenewalNotice($latestSubscription);
 
         return view('subscriptions.index', compact(
             'subscription',
@@ -132,7 +150,9 @@ class SubscriptionController extends Controller
             'latestPaidPayment',
             'subscriptionSummary',
             'planCards',
-            'comparisonFeatures'
+            'comparisonFeatures',
+            'entitlementHighlights',
+            'renewalNotice'
         ));
     }
 
@@ -141,6 +161,7 @@ class SubscriptionController extends Controller
      */
     public function upgrade()
     {
+        /** @var User $user */
         $user = Auth::user();
 
         // Allow all authenticated users to browse plans (for comparison/awareness).
@@ -149,7 +170,7 @@ class SubscriptionController extends Controller
         $currentSubscription = $user->subscription;
         $availablePlans      = SubscriptionPlan::active()->ordered()->with(['planPrices' => function ($q) {
             $q->where('is_active', true)->orderByDesc('is_default')->orderBy('duration_count');
-        }])->get();
+        }, 'featureEntitlements.feature'])->get();
         $currentPlanId       = $currentSubscription?->plan_id;
         $hasActiveSubscription = $currentSubscription && $currentSubscription->status === SubscriptionStatus::Active;
 
@@ -166,9 +187,10 @@ class SubscriptionController extends Controller
      */
     public function processUpgrade(SubscribeRequest $request)
     {
+        /** @var User $user */
         $user = Auth::user();
 
-        if ($user->isPremium()) {
+        if ($this->subscriptionService->isUserPremium($user)) {
             return redirect()->route('subscription.index')
                 ->with('error', 'You already have an active premium subscription.');
         }
@@ -190,9 +212,10 @@ class SubscriptionController extends Controller
      */
     public function subscribe(SubscribeRequest $request)
     {
+        /** @var User $user */
         $user = Auth::user();
 
-        if ($user->isPremium()) {
+        if ($this->subscriptionService->isUserPremium($user)) {
             return redirect()->route('subscription.index')
                 ->with('error', 'You already have an active premium subscription. Cancel first to switch plans.');
         }
@@ -214,9 +237,10 @@ class SubscriptionController extends Controller
      */
     public function subscribeMonthly(PayMongoPaymentLinkService $paymongoService)
     {
+        /** @var User $user */
         $user = Auth::user();
 
-        if ($user->isPremium()) {
+        if ($this->subscriptionService->isUserPremium($user)) {
             return redirect()->route('subscription.index')
                 ->with('error', 'You already have an active premium subscription.');
         }
@@ -248,6 +272,7 @@ class SubscriptionController extends Controller
      */
     public function cancel(CancelSubscriptionRequest $request)
     {
+        /** @var User $user */
         $user         = Auth::user();
         $subscription = $user->subscription;
 
@@ -268,6 +293,7 @@ class SubscriptionController extends Controller
 
     public function requestRefund(Request $request)
     {
+        /** @var User $user */
         $user         = Auth::user();
         $subscription = $user->subscription;
 
@@ -275,7 +301,7 @@ class SubscriptionController extends Controller
             return redirect()->back()->with('error', 'No active subscription to refund.');
         }
 
-        $payment = $subscription->payments()->where('status', PaymentStatus::Completed)->latest('paid_at')->first();
+        $payment = $subscription->payments()->where('status', PaymentStatus::Completed->value)->latest('paid_at')->first();
 
         if (!$payment || !$payment->paid_at) {
             return redirect()->back()->with('error', 'No completed payment found for this subscription.');
@@ -309,12 +335,13 @@ class SubscriptionController extends Controller
 
     public function renew()
     {
+        /** @var User $user */
         $user         = Auth::user();
-        $subscription = $user->subscription;
+        $subscription = $user->subscriptions()->latest('id')->first();
 
-        if (!$subscription || !$subscription->canRenew()) {
+        if (!$subscription || !$this->subscriptionService->isRenewableNow($subscription)) {
             return redirect()->route('subscription.index')
-                ->with('error', 'No cancelled subscription to renew.');
+                ->with('error', 'Your current subscription is not yet eligible for renewal.');
         }
 
         try {
@@ -327,11 +354,44 @@ class SubscriptionController extends Controller
             ->with('success', 'Your subscription has been renewed successfully!');
     }
 
+    private function buildRenewalNotice(?Subscription $subscription): ?array
+    {
+        if (!$subscription) {
+            return null;
+        }
+
+        $status = $this->subscriptionService->getRenewalStatus($subscription);
+        if (!(bool) ($status['is_renewable_now'] ?? false)) {
+            return null;
+        }
+
+        $effectiveEnd = $status['effective_end_at'] ?? null;
+
+        if ($status['is_expired']) {
+            return [
+                'tone' => 'expired',
+                'title' => 'Your premium access has expired',
+                'message' => 'Renew now to restore premium access immediately.',
+                'ends_at' => $effectiveEnd,
+            ];
+        }
+
+        return [
+            'tone' => 'expiring',
+            'title' => 'Your premium access is expiring soon',
+            'message' => 'Renew early to keep your remaining paid time and extend your access.',
+            'ends_at' => $effectiveEnd,
+            'days_remaining' => $status['days_remaining'] ?? null,
+            'warning_days' => $status['warning_days'] ?? null,
+        ];
+    }
+
     /**
      * Check subscription status (API endpoint)
      */
     public function checkStatus()
     {
+        /** @var User $user */
         $user = Auth::user();
         $subscription = $user->subscription;
 
@@ -341,7 +401,7 @@ class SubscriptionController extends Controller
             'plan' => $subscription?->plan,
             'plan_name' => $subscription?->getPlanLabel(),
             'status' => $subscription?->status,
-            'end_date' => $subscription?->end_date,
+            'end_date' => $subscription?->ends_at ?? $subscription?->end_date,
             'days_remaining' => $subscription?->daysUntilExpiry(),
         ]);
     }
@@ -379,7 +439,15 @@ class SubscriptionController extends Controller
             $defaultPrice = collect($prices)->firstWhere('is_default', true)
                 ?? (count($prices) > 0 ? $prices[0] : null);
 
-            $featureLabels = $this->flattenFeatureLabels((array) ($plan->features ?? []), $labelMap, $hiddenKeys);
+            $featureLabels = $this->extractEntitlementFeatureLabels($plan, $labelMap, $hiddenKeys);
+
+            if (empty($featureLabels)) {
+                $featureLabels = $this->flattenFeatureLabels((array) ($plan->features ?? []), $labelMap, $hiddenKeys);
+            }
+
+            if ($plan->isFree()) {
+                $featureLabels = $this->defaultFreePlanFeatureLabels();
+            }
 
             $isEligible = true;
             $ineligibleReason = null;
@@ -415,6 +483,7 @@ class SubscriptionController extends Controller
                 'default_price' => $defaultPrice,
                 'feature_labels' => $featureLabels,
                 'feature_keys' => array_keys($featureLabels),
+                'is_baseline' => false,
             ];
         })->values();
 
@@ -425,6 +494,97 @@ class SubscriptionController extends Controller
             $card['is_recommended'] = $recommendedPlanId !== null && $card['id'] === $recommendedPlanId;
             return $card;
         })->all();
+    }
+
+    private function prependFreeBaselineCard(array $planCards, ?Subscription $currentSubscription): array
+    {
+        $hasFreePlan = collect($planCards)->contains(fn ($card) => (bool) ($card['is_free'] ?? false));
+
+        if ($hasFreePlan) {
+            return $planCards;
+        }
+
+        $hasPremiumSubscription = $currentSubscription && $currentSubscription->status === SubscriptionStatus::Active;
+
+        $freeFeatureLabels = $this->defaultFreePlanFeatureLabels();
+
+        $baselineCard = [
+            'id' => -1,
+            'name' => 'Free Plan',
+            'slug' => 'free-baseline',
+            'description' => 'Baseline learner access available to all accounts with no checkout required.',
+            'is_free' => true,
+            'is_current' => !$hasPremiumSubscription,
+            'is_eligible' => false,
+            'ineligible_reason' => !$hasPremiumSubscription ? 'Current baseline access' : 'Premium plan currently active',
+            'prices' => [],
+            'default_price' => null,
+            'feature_labels' => $freeFeatureLabels,
+            'feature_keys' => array_keys($freeFeatureLabels),
+            'is_recommended' => false,
+            'is_baseline' => true,
+        ];
+
+        return array_values(array_merge([$baselineCard], $planCards));
+    }
+
+    private function defaultFreePlanFeatureLabels(): array
+    {
+        return [
+            'free_core_learning' => 'Access to core age-appropriate learning modules',
+            'free_quiz_shields' => '3 quiz shields per day',
+            'free_username_changes' => 'Username change every 7 days',
+            'free_progress_tracking' => 'Track module progress and quiz completion history',
+            'free_upgrade_anytime' => 'Upgrade any time for premium controls',
+        ];
+    }
+
+    private function buildEntitlementHighlights(User $user): array
+    {
+        $hasUnlimitedUsernameChanges = $this->entitlementService->canAccessFeature(
+            $user,
+            SubscriptionFeatureKeys::UNLIMITED_USERNAME_CHANGE
+        );
+
+        $hasUnlimitedQuizShields = $this->entitlementService->canAccessFeature(
+            $user,
+            SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS
+        );
+
+        $canDownloadCertificates = $this->entitlementService->canAccessFeature(
+            $user,
+            SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES
+        );
+
+        return [
+            [
+                'key' => 'username_changes',
+                'label' => 'Username changes',
+                'value' => $hasUnlimitedUsernameChanges ? 'Unlimited' : 'Every 7 days',
+                'description' => $hasUnlimitedUsernameChanges
+                    ? 'Current plan removes username cooldown.'
+                    : 'Free baseline applies one change every 7 days.',
+                'is_enabled' => $hasUnlimitedUsernameChanges,
+            ],
+            [
+                'key' => 'quiz_shields',
+                'label' => 'Quiz shields',
+                'value' => $hasUnlimitedQuizShields ? 'Unlimited' : '3 per day',
+                'description' => $hasUnlimitedQuizShields
+                    ? 'Retry quizzes without consuming daily shields.'
+                    : 'Free baseline includes 3 shields and resets daily.',
+                'is_enabled' => $hasUnlimitedQuizShields,
+            ],
+            [
+                'key' => 'certificates',
+                'label' => 'Certificate downloads',
+                'value' => $canDownloadCertificates ? 'Included' : 'Upgrade required',
+                'description' => $canDownloadCertificates
+                    ? 'Download your completion certificates any time.'
+                    : 'Certificate downloads unlock on supported premium plans.',
+                'is_enabled' => $canDownloadCertificates,
+            ],
+        ];
     }
 
     /**
@@ -461,6 +621,36 @@ class SubscriptionController extends Controller
         return $output;
     }
 
+    private function extractEntitlementFeatureLabels(SubscriptionPlan $plan, array $labelMap, array $hiddenKeys): array
+    {
+        $output = [];
+
+        foreach (($plan->featureEntitlements ?? []) as $entitlement) {
+            if (!(bool) ($entitlement->is_enabled ?? false)) {
+                continue;
+            }
+
+            $feature = $entitlement->feature;
+            $key = (string) ($feature?->key ?? '');
+
+            if ($key === '' || in_array($key, $hiddenKeys, true)) {
+                continue;
+            }
+
+            $name = (string) ($feature?->name ?? '');
+            $label = $labelMap[$key] ?? ($name !== '' ? $name : $this->humanizeFeatureKey($key));
+
+            $output[$key] = $label;
+        }
+
+        return $output;
+    }
+
+    private function humanizeFeatureKey(string $key): string
+    {
+        return ucwords(str_replace(['_', '-'], ' ', trim($key)));
+    }
+
     /**
      * Build comparison row metadata for the feature matrix.
      */
@@ -476,6 +666,26 @@ class SubscriptionController extends Controller
                         'label' => $featureLabel,
                     ];
                 }
+            }
+        }
+
+        $priorityFeatures = [
+            SubscriptionFeatureKeys::UNLIMITED_USERNAME_CHANGE => 'Unlimited Username Changes',
+            SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS => 'Unlimited Quiz Shields',
+            SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES => 'Downloadable Certificates',
+        ];
+
+        foreach ($priorityFeatures as $featureKey => $featureLabel) {
+            $availableInPaidPlans = collect($planCards)->contains(function ($card) use ($featureKey) {
+                return !($card['is_free'] ?? false)
+                    && in_array($featureKey, $card['feature_keys'] ?? [], true);
+            });
+
+            if ($availableInPaidPlans && !isset($features[$featureKey])) {
+                $features[$featureKey] = [
+                    'key' => $featureKey,
+                    'label' => $featureLabel,
+                ];
             }
         }
 

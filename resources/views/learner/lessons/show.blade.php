@@ -345,17 +345,20 @@
                 </svg>
             </button>
             <span class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ $lesson->title }}</span>
-            @if($module->creator_id && $module->creator_id !== auth()->id())
-                <a
-                    href="{{ route('chat.page', [
-                        'target_user_id' => $module->creator_id,
-                        'conversation_type' => 'lesson_chat',
-                        'lesson_id' => $lesson->id,
-                    ]) }}"
+            @if($module->created_by && $module->created_by !== auth()->id())
+                <button
+                    type="button"
+                    @click="$dispatch('open-global-chat', {
+                        target_user_id: {{ $module->created_by }},
+                        name: '{{ addslashes($module->creator?->name ?? 'Instructor') }}',
+                        avatar: 'https://ui-avatars.com/api/?name={{ urlencode($module->creator?->name ?? 'Instructor') }}&color=1D4ED8&background=EFF6FF',
+                        conversation_type: 'lesson_chat',
+                        lesson_id: {{ $lesson->id }}
+                    })"
                     class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800 hover:bg-blue-100"
                 >
                     Ask Instructor About This Lesson
-                </a>
+                </button>
             @endif
         </div>
         {{-- Scrollable content --}}

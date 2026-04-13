@@ -19,7 +19,14 @@ class ModuleRevenueController extends Controller
 
     public function index(Request $request)
     {
-        $query = ModuleSaleLedger::query()->with(['module', 'instructor']);
+        $query = ModuleSaleLedger::query()->with([
+            'module:id,title,thumbnail,created_by',
+            'instructor:id,name,email',
+            'learner:id,name,email',
+            'learner.learnerProfile:id,user_id,avatar_path',
+            'payment:id,transaction_id,method,status,paid_at',
+            'modulePurchase:id,module_id,purchased_at,status',
+        ]);
 
         if ($request->filled('instructor_id')) {
             $query->where('instructor_id', (int) $request->integer('instructor_id'));

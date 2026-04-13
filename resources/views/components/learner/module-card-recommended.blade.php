@@ -51,11 +51,6 @@
 
         {{-- Badges (stacked top-left row) --}}
         <div class="absolute top-2 left-2 flex gap-1 flex-wrap">
-            @if($module->is_premium)
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-amber-900">
-                    PREMIUM
-                </span>
-            @endif
             @if($isFull)
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
                     FULL

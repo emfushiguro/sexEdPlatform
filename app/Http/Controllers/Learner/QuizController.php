@@ -7,15 +7,21 @@ use App\Models\Module;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\UserDailyShield;
+use App\Models\User;
+use App\Notifications\Instructor\QuizAttemptActivityNotification;
 use App\Services\GamificationService;
+use App\Services\SubscriptionService;
+use App\Support\SubscriptionFeatureKeys;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class QuizController extends Controller
 {
     public function __construct(
         private GamificationService $gamificationService,
+        private SubscriptionService $subscriptionService,
     ) {}
 
     /**
@@ -32,7 +38,8 @@ class QuizController extends Controller
      */
     public function start(Quiz $quiz)
     {
-        $user = auth()->user();
+        /** @var User $user */
+        $user = Auth::user();
 
         // Check enrollment
         $moduleId = $quiz->module_id ?? $quiz->lesson?->module_id;
@@ -48,12 +55,28 @@ class QuizController extends Controller
         }
 
         if (!$this->canStartAttempt($quiz, $user->id)) {
+            $latestAttempt = QuizAttempt::where('quiz_id', $quiz->id)
+                ->where('user_id', $user->id)
+                ->latest('id')
+                ->first();
+
+            if ($latestAttempt) {
+                return redirect()->route('quizzes.result', $latestAttempt)
+                    ->with('info', 'You have reached the maximum attempt limit. Your result has been recorded as final.')
+                    ->with('attempt_limit_reached', true);
+            }
+
             return redirect()->route('learner.modules.show', $moduleId)
                 ->with('error', 'You have reached the maximum number of attempts for this quiz.');
         }
 
-        // Check shields for free users (premium users have unlimited attempts)
-        if (!$user->isPremium()) {
+        $hasUnlimitedShields = $this->subscriptionService->hasFeature(
+            $user,
+            SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS
+        );
+
+        // Check shields for users without unlimited-shields entitlement.
+        if (!$hasUnlimitedShields) {
             if (UserDailyShield::getShields($user) <= 0) {
                 return redirect()->route('subscription.upgrade')
                     ->with('error', 'You are out of shields for today. Refill with points or upgrade to premium for unlimited attempts!');
@@ -73,9 +96,21 @@ class QuizController extends Controller
      */
     public function submit(Request $request, Quiz $quiz)
     {
-        $user = auth()->user();
+        /** @var User $user */
+        $user = Auth::user();
 
         if (!$this->canStartAttempt($quiz, $user->id)) {
+            $latestAttempt = QuizAttempt::where('quiz_id', $quiz->id)
+                ->where('user_id', $user->id)
+                ->latest('id')
+                ->first();
+
+            if ($latestAttempt) {
+                return redirect()->route('quizzes.result', $latestAttempt)
+                    ->with('info', 'You have reached the maximum attempt limit. Your result has been recorded as final.')
+                    ->with('attempt_limit_reached', true);
+            }
+
             return redirect()->route('quizzes.start', $quiz)
                 ->with('error', 'You have reached the maximum number of attempts for this quiz.');
         }
@@ -100,8 +135,13 @@ class QuizController extends Controller
                 ->with('error', 'This module is currently deactivated. Quiz attempts are temporarily unavailable.');
         }
 
-        // Re-check shields before submitting (race-condition guard for free users)
-        if (!$user->isPremium() && UserDailyShield::getShields($user) <= 0) {
+        $hasUnlimitedShields = $this->subscriptionService->hasFeature(
+            $user,
+            SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS
+        );
+
+        // Re-check shields before submitting (race-condition guard for limited users)
+        if (!$hasUnlimitedShields && UserDailyShield::getShields($user) <= 0) {
             return redirect()->route('subscription.upgrade')
                 ->with('error', 'You are out of shields for today.');
         }
@@ -337,9 +377,15 @@ class QuizController extends Controller
                 'completed_at' => now(),
             ]);
 
+            $attempt->loadMissing(['quiz.module.creator', 'user']);
+            $quizInstructor = $attempt->quiz?->module?->creator;
+            if ($quizInstructor && (int) $quizInstructor->id !== (int) $user->id) {
+                $quizInstructor->notify(new QuizAttemptActivityNotification($attempt));
+            }
+
             // Pass Protection: deduct 1 shield on attempt; refund on pass (net 0 if passed)
             $shieldDelta = null; // null = premium (no cost)
-            if (!$user->isPremium()) {
+            if (!$hasUnlimitedShields) {
                 UserDailyShield::drainShield($user);
                 if ($passed) {
                     UserDailyShield::refillOne($user); // refund — pass protects your shield
@@ -364,10 +410,21 @@ class QuizController extends Controller
 
             $this->clearAttemptStartedAt($quiz->id);
 
+            $attemptLimitReached = !$passed && $this->hasReachedAttemptLimit($quiz, $user->id);
+            $timeExpiredAutoSubmitted = $expired || $request->boolean('auto_submit');
+            $completedFinalQuizModule = $this->resolveCompletedFinalQuizModule($quiz, $user->id, $passed);
+
             DB::commit();
 
+            if ($completedFinalQuizModule) {
+                return redirect()->route('learner.modules.completion', $completedFinalQuizModule)
+                    ->with('success', 'Congratulations! You have successfully completed this module.')
+                    ->with('shield_delta', $shieldDelta)
+                    ->with('xp_earned', $points);
+            }
+
             // Redirect: lesson quizzes return to the lesson viewer; standalone go to result page
-            if ($quiz->lesson_id) {
+            if ($quiz->lesson_id && !$attemptLimitReached && !$timeExpiredAutoSubmitted) {
                 return redirect(route('learner.lessons.show', $quiz->lesson_id) . '?quiz=1')
                     ->with('success', $message)
                     ->with('quiz_result', true)
@@ -376,10 +433,21 @@ class QuizController extends Controller
                     ->with('xp_earned', $points);
             }
 
-            return redirect()->route('quizzes.result', $attempt)
+            $resultRedirect = redirect()->route('quizzes.result', $attempt)
                 ->with('success', $message)
                 ->with('shield_delta', $shieldDelta)
                 ->with('xp_earned', $points);
+
+            if ($attemptLimitReached) {
+                $resultRedirect->with('attempt_limit_reached', true)
+                    ->with('info', 'You have reached the maximum attempt limit. Your result has been recorded as final.');
+            }
+
+            if ($timeExpiredAutoSubmitted) {
+                $resultRedirect->with('quiz_time_expired', true);
+            }
+
+            return $resultRedirect;
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -395,19 +463,56 @@ class QuizController extends Controller
     public function result(QuizAttempt $attempt)
     {
         // Verify attempt belongs to authenticated user
-        if ($attempt->user_id !== auth()->id()) {
+        if ($attempt->user_id !== Auth::id()) {
             abort(403);
         }
 
-        $attempt->load(['quiz.questions.options']);
+        $attempt->load(['quiz.questions.options', 'quiz.lesson.module']);
 
-        $user = auth()->user();
-        $shieldsRemaining = $user->isPremium() ? null : UserDailyShield::getShields($user);
-        $remainingAttempts = $shieldsRemaining; // shields are the retry gate for free users
+        /** @var User $user */
+        $user = Auth::user();
+        $hasUnlimitedShields = $this->subscriptionService->hasFeature(
+            $user,
+            SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS
+        );
+        $shieldsRemaining = $hasUnlimitedShields ? null : UserDailyShield::getShields($user);
+        $attemptLimit = $attempt->quiz->attempt_limit !== null ? (int) $attempt->quiz->attempt_limit : null;
+        $attemptsUsed = QuizAttempt::where('quiz_id', $attempt->quiz_id)
+            ->where('user_id', $user->id)
+            ->count();
+        $attemptsRemaining = $attemptLimit !== null
+            ? max($attemptLimit - $attemptsUsed, 0)
+            : null;
+        $hasReachedAttemptLimit = $attemptLimit !== null && $attemptsRemaining === 0;
+        $canRetry = !$hasReachedAttemptLimit && ($hasUnlimitedShields || (($shieldsRemaining ?? 0) > 0));
+        $remainingAttempts = $attemptsRemaining;
         $shieldDelta = session('shield_delta');
         $xpEarned = session('xp_earned');
 
-        return view('quizzes.result', compact('attempt', 'shieldsRemaining', 'remainingAttempts', 'shieldDelta', 'xpEarned'));
+        $nextLesson = null;
+        if ($attempt->quiz?->lesson && $attempt->quiz->lesson?->module) {
+            $currentLesson = $attempt->quiz->lesson;
+            $nextLesson = $currentLesson->module
+                ->lessons()
+                ->where('is_published', true)
+                ->where('order', '>', $currentLesson->order)
+                ->orderBy('order')
+                ->first();
+        }
+
+        return view('quizzes.result', compact(
+            'attempt',
+            'shieldsRemaining',
+            'remainingAttempts',
+            'attemptLimit',
+            'attemptsUsed',
+            'attemptsRemaining',
+            'hasReachedAttemptLimit',
+            'canRetry',
+            'nextLesson',
+            'shieldDelta',
+            'xpEarned'
+        ));
     }
 
     /**
@@ -415,12 +520,19 @@ class QuizController extends Controller
      */
     public function history()
     {
-        $attempts = auth()->user()->quizAttempts()
+        /** @var User $user */
+        $user = Auth::user();
+
+        $attempts = $user->quizAttempts()
             ->with('quiz')
             ->latest()
             ->paginate(10);
 
-        $shieldsRemaining = UserDailyShield::getShields(auth()->user());
+        $hasUnlimitedShields = $this->subscriptionService->hasFeature(
+            $user,
+            SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS
+        );
+        $shieldsRemaining = $hasUnlimitedShields ? null : UserDailyShield::getShields($user);
 
         return view('quizzes.history', compact('attempts', 'shieldsRemaining'));
     }
@@ -480,6 +592,19 @@ class QuizController extends Controller
         return $attemptCount < (int) $quiz->attempt_limit;
     }
 
+    private function hasReachedAttemptLimit(Quiz $quiz, int $userId): bool
+    {
+        if ($quiz->attempt_limit === null) {
+            return false;
+        }
+
+        $attemptCount = QuizAttempt::where('quiz_id', $quiz->id)
+            ->where('user_id', $userId)
+            ->count();
+
+        return $attemptCount >= (int) $quiz->attempt_limit;
+    }
+
     private function resolveAttemptStartedAt(Request $request, int $quizId): Carbon
     {
         $sessionStartedAt = session()->get($this->quizAttemptStartedAtSessionKey($quizId));
@@ -504,5 +629,27 @@ class QuizController extends Controller
     private function quizAttemptStartedAtSessionKey(int $quizId): string
     {
         return 'quiz.started_at.' . $quizId;
+    }
+
+    private function resolveCompletedFinalQuizModule(Quiz $quiz, int $userId, bool $passed): ?Module
+    {
+        if (!$passed) {
+            return null;
+        }
+
+        $module = Module::query()
+            ->where('final_quiz_id', $quiz->id)
+            ->first();
+
+        if (!$module) {
+            return null;
+        }
+
+        $isApprovedEnrollment = $module->enrollments()
+            ->where('user_id', $userId)
+            ->where('status', \App\Enums\EnrollmentStatus::Approved)
+            ->exists();
+
+        return $isApprovedEnrollment ? $module : null;
     }
 }

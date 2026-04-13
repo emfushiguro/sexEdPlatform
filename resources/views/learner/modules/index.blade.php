@@ -56,6 +56,7 @@
                     $pct         = $prog->progress_percentage;
                     $isCompleted = $enrollment?->completed_at !== null;
                     $isDeactivated = !$module->is_published;
+                    $statusValue = $enrollment?->status?->value;
                     $creator = $module->creator;
                     $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
                     $priceLabel = $module->display_price ?? 'Free';
@@ -81,9 +82,6 @@
                                 </div>
                             </div>
                         @endif
-                        @if($module->is_premium)
-                            <span class="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-amber-900">PREMIUM</span>
-                        @endif
                         @if($isDeactivated)
                             <span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-900/80 text-white">DEACTIVATED</span>
                         @endif
@@ -99,6 +97,11 @@
                     <div class="p-4 flex flex-col flex-1 gap-3">
                         <div>
                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2">{{ $module->title }}</h3>
+                            @if($statusValue === 'pending' || $statusValue === 'pending_parent_approval')
+                                <p class="mt-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                                    Enrollment request pending approval
+                                </p>
+                            @endif
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                 {{ $prog->completed_lessons }}/{{ $prog->total_lessons }} {{ Str::plural('lesson', $prog->total_lessons) }} completed
                             </p>

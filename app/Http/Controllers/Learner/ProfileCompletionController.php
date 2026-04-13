@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
 use App\Models\LearnerProfile;
+use App\Services\SubscriptionService;
+use App\Support\SubscriptionFeatureKeys;
 use Schoolees\Psgc\Models\City;
 use Schoolees\Psgc\Models\Barangay;
 use Illuminate\Http\Request;
@@ -12,6 +14,11 @@ use Illuminate\Validation\Rule;
 
 class ProfileCompletionController extends Controller
 {
+    public function __construct(
+        private readonly SubscriptionService $subscriptionService,
+    ) {
+    }
+
     /**
      * Show the profile completion form.
      */
@@ -28,7 +35,7 @@ class ProfileCompletionController extends Controller
             if ($user->hasRole('instructor')) {
                 return redirect()->route('instructor.dashboard');
             }
-            return redirect()->route('learner.modules.index');
+            return redirect()->route('learner.dashboard');
         }
 
         $learnerProfile = $user->learnerProfile;
@@ -116,7 +123,7 @@ class ProfileCompletionController extends Controller
                 ->with('success', 'Profile completed successfully! Welcome to the instructor dashboard.');
         }
 
-        return redirect()->route('learner.modules.index')
+        return redirect()->route('learner.dashboard')
             ->with('success', 'Profile completed successfully! Welcome to the learning platform.');
     }
 
@@ -158,16 +165,19 @@ class ProfileCompletionController extends Controller
 
         // Handle username change with premium/free logic
         if ($request->filled('username') && $request->username !== $learnerProfile->username) {
-            $isPremium = $user->isPremium();
+            $hasUnlimitedUsernameChanges = $this->subscriptionService->hasFeature(
+                $user,
+                SubscriptionFeatureKeys::UNLIMITED_USERNAME_CHANGE
+            );
             
-            if (!$isPremium) {
+            if (!$hasUnlimitedUsernameChanges) {
                 // Free users: Check 7-day limit
                 if ($learnerProfile->username_changed_at) {
                     $daysSinceChange = now()->diffInDays($learnerProfile->username_changed_at);
                     if ($daysSinceChange < 7) {
                         $daysRemaining = 7 - $daysSinceChange;
                         $nextChangeDate = $learnerProfile->username_changed_at->addDays(7)->format('M d, Y');
-                        $message = "You can change your username again in {$daysRemaining} day(s) (on {$nextChangeDate}). Upgrade to Premium for unlimited changes!";
+                        $message = "You can change your username again in {$daysRemaining} day(s) (on {$nextChangeDate}). Upgrade to a plan with unlimited username changes to remove this cooldown.";
                         if ($request->expectsJson()) {
                             return response()->json(['success' => false, 'errors' => ['username' => [$message]]], 422);
                         }
@@ -242,29 +252,17 @@ class ProfileCompletionController extends Controller
      */
     public function deleteAccount(Request $request)
     {
-        $request->validate([
-            'password' => 'required|current_password',
-        ]);
-
-        $user = Auth::user();
-
-        // Delete avatar if exists
-        if ($user->learnerProfile && $user->learnerProfile->avatar_path) {
-            \Storage::disk('public')->delete($user->learnerProfile->avatar_path);
-        }
-
-        // Archive status before soft-delete
-        $user->status = 'archived';
-        $user->save();
-
-        // Logout and soft-delete
-        Auth::logout();
-        $user->delete();
+        $message = 'Account deletion is disabled for learner self-service. Please contact support or an administrator for account removal assistance.';
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'redirect' => route('home')]);
+            return response()->json([
+                'success' => false,
+                'errors' => [
+                    'general' => [$message],
+                ],
+            ], 403);
         }
 
-        return redirect()->route('home')->with('success', 'Your account has been archived.');
+        return back()->with('error', $message);
     }
 }

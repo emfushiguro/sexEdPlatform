@@ -37,6 +37,12 @@ Route::middleware('guest')->group(function () {
     Route::post('parent/register', [ParentRegistrationController::class, 'storePersonal'])
         ->name('parent.register.store');
 
+    Route::post('parent/register/temp-upload', [ParentRegistrationController::class, 'uploadParentTempDocument'])
+        ->name('parent.register.temp-upload');
+
+    Route::delete('parent/register/temp-upload', [ParentRegistrationController::class, 'removeParentTempDocument'])
+        ->name('parent.register.temp-upload.remove');
+
     // Step 2: Parent account credentials
     Route::get('parent/register-account', [ParentRegistrationController::class, 'createAccount'])
         ->name('parent.register.account');
@@ -136,6 +142,12 @@ Route::middleware('auth')->group(function () {
 
         Route::get('parent/create-child/credentials', [ParentRegistrationController::class, 'childCredentialsForm'])
             ->name('parent.create-child.credentials');
+
+        Route::post('parent/create-child/credentials/temp-upload', [ParentRegistrationController::class, 'uploadChildTempDocument'])
+            ->name('parent.create-child.credentials.temp-upload');
+
+        Route::delete('parent/create-child/credentials/temp-upload', [ParentRegistrationController::class, 'removeChildTempDocument'])
+            ->name('parent.create-child.credentials.temp-upload.remove');
 
         Route::post('parent/create-child/credentials', [ParentRegistrationController::class, 'storeChildCredentials'])
             ->name('parent.create-child.credentials.store');

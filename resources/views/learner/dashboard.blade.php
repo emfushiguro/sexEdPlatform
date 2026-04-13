@@ -226,7 +226,9 @@
     'currentSubscription'  => $currentSubscription,
     'currentPlan'          => $currentPlan,
     'usernameCooldownDays' => $usernameCooldownDays,
-    'isPremium'            => Auth::user()->isPremium(),
+    'isPremium'            => $isPremium,
+    'hasUnlimitedQuizShields' => $hasUnlimitedQuizShields,
+    'profileEntitlementHints' => $profileEntitlementHints,
 ])
 
 @if(request()->boolean('open_edit_profile'))

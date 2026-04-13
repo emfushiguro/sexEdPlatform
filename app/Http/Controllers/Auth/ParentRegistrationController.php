@@ -4,11 +4,19 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\RemoveTempUploadRequest;
+use App\Http\Requests\Auth\UploadChildTempDocumentRequest;
+use App\Http\Requests\Auth\UploadParentTempDocumentRequest;
+use App\Notifications\Admin\ChildVerificationRequestSubmittedNotification;
+use App\Notifications\Admin\ParentVerificationRequestSubmittedNotification;
 use App\Models\User;
 use App\Models\ParentChildAccount;
+use App\Services\Auth\RegistrationTempUploadService;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -33,9 +41,81 @@ class ParentRegistrationController extends Controller
      */
     public function create(): View
     {
+        $tempUpload = app(RegistrationTempUploadService::class)->get('parent', 'government_id');
+        if (is_array($tempUpload) && !empty($tempUpload['path'])) {
+            $tempUpload['preview_url'] = asset('storage/'.$tempUpload['path']);
+        }
+
         return view('auth.parent-register', [
             'parentInfo' => session('pending_parent_info', []),
-            'hasGovernmentIdUpload' => !empty(session('pending_parent_info.government_id_path')),
+            'hasGovernmentIdUpload' => !empty($tempUpload['path']) || !empty(session('pending_parent_info.government_id_path')),
+            'tempGovernmentIdUpload' => $tempUpload,
+        ]);
+    }
+
+    public function uploadParentTempDocument(
+        UploadParentTempDocumentRequest $request,
+        RegistrationTempUploadService $tempUploadService
+    ): JsonResponse {
+        $upload = $tempUploadService->store('parent', 'government_id', $request->file('government_id'));
+        $upload['preview_url'] = asset('storage/'.$upload['path']);
+
+        return response()->json([
+            'message' => 'Temporary upload saved.',
+            'upload' => $upload,
+        ]);
+    }
+
+    public function removeParentTempDocument(
+        RemoveTempUploadRequest $request,
+        RegistrationTempUploadService $tempUploadService
+    ): JsonResponse {
+        $tempUploadService->remove('parent', 'government_id');
+
+        $pendingInfo = session('pending_parent_info', []);
+        if (is_array($pendingInfo) && array_key_exists('government_id_path', $pendingInfo)) {
+            unset($pendingInfo['government_id_path']);
+            session(['pending_parent_info' => $pendingInfo]);
+        }
+
+        return response()->json([
+            'message' => 'Temporary upload removed.',
+        ]);
+    }
+
+    public function uploadChildTempDocument(
+        UploadChildTempDocumentRequest $request,
+        RegistrationTempUploadService $tempUploadService
+    ): JsonResponse {
+        if ($this->ensureApprovedParent()) {
+            return response()->json([
+                'message' => 'Parent verification is required before child registration uploads.',
+            ], 403);
+        }
+
+        $upload = $tempUploadService->store('child', 'verification_document', $request->file('verification_document'));
+        $upload['preview_url'] = asset('storage/'.$upload['path']);
+
+        return response()->json([
+            'message' => 'Temporary upload saved.',
+            'upload' => $upload,
+        ]);
+    }
+
+    public function removeChildTempDocument(
+        RemoveTempUploadRequest $request,
+        RegistrationTempUploadService $tempUploadService
+    ): JsonResponse {
+        if ($this->ensureApprovedParent()) {
+            return response()->json([
+                'message' => 'Parent verification is required before child registration uploads.',
+            ], 403);
+        }
+
+        $tempUploadService->remove('child', 'verification_document');
+
+        return response()->json([
+            'message' => 'Temporary upload removed.',
         ]);
     }
 
@@ -44,7 +124,9 @@ class ParentRegistrationController extends Controller
      */
     public function storePersonal(Request $request): RedirectResponse
     {
-        $hasExistingGovernmentId = !empty(session('pending_parent_info.government_id_path'));
+        $tempUploadService = app(RegistrationTempUploadService::class);
+        $tempUpload = $tempUploadService->get('parent', 'government_id');
+        $hasExistingGovernmentId = !empty(session('pending_parent_info.government_id_path')) || !empty($tempUpload['path']);
 
         $validated = $request->validate([
             'first_name'   => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
@@ -67,11 +149,10 @@ class ParentRegistrationController extends Controller
         $existingPath = session('pending_parent_info.government_id_path');
 
         if ($request->hasFile('government_id')) {
-            if ($existingPath) {
-                Storage::disk('public')->delete($existingPath);
-            }
-
-            $validated['government_id_path'] = $request->file('government_id')->store('parent-verifications/temp', 'public');
+            $upload = $tempUploadService->store('parent', 'government_id', $request->file('government_id'));
+            $validated['government_id_path'] = $upload['path'];
+        } elseif (is_array($tempUpload) && !empty($tempUpload['path'])) {
+            $validated['government_id_path'] = (string) $tempUpload['path'];
         } elseif ($existingPath) {
             $validated['government_id_path'] = $existingPath;
         }
@@ -101,6 +182,7 @@ class ParentRegistrationController extends Controller
     public function storeAccount(Request $request): RedirectResponse
     {
         $personalInfo = session('pending_parent_info');
+        $tempUploadService = app(RegistrationTempUploadService::class);
 
         if (!$personalInfo) {
             return redirect()->route('parent.register')
@@ -150,12 +232,18 @@ class ParentRegistrationController extends Controller
             'parent_id_document_path' => $personalInfo['government_id_path'] ?? null,
         ]);
 
-        if (!empty($personalInfo['government_id_path']) && Storage::disk('public')->exists($personalInfo['government_id_path'])) {
+        $finalizedPath = $tempUploadService->finalize('parent', 'government_id', 'parent-verifications/' . $parent->id, 'government-id');
+
+        if ($finalizedPath !== null) {
+            $parent->update(['parent_id_document_path' => $finalizedPath]);
+        } elseif (!empty($personalInfo['government_id_path']) && Storage::disk('public')->exists($personalInfo['government_id_path'])) {
             $extension = pathinfo($personalInfo['government_id_path'], PATHINFO_EXTENSION);
             $finalPath = 'parent-verifications/' . $parent->id . '/government-id-' . now()->format('YmdHis') . '.' . $extension;
             Storage::disk('public')->move($personalInfo['government_id_path'], $finalPath);
             $parent->update(['parent_id_document_path' => $finalPath]);
         }
+
+        $this->notifyAdminsSafely(new ParentVerificationRequestSubmittedNotification($parent));
 
         Role::findOrCreate('learner', 'web');
         $parent->assignRole('learner');
@@ -318,7 +406,17 @@ class ParentRegistrationController extends Controller
             }
         }
 
-        return view('auth.child.step3-credentials', compact('step1', 'suggestedEmail'));
+        $tempUpload = app(RegistrationTempUploadService::class)->get('child', 'verification_document');
+        if (is_array($tempUpload) && !empty($tempUpload['path'])) {
+            $tempUpload['preview_url'] = asset('storage/'.$tempUpload['path']);
+        }
+
+        return view('auth.child.step3-credentials', [
+            'step1' => $step1,
+            'suggestedEmail' => $suggestedEmail,
+            'tempChildVerificationUpload' => $tempUpload,
+            'hasChildVerificationUpload' => !empty($tempUpload['path']),
+        ]);
     }
 
     /**
@@ -340,8 +438,21 @@ class ParentRegistrationController extends Controller
         $validated = $request->validate([
             'username' => ['required', 'string', 'min:3', 'max:30', 'unique:learner_profiles,username', 'regex:/^[a-z0-9_-]+$/'],
             'password' => ['required', 'confirmed', Password::min(8)],
-            'verification_document' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'verification_document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ]);
+
+        $tempUploadService = app(RegistrationTempUploadService::class);
+
+        if ($request->hasFile('verification_document')) {
+            $tempUploadService->store('child', 'verification_document', $request->file('verification_document'));
+        }
+
+        $tempUpload = $tempUploadService->get('child', 'verification_document');
+        if (!is_array($tempUpload) || empty($tempUpload['path'])) {
+            return back()
+                ->withErrors(['verification_document' => 'Please upload a PSA birth certificate before continuing.'])
+                ->withInput($request->except(['password', 'password_confirmation']));
+        }
 
         $parent = auth()->user();
         $parentEmail = $parent->email;
@@ -352,8 +463,18 @@ class ParentRegistrationController extends Controller
         }
 
         $barangay = \Schoolees\Psgc\Models\Barangay::where('code', $step2['barangay_code'])->first();
-        $verificationDocumentPath = $request->file('verification_document')
-            ->store('child-verifications/' . $parent->id, 'public');
+        $verificationDocumentPath = $tempUploadService->finalize(
+            'child',
+            'verification_document',
+            'child-verifications/' . $parent->id,
+            'verification-document'
+        );
+
+        if ($verificationDocumentPath === null) {
+            return back()
+                ->withErrors(['verification_document' => 'The uploaded verification document could not be processed. Please upload again.'])
+                ->withInput($request->except(['password', 'password_confirmation']));
+        }
 
         $child = User::create([
             'name'           => trim($step1['first_name'] . ' ' . $step1['last_name']),
@@ -377,12 +498,12 @@ class ParentRegistrationController extends Controller
             'gender'                   => $step1['gender'],
             'city_code'                => $step2['city_code'],
             'barangay_code'            => $step2['barangay_code'],
-            'barangay'                 => $barangay->name,
+            'barangay'                 => $barangay?->name,
             'province_code'            => '402100000',
             'requires_parental_consent'=> true,
         ]);
 
-        ParentChildAccount::create([
+        $verification = ParentChildAccount::create([
             'parent_user_id'          => $parent->id,
             'child_user_id'           => $child->id,
             'can_view_progress'       => true,
@@ -392,6 +513,8 @@ class ParentRegistrationController extends Controller
             'verification_document_path' => $verificationDocumentPath,
             'relationship_verified_at'=> null,
         ]);
+
+        $this->notifyAdminsSafely(new ChildVerificationRequestSubmittedNotification($parent, $child, $verification));
 
         session()->forget(['child_step1', 'child_step2', 'pending_child_registration']);
         session([
@@ -478,6 +601,21 @@ class ParentRegistrationController extends Controller
         return view('auth.child-verification-status', [
             'verification' => $verification,
         ]);
+    }
+
+    private function notifyAdminsSafely(Notification $notification): void
+    {
+        try {
+            User::query()
+                ->role('admin')
+                ->get()
+                ->each(fn (User $admin) => $admin->notify($notification));
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to send admin parent-child verification submission notification.', [
+                'notification' => $notification::class,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 
     private function ensureApprovedParent(): ?RedirectResponse

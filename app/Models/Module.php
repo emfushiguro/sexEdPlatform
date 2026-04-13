@@ -258,7 +258,25 @@ class Module extends Model
             return $this;
         }
 
+        // Keep live governance and lifecycle flags from the canonical module row.
+        $protectedKeys = [
+            'id',
+            'created_by',
+            'created_at',
+            'updated_at',
+            'deleted_at',
+            'is_published',
+            'current_review_status',
+            'published_revision_id',
+            'published_by_admin_id',
+            'content_owner_type',
+        ];
+
         foreach ($moduleData as $key => $value) {
+            if (in_array($key, $protectedKeys, true)) {
+                continue;
+            }
+
             $this->setAttribute($key, $value);
         }
 

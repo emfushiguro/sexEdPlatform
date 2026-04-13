@@ -6,36 +6,37 @@
         'conversation_type' => request()->query('conversation_type'),
         'module_id' => request()->query('module_id'),
         'lesson_id' => request()->query('lesson_id'),
+        'lesson_topic_id' => request()->query('lesson_topic_id'),
         'quiz_id' => request()->query('quiz_id'),
         'initial_message' => request()->query('initial_message'),
     ], static fn ($value) => $value !== null && $value !== '');
 
     $chatBootstrap = [
         'currentUserId' => $user?->id,
+        'currentUserName' => $user?->name,
         'currentUserRole' => $user?->role,
-        'notificationsEnabled' => false,
+        'messageMutationWindowMinutes' => (int) config('chat.message_mutation_window_minutes', 15),
+        'initialConversationId' => request()->query('conversation_id'),
         'startContext' => $startContext,
     ];
 @endphp
 
 <div
-    class="rounded-2xl border border-gray-200 bg-white shadow-theme-xs overflow-hidden"
+    class="flex flex-col overflow-hidden bg-white border border-gray-200 shadow-lg rounded-2xl"
     data-chat-root
     x-data
     x-init="$store.chat.bootstrap({{ \Illuminate\Support\Js::from($chatBootstrap) }})"
 >
-    <div class="border-b border-gray-100 px-4 py-3 flex items-center justify-between gap-3">
-        <p class="text-sm font-semibold text-gray-900">Real-time chat</p>
-        <button
-            type="button"
-            data-chat-notification-toggle
-            @click="$store.chat.toggleNotificationsEnabled()"
-            class="inline-flex items-center rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            x-text="$store.chat.notificationsEnabled ? 'Browser alerts on' : 'Enable browser alerts'"
-        ></button>
+    <!-- Header Area -->
+    <div class="flex items-center justify-between gap-3 px-6 py-5 text-white bg-gradient-to-r from-purple-700 to-pink-500">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight">Connections</h1>
+            <p class="mt-1 text-sm text-purple-100">Connect with instructors, learners, and platform support.</p>
+        </div>
     </div>
 
-    <div class="flex flex-col lg:flex-row min-h-[640px]">
+    <!-- Chat Container -->
+    <div class="flex flex-col lg:flex-row min-h-[640px] bg-white">
         <div class="w-full lg:w-auto lg:border-r lg:border-gray-200">
             @include('chat.partials.request-list')
             @include('chat.partials.conversation-list')

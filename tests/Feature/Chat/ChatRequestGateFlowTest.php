@@ -28,13 +28,35 @@ class ChatRequestGateFlowTest extends TestCase
             ->assertJsonPath('message_request.status', MessageRequest::STATUS_PENDING);
 
         $messageRequestId = (int) $startResponse->json('message_request.id');
+        $pendingConversationId = (int) $startResponse->json('conversation.id');
+
+        $this->assertGreaterThan(0, $pendingConversationId);
+
+        $this->assertDatabaseHas('conversations', [
+            'id' => $pendingConversationId,
+            'status' => Conversation::STATUS_PENDING_REQUEST,
+            'conversation_type' => Conversation::TYPE_DIRECT,
+        ]);
 
         $this->assertDatabaseHas('message_requests', [
             'id' => $messageRequestId,
             'requester_id' => $learner->id,
             'instructor_id' => $instructor->id,
             'status' => MessageRequest::STATUS_PENDING,
+            'accepted_conversation_id' => $pendingConversationId,
         ]);
+
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $pendingConversationId,
+            'sender_id' => $learner->id,
+            'message_body' => 'Can we discuss course fit?',
+        ]);
+
+        $this->actingAs($learner)
+            ->postJson(route('chat.messages.store', ['conversation' => $pendingConversationId]), [
+                'message_body' => 'Follow-up while pending',
+            ])
+            ->assertForbidden();
 
         $this->actingAs($learner)
             ->postJson(route('chat.requests.accept', ['messageRequest' => $messageRequestId]))
@@ -46,10 +68,11 @@ class ChatRequestGateFlowTest extends TestCase
             ->assertJsonPath('message_request.status', MessageRequest::STATUS_ACCEPTED);
 
         $conversationId = (int) $acceptResponse->json('conversation.id');
+        $this->assertSame($pendingConversationId, $conversationId);
 
         $this->assertDatabaseHas('conversations', [
             'id' => $conversationId,
-            'status' => Conversation::STATUS_ACTIVE,
+            'status' => Conversation::STATUS_ACCEPTED,
             'conversation_type' => Conversation::TYPE_DIRECT,
         ]);
 

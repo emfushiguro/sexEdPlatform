@@ -47,7 +47,7 @@ $typeLabels = [
     'identification'   => 'Identification',
 ];
 $typeBadgeClasses = [
-    'multiple_choice'  => 'bg-blue-50 text-blue-700 border-blue-200',
+    'multiple_choice'  => 'bg-brand-50 text-brand-700 border-brand-200',
     'true_false'       => 'bg-green-50 text-green-700 border-green-200',
     'multiple_select'  => 'bg-purple-50 text-purple-700 border-purple-200',
     'fill_blank_text'  => 'bg-yellow-50 text-yellow-700 border-yellow-200',

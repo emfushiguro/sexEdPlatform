@@ -25,22 +25,6 @@
             padding: 40px 32px;
             text-align: center;
         }
-        .logo-card {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 255, 255, 0.18);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            margin-bottom: 16px;
-        }
-        .logo-card img {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-        }
         .brand-name {
             font-size: 22px;
             font-weight: 700;
@@ -171,9 +155,6 @@
     <div class="wrapper">
         {{-- Header --}}
         <div class="header">
-            <div class="logo-card">
-                <span style="font-size: 26px; font-weight: 800; color: #730DB1; line-height: 1;">CC</span>
-            </div>
             <p class="brand-name">Concious Connections</p>
             <div class="header-divider"></div>
             <h1 class="header-title">Verify Your Email</h1>

@@ -117,7 +117,7 @@ class InstructorCommissionTransparencyNoticeTest extends TestCase
         $this->actingAs($instructor)
             ->get(route('instructor.earnings.index'))
             ->assertOk()
-            ->assertSee('Formula: Net earnings = Gross amount - Platform commission.', false)
+            ->assertSee('Formula: Your Earnings = Sale amount - Platform fee.', false)
             ->assertSee('Refund policy: module purchase refunds are currently disabled.', false);
     }
 }

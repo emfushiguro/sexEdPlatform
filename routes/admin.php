@@ -17,6 +17,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Dashboard
     Route::get('/dashboard', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
+    // Admin profile context
+    Route::get('/profile', [Admin\AdminProfileController::class, 'show'])->name('profile.show');
+
+    // Notifications
+    Route::get('/notifications', [Admin\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/mark-all-read', [Admin\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+    Route::post('/notifications/dropdown-open', [Admin\NotificationController::class, 'markDropdownRead'])->name('notifications.dropdown-open');
+    Route::get('/notifications/{id}/read', [Admin\NotificationController::class, 'markRead'])->name('notifications.read');
+
     Route::prefix('content-reviews')->name('content-reviews.')->group(function () {
         Route::get('/', [Admin\ContentReviewController::class, 'index'])->name('index');
         Route::get('/{reviewRequest}', [Admin\ContentReviewController::class, 'show'])->name('show');
@@ -37,6 +46,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/{user}', [Admin\UserAdminController::class, 'show'])->name('show');
         Route::get('/{user}/edit', [Admin\UserAdminController::class, 'edit'])->name('edit');
         Route::put('/{user}', [Admin\UserAdminController::class, 'update'])->name('update');
+        Route::patch('/{user}/status', [Admin\UserAdminController::class, 'updateStatus'])->name('status.update');
+        Route::patch('/{user}/role', [Admin\UserAdminController::class, 'changeRole'])->name('role.update');
+
+        Route::post('/relationships/attach', [Admin\UserAdminController::class, 'attachParentChild'])
+            ->name('relationships.attach');
+        Route::delete('/relationships/detach', [Admin\UserAdminController::class, 'detachParentChild'])
+            ->name('relationships.detach');
+        Route::patch('/relationships/verification', [Admin\UserAdminController::class, 'toggleParentChildVerification'])
+            ->name('relationships.verification');
+
         Route::delete('/{user}', [Admin\UserAdminController::class, 'destroy'])->name('destroy');
     });
 
@@ -82,7 +101,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/', [Admin\PaymentAdminController::class, 'index'])->name('index');
         Route::get('/{payment}', [Admin\PaymentAdminController::class, 'show'])->name('show');
         Route::get('/{payment}/receipt', [Admin\PaymentAdminController::class, 'receipt'])->name('receipt');
-        Route::post('/{payment}/complete', [Admin\PaymentAdminController::class, 'markAsCompleted'])->name('complete');
     });
 
     // Monetization

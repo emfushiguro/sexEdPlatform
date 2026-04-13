@@ -46,6 +46,7 @@ class RolePermissionSeeder extends Seeder
             'edit users',
             'delete users',
             'manage roles',
+            'manage user relationships',
 
             // Seminar Management
             'view seminars',

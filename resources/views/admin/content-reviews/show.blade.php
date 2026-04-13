@@ -10,6 +10,55 @@
         rejectModalOpen: false,
         instructorPreviewOpen: false,
         instructorPreviewTab: 'profile',
+        moderationEditorInitRetries: {},
+        moderationEditorConfig: {
+            license_key: 'gpl',
+            menubar: false,
+            branding: false,
+            height: 220,
+            plugins: 'lists link table code',
+            toolbar: 'undo redo | styles | bold italic underline | bullist numlist | link table | removeformat | code',
+            content_style: 'body { font-family: Poppins, sans-serif; font-size:14px }'
+        },
+        initModerationEditor(editorId) {
+            if (typeof tinymce === 'undefined') {
+                const retries = this.moderationEditorInitRetries[editorId] ?? 0;
+
+                if (retries < 20) {
+                    this.moderationEditorInitRetries[editorId] = retries + 1;
+                    window.setTimeout(() => this.initModerationEditor(editorId), 50);
+                }
+
+                return;
+            }
+
+            this.moderationEditorInitRetries[editorId] = 0;
+
+            if (tinymce.get(editorId)) {
+                return;
+            }
+
+            tinymce.init({
+                ...this.moderationEditorConfig,
+                selector: '#' + editorId,
+            });
+        },
+        destroyModerationEditor(editorId) {
+            this.moderationEditorInitRetries[editorId] = 0;
+
+            if (typeof tinymce === 'undefined') {
+                return;
+            }
+
+            const editor = tinymce.get(editorId);
+
+            if (!editor) {
+                return;
+            }
+
+            editor.save();
+            editor.remove();
+        },
         syncModerationEditors() {
             if (typeof tinymce !== 'undefined') {
                 tinymce.triggerSave();
@@ -67,24 +116,5 @@
 @if ($canModerate)
     @push('scripts')
         <script src="{{ asset('build/tinymce/tinymce.min.js') }}"></script>
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                if (typeof tinymce === 'undefined') {
-                    return;
-                }
-
-                tinymce.remove('textarea.js-moderation-editor');
-                tinymce.init({
-                    selector: 'textarea.js-moderation-editor',
-                    license_key: 'gpl',
-                    menubar: false,
-                    branding: false,
-                    height: 220,
-                    plugins: 'lists link table code',
-                    toolbar: 'undo redo | styles | bold italic underline | bullist numlist | link table | removeformat | code',
-                    content_style: 'body { font-family: Poppins, sans-serif; font-size:14px }'
-                });
-            });
-        </script>
     @endpush
 @endif

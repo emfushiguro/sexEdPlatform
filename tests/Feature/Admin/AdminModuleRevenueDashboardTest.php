@@ -151,8 +151,8 @@ class AdminModuleRevenueDashboardTest extends TestCase
 
         $filteredHtml = $filteredResponse->getContent();
 
-        $this->assertStringContainsString('Module Alpha</td>', $filteredHtml);
-        $this->assertStringNotContainsString('Module Beta</td>', $filteredHtml);
-        $this->assertStringNotContainsString('Instructor B</td>', $filteredHtml);
+        $this->assertStringContainsString('Module Alpha', $filteredHtml);
+        $this->assertStringContainsString('REV-1', $filteredHtml);
+        $this->assertStringNotContainsString('REV-2', $filteredHtml);
     }
 }

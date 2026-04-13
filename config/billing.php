@@ -89,6 +89,11 @@ return [
         ],
     ],
 
+    'payment' => [
+        // Environments where simulate-success helpers are available for QA flows.
+        'simulation_enabled_envs' => ['local', 'testing', 'staging'],
+    ],
+
     'currency' => [
         'code' => 'PHP',
         'symbol' => '₱',
@@ -165,6 +170,7 @@ return [
     ],
 
     'features' => [
+        'learner_checkout_refinement' => env('BILLING_LEARNER_CHECKOUT_REFINEMENT', false),
         'proration' => true,
         'downgrades' => true,
         'pause_subscription' => false,

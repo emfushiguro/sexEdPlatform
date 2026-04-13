@@ -22,6 +22,7 @@
  <div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs overflow-hidden">
  <div class="px-6 py-4 border-b border-gray-100 ">
  <h3 class="text-base font-semibold text-gray-900 ">Edit: {{ $user->name }}</h3>
+ <p class="text-xs text-gray-500 mt-1">Role changes require a transition reason for audit history.</p>
  </div>
  <form method="POST" action="{{ route('admin.users.update', $user) }}" class="p-6 space-y-5">
  @csrf @method('PUT')
@@ -34,6 +35,11 @@
  <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
  <input type="email" name="email" id="email" value="{{ old('email', $user->email) }}" required
  class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
+ </div>
+ <div>
+ <label for="birthdate" class="block text-sm font-medium text-gray-700 mb-1.5">Birthdate</label>
+ <input type="date" name="birthdate" id="birthdate" value="{{ old('birthdate', optional($user->birthdate)->format('Y-m-d')) }}"
+ class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
  </div>
  <div>
  <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">New Password <span class="text-gray-400 font-normal">(leave blank to keep current)</span></label>
@@ -63,8 +69,15 @@
  <option value="active" @selected(old('status', $user->status)=='active')>Active</option>
  <option value="inactive" @selected(old('status', $user->status)=='inactive')>Inactive</option>
  <option value="suspended" @selected(old('status', $user->status)=='suspended')>Suspended</option>
+ <option value="archived" @selected(old('status', $user->status)=='archived')>Archived</option>
  </select>
  </div>
+ </div>
+ <div>
+ <label for="role_change_reason" class="block text-sm font-medium text-gray-700 mb-1.5">Role Change Reason <span class="text-xs text-gray-400">(required when role changes)</span></label>
+ <textarea name="role_change_reason" id="role_change_reason" rows="3"
+ class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition"
+ placeholder="Provide business reason for role transition audit.">{{ old('role_change_reason') }}</textarea>
  </div>
  <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 ">
  <a href="{{ route('admin.users.show', $user) }}" class="px-4 py-2 rounded-lg text-sm text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors">Cancel</a>

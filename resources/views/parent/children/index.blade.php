@@ -101,12 +101,12 @@
                         <div class="px-5 py-3 border-t border-gray-100 {{ $verificationStatus === 'rejected' ? 'bg-rose-50' : 'bg-amber-50' }}">
                             <p class="text-xs {{ $verificationStatus === 'rejected' ? 'text-rose-700' : 'text-amber-800' }}">
                                 @if($verificationStatus === 'rejected')
-                                    Child verification was rejected.
+                                    Verification needs correction.
                                     @if(!empty($child->pivot->verification_rejection_reason))
-                                        Reason: {{ $child->pivot->verification_rejection_reason }}
+                                        Reason: {{ trim((string) preg_replace('/\s+/u', ' ', str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string) $child->pivot->verification_rejection_reason), ENT_QUOTES | ENT_HTML5, 'UTF-8')))) }}
                                     @endif
                                 @else
-                                    Child account is pending admin review. Monitoring features will unlock after approval.
+                                    Pending verification.
                                 @endif
                             </p>
                         </div>
@@ -157,32 +157,16 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                           d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                                 </svg>
-                                View Progress
+                                View Child Dashboard
                             </a>
 
-                            @if($child->quizAttempts()->count() > 0)
-                                <a href="{{ route('parent.children.show', $child->id) }}"
-                                   class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
-                                    Quiz Results
-                                </a>
-                            @else
-                                <span class="text-sm text-gray-400">No quiz data yet</span>
-                            @endif
-
-                            <a href="{{ route('parent.children.show', $child->id) }}"
-                               class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-                                </svg>
-                                Manage
-                            </a>
+                            <span class="text-sm text-gray-400">
+                                {{ $child->quizAttempts()->count() > 0 ? 'Quiz activity available' : 'No quiz data yet' }}
+                            </span>
                         @else
-                            <span class="text-sm text-gray-500">Monitoring disabled until approved</span>
+                            <span class="text-sm text-gray-500">
+                                {{ $verificationStatus === 'rejected' ? 'Verification needs correction' : 'Pending verification' }}
+                            </span>
                         @endif
                     </div>
                 </div>

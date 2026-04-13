@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', 'Dashboard') | Concious Connections</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" sizes="any">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -135,5 +136,7 @@
         });
     </script>
     @endif
+
+    @include('chat.partials.global-popup')
 </body>
 </html>

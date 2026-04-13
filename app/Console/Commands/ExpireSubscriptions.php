@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Models\Subscription;
 use App\Enums\SubscriptionStatus;
 use App\Events\SubscriptionExpired;
+use App\Notifications\Learner\SubscriptionResultNotification;
+use App\Services\SubscriptionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -16,14 +18,12 @@ class ExpireSubscriptions extends Command
     
     protected $description = 'Expire subscriptions that have passed their end date';
 
-    public function handle(): int
+    public function handle(SubscriptionService $subscriptionService): int
     {
         $this->info('Checking for expired subscriptions...');
 
-        // Find all active subscriptions with end_date in the past
-        $query = Subscription::where('status', SubscriptionStatus::Active)
-            ->whereNotNull('end_date')
-            ->where('end_date', '<', now());
+        // Find all active subscriptions whose effective end timestamp has elapsed.
+        $query = Subscription::query()->expired();
 
         $count = $query->count();
 
@@ -42,8 +42,8 @@ class ExpireSubscriptions extends Command
                     $s->id,
                     $s->user->email ?? 'N/A',
                     $s->getPlanLabel(),
-                    $s->end_date->format('Y-m-d H:i'),
-                    now()->diffInDays($s->end_date) . ' days'
+                    ($s->ends_at ?? $s->end_date)?->format('Y-m-d H:i') ?? 'N/A',
+                    now()->diffInDays($s->ends_at ?? $s->end_date) . ' days'
                 ])
             );
             $this->warn('Dry run - no changes made.');
@@ -51,16 +51,18 @@ class ExpireSubscriptions extends Command
         }
 
         $expired = 0;
-        $subscriptions = $query->get();
+        $subscriptions = $query->with('user')->get();
 
         foreach ($subscriptions as $subscription) {
             try {
-                $subscription->update([
-                    'status' => SubscriptionStatus::Expired,
-                ]);
+                $subscriptionService->expire($subscription);
 
                 // Dispatch event for notifications/logging
                 event(new SubscriptionExpired($subscription));
+
+                if ($subscription->user) {
+                    $subscription->user->notify(new SubscriptionResultNotification('expired', $subscription));
+                }
 
                 Log::info('Subscription expired', [
                     'subscription_id' => $subscription->id,

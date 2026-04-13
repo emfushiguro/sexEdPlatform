@@ -32,7 +32,7 @@
                         Module Quiz
                     </span>
                 @elseif($quiz->lesson)
-                    <span class="inline-flex items-center gap-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100 rounded-lg px-2.5 py-1">
+                    <span class="inline-flex items-center gap-1 text-xs font-medium bg-brand-50 text-brand-700 border border-brand-100 rounded-lg px-2.5 py-1">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                         </svg>
@@ -157,7 +157,7 @@
                             <div class="flex flex-wrap items-center gap-1.5 mt-2">
                                 @php
                                 $typeBadges = [
-                                    'multiple_choice'  => ['bg-blue-50 text-blue-700 border-blue-100',   'Multiple Choice'],
+                                    'multiple_choice'  => ['bg-brand-50 text-brand-700 border-brand-100',   'Multiple Choice'],
                                     'true_false'       => ['bg-green-50 text-green-700 border-green-100', 'True / False'],
                                     'multiple_select'  => ['bg-purple-50 text-purple-700 border-purple-100', 'Multiple Select'],
                                     'fill_blank_text'  => ['bg-yellow-50 text-yellow-700 border-yellow-100', 'Fill Blank (Text)'],
@@ -230,7 +230,7 @@
                     <div class="flex items-center gap-1.5 flex-shrink-0">
                         <a
                             href="{{ route('instructor.quizzes.edit-question', ['quiz' => $quiz, 'question' => $question]) }}"
-                            class="p-2 rounded-xl text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                            class="p-2 rounded-xl text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition"
                             title="Edit question"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

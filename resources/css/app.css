@@ -58,38 +58,38 @@ body.admin-sidebar-locked {
     }
 }
 
-/* Instructor Blue Theme Styles */
+/* Instructor Brand Theme Styles */
 @layer components {
     /* Instructor input focus states */
     .instructor-input:focus {
         @apply ring-2 ring-offset-0 border-transparent;
-        ring-color: #354FAE;
+        ring-color: #730DB1;
     }
     
     /* Instructor checkbox */
     .instructor-checkbox {
-        color: #354FAE;
+        color: #730DB1;
     }
     
     .instructor-checkbox:focus {
-        ring-color: #354FAE;
+        ring-color: #730DB1;
     }
     
     /* Instructor button gradient */
     .instructor-button-gradient {
-        background: linear-gradient(135deg, #0A205C 0%, #354FAE 100%);
+        background: linear-gradient(135deg, #A30EB2 0%, #730DB1 55%, #3B0CB1 100%);
     }
     
     .instructor-button-gradient:hover {
-        background: linear-gradient(135deg, #0d2a73 0%, #3f5fc7 100%);
+        background: linear-gradient(135deg, #8f0db2 0%, #650ca8 55%, #320a96 100%);
     }
     
     /* Instructor link color */
     .instructor-link {
-        color: #354FAE;
+        color: #730DB1;
     }
     
     .instructor-link:hover {
-        color: #0A205C;
+        color: #A30EB2;
     }
 }

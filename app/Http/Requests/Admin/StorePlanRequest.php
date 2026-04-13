@@ -16,7 +16,7 @@ class StorePlanRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'plan_audience' => ['required', 'in:learner'],
+            'plan_audience' => ['required', 'in:learner,instructor'],
             'billing_mode' => ['required', 'in:monthly,annual,custom'],
             'start_date' => ['nullable', 'date', 'required_if:billing_mode,custom'],
             'end_date' => ['nullable', 'date', 'required_if:billing_mode,custom', 'after_or_equal:start_date'],

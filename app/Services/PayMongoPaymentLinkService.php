@@ -204,6 +204,103 @@ class PayMongoPaymentLinkService
     }
 
     /**
+     * Create a PayMongo Checkout Session.
+     *
+     * This is the preferred integration for learner checkout so the hosted
+     * page can present full payment method options with line items.
+     *
+     * @throws \Exception
+     */
+    public function createCheckoutSession(
+        float $amount,
+        string $description,
+        ?string $remarks = null,
+        array $metadata = [],
+        ?string $successUrl = null,
+        ?string $cancelUrl = null,
+        ?string $preferredPaymentMethod = null,
+        array $allowedPaymentMethods = [],
+        ?string $lineItemName = null,
+        int $quantity = 1,
+    ): array {
+        try {
+            $amountInCentavos = (int) ($amount * 100);
+            $paymentMethodTypes = $this->resolvePaymentMethodTypes($preferredPaymentMethod, $allowedPaymentMethods);
+
+            $payload = [
+                'data' => [
+                    'attributes' => [
+                        'description' => config('paymongo.payment_link.description_prefix') . $description,
+                        'line_items' => [[
+                            'currency' => 'PHP',
+                            'amount' => $amountInCentavos,
+                            'name' => $lineItemName ?: $description,
+                            'quantity' => max(1, $quantity),
+                        ]],
+                        'payment_method_types' => $paymentMethodTypes,
+                    ],
+                ],
+            ];
+
+            if ($successUrl) {
+                $payload['data']['attributes']['success_url'] = $successUrl;
+            }
+
+            if ($cancelUrl) {
+                $payload['data']['attributes']['cancel_url'] = $cancelUrl;
+            }
+
+            if (!empty($metadata)) {
+                $payload['data']['attributes']['metadata'] = $metadata;
+            }
+
+            Log::info('Creating PayMongo Checkout Session', [
+                'amount' => $amount,
+                'amount_centavos' => $amountInCentavos,
+                'description' => $description,
+                'mode' => $this->mode,
+                'payment_method_types' => $paymentMethodTypes,
+            ]);
+
+            /** @var Response $response */
+            $response = Http::withBasicAuth($this->secretKey, '')
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+                ->post("{$this->apiBaseUrl}/checkout_sessions", $payload);
+
+            if (!$response->successful()) {
+                $error = $response->json();
+                Log::error('PayMongo Checkout Session creation failed', [
+                    'status' => $response->status(),
+                    'error' => $error,
+                ]);
+
+                throw new \Exception(
+                    $error['errors'][0]['detail'] ?? 'Failed to create checkout session'
+                );
+            }
+
+            $data = $response->json();
+
+            Log::info('PayMongo Checkout Session created successfully', [
+                'session_id' => $data['data']['id'] ?? null,
+                'checkout_url' => $data['data']['attributes']['checkout_url'] ?? null,
+            ]);
+
+            return $data;
+        } catch (\Exception $e) {
+            Log::error('PayMongo Checkout Session Service Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
      * Create a single Payment Link for a subscription plan.
      * All billing-cycle complexity has been removed — one plan, one price.
      *
@@ -279,6 +376,33 @@ class PayMongoPaymentLinkService
     }
 
     /**
+     * Retrieve a PayMongo checkout session by ID.
+     *
+     * @throws \Exception
+     */
+    public function retrieveCheckoutSession(string $sessionId): array
+    {
+        try {
+            /** @var Response $response */
+            $response = Http::withBasicAuth($this->secretKey, '')
+                ->get("{$this->apiBaseUrl}/checkout_sessions/{$sessionId}");
+
+            if (!$response->successful()) {
+                throw new \Exception('Failed to retrieve checkout session');
+            }
+
+            return $response->json();
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve PayMongo Checkout Session', [
+                'checkout_session_id' => $sessionId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
      * Resolve the actual PayMongo payment object ID (pay_xxxxx) from a payment link.
      *
      * The PayMongo Refunds API requires an actual payment object ID, not a link ID.
@@ -328,6 +452,40 @@ class PayMongoPaymentLinkService
                 'link_id' => $linkId,
                 'error'   => $e->getMessage(),
             ]);
+            return null;
+        }
+    }
+
+    /**
+     * Resolve pay_xxxxx from a checkout session payload.
+     */
+    public function getActualPaymentIdFromCheckoutSession(string $sessionId): ?string
+    {
+        try {
+            $data = $this->retrieveCheckoutSession($sessionId);
+            $payments = $data['data']['attributes']['payments'] ?? [];
+
+            if (empty($payments)) {
+                Log::warning('PayMongo: Checkout session has no associated payments yet', [
+                    'checkout_session_id' => $sessionId,
+                ]);
+                return null;
+            }
+
+            $paymentId = $payments[0]['id'] ?? null;
+
+            Log::info('PayMongo: Resolved actual payment ID from checkout session', [
+                'checkout_session_id' => $sessionId,
+                'payment_id' => $paymentId,
+            ]);
+
+            return $paymentId;
+        } catch (\Exception $e) {
+            Log::error('PayMongo: Failed to resolve payment ID from checkout session', [
+                'checkout_session_id' => $sessionId,
+                'error' => $e->getMessage(),
+            ]);
+
             return null;
         }
     }
@@ -383,6 +541,9 @@ class PayMongoPaymentLinkService
         $preferred = $this->normalizePaymentMethod($preferredPaymentMethod);
         if ($preferred && in_array($preferred, $normalized, true)) {
             $normalized = array_values(array_unique(array_merge([$preferred], $normalized)));
+        } elseif (in_array('card', $normalized, true)) {
+            // If no method was chosen in-app, prioritize card first so checkout opens with a full selector flow.
+            $normalized = array_values(array_unique(array_merge(['card'], $normalized)));
         }
 
         return $normalized;

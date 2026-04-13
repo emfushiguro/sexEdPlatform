@@ -16,9 +16,12 @@ class Conversation extends Model
     public const TYPE_ADMIN_SUPPORT = 'admin_support_chat';
     public const TYPE_MODULE_CHAT = 'module_chat';
     public const TYPE_LESSON_CHAT = 'lesson_chat';
+    public const TYPE_LESSON_TOPIC_CHAT = 'lesson_topic_chat';
     public const TYPE_QUIZ_HELP = 'quiz_help';
 
     public const STATUS_PENDING_REQUEST = 'pending_request';
+    public const STATUS_ACCEPTED = 'accepted';
+    public const STATUS_DECLINED = 'declined';
     public const STATUS_ACTIVE = 'active';
     public const STATUS_CLOSED = 'closed';
 
@@ -30,6 +33,7 @@ class Conversation extends Model
         'status',
         'module_id',
         'lesson_id',
+        'lesson_topic_id',
         'quiz_id',
         'context_key',
         'last_message_at',
@@ -66,6 +70,7 @@ class Conversation extends Model
             self::TYPE_ADMIN_SUPPORT,
             self::TYPE_MODULE_CHAT,
             self::TYPE_LESSON_CHAT,
+            self::TYPE_LESSON_TOPIC_CHAT,
             self::TYPE_QUIZ_HELP,
         ];
     }
@@ -93,6 +98,11 @@ class Conversation extends Model
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
+    }
+
+    public function lessonTopic(): BelongsTo
+    {
+        return $this->belongsTo(LessonTopic::class);
     }
 
     public function quiz(): BelongsTo

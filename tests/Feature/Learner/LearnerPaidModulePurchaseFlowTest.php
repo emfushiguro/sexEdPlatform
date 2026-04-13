@@ -34,7 +34,7 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
         ]);
 
         $this->mock(PayMongoPaymentLinkService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('createPaymentLink')
+            $mock->shouldReceive('createCheckoutSession')
                 ->once()
                 ->andReturn([
                     'data' => [
@@ -49,8 +49,8 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
         $this->actingAs($learner)
             ->get(route('learner.modules.purchase.form', $module))
             ->assertOk()
-            ->assertSee('Complete Module Payment')
-            ->assertSee('Select Payment Method');
+            ->assertSee('Confirm Module Purchase')
+            ->assertSee('Proceed to PayMongo');
 
         $response = $this->actingAs($learner)
             ->post(route('learner.modules.purchase.process', $module), [
@@ -237,7 +237,7 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
         ]);
 
         $this->mock(PayMongoPaymentLinkService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('createPaymentLink')
+            $mock->shouldReceive('createCheckoutSession')
                 ->once()
                 ->andReturn([
                     'data' => [

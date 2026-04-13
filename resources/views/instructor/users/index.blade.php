@@ -81,7 +81,7 @@
                                             'target_user_id' => $user->id,
                                             'conversation_type' => 'direct',
                                         ]) }}"
-                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors action-icon-standard"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-brand-700 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors action-icon-standard"
                                         title="Message learner"
                                     >
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

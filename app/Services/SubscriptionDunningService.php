@@ -8,6 +8,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\SubscriptionStatus;
 use App\Mail\PaymentFailedMail;
 use App\Mail\SubscriptionExpiringMail;
+use App\Notifications\Learner\SubscriptionExpirationReminderNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
@@ -75,6 +76,9 @@ class SubscriptionDunningService
         foreach ($expiringSoon as $subscription) {
             Mail::to($subscription->user->email)
                 ->send(new SubscriptionExpiringMail($subscription));
+
+            $daysRemaining = max(1, (int) now()->diffInDays($subscription->end_date, false));
+            $subscription->user->notify(new SubscriptionExpirationReminderNotification($subscription, $daysRemaining));
         }
 
         // Find subscriptions that expired yesterday - add grace period

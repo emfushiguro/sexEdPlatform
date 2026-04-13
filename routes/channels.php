@@ -21,3 +21,11 @@ Broadcast::channel('chat.conversation.{conversationId}', function ($user, int $c
 Broadcast::channel('chat.requests.user.{userId}', function ($user, int $userId) {
     return (int) $user->id === $userId;
 });
+
+Broadcast::channel('chat.presence', function ($user) {
+    return [
+        'id' => (int) $user->id,
+        'name' => $user->name,
+        'status' => $user->chat_status,
+    ];
+});

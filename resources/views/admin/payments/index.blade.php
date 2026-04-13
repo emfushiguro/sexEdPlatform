@@ -7,11 +7,38 @@
     $paymentRows = $payments->values()->map(function ($payment) {
         $status = is_object($payment->status) ? $payment->status->value : (string) $payment->status;
         $method = (string) ($payment->method ?? 'unknown');
+        $scope = (string) data_get($payment->payment_details, 'payment_scope');
+
+        $isModulePurchase = $scope === 'module_purchase'
+            || $payment->modulePurchase !== null
+            || $payment->moduleSaleLedger !== null;
+
+        $module = $payment->modulePurchase?->module ?? $payment->moduleSaleLedger?->module;
+        $instructor = $module?->creator ?? $payment->moduleSaleLedger?->instructor;
+        $learner = $payment->user ?? $payment->moduleSaleLedger?->learner;
+
+        $learnerAvatarPath = $learner?->learnerProfile?->avatar_path;
+        $learnerAvatar = null;
+        if (!empty($learnerAvatarPath)) {
+            if (\Illuminate\Support\Str::startsWith($learnerAvatarPath, ['http://', 'https://', '//'])) {
+                $learnerAvatar = $learnerAvatarPath;
+            } else {
+                $learnerAvatar = asset('storage/' . ltrim(str_replace('storage/', '', (string) $learnerAvatarPath), '/'));
+            }
+        }
 
         return [
             'id' => $payment->id,
-            'user' => $payment->user?->name ?? 'Unknown user',
-            'email' => $payment->user?->email ?? 'No email',
+            'type_key' => $isModulePurchase ? 'module_purchase' : 'subscription',
+            'type_label' => $isModulePurchase ? 'Module Purchase' : 'Subscription Payment',
+            'module_title' => $module?->title ?? '-',
+            'module_thumb' => $module?->thumbnail_url,
+            'instructor' => $instructor?->name ?? '-',
+            'learner' => $learner?->name ?? 'Unknown learner',
+            'learner_email' => $learner?->email ?? 'No email',
+            'learner_avatar' => $learnerAvatar,
+            'user' => $learner?->name ?? 'Unknown user',
+            'email' => $learner?->email ?? 'No email',
             'amount' => (float) ($payment->amount ?? 0),
             'method' => $method,
             'status' => $status,
@@ -19,12 +46,11 @@
             'created_at_value' => $payment->created_at?->format('Y-m-d') ?? null,
             'reference' => $payment->transaction_id ?? '-',
             'show_url' => route('admin.payments.show', $payment),
-            'complete_url' => route('admin.payments.complete', $payment),
-            'can_complete' => method_exists($payment, 'isPending')
-                ? ($payment->isPending() || $status === 'processing')
-                : in_array($status, ['pending', 'processing'], true),
             'search_blob' => strtolower(implode(' ', array_filter([
                 $payment->id,
+                $isModulePurchase ? 'module purchase' : 'subscription payment',
+                $module?->title,
+                $instructor?->name,
                 $payment->user?->name,
                 $payment->user?->email,
                 $payment->amount,
@@ -111,15 +137,24 @@
                         @include('admin.partials.table-filter-bar', ['label' => 'Payments Filters', 'hint' => 'Search every visible column and narrow results with live column filters'])
                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Live Filters</p>
                         <h2 class="mt-2 text-xl font-bold text-gray-900">Payments Table</h2>
-                        <p class="mt-1 text-sm text-gray-500">Search user names, emails, references, methods, and statuses while filtering the full admin payments dataset in real time.</p>
+                        <p class="mt-1 text-sm text-gray-500">Search module purchases and subscriptions with module, learner, instructor, and transaction transparency in one table.</p>
                     </div>
-                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                         <label class="block xl:col-span-2">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
                             <input x-model.debounce.150ms="filters.search"
                                    type="text"
-                                   placeholder="User, email, method, status, ref..."
+                                   placeholder="Type, module, learner, instructor, ref..."
                                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Type</span>
+                            <select x-model="filters.type"
+                                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                <option value="">All types</option>
+                                <option value="module_purchase">Module Purchase</option>
+                                <option value="subscription">Subscription Payment</option>
+                            </select>
                         </label>
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Method</span>
@@ -181,8 +216,11 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No.</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">User</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No. #</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Type</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Module</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Learner</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Instructor</th>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Amount</th>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Method</th>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Status</th>
@@ -196,15 +234,37 @@
                             <tr class="transition hover:bg-sky-50/40">
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="index + 1"></td>
                                 <td class="px-6 py-4">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold"
+                                          :class="typeClass(payment.type_key)"
+                                          x-text="payment.type_label"></span>
+                                </td>
+                                <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
-                                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100 text-sm font-bold text-sky-700"
-                                              x-text="payment.user.charAt(0).toUpperCase()"></span>
+                                        <template x-if="payment.module_thumb">
+                                            <img :src="payment.module_thumb" alt="Module thumbnail" class="h-10 w-16 rounded-lg border border-gray-200 object-cover">
+                                        </template>
+                                        <template x-if="!payment.module_thumb">
+                                            <span class="inline-flex h-10 w-16 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-[11px] font-semibold text-gray-500">No image</span>
+                                        </template>
+                                        <p class="text-sm font-semibold text-gray-900" x-text="payment.module_title"></p>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <template x-if="payment.learner_avatar">
+                                            <img :src="payment.learner_avatar" alt="Learner avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover">
+                                        </template>
+                                        <template x-if="!payment.learner_avatar">
+                                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100 text-sm font-bold text-sky-700"
+                                                  x-text="initialFromName(payment.learner)"></span>
+                                        </template>
                                         <div>
-                                            <p class="text-sm font-semibold text-gray-900" x-text="payment.user"></p>
-                                            <p class="text-xs text-gray-500" x-text="payment.email"></p>
+                                            <p class="text-sm font-semibold text-gray-900" x-text="payment.learner"></p>
+                                            <p class="text-xs text-gray-500" x-text="payment.learner_email"></p>
                                         </div>
                                     </div>
                                 </td>
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="payment.instructor"></td>
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="formatCurrency(payment.amount)"></td>
                                 <td class="px-6 py-4">
                                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold"
@@ -228,24 +288,12 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                             </svg>
                                         </a>
-                                        <template x-if="payment.can_complete">
-                                            <form :action="payment.complete_url" method="POST" @submit="return confirm('Mark as completed and activate subscription?')">
-                                                @csrf
-                                                <button type="submit"
-                                                        class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100"
-                                                        title="Complete payment">
-                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                                    </svg>
-                                                </button>
-                                            </form>
-                                        </template>
                                     </div>
                                 </td>
                             </tr>
                         </template>
                         <tr x-show="filteredPayments.length === 0" x-cloak>
-                            <td colspan="8" class="px-6 py-14 text-center">
+                            <td colspan="11" class="px-6 py-14 text-center">
                                 <div class="mx-auto max-w-sm">
                                     <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
                                         <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -270,6 +318,7 @@
                 stats: config.stats || {},
                 filters: {
                     search: '',
+                    type: '',
                     method: '',
                     status: '',
                     dateFrom: '',
@@ -279,16 +328,18 @@
                     return this.payments.filter((payment) => {
                         const search = this.filters.search.trim().toLowerCase();
                         const matchesSearch = !search || payment.search_blob.includes(search);
+                        const matchesType = !this.filters.type || payment.type_key === this.filters.type;
                         const matchesMethod = !this.filters.method || payment.method === this.filters.method;
                         const matchesStatus = !this.filters.status || payment.status === this.filters.status;
                         const matchesDateFrom = !this.filters.dateFrom || (payment.created_at_value && payment.created_at_value >= this.filters.dateFrom);
                         const matchesDateTo = !this.filters.dateTo || (payment.created_at_value && payment.created_at_value <= this.filters.dateTo);
 
-                        return matchesSearch && matchesMethod && matchesStatus && matchesDateFrom && matchesDateTo;
+                        return matchesSearch && matchesType && matchesMethod && matchesStatus && matchesDateFrom && matchesDateTo;
                     });
                 },
                 resetFilters() {
                     this.filters.search = '';
+                    this.filters.type = '';
                     this.filters.method = '';
                     this.filters.status = '';
                     this.filters.dateFrom = '';
@@ -308,6 +359,10 @@
                     return String(value || '')
                         .replace(/_/g, ' ')
                         .replace(/\b\w/g, (char) => char.toUpperCase());
+                },
+                initialFromName(name) {
+                    const value = String(name || 'U').trim();
+                    return value.length > 0 ? value.charAt(0).toUpperCase() : 'U';
                 },
                 methodLabel(method) {
                     return {
@@ -330,6 +385,12 @@
                         bank_transfer: 'bg-gray-100 text-gray-600',
                         paymongo: 'bg-sky-100 text-sky-700',
                     }[method] || 'bg-gray-100 text-gray-600';
+                },
+                typeClass(typeKey) {
+                    return {
+                        module_purchase: 'bg-violet-100 text-violet-700',
+                        subscription: 'bg-cyan-100 text-cyan-700',
+                    }[typeKey] || 'bg-gray-100 text-gray-600';
                 },
                 statusClass(status) {
                     return {
