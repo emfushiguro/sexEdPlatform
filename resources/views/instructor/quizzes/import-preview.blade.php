@@ -1,12 +1,12 @@
-@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
             <!-- Breadcrumb -->
             <div class="mb-4">
                 <nav class="text-sm text-gray-500">
-                    <a href="{{ route('instructor.quizzes.index') }}" class="hover:text-gray-700">Quizzes</a>
+                    <a href="{{ route($contentRoutePrefix . '.quizzes.index') }}" class="hover:text-gray-700">Quizzes</a>
                     <span class="mx-2">/</span>
-                    <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="hover:text-gray-700">{{ $quiz->title }}</a>
+                    <a href="{{ route($contentRoutePrefix . '.quizzes.show', $quiz) }}" class="hover:text-gray-700">{{ $quiz->title }}</a>
                     <span class="mx-2">/</span>
                     <span class="text-gray-900">Import Preview</span>
                 </nav>
@@ -45,19 +45,19 @@
 
                     @if(count($validRows) > 0)
                         <div class="mt-6 flex gap-3">
-                            <form method="POST" action="{{ route('instructor.quizzes.import.confirm', $quiz) }}" class="flex-1">
+                            <form method="POST" action="{{ route($contentRoutePrefix . '.quizzes.import.confirm', $quiz) }}" class="flex-1">
                                 @csrf
                                 <button type="submit" class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition">
                                     ✓ Confirm Import ({{ count($validRows) }} questions)
                                 </button>
                             </form>
-                            <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="flex-1 text-center px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition">
+                            <a href="{{ route($contentRoutePrefix . '.quizzes.show', $quiz) }}" class="flex-1 text-center px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition">
                                 Cancel
                             </a>
                         </div>
                     @else
                         <div class="mt-6">
-                            <a href="{{ route('instructor.quizzes.show', $quiz) }}" class="block text-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition">
+                            <a href="{{ route($contentRoutePrefix . '.quizzes.show', $quiz) }}" class="block text-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition">
                                 Back to Quiz
                             </a>
                         </div>
@@ -158,3 +158,4 @@
                 </div>
             @endif
 @endsection
+

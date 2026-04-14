@@ -114,4 +114,26 @@ class InstructorApplicationController extends Controller
 
         return redirect()->back()->with('success', 'Instructor application rejected successfully.');
     }
+
+    public function archive(InstructorApplication $application): RedirectResponse
+    {
+        if ($application->trashed()) {
+            return redirect()->back()->with('info', 'Instructor application is already archived.');
+        }
+
+        $application->delete();
+
+        return redirect()->back()->with('success', 'Instructor application archived successfully.');
+    }
+
+    public function destroy(InstructorApplication $application): RedirectResponse
+    {
+        if (! in_array($application->status, ['rejected', 'approved'], true)) {
+            return redirect()->back()->with('error', 'Only reviewed applications can be permanently deleted.');
+        }
+
+        $application->forceDelete();
+
+        return redirect()->back()->with('success', 'Instructor application permanently deleted.');
+    }
 }

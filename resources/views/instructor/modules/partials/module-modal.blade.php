@@ -20,7 +20,8 @@
      class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
      @keydown.escape.window="$store.modals.closeModuleModal()">
 
-    <div class="rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        <div class="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900 flex flex-col"
+            data-testid="module-modal-shell"
          @click.stop
          x-data="{
              mode: 'create',
@@ -34,8 +35,9 @@
              priceCurrency: 'PHP',
              enrollmentLimit: '',
              isPublished: false,
+             actionChoice: '{{ ($isContentAdminPanel ?? false) ? 'publish' : 'draft' }}',
              thumbnailPreview: null,
-             actionBase: '{{ url('instructor/modules') }}',
+             actionBase: '{{ url($contentRoutePrefix . '/modules') }}',
              syncFromStore() {
                  const draft = $store.modals.moduleModalDraft;
                  if (!draft) {
@@ -50,6 +52,7 @@
                      this.priceCurrency = 'PHP';
                      this.enrollmentLimit = '';
                      this.isPublished = false;
+                     this.actionChoice = '{{ ($isContentAdminPanel ?? false) ? 'publish' : 'draft' }}';
                      this.thumbnailPreview = null;
                      return;
                  }
@@ -65,13 +68,14 @@
                  this.priceCurrency = draft.price_currency || 'PHP';
                  this.enrollmentLimit = draft.enrollment_limit ?? '';
                  this.isPublished = !!draft.is_published;
+                 this.actionChoice = draft.action || (this.isPublished ? 'publish' : 'draft');
                  this.thumbnailPreview = draft.thumbnail_url || null;
              },
              get isEdit() {
                  return this.mode === 'edit' && this.editModuleId !== null;
              },
              get formAction() {
-                 return this.isEdit ? `${this.actionBase}/${this.editModuleId}` : '{{ route('instructor.modules.store') }}';
+                 return this.isEdit ? `${this.actionBase}/${this.editModuleId}` : '{{ route($contentRoutePrefix . '.modules.store') }}';
              },
              previewImage(event) {
                  const file = event.target.files[0];
@@ -89,7 +93,8 @@
          }">
 
         {{-- Modal Header --}}
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
+           <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-t-2xl shrink-0"
+               data-testid="module-modal-header">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                      style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
@@ -111,11 +116,13 @@
         </div>
 
         {{-- Modal Body --}}
-        <form method="POST" :action="formAction" enctype="multipart/form-data" class="p-6 space-y-5">
+        <form id="moduleModalForm" method="POST" :action="formAction" enctype="multipart/form-data" class="flex min-h-0 flex-1 flex-col">
             @csrf
             <template x-if="isEdit">
                 <input type="hidden" name="_method" value="PUT">
             </template>
+
+            <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5 space-y-5" data-testid="module-modal-body">
 
             {{-- Title --}}
             <div>
@@ -275,22 +282,40 @@
                 @endif
             </div>
 
-            {{-- Status Toggle --}}
-            <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50/50 dark:bg-gray-800/50">
-                <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">Governed publication</p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Instructor modules save as drafts and become learner-visible only after admin approval.</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                        <input type="hidden" name="is_published" value="0">
-                        <div class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600">Draft</div>
+            {{-- Lifecycle / publication control --}}
+            @if(($isContentAdminPanel ?? false) === true)
+                <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50/50 dark:bg-gray-800/50">
+                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
+                        Module Status
                     </label>
+                    <select name="action" x-model="actionChoice"
+                            class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
+                        <option value="publish">Publish</option>
+                        <option value="draft">Save as Draft</option>
+                        <option value="archive">Archive</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Set lifecycle state for this platform module.</p>
                 </div>
+            @else
+                <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50/50 dark:bg-gray-800/50">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">Governed publication</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Instructor modules save as drafts and become learner-visible only after admin approval.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="hidden" name="action" value="draft">
+                            <div class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600">Draft</div>
+                        </label>
+                    </div>
+                </div>
+            @endif
+
             </div>
 
             {{-- Form Actions --}}
-            <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div class="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-900"
+                 data-testid="module-modal-footer">
                 <button type="button" @click="$store.modals.closeModuleModal()"
                         class="px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors">
                     Cancel

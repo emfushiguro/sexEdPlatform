@@ -1,4 +1,4 @@
-﻿@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
 
@@ -30,7 +30,7 @@
         </div>
     </div>
 
-    <form action="{{ route('instructor.topics.store') }}" method="POST" enctype="multipart/form-data" id="topicForm">
+    <form action="{{ route($contentRoutePrefix . '.topics.store') }}" method="POST" enctype="multipart/form-data" id="topicForm">
         @csrf
         <input type="hidden" name="lesson_id" value="{{ $lesson->id }}">
 
@@ -252,7 +252,7 @@
                                     upload</span> or drag and drop</p>
                             <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 2MB each (Multiple images supported)
                             </p>
-                            <p class="text-xs text-purple-600 mt-1 font-medium">Ã°Å¸â€œÂ¸ Both Gallery & Slideshow views
+                            <p class="text-xs text-purple-600 mt-1 font-medium">ðŸ“¸ Both Gallery & Slideshow views
                                 available to learners</p>
                         </div>
                     </label>
@@ -354,7 +354,7 @@
                 Preview Topic
             </button>
             <div class="flex gap-4">
-                <a href="{{ route('instructor.lessons.show', $lesson) }}"
+                <a href="{{ route($contentRoutePrefix . '.lessons.show', $lesson) }}"
                     class="px-6 py-2 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors">
                     Cancel
                 </a>
@@ -397,7 +397,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
 
-                const response = await fetch('{{ route('instructor.upload.image') }}', {
+                const response = await fetch('{{ route($contentRoutePrefix . '.upload.image') }}', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': csrfToken,
@@ -454,11 +454,15 @@
                     'insertdatetime', 'media', 'table', 'help', 'wordcount'
                 ],
                 toolbar: 'undo redo | formatselect | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | image media link | help',
-                images_upload_url: '{{ route('instructor.upload.image') }}',
+                images_upload_url: '{{ route($contentRoutePrefix . '.upload.image') }}',
                 automatic_uploads: true,
                 paste_data_images: false,
                 images_reuse_filename: true,
                 images_file_types: 'jpeg,jpg,png,gif,webp',
+                relative_urls: false,
+                remove_script_host: false,
+                convert_urls: true,
+                document_base_url: '{{ url('/') }}/',
                 images_upload_handler: async (blobInfo, progress) => {
                     progress(15);
                     const location = await uploadTinyMceImage(blobInfo.blob());
@@ -1012,4 +1016,5 @@
         }
     </script>
 @endsection
+
 

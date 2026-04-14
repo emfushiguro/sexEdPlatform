@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Module;
+use App\Services\Content\ContentAuthoringService;
 use App\Services\ContentGovernanceService;
 use Illuminate\Http\Request;
 
@@ -11,11 +12,14 @@ class AdminModuleController extends Controller
 {
     public function __construct(
         private readonly ContentGovernanceService $contentGovernanceService,
+        private readonly ContentAuthoringService $contentAuthoringService,
     ) {
     }
 
     public function index()
     {
+        $this->authorize('viewAny', Module::class);
+
         $modules = Module::query()
             ->where('content_owner_type', 'admin')
             ->latest()
@@ -26,15 +30,19 @@ class AdminModuleController extends Controller
 
     public function create()
     {
+        $this->authorize('create', Module::class);
+
         return view('admin.modules.create');
     }
 
     public function store(Request $request)
     {
+        $this->authorize('create', Module::class);
+
         $validated = $this->validateModule($request);
 
-        $module = $this->contentGovernanceService->createAdminOwnedModule(
-            $this->mapModulePayload($validated),
+        $module = $this->contentGovernanceService->createAdminOwnedModuleFromValidated(
+            $validated,
             $request->user(),
         );
 
@@ -44,6 +52,7 @@ class AdminModuleController extends Controller
 
     public function show(Module $module)
     {
+        $this->authorize('view', $module);
         abort_unless($module->content_owner_type === 'admin', 404);
 
         return view('admin.modules.show', compact('module'));
@@ -51,6 +60,7 @@ class AdminModuleController extends Controller
 
     public function edit(Module $module)
     {
+        $this->authorize('update', $module);
         abort_unless($module->content_owner_type === 'admin', 404);
 
         return view('admin.modules.edit', compact('module'));
@@ -58,11 +68,12 @@ class AdminModuleController extends Controller
 
     public function update(Request $request, Module $module)
     {
+        $this->authorize('update', $module);
         abort_unless($module->content_owner_type === 'admin', 404);
 
         $validated = $this->validateModule($request);
 
-        $module->update($this->mapModulePayload($validated) + [
+        $module->update($this->contentAuthoringService->toAdminPayload($validated, $module) + [
             'current_review_status' => 'approved',
             'is_published' => true,
             'published_by_admin_id' => $request->user()->id,
@@ -81,26 +92,5 @@ class AdminModuleController extends Controller
             'enrollment_mode' => 'required|in:auto,manual',
             'is_published' => 'nullable|boolean',
         ]);
-    }
-
-    private function mapModulePayload(array $validated): array
-    {
-        $ageBrackets = [
-            'kids' => ['min_age' => 5, 'max_age' => 12],
-            'teens' => ['min_age' => 13, 'max_age' => 17],
-            'adults' => ['min_age' => 18, 'max_age' => 100],
-        ];
-
-        return [
-            'title' => $validated['title'],
-            'description' => $validated['description'],
-            'min_age' => $ageBrackets[$validated['age_bracket']]['min_age'],
-            'max_age' => $ageBrackets[$validated['age_bracket']]['max_age'],
-            'enrollment_mode' => $validated['enrollment_mode'],
-            'duration_minutes' => 0,
-            'order' => (Module::max('order') ?? 0) + 1,
-            'is_premium' => false,
-            'certificate_pass_score' => 70,
-        ];
     }
 }

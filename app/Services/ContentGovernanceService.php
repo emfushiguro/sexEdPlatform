@@ -6,34 +6,61 @@ use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ModuleRevision;
 use App\Models\User;
+use App\Services\Content\ContentAuthoringService;
 use App\Notifications\Admin\NewModuleSubmissionNotification;
 use App\Notifications\InstructorModuleReviewDecisionNotification;
+use App\Notifications\InstructorModuleReviewStatusNotification;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class ContentGovernanceService
 {
+    public const STATUS_SUBMITTED = 'submitted';
+    public const STATUS_IN_REVIEW = 'in_review';
+    public const STATUS_WITHDRAWN = 'withdrawn';
+
     public function __construct(
         private readonly AdminActivityLogService $adminActivityLogService,
         private readonly InstructorModerationPenaltyService $instructorModerationPenaltyService,
+        private readonly ContentAuthoringService $contentAuthoringService,
     ) {
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    public function createAdminOwnedModuleFromValidated(array $validated, User $admin): Module
+    {
+        return $this->createAdminOwnedModule(
+            $this->contentAuthoringService->toAdminPayload($validated),
+            $admin,
+        );
     }
 
     public function submitForReview(Module $module, User $actor): ModuleReviewRequest
     {
         return DB::transaction(function () use ($module, $actor) {
+            $hasActiveSubmission = ModuleReviewRequest::query()
+                ->where('module_id', $module->id)
+                ->whereIn('status', [self::STATUS_SUBMITTED, self::STATUS_IN_REVIEW])
+                ->exists();
+
+            if ($hasActiveSubmission) {
+                throw new InvalidArgumentException('This module already has an active submission under review.');
+            }
+
             $revision = $this->createRevisionSnapshot($module, $actor);
 
             $reviewRequest = ModuleReviewRequest::query()->create([
                 'module_id' => $module->id,
                 'module_revision_id' => $revision->id,
-                'status' => 'in_review',
+                'status' => self::STATUS_SUBMITTED,
                 'submitted_by' => $actor->id,
                 'submitted_at' => now(),
             ]);
 
             $module->forceFill([
-                'current_review_status' => 'in_review',
+                'current_review_status' => self::STATUS_SUBMITTED,
             ])->save();
 
             User::query()
@@ -42,6 +69,106 @@ class ContentGovernanceService
                 ->each(fn (User $admin) => $admin->notify(new NewModuleSubmissionNotification($reviewRequest->loadMissing('module'))));
 
             return $reviewRequest;
+        });
+    }
+
+    public function startReview(ModuleReviewRequest $reviewRequest, User $admin): ModuleReviewRequest
+    {
+        return DB::transaction(function () use ($reviewRequest, $admin) {
+            if (!in_array($reviewRequest->status, [self::STATUS_SUBMITTED, self::STATUS_IN_REVIEW], true)) {
+                throw new InvalidArgumentException('Only submitted module requests can be moved to under review.');
+            }
+
+            $reviewRequest->loadMissing('module', 'revision');
+
+            if ($reviewRequest->status === self::STATUS_IN_REVIEW) {
+                return $reviewRequest;
+            }
+
+            $reviewRequest->forceFill([
+                'status' => self::STATUS_IN_REVIEW,
+            ])->save();
+
+            $reviewRequest->revision?->forceFill([
+                'status' => self::STATUS_IN_REVIEW,
+            ])->save();
+
+            $reviewRequest->module?->forceFill([
+                'current_review_status' => self::STATUS_IN_REVIEW,
+            ])->save();
+
+            $instructor = $reviewRequest->module?->created_by
+                ? User::query()->find($reviewRequest->module->created_by)
+                : null;
+
+            if ($instructor) {
+                $instructor->notify(new InstructorModuleReviewStatusNotification(
+                    reviewRequest: $reviewRequest,
+                    status: self::STATUS_IN_REVIEW,
+                    title: 'Module Under Review',
+                    message: 'An admin has started reviewing your submitted module.',
+                ));
+            }
+
+            $this->adminActivityLogService->logModelMutation(
+                action: 'content_reviews.start_review',
+                entity: $reviewRequest,
+                after: [
+                    'module_id' => $reviewRequest->module_id,
+                    'module_revision_id' => $reviewRequest->module_revision_id,
+                    'status' => self::STATUS_IN_REVIEW,
+                ],
+                adminUserId: $admin->id,
+            );
+
+            return $reviewRequest->fresh();
+        });
+    }
+
+    public function withdrawSubmission(Module $module, User $actor): ModuleReviewRequest
+    {
+        return DB::transaction(function () use ($module, $actor) {
+            $reviewRequest = ModuleReviewRequest::query()
+                ->where('module_id', $module->id)
+                ->latest('id')
+                ->first();
+
+            if (!$reviewRequest) {
+                throw new InvalidArgumentException('No submission found to withdraw.');
+            }
+
+            if ($reviewRequest->status !== self::STATUS_SUBMITTED) {
+                throw new InvalidArgumentException('This submission can no longer be withdrawn because review has already started.');
+            }
+
+            $reviewRequest->forceFill([
+                'status' => self::STATUS_WITHDRAWN,
+                'reviewed_at' => now(),
+                'feedback' => 'Withdrawn by instructor before review started.',
+            ])->save();
+
+            $reviewRequest->revision?->forceFill([
+                'status' => self::STATUS_WITHDRAWN,
+                'review_feedback' => 'Withdrawn by instructor before review started.',
+                'reviewed_at' => now(),
+            ])->save();
+
+            $module->forceFill([
+                'current_review_status' => 'draft',
+            ])->save();
+
+            User::query()
+                ->role('admin')
+                ->get()
+                ->each(fn (User $admin) => $admin->notify(new InstructorModuleReviewStatusNotification(
+                    reviewRequest: $reviewRequest,
+                    status: self::STATUS_WITHDRAWN,
+                    title: 'Module Submission Withdrawn',
+                    message: 'An instructor withdrew a module submission before review started.',
+                    actionUrl: route('admin.content-reviews.index'),
+                )));
+
+            return $reviewRequest->fresh();
         });
     }
 
@@ -93,7 +220,7 @@ class ContentGovernanceService
     public function approveReview(ModuleReviewRequest $reviewRequest, User $admin, ?string $notes = null): ModuleRevision
     {
         return DB::transaction(function () use ($reviewRequest, $admin, $notes) {
-            if ($reviewRequest->status !== 'in_review') {
+            if ($reviewRequest->status !== self::STATUS_IN_REVIEW) {
                 throw new InvalidArgumentException('Only pending review submissions can be approved.');
             }
 
@@ -168,7 +295,7 @@ class ContentGovernanceService
         }
 
         return DB::transaction(function () use ($reviewRequest, $admin, $feedback, $reasonCode, $guidanceNote, $issueWarning, $moderationNotes) {
-            if ($reviewRequest->status !== 'in_review') {
+            if ($reviewRequest->status !== self::STATUS_IN_REVIEW) {
                 throw new InvalidArgumentException('Only pending review submissions can be rejected.');
             }
 
@@ -252,7 +379,7 @@ class ContentGovernanceService
     public function archiveReview(ModuleReviewRequest $reviewRequest, User $admin, ?string $notes = null): ModuleReviewRequest
     {
         return DB::transaction(function () use ($reviewRequest, $admin, $notes) {
-            if ($reviewRequest->status !== 'in_review') {
+            if (!in_array($reviewRequest->status, [self::STATUS_SUBMITTED, self::STATUS_IN_REVIEW], true)) {
                 throw new InvalidArgumentException('Only pending review submissions can be archived.');
             }
 
@@ -309,12 +436,12 @@ class ContentGovernanceService
             'revision_number' => $nextRevisionNumber,
             'snapshot_payload' => $this->buildSnapshotPayload($module),
             'submitted_by' => $actor->id,
-            'status' => 'in_review',
+            'status' => self::STATUS_SUBMITTED,
             'submitted_at' => now(),
         ]);
 
         $module->forceFill([
-            'current_review_status' => 'in_review',
+            'current_review_status' => self::STATUS_SUBMITTED,
         ])->save();
 
         return $revision;

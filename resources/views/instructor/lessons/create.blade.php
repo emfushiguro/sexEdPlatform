@@ -1,4 +1,4 @@
-﻿@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
 <div class="max-w-2xl mx-auto py-8 px-4">
@@ -15,7 +15,7 @@
             Use the lesson creation action from the Manage Lessons page to add new lessons through the modern slideout modal.
         </p>
 
-        <a href="{{ route('instructor.lessons.index') }}"
+        <a href="{{ route($contentRoutePrefix . '.lessons.index') }}"
            class="inline-flex mt-6 items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
            style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
             Go to Manage Lessons
@@ -26,3 +26,4 @@
     </div>
 </div>
 @endsection
+

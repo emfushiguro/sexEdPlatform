@@ -20,6 +20,20 @@
         ? route('learner.lessons.show', $nextLesson)
         : route('learner.modules.show', $module);
     $isCompleted     = !is_null($enrollment->completed_at);
+
+    $creator = $module->creator;
+    $ownerType = in_array($module->content_owner_type, ['admin', 'instructor'], true)
+        ? $module->content_owner_type
+        : ((string) optional($creator)->role === 'admin' ? 'admin' : 'instructor');
+    $instructorProfile = $creator?->instructorProfile;
+    $displayOwnerName = $ownerType === 'admin'
+        ? 'Conscious Connections Team'
+        : ($creator?->full_name ?: $creator?->name ?: 'Instructor');
+    $ownerPhoto = $ownerType === 'admin'
+        ? asset('media/Logo.png')
+        : ($instructorProfile?->profile_photo_path
+            ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
+            : null);
 @endphp
 
 <div class="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 hover:ring-2 hover:ring-purple-200 dark:hover:ring-purple-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
@@ -62,10 +76,20 @@
                     {{ $module->title }}
                 </h3>
             </div>
-            <p class="text-sm text-gray-">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
                 {{ $completedLessons }}/{{ $totalLessons }} lessons completed
             </p>
+        </div>
 
+        <div class="flex items-center gap-2 pt-0.5">
+            @if($ownerPhoto)
+                <img src="{{ $ownerPhoto }}" alt="{{ $displayOwnerName }}" class="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-gray-600">
+            @else
+                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">
+                    {{ strtoupper(substr($displayOwnerName, 0, 1)) }}
+                </div>
+            @endif
+            <p class="text-xs text-gray-600 dark:text-gray-300 truncate">Created by: {{ $displayOwnerName }}</p>
         </div>
 
         {{-- Progress bar --}}

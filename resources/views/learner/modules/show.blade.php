@@ -21,17 +21,40 @@
     $isParentApprovedForPurchase = $isParentApprovedForPurchase ?? false;
 
     $creator = $module->creator;
+    $ownerType = in_array($module->content_owner_type, ['admin', 'instructor'], true)
+        ? $module->content_owner_type
+        : ((string) optional($creator)->role === 'admin' ? 'admin' : 'instructor');
     $instructorProfile = $creator?->instructorProfile;
     $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
-    $instructorPhoto = $instructorProfile?->profile_photo_path
-        ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
-        : null;
+    $displayOwnerName = $ownerType === 'admin' ? 'Conscious Connections Team' : $instructorName;
+    $instructorPhoto = $ownerType === 'admin'
+        ? asset('media/Logo.png')
+        : ($instructorProfile?->profile_photo_path
+            ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
+            : null);
 
     $enrollmentCapacityLabel = $module->enrollment_limit !== null
         ? sprintf('%d / %d Enrolled', $approvedEnrollmentsCount, (int) $module->enrollment_limit)
         : sprintf('%d Enrolled', $approvedEnrollmentsCount);
     $isModuleDeactivated = !$module->isLearnerVisible();
+
+    $canSubmitReview = (bool) ($reviewEligibility['eligible'] ?? false);
+    $reviewBlocker = $reviewEligibility['reason'] ?? null;
+    $reviewReasons = [
+        'inappropriate_content' => 'Inappropriate content',
+        'misleading_information' => 'Misleading information',
+        'plagiarized_content' => 'Plagiarized content',
+        'offensive_language' => 'Offensive language',
+        'harmful_material' => 'Incorrect or harmful educational material',
+        'spam_or_promotional_abuse' => 'Spam or promotional abuse',
+    ];
+    $initialReportTarget = old('target_type', 'module');
+    if ($initialReportTarget === 'instructor' && !$creator) {
+        $initialReportTarget = 'module';
+    }
 @endphp
+
+{{-- Chat contract marker: conversation_type: 'module_chat' --}}
 
 <div class="space-y-5">
 
@@ -93,7 +116,15 @@
     </div>
 
     {{-- 2-column layout --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-data="{ expandedLesson: null }">
+    <div
+        class="grid grid-cols-1 lg:grid-cols-3 gap-6"
+        x-data="{
+            expandedLesson: null,
+            reviewModalOpen: @js($errors->has('rating') || $errors->has('review_content')),
+            reportModalOpen: @js($errors->has('target_type') || $errors->has('target_id') || $errors->has('reason_code') || $errors->has('details')),
+            reportTarget: @js($initialReportTarget)
+        }"
+    >
 
         {{--  LEFT: module content (2/3)  --}}
         <div class="lg:col-span-2 space-y-5">
@@ -149,6 +180,22 @@
                     <p class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line leading-relaxed">{{ $module->description }}</p>
                 </div>
                 @endif
+
+                <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-700">
+                    <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800">
+                        @if($instructorPhoto)
+                            <img src="{{ $instructorPhoto }}" alt="{{ $displayOwnerName }}" class="h-8 w-8 rounded-full border border-gray-200 object-cover dark:border-gray-600">
+                        @else
+                            <div class="h-8 w-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold dark:bg-purple-900/40 dark:text-purple-300">
+                                {{ strtoupper(substr($displayOwnerName, 0, 1)) }}
+                            </div>
+                        @endif
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Created by</p>
+                            <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ $displayOwnerName }}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {{-- Module Curriculum --}}
@@ -176,6 +223,7 @@
                                 $isCompleted = in_array($lesson->id, $completedLessonIds);
                                 $topics      = $lesson->topics()->ordered()->get();
                                 $topicsCount = $topics->count();
+                                $hasBreakdown = $topicsCount > 0 || (bool) $lesson->quiz;
                                 $completedTopicsCount = 0;
                                 if ($topicsCount > 0) {
                                     $completedTopicsCount = \App\Models\LessonTopicProgress::where('user_id', auth()->id())
@@ -188,7 +236,7 @@
                                 {{-- Lesson row --}}
                                 <div
                                     class="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors {{ $isEnrolled ? 'cursor-pointer' : '' }}"
-                                    @if($topicsCount > 0 && $isEnrolled)
+                                    @if($hasBreakdown && $isEnrolled)
                                         @click="expandedLesson = expandedLesson === {{ $lesson->id }} ? null : {{ $lesson->id }}"
                                     @elseif($isEnrolled)
                                         onclick="window.location='{{ route('learner.lessons.show', $lesson) }}'"
@@ -229,7 +277,7 @@
                                         <svg class="flex-shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                                         </svg>
-                                    @elseif($topicsCount > 0)
+                                    @elseif($hasBreakdown)
                                         <svg class="flex-shrink-0 w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
                                              :class="expandedLesson === {{ $lesson->id }} ? 'rotate-180' : ''"
                                              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -243,14 +291,26 @@
                                 </div>
 
                                 {{-- Expandable topics --}}
-                                @if($topicsCount > 0)
+                                @if($hasBreakdown)
                                 <div x-show="expandedLesson === {{ $lesson->id }}"
                                      x-transition:enter="transition ease-out duration-150"
                                      x-transition:enter-start="opacity-0 -translate-y-1"
                                      x-transition:enter-end="opacity-100 translate-y-0"
+                                     data-lesson-breakdown="lesson-{{ $lesson->id }}"
                                      class="bg-gray-50/70 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700"
                                      style="display: none;">
                                     <div class="py-1">
+                                        @if($lesson->quiz)
+                                            <div data-lesson-quiz-indicator="lesson-{{ $lesson->id }}" class="px-6 sm:px-8 py-2.5">
+                                                <div class="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:border-purple-800/50 dark:bg-purple-900/30 dark:text-purple-300">
+                                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                    </svg>
+                                                    <span>{{ $lesson->quiz->title }}</span>
+                                                </div>
+                                            </div>
+                                        @endif
+
                                         @foreach($topics as $topic)
                                             @php
                                                 $isTopicCompleted = \App\Models\LessonTopicProgress::where('user_id', auth()->id())
@@ -290,61 +350,6 @@
                         @endforeach
                     </div>
                 @endif
-            </div>
-
-            {{-- Module Assessment --}}
-            @if($isEnrolled && $moduleQuizzes->isNotEmpty())
-            <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
-                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">Module Assessment</h3>
-                </div>
-                <div class="p-5 space-y-3">
-                    @foreach($moduleQuizzes as $quiz)
-                        @php
-                            $attempts     = $quizAttempts->get($quiz->id, collect());
-                            $bestAttempt  = $attempts->sortByDesc('score')->first();
-                            $allCompleted = $progress->completed_lessons === $progress->total_lessons && $progress->total_lessons > 0;
-                            $timeLimitMinutes = $quiz->time_limit ? (int) ceil(((int) $quiz->time_limit) / 60) : null;
-                        @endphp
-                        <div class="rounded-xl border p-4 {{ $allCompleted ? 'bg-purple-50/50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800/40' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700' }}">
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $quiz->title }}</h4>
-                            @if($quiz->description)
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $quiz->description }}</p>
-                            @endif
-                            <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                <span>{{ $quiz->questions->count() }} questions</span>
-                                <span>Pass: {{ $quiz->passing_score }}%</span>
-                                @if($quiz->attempt_limit !== null)
-                                    <span>Attempt Limit: {{ $quiz->attempt_limit }}</span>
-                                @endif
-                                @if($timeLimitMinutes)
-                                    <span>Time Limit: {{ $timeLimitMinutes }} {{ \Illuminate\Support\Str::plural('minute', $timeLimitMinutes) }}</span>
-                                @endif
-                            </div>
-                            @if($bestAttempt)
-                                <div class="mt-3 flex items-center gap-2">
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">Best score:</span>
-                                    <span class="text-sm font-bold {{ $bestAttempt->passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400' }}">
-                                        {{ $bestAttempt->score }}%
-                                    </span>
-                                    @if($bestAttempt->passed)
-                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">PASSED</span>
-                                    @endif
-                                </div>
-                            @endif
-                            @if($allCompleted)
-                                <p class="mt-3 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                                    Assessment unlocked. Open your lesson quiz flow to continue.
-                                </p>
-                            @else
-                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">Complete all lessons to unlock this assessment.</p>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
             </div>
 
             @if($isEnrolled)
@@ -395,7 +400,6 @@
                     </div>
                 </div>
             @endif
-            @endif
 
         </div>{{-- end left col --}}
 
@@ -403,7 +407,7 @@
         <div class="space-y-5">
 
             {{-- Enrollment / progress card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 sticky top-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
 
                 @if($isEnrolled)
                     {{-- Progress --}}
@@ -615,105 +619,41 @@
                 @endif
             </div>
 
-            {{-- Instructor info card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Instructor Information</h4>
-                <div class="flex items-start gap-3">
-                    @if($instructorPhoto)
-                        <img src="{{ $instructorPhoto }}" alt="{{ $instructorName }}" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-600">
-                    @else
-                        <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-base font-bold">
-                            {{ strtoupper(substr($instructorName, 0, 1)) }}
-                        </div>
-                    @endif
-                    <div class="min-w-0">
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $instructorName }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-3">
-                            {{ $instructorProfile?->professional_background ?: ($instructorProfile?->bio ?: 'Instructor background details are being updated.') }}
-                        </p>
-                    </div>
-                </div>
-                @if($creator)
-                    <a href="{{ route('learner.instructors.show', $creator) }}"
-                       class="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline">
-                        View Full Background
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </a>
+            @include('learner.modules.partials.instructor-info-card')
 
-                    <button
-                        type="button"
-                        @click="$dispatch('open-global-chat', {
-                            target_user_id: {{ $creator->id }},
-                            name: '{{ addslashes($creator->name) }}',
-                            avatar: 'https://ui-avatars.com/api/?name={{ urlencode($creator->name) }}&color=1D4ED8&background=EFF6FF',
-                            conversation_type: 'module_chat',
-                            module_id: {{ $module->id }}
-                        })"
-                        class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 transition-colors hover:bg-blue-100"
-                    >
-                        Message Instructor About This Module
-                    </button>
-                @endif
-            </div>
+            @include('learner.modules.partials.module-info-card')
 
-            {{-- Module info card --}}
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Module Info</h4>
-                <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
-                    <li class="flex items-center gap-3">
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                        </svg>
-                        <span>{{ $lessons->count() }} {{ Str::plural('lesson', $lessons->count()) }}</span>
-                    </li>
-                    @if($module->duration_minutes)
-                    <li class="flex items-center gap-3">
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z"/>
-                        </svg>
-                        <span>{{ $module->duration_minutes }} minutes</span>
-                    </li>
-                    @endif
-                    @if($module->difficulty_level)
-                    <li class="flex items-center gap-3">
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
-                        </svg>
-                        <span>{{ ucfirst($module->difficulty_level) }}</span>
-                    </li>
-                    @endif
-                    <li class="flex items-center gap-3">
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-                        </svg>
-                        <span>{{ $module->display_price }}</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-                        </svg>
-                        <span>{{ $module->enrollment_mode === 'manual' ? 'Approval required' : 'Open enrollment' }}</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5V4H2v16h5m10 0v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6m10 0H7"/>
-                        </svg>
-                        <span>{{ $enrollmentCapacityLabel }}</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <span>{{ $isAtCapacity ? 'Enrollment Closed' : 'Enrollment Open' }}</span>
-                    </li>
-                </ul>
-            </div>
+            @include('learner.modules.partials.reviews-card')
 
         </div>{{-- end right col --}}
+
+        @include('learner.modules.partials.review-modal')
+
+        @include('learner.modules.partials.report-modal')
 
     </div>{{-- end grid --}}
 
 </div>
 @endsection
+
+@push('scripts')
+<script src="{{ asset('build/tinymce/tinymce.min.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof tinymce === 'undefined') {
+            return;
+        }
+
+        tinymce.remove('textarea.js-learner-rich-editor');
+        tinymce.init({
+            selector: 'textarea.js-learner-rich-editor',
+            license_key: 'gpl',
+            height: 160,
+            menubar: false,
+            branding: false,
+            plugins: 'lists link',
+            toolbar: 'undo redo | bold italic underline | bullist numlist | link | removeformat',
+        });
+    });
+</script>
+@endpush

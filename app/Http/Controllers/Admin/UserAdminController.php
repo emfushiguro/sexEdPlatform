@@ -3,18 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\AttachParentChildRequest;
 use App\Http\Requests\Admin\ChangeUserRoleRequest;
-use App\Http\Requests\Admin\DetachParentChildRequest;
+use App\Http\Requests\Admin\IndexUserRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
-use App\Http\Requests\Admin\ToggleParentChildVerificationRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Http\Requests\Admin\UpdateUserStatusRequest;
 use App\Models\User;
 use App\Services\Admin\UserManagementService;
-use App\Services\Admin\UserRelationshipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use InvalidArgumentException;
 
@@ -22,36 +20,58 @@ class UserAdminController extends Controller
 {
     public function __construct(
         private readonly UserManagementService $userManagementService,
-        private readonly UserRelationshipService $userRelationshipService,
     ) {
     }
 
-    public function index(Request $request)
+    public function index(IndexUserRequest $request)
     {
         $this->authorizeUserManagementAccess($request, 'view users');
 
+        $isLearnersContext = $request->routeIs('admin.learners.*');
+
         $filters = [
             'search' => $request->string('search')->toString(),
-            'segment' => $request->string('segment')->toString(),
+            'segment' => $isLearnersContext
+                ? (string) ($request->string('segment')->toString() ?: 'learners')
+                : $request->string('segment')->toString(),
             'role' => $request->string('role')->toString(),
             'status' => $request->string('status')->toString(),
             'account_type' => $request->string('account_type')->toString(),
             'age_bracket' => $request->string('age_bracket')->toString(),
+            'learner_scope' => $isLearnersContext
+                ? (string) ($request->string('learner_scope')->toString() ?: 'all')
+                : $request->string('learner_scope')->toString(),
+            'created_from' => $request->string('created_from')->toString(),
+            'created_to' => $request->string('created_to')->toString(),
+            'date_preset' => $request->string('date_preset')->toString(),
         ];
 
-        $users = $this->userManagementService->paginateForAdmin($filters, 15)->withQueryString();
+        $perPage = max(10, min((int) $request->integer('per_page', 25), 100));
+
+        $users = $this->userManagementService->paginateForAdmin($filters, $perPage)->withQueryString();
         $stats = $this->userManagementService->stats();
 
-        return view('admin.users.index', compact('users', 'stats', 'filters'));
+        if ($request->boolean('partial')) {
+            return response()->json([
+                'rows' => view('admin.users.partials.users-table-rows', ['users' => $users])->render(),
+                'pagination' => view('admin.users.partials.users-pagination', ['users' => $users])->render(),
+            ]);
+        }
+
+        $canCreateUsers = $this->canManageUsers($request, 'create users');
+        $canEditUsers = $this->canManageUsers($request, 'edit users');
+        $wizard = $this->buildIndexWizardPayload($request, $canCreateUsers, $canEditUsers);
+
+        return view('admin.users.index', compact('users', 'stats', 'filters', 'wizard', 'canCreateUsers', 'canEditUsers'));
     }
 
     public function create(Request $request)
     {
         $this->authorizeUserManagementAccess($request, 'create users');
 
-        $roles = Role::query()->pluck('name')->all();
-
-        return view('admin.users.create', compact('roles'));
+        return redirect()->route('admin.users.index', array_merge($request->query(), [
+            'wizard' => 'create',
+        ]));
     }
 
     public function store(StoreUserRequest $request)
@@ -111,9 +131,10 @@ class UserAdminController extends Controller
     {
         $this->authorizeUserManagementAccess($request, 'edit users');
 
-        $roles = Role::query()->pluck('name')->all();
-
-        return view('admin.users.edit', compact('user', 'roles'));
+        return redirect()->route('admin.users.index', array_merge($request->query(), [
+            'wizard' => 'edit',
+            'wizard_user' => $user->id,
+        ]));
     }
 
     public function update(UpdateUserRequest $request, User $user)
@@ -151,64 +172,21 @@ class UserAdminController extends Controller
 
     public function changeRole(ChangeUserRoleRequest $request, User $user)
     {
+        abort_unless((bool) $request->user()?->can('assign roles'), 403);
+
         $this->userManagementService->changeRole(
             user: $user,
             newRole: (string) $request->string('role'),
-            reason: (string) $request->string('reason'),
+            reason: $request->filled('reason') ? (string) $request->string('reason') : null,
+            customNotes: $request->filled('custom_notes') ? (string) $request->string('custom_notes') : null,
             actorId: (int) $request->user()->id,
             request: $request,
+            newRoleName: $request->filled('new_role_name') ? (string) $request->string('new_role_name') : null,
+            newRolePermissions: $request->input('new_role_permissions', []),
         );
 
         return redirect()->route('admin.users.show', $user)
             ->with('success', 'User role changed successfully.');
-    }
-
-    public function attachParentChild(AttachParentChildRequest $request)
-    {
-        try {
-            $this->userRelationshipService->attachParentChild(
-                payload: $request->validated(),
-                actorId: (int) $request->user()->id,
-                request: $request,
-            );
-        } catch (InvalidArgumentException $exception) {
-            return back()->withErrors(['relationship' => $exception->getMessage()])->withInput();
-        }
-
-        return back()->with('success', 'Parent-child relationship attached successfully.');
-    }
-
-    public function detachParentChild(DetachParentChildRequest $request)
-    {
-        try {
-            $this->userRelationshipService->detachParentChild(
-                parentId: (int) $request->integer('parent_user_id'),
-                childId: (int) $request->integer('child_user_id'),
-                actorId: (int) $request->user()->id,
-                request: $request,
-            );
-        } catch (InvalidArgumentException $exception) {
-            return back()->withErrors(['relationship' => $exception->getMessage()])->withInput();
-        }
-
-        return back()->with('success', 'Parent-child relationship detached successfully.');
-    }
-
-    public function toggleParentChildVerification(ToggleParentChildVerificationRequest $request)
-    {
-        try {
-            $this->userRelationshipService->setRelationshipVerification(
-                parentId: (int) $request->integer('parent_user_id'),
-                childId: (int) $request->integer('child_user_id'),
-                isVerified: (bool) $request->boolean('is_verified'),
-                actorId: (int) $request->user()->id,
-                request: $request,
-            );
-        } catch (InvalidArgumentException $exception) {
-            return back()->withErrors(['relationship' => $exception->getMessage()])->withInput();
-        }
-
-        return back()->with('success', 'Relationship verification updated successfully.');
     }
 
     public function destroy(Request $request, User $user)
@@ -238,5 +216,117 @@ class UserAdminController extends Controller
             (bool) $user?->hasRole('admin') || (bool) $user?->can($permission),
             403
         );
+    }
+
+    private function allowedWizardRoleNames(): array
+    {
+        return ['admin', 'instructor', 'learner'];
+    }
+
+    private function buildIndexWizardPayload(Request $request, bool $canCreateUsers, bool $canEditUsers): array
+    {
+        $query = $request->query();
+        unset($query['wizard'], $query['wizard_user']);
+
+        $closeUrl = route('admin.users.index', $query);
+        $oldInput = (array) $request->session()->get('_old_input', []);
+        $oldMode = (string) ($oldInput['wizard_mode'] ?? '');
+        $requestedMode = (string) ($request->string('wizard')->toString() ?: $oldMode);
+        $wizardMode = in_array($requestedMode, ['create', 'edit'], true) ? $requestedMode : null;
+        $wizardUserId = (int) ($request->integer('wizard_user') ?: (int) ($oldInput['wizard_user_id'] ?? 0));
+
+        $shouldRenderWizard = $canCreateUsers || $canEditUsers || $wizardMode !== null;
+        if (! $shouldRenderWizard) {
+            return [
+                'render' => false,
+                'open' => false,
+                'mode' => 'create',
+                'closeUrl' => $closeUrl,
+            ];
+        }
+
+        $wizardReference = $this->buildWizardReferenceData($request);
+
+        $payload = [
+            'render' => true,
+            'open' => $wizardMode !== null,
+            'mode' => 'create',
+            'title' => 'Create New User',
+            'subtitle' => 'Use the guided wizard to configure identity, role, permissions, and confirmation.',
+            'action' => route('admin.users.store'),
+            'method' => 'POST',
+            'user' => null,
+            'directPermissions' => [],
+            'selectedRole' => old('role', ''),
+            'selectedStatus' => old('status', 'active'),
+            'closeUrl' => $closeUrl,
+            ...$wizardReference,
+        ];
+
+        if ($wizardMode === 'edit' && $canEditUsers && $wizardUserId > 0) {
+            $editingUser = User::query()->find($wizardUserId);
+
+            if ($editingUser !== null) {
+                $payload['mode'] = 'edit';
+                $payload['title'] = 'Edit User: ' . $editingUser->name;
+                $payload['subtitle'] = 'Use the guided wizard to update identity, role lifecycle, and permission overrides.';
+                $payload['action'] = route('admin.users.update', $editingUser);
+                $payload['method'] = 'PUT';
+                $payload['user'] = $editingUser;
+                $payload['directPermissions'] = $editingUser->permissions()
+                    ->orderBy('name')
+                    ->pluck('name')
+                    ->all();
+                $payload['selectedRole'] = old('role', $editingUser->roles()->value('name') ?: $editingUser->role);
+                $payload['selectedStatus'] = old('status', $editingUser->status);
+            }
+        }
+
+        if ($wizardMode === 'create' && ! $canCreateUsers) {
+            $payload['open'] = false;
+        }
+
+        return $payload;
+    }
+
+    private function buildWizardReferenceData(Request $request): array
+    {
+        $allowedRoleNames = $this->allowedWizardRoleNames();
+
+        $roles = Role::query()
+            ->whereIn('name', $allowedRoleNames)
+            ->with('permissions:id,name')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $permissionsCollection = Permission::query()
+            ->orderBy('name')
+            ->get(['name', 'description']);
+
+        $permissions = $permissionsCollection->pluck('name')->all();
+        $permissionDescriptions = $permissionsCollection
+            ->mapWithKeys(fn (Permission $permission): array => [
+                $permission->name => (string) ($permission->description ?? ''),
+            ])
+            ->all();
+
+        $rolePermissionMap = $roles->mapWithKeys(function (Role $role): array {
+            return [$role->name => $role->permissions->pluck('name')->values()->all()];
+        })->all();
+
+        return [
+            'roles' => $roles,
+            'permissions' => $permissions,
+            'permissionDescriptions' => $permissionDescriptions,
+            'rolePermissionMap' => $rolePermissionMap,
+            'canManagePermissions' => $this->canManageUsers($request, 'manage permissions'),
+        ];
+    }
+
+    private function canManageUsers(Request $request, string $permission): bool
+    {
+        $user = $request->user();
+
+        return (bool) $user?->hasRole('admin') || (bool) $user?->can($permission);
     }
 }

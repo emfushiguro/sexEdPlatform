@@ -1,4 +1,4 @@
-@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @php
 $richTextTypes  = ['multiple_choice', 'true_false', 'multiple_select', 'identification'];
@@ -67,9 +67,9 @@ $typeBadgeClasses = [
 
     {{-- ── BREADCRUMB ── --}}
     <div class="flex items-center gap-2 text-sm">
-        <a href="{{ route('instructor.quizzes.index') }}" class="text-gray-400 hover:text-purple-600 transition">Quizzes</a>
+        <a href="{{ route($contentRoutePrefix . '.quizzes.index') }}" class="text-gray-400 hover:text-purple-600 transition">Quizzes</a>
         <span class="text-gray-300">/</span>
-        <a href="{{ route('instructor.quizzes.show', ['quiz' => $quiz, 'open_modal' => 1]) }}" class="text-gray-400 hover:text-purple-600 transition">{{ $quiz->title }}</a>
+        <a href="{{ route($contentRoutePrefix . '.quizzes.show', ['quiz' => $quiz, 'open_modal' => 1]) }}" class="text-gray-400 hover:text-purple-600 transition">{{ $quiz->title }}</a>
         <span class="text-gray-300">/</span>
         <span class="text-gray-600 font-medium">Add Question</span>
     </div>
@@ -85,7 +85,7 @@ $typeBadgeClasses = [
         <p class="text-sm font-semibold text-gray-700">No question type selected</p>
         <p class="text-xs text-gray-400 mt-1 mb-4">Please go back and select a question type first.</p>
         <a
-            href="{{ route('instructor.quizzes.show', ['quiz' => $quiz, 'open_modal' => 1]) }}"
+            href="{{ route($contentRoutePrefix . '.quizzes.show', ['quiz' => $quiz, 'open_modal' => 1]) }}"
             class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl transition hover:opacity-90"
             style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
         >
@@ -103,7 +103,7 @@ $typeBadgeClasses = [
             </span>
         </div>
         <a
-            href="{{ route('instructor.quizzes.show', ['quiz' => $quiz, 'open_modal' => 1]) }}"
+            href="{{ route($contentRoutePrefix . '.quizzes.show', ['quiz' => $quiz, 'open_modal' => 1]) }}"
             class="text-xs text-gray-400 hover:text-purple-600 underline underline-offset-2 transition"
         >
             Change type
@@ -133,7 +133,7 @@ $typeBadgeClasses = [
     >
         <form
             method="POST"
-            action="{{ route('instructor.quizzes.store-question', $quiz) }}"
+            action="{{ route($contentRoutePrefix . '.quizzes.store-question', $quiz) }}"
             id="questionForm"
             enctype="multipart/form-data"
             @submit="handleSubmit($event)"
@@ -590,7 +590,7 @@ $typeBadgeClasses = [
 
                 {{-- Cancel --}}
                 <a
-                    href="{{ route('instructor.quizzes.show', $quiz) }}"
+                    href="{{ route($contentRoutePrefix . '.quizzes.show', $quiz) }}"
                     class="flex items-center justify-center px-4 py-3 text-sm font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition"
                 >
                     Cancel
@@ -722,3 +722,4 @@ document.addEventListener('DOMContentLoaded', function () {
 @endif
 </script>
 @endpush
+

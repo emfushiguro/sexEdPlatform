@@ -17,7 +17,8 @@ class DatabaseSeeder extends Seeder
     {
         // Run seeders in order
         $this->call([
-            RolePermissionSeeder::class,
+            PermissionSeeder::class,
+            RoleSeeder::class,
             AdminUserSeeder::class,
             InstructorUserSeeder::class,
             ModuleLessonQuizSeeder::class,

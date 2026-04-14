@@ -1,10 +1,45 @@
-﻿@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+<div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
+
+    @if ($errors->any())
+        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+            <p class="text-sm font-semibold">Please review the highlighted fields before saving.</p>
+            <ul class="mt-2 list-disc list-inside text-sm space-y-0.5">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" style="display: none;">
+        <div class="bg-white rounded-xl p-8 flex flex-col items-center">
+            <svg class="animate-spin h-12 w-12 text-purple-700 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-lg font-semibold text-gray-700">Updating topic...</p>
+            <p class="text-sm text-gray-500 mt-2">Please wait while we save your changes.</p>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-100 bg-white shadow-sm p-6">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-widest text-purple-600">Edit Topic</p>
+                <h1 class="mt-1 text-xl font-bold text-gray-900">{{ $topic->title }}</h1>
+                <p class="mt-1 text-sm text-gray-500">Update content, media, and instructions while keeping the learner experience consistent.</p>
+            </div>
+            <a href="{{ route($contentRoutePrefix . '.lessons.show', $topic->lesson->id) }}" class="inline-flex items-center px-3.5 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors">
+                Back to Lesson
+            </a>
+        </div>
+    </div>
 
     <!-- Form -->
-    <form action="{{ route('instructor.topics.update', $topic) }}" method="POST" enctype="multipart/form-data" class="space-y-8">
+    <form action="{{ route($contentRoutePrefix . '.topics.update', $topic) }}" method="POST" enctype="multipart/form-data" class="space-y-8" id="topicEditForm">
         @csrf
         @method('PUT')
 
@@ -76,9 +111,9 @@
                 <label class="block text-sm font-medium text-gray-700 mb-4">
                     Topic Type <span class="text-red-500">*</span>
                 </label>
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <!-- Video Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
+                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 hover:shadow-md transition-all topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -87,14 +122,14 @@
                             {{ old('type', $topic->type) === 'video' ? 'checked' : '' }}
                             required
                         >
-                        <svg class="w-8 h-8 text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                         </svg>
-                        <span class="text-sm font-medium text-gray-900">Video</span>
+                        <span class="text-sm font-semibold text-gray-900">Video</span>
                     </label>
 
                     <!-- Text Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
+                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 hover:shadow-md transition-all topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -103,14 +138,14 @@
                             {{ old('type', $topic->type) === 'text' ? 'checked' : '' }}
                             required
                         >
-                        <svg class="w-8 h-8 text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
-                        <span class="text-sm font-medium text-gray-900">Text</span>
+                        <span class="text-sm font-semibold text-gray-900">Text</span>
                     </label>
 
                     <!-- Worksheet Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
+                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 hover:shadow-md transition-all topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -119,30 +154,14 @@
                             {{ old('type', $topic->type) === 'worksheet' ? 'checked' : '' }}
                             required
                         >
-                        <svg class="w-8 h-8 text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
-                        <span class="text-sm font-medium text-gray-900">Worksheet</span>
-                    </label>
-
-                    <!-- Quiz Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
-                        <input 
-                            type="radio" 
-                            name="type" 
-                            value="quiz" 
-                            class="sr-only topic-type-radio"
-                            {{ old('type', $topic->type) === 'quiz' ? 'checked' : '' }}
-                            required
-                        >
-                        <svg class="w-8 h-8 text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-                        </svg>
-                        <span class="text-sm font-medium text-gray-900">Quiz</span>
+                        <span class="text-sm font-semibold text-gray-900">Worksheet</span>
                     </label>
 
                     <!-- Interactive Type -->
-                    <label class="relative flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 transition-colors topic-type-card">
+                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 hover:shadow-md transition-all topic-type-card">
                         <input 
                             type="radio" 
                             name="type" 
@@ -151,11 +170,11 @@
                             {{ old('type', $topic->type) === 'interactive' ? 'checked' : '' }}
                             required
                         >
-                        <svg class="w-8 h-8 text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <span class="text-sm font-medium text-gray-900">Interactive</span>
+                        <span class="text-sm font-semibold text-gray-900">Interactive</span>
                     </label>
                 </div>
                 @error('type')
@@ -247,6 +266,19 @@
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
+
+            <div class="mb-6">
+                <label for="video_description" class="block text-sm font-medium text-gray-700 mb-2">
+                    Video Description/Instructions
+                </label>
+                <textarea
+                    name="video_description"
+                    id="video_description"
+                    rows="4"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
+                    placeholder="Add instructions or context for this video..."
+                >{{ old('video_description', $topic->text_content) }}</textarea>
+            </div>
         </div>
 
         <!-- Text Content Section -->
@@ -308,7 +340,7 @@
                     class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
                 >
                 <p class="mt-1 text-sm text-gray-500">Max 5 images. Supported: JPG, PNG, GIF</p>
-                <p class="mt-1 text-xs text-purple-600 font-medium">ðŸ“¸ Both Gallery & Slideshow views available to learners</p>
+                <p class="mt-1 text-xs text-purple-600 font-medium">Both Gallery and Slideshow views remain available to learners.</p>
             </div>
         </div>
 
@@ -317,7 +349,7 @@
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Worksheet Content</h2>
 
             <!-- Current Worksheet File -->
-            @if($topic->worksheet_file_path)
+            @if($topic->file_path)
                 <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-xl">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
@@ -326,11 +358,11 @@
                             </svg>
                             <div>
                                 <p class="text-sm font-medium text-gray-900">Current Worksheet</p>
-                                <p class="text-xs text-gray-500">{{ basename($topic->worksheet_file_path) }}</p>
+                                <p class="text-xs text-gray-500">{{ basename($topic->file_path) }}</p>
                             </div>
                         </div>
                         <a 
-                            href="{{ Storage::url($topic->worksheet_file_path) }}" 
+                            href="{{ Storage::url($topic->file_path) }}" 
                             target="_blank"
                             class="px-3 py-1 text-sm text-purple-700 hover:text-purple-700 font-medium"
                         >
@@ -342,18 +374,19 @@
 
             <!-- Worksheet File -->
             <div class="mb-6">
-                <label for="worksheet_file" class="block text-sm font-medium text-gray-700 mb-2">
-                    {{ $topic->worksheet_file_path ? 'Replace Worksheet File' : 'Worksheet File' }}
+                <label for="worksheet_files" class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ $topic->file_path ? 'Replace Worksheet File(s)' : 'Worksheet File(s)' }}
                 </label>
                 <input 
                     type="file" 
-                    name="worksheet_file" 
-                    id="worksheet_file" 
+                    name="worksheet_files[]" 
+                    id="worksheet_files" 
                     accept=".pdf,.doc,.docx"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('worksheet_file') border-red-500 @enderror"
+                    multiple
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('worksheet_files') border-red-500 @enderror"
                 >
                 <p class="mt-1 text-sm text-gray-500">Supported formats: PDF, DOC, DOCX (Max: 10MB)</p>
-                @error('worksheet_file')
+                @error('worksheet_files')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
@@ -376,64 +409,29 @@
             </div>
         </div>
 
-        <!-- Quiz Content Section -->
-        <div id="quizContent" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 content-section hidden">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Quiz Content</h2>
-
-            <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                <p class="text-sm text-purple-800">
-                    <svg class="inline w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                    </svg>
-                    Select an existing quiz from the quiz library
-                </p>
-            </div>
-
-            <div class="mb-6">
-                <label for="quiz_id" class="block text-sm font-medium text-gray-700 mb-2">
-                    Select Quiz
-                </label>
-                <select 
-                    name="quiz_id" 
-                    id="quiz_id"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('quiz_id') border-red-500 @enderror"
-                >
-                    <option value="">-- Select a Quiz --</option>
-                    @foreach($quizzes as $quiz)
-                        <option value="{{ $quiz->id }}" {{ old('quiz_id', $topic->quiz_id) == $quiz->id ? 'selected' : '' }}>
-                            {{ $quiz->title }} ({{ $quiz->questions_count }} questions)
-                        </option>
-                    @endforeach
-                </select>
-                @error('quiz_id')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
-
         <!-- Interactive Content Section -->
         <div id="interactiveContent" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 content-section hidden">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Interactive Content</h2>
 
             <!-- Activity Type -->
             <div class="mb-6">
-                <label for="activity_type" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="interactive_type" class="block text-sm font-medium text-gray-700 mb-2">
                     Activity Type
                 </label>
                 @php
-                    $interactiveType = old('activity_type', $topic->interactive_config['type'] ?? '');
+                    $interactiveType = old('interactive_type', $topic->interactive_config['type'] ?? '');
                 @endphp
                 <select 
-                    name="activity_type" 
-                    id="activity_type"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('activity_type') border-red-500 @enderror"
+                    name="interactive_type" 
+                    id="interactive_type"
+                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('interactive_type') border-red-500 @enderror"
                 >
                     <option value="">-- Select Activity Type --</option>
                     <option value="activity" {{ $interactiveType === 'activity' ? 'selected' : '' }}>Activity</option>
                     <option value="simulation" {{ $interactiveType === 'simulation' ? 'selected' : '' }}>Simulation</option>
                     <option value="exercise" {{ $interactiveType === 'exercise' ? 'selected' : '' }}>Exercise</option>
                 </select>
-                @error('activity_type')
+                @error('interactive_type')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
@@ -462,7 +460,7 @@
         <!-- Action Buttons -->
         <div class="flex items-center justify-end space-x-4">
             <a 
-                href="{{ route('instructor.lessons.show', $topic->lesson->id) }}" 
+                href="{{ route($contentRoutePrefix . '.lessons.show', $topic->lesson->id) }}" 
                 class="px-6 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
             >
                 Cancel
@@ -480,6 +478,53 @@
 <script src="{{ asset('build/tinymce/tinymce.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const topicEditForm = document.getElementById('topicEditForm');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+
+    topicEditForm?.addEventListener('submit', function() {
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+        }
+    });
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+
+    async function uploadTinyMceImage(file) {
+        if (!file) {
+            throw new Error('No file selected.');
+        }
+
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            throw new Error('Only JPG, PNG, GIF, and WEBP images are allowed.');
+        }
+
+        const maxBytes = 5 * 1024 * 1024;
+        if (file.size > maxBytes) {
+            throw new Error('Image is too large. Maximum allowed size is 5MB.');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('{{ route($contentRoutePrefix . '.upload.image') }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.location) {
+            throw new Error(result.error || 'Image upload failed.');
+        }
+
+        return result.location;
+    }
+
     // Initialize TinyMCE
     tinymce.init({
         selector: '#text_content',
@@ -493,6 +538,51 @@ document.addEventListener('DOMContentLoaded', function() {
             'insertdatetime', 'media', 'table', 'help', 'wordcount'
         ],
         toolbar: 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+        images_upload_url: '{{ route($contentRoutePrefix . '.upload.image') }}',
+        automatic_uploads: true,
+        paste_data_images: false,
+        images_reuse_filename: true,
+        images_file_types: 'jpeg,jpg,png,gif,webp',
+        relative_urls: false,
+        remove_script_host: false,
+        convert_urls: true,
+        document_base_url: '{{ url('/') }}/',
+        images_upload_handler: async (blobInfo, progress) => {
+            progress(15);
+            const location = await uploadTinyMceImage(blobInfo.blob());
+            progress(100);
+            return location;
+        },
+        file_picker_types: 'image',
+        file_picker_callback: async function(callback, value, meta) {
+            if (meta.filetype !== 'image') {
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', '.jpg,.jpeg,.png,.gif,.webp');
+
+            input.onchange = async function() {
+                const file = this.files?.[0];
+
+                if (!file) {
+                    return;
+                }
+
+                try {
+                    const location = await uploadTinyMceImage(file);
+                    callback(location, { alt: file.name });
+                } catch (error) {
+                    tinymce.activeEditor?.notificationManager.open({
+                        text: error.message || 'Image upload failed.',
+                        type: 'error'
+                    });
+                }
+            };
+
+            input.click();
+        },
         content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; }'
     });
 
@@ -503,9 +593,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoSourceRadios = document.querySelectorAll('input[name="video_source"]');
     const videoUrlInput = document.getElementById('videoUrlInput');
     const videoFileInput = document.getElementById('videoFileInput');
-    const slideshowRadio = document.querySelector('.slideshow-radio');
-    const slideshowSettings = document.getElementById('slideshowSettings');
-    const imageDisplayRadios = document.querySelectorAll('input[name="image_display_mode"]');
 
     // Function to update card styles
     function updateCardStyles() {
@@ -547,15 +634,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Function to toggle slideshow settings
-    function toggleSlideshowSettings() {
-        const selectedMode = document.querySelector('input[name="image_display_mode"]:checked');
-        if (selectedMode && selectedMode.value === 'slideshow') {
-            slideshowSettings.classList.remove('hidden');
-        } else {
-            slideshowSettings.classList.add('hidden');
-        }
-    }
 
     // Event listeners for topic type selection
     typeRadios.forEach(radio => {
@@ -570,10 +648,6 @@ document.addEventListener('DOMContentLoaded', function() {
         radio.addEventListener('change', toggleVideoSource);
     });
 
-    // Event listeners for image display mode
-    imageDisplayRadios.forEach(radio => {
-        radio.addEventListener('change', toggleSlideshowSettings);
-    });
 
     // Initialize on page load
     updateCardStyles();
@@ -587,10 +661,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize video source visibility
     toggleVideoSource();
 
-    // Initialize slideshow settings visibility
-    toggleSlideshowSettings();
 });
 </script>
+</div>
 @endsection
+
 
 

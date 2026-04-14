@@ -31,6 +31,7 @@
     </div>
 
     @php
+        $enrolledModuleIds = $enrolledModuleIds ?? [];
         $enrolledModules = $modules->filter(fn($m) => in_array($m->id, $enrolledModuleIds));
         $browseModules   = $modules->filter(fn($m) => !in_array($m->id, $enrolledModuleIds));
     @endphp
@@ -58,7 +59,17 @@
                     $isDeactivated = !$module->is_published;
                     $statusValue = $enrollment?->status?->value;
                     $creator = $module->creator;
+                    $ownerType = in_array($module->content_owner_type, ['admin', 'instructor'], true)
+                        ? $module->content_owner_type
+                        : ((string) optional($creator)->role === 'admin' ? 'admin' : 'instructor');
+                    $instructorProfile = $creator?->instructorProfile;
                     $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
+                    $displayOwnerName = $ownerType === 'admin' ? 'Conscious Connections Team' : $instructorName;
+                    $ownerPhoto = $ownerType === 'admin'
+                        ? asset('media/Logo.png')
+                        : ($instructorProfile?->profile_photo_path
+                            ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
+                            : null);
                     $priceLabel = $module->display_price ?? 'Free';
                     $approvedCount = (int) ($module->approved_enrollments_count ?? 0);
                     $enrollmentLabel = $module->enrollment_limit !== null
@@ -105,10 +116,20 @@
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                 {{ $prog->completed_lessons }}/{{ $prog->total_lessons }} {{ Str::plural('lesson', $prog->total_lessons) }} completed
                             </p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {{ $instructorName }} · {{ $priceLabel }} · {{ $enrollmentLabel }}
-                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $priceLabel }} · {{ $enrollmentLabel }}</p>
                         </div>
+
+                        <div class="flex items-center gap-2 pt-0.5">
+                            @if($ownerPhoto)
+                                <img src="{{ $ownerPhoto }}" alt="{{ $displayOwnerName }}" class="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-gray-600">
+                            @else
+                                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">
+                                    {{ strtoupper(substr($displayOwnerName, 0, 1)) }}
+                                </div>
+                            @endif
+                            <p class="text-xs text-gray-600 dark:text-gray-300 truncate">Created by: {{ $displayOwnerName }}</p>
+                        </div>
+
                         <div>
                             <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
                                 <span>Progress</span>

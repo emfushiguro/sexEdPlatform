@@ -630,7 +630,8 @@ class AdminModuleReviewWorkspaceService
         $status = (string) ($module->current_review_status ?? 'draft');
 
         return match ($status) {
-            'in_review' => 'Pending Review',
+            'submitted' => 'Submitted',
+            'in_review' => 'Under Review',
             'needs_revision' => 'Rejected / Needs Revision',
             'approved' => 'Approved',
             default => 'Draft',

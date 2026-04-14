@@ -10,7 +10,10 @@ use App\Models\QuizQuestion;
 use App\Models\QuizOption;
 use App\Models\Module;
 use App\Models\Lesson;
+use App\Services\Content\ContentOwnershipGuard;
+use App\Support\ContentPanelContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
@@ -18,18 +21,32 @@ class QuizManagementController extends Controller
 {
     public function index(Request $request)
     {
-        $instructorModuleIds = Module::where('created_by', auth()->id())->pluck('id');
+        $this->authorize('viewAny', Quiz::class);
 
-        $quizzes = Quiz::with(['module:id,title', 'lesson:id,title'])
+        $moduleIds = Module::query()
+            ->when($this->panelContext()->isInstructor(), fn ($query) => $query->where('created_by', Auth::id()))
+            ->pluck('id');
+
+        $quizzes = Quiz::with([
+            'module:id,title,content_owner_type,created_by',
+            'module.creator:id,role',
+            'lesson:id,title,module_id',
+            'lesson.module:id,content_owner_type,created_by',
+            'lesson.module.creator:id,role',
+        ])
             ->withCount('questions')
-            ->where(function ($q) use ($instructorModuleIds) {
-                $q->whereIn('module_id', $instructorModuleIds)
-                  ->orWhereHas('lesson', fn($lq) => $lq->whereIn('module_id', $instructorModuleIds));
+            ->where(function ($q) use ($moduleIds) {
+                $q->whereIn('module_id', $moduleIds)
+                  ->orWhereHas('lesson', fn($lq) => $lq->whereIn('module_id', $moduleIds));
             })
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->each(function (Quiz $quiz): void {
+                $quiz->setAttribute('owner_type', $this->ownershipGuard()->ownerTypeForQuiz($quiz));
+            });
 
-        $modules = Module::where('created_by', auth()->id())
+        $modules = Module::query()
+            ->when($this->panelContext()->isInstructor(), fn ($query) => $query->where('created_by', Auth::id()))
             ->select('id', 'title')
             ->orderBy('title')
             ->get();
@@ -39,7 +56,13 @@ class QuizManagementController extends Controller
 
     public function create(Request $request)
     {
-        $modules = Module::with('lessons')->get();
+        $this->authorize('create', Quiz::class);
+
+        $modules = Module::query()
+            ->when($this->panelContext()->isInstructor(), fn ($query) => $query->where('created_by', Auth::id()))
+            ->when($this->panelContext()->isAdmin(), fn ($query) => $query->where('content_owner_type', 'admin'))
+            ->with('lessons')
+            ->get();
         $lessonId = $request->query('lesson_id');
         
         return view('instructor.quizzes.create', compact('modules', 'lessonId'));
@@ -47,6 +70,8 @@ class QuizManagementController extends Controller
 
     public function store(StoreQuizRequest $request)
     {
+        $this->authorize('create', Quiz::class);
+
         $validated = $request->validated();
 
         // Set null defaults for optional fields
@@ -63,6 +88,8 @@ class QuizManagementController extends Controller
             return back()->withErrors(['module_id' => 'Please select either a module or a lesson.'])->withInput();
         }
 
+        $this->ensureAdminCanMutateModuleById((int) ($validated['module_id'] ?? 0));
+
         $validated['slug'] = Str::slug($validated['title']);
         $validated['time_limit'] = $this->normalizeTimeLimit(
             $request->integer('time_limit_hours', 0),
@@ -75,12 +102,14 @@ class QuizManagementController extends Controller
 
         $quiz = Quiz::create($validated);
 
-        return redirect()->route('instructor.quizzes.show', $quiz->id)
+        return redirect()->route($this->routeName('quizzes.show'), $quiz->id)
             ->with('success', 'Quiz created! Now add questions below.');
     }
 
     public function show(Quiz $quiz)
     {
+        $this->authorize('view', $quiz);
+
         $quiz->load(['questions.options', 'module', 'lesson']);
         $openModal = request()->boolean('open_modal');
         return view('instructor.quizzes.show', compact('quiz', 'openModal'));
@@ -88,13 +117,19 @@ class QuizManagementController extends Controller
 
     public function edit(Quiz $quiz)
     {
-        return redirect()->route('instructor.quizzes.index', [
+        $this->authorize('update', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
+        return redirect()->route($this->routeName('quizzes.index'), [
             'edit_quiz' => $quiz->id,
         ]);
     }
 
     public function update(UpdateQuizRequest $request, Quiz $quiz)
     {
+        $this->authorize('update', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
         $validated = $request->validated();
 
         // Set null defaults for optional fields
@@ -109,6 +144,8 @@ class QuizManagementController extends Controller
         if (!$validated['module_id'] && !$validated['lesson_id']) {
             return back()->withErrors(['module_id' => 'Please select either a module or a lesson.'])->withInput();
         }
+
+        $this->ensureAdminCanMutateModuleById((int) ($validated['module_id'] ?? 0));
 
         $validated['slug'] = Str::slug($validated['title']);
         $validated['time_limit'] = $this->normalizeTimeLimit(
@@ -125,7 +162,7 @@ class QuizManagementController extends Controller
 
         $quiz->update($validated);
 
-        return redirect()->route('instructor.quizzes.index')
+        return redirect()->route($this->routeName('quizzes.index'))
             ->with('success', 'Quiz updated successfully!');
     }
 
@@ -138,15 +175,21 @@ class QuizManagementController extends Controller
 
     public function destroy(Quiz $quiz)
     {
+        $this->authorize('delete', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
         $quiz->delete();
 
-        return redirect()->route('instructor.quizzes.index')
+        return redirect()->route($this->routeName('quizzes.index'))
             ->with('success', 'Quiz deleted successfully!');
     }
 
     // Question management
     public function addQuestion(Quiz $quiz)
     {
+        $this->authorize('update', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
         $preselectedType = request()->query('type');
         $validTypes = ['multiple_choice', 'true_false', 'multiple_select', 'fill_blank_text', 'fill_blank_select', 'identification'];
         $selectedType = in_array($preselectedType, $validTypes) ? $preselectedType : null;
@@ -155,6 +198,9 @@ class QuizManagementController extends Controller
 
     public function storeQuestion(Request $request, Quiz $quiz)
     {
+        $this->authorize('update', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
         $validated = $request->validate([
             'question_text' => 'required|string',
             'question_type' => 'required|in:multiple_choice,true_false,multiple_select,fill_blank_text,fill_blank_select,identification',
@@ -229,12 +275,12 @@ class QuizManagementController extends Controller
 
             if ($afterSave === 'another') {
                 return redirect()
-                    ->route('instructor.quizzes.add-question', ['quiz' => $quiz, 'type' => $validated['question_type']])
+                    ->route($this->routeName('quizzes.add-question'), ['quiz' => $quiz, 'type' => $validated['question_type']])
                     ->with('success', 'Question added! Add another one below.');
             }
 
             return redirect()
-                ->route('instructor.quizzes.show', ['quiz' => $quiz, 'open_modal' => 1])
+                ->route($this->routeName('quizzes.show'), ['quiz' => $quiz, 'open_modal' => 1])
                 ->with('success', 'Question added successfully!');
 
         } catch (\Exception $e) {
@@ -249,6 +295,9 @@ class QuizManagementController extends Controller
      */
     public function editQuestion(Quiz $quiz, QuizQuestion $question)
     {
+        $this->authorize('update', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
         // Verify question belongs to this quiz
         if ($question->quiz_id !== $quiz->id) {
             abort(404);
@@ -262,6 +311,9 @@ class QuizManagementController extends Controller
      */
     public function updateQuestion(Request $request, Quiz $quiz, QuizQuestion $question)
     {
+        $this->authorize('update', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
         // Verify question belongs to this quiz
         if ($question->quiz_id !== $quiz->id) {
             abort(404);
@@ -334,7 +386,7 @@ class QuizManagementController extends Controller
 
             DB::commit();
 
-            return redirect()->route('instructor.quizzes.show', $quiz)
+            return redirect()->route($this->routeName('quizzes.show'), $quiz)
                 ->with('success', 'Question updated successfully!');
 
         } catch (\Exception $e) {
@@ -349,6 +401,9 @@ class QuizManagementController extends Controller
      */
     public function deleteQuestion(Quiz $quiz, QuizQuestion $question)
     {
+        $this->authorize('update', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
         // Verify question belongs to this quiz
         if ($question->quiz_id !== $quiz->id) {
             abort(404);
@@ -369,7 +424,7 @@ class QuizManagementController extends Controller
 
             DB::commit();
 
-            return redirect()->route('instructor.quizzes.show', $quiz)
+            return redirect()->route($this->routeName('quizzes.show'), $quiz)
                 ->with('success', 'Question deleted successfully!');
 
         } catch (\Exception $e) {
@@ -381,6 +436,8 @@ class QuizManagementController extends Controller
 
     public function downloadTemplate(Quiz $quiz)
     {
+        $this->authorize('view', $quiz);
+
         $filename = 'quiz_import_template.csv';
         
         $headers = [
@@ -504,6 +561,9 @@ class QuizManagementController extends Controller
 
     public function previewImport(Request $request, Quiz $quiz)
     {
+        $this->authorize('update', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
         $request->validate([
             'csv_file' => 'required|file|mimes:csv,txt|max:5120', // Max 5MB
         ]);
@@ -698,10 +758,13 @@ class QuizManagementController extends Controller
 
     public function confirmImport(Request $request, Quiz $quiz)
     {
+        $this->authorize('update', $quiz);
+        $this->ensureAdminCanMutateQuiz($quiz);
+
         $importData = session('csv_import_data');
 
         if (!$importData || $importData['quiz_id'] !== $quiz->id) {
-            return redirect()->route('instructor.quizzes.show', $quiz)
+            return redirect()->route($this->routeName('quizzes.show'), $quiz)
                 ->with('error', 'Import session expired. Please upload the CSV again.');
         }
 
@@ -804,7 +867,7 @@ class QuizManagementController extends Controller
             }
             $message .= ".";
 
-            return redirect()->route('instructor.quizzes.show', $quiz)
+            return redirect()->route($this->routeName('quizzes.show'), $quiz)
                 ->with('success', $message);
 
         } catch (\Exception $e) {
@@ -813,4 +876,52 @@ class QuizManagementController extends Controller
             return back()->with('error', 'Failed to import questions: ' . $e->getMessage());
         }
     }
+
+    private function panelContext(): ContentPanelContext
+    {
+        return app(ContentPanelContext::class);
+    }
+
+    private function routeName(string $suffix): string
+    {
+        return $this->panelContext()->name($suffix);
+    }
+
+    private function ensureAdminCanMutateModuleById(int $moduleId): void
+    {
+        if (!$this->panelContext()->isAdmin()) {
+            return;
+        }
+
+        $module = Module::query()->findOrFail($moduleId);
+        $ownerType = $this->ownershipGuard()->ownerTypeForModule($module);
+
+        abort_unless(
+            $this->ownershipGuard()->canAdminMutateOwnerType($ownerType),
+            403,
+            'Admins can only modify platform-owned learning content.',
+        );
+    }
+
+    private function ensureAdminCanMutateQuiz(Quiz $quiz): void
+    {
+        if (!$this->panelContext()->isAdmin()) {
+            return;
+        }
+
+        $ownerType = $this->ownershipGuard()->ownerTypeForQuiz($quiz);
+
+        abort_unless(
+            $this->ownershipGuard()->canAdminMutateOwnerType($ownerType),
+            403,
+            'Admins can only modify platform-owned learning content.',
+        );
+    }
+
+    private function ownershipGuard(): ContentOwnershipGuard
+    {
+        return app(ContentOwnershipGuard::class);
+    }
 }
+
+

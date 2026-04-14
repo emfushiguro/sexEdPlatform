@@ -27,7 +27,7 @@ class AdminInstructorApplicationsUiTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.instructor-applications.index'))
             ->assertOk()
-            ->assertSee($application->user->name, false)
+            ->assertSeeText($application->user->name)
             ->assertSee('data-testid="applications-col-applicant"', false)
             ->assertSee('data-testid="applications-col-email"', false)
             ->assertSee('Date Applied', false)

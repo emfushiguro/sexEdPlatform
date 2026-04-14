@@ -20,6 +20,7 @@
   x-data="quizWizard()"
   x-init="init({{ $total }}, {{ $questionMeta->toJson() }}, {{ $quiz->time_limit ?? 'null' }})"
   @quiz-blank-change.window="updateBlankAnswer($event.detail)"
+  @keydown.enter.prevent="handleEnterKey($event)"
   class="max-w-2xl mx-auto space-y-4">
 
   {{-- ── PROGRESS ZONE ──────────────────────────────────────────── --}}
@@ -131,6 +132,8 @@
     <div
       x-show="current === {{ $index }} && !showReview"
       x-cloak
+      data-question-index="{{ $index }}"
+      data-question-id="{{ $question->id }}"
       class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
 
       {{-- Question header --}}
@@ -576,6 +579,38 @@ function quizWizard() {
     jumpTo(index) {
       this.current = index;
       this.showReview = false;
+    },
+
+    currentQuestionId() {
+      const panel = document.querySelector(`[data-question-index='${this.current}']`);
+      if (!panel) {
+        return null;
+      }
+
+      const raw = panel.getAttribute('data-question-id');
+      const parsed = Number(raw);
+
+      return Number.isNaN(parsed) ? null : parsed;
+    },
+
+    handleEnterKey(event) {
+      if (this.showReview) {
+        return;
+      }
+
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag === 'TEXTAREA') {
+        return;
+      }
+
+      const questionId = this.currentQuestionId();
+      if (!questionId) {
+        return;
+      }
+
+      if (this.isAnswered(questionId)) {
+        this.goNext();
+      }
     },
   };
 }

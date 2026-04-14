@@ -5,6 +5,8 @@ namespace Tests\Feature\Instructor;
 use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
+use App\Models\Quiz;
+use App\Models\QuizAttempt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -66,6 +68,59 @@ class LearnerVisibilityTest extends TestCase
         $this->actingAs($instructor)
             ->get('/instructor/users/' . $learner->id . '/edit')
             ->assertNotFound();
+    }
+
+    public function test_instructor_can_open_learner_show_page_with_quiz_performance_summary(): void
+    {
+        $instructor = $this->createInstructor();
+
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+        ]);
+
+        $learner = $this->createLearner('Quiz', 'Learner', 'quiz-learner@example.test');
+
+        ModuleEnrollment::factory()->create([
+            'module_id' => $module->id,
+            'user_id' => $learner->id,
+            'status' => EnrollmentStatus::Approved,
+        ]);
+
+        $quiz = Quiz::factory()->create([
+            'module_id' => $module->id,
+            'lesson_id' => null,
+        ]);
+
+        QuizAttempt::query()->create([
+            'user_id' => $learner->id,
+            'quiz_id' => $quiz->id,
+            'answers' => [],
+            'score' => 80,
+            'passed' => true,
+            'started_at' => now()->subMinutes(20),
+            'completed_at' => now()->subMinutes(19),
+        ]);
+
+        QuizAttempt::query()->create([
+            'user_id' => $learner->id,
+            'quiz_id' => $quiz->id,
+            'answers' => [],
+            'score' => 50,
+            'passed' => false,
+            'started_at' => now()->subMinutes(10),
+            'completed_at' => now()->subMinutes(9),
+        ]);
+
+        $response = $this->actingAs($instructor)
+            ->get(route('instructor.users.show', $learner));
+
+        $response->assertOk();
+
+        $response->assertViewHas('quizPerformanceSummary', function (array $summary): bool {
+            return $summary['attempts'] === 2
+                && $summary['passed'] === 1
+                && (float) $summary['average_score'] === 65.0;
+        });
     }
 
     private function createInstructor(): User

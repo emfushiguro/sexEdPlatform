@@ -12,6 +12,7 @@ use App\Services\AdminActivityLogService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 
 /**
  * Handles subscriber (subscription record) management in the admin panel.
@@ -103,6 +104,28 @@ class SubscriberAdminController extends Controller
             'cancel_subscription'   => $this->cancel($request),
             default                 => redirect()->back()->with('error', 'Unknown action.'),
         };
+    }
+
+    public function archive(Subscription $subscription): RedirectResponse
+    {
+        if ($subscription->trashed()) {
+            return redirect()->back()->with('info', 'Subscriber record is already archived.');
+        }
+
+        $subscription->delete();
+
+        return redirect()->back()->with('success', 'Subscriber record archived successfully.');
+    }
+
+    public function destroy(Subscription $subscription): RedirectResponse
+    {
+        if ((string) $subscription->status === 'active') {
+            return redirect()->back()->with('error', 'Active subscriptions cannot be permanently deleted.');
+        }
+
+        $subscription->forceDelete();
+
+        return redirect()->back()->with('success', 'Subscriber record permanently deleted.');
     }
 
     private function activate(Request $request)

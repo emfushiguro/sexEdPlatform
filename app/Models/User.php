@@ -281,6 +281,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ModuleRevision::class, 'reviewed_by');
     }
 
+    public function moduleFeedback()
+    {
+        return $this->hasMany(ModuleFeedback::class, 'learner_id');
+    }
+
+    public function contentReports()
+    {
+        return $this->hasMany(ContentReport::class, 'reporter_id');
+    }
+
     public function userProgress()
     {
         return $this->hasMany(UserProgress::class);
@@ -380,7 +390,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->hasRole('admin')
+            || $this->role === 'admin'
+            || $this->can('access admin panel');
     }
 
     public function isCounselor(): bool
@@ -400,7 +412,12 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isInstructor(): bool
     {
-        return $this->role === 'instructor';
+        return ! $this->isAdmin()
+            && (
+                $this->hasRole('instructor')
+                || $this->role === 'instructor'
+                || $this->can('access instructor panel')
+            );
     }
 
     /**
@@ -408,19 +425,35 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getFullNameAttribute(): string
     {
-        $name = trim("{$this->first_name}");
-        
-        if ($this->middle_initial) {
-            $name .= " {$this->middle_initial}.";
+        $nameParts = [];
+
+        if (filled($this->first_name)) {
+            $nameParts[] = trim((string) $this->first_name);
         }
-        
-        $name .= " {$this->last_name}";
-        
-        if ($this->suffix) {
-            $name .= " {$this->suffix}";
+
+        if (filled($this->middle_initial)) {
+            $nameParts[] = trim((string) $this->middle_initial) . '.';
         }
-        
-        return $name;
+
+        if (filled($this->last_name)) {
+            $nameParts[] = trim((string) $this->last_name);
+        }
+
+        if (filled($this->suffix)) {
+            $nameParts[] = trim((string) $this->suffix);
+        }
+
+        $fullName = trim(implode(' ', $nameParts));
+        if ($fullName !== '') {
+            return $fullName;
+        }
+
+        $fallbackName = trim((string) $this->name);
+        if ($fallbackName !== '') {
+            return $fallbackName;
+        }
+
+        return trim((string) $this->email);
     }
 
     /**
@@ -541,7 +574,13 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isLearner(): bool
     {
-        return $this->role === 'learner';
+        if ($this->isAdmin() || $this->isInstructor()) {
+            return false;
+        }
+
+        return $this->hasRole('learner')
+            || $this->role === 'learner'
+            || $this->can('access learner platform');
     }
 
     public function instructorApplication()
@@ -607,7 +646,7 @@ class User extends Authenticatable implements MustVerifyEmail
             return self::ACCOUNT_TYPE_INSTRUCTOR;
         }
 
-        if ($this->isParent()) {
+        if ($this->hasRole('parent') || $this->isParent()) {
             return self::ACCOUNT_TYPE_PARENT;
         }
 

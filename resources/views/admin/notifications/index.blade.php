@@ -31,6 +31,10 @@
                 $isUnread = is_null($notification->read_at);
                 $payload = $notification->normalized_data ?? app(\App\Support\NotificationPayloadNormalizer::class)->normalize((array) $notification->data);
                 $severity = $payload['severity'] ?? 'info';
+                $isChatMessage = ($payload['type'] ?? '') === 'chat_message_received';
+                $senderName = $payload['sender_name'] ?? 'User';
+                $senderAvatarUrl = $payload['sender_avatar_url'] ?? null;
+                $messagePreview = $payload['message_preview'] ?? $payload['message'];
 
                 $toneClass = match($severity) {
                     'success' => 'border-l-4 border-emerald-500',
@@ -51,12 +55,25 @@
                         <p class="whitespace-nowrap text-xs text-gray-500">{{ $notification->created_at->diffForHumans() }}</p>
                         @if($isUnread)
                             <span class="mt-2 inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                        @endif
+                            <div class="min-w-0 flex items-start gap-3">
+                                @if($isChatMessage)
+                                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 overflow-hidden">
+                                        @if($senderAvatarUrl)
+                                            <img src="{{ $senderAvatarUrl }}" alt="{{ $senderName }}" class="h-10 w-10 rounded-full object-cover">
+                                        @else
+                                            <span class="text-xs font-bold">{{ $payload['sender_initial'] ?? 'U' }}</span>
+                                        @endif
+                                    </span>
+                                @endif
+                                <div class="min-w-0">
+                                    <h2 class="text-sm font-semibold text-gray-900">{{ $payload['title'] }}</h2>
+                                    @if($isChatMessage)
+                                        <p class="mt-1 text-xs font-medium text-gray-500">{{ $senderName }}</p>
+                                    @endif
+                                    <p class="mt-1 text-sm text-gray-600">{{ $isChatMessage ? '"' . $messagePreview . '"' : $payload['message'] }}</p>
+                                </div>
+                            </div>
                     </div>
-                </div>
-            </a>
-        @empty
-            <div class="px-6 py-10 text-center text-sm text-gray-500">
                 No notifications right now.
             </div>
         @endforelse

@@ -33,7 +33,7 @@
             isActive: true,
             selectedModule: '',
             selectedLesson: '',
-            actionBase: '{{ url('instructor/quizzes') }}',
+            actionBase: '{{ url($contentRoutePrefix . '/quizzes') }}',
             moduleOptions: {{ json_encode($modules->map(function ($module) {
                 return [
                     'id' => $module->id,
@@ -61,7 +61,7 @@
                 return this.mode === 'edit' && this.editQuizId !== null;
             },
             get formAction() {
-                return this.isEdit ? `${this.actionBase}/${this.editQuizId}` : '{{ route('instructor.quizzes.store') }}';
+                return this.isEdit ? `${this.actionBase}/${this.editQuizId}` : '{{ route($contentRoutePrefix . '.quizzes.store') }}';
             },
             get moduleIdForSubmit() {
                 return this.selectedLesson ? '' : this.selectedModule;

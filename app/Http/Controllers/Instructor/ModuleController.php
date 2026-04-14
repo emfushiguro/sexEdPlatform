@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Instructor\StoreModuleRequest;
 use App\Http\Requests\Instructor\UpdateModuleRequest;
 use App\Models\Module;
-use App\Models\Quiz;
 use App\Models\User;
+use App\Services\Content\ContentAccessService;
+use App\Services\Content\ContentOwnershipGuard;
+use App\Services\Content\ContentAuthoringService;
+use App\Services\ContentGovernanceService;
 use App\Services\Monetization\CommissionPolicyResolver;
+use App\Support\ContentPanelContext;
 use App\Support\InstructorRestrictionGate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,65 +23,50 @@ class ModuleController extends Controller
     public function __construct(
         private readonly InstructorRestrictionGate $instructorRestrictionGate,
         private readonly CommissionPolicyResolver $commissionPolicyResolver,
+        private readonly ContentAccessService $contentAccessService,
+        private readonly ContentOwnershipGuard $contentOwnershipGuard,
+        private readonly ContentAuthoringService $contentAuthoringService,
+        private readonly ContentGovernanceService $contentGovernanceService,
     ) {
     }
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Module::class);
+
         $status = $request->get('status', 'all');
+        $scope = $request->get('scope', 'all');
+        $search = trim((string) $request->get('search', ''));
+        $ownerType = (string) $request->get('owner_type', 'all');
         $user = Auth::user();
+        $context = $this->panelContext();
 
-        if ($status === 'archived') {
-            $query = Module::onlyTrashed()->where('created_by', Auth::id());
-        } else {
-            $query = Module::where('created_by', Auth::id());
-            if ($status === 'published') {
-                $query->where('is_published', true);
-            } elseif ($status === 'draft') {
-                $query->where('is_published', false);
-            }
-        }
-
-        $modules = $query
-            ->withCount([
-                'lessons',
-                'quizzes',
-                'enrollments as enrolled_count' => fn ($q) => $q->where('status', 'approved'),
-            ])
-            ->latest()
-            ->paginate(12);
-
-        // Include legacy lesson-attached quizzes that were stored with a null module_id.
-        $moduleIds = $modules->getCollection()->pluck('id');
-
-        if ($moduleIds->isNotEmpty()) {
-            $directQuizCounts = Quiz::query()
-                ->whereIn('module_id', $moduleIds)
-                ->selectRaw('module_id, COUNT(*) as total')
-                ->groupBy('module_id')
-                ->pluck('total', 'module_id');
-
-            $lessonQuizCounts = Quiz::query()
-                ->join('lessons', 'lessons.id', '=', 'quizzes.lesson_id')
-                ->whereNull('quizzes.module_id')
-                ->whereIn('lessons.module_id', $moduleIds)
-                ->selectRaw('lessons.module_id as module_id, COUNT(*) as total')
-                ->groupBy('lessons.module_id')
-                ->pluck('total', 'module_id');
-
-            $modules->setCollection(
-                $modules->getCollection()->map(function (Module $module) use ($directQuizCounts, $lessonQuizCounts) {
-                    $module->quizzes_count = (int) ($directQuizCounts[$module->id] ?? 0)
-                        + (int) ($lessonQuizCounts[$module->id] ?? 0);
-
-                    return $module;
-                })
+        if ($context->isAdmin()) {
+            $modules = $this->contentAccessService->paginateAdminModules(
+                (string) $scope,
+                (string) $status,
+                $search,
+                $ownerType,
+                12,
             );
+            $pendingCount = $this->contentAccessService->pendingEnrollmentCountForAdmin();
+
+            return view('admin.modules.index', [
+                'modules' => $modules,
+                'pendingCount' => $pendingCount,
+                'status' => (string) $status,
+                'scope' => (string) $scope,
+                'search' => $search,
+                'ownerType' => $ownerType,
+                'isRestricted' => false,
+                'restrictionProfile' => null,
+                'restrictionMessage' => null,
+                'effectiveCommissionPolicy' => null,
+            ]);
         }
 
-        $pendingCount = \App\Models\ModuleEnrollment::where('status', 'pending')
-            ->whereHas('module', fn ($q) => $q->where('created_by', Auth::id()))
-            ->count();
+        $modules = $this->contentAccessService->paginateInstructorModules((int) Auth::id(), (string) $status, 12);
+        $pendingCount = $this->contentAccessService->pendingEnrollmentCountForInstructor((int) Auth::id());
 
         $restrictionProfile = $user ? $this->instructorRestrictionGate->activeRestrictionProfile($user) : null;
         $isRestricted = $restrictionProfile !== null;
@@ -91,6 +80,7 @@ class ModuleController extends Controller
             'modules',
             'pendingCount',
             'status',
+            'scope',
             'isRestricted',
             'restrictionProfile',
             'restrictionMessage',
@@ -100,9 +90,17 @@ class ModuleController extends Controller
 
     public function create()
     {
+        $this->authorize('create', Module::class);
+
+        if ($this->panelContext()->isAdmin()) {
+            return redirect()->route($this->routeName('modules.index'), [
+                'create_module' => 1,
+            ]);
+        }
+
         $user = Auth::user();
-        if ($user && $this->instructorRestrictionGate->isRestricted($user)) {
-            return redirect()->route('instructor.modules.index')
+        if ($this->panelContext()->isInstructor() && $user && $this->instructorRestrictionGate->isRestricted($user)) {
+            return redirect()->route($this->routeName('modules.index'))
                 ->with('error', $this->instructorRestrictionGate->restrictionMessage($user));
         }
 
@@ -116,8 +114,10 @@ class ModuleController extends Controller
 
     public function store(StoreModuleRequest $request)
     {
-        if ($this->instructorRestrictionGate->isRestricted($request->user())) {
-            return redirect()->route('instructor.modules.index')
+        $this->authorize('create', Module::class);
+
+        if ($this->panelContext()->isInstructor() && $this->instructorRestrictionGate->isRestricted($request->user())) {
+            return redirect()->route($this->routeName('modules.index'))
                 ->with('error', $this->instructorRestrictionGate->restrictionMessage($request->user()));
         }
 
@@ -129,50 +129,54 @@ class ModuleController extends Controller
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
         }
 
-        // Set age range based on bracket
-        $ageBrackets = [
-            'kids' => ['min_age' => 5, 'max_age' => 12],
-            'teens' => ['min_age' => 13, 'max_age' => 17],
-            'adults' => ['min_age' => 18, 'max_age' => 100],
-        ];
-        
-        $validated['min_age'] = $ageBrackets[$validated['age_bracket']]['min_age'];
-        $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
-        unset($validated['age_bracket']);
+        if ($this->panelContext()->isAdmin()) {
+            $action = (string) ($validated['action'] ?? 'publish');
+            $module = $this->storeAdminModule($validated, $request, $action);
 
-        $validated['is_published'] = false;
+            $message = match ($action) {
+                'draft' => 'Platform module saved as draft.',
+                'archive' => 'Platform module archived.',
+                default => 'Platform module published.',
+            };
 
-        $validated['price_currency'] = strtoupper($validated['price_currency'] ?? 'PHP');
-        if (($validated['access_type'] ?? 'free') === 'paid') {
-            $validated['is_premium'] = true;
-        } else {
-            $validated['is_premium'] = false;
-            $validated['price_amount'] = null;
+            if ($action === 'archive') {
+                return redirect()->route($this->routeName('modules.index'), ['status' => 'archived'])
+                    ->with('success', $message);
+            }
+
+            return redirect()->route($this->routeName('modules.show'), $module)
+                ->with('success', $message);
         }
-        
-        // Duration will be auto-calculated from lessons
-        $validated['duration_minutes'] = 0;
 
-        $validated['order'] = $validated['order'] ?? Module::max('order') + 1;
-        $validated['created_by'] = Auth::id();
-        $validated['content_owner_type'] = 'instructor';
-        $validated['current_review_status'] = 'draft';
+        $payload = $this->contentAuthoringService->toInstructorDraftPayload(
+            $validated,
+            (int) Auth::id(),
+        );
 
-        $module = Module::create($validated);
+        if (isset($validated['thumbnail'])) {
+            $payload['thumbnail'] = $validated['thumbnail'];
+        }
+
+        $module = Module::create($payload);
 
         $message = 'Module saved as draft. Submit it for admin review when it is ready.';
 
-        return redirect()->route('instructor.modules.show', $module)
+        return redirect()->route($this->routeName('modules.show'), $module)
             ->with('success', $message);
     }
 
     public function show(Module $module)
     {
-        abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        $this->authorize('view', $module);
+        if ($this->panelContext()->isInstructor()) {
+            abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        }
 
         $module->load([
+            'creator:id,role',
             'lessons' => fn ($q) => $q->orderBy('order'),
             'quizzes',
+            'feedback' => fn ($query) => $query->latest()->with('learner:id,name,first_name,last_name'),
             'reviewRequests' => fn ($query) => $query->latest(),
             'enrollments' => fn ($query) => $query
                 ->latest()
@@ -186,6 +190,15 @@ class ModuleController extends Controller
 
     public function edit(Module $module)
     {
+        $this->authorize('update', $module);
+        $this->ensureAdminCanMutateModule($module);
+
+        if ($this->panelContext()->isAdmin()) {
+            return redirect()->route($this->routeName('modules.index'), [
+                'edit_module' => $module->id,
+            ]);
+        }
+
         $user = Auth::user();
         $restrictionProfile = $user ? $this->instructorRestrictionGate->activeRestrictionProfile($user) : null;
 
@@ -219,6 +232,9 @@ class ModuleController extends Controller
 
     public function update(UpdateModuleRequest $request, Module $module)
     {
+        $this->authorize('update', $module);
+        $this->ensureAdminCanMutateModule($module);
+
         $validated = $request->validated();
 
         $validated['access_type'] = $validated['access_type'] ?? ($module->access_type ?? 'free');
@@ -227,49 +243,82 @@ class ModuleController extends Controller
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
         }
 
-        // Set age range based on bracket
-        $ageBrackets = [
-            'kids' => ['min_age' => 5, 'max_age' => 12],
-            'teens' => ['min_age' => 13, 'max_age' => 17],
-            'adults' => ['min_age' => 18, 'max_age' => 100],
-        ];
-        
-        $validated['min_age'] = $ageBrackets[$validated['age_bracket']]['min_age'];
-        $validated['max_age'] = $ageBrackets[$validated['age_bracket']]['max_age'];
-        unset($validated['age_bracket']);
+        if ($this->panelContext()->isAdmin()) {
+            $action = (string) ($validated['action'] ?? 'publish');
+            $this->updateAdminModule($module, $validated, $request, $action);
 
-        $validated['is_published'] = false;
-        $validated['content_owner_type'] = $module->content_owner_type ?? 'instructor';
+            $message = match ($action) {
+                'draft' => 'Platform module updated as draft.',
+                'archive' => 'Platform module archived.',
+                default => 'Platform module published.',
+            };
 
-        $validated['price_currency'] = strtoupper($validated['price_currency'] ?? 'PHP');
-        if (($validated['access_type'] ?? 'free') === 'paid') {
-            $validated['is_premium'] = true;
-        } else {
-            $validated['is_premium'] = false;
-            $validated['price_amount'] = null;
+            if ($action === 'archive') {
+                return redirect()->route($this->routeName('modules.index'), ['status' => 'archived'])
+                    ->with('success', $message);
+            }
+
+            return redirect()->route($this->routeName('modules.show'), $module)
+                ->with('success', $message);
+        }
+
+        $payload = $this->contentAuthoringService->toInstructorDraftPayload(
+            $validated,
+            (int) ($module->created_by ?? Auth::id()),
+            $module,
+        );
+
+        if (isset($validated['thumbnail'])) {
+            $payload['thumbnail'] = $validated['thumbnail'];
         }
         
         // Duration is auto-calculated, but update it now
         $module->duration_minutes = $module->lessons()->sum('duration');
         $module->save();
 
-        $module->update($validated);
+        $module->update($payload);
 
-        return redirect()->route('instructor.modules.index')
+        return redirect()->route($this->routeName('modules.index'))
             ->with('success', 'Module updated successfully!');
     }
 
     public function destroy(Module $module)
     {
+        $this->authorize('delete', $module);
+        $this->ensureAdminCanMutateModule($module);
+
         $module->delete();
 
-        return redirect()->route('instructor.modules.index')
+        return redirect()->route($this->routeName('modules.index'))
             ->with('success', 'Module deleted successfully!');
+    }
+
+    public function forceDelete(int $id)
+    {
+        $module = Module::withTrashed()->findOrFail($id);
+        $this->authorize('delete', $module);
+        $this->ensureAdminCanMutateModule($module);
+
+        if ($this->panelContext()->isInstructor()) {
+            abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        }
+
+        if (!$module->trashed()) {
+            return back()->with('error', 'Only archived modules can be permanently deleted.');
+        }
+
+        $module->forceDelete();
+
+        return back()->with('success', 'Module permanently deleted.');
     }
 
     public function activate(Module $module)
     {
-        abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        $this->authorize('update', $module);
+        $this->ensureAdminCanMutateModule($module);
+        if ($this->panelContext()->isInstructor()) {
+            abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        }
         $module->update([
             'is_published' => false,
             'current_review_status' => $module->current_review_status ?? 'draft',
@@ -280,7 +329,11 @@ class ModuleController extends Controller
 
     public function deactivate(Module $module)
     {
-        abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        $this->authorize('update', $module);
+        $this->ensureAdminCanMutateModule($module);
+        if ($this->panelContext()->isInstructor()) {
+            abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        }
         $module->update(['is_published' => false]);
         return back()->with('success', 'Module deactivated successfully.');
     }
@@ -288,8 +341,102 @@ class ModuleController extends Controller
     public function restore($id)
     {
         $module = Module::withTrashed()->findOrFail($id);
-        abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        $this->authorize('update', $module);
+        $this->ensureAdminCanMutateModule($module);
+        if ($this->panelContext()->isInstructor()) {
+            abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        }
         $module->restore();
         return back()->with('success', 'Module restored successfully.');
+    }
+
+    private function panelContext(): ContentPanelContext
+    {
+        return app(ContentPanelContext::class);
+    }
+
+    private function routeName(string $suffix): string
+    {
+        return $this->panelContext()->name($suffix);
+    }
+
+    private function ensureAdminCanMutateModule(Module $module): void
+    {
+        if (!$this->panelContext()->isAdmin()) {
+            return;
+        }
+
+        $ownerType = $this->contentOwnershipGuard->ownerTypeForModule($module);
+
+        abort_unless(
+            $this->contentOwnershipGuard->canAdminMutateOwnerType($ownerType),
+            403,
+            'Admins can only modify platform-owned learning content.',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function storeAdminModule(array $validated, StoreModuleRequest $request, string $action): Module
+    {
+        $payload = $this->contentAuthoringService->toAdminPayload($validated);
+
+        if (isset($validated['thumbnail'])) {
+            $payload['thumbnail'] = $validated['thumbnail'];
+        }
+
+        if ($action === 'publish') {
+            return $this->contentGovernanceService->createAdminOwnedModule($payload, $request->user());
+        }
+
+        $module = Module::query()->create($payload + [
+            'created_by' => (int) $request->user()->id,
+            'content_owner_type' => 'admin',
+            'current_review_status' => 'draft',
+            'is_published' => false,
+            'published_by_admin_id' => null,
+            'published_revision_id' => null,
+        ]);
+
+        if ($action === 'archive') {
+            $module->delete();
+        }
+
+        return $module->fresh(['creator']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function updateAdminModule(Module $module, array $validated, UpdateModuleRequest $request, string $action): void
+    {
+        $payload = $this->contentAuthoringService->toAdminPayload($validated, $module);
+
+        if (isset($validated['thumbnail'])) {
+            $payload['thumbnail'] = $validated['thumbnail'];
+        }
+
+        if ($action === 'publish') {
+            $module->update($payload + [
+                'content_owner_type' => 'admin',
+                'current_review_status' => 'approved',
+                'is_published' => true,
+                'published_by_admin_id' => (int) $request->user()->id,
+            ]);
+
+            return;
+        }
+
+        $module->update($payload + [
+            'content_owner_type' => 'admin',
+            'current_review_status' => 'draft',
+            'is_published' => false,
+            'published_by_admin_id' => null,
+        ]);
+
+        if ($action === 'archive') {
+            $module->delete();
+        }
     }
 }

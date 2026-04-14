@@ -149,16 +149,17 @@
                             ['label' => 'Modules',     'route' => 'instructor.modules.index',     'active' => request()->routeIs('instructor.modules.*'),     'badge' => 0,            'icon' => 'book'],
                             ['label' => 'Lessons',     'route' => 'instructor.lessons.index',     'active' => request()->routeIs('instructor.lessons.*'),     'badge' => 0,            'icon' => 'document'],
                             ['label' => 'Quizzes',     'route' => 'instructor.quizzes.index',     'active' => request()->routeIs('instructor.quizzes.*'),     'badge' => 0,            'icon' => 'clipboard'],
+                            ['label' => 'Image Library', 'route' => 'instructor.image-library.index', 'active' => request()->routeIs('instructor.image-library.*'), 'badge' => 0,            'icon' => 'sparkles'],
                             ['label' => 'Assessment Logs', 'route' => 'instructor.assessments.index', 'active' => request()->routeIs('instructor.assessments.*'), 'badge' => 0,            'icon' => 'chart'],
                             ['label' => 'Enrollments',  'route' => 'instructor.enrollments.index', 'active' => request()->routeIs('instructor.enrollments.*'), 'badge' => $pendingCount, 'icon' => 'enrollments'],
                         ],
                     ],
                     [
-                        'label' => 'EXTRAS',
+                        'label' => 'COMMUNITY TOOLS',
                         'items' => [
                             ['label' => 'Chat', 'route' => 'chat.page', 'active' => request()->routeIs('chat.*'), 'badge' => 0, 'icon' => 'chat'],
+                            ['label' => 'Notifications', 'route' => 'instructor.notifications.index', 'active' => request()->routeIs('instructor.notifications.*'), 'badge' => 0, 'icon' => 'bell'],
                             ['label' => 'Earnings', 'route' => 'instructor.earnings.index', 'active' => request()->routeIs('instructor.earnings.*'), 'badge' => 0, 'icon' => 'wallet'],
-                            ['label' => 'Image Library', 'route' => 'instructor.image-library.index', 'active' => request()->routeIs('instructor.image-library.*'), 'badge' => 0, 'icon' => 'sparkles'],
                         ],
                     ],
                 ];
@@ -217,6 +218,10 @@
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8m-8 4h5m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
+                                    @elseif($item['icon'] === 'bell')
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
                                     @elseif($item['icon'] === 'enrollments')
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5V9a2 2 0 00-2-2h-4m1 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v15h5m10 0v-2a3 3 0 00-3-3H10a3 3 0 00-3 3v2m10 0H7m5-13a2 2 0 110 4 2 2 0 010-4z" />
@@ -246,6 +251,23 @@
 
             {{-- Bottom — Instructor profile + logout --}}
             <div class="border-t border-gray-100 p-3 space-y-1">
+                <a
+                    href="{{ route('instructor.profile.show') }}"
+                    class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-brand-50 hover:text-brand-700 transition-colors"
+                    :class="(!$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isHovered && !$store.instructorSidebar.isMobileOpen) ? 'justify-center' : ''"
+                >
+                    <span class="flex-shrink-0 text-gray-500">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A9 9 0 1118.88 17.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </span>
+                    <span
+                        x-show="$store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered || $store.instructorSidebar.isMobileOpen"
+                        x-cloak
+                        class="truncate"
+                    >Edit Profile</span>
+                </a>
+
                 <div
                     class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
                     :class="(!$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isHovered && !$store.instructorSidebar.isMobileOpen) ? 'justify-center' : ''"

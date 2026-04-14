@@ -58,15 +58,41 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
+        pruneConversationState(conversationId, shouldPersist = true) {
+            const id = Number(conversationId || 0);
+
+            if (!id) {
+                return;
+            }
+
+            this.openWindows = this.openWindows.filter((windowItem) => Number(windowItem.id) !== id);
+            this.$store.chat.purgeConversation(id);
+
+            if (shouldPersist) {
+                this.persistWindowsState();
+            }
+        },
+
         async openWindowByConversationId(conversationId, detail = {}, options = {}) {
             const config = {
                 markRead: options.markRead !== false,
                 persist: options.persist !== false,
             };
 
-            await this.$store.chat.ensureConversationLoaded(conversationId);
+            const loadedConversation = await this.$store.chat.ensureConversationLoaded(conversationId);
+
+            if (!loadedConversation) {
+                this.pruneConversationState(conversationId, config.persist);
+                return false;
+            }
+
             this.$store.chat.subscribeConversationChannel(conversationId);
-            await this.$store.chat.loadMessages(conversationId, true);
+            const loadedMessages = await this.$store.chat.loadMessages(conversationId, true);
+
+            if (loadedMessages === false) {
+                this.pruneConversationState(conversationId, config.persist);
+                return false;
+            }
 
             const existing = this.openWindows.find((windowItem) => Number(windowItem.id) === Number(conversationId));
             if (existing) {
@@ -82,7 +108,7 @@ document.addEventListener('alpine:init', () => {
                     this.persistWindowsState();
                 }
 
-                return;
+                return true;
             }
 
             if (this.openWindows.length >= 3) {
@@ -110,6 +136,8 @@ document.addEventListener('alpine:init', () => {
             if (config.persist) {
                 this.persistWindowsState();
             }
+
+            return true;
         },
 
         restoreWindowsPayload() {
@@ -156,7 +184,7 @@ document.addEventListener('alpine:init', () => {
             }
 
             for (const windowConfig of restoredWindows) {
-                await this.openWindowByConversationId(windowConfig.conversation_id, {
+                const restoredWindowOpened = await this.openWindowByConversationId(windowConfig.conversation_id, {
                     context_label: windowConfig.context_label,
                     name: windowConfig.name,
                     avatar: windowConfig.avatar,
@@ -165,6 +193,10 @@ document.addEventListener('alpine:init', () => {
                     markRead: false,
                     persist: false,
                 });
+
+                if (!restoredWindowOpened) {
+                    continue;
+                }
 
                 const restored = this.openWindows.find((entry) => Number(entry.id) === Number(windowConfig.conversation_id));
 

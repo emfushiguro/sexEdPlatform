@@ -315,8 +315,8 @@ class ChatService
             return;
         }
 
-        $initiatorIsAdmin = $initiator->role === 'admin';
-        $targetIsAdmin = $target->role === 'admin';
+        $initiatorIsAdmin = $initiator->can('moderate chat') || $initiator->can('access admin panel');
+        $targetIsAdmin = $target->can('moderate chat') || $target->can('access admin panel');
 
         if (!$initiatorIsAdmin && !$targetIsAdmin) {
             throw new AuthorizationException('Admin support chat requires an admin participant.');

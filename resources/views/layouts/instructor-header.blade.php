@@ -21,6 +21,7 @@ $payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
     class="sticky top-0 z-[9998] bg-white border-b border-gray-200 h-16 flex items-center px-4 md:px-6 gap-4"
     x-data="instructorSearch()"
 >
+    <span class="hidden" data-chat-unread-badge-role="instructor"></span>
 
     {{-- ── Sidebar toggle (desktop) ── --}}
     <button
@@ -189,6 +190,10 @@ $payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
                     @php
                         $isUnread = is_null($notification->read_at);
                         $normalized = $payloadNormalizer->normalize((array) $notification->data);
+                        $isChatMessage = $normalized['type'] === 'chat_message_received';
+                        $senderName = $normalized['sender_name'] ?? 'User';
+                        $senderAvatarUrl = $normalized['sender_avatar_url'] ?? null;
+                        $messagePreview = $normalized['message_preview'] ?: $normalized['message'];
 
                         $severityClass = match($normalized['severity']) {
                             'success' => 'border-l-4 border-emerald-500',
@@ -196,9 +201,23 @@ $payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
                             default => 'border-l-4 border-slate-300',
                         };
                     @endphp
-                    <a href="{{ route('instructor.notifications.read', $notification->id) }}" class="block px-4 py-3 hover:bg-gray-50 transition-colors {{ $severityClass }} {{ $isUnread ? 'bg-rose-50/40' : '' }}">
-                        <p class="text-xs font-semibold text-gray-800">{{ $normalized['title'] }}</p>
-                        <p class="text-[11px] text-gray-600 mt-0.5 line-clamp-2">{{ $normalized['message'] }}</p>
+                    <a href="{{ route('instructor.notifications.read', $notification->id) }}" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors {{ $severityClass }} {{ $isUnread ? 'bg-rose-50/40' : '' }}">
+                        @if($isChatMessage)
+                            <div class="h-9 w-9 shrink-0 rounded-full overflow-hidden bg-blue-100 text-blue-700 flex items-center justify-center">
+                                @if($senderAvatarUrl)
+                                    <img src="{{ $senderAvatarUrl }}" alt="{{ $senderName }}" class="h-9 w-9 rounded-full object-cover">
+                                @else
+                                    <span class="text-xs font-bold">{{ $normalized['sender_initial'] }}</span>
+                                @endif
+                            </div>
+                        @endif
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold text-gray-800">{{ $normalized['title'] }}</p>
+                            @if($isChatMessage)
+                                <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ $senderName }}</p>
+                            @endif
+                            <p class="text-[11px] text-gray-600 mt-0.5 line-clamp-2">{{ $isChatMessage ? '"' . $messagePreview . '"' : $normalized['message'] }}</p>
+                        </div>
                     </a>
                     @endforeach
                 </div>

@@ -11,10 +11,13 @@ use App\Models\ModulePurchase;
 use App\Models\ParentChildAccount;
 use App\Models\QuizAttempt;
 use App\Models\LessonTopicProgress;
+use App\Models\ContentReport;
+use App\Models\ModuleFeedback;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use App\Notifications\Learner\ModulePurchaseResultNotification;
 use App\Services\ModulePurchaseService;
+use App\Services\LearnerModuleCompletionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,6 +25,7 @@ class ModuleController extends Controller
 {
     public function __construct(
         private readonly ModulePurchaseService $modulePurchaseService,
+        private readonly LearnerModuleCompletionService $completionService,
     ) {
     }
 
@@ -131,6 +135,7 @@ class ModuleController extends Controller
         $module->loadMissing('publishedRevision');
         $module->applyPublishedSnapshot();
         $module->loadMissing('creator.instructorProfile');
+        $creator = $module->creator;
 
         // Security: Check age-based access for non-enrolled learners.
         $learnerAge = $learnerProfile->getAge();
@@ -299,6 +304,36 @@ class ModuleController extends Controller
             && $allLessonQuizzesCompleted
             && $finalQuizCompleted;
 
+        $reviewSummary = [
+            'average' => round((float) (ModuleFeedback::query()->where('module_id', $module->id)->avg('rating') ?? 0), 1),
+            'count' => (int) ModuleFeedback::query()->where('module_id', $module->id)->count(),
+        ];
+
+        $recentReviews = ModuleFeedback::query()
+            ->where('module_id', $module->id)
+            ->with(['learner.learnerProfile'])
+            ->latest('created_at')
+            ->limit(3)
+            ->get();
+
+        $reviewEligibility = $this->completionService->reviewEligibility($user, $module);
+        $userFeedback = ModuleFeedback::query()
+            ->where('module_id', $module->id)
+            ->where('learner_id', $user->id)
+            ->first();
+
+        $activeModuleReport = ContentReport::query()
+            ->activeForTarget($user->id, 'module', $module->id)
+            ->latest('id')
+            ->first();
+
+        $activeInstructorReport = $creator
+            ? ContentReport::query()
+                ->activeForTarget($user->id, 'instructor', (int) $creator->id)
+                ->latest('id')
+                ->first()
+            : null;
+
         $shieldsRemaining = UserDailyShield::getShields($user);
 
         return view('learner.modules.show', compact(
@@ -321,7 +356,13 @@ class ModuleController extends Controller
             'quizAttempts',
             'moduleCertificate',
             'certificateEligible',
-            'shieldsRemaining'
+            'shieldsRemaining',
+            'reviewSummary',
+            'recentReviews',
+            'reviewEligibility',
+            'userFeedback',
+            'activeModuleReport',
+            'activeInstructorReport'
         ));
     }
 

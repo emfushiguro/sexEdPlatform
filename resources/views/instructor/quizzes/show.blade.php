@@ -1,4 +1,4 @@
-@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
 <div
@@ -11,7 +11,7 @@
         <div>
             <div class="flex items-center gap-2 mb-1">
                 <a
-                    href="{{ route('instructor.quizzes.index') }}"
+                    href="{{ route($contentRoutePrefix . '.quizzes.index') }}"
                     class="text-sm text-gray-400 hover:text-purple-600 transition flex items-center gap-1"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +56,7 @@
 
         <div class="flex items-center gap-2 flex-shrink-0">
             <a
-                href="{{ route('instructor.quizzes.edit', $quiz) }}"
+                href="{{ route($contentRoutePrefix . '.quizzes.index', ['edit_quiz' => $quiz->id]) }}"
                 class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:bg-gray-50 transition"
             >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +229,7 @@
                     {{-- Action buttons --}}
                     <div class="flex items-center gap-1.5 flex-shrink-0">
                         <a
-                            href="{{ route('instructor.quizzes.edit-question', ['quiz' => $quiz, 'question' => $question]) }}"
+                            href="{{ route($contentRoutePrefix . '.quizzes.edit-question', ['quiz' => $quiz, 'question' => $question]) }}"
                             class="p-2 rounded-xl text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition"
                             title="Edit question"
                         >
@@ -239,7 +239,7 @@
                         </a>
                         <form
                             method="POST"
-                            action="{{ route('instructor.quizzes.delete-question', ['quiz' => $quiz, 'question' => $question]) }}"
+                            action="{{ route($contentRoutePrefix . '.quizzes.delete-question', ['quiz' => $quiz, 'question' => $question]) }}"
                             onsubmit="return confirm('Delete this question? This cannot be undone.')"
                             class="inline"
                         >
@@ -305,7 +305,7 @@ function questionEntryModal(autoOpen) {
             if (this._imagesLoaded) return;
             this.imageLoading = true;
             try {
-                const res = await fetch('{{ route("instructor.image-library.json") }}', {
+                const res = await fetch('{{ route($contentRoutePrefix . '.image-library.json') }}', {
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
@@ -329,7 +329,7 @@ function questionEntryModal(autoOpen) {
             formData.append('image', file);
             formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
             try {
-                const res = await fetch('{{ route("instructor.image-library.upload") }}', {
+                const res = await fetch('{{ route($contentRoutePrefix . '.image-library.upload') }}', {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -373,3 +373,4 @@ function questionEntryModal(autoOpen) {
 }
 </script>
 @endpush
+

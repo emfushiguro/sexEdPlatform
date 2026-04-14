@@ -64,4 +64,23 @@ class NotificationPayloadNormalizerTest extends TestCase
         $this->assertSame('/modules/1', $normalized['action_url']);
         $this->assertSame('info', $normalized['severity']);
     }
+
+    public function test_it_normalizes_sender_and_preview_fields_for_chat_payloads(): void
+    {
+        $normalizer = new NotificationPayloadNormalizer();
+
+        $normalized = $normalizer->normalize([
+            'type' => 'chat_message_received',
+            'title' => 'New message',
+            'message' => 'Original body',
+            'preview' => 'Short preview',
+            'actor_name' => 'Alex Rivera',
+            'actor_avatar_url' => '/storage/avatars/alex.jpg',
+        ]);
+
+        $this->assertSame('Short preview', $normalized['message_preview']);
+        $this->assertSame('Alex Rivera', $normalized['sender_name']);
+        $this->assertSame('/storage/avatars/alex.jpg', $normalized['sender_avatar_url']);
+        $this->assertSame('A', $normalized['sender_initial']);
+    }
 }

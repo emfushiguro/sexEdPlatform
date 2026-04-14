@@ -27,7 +27,7 @@ class InstructorModuleReviewSubmissionTest extends DatabaseTestCase
 
         $this->assertDatabaseHas('module_review_requests', [
             'module_id' => $module->id,
-            'status' => 'in_review',
+            'status' => 'submitted',
             'submitted_by' => $instructor->id,
         ]);
     }
@@ -47,7 +47,9 @@ class InstructorModuleReviewSubmissionTest extends DatabaseTestCase
             ->assertRedirect();
 
         $initialRequest = ModuleReviewRequest::query()->latest('id')->firstOrFail();
-        app(\App\Services\ContentGovernanceService::class)->rejectReview($initialRequest, $admin, 'Please revise the copy.');
+        $governanceService = app(\App\Services\ContentGovernanceService::class);
+        $governanceService->startReview($initialRequest, $admin);
+        $governanceService->rejectReview($initialRequest, $admin, 'Please revise the copy.');
 
         $this->actingAs($instructor)
             ->post(route('instructor.modules.review.resubmit', $module))
@@ -56,7 +58,7 @@ class InstructorModuleReviewSubmissionTest extends DatabaseTestCase
         $this->assertSame(2, ModuleReviewRequest::query()->where('module_id', $module->id)->count());
         $this->assertDatabaseHas('module_review_requests', [
             'module_id' => $module->id,
-            'status' => 'in_review',
+            'status' => 'submitted',
         ]);
     }
 

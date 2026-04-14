@@ -15,12 +15,22 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\InstructorProfile;
 use App\Models\InstructorApplication;
+use App\Models\ContentReport;
+use App\Models\Lesson;
+use App\Models\LessonTopic;
+use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ParentChildAccount;
+use App\Models\Quiz;
 use App\Models\User;
 use App\Observers\PaymentObserver;
+use App\Policies\LessonPolicy;
 use App\Policies\InstructorProfilePolicy;
+use App\Policies\ModulePolicy;
 use App\Policies\ParentChildPolicy;
+use App\Policies\QuizPolicy;
+use App\Policies\TopicPolicy;
+use App\Support\ContentPanelContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,11 +44,21 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->scoped(ContentPanelContext::class, static function (): ContentPanelContext {
+            return ContentPanelContext::fromRequest(request());
+        });
     }
 
     public function boot(): void
     {
+        Gate::before(function (?User $user, string $ability) {
+            if ($user?->hasRole('admin')) {
+                return true;
+            }
+
+            return null;
+        });
+
         RateLimiter::for('chat-messages', function (Request $request) {
             $userId = (int) ($request->user()?->id ?? 0);
             $conversationRouteParam = $request->route('conversation');
@@ -60,6 +80,10 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(User::class, ParentChildPolicy::class);
         Gate::policy(InstructorProfile::class, InstructorProfilePolicy::class);
+        Gate::policy(Module::class, ModulePolicy::class);
+        Gate::policy(Lesson::class, LessonPolicy::class);
+        Gate::policy(LessonTopic::class, TopicPolicy::class);
+        Gate::policy(Quiz::class, QuizPolicy::class);
 
         Payment::observe(PaymentObserver::class);
 
@@ -82,6 +106,7 @@ class AppServiceProvider extends ServiceProvider
                 'pending_child_verifications' => ParentChildAccount::query()
                     ->where('verification_status', 'pending')
                     ->count(),
+                'pending_learner_reports' => ContentReport::query()->whereIn('status', ['submitted', 'under_review'])->count(),
             ];
 
             $operationalSignalItems = collect([
@@ -113,7 +138,7 @@ class AppServiceProvider extends ServiceProvider
             $adminRecentNotifications = collect();
             $adminDbUnreadCount = 0;
 
-            if ($adminUser && $adminUser->role === 'admin') {
+            if ($adminUser && $adminUser->hasRole('admin')) {
                 $adminRecentNotifications = $adminUser->notifications()->latest()->limit(8)->get();
                 $adminDbUnreadCount = $adminUser->unreadNotifications()->count();
             }
@@ -127,6 +152,22 @@ class AppServiceProvider extends ServiceProvider
                 'unread_count' => (int) $operationalSignalItems->sum('value'),
             ]);
             $view->with('adminModerationCounts', $moderationCounts);
+        });
+
+        View::composer([
+            'instructor.modules.*',
+            'instructor.lessons.*',
+            'instructor.topics.*',
+            'instructor.quizzes.*',
+            'instructor.enrollments.*',
+            'instructor.image-library.*',
+        ], function ($view): void {
+            $contentPanel = app(ContentPanelContext::class);
+
+            $view->with('contentPanel', $contentPanel);
+            $view->with('contentPanelLayout', $contentPanel->layout());
+            $view->with('contentRoutePrefix', $contentPanel->routePrefix());
+            $view->with('isContentAdminPanel', $contentPanel->isAdmin());
         });
     }
 }

@@ -1,4 +1,19 @@
-@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
+
+@php
+    $isAdminPanel = ($isContentAdminPanel ?? false) === true;
+    $ownershipRestrictionTooltip = 'Instructor-owned content is read-only in the admin panel.';
+    $moduleOwnerType = strtolower(trim((string) ($enrollment->module->content_owner_type ?? '')));
+
+    if (!in_array($moduleOwnerType, ['admin', 'platform', 'instructor'], true)) {
+        $moduleCreator = $enrollment->module->creator;
+        $moduleOwnerType = (($moduleCreator?->isAdmin() ?? false) || strtolower((string) ($moduleCreator?->role ?? '')) === 'admin')
+            ? 'admin'
+            : 'instructor';
+    }
+
+    $isRestrictedAdminMutation = $isAdminPanel && !in_array($moduleOwnerType, ['admin', 'platform'], true);
+@endphp
 
 @section('content')
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -210,27 +225,31 @@
                                 <h3 class="text-lg font-semibold mb-4">Review Decision</h3>
                                 
                                 <div class="space-y-3">
-                                    <form method="POST" action="{{ route('instructor.enrollments.approve', $enrollment) }}">
+                                    <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.approve', $enrollment) }}">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" 
-                                                class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition"
-                                                onclick="return confirm('Approve this enrollment request?')">
+                                                @if($isRestrictedAdminMutation) disabled @endif
+                                                title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Approve enrollment' }}"
+                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-green-600' : 'bg-green-600 hover:bg-green-700' }}"
+                                                onclick="@if($isRestrictedAdminMutation) return false; @else return confirm('Approve this enrollment request?'); @endif">
                                             ✓ Approve Enrollment
                                         </button>
                                     </form>
 
-                                    <form method="POST" action="{{ route('instructor.enrollments.reject', $enrollment) }}">
+                                    <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.reject', $enrollment) }}">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" 
-                                                class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition"
-                                                onclick="return confirm('Reject this enrollment request? The learner will be notified.')">
+                                                @if($isRestrictedAdminMutation) disabled @endif
+                                                title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Reject enrollment' }}"
+                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-red-600' : 'bg-red-600 hover:bg-red-700' }}"
+                                                onclick="@if($isRestrictedAdminMutation) return false; @else return confirm('Reject this enrollment request? The learner will be notified.'); @endif">
                                             ✗ Reject Request
                                         </button>
                                     </form>
 
-                                    <a href="{{ route('instructor.enrollments.index') }}" 
+                                    <a href="{{ route($contentRoutePrefix . '.enrollments.index') }}" 
                                        class="block w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition">
                                         ← Back to Requests
                                     </a>
@@ -258,7 +277,7 @@
                                         </div>
                                     @endif
 
-                                    <a href="{{ route('instructor.enrollments.index') }}" 
+                                    <a href="{{ route($contentRoutePrefix . '.enrollments.index') }}" 
                                        class="block w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg transition mt-4">
                                         ← Back to Requests
                                     </a>
@@ -269,3 +288,4 @@
                 </div>
             </div>
 @endsection
+

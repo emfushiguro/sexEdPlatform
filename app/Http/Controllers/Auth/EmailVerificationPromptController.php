@@ -32,6 +32,10 @@ class EmailVerificationPromptController extends Controller
             }
 
             if ($user->hasCompletedProfile()) {
+                if ($user->can('access instructor panel')) {
+                    return redirect()->route('instructor.dashboard');
+                }
+
                 return redirect()->route('learner.dashboard');
             }
 

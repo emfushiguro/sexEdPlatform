@@ -1,4 +1,4 @@
-﻿@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
@@ -22,7 +22,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('instructor.quizzes.update-question', ['quiz' => $quiz, 'question' => $question]) }}" id="questionForm" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route($contentRoutePrefix . '.quizzes.update-question', ['quiz' => $quiz, 'question' => $question]) }}" id="questionForm" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
 
@@ -145,7 +145,7 @@
                                     <label for="case_sensitive" class="text-sm font-medium text-gray-700">
                                         Case Sensitive
                                     </label>
-                                    <p class="text-xs text-gray-600 mt-1">If checked, answers must match exact capitalization (e.g., "Paris" â‰  "paris"). Learners will see a notice.</p>
+                                    <p class="text-xs text-gray-600 mt-1">If checked, answers must match exact capitalization (e.g., "Paris" ≠ "paris"). Learners will see a notice.</p>
                                 </div>
                             </div>
                         </div>
@@ -232,7 +232,7 @@
 
                         <!-- Submit Button -->
                         <div class="flex gap-4">
-                            <a href="{{ route('instructor.quizzes.show', $quiz) }}" 
+                            <a href="{{ route($contentRoutePrefix . '.quizzes.show', $quiz) }}" 
                                class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-xl transition">
                                 Cancel
                             </a>
@@ -488,4 +488,5 @@
         @endif
     </script>
 @endsection
+
 

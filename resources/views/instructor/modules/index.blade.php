@@ -1,4 +1,4 @@
-@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('title', 'Manage Modules')
 
@@ -128,7 +128,7 @@
                 <span class="font-semibold">{{ $pendingCount }}</span> enrollment request{{ $pendingCount > 1 ? 's' : '' }} awaiting your review
             </p>
         </div>
-        <a href="{{ route('instructor.enrollments.index') }}"
+        <a href="{{ route($contentRoutePrefix . '.enrollments.index') }}"
            class="flex-shrink-0 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 transition-colors whitespace-nowrap">
             Review Now →
         </a>
@@ -141,6 +141,14 @@
         @forelse($modules as $module)
         @php
             $searchKey = strtolower($module->title . ' ' . strip_tags($module->description ?? ''));
+            $moduleReviewStatus = (string) ($module->current_review_status ?? 'draft');
+            $moduleReviewLabel = match ($moduleReviewStatus) {
+                'submitted' => 'Submitted',
+                'in_review' => 'Under Review',
+                'needs_revision' => 'Needs Revision',
+                'approved' => 'Approved',
+                default => 'Draft',
+            };
             $moduleModalPayload = [
                 'id' => $module->id,
                 'title' => $module->title,
@@ -203,7 +211,7 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{{ Str::limit(strip_tags($module->description ?? 'No description provided.'), 120) }}</p>
                 <div class="rounded-xl border border-purple-100 bg-purple-50/60 px-3 py-2 dark:border-purple-900/40 dark:bg-purple-900/10">
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-purple-500">Review Status</p>
-                    <p class="mt-1 text-xs font-medium text-purple-800 dark:text-purple-200">{{ $module->current_review_status ?? 'approved' }}</p>
+                    <p class="mt-1 text-xs font-medium text-purple-800 dark:text-purple-200">{{ $moduleReviewLabel }}</p>
                 </div>
 
                 {{-- Stats Row --}}
@@ -246,7 +254,7 @@
 
                 @if($module->trashed())
                     {{-- Archived: show restore button only --}}
-                    <form action="{{ route('instructor.modules.restore', $module->id) }}" method="POST">
+                    <form action="{{ route($contentRoutePrefix . '.modules.restore', $module->id) }}" method="POST">
                         @csrf @method('PATCH')
                         <button type="submit"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800/40 rounded-lg transition-colors">
@@ -260,7 +268,7 @@
 
                 @else
                     {{-- View --}}
-                    <a href="{{ route('instructor.modules.show', $module) }}"
+                    <a href="{{ route($contentRoutePrefix . '.modules.show', $module) }}"
                        title="View module"
                               class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors action-icon-standard instructor-icon-readable">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -282,7 +290,7 @@
 
                     {{-- Activate / Deactivate --}}
                     @if($module->is_published)
-                        <form action="{{ route('instructor.modules.deactivate', $module) }}" method="POST" class="inline-flex">
+                        <form action="{{ route($contentRoutePrefix . '.modules.deactivate', $module) }}" method="POST" class="inline-flex">
                             @csrf @method('PATCH')
                             <button type="submit" title="Deactivate module"
                                     class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors action-icon-standard">
@@ -292,26 +300,45 @@
                             </button>
                         </form>
                     @else
-                        @if($module->current_review_status === 'needs_revision')
-                            <form action="{{ route('instructor.modules.review.resubmit', $module) }}" method="POST" class="inline-flex">
-                                @csrf
-                                <button type="submit" title="Resubmit for review"
-                                        class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors action-icon-standard">
+                        @if(($contentRoutePrefix ?? 'instructor') === 'instructor')
+                            @if($moduleReviewStatus === 'needs_revision')
+                                <form action="{{ route($contentRoutePrefix . '.modules.review.resubmit', $module) }}" method="POST" class="inline-flex">
+                                    @csrf
+                                    <button type="submit" title="Resubmit for review"
+                                            class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors action-icon-standard">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M5 9a7 7 0 0111.95-4.95L20 7M19 15a7 7 0 01-11.95 4.95L4 17"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            @elseif($moduleReviewStatus === 'submitted')
+                                <form action="{{ route($contentRoutePrefix . '.modules.review.withdraw', $module) }}" method="POST" class="inline-flex" onsubmit="return confirm('Withdraw this submission before admin review starts?');">
+                                    @csrf
+                                    <button type="submit" title="Withdraw submission"
+                                            class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors action-icon-standard">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 14l-4-4m0 0l4-4m-4 4h14"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            @elseif($moduleReviewStatus === 'in_review')
+                                <div title="Admin is currently reviewing this module"
+                                     class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-300 dark:text-gray-600 cursor-not-allowed">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M5 9a7 7 0 0111.95-4.95L20 7M19 15a7 7 0 01-11.95 4.95L4 17"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
-                                </button>
-                            </form>
-                        @else
-                            <form action="{{ route('instructor.modules.review.submit', $module) }}" method="POST" class="inline-flex">
-                                @csrf
-                                <button type="submit" title="Submit for review"
-                                        class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors action-icon-standard">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/>
-                                    </svg>
-                                </button>
-                            </form>
+                                </div>
+                            @else
+                                <form action="{{ route($contentRoutePrefix . '.modules.review.submit', $module) }}" method="POST" class="inline-flex">
+                                    @csrf
+                                    <button type="submit" title="Submit for review"
+                                            class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors action-icon-standard">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            @endif
                         @endif
                     @endif
 
@@ -319,7 +346,7 @@
 
                     {{-- Delete: only visible when no enrolled learners --}}
                     @if($module->enrolled_count === 0)
-                        <form action="{{ route('instructor.modules.destroy', $module) }}" method="POST" class="inline-flex"
+                        <form action="{{ route($contentRoutePrefix . '.modules.destroy', $module) }}" method="POST" class="inline-flex"
                             @submit.prevent="openDeleteConfirm($event.target)">
                             @csrf @method('DELETE')
                             <button type="submit" title="Delete module"
@@ -417,3 +444,4 @@
 @include('instructor.modules.partials.module-modal')
 
 @endsection
+

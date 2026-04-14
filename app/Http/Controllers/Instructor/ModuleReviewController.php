@@ -23,10 +23,15 @@ class ModuleReviewController extends Controller
                 ->with('error', $this->instructorRestrictionGate->restrictionMessage($request->user()));
         }
 
-        $this->contentGovernanceService->submitForReview($module, $request->user());
+        try {
+            $this->contentGovernanceService->submitForReview($module, $request->user());
+        } catch (\InvalidArgumentException $exception) {
+            return redirect()->route('instructor.modules.show', $module)
+                ->with('error', $exception->getMessage());
+        }
 
         return redirect()->route('instructor.modules.show', $module)
-            ->with('success', 'Module submitted for admin review.');
+            ->with('success', 'Module submitted successfully. Current status: Submitted (waiting for admin to start review).');
     }
 
     public function resubmit(SubmitModuleForReviewRequest $request, Module $module)
@@ -36,9 +41,32 @@ class ModuleReviewController extends Controller
                 ->with('error', $this->instructorRestrictionGate->restrictionMessage($request->user()));
         }
 
-        $this->contentGovernanceService->submitForReview($module, $request->user());
+        try {
+            $this->contentGovernanceService->submitForReview($module, $request->user());
+        } catch (\InvalidArgumentException $exception) {
+            return redirect()->route('instructor.modules.show', $module)
+                ->with('error', $exception->getMessage());
+        }
 
         return redirect()->route('instructor.modules.show', $module)
-            ->with('success', 'Module resubmitted for admin review.');
+            ->with('success', 'Module resubmitted successfully. Current status: Submitted (waiting for admin to start review).');
+    }
+
+    public function withdraw(SubmitModuleForReviewRequest $request, Module $module)
+    {
+        if ($this->instructorRestrictionGate->isRestricted($request->user())) {
+            return redirect()->route('instructor.modules.show', $module)
+                ->with('error', $this->instructorRestrictionGate->restrictionMessage($request->user()));
+        }
+
+        try {
+            $this->contentGovernanceService->withdrawSubmission($module, $request->user());
+
+            return redirect()->route('instructor.modules.show', $module)
+                ->with('success', 'Submission withdrawn successfully. The module is back in Draft status.');
+        } catch (\InvalidArgumentException $exception) {
+            return redirect()->route('instructor.modules.show', $module)
+                ->with('error', $exception->getMessage());
+        }
     }
 }

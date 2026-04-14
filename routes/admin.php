@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\Instructor;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -30,17 +31,108 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/', [Admin\ContentReviewController::class, 'index'])->name('index');
         Route::get('/{reviewRequest}', [Admin\ContentReviewController::class, 'show'])->name('show');
         Route::get('/{reviewRequest}/preview', Admin\ContentReviewPreviewController::class)->name('preview');
+        Route::post('/{reviewRequest}/start-review', [Admin\ContentReviewController::class, 'startReview'])->name('start-review');
         Route::post('/{reviewRequest}/approve', [Admin\ContentReviewController::class, 'approve'])->name('approve');
         Route::post('/{reviewRequest}/reject', [Admin\ContentReviewController::class, 'reject'])->name('reject');
         Route::post('/{reviewRequest}/archive', [Admin\ContentReviewController::class, 'archive'])->name('archive');
         Route::post('/{reviewRequest}/penalty/confirm', [Admin\ContentReviewController::class, 'confirmPenalty'])->name('penalty.confirm');
     });
 
-    Route::resource('modules', Admin\AdminModuleController::class)->except(['destroy']);
+    Route::prefix('learner-reports')->name('learner-reports.')->group(function () {
+        Route::get('/', [Admin\LearnerReportController::class, 'index'])->name('index');
+        Route::get('/{report}', [Admin\LearnerReportController::class, 'show'])->name('show');
+        Route::put('/{report}', [Admin\LearnerReportController::class, 'update'])->name('update');
+    });
+
+    // Shared learning content authoring (reuses instructor content controllers)
+    Route::resource('modules', Instructor\ModuleController::class);
+    Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
+        ->name('modules.activate');
+    Route::patch('modules/{module}/deactivate', [Instructor\ModuleController::class, 'deactivate'])
+        ->name('modules.deactivate');
+    Route::patch('modules/{id}/restore', [Instructor\ModuleController::class, 'restore'])
+        ->name('modules.restore');
+    Route::delete('modules/{id}/force-delete', [Instructor\ModuleController::class, 'forceDelete'])
+        ->name('modules.force-delete');
+
+    Route::patch('lessons/reorder', [Instructor\LessonController::class, 'reorder'])
+        ->name('lessons.reorder');
+    Route::resource('lessons', Instructor\LessonController::class);
+    Route::patch('lessons/{lesson}/move', [Instructor\LessonController::class, 'move'])
+        ->name('lessons.move');
+
+    Route::patch('topics/reorder', [Instructor\TopicController::class, 'reorder'])
+        ->name('topics.reorder');
+    Route::get('topics/create', [Instructor\TopicController::class, 'create'])
+        ->name('topics.create');
+    Route::post('topics', [Instructor\TopicController::class, 'store'])
+        ->name('topics.store');
+    Route::get('topics/{topic}/edit', [Instructor\TopicController::class, 'edit'])
+        ->name('topics.edit');
+    Route::get('topics/{topic}/preview', [Instructor\TopicController::class, 'preview'])
+        ->name('topics.preview');
+    Route::put('topics/{topic}', [Instructor\TopicController::class, 'update'])
+        ->name('topics.update');
+    Route::delete('topics/{topic}', [Instructor\TopicController::class, 'destroy'])
+        ->name('topics.destroy');
+
+    Route::post('upload/image', [Instructor\TopicController::class, 'uploadImage'])
+        ->name('upload.image');
+
+    Route::resource('quizzes', Instructor\QuizManagementController::class);
+    Route::get('quizzes/{quiz}/add-question', [Instructor\QuizManagementController::class, 'addQuestion'])
+        ->name('quizzes.add-question');
+    Route::post('quizzes/{quiz}/store-question', [Instructor\QuizManagementController::class, 'storeQuestion'])
+        ->name('quizzes.store-question');
+    Route::get('quizzes/{quiz}/questions/{question}/edit', [Instructor\QuizManagementController::class, 'editQuestion'])
+        ->name('quizzes.edit-question');
+    Route::put('quizzes/{quiz}/questions/{question}', [Instructor\QuizManagementController::class, 'updateQuestion'])
+        ->name('quizzes.update-question');
+    Route::delete('quizzes/{quiz}/questions/{question}', [Instructor\QuizManagementController::class, 'deleteQuestion'])
+        ->name('quizzes.delete-question');
+    Route::get('quizzes/{quiz}/import/template', [Instructor\QuizManagementController::class, 'downloadTemplate'])
+        ->name('quizzes.import.template');
+    Route::post('quizzes/{quiz}/import/preview', [Instructor\QuizManagementController::class, 'previewImport'])
+        ->name('quizzes.import.preview');
+    Route::post('quizzes/{quiz}/import/confirm', [Instructor\QuizManagementController::class, 'confirmImport'])
+        ->name('quizzes.import.confirm');
+
+    Route::get('image-library', [Instructor\ImageLibraryController::class, 'index'])
+        ->name('image-library.index');
+    Route::get('image-library/json', [Instructor\ImageLibraryController::class, 'indexJson'])
+        ->name('image-library.json');
+    Route::post('image-library/upload', [Instructor\ImageLibraryController::class, 'upload'])
+        ->name('image-library.upload');
+    Route::delete('image-library/{filename}', [Instructor\ImageLibraryController::class, 'delete'])
+        ->name('image-library.delete');
+
+    Route::get('enrollments', [Instructor\EnrollmentController::class, 'index'])
+        ->name('enrollments.index');
+    Route::get('enrollments/{enrollment}', [Instructor\EnrollmentController::class, 'show'])
+        ->name('enrollments.show');
+    Route::patch('enrollments/{enrollment}/approve', [Instructor\EnrollmentController::class, 'approve'])
+        ->name('enrollments.approve');
+    Route::patch('enrollments/{enrollment}/reject', [Instructor\EnrollmentController::class, 'reject'])
+        ->name('enrollments.reject');
+    Route::patch('enrollments/{enrollment}/archive', [Instructor\EnrollmentController::class, 'archive'])
+        ->name('enrollments.archive');
+    Route::delete('enrollments/{enrollment}', [Instructor\EnrollmentController::class, 'destroy'])
+        ->name('enrollments.destroy');
+    Route::get('modules/{module}/enrollments', [Instructor\EnrollmentController::class, 'moduleEnrollments'])
+        ->name('modules.enrollments');
 
     // User management
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [Admin\UserAdminController::class, 'index'])->name('index');
+        Route::get('/relationships', [Admin\UserRelationshipAdminController::class, 'index'])
+            ->name('relationships.index');
+        Route::post('/relationships/attach', [Admin\UserRelationshipAdminController::class, 'attach'])
+            ->name('relationships.attach');
+        Route::delete('/relationships/detach', [Admin\UserRelationshipAdminController::class, 'detach'])
+            ->name('relationships.detach');
+        Route::patch('/relationships/verification', [Admin\UserRelationshipAdminController::class, 'toggleVerification'])
+            ->name('relationships.verification');
+
         Route::get('/create', [Admin\UserAdminController::class, 'create'])->name('create');
         Route::post('/', [Admin\UserAdminController::class, 'store'])->name('store');
         Route::get('/{user}', [Admin\UserAdminController::class, 'show'])->name('show');
@@ -49,14 +141,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::patch('/{user}/status', [Admin\UserAdminController::class, 'updateStatus'])->name('status.update');
         Route::patch('/{user}/role', [Admin\UserAdminController::class, 'changeRole'])->name('role.update');
 
-        Route::post('/relationships/attach', [Admin\UserAdminController::class, 'attachParentChild'])
-            ->name('relationships.attach');
-        Route::delete('/relationships/detach', [Admin\UserAdminController::class, 'detachParentChild'])
-            ->name('relationships.detach');
-        Route::patch('/relationships/verification', [Admin\UserAdminController::class, 'toggleParentChildVerification'])
-            ->name('relationships.verification');
-
         Route::delete('/{user}', [Admin\UserAdminController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::get('/learners', [Admin\UserAdminController::class, 'index'])->name('learners.index');
+
+    Route::prefix('rbac')->name('rbac.')->group(function () {
+        Route::post('/users/{user}/assign-role', [Admin\RoleAdminController::class, 'assignToUser'])
+            ->name('users.assign-role');
+        Route::post('/roles/{role}/sync-permissions', [Admin\PermissionAdminController::class, 'syncRolePermissions'])
+            ->name('roles.sync-permissions');
     });
 
     // Subscriber management (subscription records)
@@ -101,6 +195,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/', [Admin\PaymentAdminController::class, 'index'])->name('index');
         Route::get('/{payment}', [Admin\PaymentAdminController::class, 'show'])->name('show');
         Route::get('/{payment}/receipt', [Admin\PaymentAdminController::class, 'receipt'])->name('receipt');
+        Route::post('/{payment}/archive', [Admin\PaymentAdminController::class, 'archive'])->name('archive');
+        Route::delete('/{payment}', [Admin\PaymentAdminController::class, 'destroy'])->name('destroy');
     });
 
     // Monetization
@@ -122,6 +218,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/{application}', [Admin\InstructorApplicationController::class, 'show'])->name('show');
         Route::post('/{application}/approve', [Admin\InstructorApplicationController::class, 'approve'])->name('approve');
         Route::post('/{application}/reject', [Admin\InstructorApplicationController::class, 'reject'])->name('reject');
+        Route::post('/{application}/archive', [Admin\InstructorApplicationController::class, 'archive'])->name('archive');
+        Route::delete('/{application}', [Admin\InstructorApplicationController::class, 'destroy'])->name('destroy');
     });
 
     Route::prefix('parent-verifications')->name('parent-verifications.')->group(function () {
@@ -137,6 +235,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::post('/children/{parentChildAccount}/reject', [Admin\ParentChildVerificationController::class, 'rejectChild'])
             ->name('children.reject');
     });
+
+    Route::post('/subscribers/{subscription}/archive', [Admin\SubscriberAdminController::class, 'archive'])
+        ->name('subscribers.archive');
+    Route::delete('/subscribers/{subscription}', [Admin\SubscriberAdminController::class, 'destroy'])
+        ->name('subscribers.destroy');
 
 
     // Calendar

@@ -30,6 +30,10 @@
                 $isUnread = is_null($notification->read_at);
                 $payload = $notification->normalized_data ?? app(\App\Support\NotificationPayloadNormalizer::class)->normalize((array) $notification->data);
                 $severity = $payload['severity'] ?? 'info';
+                $isChatMessage = ($payload['type'] ?? '') === 'chat_message_received';
+                $senderName = $payload['sender_name'] ?? 'User';
+                $senderAvatarUrl = $payload['sender_avatar_url'] ?? null;
+                $messagePreview = $payload['message_preview'] ?? $payload['message'];
 
                 $iconColor = match($severity) {
                     'success' => 'bg-emerald-100 text-emerald-700',
@@ -42,17 +46,30 @@
                 class="block border-b border-gray-100 p-5 transition-colors hover:bg-gray-50 last:border-0 {{ $isUnread ? 'bg-rose-50/40' : '' }}"
             >
                 <div class="flex items-start gap-4">
-                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full {{ $iconColor }}">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                    </div>
+                    @if($isChatMessage)
+                        <div class="h-10 w-10 shrink-0 rounded-full overflow-hidden bg-blue-100 text-blue-700 flex items-center justify-center">
+                            @if($senderAvatarUrl)
+                                <img src="{{ $senderAvatarUrl }}" alt="{{ $senderName }}" class="h-10 w-10 rounded-full object-cover">
+                            @else
+                                <span class="text-xs font-bold">{{ $payload['sender_initial'] ?? 'U' }}</span>
+                            @endif
+                        </div>
+                    @else
+                        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full {{ $iconColor }}">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                        </div>
+                    @endif
                     <div class="min-w-0 flex-1">
                         <div class="flex items-start justify-between gap-3">
                             <h2 class="text-sm font-semibold text-gray-900">{{ $payload['title'] }}</h2>
                             <span class="whitespace-nowrap text-xs text-gray-500">{{ $notification->created_at->diffForHumans() }}</span>
                         </div>
-                        <p class="mt-1 text-sm text-gray-600">{{ $payload['message'] }}</p>
+                        @if($isChatMessage)
+                            <p class="mt-1 text-xs font-medium text-gray-500">{{ $senderName }}</p>
+                        @endif
+                        <p class="mt-1 text-sm text-gray-600">{{ $isChatMessage ? '"' . $messagePreview . '"' : $payload['message'] }}</p>
                     </div>
                 </div>
             </a>

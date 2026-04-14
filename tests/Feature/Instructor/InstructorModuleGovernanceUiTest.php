@@ -55,7 +55,7 @@ class InstructorModuleGovernanceUiTest extends DatabaseTestCase
             ->get(route('instructor.modules.index'))
             ->assertOk()
             ->assertSee('Review Status', false)
-            ->assertSee('needs_revision', false);
+            ->assertSee('Needs Revision', false);
 
         $this->actingAs($instructor)
             ->get(route('instructor.modules.show', $module))

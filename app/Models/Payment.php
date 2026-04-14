@@ -22,6 +22,7 @@ class Payment extends Model
         'transaction_id',
         'payment_details',
         'paid_at',
+        'archived_at',
     ];
 
     protected function casts(): array
@@ -31,6 +32,7 @@ class Payment extends Model
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
             'payment_details' => 'array',
+            'archived_at' => 'datetime',
         ];
     }
 

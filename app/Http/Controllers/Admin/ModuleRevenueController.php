@@ -22,6 +22,7 @@ class ModuleRevenueController extends Controller
         $query = ModuleSaleLedger::query()->with([
             'module:id,title,thumbnail,created_by',
             'instructor:id,name,email',
+            'instructor.instructorProfile:id,user_id,profile_photo_path',
             'learner:id,name,email',
             'learner.learnerProfile:id,user_id,avatar_path',
             'payment:id,transaction_id,method,status,paid_at',
@@ -48,21 +49,28 @@ class ModuleRevenueController extends Controller
             $query->whereDate('occurred_at', '<=', (string) $request->string('date_to'));
         }
 
-        $transactions = (clone $query)
-            ->latest('occurred_at')
-            ->get();
+        $statsQuery = clone $query;
 
         $stats = [
-            'total_module_sales' => $transactions->count(),
-            'total_gross_revenue' => (float) $transactions->sum('gross_amount'),
-            'total_platform_commission' => (float) $transactions->sum('commission_amount'),
-            'total_instructor_earnings' => (float) $transactions->sum('instructor_earnings_amount'),
+            'total_transactions' => (clone $statsQuery)->count(),
+            'total_module_revenue' => (float) (clone $statsQuery)->sum('gross_amount'),
+            'total_platform_commission' => (float) (clone $statsQuery)->sum('commission_amount'),
+            'total_instructor_earnings' => (float) (clone $statsQuery)->sum('instructor_earnings_amount'),
+            'total_modules_sold' => (clone $statsQuery)->whereNotNull('module_id')->distinct('module_id')->count('module_id'),
         ];
+
+        $transactions = (clone $query)
+            ->latest('occurred_at')
+            ->paginate(15)
+            ->withQueryString();
 
         $rollups = (clone $query)
             ->selectRaw('instructor_id, COUNT(*) as sales_count, SUM(gross_amount) as gross_amount, SUM(commission_amount) as commission_amount, SUM(instructor_earnings_amount) as earnings_amount')
             ->groupBy('instructor_id')
-            ->with('instructor:id,name')
+            ->with([
+                'instructor:id,name,email',
+                'instructor.instructorProfile:id,user_id,profile_photo_path',
+            ])
             ->orderByDesc('gross_amount')
             ->get();
 

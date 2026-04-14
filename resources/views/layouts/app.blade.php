@@ -23,7 +23,7 @@
     <body class="font-sans antialiased" x-data>
         <div class="min-h-screen bg-gray-100">
             @auth
-                @if(Auth::user()->hasRole('learner') || Auth::user()->hasRole('parent'))
+                @if(Auth::user()->can('access learner platform') || Auth::user()->can('access parent dashboard'))
                     @include('layouts.learner-navigation')
                 @else
                     @include('layouts.navigation')

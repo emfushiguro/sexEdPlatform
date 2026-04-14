@@ -38,7 +38,7 @@ class DashboardController extends Controller
             ->with(['module' => function ($query) {
                 $query->withCount(['lessons' => function ($q) {
                     $q->where('is_published', true);
-                }]);
+                }])->with(['creator.instructorProfile']);
             }])
             ->latest()
             ->get();
@@ -100,6 +100,7 @@ class DashboardController extends Controller
         $recommendedModules = Module::published()
             ->forAge($learnerAge)
             ->whereNotIn('id', $enrolledModuleIds)
+            ->with(['creator.instructorProfile'])
             ->withCount(['lessons' => fn($q) => $q->where('is_published', true)])
             ->orderBy('order')
             ->limit(6)

@@ -12,6 +12,7 @@
 @endphp
 
 <header class="sticky top-0 z-[9998] w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+    <span class="hidden" data-chat-unread-badge-role="learner"></span>
     <div class="flex items-center justify-between h-16 px-4 md:px-6">
 
         {{-- ─── Left: Sidebar toggle + Search ─── --}}
@@ -182,6 +183,10 @@
                                     $normalized = $payloadNormalizer->normalize((array) $notif->data);
                                     $notifType = $normalized['type'];
                                     $severity = $normalized['severity'];
+                                    $isChatMessage = $notifType === 'chat_message_received';
+                                    $senderName = $normalized['sender_name'] ?? 'User';
+                                    $senderAvatarUrl = $normalized['sender_avatar_url'] ?? null;
+                                    $messagePreview = $normalized['message_preview'] ?: $normalized['message'];
 
                                     $iconColor = match($severity) {
                                         'success' => 'bg-emerald-100 text-emerald-700',
@@ -193,8 +198,14 @@
                                     href="{{ route('learner.notifications.read', $notif->id) }}"
                                     class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors {{ $isUnread ? 'bg-rose-50/50 dark:bg-rose-900/10' : '' }}"
                                 >
-                                    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {{ $iconColor }}">
-                                        @if($notifType === 'enrollment_approved')
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden {{ $isChatMessage ? 'bg-blue-100 text-blue-700' : $iconColor }}">
+                                        @if($isChatMessage)
+                                            @if($senderAvatarUrl)
+                                                <img src="{{ $senderAvatarUrl }}" alt="{{ $senderName }}" class="h-8 w-8 rounded-full object-cover" />
+                                            @else
+                                                <span class="text-[11px] font-bold">{{ $normalized['sender_initial'] }}</span>
+                                            @endif
+                                        @elseif($notifType === 'enrollment_approved')
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 13 4 4L19 7"/></svg>
                                         @elseif($notifType === 'instructor_application_approved')
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -206,7 +217,12 @@
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <p class="text-xs font-semibold text-gray-900 dark:text-white">{{ $normalized['title'] }}</p>
-                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-snug mt-0.5">{{ $normalized['message'] }}</p>
+                                        @if($isChatMessage)
+                                            <p class="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">{{ $senderName }}</p>
+                                        @endif
+                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-snug mt-0.5">
+                                            {{ $isChatMessage ? '"' . $messagePreview . '"' : $normalized['message'] }}
+                                        </p>
                                         <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{{ $notif->created_at->diffForHumans() }}</p>
                                     </div>
                                     @if($isUnread)
@@ -257,7 +273,7 @@
                     class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
                     x-cloak
                 >
-                    @if($headerUser->hasRole('instructor'))
+                    @if($headerUser->can('access instructor panel'))
                         <a
                             href="{{ route('instructor.dashboard') }}"
                             class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-purple-700 bg-purple-50/50 hover:bg-purple-100/80 transition-colors border-l-4 border-purple-500"

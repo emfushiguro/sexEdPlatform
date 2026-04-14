@@ -1,4 +1,4 @@
-@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
@@ -12,7 +12,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('instructor.modules.update', $module) }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route($contentRoutePrefix . '.modules.update', $module) }}" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
 
@@ -138,18 +138,40 @@
                         </div>
 
                         <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-                            <p class="text-sm font-semibold text-amber-900">Publication is now admin-governed</p>
-                            <p class="mt-1 text-xs text-amber-800">Instructor edits stay in authoring until you submit the full module package for review.</p>
+                            @if(($isContentAdminPanel ?? false) === true)
+                                <p class="text-sm font-semibold text-amber-900">Platform module lifecycle control</p>
+                                <p class="mt-1 text-xs text-amber-800">Choose whether this module should be published, saved as draft, or archived.</p>
+                            @else
+                                <p class="text-sm font-semibold text-amber-900">Publication is now admin-governed</p>
+                                <p class="mt-1 text-xs text-amber-800">Instructor edits stay in authoring until you submit the full module package for review.</p>
+                            @endif
                         </div>
 
+                        @if(($isContentAdminPanel ?? false) === true)
+                            @php
+                                $adminStatus = old('action', $module->trashed() ? 'archive' : ($module->is_published ? 'publish' : 'draft'));
+                            @endphp
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700">Module Status</label>
+                                <select name="action" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                    <option value="publish" {{ $adminStatus === 'publish' ? 'selected' : '' }}>Publish</option>
+                                    <option value="draft" {{ $adminStatus === 'draft' ? 'selected' : '' }}>Save as Draft</option>
+                                    <option value="archive" {{ $adminStatus === 'archive' ? 'selected' : '' }}>Archive</option>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Update the module lifecycle state.</p>
+                                @error('action')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                        @endif
+
                         <div class="flex items-center justify-end gap-4">
-                            <a href="{{ route('instructor.modules.index') }}" class="text-gray-600 hover:text-gray-900">Cancel</a>
+                            <a href="{{ route($contentRoutePrefix . '.modules.index') }}" class="text-gray-600 hover:text-gray-900">Cancel</a>
                             <button type="submit"
                                 data-testid="restricted-edit-submit"
                                 @disabled(($isRestricted ?? false) === true)
-                                class="bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded">Update Module</button>
+                                class="bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded">{{ ($isContentAdminPanel ?? false) === true ? 'Save Module Changes' : 'Update Draft' }}</button>
                         </div>
                     </form>
                 </div>
             </div>
 @endsection
+

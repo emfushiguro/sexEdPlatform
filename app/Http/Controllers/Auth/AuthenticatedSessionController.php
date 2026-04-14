@@ -27,7 +27,7 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         // Prevent admin users from logging in through learner login
-        if (Auth::user()->hasRole('admin')) {
+        if (Auth::user()->can('access admin panel')) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -45,7 +45,7 @@ class AuthenticatedSessionController extends Controller
         // Role-based redirect after login
         $user = Auth::user();
 
-        if ($user->role === 'instructor' || $user->hasRole('instructor')) {
+        if ($user->can('access instructor panel')) {
             return redirect()->intended(route('instructor.dashboard'))
                 ->with('success', "Welcome back, {$userName}!");
         }

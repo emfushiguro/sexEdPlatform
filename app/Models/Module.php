@@ -125,6 +125,11 @@ class Module extends Model
         return $this->hasMany(ModuleReviewRequest::class);
     }
 
+    public function feedback(): HasMany
+    {
+        return $this->hasMany(ModuleFeedback::class);
+    }
+
     public function publishedRevision(): BelongsTo
     {
         return $this->belongsTo(ModuleRevision::class, 'published_revision_id');
@@ -308,6 +313,16 @@ class Module extends Model
     public function getThumbnailUrlAttribute(): ?string
     {
         return $this->resolvePublicMediaUrl($this->thumbnail, 'modules');
+    }
+
+    public function averageFeedbackRating(): float
+    {
+        return (float) $this->feedback()->avg('rating');
+    }
+
+    public function feedbackCount(): int
+    {
+        return (int) $this->feedback()->count();
     }
 
     private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string

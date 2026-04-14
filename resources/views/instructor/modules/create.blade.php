@@ -1,4 +1,4 @@
-@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
@@ -12,7 +12,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('instructor.modules.store') }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route($contentRoutePrefix . '.modules.store') }}" enctype="multipart/form-data">
                         @csrf
 
                         <div class="mb-4">
@@ -115,19 +115,31 @@
                             @error('enrollment_limit')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
+                        @if(($isContentAdminPanel ?? false) === true)
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700">Module Status</label>
+                                <select name="action" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                    <option value="publish" {{ old('action', 'publish') === 'publish' ? 'selected' : '' }}>Publish</option>
+                                    <option value="draft" {{ old('action') === 'draft' ? 'selected' : '' }}>Save as Draft</option>
+                                    <option value="archive" {{ old('action') === 'archive' ? 'selected' : '' }}>Archive</option>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Set lifecycle state on creation for platform modules.</p>
+                                @error('action')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                        @endif
+
                         <div class="flex items-center justify-end gap-4 mt-6">
-                            <button type="submit" name="action" value="draft" 
-                                @disabled(($isRestricted ?? false) === true)
-                                class="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded transition">
-                                 Save as Draft
-                            </button>
-                            <button type="submit" name="action" value="publish" 
+                            <button type="submit"
+                                @if(($isContentAdminPanel ?? false) === false)
+                                    name="action" value="draft"
+                                @endif
                                 @disabled(($isRestricted ?? false) === true)
                                 class="bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded transition">
-                                Create & Publish
+                                {{ ($isContentAdminPanel ?? false) === true ? 'Create Module' : 'Save Draft' }}
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
 @endsection
+

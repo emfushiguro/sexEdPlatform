@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Services\AdminActivityLogService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 
 class PaymentAdminController extends Controller
@@ -21,19 +22,21 @@ class PaymentAdminController extends Controller
             'moduleSaleLedger.module.creator',
             'moduleSaleLedger.instructor',
             'moduleSaleLedger.learner',
-        ]);
+        ])->whereNull('archived_at');
 
         $payments = $query->latest()->get();
         
         // Payment statistics
+        $statsQuery = Payment::query()->whereNull('archived_at');
+
         $stats = [
-            'total_revenue' => Payment::where('status', PaymentStatus::Completed)->sum('amount'),
-            'completed' => Payment::where('status', PaymentStatus::Completed)->count(),
-            'pending' => Payment::where('status', PaymentStatus::Pending)->count(),
-            'processing' => Payment::where('status', PaymentStatus::Processing)->count(),
-            'failed' => Payment::where('status', PaymentStatus::Failed)->count(),
-            'module_purchase' => Payment::query()->where('payment_details->payment_scope', 'module_purchase')->count(),
-            'subscription_payment' => Payment::query()->where('payment_details->payment_scope', 'subscription')->count(),
+            'total_revenue' => (clone $statsQuery)->where('status', PaymentStatus::Completed)->sum('amount'),
+            'completed' => (clone $statsQuery)->where('status', PaymentStatus::Completed)->count(),
+            'pending' => (clone $statsQuery)->where('status', PaymentStatus::Pending)->count(),
+            'processing' => (clone $statsQuery)->where('status', PaymentStatus::Processing)->count(),
+            'failed' => (clone $statsQuery)->where('status', PaymentStatus::Failed)->count(),
+            'module_purchase' => (clone $statsQuery)->where('payment_details->payment_scope', 'module_purchase')->count(),
+            'subscription_payment' => (clone $statsQuery)->where('payment_details->payment_scope', 'subscription')->count(),
         ];
         
         return view('admin.payments.index', compact('payments', 'stats'));
@@ -57,6 +60,32 @@ class PaymentAdminController extends Controller
         ]);
 
         return view('admin.payments.show', compact('payment'));
+    }
+
+    public function archive(Payment $payment): RedirectResponse
+    {
+        if ($payment->archived_at !== null) {
+            return redirect()->back()->with('info', 'Payment is already archived.');
+        }
+
+        $payment->forceFill([
+            'archived_at' => now(),
+        ])->save();
+
+        return redirect()->route('admin.payments.index')
+            ->with('success', 'Payment archived successfully.');
+    }
+
+    public function destroy(Payment $payment): RedirectResponse
+    {
+        if ($payment->status === PaymentStatus::Completed) {
+            return redirect()->back()->with('error', 'Completed payments cannot be permanently deleted.');
+        }
+
+        $payment->delete();
+
+        return redirect()->route('admin.payments.index')
+            ->with('success', 'Payment permanently deleted.');
     }
 
     public function receipt(Payment $payment)

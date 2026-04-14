@@ -44,8 +44,8 @@ class AdminAuthController extends Controller
         if (Auth::attempt($credentials, false)) {
             $user = Auth::user();
 
-            // Verify user has admin role
-            if ($user->hasRole('admin')) {
+            // Verify user has admin access permission.
+            if ($user->can('access admin panel')) {
                 RateLimiter::clear($key);
                 $request->session()->regenerate();
                 

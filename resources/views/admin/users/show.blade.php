@@ -28,7 +28,15 @@
 	];
 @endphp
 
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-5"
+	x-data="adminUserProfilePage({
+		currentStatus: @js($user->status),
+		initialStatus: @js(old('status', $user->status)),
+		initialStatusReason: @js(old('reason', '')),
+		initialRole: @js(old('role', $user->role)),
+		initialNewRoleName: @js(old('new_role_name', '')),
+	})"
+>
 	<div class="xl:col-span-2 space-y-5">
 		<div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-6">
 			<div class="flex items-start justify-between gap-4 mb-6">
@@ -73,90 +81,11 @@
 		</div>
 
 		<div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-6">
-			<h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Parent-Child Transparency</h3>
-
-			@if($linkedParent)
-				<div class="rounded-xl border border-sky-200 bg-sky-50 p-4 mb-4">
-					<p class="text-xs text-sky-700 font-semibold uppercase tracking-wide">Linked Parent</p>
-					<p class="text-sm font-semibold text-gray-900 mt-1">{{ $linkedParent->name }}</p>
-					<p class="text-xs text-gray-600">{{ $linkedParent->email }}</p>
-					<div class="mt-3 flex items-center gap-2">
-						@php
-							$parentRelation = $parentRelationships->first();
-							$isVerified = optional($parentRelation)->relationship_verified_at !== null;
-						@endphp
-						<form method="POST" action="{{ route('admin.users.relationships.verification') }}">
-							@csrf
-							@method('PATCH')
-							<input type="hidden" name="parent_user_id" value="{{ $linkedParent->id }}">
-							<input type="hidden" name="child_user_id" value="{{ $user->id }}">
-							<input type="hidden" name="is_verified" value="{{ $isVerified ? 0 : 1 }}">
-							<button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-semibold {{ $isVerified ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' }} transition-colors">
-								{{ $isVerified ? 'Mark Unverified' : 'Mark Verified' }}
-							</button>
-						</form>
-						<form method="POST" action="{{ route('admin.users.relationships.detach') }}" onsubmit="return confirm('Detach this parent-child relationship?')">
-							@csrf
-							@method('DELETE')
-							<input type="hidden" name="parent_user_id" value="{{ $linkedParent->id }}">
-							<input type="hidden" name="child_user_id" value="{{ $user->id }}">
-							<button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">Detach</button>
-						</form>
-					</div>
-				</div>
-			@endif
-
-			@if($childRelationships->isNotEmpty())
-				<div class="space-y-3 mb-4">
-					@foreach($childRelationships as $relationship)
-						<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-							<div class="flex items-start justify-between gap-3">
-								<div>
-									<p class="text-sm font-semibold text-gray-900">{{ $relationship->child?->name ?? 'Unknown Child' }}</p>
-									<p class="text-xs text-gray-600">{{ $relationship->child?->email }}</p>
-									<p class="text-[11px] text-gray-500 mt-1">Verification: {{ $relationship->relationship_verified_at ? 'Verified' : 'Unverified' }}</p>
-								</div>
-								<div class="flex items-center gap-2">
-									<form method="POST" action="{{ route('admin.users.relationships.verification') }}">
-										@csrf
-										@method('PATCH')
-										<input type="hidden" name="parent_user_id" value="{{ $user->id }}">
-										<input type="hidden" name="child_user_id" value="{{ $relationship->child_user_id }}">
-										<input type="hidden" name="is_verified" value="{{ $relationship->relationship_verified_at ? 0 : 1 }}">
-										<button type="submit" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors">Toggle Verification</button>
-									</form>
-									<form method="POST" action="{{ route('admin.users.relationships.detach') }}" onsubmit="return confirm('Detach this parent-child relationship?')">
-										@csrf
-										@method('DELETE')
-										<input type="hidden" name="parent_user_id" value="{{ $user->id }}">
-										<input type="hidden" name="child_user_id" value="{{ $relationship->child_user_id }}">
-										<button type="submit" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">Detach</button>
-									</form>
-								</div>
-							</div>
-						</div>
-					@endforeach
-				</div>
-			@endif
-
-			<form method="POST" action="{{ route('admin.users.relationships.attach') }}" class="grid grid-cols-1 sm:grid-cols-5 gap-3">
-				@csrf
-				@if($childRelationships->isNotEmpty())
-					<input type="hidden" name="parent_user_id" value="{{ $user->id }}">
-					<input type="number" name="child_user_id" placeholder="Child User ID" class="sm:col-span-2 px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
-				@elseif($linkedParent)
-					<input type="hidden" name="child_user_id" value="{{ $user->id }}">
-					<input type="number" name="parent_user_id" placeholder="Parent User ID" class="sm:col-span-2 px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
-				@else
-					<input type="number" name="parent_user_id" placeholder="Parent User ID" class="sm:col-span-2 px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
-					<input type="number" name="child_user_id" placeholder="Child User ID" class="sm:col-span-2 px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
-				@endif
-				<label class="inline-flex items-center gap-2 text-xs text-gray-600">
-					<input type="checkbox" name="is_verified" value="1" class="rounded border-gray-300">
-					Verified
-				</label>
-				<button type="submit" class="sm:col-span-5 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Attach Parent-Child Relationship</button>
-			</form>
+			@include('admin.users.partials.relationship-transparency-panel', [
+				'linkedParent' => $linkedParent,
+				'parentRelationships' => $parentRelationships,
+				'childRelationships' => $childRelationships,
+			])
 		</div>
 
 		<div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-6">
@@ -204,49 +133,199 @@
 
 	<div class="space-y-5">
 		<div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-5">
-			<h3 class="text-sm font-semibold text-gray-700 mb-4">Lifecycle Controls</h3>
+			<h3 class="text-sm font-semibold text-gray-700 mb-2">Lifecycle Controls</h3>
+			<p class="text-xs text-gray-500 mb-4">All role and status updates are managed through confirmation modals for safer actions.</p>
 
-			<form method="POST" action="{{ route('admin.users.status.update', $user) }}" class="space-y-3 mb-4">
-				@csrf
-				@method('PATCH')
-				<label class="block text-xs font-medium text-gray-600">Update Status</label>
-				<select name="status" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
-					@foreach(['active','inactive','suspended','archived'] as $status)
-						<option value="{{ $status }}" @selected($user->status === $status)>{{ ucfirst($status) }}</option>
-					@endforeach
-				</select>
-				<input type="text" name="reason" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" placeholder="Optional status reason">
-				<button type="submit" class="w-full px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Save Status</button>
-			</form>
-
-			<form method="POST" action="{{ route('admin.users.role.update', $user) }}" class="space-y-3">
-				@csrf
-				@method('PATCH')
-				<label class="block text-xs font-medium text-gray-600">Change Role</label>
-				<select name="role" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
-					@foreach(['learner','instructor','counselor','clinic','organization','admin'] as $role)
-						<option value="{{ $role }}" @selected($user->role === $role)>{{ ucfirst($role) }}</option>
-					@endforeach
-				</select>
-				<textarea name="reason" rows="3" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm" placeholder="Required reason for role change" required></textarea>
-				<button type="submit" class="w-full px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors">Apply Role Change</button>
-			</form>
+			<div class="grid grid-cols-1 gap-2">
+				<button type="button" @click="openStatusModal()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">
+					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+					Change Status
+				</button>
+				<button type="button" @click="openRoleModal()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors">
+					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.467 0 4.785.636 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+					Change Role
+				</button>
+			</div>
 		</div>
 
-		<div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-5">
-			<h3 class="text-sm font-semibold text-gray-700 mb-4">Quick Links</h3>
-			<div class="space-y-2">
-				<a href="{{ route('admin.payments.index') }}?search={{ $user->email }}" class="block px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors">View Payments</a>
-				<a href="{{ route('admin.subscribers.index') }}?search={{ $user->email }}" class="block px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors">View Subscriptions</a>
-				@if($user->id !== auth()->id())
-					<form action="{{ route('admin.users.destroy', $user) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this user?')">
-						@csrf
-						@method('DELETE')
-						<button type="submit" class="w-full px-4 py-2.5 rounded-lg border border-rose-200 text-sm text-rose-700 hover:bg-rose-50 transition-colors">Delete User</button>
-					</form>
-				@endif
+		@include('admin.users.partials.quick-links-panel', ['user' => $user])
+	</div>
+
+	<div x-show="statusModalOpen" x-cloak class="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6 lg:p-8" role="dialog" aria-modal="true">
+		<div class="fixed inset-0 bg-gray-900/65 backdrop-blur-sm" @click="closeStatusModal()"></div>
+
+		<div class="relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
+			<div class="px-6 pt-6 pb-4 border-b border-gray-100">
+				<h3 class="text-lg font-bold text-gray-900">Change User Status</h3>
+				<p class="mt-2 text-sm text-gray-600">Update lifecycle status with validation and confirmation before applying changes.</p>
 			</div>
+
+			<form method="POST" action="{{ route('admin.users.status.update', $user) }}" class="px-6 py-5 space-y-4">
+				@csrf
+				@method('PATCH')
+
+				<div>
+					<label for="status_modal_status" class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+					<select id="status_modal_status" name="status" x-model="statusForm.status" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30" required>
+						@foreach(['active','inactive','suspended','archived'] as $status)
+							<option value="{{ $status }}">{{ ucfirst($status) }}</option>
+						@endforeach
+					</select>
+				</div>
+
+				<div>
+					<label for="status_modal_reason" class="block text-sm font-medium text-gray-700 mb-1.5">Reason</label>
+					<input
+						type="text"
+						id="status_modal_reason"
+						name="reason"
+						x-model="statusForm.reason"
+						:required="statusForm.status === 'archived' || (currentStatus === 'archived' && statusForm.status !== 'archived')"
+						class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+						placeholder="Required when archiving or restoring archived users"
+					>
+				</div>
+
+				<div class="flex items-center justify-end gap-3 pt-2">
+					<button type="button" @click="closeStatusModal()" class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+					<button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Confirm Status Change</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<div x-show="roleModalOpen" x-cloak class="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6 lg:p-8" role="dialog" aria-modal="true">
+		<div class="fixed inset-0 bg-gray-900/65 backdrop-blur-sm" @click="closeRoleModal()"></div>
+
+		<div class="relative w-full max-w-xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
+			<div class="px-6 pt-6 pb-4 border-b border-gray-100">
+				<h3 class="text-lg font-bold text-gray-900">Change User Role</h3>
+				<p class="mt-2 text-sm text-gray-600">Assign a supported role and provide optional rich-text notes for the transition.</p>
+			</div>
+
+			<form method="POST" action="{{ route('admin.users.role.update', $user) }}" class="px-6 py-5 space-y-4" @submit="syncRoleEditor()">
+				@csrf
+				@method('PATCH')
+
+				<div>
+					<label for="role_modal_role" class="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
+					<select id="role_modal_role" name="role" x-model="roleForm.role" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30" required>
+						<option value="admin">Admin</option>
+						<option value="instructor">Instructor</option>
+						<option value="learner">Learner</option>
+						<option value="others">Others (Create New Role)</option>
+					</select>
+				</div>
+
+				<div x-show="roleForm.role === 'others'" x-cloak>
+					<label for="role_modal_new_role_name" class="block text-sm font-medium text-gray-700 mb-1.5">New Role Name</label>
+					<input
+						type="text"
+						id="role_modal_new_role_name"
+						name="new_role_name"
+						x-model="roleForm.newRoleName"
+						class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+						placeholder="e.g. community-moderator"
+					>
+				</div>
+
+				<div>
+					<label for="custom_notes" class="block text-sm font-medium text-gray-700 mb-1.5">Role Change Notes (TinyMCE)</label>
+					<textarea
+						name="custom_notes"
+						id="custom_notes"
+						rows="5"
+						class="js-role-change-editor w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700"
+						placeholder="Optional rich-text transition notes"
+					>{{ old('custom_notes') }}</textarea>
+				</div>
+
+				<div class="flex items-center justify-end gap-3 pt-2">
+					<button type="button" @click="closeRoleModal()" class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+					<button type="submit" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors">Confirm Role Change</button>
+				</div>
+			</form>
 		</div>
 	</div>
 </div>
 @endsection
+
+@push('scripts')
+	<script src="{{ asset('build/tinymce/tinymce.min.js') }}"></script>
+	<script>
+		function adminUserProfilePage(config) {
+			return {
+				currentStatus: config.currentStatus,
+				statusModalOpen: false,
+				roleModalOpen: false,
+				statusForm: {
+					status: config.initialStatus,
+					reason: config.initialStatusReason,
+				},
+				roleForm: {
+					role: config.initialRole,
+					newRoleName: config.initialNewRoleName,
+				},
+				openStatusModal() {
+					this.statusModalOpen = true;
+				},
+				closeStatusModal() {
+					this.statusModalOpen = false;
+				},
+				openRoleModal() {
+					this.roleModalOpen = true;
+					this.$nextTick(() => {
+						this.initRoleEditor();
+					});
+				},
+				closeRoleModal() {
+					this.roleModalOpen = false;
+				},
+				initRoleEditor() {
+					if (typeof tinymce === 'undefined') {
+						return;
+					}
+
+					tinymce.remove('textarea.js-role-change-editor');
+					tinymce.init({
+						selector: 'textarea.js-role-change-editor',
+						license_key: 'gpl',
+						menubar: false,
+						branding: false,
+						height: 220,
+						plugins: 'lists link code',
+						toolbar: 'undo redo | bold italic underline | bullist numlist | link | removeformat | code',
+						content_style: 'body { font-family: Poppins, sans-serif; font-size:14px }'
+					});
+				},
+				syncRoleEditor() {
+					if (typeof tinymce !== 'undefined') {
+						tinymce.triggerSave();
+					}
+				}
+			};
+		}
+
+		document.addEventListener('DOMContentLoaded', function () {
+			if (!document.querySelector('.js-role-change-editor') || typeof tinymce === 'undefined') {
+				return;
+			}
+
+			if (document.querySelector('[x-data^="adminUserProfilePage"]')) {
+				return;
+			}
+
+			tinymce.remove('textarea.js-role-change-editor');
+			tinymce.init({
+				selector: 'textarea.js-role-change-editor',
+				license_key: 'gpl',
+				menubar: false,
+				branding: false,
+				height: 220,
+				plugins: 'lists link code',
+				toolbar: 'undo redo | bold italic underline | bullist numlist | link | removeformat | code',
+				content_style: 'body { font-family: Poppins, sans-serif; font-size:14px }'
+			});
+		});
+	</script>
+@endpush

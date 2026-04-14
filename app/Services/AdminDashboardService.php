@@ -54,7 +54,7 @@ class AdminDashboardService
                 ],
                 [
                     'label' => 'Pending Module Reviews',
-                    'value' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
+                    'value' => ModuleReviewRequest::query()->whereIn('status', ['submitted', 'in_review'])->count(),
                     'description' => 'Submitted modules currently queued for moderation.',
                     'accent' => 'indigo',
                 ],
@@ -76,7 +76,7 @@ class AdminDashboardService
                 ],
                 [
                     'label' => 'Module Published Review',
-                    'count' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
+                    'count' => ModuleReviewRequest::query()->whereIn('status', ['submitted', 'in_review'])->count(),
                     'cta_label' => 'Open Queue',
                     'cta_route' => route('admin.content-reviews.index'),
                     'description' => 'Moderate instructor module submissions before publish.',

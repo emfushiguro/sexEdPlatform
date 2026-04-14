@@ -16,7 +16,7 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
 
-                    @if(Auth::user()->hasRole('instructor'))
+                    @if(Auth::user()->can('create modules') || Auth::user()->can('view enrollments'))
                         <x-nav-link :href="route('instructor.modules.index')" :active="request()->routeIs('instructor.modules.*')">
                             {{ __('Modules') }}
                         </x-nav-link>

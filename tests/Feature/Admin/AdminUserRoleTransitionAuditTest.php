@@ -52,6 +52,7 @@ class AdminUserRoleTransitionAuditTest extends TestCase
         $target->refresh();
 
         $this->assertSame('instructor', $target->role);
+        $this->assertTrue($target->hasRole('instructor'));
 
         $transition = RoleTransition::query()->where('user_id', $target->id)->latest('id')->first();
 
@@ -59,5 +60,46 @@ class AdminUserRoleTransitionAuditTest extends TestCase
         $this->assertSame('learner', $transition->from_role);
         $this->assertSame('instructor', $transition->to_role);
         $this->assertSame('Approved for instructor onboarding.', $transition->reason);
+    }
+
+    public function test_role_change_accepts_optional_reason_and_saves_custom_notes(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $target = User::factory()->create([
+            'role' => 'learner',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.role.update', $target), [
+                'role' => 'instructor',
+                'custom_notes' => '<p>Promoted after portfolio review.</p>',
+            ])
+            ->assertRedirect(route('admin.users.show', $target));
+
+        $transition = RoleTransition::query()->where('user_id', $target->id)->latest('id')->first();
+
+        $this->assertNotNull($transition);
+        $this->assertNull($transition->reason);
+        $this->assertSame('<p>Promoted after portfolio review.</p>', $transition->custom_notes);
+    }
+
+    public function test_user_profile_role_change_form_supports_custom_notes_editor(): void
+    {
+        $this->withoutVite();
+
+        $admin = $this->createAdminUser();
+        $target = User::factory()->create([
+            'role' => 'learner',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.show', $target))
+            ->assertOk()
+            ->assertSee('name="custom_notes"', false)
+            ->assertSee('js-role-change-editor', false)
+            ->assertSee('build/tinymce/tinymce.min.js', false);
     }
 }

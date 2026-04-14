@@ -10,6 +10,7 @@ use App\Models\UserDailyShield;
 use App\Models\User;
 use App\Notifications\Instructor\QuizAttemptActivityNotification;
 use App\Services\GamificationService;
+use App\Services\LearnerModuleCompletionService;
 use App\Services\SubscriptionService;
 use App\Support\SubscriptionFeatureKeys;
 use Carbon\Carbon;
@@ -22,6 +23,7 @@ class QuizController extends Controller
     public function __construct(
         private GamificationService $gamificationService,
         private SubscriptionService $subscriptionService,
+        private LearnerModuleCompletionService $completionService,
     ) {}
 
     /**
@@ -490,14 +492,22 @@ class QuizController extends Controller
         $xpEarned = session('xp_earned');
 
         $nextLesson = null;
+        $lessonModule = null;
+        $showCompletionModal = false;
+        $certificateClaimable = false;
         if ($attempt->quiz?->lesson && $attempt->quiz->lesson?->module) {
             $currentLesson = $attempt->quiz->lesson;
+            $lessonModule = $currentLesson->module;
             $nextLesson = $currentLesson->module
                 ->lessons()
                 ->where('is_published', true)
                 ->where('order', '>', $currentLesson->order)
                 ->orderBy('order')
                 ->first();
+
+            $showCompletionModal = $attempt->passed && !$nextLesson;
+            $certificateClaimable = $showCompletionModal
+                && $this->completionService->isFullyCompleted($user, $lessonModule);
         }
 
         return view('quizzes.result', compact(
@@ -510,6 +520,9 @@ class QuizController extends Controller
             'hasReachedAttemptLimit',
             'canRetry',
             'nextLesson',
+            'lessonModule',
+            'showCompletionModal',
+            'certificateClaimable',
             'shieldDelta',
             'xpEarned'
         ));
