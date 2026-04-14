@@ -163,6 +163,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/translator/tts', [TopicTranslationController::class, 'synthesizeSpeech'])
             ->middleware('throttle:20,1')
             ->name('translator.tts');
+        Route::get('/translator/tts/audio/{token}', [TopicTranslationController::class, 'streamSynthesizedSpeech'])
+            ->middleware(['signed', 'throttle:60,1'])
+            ->name('translator.tts.audio');
 
         // Shields and streak savers
         Route::post('/shields/refill', [\App\Http\Controllers\Learner\ShieldRefillController::class, 'store'])->name('shields.refill');

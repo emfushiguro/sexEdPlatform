@@ -6,10 +6,13 @@ use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\LessonTopic;
 use App\Services\TopicTranslationService;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Throwable;
 
 class TopicTranslationController extends Controller
@@ -139,29 +142,41 @@ class TopicTranslationController extends Controller
     public function synthesizeSpeech(Request $request, TopicTranslationService $translationService): JsonResponse
     {
         $validated = $request->validate([
-            'text' => ['nullable', 'string', 'max:5000'],
-            'texts' => ['nullable', 'array', 'max:150'],
-            'texts.*' => ['required_with:texts', 'string', 'max:1000'],
+            'topic_id' => ['required', 'integer', 'exists:lesson_topics,id'],
             'language_code' => ['nullable', 'string', 'max:10', 'regex:/^[a-z]{2,3}-[A-Za-z]{2}$/'],
             'voice_name' => ['nullable', 'string', 'max:64'],
             'speaking_rate' => ['nullable', 'numeric', 'min:0.25', 'max:4'],
         ]);
 
-        $text = trim((string) ($validated['text'] ?? ''));
-        if ($text === '' && !empty($validated['texts'])) {
-            $text = trim(implode(' ', array_values(array_unique(array_filter(array_map(
-                static fn ($value) => trim((string) $value),
-                $validated['texts']
-            ))))));
+        $topic = LessonTopic::query()->with('lesson.module')->findOrFail((int) $validated['topic_id']);
+        $lesson = $topic->lesson;
+        $module = $lesson?->module;
+
+        if (! $lesson || ! $module || ! $lesson->is_published || ! $module->is_published) {
+            return response()->json([
+                'message' => 'Topic is unavailable for text-to-speech.',
+            ], 404);
         }
 
+        $user = Auth::user();
+        $isEnrolled = $user->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
+            ->exists();
+
+        if (! $isEnrolled) {
+            return response()->json([
+                'message' => 'You are not enrolled in this module.',
+            ], 403);
+        }
+
+        $text = trim((string) preg_replace('/\s+/u', ' ', strip_tags((string) $topic->text_content)));
         if ($text === '') {
             return response()->json([
-                'message' => 'No text was provided for speech synthesis.',
+                'message' => 'This topic has no readable text content.',
             ], 422);
         }
 
-        // Keep requests within API limits and avoid huge payload audio generation.
         if (mb_strlen($text) > 5000) {
             $text = mb_substr($text, 0, 5000);
         }
@@ -171,7 +186,8 @@ class TopicTranslationController extends Controller
                 $text,
                 $validated['language_code'] ?? 'en-US',
                 $validated['voice_name'] ?? null,
-                isset($validated['speaking_rate']) ? (float) $validated['speaking_rate'] : 1.0
+                isset($validated['speaking_rate']) ? (float) $validated['speaking_rate'] : 1.0,
+                $user->id
             );
         } catch (Throwable $e) {
             report($e);
@@ -182,16 +198,42 @@ class TopicTranslationController extends Controller
             ], 503);
         }
 
-        $audioPath = isset($result['audio_path']) ? ltrim((string) $result['audio_path'], '/') : null;
-        $audioUrl = $audioPath ? Storage::disk('public')->url($audioPath) : ($result['audio_url'] ?? null);
-        $audioRelativeUrl = $audioPath ? '/storage/' . $audioPath : ($result['audio_relative_url'] ?? null);
+        $audioPath = ltrim((string) ($result['audio_path'] ?? ''), '/');
+        $signedAudioUrl = URL::temporarySignedRoute(
+            'learner.translator.tts.audio',
+            now()->addMinutes(10),
+            ['token' => Crypt::encryptString($audioPath)]
+        );
 
         return response()->json([
-            'audio_url' => $audioUrl,
-            'audio_relative_url' => $audioRelativeUrl,
+            'audio_url' => $signedAudioUrl,
+            'audio_relative_url' => $signedAudioUrl,
             'language_code' => $result['language_code'],
             'voice_name' => $result['voice_name'],
             'speaking_rate' => $result['speaking_rate'],
+        ]);
+    }
+
+    public function streamSynthesizedSpeech(Request $request, string $token)
+    {
+        try {
+            $audioPath = ltrim(Crypt::decryptString($token), '/');
+        } catch (DecryptException) {
+            abort(403);
+        }
+
+        $userPrefix = 'tts/user-' . $request->user()->id . '/';
+        if (! str_starts_with($audioPath, $userPrefix)) {
+            abort(403);
+        }
+
+        if (! Storage::disk('local')->exists($audioPath)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($audioPath, basename($audioPath), [
+            'Content-Type' => 'audio/mpeg',
+            'Cache-Control' => 'private, max-age=600',
         ]);
     }
 }

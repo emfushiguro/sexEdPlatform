@@ -175,17 +175,15 @@ class ParentChildVerificationController extends Controller
     {
         $decoded = html_entity_decode($reason, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $normalizedSpacing = str_replace("\xC2\xA0", ' ', $decoded);
-        $allowedTags = '<p><br><strong><b><em><i><u><ul><ol><li><a>';
-        $sanitized = strip_tags($normalizedSpacing, $allowedTags);
+        $plainText = strip_tags($normalizedSpacing);
+        $collapsedWhitespace = preg_replace('/\s+/u', ' ', $plainText);
 
-        return trim((string) $sanitized);
+        return trim((string) $collapsedWhitespace);
     }
 
     private function hasMeaningfulReasonText(string $reasonHtml): bool
     {
-        $plainText = trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($reasonHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
-
-        return $plainText !== '';
+        return trim($reasonHtml) !== '';
     }
 
     private function parentApplications()

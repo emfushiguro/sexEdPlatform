@@ -4,12 +4,11 @@
         $isApproved = $isApproved ?? ($status === 'approved');
         $showApprovedModal = (bool) session('show_parent_approved_modal', false);
         $parentReasonRaw = (string) ($user->parent_verification_rejection_reason ?? '');
-        $allowedReasonTags = '<p><br><strong><b><em><i><u><ul><ol><li><a>';
-        $parentRejectionReasonHtml = trim((string) strip_tags(
-            str_replace("\xC2\xA0", ' ', html_entity_decode($parentReasonRaw, ENT_QUOTES | ENT_HTML5, 'UTF-8')),
-            $allowedReasonTags
+        $parentRejectionReasonText = trim((string) preg_replace(
+            '/\s+/u',
+            ' ',
+            str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags($parentReasonRaw), ENT_QUOTES | ENT_HTML5, 'UTF-8'))
         ));
-        $parentRejectionReasonText = trim((string) preg_replace('/\s+/u', ' ', strip_tags($parentRejectionReasonHtml)));
     @endphp
 
     <x-slot name="panel">
@@ -49,7 +48,7 @@
             <div class="mt-1 break-words">
                 <span class="font-medium">Reason:</span>
                 @if($parentRejectionReasonText !== '')
-                    <div class="mt-1 [&_p]:m-0 [&_a]:underline [&_a]:break-all">{!! $parentRejectionReasonHtml !!}</div>
+                    <span class="mt-1 inline-block break-words">{{ $parentRejectionReasonText }}</span>
                 @else
                     <span> No reason provided by administrator.</span>
                 @endif

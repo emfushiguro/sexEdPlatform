@@ -87,11 +87,11 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-    ->middleware(['throttle:6,1'])
+    ->middleware(['auth', 'signed', 'throttle:6,1'])
     ->name('verification.verify');
 
 Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
-    ->middleware(['signed', 'throttle:6,1'])
+    ->middleware(['auth', 'signed', 'throttle:6,1'])
     ->name('parent.verification.approval-link');
 
 Route::middleware('auth')->group(function () {

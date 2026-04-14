@@ -306,6 +306,7 @@
                             isReading: false,
                             ttsError: '',
                             audioPlayer: null,
+                            topicId: @js($currentTopic->id),
                             ttsApiUrl: @js(route('learner.translator.tts')),
                             initReader() {
                                 this.audioPlayer = new Audio();
@@ -323,10 +324,6 @@
                             getPreferredLanguageCode() {
                                 const preferred = localStorage.getItem('cc_page_translation_language') || 'en';
                                 return preferred === 'tl' ? 'fil-PH' : 'en-US';
-                            },
-                            getReadableLessonText() {
-                                const source = this.$refs.lessonContent?.textContent || '';
-                                return source.replace(/\s+/g, ' ').trim();
                             },
                             async resolvePlayableUrl(payload) {
                                 const candidates = [payload.audio_relative_url, payload.audio_url]
@@ -366,11 +363,6 @@
                                 this.isPreparingAudio = true;
 
                                 try {
-                                    const readableText = this.getReadableLessonText();
-                                    if (!readableText) {
-                                        throw new Error('No readable lesson text found.');
-                                    }
-
                                     const response = await fetch(this.ttsApiUrl, {
                                         method: 'POST',
                                         headers: {
@@ -379,7 +371,7 @@
                                             'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content,
                                         },
                                         body: JSON.stringify({
-                                            text: readableText.slice(0, 5000),
+                                            topic_id: this.topicId,
                                             language_code: this.getPreferredLanguageCode(),
                                             speaking_rate: 1.0,
                                         }),

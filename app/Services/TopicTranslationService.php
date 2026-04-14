@@ -163,7 +163,8 @@ class TopicTranslationService
         string $text,
         string $languageCode = 'en-US',
         ?string $voiceName = null,
-        float $speakingRate = 1.0
+        float $speakingRate = 1.0,
+        ?int $userId = null
     ): array {
         $apiKey = config('services.google_cloud.api_key');
         $endpoint = config('services.google_cloud.tts_endpoint');
@@ -185,6 +186,7 @@ class TopicTranslationService
             'language_code' => $languageCode,
             'voice_name' => $voiceName,
             'speaking_rate' => $speakingRate,
+            'user_id' => $userId,
         ]));
 
         return Cache::remember($cacheKey, now()->addDays(7), function () use ($apiKey, $endpoint, $cleanText, $languageCode, $voiceName, $speakingRate) {
@@ -222,13 +224,12 @@ class TopicTranslationService
                 throw new RuntimeException('Unable to decode synthesized audio.');
             }
 
-            $filename = 'tts/' . sha1($cleanText . '|' . $languageCode . '|' . ($voiceName ?? '') . '|' . $speakingRate) . '.mp3';
-            Storage::disk('public')->put($filename, $binaryAudio);
+            $scope = $userId !== null ? 'user-' . $userId : 'shared';
+            $filename = 'tts/' . $scope . '/' . sha1($cleanText . '|' . $languageCode . '|' . ($voiceName ?? '') . '|' . $speakingRate) . '.mp3';
+            Storage::disk('local')->put($filename, $binaryAudio);
 
             return [
                 'audio_path' => $filename,
-                'audio_url' => Storage::disk('public')->url($filename),
-                'audio_relative_url' => '/storage/' . ltrim($filename, '/'),
                 'language_code' => $languageCode,
                 'voice_name' => $voiceName,
                 'speaking_rate' => $speakingRate,

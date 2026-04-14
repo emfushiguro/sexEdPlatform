@@ -87,10 +87,8 @@ class ParentRegistrationController extends Controller
         UploadChildTempDocumentRequest $request,
         RegistrationTempUploadService $tempUploadService
     ): JsonResponse {
-        if ($this->ensureApprovedParent()) {
-            return response()->json([
-                'message' => 'Parent verification is required before child registration uploads.',
-            ], 403);
+        if ($errorResponse = $this->ensureApprovedParentForJson()) {
+            return $errorResponse;
         }
 
         $upload = $tempUploadService->store('child', 'verification_document', $request->file('verification_document'));
@@ -106,10 +104,8 @@ class ParentRegistrationController extends Controller
         RemoveTempUploadRequest $request,
         RegistrationTempUploadService $tempUploadService
     ): JsonResponse {
-        if ($this->ensureApprovedParent()) {
-            return response()->json([
-                'message' => 'Parent verification is required before child registration uploads.',
-            ], 403);
+        if ($errorResponse = $this->ensureApprovedParentForJson()) {
+            return $errorResponse;
         }
 
         $tempUploadService->remove('child', 'verification_document');
@@ -639,6 +635,37 @@ class ParentRegistrationController extends Controller
         if (!$parent->hasCompletedProfile()) {
             return redirect()->route('profile.complete')
                 ->with('warning', 'Please complete your profile before creating a child account.');
+        }
+
+        return null;
+    }
+
+    private function ensureApprovedParentForJson(): ?JsonResponse
+    {
+        $parent = auth()->user();
+
+        if (!$parent->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Please verify your email first.',
+            ], 403);
+        }
+
+        if (!$parent->canBeParent()) {
+            return response()->json([
+                'message' => 'You must be 18 or older to create a child account.',
+            ], 403);
+        }
+
+        if (!$parent->isParentRegistration() || !$parent->isParentVerificationApproved()) {
+            return response()->json([
+                'message' => 'Parent verification is required before child registration uploads.',
+            ], 403);
+        }
+
+        if (!$parent->hasCompletedProfile()) {
+            return response()->json([
+                'message' => 'Please complete your profile before creating a child account.',
+            ], 403);
         }
 
         return null;
