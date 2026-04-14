@@ -164,7 +164,7 @@ class TopicTranslationService
         string $languageCode = 'en-US',
         ?string $voiceName = null,
         float $speakingRate = 1.0,
-        ?int $userId = null
+        int $userId
     ): array {
         $apiKey = config('services.google_cloud.api_key');
         $endpoint = config('services.google_cloud.tts_endpoint');
@@ -224,8 +224,7 @@ class TopicTranslationService
                 throw new RuntimeException('Unable to decode synthesized audio.');
             }
 
-            $scope = $userId !== null ? 'user-' . $userId : 'shared';
-            $filename = 'tts/' . $scope . '/' . sha1($cleanText . '|' . $languageCode . '|' . ($voiceName ?? '') . '|' . $speakingRate) . '.mp3';
+            $filename = 'tts/user-' . $userId . '/' . sha1($cleanText . '|' . $languageCode . '|' . ($voiceName ?? '') . '|' . $speakingRate) . '.mp3';
             Storage::disk('local')->put($filename, $binaryAudio);
 
             return [

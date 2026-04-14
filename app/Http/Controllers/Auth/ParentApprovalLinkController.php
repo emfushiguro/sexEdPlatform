@@ -19,16 +19,16 @@ class ParentApprovalLinkController extends Controller
             abort(403);
         }
 
+        if (! $user->is_parent_registration || $user->parent_verification_status !== 'approved') {
+            return redirect()->route('login')
+                ->with('error', 'This approval link is no longer valid.');
+        }
+
         if ($currentUser->getAuthIdentifier() !== $user->getAuthIdentifier()) {
             return redirect()->route('parent.verification.status')->with(
                 'error',
                 'Please sign in with the account associated with this approval link.'
             );
-        }
-
-        if (! $user->is_parent_registration || $user->parent_verification_status !== 'approved') {
-            return redirect()->route('login')
-                ->with('error', 'This approval link is no longer valid.');
         }
 
         if (! $user->hasVerifiedEmail()) {
