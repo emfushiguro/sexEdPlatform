@@ -300,8 +300,137 @@
                 @endif
 
                 @if($currentTopic->text_content)
-                    <div class="prose dark:prose-invert max-w-none mt-6">
-                        {!! $currentTopic->text_content !!}
+                    <div class="mt-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40 p-4"
+                         x-data="{
+                            isPreparingAudio: false,
+                            isReading: false,
+                            ttsError: '',
+                            audioPlayer: null,
+                            topicId: @js($currentTopic->id),
+                            ttsApiUrl: @js(route('learner.translator.tts')),
+                            initReader() {
+                                this.audioPlayer = new Audio();
+                                this.audioPlayer.preload = 'none';
+
+                                this.audioPlayer.addEventListener('ended', () => {
+                                    this.isReading = false;
+                                });
+
+                                this.audioPlayer.addEventListener('error', () => {
+                                    this.isReading = false;
+                                    this.ttsError = 'Failed to load audio source. Please try again.';
+                                });
+                            },
+                            getPreferredLanguageCode() {
+                                const preferred = localStorage.getItem('cc_page_translation_language') || 'en';
+                                return preferred === 'tl' ? 'fil-PH' : 'en-US';
+                            },
+                            async resolvePlayableUrl(payload) {
+                                const candidates = [payload.audio_relative_url, payload.audio_url]
+                                    .filter((value) => typeof value === 'string' && value.trim() !== '')
+                                    .map((value) => value.trim());
+
+                                if (!candidates.length) {
+                                    throw new Error('No lesson audio URL returned.');
+                                }
+
+                                for (let i = 0; i < candidates.length; i++) {
+                                    const candidate = candidates[i];
+                                    try {
+                                        const response = await fetch(candidate, { method: 'GET', cache: 'no-store' });
+                                        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+                                        if (response.ok && (contentType.includes('audio') || contentType.includes('octet-stream'))) {
+                                            return candidate;
+                                        }
+                                    } catch (error) {
+                                        // Try the next candidate URL.
+                                    }
+                                }
+
+                                throw new Error('Generated lesson audio file is not reachable.');
+                            },
+                            async toggleReadLesson() {
+                                if (this.isReading) {
+                                    this.stopReading();
+                                    return;
+                                }
+
+                                if (this.isPreparingAudio) {
+                                    return;
+                                }
+
+                                this.ttsError = '';
+                                this.isPreparingAudio = true;
+
+                                try {
+                                    const response = await fetch(this.ttsApiUrl, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').content,
+                                        },
+                                        body: JSON.stringify({
+                                            topic_id: this.topicId,
+                                            language_code: this.getPreferredLanguageCode(),
+                                            speaking_rate: 1.0,
+                                        }),
+                                    });
+
+                                    const payload = await response.json();
+                                    if (!response.ok) {
+                                        throw new Error(payload.message || 'Unable to generate lesson audio.');
+                                    }
+
+                                    const playableUrl = await this.resolvePlayableUrl(payload);
+                                    this.audioPlayer.src = playableUrl + (playableUrl.includes('?') ? '&' : '?') + 'v=' + Date.now();
+                                    this.audioPlayer.load();
+                                    await this.audioPlayer.play();
+                                    this.isReading = true;
+                                } catch (error) {
+                                    this.ttsError = error.message || 'Unable to read this lesson right now.';
+                                    this.isReading = false;
+                                } finally {
+                                    this.isPreparingAudio = false;
+                                }
+                            },
+                            stopReading() {
+                                if (!this.audioPlayer) {
+                                    return;
+                                }
+
+                                this.audioPlayer.pause();
+                                this.audioPlayer.currentTime = 0;
+                                this.isReading = false;
+                            }
+                         }"
+                         x-init="initReader()">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Lesson Reader</p>
+                                <button type="button"
+                                        @click="toggleReadLesson()"
+                                        :disabled="isPreparingAudio"
+                                        :title="isReading ? 'Stop reading lesson' : 'Read lesson text'"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-full border border-purple-300 text-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                                    <svg x-show="!isReading" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.383 3.076A1 1 0 0111 3.894v12.212a1 1 0 01-1.617.79L5.7 14H3a1 1 0 01-1-1V7a1 1 0 011-1h2.7l3.683-2.684z" />
+                                        <path d="M14.657 6.343a1 1 0 10-1.414 1.414A3 3 0 0114 10a3 3 0 01-.757 2.243 1 1 0 101.414 1.414A5 5 0 0016 10a5 5 0 00-1.343-3.657z" />
+                                    </svg>
+                                    <svg x-show="isReading" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M6 6h3v8H6V6zm5 0h3v8h-3V6z" />
+                                    </svg>
+                                </button>
+                                <span x-show="isPreparingAudio" class="text-[11px] text-gray-500">Preparing...</span>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Tap the speaker icon to read this lesson.</p>
+                        </div>
+
+                        <div x-show="ttsError" class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" x-text="ttsError"></div>
+
+                        <div x-ref="lessonContent" class="prose dark:prose-invert max-w-none mt-4">
+                            {!! $currentTopic->text_content !!}
+                        </div>
                     </div>
                 @endif
             </div>

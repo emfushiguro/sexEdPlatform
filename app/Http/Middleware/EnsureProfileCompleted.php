@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ParentChildAccount;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,6 +17,22 @@ class EnsureProfileCompleted
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
+
+        if ($user && $user->isLearner() && $user->isParentRegistration()) {
+            if ($user->isParentVerificationPending() || $user->isParentVerificationRejected()) {
+                return redirect()->route('parent.verification.status');
+            }
+        }
+
+        if ($user && $user->isLearner()) {
+            $childVerification = ParentChildAccount::query()
+                ->where('child_user_id', $user->id)
+                ->first();
+
+            if ($childVerification && in_array($childVerification->verification_status, ['pending', 'rejected'], true)) {
+                return redirect()->route('child.verification.status');
+            }
+        }
 
         // If user is a learner and hasn't completed their profile
         if ($user && $user->isLearner() && !$user->hasCompletedProfile()) {

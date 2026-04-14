@@ -12,6 +12,7 @@ use App\Http\Controllers\Learner\ModuleFeedbackController as LearnerModuleFeedba
 use App\Http\Controllers\Learner\ModuleReviewPageController as LearnerModuleReviewPageController;
 use App\Http\Controllers\Learner\ContentReportController as LearnerContentReportController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
+use App\Http\Controllers\Learner\TopicTranslationController;
 use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
 use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
 use App\Http\Controllers\Chat\ConversationController as ChatConversationController;
@@ -150,6 +151,21 @@ Route::middleware('auth')->group(function () {
         Route::post('/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('topics.complete');
         Route::post('/topics/{topic}/uncomplete', [LearnerLessonController::class, 'uncompleteTopic'])->name('topics.uncomplete');
         Route::post('/lessons/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('lessons.topics.complete');
+        Route::post('/topics/{topic}/translate', [TopicTranslationController::class, 'translate'])
+            ->middleware('throttle:30,1')
+            ->name('topics.translate');
+        Route::post('/translator/translate', [TopicTranslationController::class, 'translateText'])
+            ->middleware('throttle:60,1')
+            ->name('translator.translate');
+        Route::post('/translator/page', [TopicTranslationController::class, 'translatePage'])
+            ->middleware('throttle:30,1')
+            ->name('translator.page');
+        Route::post('/translator/tts', [TopicTranslationController::class, 'synthesizeSpeech'])
+            ->middleware('throttle:20,1')
+            ->name('translator.tts');
+        Route::get('/translator/tts/audio/{token}', [TopicTranslationController::class, 'streamSynthesizedSpeech'])
+            ->middleware(['signed', 'throttle:60,1'])
+            ->name('translator.tts.audio');
 
         // Shields and streak savers
         Route::post('/shields/refill', [\App\Http\Controllers\Learner\ShieldRefillController::class, 'store'])->name('shields.refill');

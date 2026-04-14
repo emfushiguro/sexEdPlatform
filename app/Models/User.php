@@ -48,6 +48,13 @@ class User extends Authenticatable implements MustVerifyEmail
         'age_bracket_cached',
         'chat_status',
         'verified',
+        'is_parent_registration',
+        'parent_verification_status',
+        'parent_id_document_path',
+        'parent_verification_rejection_reason',
+        'parent_verification_reviewed_by',
+        'parent_verification_reviewed_at',
+        'parent_verification_approved_at',
     ];
 
     /**
@@ -72,6 +79,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'verified' => 'boolean',
             'birthdate' => 'date',
+            'is_parent_registration' => 'boolean',
+            'parent_verification_reviewed_at' => 'datetime',
+            'parent_verification_approved_at' => 'datetime',
         ];
     }
 
@@ -488,7 +498,18 @@ class User extends Authenticatable implements MustVerifyEmail
     public function children()
     {
         return $this->belongsToMany(User::class, 'parent_child_accounts', 'parent_user_id', 'child_user_id')
-            ->withPivot(['can_view_progress', 'can_view_quiz_answers', 'can_approve_content', 'relationship_verified_at'])
+            ->withPivot([
+                'can_view_progress',
+                'can_view_quiz_answers',
+                'can_approve_content',
+                'relationship_verified_at',
+                'verification_status',
+                'verification_document_path',
+                'verification_rejection_reason',
+                'verification_reviewed_by',
+                'verification_reviewed_at',
+                'verification_approved_at',
+            ])
             ->withTimestamps();
     }
 
@@ -498,9 +519,45 @@ class User extends Authenticatable implements MustVerifyEmail
     public function parent()
     {
         return $this->belongsToMany(User::class, 'parent_child_accounts', 'child_user_id', 'parent_user_id')
-            ->withPivot(['can_view_progress', 'can_view_quiz_answers', 'can_approve_content', 'relationship_verified_at'])
+            ->withPivot([
+                'can_view_progress',
+                'can_view_quiz_answers',
+                'can_approve_content',
+                'relationship_verified_at',
+                'verification_status',
+                'verification_document_path',
+                'verification_rejection_reason',
+                'verification_reviewed_by',
+                'verification_reviewed_at',
+                'verification_approved_at',
+            ])
             ->withTimestamps()
             ->first();
+    }
+
+    public function parentChildLink()
+    {
+        return $this->hasOne(ParentChildAccount::class, 'child_user_id');
+    }
+
+    public function isParentRegistration(): bool
+    {
+        return (bool) $this->is_parent_registration;
+    }
+
+    public function isParentVerificationApproved(): bool
+    {
+        return $this->parent_verification_status === 'approved';
+    }
+
+    public function isParentVerificationPending(): bool
+    {
+        return ($this->parent_verification_status ?? 'pending') === 'pending';
+    }
+
+    public function isParentVerificationRejected(): bool
+    {
+        return $this->parent_verification_status === 'rejected';
     }
 
     /**

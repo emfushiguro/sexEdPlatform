@@ -222,6 +222,20 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::delete('/{application}', [Admin\InstructorApplicationController::class, 'destroy'])->name('destroy');
     });
 
+    Route::prefix('parent-verifications')->name('parent-verifications.')->group(function () {
+        Route::get('/', [Admin\ParentChildVerificationController::class, 'index'])->name('index');
+
+        Route::post('/parents/{user}/approve', [Admin\ParentChildVerificationController::class, 'approveParent'])
+            ->name('parents.approve');
+        Route::post('/parents/{user}/reject', [Admin\ParentChildVerificationController::class, 'rejectParent'])
+            ->name('parents.reject');
+
+        Route::post('/children/{parentChildAccount}/approve', [Admin\ParentChildVerificationController::class, 'approveChild'])
+            ->name('children.approve');
+        Route::post('/children/{parentChildAccount}/reject', [Admin\ParentChildVerificationController::class, 'rejectChild'])
+            ->name('children.reject');
+    });
+
     Route::post('/subscribers/{subscription}/archive', [Admin\SubscriberAdminController::class, 'archive'])
         ->name('subscribers.archive');
     Route::delete('/subscribers/{subscription}', [Admin\SubscriberAdminController::class, 'destroy'])

@@ -186,6 +186,7 @@ class ModuleController extends Controller
         $needsParentApproval = ParentChildAccount::query()
             ->where('child_user_id', $user->id)
             ->where('can_approve_content', true)
+            ->where('verification_status', 'approved')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval
@@ -513,6 +514,7 @@ class ModuleController extends Controller
         $needsParentApproval = ParentChildAccount::query()
             ->where('child_user_id', $user->id)
             ->where('can_approve_content', true)
+            ->where('verification_status', 'approved')
             ->exists();
 
         if ($needsParentApproval) {
@@ -589,6 +591,7 @@ class ModuleController extends Controller
         $needsParentApproval = ParentChildAccount::query()
             ->where('child_user_id', $user->id)
             ->where('can_approve_content', true)
+            ->where('verification_status', 'approved')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval
@@ -665,6 +668,7 @@ class ModuleController extends Controller
         $needsParentApproval = ParentChildAccount::query()
             ->where('child_user_id', $user->id)
             ->where('can_approve_content', true)
+            ->where('verification_status', 'approved')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval

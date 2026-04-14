@@ -33,7 +33,7 @@
                 </div>
                 <div class="ml-4">
                     <h4 class="text-sm font-semibold text-gray-900">Parent/Guardian Registers</h4>
-                    <p class="text-sm text-gray-600">Create your parent account (must be 18+ years old)</p>
+                    <p class="text-sm text-gray-600">Create your parent account and upload a valid government-issued ID (must be 18+ years old)</p>
                 </div>
             </div>
 
@@ -43,8 +43,8 @@
                     2
                 </div>
                 <div class="ml-4">
-                    <h4 class="text-sm font-semibold text-gray-900">Verify Your Email</h4>
-                    <p class="text-sm text-gray-600">We'll send a verification link to your Gmail</p>
+                    <h4 class="text-sm font-semibold text-gray-900">Admin Reviews Parent Verification</h4>
+                    <p class="text-sm text-gray-600">After email verification, your parent account goes to pending admin review</p>
                 </div>
             </div>
 
@@ -55,7 +55,7 @@
                 </div>
                 <div class="ml-4">
                     <h4 class="text-sm font-semibold text-gray-900">Create Child Account</h4>
-                    <p class="text-sm text-gray-600">After verification, you can create an account for your child</p>
+                    <p class="text-sm text-gray-600">Once approved, create a child account and upload a supporting document</p>
                 </div>
             </div>
 
@@ -66,7 +66,7 @@
                 </div>
                 <div class="ml-4">
                     <h4 class="text-sm font-semibold text-gray-900">Monitor Progress</h4>
-                    <p class="text-sm text-gray-600">Track your child's learning progress and quiz results</p>
+                    <p class="text-sm text-gray-600">After child approval, track your child's learning progress and quiz results</p>
                 </div>
             </div>
         </div>

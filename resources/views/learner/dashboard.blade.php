@@ -3,6 +3,14 @@
 @section('title', 'Dashboard')
 
 @section('content')
+@php
+    $showParentApprovedDashboardModal = (bool) session('show_parent_approved_dashboard_modal', false);
+    $showParentApprovedDashboardModal = $showParentApprovedDashboardModal
+        && Auth::user()?->isParentRegistration()
+        && Auth::user()?->isParentVerificationApproved();
+@endphp
+
+<div x-data="{ showParentApprovedDashboardModal: {{ $showParentApprovedDashboardModal ? 'true' : 'false' }} }" class="relative">
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
     {{-- ══════════════════════════════════════════════════════════════════
@@ -32,7 +40,7 @@
                     {{-- Learner type badge --}}
                     @php
                         $ageBracket = $learnerProfile->getAgeBracket();
-                        $isParentUser = Auth::user()->isParent();
+                        $isParentUser = (bool) ($learnerProfile->is_parent_account ?? false);
                         $typeBadge = match(true) {
                             $isParentUser              => ['label' => 'Parent Account',  'class' => 'bg-amber-400/20 text-amber-200 border-amber-400/30'],
                             $ageBracket === 'kids'     => ['label' => 'Young Learner',   'class' => 'bg-green-400/20 text-green-200 border-green-400/30'],
@@ -171,6 +179,30 @@
     </div>
 </div>
 
+<div x-cloak
+     x-show="showParentApprovedDashboardModal"
+     x-transition.opacity
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+         @click.away="showParentApprovedDashboardModal = false">
+        <h3 class="text-xl font-bold text-purple-900">Parent Verification Approved</h3>
+        <p class="mt-2 text-sm text-gray-600">Your parent account is now active. You are now on your dashboard.</p>
+
+        <div class="mt-5 space-y-3">
+            <a href="{{ route('learner.modules.index') }}"
+               class="w-full inline-flex justify-center items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition">
+                Start Learning
+            </a>
+
+            <a href="{{ route('parent.create-child') }}"
+               class="w-full inline-flex justify-center items-center px-6 py-3 text-base font-medium rounded-xl text-white transition"
+               style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                Create Child Account
+            </a>
+        </div>
+    </div>
+</div>
+
 @include('learner.partials.edit-profile-modal', [
     'learnerProfile'       => $learnerProfile,
     'currentSubscription'  => $currentSubscription,
@@ -218,4 +250,5 @@
         </script>
     @endpush
 @endif
+</div>
 @endsection

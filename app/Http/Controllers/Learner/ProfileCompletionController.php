@@ -28,6 +28,10 @@ class ProfileCompletionController extends Controller
 
         // If profile already completed, redirect to dashboard
         if ($user->hasCompletedProfile()) {
+            if ($user->isParentRegistration() && $user->isParentVerificationApproved()) {
+                return redirect()->route('learner.dashboard');
+            }
+
             if ($user->can('access instructor panel')) {
                 return redirect()->route('instructor.dashboard');
             }
@@ -83,11 +87,15 @@ class ProfileCompletionController extends Controller
         // Copy birthdate from User model (stored during registration)
         $validated['birthdate'] = $user->birthdate;
         
-        // Check if this is a parent account registration
-        $isParentRegistration = session('is_parent_registration', false);
+        // Parent accounts are marked at registration and require admin approval.
+        $isParentRegistration = $user->isParentRegistration();
         if ($isParentRegistration) {
             $validated['is_parent_account'] = true;
-            session()->forget('is_parent_registration');
+
+            if (! $user->isParentVerificationApproved()) {
+                return redirect()->route('parent.verification.status')
+                    ->with('warning', 'Your parent account is pending verification.');
+            }
         }
         
         // Get city and barangay names for display purposes
@@ -102,10 +110,11 @@ class ProfileCompletionController extends Controller
             $validated
         );
 
-        // If parent account, redirect to child account creation
+        // If parent account, continue to dashboard and show approved-parent modal
         if ($learnerProfile->is_parent_account) {
-            return redirect()->route('parent.create-child')
-                ->with('success', 'Profile completed! Now create an account for your child.');
+            return redirect()->route('learner.dashboard')
+                ->with('success', 'Profile completed! Your parent account is approved.')
+                ->with('show_parent_approved_dashboard_modal', true);
         }
 
         // Redirect based on user role

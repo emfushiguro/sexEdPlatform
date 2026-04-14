@@ -205,6 +205,7 @@ class DashboardController extends Controller
             ->first();
         $hasPendingInstructorApplication = $latestInstructorApplication?->status === 'pending';
         $canApplyAsInstructor = $user->isLearner()
+            && ! $user->isParentRegistration()
             && ! $user->children()->exists()
             && ! $hasPendingInstructorApplication;
 

@@ -233,6 +233,36 @@
                             </li>
 
                             <li>
+                                <a href="{{ route('admin.parent-verifications.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.parent-verifications.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.parent-verifications.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.parent-verifications.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H4v-1a4 4 0 014-4h5m0 5v-1a4 4 0 00-4-4H8m5 5h1a4 4 0 004-4v-1m-5-5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Parent &amp; Child Verifications</span>
+                                    @php
+                                        $pendingVerificationTotal = (int) (($adminModerationCounts['pending_parent_verifications'] ?? 0) + ($adminModerationCounts['pending_child_verifications'] ?? 0));
+                                    @endphp
+                                    @if($pendingVerificationTotal > 0)
+                                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                              x-cloak
+                                              data-testid="admin-nav-badge-parent-child-verifications"
+                                              class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                                            {{ $pendingVerificationTotal }}
+                                        </span>
+                                    @endif
+                                </a>
+                            </li>
+
+                            <li>
                                 <a href="{{ route('admin.content-reviews.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
                                     {{ request()->routeIs('admin.content-reviews.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"

@@ -16,8 +16,14 @@ class CustomVerifyEmail extends BaseVerifyEmail
     public function toMail($notifiable)
     {
         $verificationUrl = $this->verificationUrl($notifiable);
+        $verificationMailer = (string) config('mail.verification_mailer', config('mail.default'));
 
         return (new MailMessage)
+            ->mailer($verificationMailer)
+            ->from(
+                (string) config('mail.from.address'),
+                (string) config('mail.from.name'),
+            )
             ->subject('Verify Your Email Address — ' . config('app.name'))
             ->view('emails.verify-email', [
                 'user'            => $notifiable,

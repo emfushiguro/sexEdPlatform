@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,12 @@ Route::middleware('guest')->group(function () {
     
     Route::post('parent/register', [ParentRegistrationController::class, 'storePersonal'])
         ->name('parent.register.store');
+
+    Route::post('parent/register/temp-upload', [ParentRegistrationController::class, 'uploadParentTempDocument'])
+        ->name('parent.register.temp-upload');
+
+    Route::delete('parent/register/temp-upload', [ParentRegistrationController::class, 'removeParentTempDocument'])
+        ->name('parent.register.temp-upload.remove');
 
     // Step 2: Parent account credentials
     Route::get('parent/register-account', [ParentRegistrationController::class, 'createAccount'])
@@ -79,13 +86,17 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 });
 
+Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
+    ->middleware(['auth', 'signed', 'throttle:6,1'])
+    ->name('verification.verify');
+
+Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
+    ->middleware(['auth', 'signed', 'throttle:6,1'])
+    ->name('parent.verification.approval-link');
+
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
-
-    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['signed', 'throttle:6,1'])
-        ->name('verification.verify');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')
@@ -109,6 +120,12 @@ Route::middleware('auth')->group(function () {
     Route::post('admin/logout', [AdminAuthController::class, 'logout'])
         ->name('admin.logout');
 
+    Route::get('parent/verification-status', [ParentRegistrationController::class, 'verificationStatus'])
+        ->name('parent.verification.status');
+
+    Route::get('child/verification-status', [ParentRegistrationController::class, 'childVerificationStatus'])
+        ->name('child.verification.status');
+
     // Parent routes (verified emails only)
     Route::middleware('verified')->group(function () {
         Route::get('parent/create-child', [ParentRegistrationController::class, 'createChildForm'])
@@ -125,6 +142,12 @@ Route::middleware('auth')->group(function () {
 
         Route::get('parent/create-child/credentials', [ParentRegistrationController::class, 'childCredentialsForm'])
             ->name('parent.create-child.credentials');
+
+        Route::post('parent/create-child/credentials/temp-upload', [ParentRegistrationController::class, 'uploadChildTempDocument'])
+            ->name('parent.create-child.credentials.temp-upload');
+
+        Route::delete('parent/create-child/credentials/temp-upload', [ParentRegistrationController::class, 'removeChildTempDocument'])
+            ->name('parent.create-child.credentials.temp-upload.remove');
 
         Route::post('parent/create-child/credentials', [ParentRegistrationController::class, 'storeChildCredentials'])
             ->name('parent.create-child.credentials.store');

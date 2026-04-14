@@ -41,4 +41,21 @@ return [
         'chrome_path' => env('BROWSERSHOT_CHROME_PATH'),
     ],
 
+    'google_cloud' => [
+        'api_key' => env('GOOGLE_API_KEY'),
+        'translation_endpoint' => env('GOOGLE_TRANSLATION_ENDPOINT', 'https://translation.googleapis.com/language/translate/v2'),
+        'tts_endpoint' => env('GOOGLE_TTS_ENDPOINT', 'https://texttospeech.googleapis.com/v1/text:synthesize'),
+    ],
+
+    'mailtrap' => [
+        'api_token' => env('MAILTRAP_API_TOKEN'),
+        'api_base_url' => env('MAILTRAP_API_BASE_URL', 'https://send.api.mailtrap.io/api/send'),
+        'inbox_id' => env('MAILTRAP_INBOX_ID'),
+        'from' => [
+            'address' => env('MAILTRAP_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'hello@demomailtrap.co')),
+            'name' => env('MAILTRAP_FROM_NAME', env('MAIL_FROM_NAME', config('app.name'))),
+        ],
+        'test_to' => env('MAILTRAP_TEST_TO'),
+    ],
+
 ];

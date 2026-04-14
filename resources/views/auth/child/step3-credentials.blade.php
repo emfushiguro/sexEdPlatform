@@ -35,8 +35,132 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('parent.create-child.credentials.store') }}"
-          x-data="{ showPass: false, showConfirm: false }">
+        <form method="POST" action="{{ route('parent.create-child.credentials.store') }}" enctype="multipart/form-data"
+            x-data="{
+                showPass: false,
+                showConfirm: false,
+                uploadBusy: false,
+                uploadError: '',
+                upload: {
+                    hasStored: @js($hasChildVerificationUpload ?? false),
+                    path: @js($tempChildVerificationUpload['path'] ?? ''),
+                    originalName: @js($tempChildVerificationUpload['original_name'] ?? ''),
+                    previewUrl: @js($tempChildVerificationUpload['preview_url'] ?? ''),
+                },
+                previewModalOpen: false,
+                previewModalUrl: '',
+                previewModalType: 'file',
+                previewModalTitle: '',
+                resolvePreviewType(name, url) {
+                    const source = ((name || '') + ' ' + (url || '')).toLowerCase();
+
+                    if (/\.(jpg|jpeg|png|gif|webp)(\?|$)/.test(source)) {
+                        return 'image';
+                    }
+
+                    if (/\.pdf(\?|$)/.test(source)) {
+                        return 'pdf';
+                    }
+
+                    return 'file';
+                },
+                openUploadPreview(url, name) {
+                    if (!url) {
+                        return;
+                    }
+
+                    this.previewModalUrl = url;
+                    this.previewModalTitle = name || 'PSA Birth Certificate Preview';
+                    this.previewModalType = this.resolvePreviewType(name, url);
+                    this.previewModalOpen = true;
+                },
+                closeUploadPreview() {
+                    this.previewModalOpen = false;
+                    this.previewModalUrl = '';
+                    this.previewModalType = 'file';
+                    this.previewModalTitle = '';
+                },
+                csrfToken() {
+                    return document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content') || '';
+                },
+                async uploadVerificationDocument(event) {
+                    const file = event.target.files?.[0];
+                    this.uploadError = '';
+
+                    if (!file) {
+                        return;
+                    }
+
+                    this.uploadBusy = true;
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('verification_document', file);
+
+                        const response = await fetch(@js(route('parent.create-child.credentials.temp-upload')), {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': this.csrfToken(),
+                            },
+                            body: formData,
+                        });
+
+                        const payload = await response.json().catch(() => ({}));
+
+                        if (!response.ok) {
+                            const firstError = payload?.errors ? Object.values(payload.errors)[0]?.[0] : null;
+                            throw new Error(firstError || payload.message || 'Unable to upload PSA birth certificate.');
+                        }
+
+                        this.upload.hasStored = true;
+                        this.upload.path = payload?.upload?.path || '';
+                        this.upload.originalName = payload?.upload?.original_name || file.name;
+                        this.upload.previewUrl = payload?.upload?.preview_url || '';
+                    } catch (error) {
+                        this.uploadError = error.message || 'Unable to upload PSA birth certificate.';
+                    } finally {
+                        this.uploadBusy = false;
+                        event.target.value = '';
+                    }
+                },
+                async removeVerificationDocumentUpload() {
+                    this.uploadError = '';
+                    this.uploadBusy = true;
+
+                    try {
+                        const response = await fetch(@js(route('parent.create-child.credentials.temp-upload.remove')), {
+                            method: 'DELETE',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': this.csrfToken(),
+                            },
+                        });
+
+                        const payload = await response.json().catch(() => ({}));
+
+                        if (!response.ok) {
+                            throw new Error(payload.message || 'Unable to remove uploaded PSA birth certificate.');
+                        }
+
+                        this.upload.hasStored = false;
+                        this.upload.path = '';
+                        this.upload.originalName = '';
+                        this.upload.previewUrl = '';
+                        this.closeUploadPreview();
+
+                        if (this.$refs.verificationDocumentInput) {
+                            this.$refs.verificationDocumentInput.value = '';
+                        }
+                    } catch (error) {
+                        this.uploadError = error.message || 'Unable to remove uploaded PSA birth certificate.';
+                    } finally {
+                        this.uploadBusy = false;
+                    }
+                }
+            }">
         @csrf
 
         {{-- Username --}}
@@ -52,6 +176,72 @@
                    placeholder="e.g. maria_santos">
             <p class="mt-1 text-xs text-gray-500">Lowercase letters, numbers, underscores and hyphens only.</p>
             @error('username')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        {{-- Child Verification Document --}}
+        <div class="mb-6">
+            @php
+                $existingVerificationPath = $tempChildVerificationUpload['path'] ?? null;
+                $existingVerificationName = $tempChildVerificationUpload['original_name'] ?? ($existingVerificationPath ? basename($existingVerificationPath) : null);
+                $existingVerificationPreviewUrl = $tempChildVerificationUpload['preview_url'] ?? ($existingVerificationPath ? asset('storage/' . $existingVerificationPath) : null);
+            @endphp
+            <label for="verification_document" class="block text-sm font-medium text-gray-700 mb-1">
+                PSA Birth Certificate only <span class="text-red-500">*</span>
+            </label>
+            <input id="verification_document" name="verification_document" type="file"
+                   x-ref="verificationDocumentInput"
+                   :required="!upload.hasStored"
+                   :disabled="uploadBusy"
+                   @change="uploadVerificationDocument($event)"
+                   accept=".jpg,.jpeg,.png,.pdf"
+                   class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-purple-700">
+                 <p class="mt-1 text-xs text-gray-500">Upload PSA birth certificate (JPG, PNG, or PDF, max 5MB).</p>
+
+            <p x-show="uploadError" x-cloak class="mt-2 text-xs text-red-600" x-text="uploadError"></p>
+
+            <div x-show="upload.hasStored" x-cloak class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3" data-testid="child-verification-preview">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-emerald-800">Uploaded PSA document ready for submission</p>
+                        <p class="mt-1 text-xs text-emerald-700 break-all" x-text="upload.originalName || 'Uploaded document'"></p>
+                    </div>
+                    <button type="button"
+                            @click="removeVerificationDocumentUpload()"
+                            :disabled="uploadBusy"
+                            class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-300 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label="Remove uploaded PSA birth certificate">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="mt-2 flex items-center gap-2">
+                    <button type="button"
+                       x-show="upload.previewUrl"
+                       x-cloak
+                       @click="openUploadPreview(upload.previewUrl, upload.originalName)"
+                       class="inline-flex rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
+                        Preview
+                    </button>
+                </div>
+            </div>
+
+            @if(!empty($existingVerificationPath))
+                <div class="hidden mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3" data-testid="child-verification-preview">
+                    <p class="text-xs font-semibold text-emerald-800">Uploaded PSA document ready for submission</p>
+                    <p class="mt-1 text-xs text-emerald-700">{{ $existingVerificationName }}</p>
+                    <div class="mt-2 flex items-center gap-2">
+                        @if($existingVerificationPreviewUrl)
+                            <a href="{{ $existingVerificationPreviewUrl }}" class="inline-flex rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
+                                Preview
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            @endif
+            @error('verification_document')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
             @enderror
         </div>
@@ -110,9 +300,45 @@
             <a href="{{ route('parent.create-child.location') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
             <button type="submit"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
-                    class="inline-flex items-center justify-center gap-2 px-8 py-3.5 font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
+                    :disabled="!upload.hasStored || uploadBusy"
+                    class="inline-flex items-center justify-center gap-2 px-8 py-3.5 font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60">
                 Create Child Account →
             </button>
+        </div>
+
+        <div x-show="previewModalOpen"
+             x-cloak
+             @keydown.escape.window="closeUploadPreview()"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 px-4 py-6">
+            <div class="absolute inset-0" @click="closeUploadPreview()"></div>
+
+            <div class="relative z-10 w-full max-w-3xl rounded-2xl bg-white shadow-2xl">
+                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                    <h3 class="text-sm font-semibold text-gray-900" x-text="previewModalTitle || 'PSA Birth Certificate Preview'"></h3>
+                    <button type="button" @click="closeUploadPreview()" class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="max-h-[75vh] overflow-auto bg-gray-50 p-4">
+                    <template x-if="previewModalType === 'image'">
+                        <img :src="previewModalUrl" alt="PSA birth certificate preview" class="mx-auto max-h-[68vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
+                    </template>
+
+                    <template x-if="previewModalType === 'pdf'">
+                        <iframe :src="previewModalUrl + '#toolbar=0&navpanes=0'" title="PSA birth certificate preview" class="h-[68vh] w-full rounded-lg border border-gray-200 bg-white"></iframe>
+                    </template>
+
+                    <template x-if="previewModalType === 'file'">
+                        <div class="rounded-xl border border-gray-200 bg-white p-6 text-center">
+                            <p class="text-sm text-gray-600">Inline preview is not available for this file type.</p>
+                            <a :href="previewModalUrl" download class="mt-4 inline-flex rounded-lg bg-brand-purple-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90">Download file</a>
+                        </div>
+                    </template>
+                </div>
+            </div>
         </div>
     </form>
 
