@@ -184,10 +184,10 @@ class TopicTranslationController extends Controller
         try {
             $result = $translationService->synthesizeText(
                 $text,
+                $user->id,
                 $validated['language_code'] ?? 'en-US',
                 $validated['voice_name'] ?? null,
-                isset($validated['speaking_rate']) ? (float) $validated['speaking_rate'] : 1.0,
-                $user->id
+                isset($validated['speaking_rate']) ? (float) $validated['speaking_rate'] : 1.0
             );
         } catch (Throwable $e) {
             report($e);

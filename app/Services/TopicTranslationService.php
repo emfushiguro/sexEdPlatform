@@ -161,10 +161,10 @@ class TopicTranslationService
 
     public function synthesizeText(
         string $text,
+        int $userId,
         string $languageCode = 'en-US',
         ?string $voiceName = null,
-        float $speakingRate = 1.0,
-        int $userId
+        float $speakingRate = 1.0
     ): array {
         $apiKey = config('services.google_cloud.api_key');
         $endpoint = config('services.google_cloud.tts_endpoint');

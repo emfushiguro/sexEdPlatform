@@ -181,9 +181,9 @@ class ParentChildVerificationController extends Controller
         return trim((string) $collapsedWhitespace);
     }
 
-    private function hasMeaningfulReasonText(string $reasonHtml): bool
+    private function hasMeaningfulReasonText(string $reasonText): bool
     {
-        return trim($reasonHtml) !== '';
+        return trim($reasonText) !== '';
     }
 
     private function parentApplications()
