@@ -225,16 +225,21 @@ class TopicTranslationController extends Controller
             abort(403);
         }
 
-        $userPrefix = 'tts/user-' . $request->user()->id . '/';
-        if (! str_starts_with($audioPath, $userPrefix)) {
+        $normalizedPath = str_replace('\\', '/', $audioPath);
+        if (str_contains($normalizedPath, '..')) {
             abort(403);
         }
 
-        if (! Storage::disk('local')->exists($audioPath)) {
+        $userPattern = '/^tts\/user-' . preg_quote((string) $request->user()->id, '/') . '\/[a-f0-9]{40}\.mp3$/';
+        if (! preg_match($userPattern, $normalizedPath)) {
+            abort(403);
+        }
+
+        if (! Storage::disk('local')->exists($normalizedPath)) {
             abort(404);
         }
 
-        return Storage::disk('local')->response($audioPath, basename($audioPath), [
+        return Storage::disk('local')->response($normalizedPath, basename($normalizedPath), [
             'Content-Type' => 'audio/mpeg',
             'Cache-Control' => 'private, max-age=600',
         ]);

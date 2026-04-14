@@ -12,6 +12,10 @@ class ParentApprovalLinkController extends Controller
     public function __invoke(Request $request): RedirectResponse
     {
         $currentUser = $request->user();
+        if (! $currentUser) {
+            return redirect()->route('login');
+        }
+
         $user = User::findOrFail((int) $request->route('id'));
 
         if (! hash_equals((string) $request->route('hash'), sha1($user->getEmailForVerification()))) {
