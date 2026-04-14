@@ -145,7 +145,7 @@
 
                     @foreach ($questionTypes as $qType)
                     <a
-                        href="{{ route('instructor.quizzes.add-question', ['quiz' => $quiz, 'type' => $qType['slug']]) }}"
+                        href="{{ route($contentRoutePrefix . '.quizzes.add-question', ['quiz' => $quiz, 'type' => $qType['slug']]) }}"
                         class="flex items-start gap-4 p-4 rounded-2xl border border-gray-100 bg-white hover:border-purple-200 hover:bg-purple-50/20 hover:shadow-sm transition-all group"
                     >
                         <div class="flex-shrink-0 w-10 h-10 {{ $qType['bg'] }} rounded-xl flex items-center justify-center">
@@ -181,7 +181,7 @@
                                 Get our ready-made CSV file. It already has column headers and one filled example for each of the 6 question types so you can see exactly what to type in.
                             </p>
                             <a
-                                href="{{ route('instructor.quizzes.import.template', $quiz) }}"
+                                href="{{ route($contentRoutePrefix . '.quizzes.import.template', $quiz) }}"
                                 class="inline-flex items-center gap-2 mt-3 px-4 py-2 text-sm font-semibold text-white rounded-xl transition hover:opacity-90 active:scale-95"
                                 style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                             >
@@ -289,7 +289,7 @@
                             </p>
                             <form
                                 method="POST"
-                                action="{{ route('instructor.quizzes.import.preview', $quiz) }}"
+                                action="{{ route($contentRoutePrefix . '.quizzes.import.preview', $quiz) }}"
                                 enctype="multipart/form-data"
                                 class="mt-3"
                             >

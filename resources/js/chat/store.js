@@ -415,6 +415,35 @@ document.addEventListener('alpine:init', () => {
             return false;
         },
 
+        isConversationUnavailableError(error) {
+            const status = Number(error?.response?.status || 0);
+            return status === 403 || status === 404;
+        },
+
+        purgeConversation(conversationId) {
+            const id = Number(conversationId || 0);
+
+            if (!id) {
+                return;
+            }
+
+            this.conversations = this.conversations.filter((entry) => Number(entry.id) !== id);
+
+            delete this.messagesByConversation[id];
+            delete this.messageWindowsByConversation[id];
+            delete this.unreadByConversation[id];
+            delete this.subscribedConversationIds[id];
+            delete this.conversationChannels[id];
+            delete this.typingByConversation[id];
+            delete this.typingEmitTimestamps[id];
+
+            if (Number(this.activeConversationId) === id) {
+                this.activeConversationId = null;
+            }
+
+            this.syncUnreadBadges();
+        },
+
         async fetchDiscovery() {
             this.loading.discovery = true;
 
@@ -901,6 +930,14 @@ document.addEventListener('alpine:init', () => {
                     loadingOlder: false,
                     initialized: true,
                 };
+                return true;
+            } catch (error) {
+                if (this.isConversationUnavailableError(error)) {
+                    this.purgeConversation(id);
+                    return false;
+                }
+
+                throw error;
             } finally {
                 this.loading.messages = false;
                 if (this.messageWindowsByConversation[id]) {

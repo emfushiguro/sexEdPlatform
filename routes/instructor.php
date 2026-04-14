@@ -9,11 +9,11 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Routes for instructor-facing content management features.
-| All routes are prefixed with /instructor and require the instructor role.
+| All routes are prefixed with /instructor and use permission-based access.
 |
 */
 
-Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:instructor'])->group(function () {
+Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'permission:access instructor panel|create modules'])->group(function () {
     // Instructor Dashboard
     Route::get('/dashboard', [Instructor\DashboardController::class, 'index'])->name('dashboard');
 
@@ -57,6 +57,8 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
         ->name('modules.review.resubmit');
     Route::post('modules/{module}/review/withdraw', [Instructor\ModuleReviewController::class, 'withdraw'])
         ->name('modules.review.withdraw');
+    Route::put('modules/{module}/feedback/{feedback}/reply', [Instructor\ModuleFeedbackController::class, 'updateReply'])
+        ->name('modules.feedback.reply');
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
         ->name('modules.activate');
     Route::patch('modules/{module}/deactivate', [Instructor\ModuleController::class, 'deactivate'])
@@ -73,6 +75,8 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'role:inst
         ->name('enrollments.approve');
     Route::patch('enrollments/{enrollment}/reject', [Instructor\EnrollmentController::class, 'reject'])
         ->name('enrollments.reject');
+    Route::patch('enrollments/{enrollment}/archive', [Instructor\EnrollmentController::class, 'archive'])
+        ->name('enrollments.archive');
     Route::delete('enrollments/{enrollment}', [Instructor\EnrollmentController::class, 'destroy'])
         ->name('enrollments.destroy');
     Route::get('modules/{module}/enrollments', [Instructor\EnrollmentController::class, 'moduleEnrollments'])

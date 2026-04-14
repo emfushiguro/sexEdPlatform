@@ -19,20 +19,31 @@ class ChatAuthorizationService
             return $this->deny('self-chat-not-allowed');
         }
 
-        $initiatorRole = (string) $initiator->role;
-        $targetRole = (string) $target->role;
+        $initiatorIsAdmin = $this->isAdminContext($initiator);
+        $targetIsAdmin = $this->isAdminContext($target);
+        $initiatorIsInstructor = $this->isInstructorContext($initiator);
+        $targetIsInstructor = $this->isInstructorContext($target);
+        $initiatorIsLearner = $this->isLearnerContext($initiator);
+        $targetIsLearner = $this->isLearnerContext($target);
 
-        if ($this->isAdminPair($initiatorRole, $targetRole)) {
+        if ($this->isAdminPair(
+            $initiatorIsAdmin,
+            $targetIsAdmin,
+            $initiatorIsInstructor,
+            $targetIsInstructor,
+            $initiatorIsLearner,
+            $targetIsLearner,
+        )) {
             return $this->allow(false);
         }
 
-        if ($initiatorRole === 'learner' && $targetRole === 'instructor') {
+        if ($initiatorIsLearner && $targetIsInstructor) {
             $hasEnrollment = $this->hasLearnerInstructorEnrollmentRelation($initiator->id, $target->id);
 
             return $this->allow(!$hasEnrollment);
         }
 
-        if ($initiatorRole === 'instructor' && $targetRole === 'learner') {
+        if ($initiatorIsInstructor && $targetIsLearner) {
             $hasEnrollment = $this->hasLearnerInstructorEnrollmentRelation($target->id, $initiator->id);
 
             if (!$hasEnrollment) {
@@ -42,7 +53,7 @@ class ChatAuthorizationService
             return $this->allow(false);
         }
 
-        return $this->deny('unsupported-role-pair');
+        return $this->deny('unsupported-context-pair');
     }
 
     public function canSubscribeToConversation(User $user, Conversation $conversation): bool
@@ -93,17 +104,55 @@ class ChatAuthorizationService
             ->exists();
     }
 
-    protected function isAdminPair(string $firstRole, string $secondRole): bool
+    protected function isAdminPair(
+        bool $firstIsAdmin,
+        bool $secondIsAdmin,
+        bool $firstIsInstructor,
+        bool $secondIsInstructor,
+        bool $firstIsLearner,
+        bool $secondIsLearner,
+    ): bool
     {
-        if ($firstRole === 'admin' && in_array($secondRole, ['instructor', 'learner'], true)) {
+        if ($firstIsAdmin && ($secondIsInstructor || $secondIsLearner)) {
             return true;
         }
 
-        if ($secondRole === 'admin' && in_array($firstRole, ['instructor', 'learner'], true)) {
+        if ($secondIsAdmin && ($firstIsInstructor || $firstIsLearner)) {
             return true;
         }
 
         return false;
+    }
+
+    protected function isAdminContext(User $user): bool
+    {
+        return $user->can('access admin panel')
+            || $user->can('manage users')
+            || $user->hasRole('admin')
+            || $user->role === 'admin';
+    }
+
+    protected function isInstructorContext(User $user): bool
+    {
+        return ! $this->isAdminContext($user)
+            && (
+                $user->can('access instructor panel')
+                || $user->can('view learners')
+                || $user->hasRole('instructor')
+                || $user->role === 'instructor'
+            );
+    }
+
+    protected function isLearnerContext(User $user): bool
+    {
+        return ! $this->isAdminContext($user)
+            && ! $this->isInstructorContext($user)
+            && (
+                $user->can('access learner platform')
+                || $user->can('take quizzes')
+                || $user->hasRole('learner')
+                || $user->role === 'learner'
+            );
     }
 
     /**

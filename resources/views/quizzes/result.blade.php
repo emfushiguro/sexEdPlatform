@@ -15,7 +15,7 @@
   $hasReachedAttemptLimit = $hasReachedAttemptLimit ?? false;
 @endphp
 
-<div class="max-w-3xl mx-auto space-y-5">
+<div class="max-w-3xl mx-auto space-y-5" x-data="{ showCompletionModal: {{ !empty($showCompletionModal) ? 'true' : 'false' }} }">
 
   @if(session('quiz_time_expired'))
     <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
@@ -201,7 +201,7 @@
           @endif
         @endif
 
-        @if(($hasReachedAttemptLimit ?? false) && !$attempt->passed && isset($nextLesson) && $nextLesson)
+        @if($attempt->passed && isset($nextLesson) && $nextLesson)
           <a href="{{ route('learner.lessons.show', $nextLesson) }}"
              class="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
              style="background:linear-gradient(135deg,#A30EB2,#730DB1,#3B0CB1)">
@@ -269,6 +269,39 @@
     </div>
 
   </div>
+
+  @if(!empty($showCompletionModal))
+    <div
+      x-show="showCompletionModal"
+      x-cloak
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+    >
+      <div class="w-full max-w-lg rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl p-6">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-purple-500">Module Completion</p>
+        <h3 class="mt-2 text-2xl font-extrabold text-gray-900 dark:text-gray-100">Congratulations!</h3>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          You passed the final lesson quiz and completed this module.
+        </p>
+        <div class="mt-5 flex flex-col sm:flex-row gap-2">
+          @if(!empty($lessonModule) && !empty($certificateClaimable))
+            <form method="POST" action="{{ route('learner.certificates.check', $lessonModule) }}" class="flex-1">
+              @csrf
+              <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white hover:opacity-90 transition" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                Claim Certificate
+              </button>
+            </form>
+          @elseif(!empty($lessonModule))
+            <a href="{{ route('learner.modules.completion', $lessonModule) }}" class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white hover:opacity-90 transition" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+              Go to Completion Page
+            </a>
+          @endif
+          <button type="button" @click="showCompletionModal = false" class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  @endif
 
 </div>{{-- end max-w-3xl --}}
 

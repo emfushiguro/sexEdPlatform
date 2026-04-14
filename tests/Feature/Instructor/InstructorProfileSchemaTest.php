@@ -11,6 +11,7 @@ class InstructorProfileSchemaTest extends TestCase
     {
         $this->assertTrue(Schema::hasColumns('instructor_profiles', [
             'educational_background',
+            'educational_background_entries',
             'professional_background',
             'primary_expertise',
             'expertise_tags',

@@ -145,8 +145,10 @@ class ConversationController extends Controller
 
             if ($directConversation !== null) {
                 if ((string) $directConversation->status === Conversation::STATUS_PENDING_REQUEST) {
-                    $requesterId = $actor->role === 'learner' ? (int) $actor->id : (int) $target->id;
-                    $instructorId = $actor->role === 'instructor' ? (int) $actor->id : (int) $target->id;
+                    $actorIsLearnerContext = $this->isLearnerContext($actor);
+
+                    $requesterId = $actorIsLearnerContext ? (int) $actor->id : (int) $target->id;
+                    $instructorId = $actorIsLearnerContext ? (int) $target->id : (int) $actor->id;
 
                     $pendingRequest = MessageRequest::query()
                         ->where('status', MessageRequest::STATUS_PENDING)
@@ -264,13 +266,16 @@ class ConversationController extends Controller
             ->orderBy('id')
             ->first(['id', 'name', 'role', 'status', 'chat_status']);
 
+        $isAdminContext = $this->isAdminContext($user);
+        $isInstructorContext = $this->isInstructorContext($user);
+
         $payload = [
-            'role' => (string) $user->role,
+            'role' => $isAdminContext ? 'admin' : ($isInstructorContext ? 'instructor' : 'learner'),
             'support_admin' => $this->buildUserSnapshot($supportAdmin),
             'contacts' => [],
         ];
 
-        if ($user->role === 'admin') {
+        if ($isAdminContext) {
             $payload['contacts'] = [
                 'learners' => $this->queryUsersByRole('learner', $search)
                     ->limit(30)
@@ -293,7 +298,7 @@ class ConversationController extends Controller
             return response()->json($payload);
         }
 
-        if ($user->role === 'instructor') {
+        if ($isInstructorContext) {
             $learners = User::query()
                 ->where('role', 'learner')
                 ->whereHas('moduleEnrollments', function ($query) use ($userId) {
@@ -389,6 +394,24 @@ class ConversationController extends Controller
                 });
             })
             ->orderBy('name');
+    }
+
+    private function isAdminContext(User $user): bool
+    {
+        return $user->can('access admin panel') || $user->can('manage users');
+    }
+
+    private function isInstructorContext(User $user): bool
+    {
+        return !$this->isAdminContext($user)
+            && ($user->can('access instructor panel') || $user->can('view learners'));
+    }
+
+    private function isLearnerContext(User $user): bool
+    {
+        return !$this->isAdminContext($user)
+            && !$this->isInstructorContext($user)
+            && ($user->can('access learner platform') || $user->can('take quizzes'));
     }
 
     protected function buildContextLabel(Conversation $conversation): string

@@ -28,6 +28,7 @@ class AdminContentReviewUiTest extends DatabaseTestCase
             ->assertSee('Under Review', false)
             ->assertSee($reviewRequest->module->title, false)
             ->assertSee('Review', false)
+            ->assertDontSee("instructor: '0'", false)
             ->assertSee('Archive', false);
     }
 

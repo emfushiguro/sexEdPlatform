@@ -28,7 +28,7 @@ class ProfileCompletionController extends Controller
 
         // If profile already completed, redirect to dashboard
         if ($user->hasCompletedProfile()) {
-            if ($user->hasRole('instructor')) {
+            if ($user->can('access instructor panel')) {
                 return redirect()->route('instructor.dashboard');
             }
             return redirect()->route('learner.dashboard');
@@ -109,7 +109,7 @@ class ProfileCompletionController extends Controller
         }
 
         // Redirect based on user role
-        if ($user->hasRole('instructor')) {
+        if ($user->can('access instructor panel')) {
             return redirect()->route('instructor.dashboard')
                 ->with('success', 'Profile completed successfully! Welcome to the instructor dashboard.');
         }

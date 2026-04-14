@@ -12,6 +12,7 @@ class RoleTransition extends Model
         'to_role',
         'approved_by',
         'reason',
+        'custom_notes',
         'preserved_data',
         'transitioned_at',
     ];

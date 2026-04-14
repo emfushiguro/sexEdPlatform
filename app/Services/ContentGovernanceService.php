@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ModuleRevision;
 use App\Models\User;
+use App\Services\Content\ContentAuthoringService;
 use App\Notifications\Admin\NewModuleSubmissionNotification;
 use App\Notifications\InstructorModuleReviewDecisionNotification;
 use App\Notifications\InstructorModuleReviewStatusNotification;
@@ -21,7 +22,19 @@ class ContentGovernanceService
     public function __construct(
         private readonly AdminActivityLogService $adminActivityLogService,
         private readonly InstructorModerationPenaltyService $instructorModerationPenaltyService,
+        private readonly ContentAuthoringService $contentAuthoringService,
     ) {
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    public function createAdminOwnedModuleFromValidated(array $validated, User $admin): Module
+    {
+        return $this->createAdminOwnedModule(
+            $this->contentAuthoringService->toAdminPayload($validated),
+            $admin,
+        );
     }
 
     public function submitForReview(Module $module, User $actor): ModuleReviewRequest

@@ -8,6 +8,9 @@ use App\Http\Controllers\Learner\ProfileCompletionController;
 use App\Http\Controllers\Learner\SubscriptionController;
 use App\Http\Controllers\Learner\QuizController;
 use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
+use App\Http\Controllers\Learner\ModuleFeedbackController as LearnerModuleFeedbackController;
+use App\Http\Controllers\Learner\ModuleReviewPageController as LearnerModuleReviewPageController;
+use App\Http\Controllers\Learner\ContentReportController as LearnerContentReportController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
 use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
 use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
@@ -130,6 +133,8 @@ Route::middleware('auth')->group(function () {
         // Module browsing and enrollment
         Route::get('/modules', [LearnerModuleController::class, 'index'])->name('modules.index');
         Route::get('/modules/{module}', [LearnerModuleController::class, 'show'])->name('modules.show');
+        Route::get('/modules/{module}/reviews', [LearnerModuleReviewPageController::class, 'index'])->name('modules.reviews');
+        Route::post('/modules/{module}/feedback', [LearnerModuleFeedbackController::class, 'store'])->name('modules.feedback.store');
         Route::get('/modules/{module}/completion', [LearnerModuleController::class, 'completion'])->name('modules.completion');
         Route::post('/modules/{module}/enroll', [LearnerModuleController::class, 'enroll'])->name('modules.enroll');
         Route::get('/modules/{module}/purchase', [LearnerModuleController::class, 'purchaseForm'])->name('modules.purchase.form');
@@ -138,6 +143,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/modules/{module}/purchase/success', [LearnerModuleController::class, 'purchaseSuccess'])->name('modules.purchase.success');
         Route::get('/modules/{module}/purchase/failed', [LearnerModuleController::class, 'purchaseFailed'])->name('modules.purchase.failed');
         Route::get('/instructors/{instructor}', [LearnerInstructorProfileController::class, 'show'])->name('instructors.show');
+        Route::post('/reports', [LearnerContentReportController::class, 'store'])->name('reports.store');
 
         Route::get('/lessons/{lesson}', [LearnerLessonController::class, 'show'])->name('lessons.show');
         Route::post('/lessons/{lesson}/complete', [LearnerLessonController::class, 'complete'])->name('lessons.complete');
@@ -199,7 +205,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('chat')
         ->name('chat.')
-        ->middleware('role:admin|instructor|learner')
+        ->middleware('permission:access chat')
         ->group(function () {
             Route::get('/', fn () => view('chat.page'))->name('page');
             Route::get('/conversation/{conversation}', function (Request $request, Conversation $conversation) {

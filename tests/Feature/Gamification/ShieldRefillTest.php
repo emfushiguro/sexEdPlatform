@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Gamification;
 
+use App\Http\Middleware\EnsureProfileCompleted;
 use App\Models\User;
 use App\Models\UserDailyShield;
 use App\Models\UserGamification;
@@ -12,9 +13,19 @@ class ShieldRefillTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withoutMiddleware(EnsureProfileCompleted::class);
+    }
+
     private function learnerWithPoints(int $score): User
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'role' => 'learner',
+            'status' => 'active',
+        ]);
         $user->assignRole('learner');
         $user->gamification()->update([
             'score'        => $score,

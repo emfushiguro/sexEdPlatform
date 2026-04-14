@@ -1,4 +1,4 @@
-@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
 @php
@@ -223,7 +223,7 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ route('instructor.quizzes.store') }}" @submit="submitWizard">
+            <form method="POST" action="{{ route($contentRoutePrefix . '.quizzes.store') }}" @submit="submitWizard">
                 @csrf
 
                 <input type="hidden" name="module_id" :value="moduleIdForSubmit">
@@ -412,10 +412,10 @@
                             @php
                                 $lesson = \App\Models\Lesson::find($lessonId);
                             @endphp
-                            <a href="{{ $lesson ? route('instructor.lessons.show', $lesson) : route('instructor.quizzes.index') }}"
+                            <a href="{{ $lesson ? route($contentRoutePrefix . '.lessons.show', $lesson) : route($contentRoutePrefix . '.quizzes.index') }}"
                                class="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition">Cancel</a>
                         @else
-                            <a href="{{ route('instructor.quizzes.index') }}"
+                            <a href="{{ route($contentRoutePrefix . '.quizzes.index') }}"
                                class="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition">Cancel</a>
                         @endif
 
@@ -451,3 +451,4 @@
     </div>
 </div>
 @endsection
+

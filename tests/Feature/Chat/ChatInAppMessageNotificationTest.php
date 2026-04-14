@@ -47,11 +47,15 @@ class ChatInAppMessageNotificationTest extends TestCase
         Notification::assertSentTo(
             [$recipient],
             NewChatMessageNotification::class,
-            function (NewChatMessageNotification $notification, array $channels, User $notifiable) use ($conversation, $message) {
+            function (NewChatMessageNotification $notification, array $channels, User $notifiable) use ($conversation, $message, $sender) {
                 $payload = $notification->toDatabase($notifiable);
 
                 return data_get($payload, 'conversation_id') === $conversation->id
                     && data_get($payload, 'chat_message_id') === $message->id
+                    && data_get($payload, 'sender_name') === $sender->name
+                    && data_get($payload, 'message_preview') === 'Hello from learner!'
+                    && str_contains((string) data_get($payload, 'message'), 'Hello from learner!')
+                    && filled(data_get($payload, 'sender_avatar_url'))
                     && str_contains((string) data_get($payload, 'action_url'), '/chat/conversation/');
             }
         );

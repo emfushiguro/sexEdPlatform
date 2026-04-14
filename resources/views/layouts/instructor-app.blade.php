@@ -149,6 +149,7 @@
                             ['label' => 'Modules',     'route' => 'instructor.modules.index',     'active' => request()->routeIs('instructor.modules.*'),     'badge' => 0,            'icon' => 'book'],
                             ['label' => 'Lessons',     'route' => 'instructor.lessons.index',     'active' => request()->routeIs('instructor.lessons.*'),     'badge' => 0,            'icon' => 'document'],
                             ['label' => 'Quizzes',     'route' => 'instructor.quizzes.index',     'active' => request()->routeIs('instructor.quizzes.*'),     'badge' => 0,            'icon' => 'clipboard'],
+                            ['label' => 'Image Library', 'route' => 'instructor.image-library.index', 'active' => request()->routeIs('instructor.image-library.*'), 'badge' => 0,            'icon' => 'sparkles'],
                             ['label' => 'Assessment Logs', 'route' => 'instructor.assessments.index', 'active' => request()->routeIs('instructor.assessments.*'), 'badge' => 0,            'icon' => 'chart'],
                             ['label' => 'Enrollments',  'route' => 'instructor.enrollments.index', 'active' => request()->routeIs('instructor.enrollments.*'), 'badge' => $pendingCount, 'icon' => 'enrollments'],
                         ],
@@ -157,6 +158,7 @@
                         'label' => 'COMMUNITY TOOLS',
                         'items' => [
                             ['label' => 'Chat', 'route' => 'chat.page', 'active' => request()->routeIs('chat.*'), 'badge' => 0, 'icon' => 'chat'],
+                            ['label' => 'Notifications', 'route' => 'instructor.notifications.index', 'active' => request()->routeIs('instructor.notifications.*'), 'badge' => 0, 'icon' => 'bell'],
                             ['label' => 'Earnings', 'route' => 'instructor.earnings.index', 'active' => request()->routeIs('instructor.earnings.*'), 'badge' => 0, 'icon' => 'wallet'],
                         ],
                     ],
@@ -215,6 +217,10 @@
                                     @elseif($item['icon'] === 'chat')
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8m-8 4h5m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    @elseif($item['icon'] === 'bell')
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     </svg>
                                     @elseif($item['icon'] === 'enrollments')
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

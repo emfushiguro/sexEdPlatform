@@ -4,19 +4,17 @@
     <div class="space-y-6" x-data="moduleReviewQueue({
         search: @js($search ?? ''),
         status: @js($statusFilter ?? ''),
-        instructor: @js((string) ($instructorFilter ?? '')),
+        instructor: @js(($instructorFilter ?? 0) > 0 ? (string) $instructorFilter : ''),
         submittedDate: @js($submittedDate ?? ''),
     })">
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs">
             <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Moderation Queue</p>
             <h1 class="mt-2 text-2xl font-bold text-gray-900">Pending Content Reviews</h1>
-            <p class="mt-1 text-sm text-gray-500">Review instructor-submitted modules before publishing them to learners.</p>
         </div>
 
         <div class="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-theme-xs">
             <div class="border-b border-gray-100 bg-[radial-gradient(circle_at_top_left,_rgba(115,13,177,0.16),_transparent_34%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-5">
                 <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">Pending Content Reviews Table</h2>
-                <p class="mt-1 text-sm text-gray-500">Use Review to inspect content and Archive for withdrawn or invalid submissions.</p>
 
                 <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                     <label class="block xl:col-span-2">
@@ -174,7 +172,7 @@
                 filters: {
                     search: initial.search || '',
                     status: initial.status || '',
-                    instructor: initial.instructor || '',
+                    instructor: initial.instructor === '0' ? '' : (initial.instructor || ''),
                     submittedDate: initial.submittedDate || '',
                 },
                 matchesRow(moduleTitle, instructorName, status, instructorId, submittedDate) {

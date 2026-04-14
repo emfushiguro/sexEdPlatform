@@ -10,6 +10,7 @@ class InstructorProfile extends Model
         'user_id',
         'bio',
         'educational_background',
+        'educational_background_entries',
         'professional_background',
         'specialization',
         'primary_expertise',
@@ -26,6 +27,7 @@ class InstructorProfile extends Model
             'expertise_tags' => 'array',
             'certifications' => 'array',
             'credentials' => 'array',
+            'educational_background_entries' => 'array',
         ];
     }
 

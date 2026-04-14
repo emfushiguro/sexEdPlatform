@@ -9,26 +9,124 @@ use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Notifications\Learner\EnrollmentApprovedNotification;
 use App\Notifications\Learner\EnrollmentRejectedNotification;
+use App\Services\Content\ContentOwnershipGuard;
+use App\Support\ContentPanelContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class EnrollmentController extends Controller
 {
+    public function __construct(private readonly ContentOwnershipGuard $ownershipGuard)
+    {
+    }
+
     /**
      * Show pending enrollment requests for instructor's modules
      */
-    public function index()
+    public function index(Request $request)
     {
-        $pendingEnrollments = ModuleEnrollment::with([
-            'user.learnerProfile.city',
-            'user.learnerProfile.barangay',
-            'module' => fn ($query) => $query->withCount('lessons'),
-        ])
-            ->whereHas('module', fn ($query) => $query->where('created_by', Auth::id()))
-            ->latest()
+        $statusFilter = (string) $request->string('status')->toString();
+        if ($statusFilter === '') {
+            $statusFilter = 'all';
+        }
+        $search = trim((string) $request->string('search')->toString());
+        $moduleFilter = (int) $request->integer('module_id', 0);
+
+        $scopeConstraint = function ($query): void {
+            if ($this->panelContext()->isInstructor()) {
+                $query->whereHas('module', fn ($moduleQuery) => $moduleQuery->where('created_by', Auth::id()));
+            }
+        };
+
+        $baseScope = ModuleEnrollment::query();
+        $scopeConstraint($baseScope);
+
+        $statusCounts = [
+            'all' => (clone $baseScope)->count(),
+            'pending' => (clone $baseScope)->whereIn('status', [
+                EnrollmentStatus::Pending,
+                EnrollmentStatus::PendingParentApproval,
+            ])->count(),
+            'approved' => (clone $baseScope)->where('status', EnrollmentStatus::Approved)->count(),
+            'rejected' => (clone $baseScope)
+                ->where('status', EnrollmentStatus::Rejected)
+                ->where(function ($query): void {
+                    $query->whereNull('rejection_reason_code')
+                        ->orWhere('rejection_reason_code', '!=', 'archived_enrollment');
+                })
+                ->count(),
+        ];
+
+        $modulesForFilter = Module::query()
+            ->select('id', 'title')
+            ->when(
+                $this->panelContext()->isInstructor(),
+                fn ($query) => $query->where('created_by', Auth::id())
+            )
+            ->orderBy('title')
             ->get();
 
-        return view('instructor.enrollments.index', compact('pendingEnrollments'));
+        $enrollments = ModuleEnrollment::query()
+            ->with([
+                'user.learnerProfile.city',
+                'user.learnerProfile.barangay',
+                'module' => fn ($query) => $query->withCount('lessons')->with('creator:id,role'),
+            ])
+            ->when(
+                $this->panelContext()->isInstructor(),
+                fn ($query) => $query->whereHas('module', fn ($moduleQuery) => $moduleQuery->where('created_by', Auth::id()))
+            )
+            ->when($moduleFilter > 0, fn ($query) => $query->where('module_id', $moduleFilter))
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($searchQuery) use ($search): void {
+                    $searchQuery->whereHas('user', function ($userQuery) use ($search): void {
+                        $userQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%')
+                            ->orWhere('first_name', 'like', '%' . $search . '%')
+                            ->orWhere('last_name', 'like', '%' . $search . '%');
+                    })->orWhereHas('module', fn ($moduleQuery) => $moduleQuery->where('title', 'like', '%' . $search . '%'));
+                });
+            })
+            ->when($statusFilter !== 'all', function ($query) use ($statusFilter): void {
+                if ($statusFilter === 'pending') {
+                    $query->whereIn('status', [EnrollmentStatus::Pending, EnrollmentStatus::PendingParentApproval]);
+
+                    return;
+                }
+
+                if ($statusFilter === 'approved') {
+                    $query->where('status', EnrollmentStatus::Approved);
+
+                    return;
+                }
+
+                if ($statusFilter === 'archived') {
+                    $query->where('status', EnrollmentStatus::Rejected)
+                        ->where('rejection_reason_code', 'archived_enrollment');
+
+                    return;
+                }
+
+                if ($statusFilter === 'rejected') {
+                    $query->where('status', EnrollmentStatus::Rejected)
+                        ->where(function ($rejectedQuery): void {
+                            $rejectedQuery->whereNull('rejection_reason_code')
+                                ->orWhere('rejection_reason_code', '!=', 'archived_enrollment');
+                        });
+                }
+            })
+            ->latest()
+            ->paginate(12)
+            ->withQueryString();
+
+        return view('instructor.enrollments.index', [
+            'enrollments' => $enrollments,
+            'statusCounts' => $statusCounts,
+            'modulesForFilter' => $modulesForFilter,
+            'statusFilter' => $statusFilter,
+            'search' => $search,
+            'moduleFilter' => $moduleFilter,
+        ]);
     }
 
     /**
@@ -36,7 +134,7 @@ class EnrollmentController extends Controller
      */
     public function show(ModuleEnrollment $enrollment)
     {
-        $this->ensureEnrollmentBelongsToInstructor($enrollment);
+        $this->ensureEnrollmentAccessible($enrollment);
 
         // Load relationships
         $enrollment->load([
@@ -80,7 +178,7 @@ class EnrollmentController extends Controller
      */
     public function approve(Request $request, ModuleEnrollment $enrollment)
     {
-        $this->ensureEnrollmentBelongsToInstructor($enrollment);
+        $this->ensureEnrollmentAccessible($enrollment, true);
 
         if ($enrollment->status !== EnrollmentStatus::Pending) {
             if ($request->expectsJson()) {
@@ -125,7 +223,7 @@ class EnrollmentController extends Controller
      */
     public function reject(RejectEnrollmentRequest $request, ModuleEnrollment $enrollment)
     {
-        $this->ensureEnrollmentBelongsToInstructor($enrollment);
+        $this->ensureEnrollmentAccessible($enrollment, true);
 
         if ($enrollment->status !== EnrollmentStatus::Pending) {
             if ($request->expectsJson()) {
@@ -170,11 +268,46 @@ class EnrollmentController extends Controller
     }
 
     /**
+     * Archive an enrollment record from operational queues.
+     */
+    public function archive(Request $request, ModuleEnrollment $enrollment)
+    {
+        $this->ensureEnrollmentAccessible($enrollment, true);
+
+        if (
+            $enrollment->status === EnrollmentStatus::Rejected
+            && (string) $enrollment->rejection_reason_code === 'archived_enrollment'
+        ) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Enrollment is already archived.']);
+            }
+
+            return redirect()->back()->with('info', 'Enrollment is already archived.');
+        }
+
+        $enrollment->update([
+            'status' => EnrollmentStatus::Rejected,
+            'rejection_reason_code' => 'archived_enrollment',
+            'rejection_reason_note' => 'Archived from enrollment management.',
+            'rejected_by_instructor_id' => Auth::id(),
+            'rejected_at' => now(),
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Enrollment archived successfully.']);
+        }
+
+        return redirect()->back()->with('success', 'Enrollment archived successfully.');
+    }
+
+    /**
      * Show all enrollments for a specific module
      */
     public function moduleEnrollments(Module $module)
     {
-        abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        if ($this->panelContext()->isInstructor()) {
+            abort_unless((int) $module->created_by === (int) Auth::id(), 403);
+        }
 
         $enrollments = $module->enrollments()
             ->with(['user.learnerProfile'])
@@ -189,7 +322,7 @@ class EnrollmentController extends Controller
      */
     public function destroy(Request $request, ModuleEnrollment $enrollment)
     {
-        $this->ensureEnrollmentBelongsToInstructor($enrollment);
+        $this->ensureEnrollmentAccessible($enrollment, true);
 
         $learnerName = $enrollment->user?->name ?? 'Learner';
         $moduleTitle = $enrollment->module?->title ?? 'module';
@@ -207,9 +340,31 @@ class EnrollmentController extends Controller
         return redirect()->back()->with('success', $message);
     }
 
-    private function ensureEnrollmentBelongsToInstructor(ModuleEnrollment $enrollment): void
+    private function ensureEnrollmentAccessible(ModuleEnrollment $enrollment, bool $forMutation = false): void
     {
-        $enrollment->loadMissing('module');
+        $enrollment->loadMissing('module.creator');
+
+        if ($this->panelContext()->isAdmin()) {
+            if (!$forMutation) {
+                return;
+            }
+
+            $ownerType = $this->ownershipGuard->ownerTypeForModule($enrollment->module);
+
+            abort_unless(
+                $this->ownershipGuard->canAdminMutateOwnerType($ownerType),
+                403,
+                'Admins can only modify enrollments for platform-owned learning content.',
+            );
+
+            return;
+        }
+
         abort_unless((int) ($enrollment->module?->created_by ?? 0) === (int) Auth::id(), 403);
+    }
+
+    private function panelContext(): ContentPanelContext
+    {
+        return app(ContentPanelContext::class);
     }
 }

@@ -12,6 +12,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <script>
+        (function () {
+            localStorage.setItem('theme', 'light');
+            document.documentElement.classList.remove('dark');
+        })();
+    </script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>[x-cloak] { display: none !important; }</style>
@@ -57,6 +64,8 @@
             }
         });
       ">
+
+        <span class="hidden" data-chat-unread-badge-role="admin"></span>
 
     <div class="min-h-screen xl:flex">
 
@@ -168,6 +177,23 @@
                                           x-cloak class="truncate">Chat</span>
                                 </a>
                             </li>
+                            <li>
+                                <a href="{{ route('admin.notifications.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.notifications.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.notifications.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.notifications.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Notifications</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
 
@@ -232,6 +258,120 @@
                                     @endif
                                 </a>
                             </li>
+
+                            <li>
+                                <a href="{{ route('admin.learner-reports.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.learner-reports.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.learner-reports.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.learner-reports.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M7 8h10M7 12h6m-6 4h8M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Learner Reports</span>
+                                    @if(($adminModerationCounts['pending_learner_reports'] ?? 0) > 0)
+                                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                              x-cloak
+                                              class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">
+                                            {{ $adminModerationCounts['pending_learner_reports'] }}
+                                        </span>
+                                    @endif
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {{-- LEARNING CONTENTS --}}
+                    <div>
+                        <h2 x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                            x-cloak
+                            class="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            Learning Contents
+                        </h2>
+                        <ul class="flex flex-col gap-1">
+                            <li>
+                                <a href="{{ route('admin.modules.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.modules.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.modules.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.modules.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">All Modules</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('admin.lessons.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.lessons.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.lessons.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.lessons.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Lessons</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('admin.quizzes.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.quizzes.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.quizzes.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.quizzes.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Quizzes</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('admin.enrollments.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.enrollments.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.enrollments.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.enrollments.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V9a2 2 0 00-2-2h-4m1 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v15h5m10 0H7"/></svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Enrollments</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('admin.learners.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.learners.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.learners.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.learners.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H4v-1a4 4 0 014-4h5"/></svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Learners</span>
+                                </a>
+                            </li>
+
                         </ul>
                     </div>
 
@@ -243,16 +383,15 @@
                             Management
                         </h2>
                         <ul class="flex flex-col gap-1">
-                            {{-- Users Management --}}
                             <li>
                                 <a href="{{ route('admin.users.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
-                                    {{ request()->routeIs('admin.users.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
-                                @if(request()->routeIs('admin.users.*'))
+                                    {{ request()->routeIs('admin.users.*') && !request()->routeIs('admin.users.relationships.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.users.*') && !request()->routeIs('admin.users.relationships.*'))
                                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                                 @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
-                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.users.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.users.*') && !request()->routeIs('admin.users.relationships.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H4v-1a4 4 0 014-4h5m0 5v-1a4 4 0 00-4-4H8m5 5h1a4 4 0 004-4v-1m-5-5a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -260,6 +399,24 @@
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                                           x-cloak class="truncate">Users</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ Route::has('admin.users.relationships.index') ? route('admin.users.relationships.index') : route('admin.users.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.users.relationships.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.users.relationships.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.users.relationships.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">User Relationships</span>
                                 </a>
                             </li>
 
@@ -509,6 +666,10 @@
                                         @php
                                             $normalized = $adminPayloadNormalizer->normalize((array) $notification->data);
                                             $isUnread = is_null($notification->read_at);
+                                            $isChatMessage = $normalized['type'] === 'chat_message_received';
+                                            $senderName = $normalized['sender_name'] ?? 'User';
+                                            $senderAvatarUrl = $normalized['sender_avatar_url'] ?? null;
+                                            $messagePreview = $normalized['message_preview'] ?: $normalized['message'];
 
                                             $toneClass = match($normalized['severity']) {
                                                 'success' => 'border-l-4 border-emerald-500',
@@ -518,9 +679,21 @@
                                         @endphp
                                         <a href="{{ route('admin.notifications.read', $notification->id) }}"
                                            class="flex gap-3 border-b border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50 {{ $toneClass }} {{ $isUnread ? 'bg-rose-50/40' : '' }}">
+                                            @if($isChatMessage)
+                                                <span class="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-700 overflow-hidden">
+                                                    @if($senderAvatarUrl)
+                                                        <img src="{{ $senderAvatarUrl }}" alt="{{ $senderName }}" class="h-9 w-9 rounded-full object-cover">
+                                                    @else
+                                                        <span class="text-xs font-bold">{{ $normalized['sender_initial'] }}</span>
+                                                    @endif
+                                                </span>
+                                            @endif
                                             <span class="min-w-0 flex-1">
                                                 <span class="block text-sm font-semibold text-gray-900">{{ $normalized['title'] }}</span>
-                                                <span class="mt-0.5 block text-xs leading-5 text-gray-500">{{ $normalized['message'] }}</span>
+                                                @if($isChatMessage)
+                                                    <span class="mt-0.5 block text-xs font-medium text-gray-500">{{ $senderName }}</span>
+                                                @endif
+                                                <span class="mt-0.5 block text-xs leading-5 text-gray-500">{{ $isChatMessage ? '"' . $messagePreview . '"' : $normalized['message'] }}</span>
                                                 <span class="mt-1 block text-[11px] text-gray-400">{{ $notification->created_at->diffForHumans() }}</span>
                                             </span>
                                             @if($isUnread)

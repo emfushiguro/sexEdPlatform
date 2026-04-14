@@ -21,6 +21,7 @@ class StoreModuleRequest extends FormRequest
             'thumbnail' => 'nullable|image|max:2048',
             'age_bracket' => 'required|in:kids,teens,adults',
             'enrollment_mode' => 'required|in:auto,manual',
+            'action' => 'nullable|in:publish,draft,archive',
             'order' => 'nullable|integer|min:0',
             'is_published' => 'nullable|boolean',
             'access_type' => 'nullable|in:free,paid',

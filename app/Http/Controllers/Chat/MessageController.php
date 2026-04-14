@@ -232,7 +232,7 @@ class MessageController extends Controller
 
     protected function canMutateMessage($user, Message $message): bool
     {
-        if ($user->role === 'admin') {
+        if ($user->can('moderate chat')) {
             return true;
         }
 

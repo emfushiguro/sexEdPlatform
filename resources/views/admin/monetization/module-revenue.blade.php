@@ -9,7 +9,6 @@
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 class="text-xl font-bold text-gray-900">Module Revenue Dashboard</h1>
-                    <p class="mt-1 text-sm text-gray-500">Review platform-wide module financial performance with cleaner revenue signals, clearer instructor rollups, and transaction transparency.</p>
                 </div>
                 <a href="{{ route('admin.monetization.commission-settings.index') }}" class="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100">
                     Manage Commission Settings
@@ -78,7 +77,6 @@
         <div id="sales-transactions" class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-xs">
             <div class="border-b border-gray-100 px-6 py-4">
                 <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">Sales Transactions</h2>
-                <p class="mt-1 text-xs text-gray-500">Detailed transaction records used in revenue and instructor payout reporting.</p>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -206,7 +204,6 @@
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <div>
                         <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">Instructor Roll-up</h2>
-                        <p class="mt-1 text-xs text-gray-500">Per-instructor summary of sales volume, gross revenue, platform fee, and instructor earnings.</p>
                     </div>
                     <button type="button"
                             x-show="archivedInstructorIds.length || deletedInstructorIds.length"

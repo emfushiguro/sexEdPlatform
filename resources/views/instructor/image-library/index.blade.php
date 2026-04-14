@@ -1,4 +1,4 @@
-@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
 <div x-data='{
@@ -49,7 +49,7 @@
             <p class="text-sm text-white/90 mt-1">Curate quiz assets with quick copy, preview metadata, and safe deletion controls.</p>
         </div>
         <div class="p-6">
-            <form method="POST" action="{{ route('instructor.image-library.upload') }}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end" data-image-action-controls>
+            <form method="POST" action="{{ route($contentRoutePrefix . '.image-library.upload') }}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end" data-image-action-controls>
                 @csrf
                 <div class="md:col-span-2">
                     <label for="image" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Image (JPG, PNG, max 2MB)</label>
@@ -123,7 +123,7 @@
 
                     <div class="grid grid-cols-2 gap-2" data-image-action-controls>
                         <button type="button" @click="copyFilename(selectedImage.filename)" class="inline-flex justify-center items-center rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-xs font-semibold px-3 py-2 transition-colors" x-text="copiedImage === selectedImage.filename ? 'Copied!' : 'Copy Name'"></button>
-                        <form method="POST" :action="`{{ url('instructor/image-library') }}/${selectedImage.filename}`" @submit.prevent="openDeleteConfirm($event.target)">
+                        <form method="POST" :action="`{{ url($contentRoutePrefix . '/image-library') }}/${selectedImage.filename}`" @submit.prevent="openDeleteConfirm($event.target)">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="w-full inline-flex justify-center items-center rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 transition-colors">Delete</button>

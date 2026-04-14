@@ -182,7 +182,7 @@
         </div>
 
         <!-- Modal Body -->
-        <form method="POST" action="{{ route('instructor.quizzes.store') }}" class="p-6" @submit="submitWizard">
+        <form method="POST" action="{{ route($contentRoutePrefix . '.quizzes.store') }}" class="p-6" @submit="submitWizard">
             @csrf
 
             <input type="hidden" name="lesson_id" value="{{ $lesson->id }}">

@@ -25,14 +25,14 @@ class ContentGovernanceServiceTest extends DatabaseTestCase
 
         $this->assertDatabaseHas('module_revisions', [
             'module_id' => $module->id,
-            'status' => 'in_review',
+            'status' => ContentGovernanceService::STATUS_SUBMITTED,
             'submitted_by' => $instructor->id,
         ]);
 
         $this->assertDatabaseHas('module_review_requests', [
             'id' => $reviewRequest->id,
             'module_id' => $module->id,
-            'status' => 'in_review',
+            'status' => ContentGovernanceService::STATUS_SUBMITTED,
             'submitted_by' => $instructor->id,
         ]);
     }
@@ -44,6 +44,7 @@ class ContentGovernanceServiceTest extends DatabaseTestCase
         $module = $this->createInstructorModule($instructor);
 
         $reviewRequest = app(ContentGovernanceService::class)->submitForReview($module, $instructor);
+        $reviewRequest = app(ContentGovernanceService::class)->startReview($reviewRequest, $admin);
 
         $rejectedRevision = app(ContentGovernanceService::class)->rejectReview($reviewRequest, $admin, 'Please improve the lesson flow.');
 
@@ -75,6 +76,7 @@ class ContentGovernanceServiceTest extends DatabaseTestCase
         $module = $this->createInstructorModule($instructor);
 
         $reviewRequest = app(ContentGovernanceService::class)->submitForReview($module, $instructor);
+        $reviewRequest = app(ContentGovernanceService::class)->startReview($reviewRequest, $admin);
 
         app(ContentGovernanceService::class)->rejectReview(
             $reviewRequest,
@@ -99,6 +101,7 @@ class ContentGovernanceServiceTest extends DatabaseTestCase
         $module = $this->createInstructorModule($instructor);
 
         $reviewRequest = app(ContentGovernanceService::class)->submitForReview($module, $instructor);
+        $reviewRequest = app(ContentGovernanceService::class)->startReview($reviewRequest, $admin);
 
         $approvedRevision = app(ContentGovernanceService::class)->approveReview($reviewRequest, $admin, 'Looks good.');
 

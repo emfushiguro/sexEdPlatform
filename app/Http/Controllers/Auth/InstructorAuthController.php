@@ -30,8 +30,8 @@ class InstructorAuthController extends Controller
         if (Auth::attempt($request->only('email', 'password'), $request->filled('remember'))) {
             $user = Auth::user();
             
-            // Check if user has instructor role
-            if ($user->hasRole('instructor')) {
+            // Check if user has instructor panel permission.
+            if ($user->can('access instructor panel')) {
                 $request->session()->regenerate();
                 
                 // Personalized success message

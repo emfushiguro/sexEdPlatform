@@ -61,17 +61,14 @@
             <article class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Pending</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($pendingCount) }}</p>
-                <p class="mt-2 text-sm text-gray-500">Applications currently waiting for review.</p>
             </article>
             <article class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Approved</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($approvedCount) }}</p>
-                <p class="mt-2 text-sm text-gray-500">Learners upgraded to instructor status.</p>
             </article>
             <article class="rounded-[28px] border border-rose-100 bg-gradient-to-br from-rose-50 via-white to-orange-50 p-5 shadow-theme-xs sm:col-span-2 xl:col-span-1">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-rose-600">Rejected</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($rejectedCount) }}</p>
-                <p class="mt-2 text-sm text-gray-500">Applications needing revision before re-apply.</p>
             </article>
         </section>
 
@@ -83,7 +80,6 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Review Queue</p>
                         <h2 class="mt-2 text-xl font-bold text-gray-900">Instructor Applications Table</h2>
-                        <p class="mt-1 text-sm text-gray-500">Review instructor applications and moderation history from this queue.</p>
                     </div>
 
                     <form method="GET" action="{{ route('admin.instructor-applications.index') }}" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-12 xl:items-end">

@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\Quiz;
+use App\Services\Content\ContentOwnershipGuard;
+use App\Support\ContentPanelContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,6 +17,8 @@ class TopicController extends Controller
     public function create(Request $request)
     {
         $lesson = Lesson::findOrFail($request->lesson);
+        $this->authorize('update', $lesson);
+        $this->ensureAdminCanMutateLesson($lesson);
         $quizzes = Quiz::select('id', 'title')->get();
         
         return view('instructor.topics.create', compact('lesson', 'quizzes'));
@@ -22,6 +26,12 @@ class TopicController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', LessonTopic::class);
+
+        $lessonForAuthorization = Lesson::query()->findOrFail((int) $request->input('lesson_id'));
+        $this->authorize('update', $lessonForAuthorization);
+        $this->ensureAdminCanMutateLesson($lessonForAuthorization);
+
         // Log the request for debugging
         \Log::info('Topic creation request START', [
             'type' => $request->input('type'),
@@ -265,16 +275,18 @@ class TopicController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Topic created successfully!',
-                'redirect' => route('instructor.lessons.show', $lesson)
+                    'redirect' => route($this->routeName('lessons.show'), $lesson)
             ]);
         }
 
-        return redirect()->route('instructor.lessons.show', $lesson)
+        return redirect()->route($this->routeName('lessons.show'), $lesson)
             ->with('success', 'Topic created successfully!');
     }
 
     public function edit(LessonTopic $topic)
     {
+        $this->authorize('update', $topic);
+        $this->ensureAdminCanMutateTopic($topic);
         $topic->load('lesson');
         $quizzes = Quiz::select('id', 'title')->get();
         
@@ -283,6 +295,9 @@ class TopicController extends Controller
 
     public function update(Request $request, LessonTopic $topic)
     {
+        $this->authorize('update', $topic);
+        $this->ensureAdminCanMutateTopic($topic);
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'type' => 'required|in:video,text,worksheet,interactive',
@@ -490,12 +505,15 @@ class TopicController extends Controller
         $module->duration_minutes = $module->lessons()->sum('duration');
         $module->save();
 
-        return redirect()->route('instructor.lessons.show', $topic->lesson)
+        return redirect()->route($this->routeName('lessons.show'), $topic->lesson)
             ->with('success', 'Topic updated successfully!');
     }
 
     public function destroy(LessonTopic $topic)
     {
+        $this->authorize('delete', $topic);
+        $this->ensureAdminCanMutateTopic($topic);
+
         $lesson = $topic->lesson;
 
         // Delete associated files
@@ -524,8 +542,13 @@ class TopicController extends Controller
         $module->duration_minutes = $module->lessons()->sum('duration');
         $module->save();
 
-        return redirect()->route('instructor.lessons.show', $lesson)
+        return redirect()->route($this->routeName('lessons.show'), $lesson)
             ->with('success', 'Topic deleted successfully!');
+    }
+
+    private function routeName(string $suffix): string
+    {
+        return app(ContentPanelContext::class)->name($suffix);
     }
 
     /**
@@ -533,8 +556,8 @@ class TopicController extends Controller
      */
     public function preview(LessonTopic $topic)
     {
-        // Ensure the topic belongs to a lesson the instructor owns
-        // You might want to add authorization here
+        $this->authorize('view', $topic);
+
         $worksheetFiles = [];
 
         if (is_array($topic->worksheet_files) && count($topic->worksheet_files) > 0) {
@@ -605,6 +628,8 @@ class TopicController extends Controller
      */
     public function uploadImage(Request $request)
     {
+        $this->authorize('create', LessonTopic::class);
+
         $request->validate([
             'file' => 'required|file|mimes:jpeg,jpg,png,gif,webp|max:5120'
         ]);
@@ -626,9 +651,52 @@ class TopicController extends Controller
         $request->validate(['order' => 'required|array', 'order.*' => 'integer|exists:lesson_topics,id']);
 
         foreach ($request->order as $index => $id) {
+            $topic = LessonTopic::query()->findOrFail($id);
+            $this->authorize('update', $topic);
+            $this->ensureAdminCanMutateTopic($topic);
             LessonTopic::where('id', $id)->update(['order' => $index + 1]);
         }
 
         return response()->json(['success' => true]);
+    }
+
+    private function ensureAdminCanMutateLesson(Lesson $lesson): void
+    {
+        if (!$this->isAdminPanel()) {
+            return;
+        }
+
+        $ownerType = $this->ownershipGuard()->ownerTypeForLesson($lesson);
+
+        abort_unless(
+            $this->ownershipGuard()->canAdminMutateOwnerType($ownerType),
+            403,
+            'Admins can only modify platform-owned learning content.',
+        );
+    }
+
+    private function ensureAdminCanMutateTopic(LessonTopic $topic): void
+    {
+        if (!$this->isAdminPanel()) {
+            return;
+        }
+
+        $ownerType = $this->ownershipGuard()->ownerTypeForTopic($topic);
+
+        abort_unless(
+            $this->ownershipGuard()->canAdminMutateOwnerType($ownerType),
+            403,
+            'Admins can only modify platform-owned learning content.',
+        );
+    }
+
+    private function isAdminPanel(): bool
+    {
+        return app(ContentPanelContext::class)->isAdmin();
+    }
+
+    private function ownershipGuard(): ContentOwnershipGuard
+    {
+        return app(ContentOwnershipGuard::class);
     }
 }

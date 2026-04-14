@@ -29,19 +29,18 @@ Core roles:
 - Keep existing Blade component patterns and UI language.
 - Run relevant tests and report actual output before handoff.
 
-## Current Snapshot (As of 2026-04-09)
-- Phase: Beta refinement with governance hardening and cross-role real-time chat expansion
+## Current Snapshot (As of 2026-04-11)
+- Phase: Beta hardening with permission-first RBAC completed and learner safety/reporting UX rollout in progress
 - Branch: main
-- Latest observed commit: df6d7a8 (checkpoint all in-progress local work)
+- Latest observed commit: 419316a (Instructor fixes, module revenue fixes, and admin table refinement)
 - Current focus:
+  - learner feedback, safety reporting, and quiz UX rollout
   - global pop-up chat UX integration and reliability hardening
-  - learner payment checkout refinement
-  - subscription lifecycle stabilization
-  - notification refinement rollout
-  - instructor application review workflow updates
-  - monetization/chat integration stabilization
-- Latest changelog file in repo: docs/changelogs/2026-04-05-learner-payment-checkout-refinement.md
-- Planning anchor: docs/plans/2026-04-06-subscription-lifecycle-stabilization-implementation-plan.md
+  - subscription lifecycle stabilization and checkout parity
+  - notification refinement and cross-role unread badge consistency
+  - post-RBAC permission/policy regression protection
+- Latest changelog file in repo: docs/changelogs/2026-04-10-complete-rbac-system.md
+- Planning anchor: docs/plans/2026-04-11-learner-feedback-reporting-quiz-ux-implementation-plan.md
 
 ## Project Stack
 | Layer | Technology |
@@ -59,12 +58,18 @@ Core roles:
 
 ## Architecture Quick Facts
 - Single auth guard: web (admin, instructor, learner share users table).
+- Spatie permission matrix is the authorization source of truth; users.role remains as compatibility metadata via sync service.
 - Service layer available and active for gamification, subscriptions, governance, instructor applications, and chat.
 - No SPA/API-first conversion without explicit request.
 - PSGC endpoints are the only API-style UX helpers.
 - Module visibility must always respect learner age_bracket and governance status.
 
 ## Built Surface (Current)
+### Authorization and governance hardening
+- Permission-first RBAC rollout implemented with canonical permission/role seeders and compatibility bridge
+- Super-admin gate behavior, policy coverage, and shared content authorization services integrated
+- Route/controller/blade migration from role-string checks to permission/policy checks completed
+
 ### Authentication and user management
 - Role-specific login flows, email verification, password reset
 - Parent-child account linking and monitoring views
@@ -82,6 +87,7 @@ Core roles:
 - Lesson/topic progression tracking
 - Quiz attempt limits and timer fallback enforcement
 - Certificate flow and learner notifications
+- Learner feedback/reporting and quiz progression UX improvements are in active rollout
 
 ### Subscription and payments
 - Plan management, upgrade/renew/cancel/refund requests
@@ -97,6 +103,7 @@ Core roles:
 
 ### Admin panel
 - Dashboard, user CRUD, subscription/payment operations
+- Role-permission management aligned to Spatie authorization boundaries
 - Content governance review queue and decision workflow
 - Instructor application moderation workflow
 - Calendar/seminars/organizations/messages/email areas remain stub-first
@@ -108,15 +115,19 @@ Core roles:
 - Health centers, counselors, consultations product surfaces
 - Deep analytics dashboards (charts, revenue drill-down)
 - Global pop-up chat rollout completion
+- Learner feedback/reporting moderation UX hardening and analytics follow-through
 - app/Actions layer
 
 ## Key Reference Docs
 - PLATFORM_FEATURES_OVERVIEW.md
 - ADMIN_DEVELOPMENT_GUIDE.md
 - QUICK_TESTING_GUIDE.md
+- docs/changelogs/2026-04-10-complete-rbac-system.md
 - docs/changelogs/2026-04-05-learner-payment-checkout-refinement.md
 - docs/changelogs/2026-03-30-admin-module-review-system.md
 - docs/changelogs/2026-03-30-admin-ui-ux-alignment.md
+- docs/plans/2026-04-11-learner-feedback-reporting-quiz-ux-implementation-plan.md
+- docs/plans/2026-04-10-complete-rbac-system-implementation-plan.md
 - docs/plans/2026-04-04-global-popup-chat-system-design.md
 - docs/plans/2026-04-04-global-popup-chat-system.md
 - docs/plans/2026-04-05-learner-payment-checkout-refinement-design.md
@@ -129,45 +140,58 @@ Core roles:
 - docs/plans/2026-03-31-learner-module-monetization-implementation-plan.md
 
 ## Execution Priorities
-1. docs/plans/2026-04-06-subscription-lifecycle-stabilization-implementation-plan.md
-2. docs/plans/2026-04-05-learner-payment-checkout-refinement-implementation-plan.md
+1. docs/plans/2026-04-11-learner-feedback-reporting-quiz-ux-implementation-plan.md
+2. docs/plans/2026-04-06-subscription-lifecycle-stabilization-implementation-plan.md
 3. docs/plans/2026-04-04-global-popup-chat-system.md
 4. docs/plans/2026-04-06-notification-system-refinement-implementation-plan.md
-5. docs/plans/2026-04-02-real-time-chat-system-implementation-plan.md
+5. docs/plans/2026-04-05-learner-payment-checkout-refinement-implementation-plan.md
 
 ## Active Implementation Map
 - Routes: routes/admin.php, routes/instructor.php, routes/web.php, routes/channels.php
 - Realtime bootstrap: resources/js/echo.js
+- RBAC seeders: database/seeders/PermissionSeeder.php, database/seeders/RoleSeeder.php, database/seeders/RolePermissionSeeder.php
 - Governance service: app/Services/ContentGovernanceService.php
 - Subscription service: app/Services/SubscriptionService.php
+- Role and content authorization services:
+  - app/Services/Admin/RoleSyncService.php
+  - app/Services/Content/ContentAuthoringService.php
+  - app/Services/Content/ContentAccessService.php
 - Chat services:
   - app/Services/Chat/ChatService.php
   - app/Services/Chat/ChatAuthorizationService.php
   - app/Services/Chat/ChatContextResolver.php
+- Learner feedback/reporting services:
+  - app/Services/ModuleFeedbackService.php
+  - app/Services/ContentReportService.php
 - Gamification service: app/Services/GamificationService.php
 - Admin moderation controller: app/Http/Controllers/Admin/InstructorApplicationController.php
+- Admin learner report controller: app/Http/Controllers/Admin/LearnerReportController.php
 - Learner quiz controller: app/Http/Controllers/Learner/QuizController.php
+- Learner feedback controller: app/Http/Controllers/Learner/ModuleFeedbackController.php
 - Popup chat partial: resources/views/chat/partials/global-popup.blade.php
 
-## Workspace Progress (As of 2026-04-09)
+## Workspace Progress (As of 2026-04-11)
 - Branch: main
-- Latest observed commit: df6d7a8
-- Latest changelog file in repo: docs/changelogs/2026-04-05-learner-payment-checkout-refinement.md
+- Latest observed commit: 419316a
+- Latest changelog file in repo: docs/changelogs/2026-04-10-complete-rbac-system.md
 - Latest planning wave:
+  - 2026-04-11 learner feedback, reporting, and quiz UX
+  - 2026-04-10 complete RBAC system
   - 2026-04-06 subscription lifecycle and notification refinement
-  - 2026-04-05 learner payment checkout refinement
   - 2026-04-04 global pop-up chat
-  - 2026-04-02 real-time chat
-- Active WIP areas include chat events/controllers/models/migrations, popup UI wiring, checkout refinement, instructor application review payload updates, notification/subscription stabilization tasks, and chat feature/unit tests.
+  - 2026-04-05 learner payment checkout refinement
+- Active WIP areas include learner feedback/reporting migrations/controllers/views, quiz UX progression updates, popup chat reliability hardening, subscription/notification stabilization, and cross-role chat/reporting test coverage.
 
 ## Current Reality Checks
+- RBAC migration is now permission-first with broad policy/route/blade coverage and compatibility-safe legacy role sync.
 - Admin moderation and governance are active.
 - Several admin areas still ship as stubs.
 - Chat foundation is live; popup UX is still under implementation.
+- Learner feedback/reporting and moderation workflow are in active implementation.
 - Interactive activities remain documented but not fully implemented.
 - Subscription/payment systems are implemented; current work is mostly checkout refinement + lifecycle stabilization layered on top of existing billing.
 - Paid module entitlement hard-gating is currently relaxed during rollout.
-- Preserve learner quiz timer fallback behavior.
+- Preserve learner quiz timer fallback behavior while extending quiz UX contracts.
 - Treat routes/admin.php and routes/instructor.php as canonical for new role-route additions.
 
 ## Skills Workflow

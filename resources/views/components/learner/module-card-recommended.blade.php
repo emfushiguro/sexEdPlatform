@@ -14,11 +14,17 @@
         : null;
 
     $creator = $module->creator;
+    $ownerType = in_array($module->content_owner_type, ['admin', 'instructor'], true)
+        ? $module->content_owner_type
+        : ((string) optional($creator)->role === 'admin' ? 'admin' : 'instructor');
     $instructorProfile = $creator?->instructorProfile;
     $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
-    $instructorPhoto = $instructorProfile?->profile_photo_path
-        ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
-        : null;
+    $displayOwnerName = $ownerType === 'admin' ? 'Conscious Connections Team' : $instructorName;
+    $instructorPhoto = $ownerType === 'admin'
+        ? asset('media/Logo.png')
+        : ($instructorProfile?->profile_photo_path
+            ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
+            : null);
 
     $approvedCount = (int) ($module->approved_enrollments_count ?? 0);
     $enrollmentLimit = $module->enrollment_limit !== null ? (int) $module->enrollment_limit : null;
@@ -111,13 +117,13 @@
 
         <div class="flex items-center gap-2 pt-0.5">
             @if($instructorPhoto)
-                <img src="{{ $instructorPhoto }}" alt="{{ $instructorName }}" class="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-gray-600">
+                <img src="{{ $instructorPhoto }}" alt="{{ $displayOwnerName }}" class="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-gray-600">
             @else
                 <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-[10px] font-bold">
-                    {{ strtoupper(substr($instructorName, 0, 1)) }}
+                    {{ strtoupper(substr($displayOwnerName, 0, 1)) }}
                 </div>
             @endif
-            <p class="text-xs text-gray-600 dark:text-gray-300 truncate">{{ $instructorName }}</p>
+            <p class="text-xs text-gray-600 dark:text-gray-300 truncate">Created by: {{ $displayOwnerName }}</p>
         </div>
 
         {{-- CTA button --}}

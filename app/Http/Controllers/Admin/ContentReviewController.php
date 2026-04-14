@@ -26,7 +26,9 @@ class ContentReviewController extends Controller
     {
         $search = trim((string) $request->string('search'));
         $statusFilter = (string) $request->string('status');
-        $instructorFilter = (int) $request->integer('instructor_id');
+        $instructorFilter = $request->filled('instructor_id')
+            ? (int) $request->integer('instructor_id')
+            : null;
         $submittedDate = (string) $request->string('submitted_date');
 
         $reviewRequests = ModuleReviewRequest::query()
@@ -47,7 +49,7 @@ class ContentReviewController extends Controller
             ->when(in_array($statusFilter, ['submitted', 'in_review'], true), function ($query) use ($statusFilter): void {
                 $query->where('status', $statusFilter);
             })
-            ->when($instructorFilter > 0, function ($query) use ($instructorFilter): void {
+            ->when(($instructorFilter ?? 0) > 0, function ($query) use ($instructorFilter): void {
                 $query->where('submitted_by', $instructorFilter);
             })
             ->when($submittedDate !== '', function ($query) use ($submittedDate): void {

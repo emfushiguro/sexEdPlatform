@@ -20,6 +20,7 @@ class AdminUserManagementFeatureTest extends TestCase
             'edit users',
             'delete users',
             'manage roles',
+            'manage permissions',
             'manage user relationships',
         ];
 
@@ -84,6 +85,7 @@ class AdminUserManagementFeatureTest extends TestCase
         $createdUser->refresh();
 
         $this->assertSame('instructor', $createdUser->role);
+        $this->assertTrue($createdUser->hasRole('instructor'));
         $this->assertSame('archived', $createdUser->status);
         $this->assertSame('instructor', $createdUser->account_type);
     }
@@ -100,7 +102,30 @@ class AdminUserManagementFeatureTest extends TestCase
             ->assertSee('All Users', false)
             ->assertSee('Parents', false)
             ->assertSee('Instructors', false)
-            ->assertSee('All Account Types', false)
-            ->assertSee('All Age Brackets', false);
+            ->assertSee('All account types', false)
+            ->assertSee('Search name or email', false);
+    }
+
+    public function test_admin_can_set_direct_permission_overrides_when_creating_user(): void
+    {
+        $admin = $this->createAdminUser();
+        Permission::findOrCreate('manage users', 'web');
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.store'), [
+                'name' => 'Override User',
+                'email' => 'override-user@example.test',
+                'password' => 'Password123!',
+                'password_confirmation' => 'Password123!',
+                'role' => 'learner',
+                'status' => 'active',
+                'apply_permission_overrides' => '1',
+                'direct_permissions' => ['manage users'],
+            ])
+            ->assertRedirect(route('admin.users.index'));
+
+        $createdUser = User::query()->where('email', 'override-user@example.test')->firstOrFail();
+
+        $this->assertTrue($createdUser->hasDirectPermission('manage users'));
     }
 }

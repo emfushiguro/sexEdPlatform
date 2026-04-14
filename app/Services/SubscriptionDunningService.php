@@ -69,11 +69,15 @@ class SubscriptionDunningService
         // Find subscriptions expiring in 7 days
         $expiringSoon = Subscription::where('status', SubscriptionStatus::Active)
             ->where('auto_renew', true)
-            ->whereBetween('end_date', [now()->addDays(7), now()->addDays(8)])
+            ->whereDate('end_date', now()->addDays(7)->toDateString())
             ->with('user')
             ->get();
 
         foreach ($expiringSoon as $subscription) {
+            if (!$subscription instanceof Subscription) {
+                continue;
+            }
+
             Mail::to($subscription->user->email)
                 ->send(new SubscriptionExpiringMail($subscription));
 
@@ -88,6 +92,10 @@ class SubscriptionDunningService
             ->get();
 
         foreach ($expiredYesterday as $subscription) {
+            if (!$subscription instanceof Subscription) {
+                continue;
+            }
+
             if ($subscription->auto_renew) {
                 $subscription->update([
                     'status' => SubscriptionStatus::GracePeriod,
@@ -144,6 +152,10 @@ class SubscriptionDunningService
             ->get();
 
         foreach ($paymentsToRetry as $payment) {
+            if (!$payment instanceof Payment) {
+                continue;
+            }
+
             $retryCount = $payment->payment_details['retry_count'] ?? 0;
             $lastRetry = $payment->payment_details['last_retry_at'] ?? null;
             

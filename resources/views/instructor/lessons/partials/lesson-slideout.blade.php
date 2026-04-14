@@ -34,7 +34,7 @@
          title: '',
          description: '',
          isPublished: true,
-         actionBase: '{{ url('instructor/lessons') }}',
+         actionBase: '{{ url($contentRoutePrefix . '/lessons') }}',
          syncFromStore() {
              const draft = $store.modals.lessonSlideoutDraft;
              if (draft) {
@@ -58,7 +58,7 @@
              return this.mode === 'edit' && this.editLessonId !== null;
          },
          get formAction() {
-             return this.isEdit ? `${this.actionBase}/${this.editLessonId}` : '{{ route('instructor.lessons.store') }}';
+             return this.isEdit ? `${this.actionBase}/${this.editLessonId}` : '{{ route($contentRoutePrefix . '.lessons.store') }}';
          },
          init() {
              this.syncFromStore();

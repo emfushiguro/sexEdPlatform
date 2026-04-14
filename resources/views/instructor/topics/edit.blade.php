@@ -1,4 +1,4 @@
-﻿@extends('layouts.instructor-app')
+@extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
 <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
@@ -32,14 +32,14 @@
                 <h1 class="mt-1 text-xl font-bold text-gray-900">{{ $topic->title }}</h1>
                 <p class="mt-1 text-sm text-gray-500">Update content, media, and instructions while keeping the learner experience consistent.</p>
             </div>
-            <a href="{{ route('instructor.lessons.show', $topic->lesson->id) }}" class="inline-flex items-center px-3.5 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors">
+            <a href="{{ route($contentRoutePrefix . '.lessons.show', $topic->lesson->id) }}" class="inline-flex items-center px-3.5 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors">
                 Back to Lesson
             </a>
         </div>
     </div>
 
     <!-- Form -->
-    <form action="{{ route('instructor.topics.update', $topic) }}" method="POST" enctype="multipart/form-data" class="space-y-8" id="topicEditForm">
+    <form action="{{ route($contentRoutePrefix . '.topics.update', $topic) }}" method="POST" enctype="multipart/form-data" class="space-y-8" id="topicEditForm">
         @csrf
         @method('PUT')
 
@@ -460,7 +460,7 @@
         <!-- Action Buttons -->
         <div class="flex items-center justify-end space-x-4">
             <a 
-                href="{{ route('instructor.lessons.show', $topic->lesson->id) }}" 
+                href="{{ route($contentRoutePrefix . '.lessons.show', $topic->lesson->id) }}" 
                 class="px-6 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
             >
                 Cancel
@@ -507,7 +507,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch('{{ route('instructor.upload.image') }}', {
+        const response = await fetch('{{ route($contentRoutePrefix . '.upload.image') }}', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'insertdatetime', 'media', 'table', 'help', 'wordcount'
         ],
         toolbar: 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
-        images_upload_url: '{{ route('instructor.upload.image') }}',
+        images_upload_url: '{{ route($contentRoutePrefix . '.upload.image') }}',
         automatic_uploads: true,
         paste_data_images: false,
         images_reuse_filename: true,
@@ -665,5 +665,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 </div>
 @endsection
+
 
 

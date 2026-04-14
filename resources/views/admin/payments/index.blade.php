@@ -95,19 +95,51 @@
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @php
                 $cards = [
-                    ['label' => 'Total Revenue', 'value' => null, 'valueKey' => 'total_revenue', 'type' => 'currency', 'accent' => 'emerald'],
-                    ['label' => 'Completed', 'value' => null, 'valueKey' => 'completed', 'type' => 'number', 'accent' => 'sky'],
-                    ['label' => 'Needs Review', 'value' => null, 'valueKey' => null, 'type' => 'computed-review', 'accent' => 'amber'],
-                    ['label' => 'Failed', 'value' => null, 'valueKey' => 'failed', 'type' => 'number', 'accent' => 'rose'],
+                    [
+                        'label' => 'Total Revenue',
+                        'value' => null,
+                        'valueKey' => 'total_revenue',
+                        'type' => 'currency',
+                        'icon' => 'currency',
+                        'cardClass' => 'border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100/70',
+                        'labelClass' => 'text-brand-700',
+                    ],
+                    [
+                        'label' => 'Completed',
+                        'value' => null,
+                        'valueKey' => 'completed',
+                        'type' => 'number',
+                        'icon' => 'check',
+                        'cardClass' => 'border-brand-100 bg-gradient-to-br from-white via-brand-50/70 to-brand-100/60',
+                        'labelClass' => 'text-brand-600',
+                    ],
+                    [
+                        'label' => 'Needs Review',
+                        'value' => null,
+                        'valueKey' => null,
+                        'type' => 'computed-review',
+                        'icon' => 'clock',
+                        'cardClass' => 'border-brand-200 bg-gradient-to-br from-brand-100/60 via-white to-brand-50',
+                        'labelClass' => 'text-brand-800',
+                    ],
+                    [
+                        'label' => 'Failed',
+                        'value' => null,
+                        'valueKey' => 'failed',
+                        'type' => 'number',
+                        'icon' => 'warning',
+                        'cardClass' => 'border-brand-300 bg-gradient-to-br from-brand-100 via-white to-brand-200/70',
+                        'labelClass' => 'text-brand-900',
+                    ],
                 ];
             @endphp
 
             @foreach($cards as $card)
-                <div class="rounded-[28px] border p-5 shadow-theme-xs {{ $card['accent'] === 'emerald' ? 'border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50' : ($card['accent'] === 'sky' ? 'border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50' : ($card['accent'] === 'amber' ? 'border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50' : 'border-rose-100 bg-gradient-to-br from-rose-50 via-white to-orange-50')) }}">
-                    <div class="flex items-start justify-between gap-4">
+                <div class="rounded-[28px] border p-5 shadow-theme-xs {{ $card['cardClass'] }} min-h-[116px]">
+                    <div class="flex items-center justify-between gap-4">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.24em] {{ $card['accent'] === 'emerald' ? 'text-emerald-600' : ($card['accent'] === 'sky' ? 'text-sky-600' : ($card['accent'] === 'amber' ? 'text-amber-600' : 'text-rose-600')) }}">{{ $card['label'] }}</p>
-                            <p class="mt-3 text-3xl font-bold text-gray-900">
+                            <p class="text-xs font-semibold uppercase tracking-[0.24em] {{ $card['labelClass'] }}">{{ $card['label'] }}</p>
+                            <p class="mt-2 text-4xl leading-none font-bold text-gray-900">
                                 @if($card['type'] === 'currency')
                                     <span x-text="formatCurrency(stats.{{ $card['valueKey'] }})"></span>
                                 @elseif($card['type'] === 'computed-review')
@@ -117,12 +149,12 @@
                                 @endif
                             </p>
                         </div>
-                        <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg {{ $card['accent'] === 'emerald' ? 'bg-emerald-500 shadow-emerald-200' : ($card['accent'] === 'sky' ? 'bg-sky-500 shadow-sky-200' : ($card['accent'] === 'amber' ? 'bg-amber-500 shadow-amber-200' : 'bg-rose-500 shadow-rose-200')) }}">
-                            @if($card['accent'] === 'emerald')
+                        <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg {{ $card['icon'] === 'currency' ? 'from-brand-500 via-brand-700 to-brand-900 shadow-brand-200' : ($card['icon'] === 'check' ? 'from-brand-400 via-brand-600 to-brand-800 shadow-brand-200' : ($card['icon'] === 'clock' ? 'from-brand-600 via-brand-700 to-brand-900 shadow-brand-300' : 'from-brand-700 via-brand-800 to-brand-900 shadow-brand-300')) }}">
+                            @if($card['icon'] === 'currency')
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            @elseif($card['accent'] === 'sky')
+                            @elseif($card['icon'] === 'check')
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                            @elseif($card['accent'] === 'amber')
+                            @elseif($card['icon'] === 'clock')
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                             @else
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
@@ -134,24 +166,24 @@
         </div>
 
         <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
-            <div class="border-b border-gray-100 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.10),_transparent_30%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-6">
+            <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.17),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(59,12,177,0.14),_transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">
                 <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                     <div>
                         <h2 class="mt-2 text-xl font-bold text-gray-900">Payments Table</h2>
                     </div>
-                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" data-testid="admin-table-filter-bar">
                         <label class="block xl:col-span-2">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
                             <input x-model.debounce.150ms="filters.search"
                                 @input="page = 1"
                                    type="text"
                                    placeholder="Type, module, learner, instructor, ref..."
-                                   class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                   class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                         </label>
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Type</span>
                                 <select x-model="filters.type" @change="page = 1"
-                                    class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                    class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                                 <option value="">All types</option>
                                 <option value="module_purchase">Module Purchase</option>
                                 <option value="subscription">Subscription Payment</option>
@@ -160,7 +192,7 @@
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Method</span>
                                 <select x-model="filters.method" @change="page = 1"
-                                    class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                    class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                                 <option value="">All methods</option>
                                 <option value="gcash">GCash</option>
                                 <option value="paymaya">PayMaya</option>
@@ -174,7 +206,7 @@
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
                                 <select x-model="filters.status" @change="page = 1"
-                                    class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                    class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                                 <option value="">All statuses</option>
                                 <option value="pending">Pending</option>
                                 <option value="processing">Processing</option>
@@ -189,14 +221,14 @@
                                 <input x-model="filters.dateFrom"
                                         @change="page = 1"
                                        type="date"
-                                       class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                       class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                             </label>
                             <label class="block">
                                 <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Date To</span>
                                 <input x-model="filters.dateTo"
                                         @change="page = 1"
                                        type="date"
-                                       class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                       class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                             </label>
                         </div>
                     </div>
@@ -206,14 +238,14 @@
             <div class="flex flex-wrap items-center justify-end gap-3 px-6 py-4">
                 <button type="button"
                         @click="resetFilters()"
-                        class="inline-flex items-center rounded-2xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
+                        class="inline-flex items-center rounded-2xl border border-brand-200 bg-brand-50/60 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70">
                     Reset Filters
                 </button>
             </div>
 
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-brand-50/45">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No. #</th>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Type</th>
@@ -229,7 +261,7 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100">
                         <template x-for="(payment, index) in paginatedPayments" :key="payment.id">
-                            <tr class="transition hover:bg-sky-50/40">
+                            <tr class="transition hover:bg-brand-50/55">
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="rowNumber(index)"></td>
                                 <td class="px-6 py-4">
                                     <span class="inline-flex px-3 py-1 text-xs font-bold rounded-full"
@@ -242,7 +274,7 @@
                                             <img :src="payment.learner_avatar" alt="Learner avatar" class="object-cover w-10 h-10 border border-gray-200 rounded-full">
                                         </template>
                                         <template x-if="!payment.learner_avatar">
-                                            <span class="inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-2xl bg-sky-100 text-sky-700"
+                                            <span class="inline-flex items-center justify-center w-10 h-10 text-sm font-bold rounded-2xl bg-brand-100 text-brand-700"
                                                   x-text="initialFromName(payment.learner)"></span>
                                         </template>
                                         <div>
@@ -268,7 +300,7 @@
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <a :href="payment.show_url"
-                                           class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                                                         class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50"
                                            title="View payment">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -278,7 +310,7 @@
 
                                         <button type="button"
                                                 @click="openActionModal('archive', payment.id, payment.reference)"
-                                                class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                                class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50"
                                                 title="Archive payment">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M6 8l1 10h10l1-10M9 8V6a1 1 0 011-1h4a1 1 0 011 1v2" />
@@ -287,7 +319,7 @@
 
                                         <button type="button"
                                                 @click="openActionModal('delete', payment.id, payment.reference)"
-                                                class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                                                class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50"
                                                 title="Delete payment">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -316,16 +348,16 @@
 
             <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
                 <div class="flex items-center gap-2">
-                    <button type="button" @click="prevPage()" :disabled="page === 1" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                    <button type="button" @click="prevPage()" :disabled="page === 1" class="rounded-lg border border-brand-200 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                     <span class="text-sm text-gray-600">Page <span class="font-semibold" x-text="safePage"></span> of <span class="font-semibold" x-text="totalPages"></span></span>
-                    <button type="button" @click="nextPage()" :disabled="page >= totalPages" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                    <button type="button" @click="nextPage()" :disabled="page >= totalPages" class="rounded-lg border border-brand-200 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
                 </div>
             </div>
         </section>
 
         <div x-show="confirmOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4" @keydown.escape.window="closeActionModal()">
             <div class="absolute inset-0 bg-gray-900/50" @click="closeActionModal()"></div>
-            <div class="relative w-full max-w-md p-6 bg-white shadow-2xl rounded-2xl">
+            <div class="relative w-full max-w-md p-6 bg-white border border-brand-100 shadow-2xl rounded-2xl">
                 <h3 class="text-lg font-bold text-gray-900" x-text="confirmAction === 'delete' ? 'Delete Payment?' : 'Archive Payment?'"></h3>
                 <p class="mt-2 text-sm text-gray-600">
                     <span x-show="confirmAction === 'archive'">Archive payment </span>
@@ -333,8 +365,8 @@
                     <span class="font-semibold" x-text="confirmReference || '#'+confirmTargetId"></span>?
                 </p>
                 <div class="flex items-center justify-end gap-2 mt-6">
-                    <button type="button" @click="closeActionModal()" class="px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                    <button type="button" @click="submitAction()" :class="confirmAction === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'" class="px-4 py-2 text-sm font-semibold text-white rounded-lg">Confirm</button>
+                    <button type="button" @click="closeActionModal()" class="px-4 py-2 text-sm font-semibold text-gray-700 border border-brand-200 rounded-lg hover:bg-brand-50">Cancel</button>
+                    <button type="button" @click="submitAction()" :class="confirmAction === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand-600 hover:bg-brand-700'" class="px-4 py-2 text-sm font-semibold text-white rounded-lg">Confirm</button>
                 </div>
             </div>
         </div>
@@ -467,19 +499,19 @@
                 },
                 methodClass(method) {
                     return {
-                        gcash: 'bg-sky-100 text-sky-700',
-                        paymaya: 'bg-emerald-100 text-emerald-700',
-                        grab_pay: 'bg-teal-100 text-teal-700',
-                        card: 'bg-violet-100 text-violet-700',
-                        billease: 'bg-indigo-100 text-indigo-700',
+                        gcash: 'bg-brand-50 text-brand-700',
+                        paymaya: 'bg-brand-100 text-brand-800',
+                        grab_pay: 'bg-brand-50 text-brand-800',
+                        card: 'bg-brand-100 text-brand-700',
+                        billease: 'bg-brand-200/70 text-brand-800',
                         bank_transfer: 'bg-gray-100 text-gray-600',
-                        paymongo: 'bg-sky-100 text-sky-700',
+                        paymongo: 'bg-brand-100 text-brand-800',
                     }[method] || 'bg-gray-100 text-gray-600';
                 },
                 typeClass(typeKey) {
                     return {
-                        module_purchase: 'bg-violet-100 text-violet-700',
-                        subscription: 'bg-cyan-100 text-cyan-700',
+                        module_purchase: 'bg-brand-100 text-brand-800',
+                        subscription: 'bg-brand-50 text-brand-700',
                     }[typeKey] || 'bg-gray-100 text-gray-600';
                 },
                 statusClass(status) {
@@ -488,7 +520,7 @@
                         failed: 'bg-rose-100 text-rose-700',
                         refunded: 'bg-gray-100 text-gray-600',
                         pending: 'bg-amber-100 text-amber-700',
-                        processing: 'bg-sky-100 text-sky-700',
+                        processing: 'bg-brand-100 text-brand-700',
                     }[status] || 'bg-gray-100 text-gray-600';
                 },
                 truncate(value, length = 16) {

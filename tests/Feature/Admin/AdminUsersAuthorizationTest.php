@@ -26,9 +26,13 @@ class AdminUsersAuthorizationTest extends TestCase
         $this->actingAs($learner)
             ->get(route('admin.users.index'))
             ->assertForbidden();
+
+        $this->actingAs($learner)
+            ->get(route('admin.users.relationships.index'))
+            ->assertForbidden();
     }
 
-    public function test_admin_without_create_permission_cannot_create_user(): void
+    public function test_admin_can_create_user_via_super_admin_gate_even_without_explicit_create_permission(): void
     {
         Permission::findOrCreate('view users', 'web');
         Permission::findOrCreate('create users', 'web');
@@ -52,10 +56,10 @@ class AdminUsersAuthorizationTest extends TestCase
                 'role' => 'learner',
                 'status' => 'active',
             ])
-            ->assertForbidden();
+            ->assertRedirect();
     }
 
-    public function test_admin_without_relationship_permission_cannot_attach_relationship(): void
+    public function test_admin_can_manage_relationships_via_super_admin_gate_even_without_explicit_permission(): void
     {
         Permission::findOrCreate('view users', 'web');
         Permission::findOrCreate('manage user relationships', 'web');
@@ -74,10 +78,14 @@ class AdminUsersAuthorizationTest extends TestCase
         $child = User::factory()->create(['role' => 'learner', 'status' => 'active']);
 
         $this->actingAs($admin)
+            ->get(route('admin.users.relationships.index'))
+            ->assertOk();
+
+        $this->actingAs($admin)
             ->post(route('admin.users.relationships.attach'), [
                 'parent_user_id' => $parent->id,
                 'child_user_id' => $child->id,
             ])
-            ->assertForbidden();
+            ->assertRedirect();
     }
 }

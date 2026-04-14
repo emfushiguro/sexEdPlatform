@@ -6,10 +6,18 @@ class NotificationPayloadNormalizer
 {
     public function normalize(array $data): array
     {
+        $senderName = $this->resolveSenderName($data);
+
         return [
             'type' => (string) ($data['type'] ?? 'generic_notification'),
             'title' => $this->resolveTitle($data),
             'message' => $this->resolveMessage($data),
+            'message_preview' => $this->resolveMessagePreview($data),
+            'sender_name' => $senderName,
+            'sender_avatar_url' => $this->resolveSenderAvatarUrl($data),
+            'sender_initial' => $senderName !== null && $senderName !== ''
+                ? strtoupper(mb_substr($senderName, 0, 1))
+                : 'U',
             'action_url' => $this->resolveActionUrl($data),
             'severity' => $this->resolveSeverity($data),
         ];
@@ -79,5 +87,42 @@ class NotificationPayloadNormalizer
         }
 
         return trim($message);
+    }
+
+    private function resolveMessagePreview(array $data): string
+    {
+        $preview = $data['message_preview'] ?? $data['preview'] ?? $data['message'] ?? $data['body'] ?? '';
+
+        if (!is_string($preview)) {
+            return '';
+        }
+
+        return trim($preview);
+    }
+
+    private function resolveSenderName(array $data): ?string
+    {
+        $senderName = $data['sender_name'] ?? $data['actor_name'] ?? null;
+
+        if (!is_string($senderName)) {
+            return null;
+        }
+
+        $senderName = trim($senderName);
+
+        return $senderName !== '' ? $senderName : null;
+    }
+
+    private function resolveSenderAvatarUrl(array $data): ?string
+    {
+        $avatarUrl = $data['sender_avatar_url'] ?? $data['actor_avatar_url'] ?? null;
+
+        if (!is_string($avatarUrl)) {
+            return null;
+        }
+
+        $avatarUrl = trim($avatarUrl);
+
+        return $avatarUrl !== '' ? $avatarUrl : null;
     }
 }

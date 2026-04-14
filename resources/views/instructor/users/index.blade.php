@@ -259,7 +259,7 @@
     </div>
 
     <div x-show="confirmModalOpen" x-cloak class="fixed inset-0 z-40 bg-gray-900/50" @click="closeConfirm()"></div>
-    <div x-show="confirmModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div id="users-delete-confirm-modal" x-show="confirmModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl border border-gray-100 dark:border-gray-700" @click.stop>
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white" x-text="confirmMode === 'archive' ? 'Archive Learner' : 'Remove Learner'"></h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-300" x-text="confirmMode === 'archive'
@@ -267,8 +267,8 @@
                 : 'This will remove the learner from your module roster and delete related progress for your modules.'"></p>
             <p class="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-100" x-text="confirmRow ? confirmRow.name : ''"></p>
             <div class="mt-6 flex items-center justify-end gap-3">
-                <button type="button" @click="closeConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
-                <button type="button" @click="submitConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg text-white" :class="confirmMode === 'archive' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-red-600 hover:bg-red-700'" x-text="confirmMode === 'archive' ? 'Archive' : 'Remove'"></button>
+                <button type="button" data-delete-confirm-cancel @click="closeConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
+                <button type="button" data-delete-confirm-submit @click="submitConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg text-white" :class="confirmMode === 'archive' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-red-600 hover:bg-red-700'" x-text="confirmMode === 'archive' ? 'Archive' : 'Remove'"></button>
             </div>
         </div>
     </div>
