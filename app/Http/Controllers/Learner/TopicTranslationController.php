@@ -214,6 +214,9 @@ class TopicTranslationController extends Controller
         ]);
     }
 
+    /**
+     * Stream a synthesized TTS audio file through an authenticated, signed URL.
+     */
     public function streamSynthesizedSpeech(Request $request, string $token)
     {
         try {
