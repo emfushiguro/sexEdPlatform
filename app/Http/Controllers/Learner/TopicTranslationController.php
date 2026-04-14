@@ -219,6 +219,11 @@ class TopicTranslationController extends Controller
      */
     public function streamSynthesizedSpeech(Request $request, string $token)
     {
+        $authUserId = Auth::id();
+        if (! $authUserId) {
+            abort(403);
+        }
+
         try {
             $audioPath = ltrim(Crypt::decryptString($token), '/');
         } catch (DecryptException) {
@@ -230,7 +235,7 @@ class TopicTranslationController extends Controller
             abort(403);
         }
 
-        $userPattern = '/^tts\/user-' . preg_quote((string) $request->user()->id, '/') . '\/[a-f0-9]{40}\.mp3$/';
+        $userPattern = '/^tts\/user-' . preg_quote((string) $authUserId, '/') . '\/[a-f0-9]{40}\.mp3$/';
         if (! preg_match($userPattern, $normalizedPath)) {
             abort(403);
         }

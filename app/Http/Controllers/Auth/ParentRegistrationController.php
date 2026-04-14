@@ -618,21 +618,21 @@ class ParentRegistrationController extends Controller
     {
         $parent = auth()->user();
 
-        if (!$parent->hasVerifiedEmail()) {
+        if (! $parent->hasVerifiedEmail()) {
             return redirect()->route('verification.notice')
                 ->with('error', 'Please verify your email first.');
         }
 
-        if (!$parent->canBeParent()) {
+        if (! $parent->canBeParent()) {
             abort(403, 'You must be 18 or older to create a child account.');
         }
 
-        if (!$parent->isParentRegistration() || !$parent->isParentVerificationApproved()) {
+        if (! $parent->isParentRegistration() || ! $parent->isParentVerificationApproved()) {
             return redirect()->route('parent.verification.status')
                 ->with('warning', 'Your parent account is still under admin review.');
         }
 
-        if (!$parent->hasCompletedProfile()) {
+        if (! $parent->hasCompletedProfile()) {
             return redirect()->route('profile.complete')
                 ->with('warning', 'Please complete your profile before creating a child account.');
         }
