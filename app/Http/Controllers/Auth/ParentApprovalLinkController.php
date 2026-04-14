@@ -11,7 +11,6 @@ class ParentApprovalLinkController extends Controller
 {
     public function __invoke(Request $request): RedirectResponse
     {
-        /** @var User $currentUser */
         $currentUser = $request->user();
         $user = User::findOrFail((int) $request->route('id'));
 

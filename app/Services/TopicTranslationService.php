@@ -180,6 +180,9 @@ class TopicTranslationService
 
         $voiceName = $voiceName ?: null;
         $speakingRate = max(0.25, min(4.0, $speakingRate));
+        if ($userId < 1) {
+            throw new RuntimeException('Invalid user context for speech synthesis.');
+        }
 
         $cacheKey = 'tts_audio:' . sha1(json_encode([
             'text' => $cleanText,
