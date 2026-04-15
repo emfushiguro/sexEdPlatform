@@ -223,6 +223,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('module-revenue.payout.update');
     });
 
+    Route::prefix('gamification-settings')->name('gamification-settings.')->group(function () {
+        Route::get('/', [Admin\GamificationSettingsController::class, 'index'])
+            ->name('index');
+        Route::put('/', [Admin\GamificationSettingsController::class, 'update'])
+            ->name('update');
+        Route::get('/history', [Admin\GamificationSettingsController::class, 'history'])
+            ->name('history');
+        Route::post('/restore/{version}', [Admin\GamificationSettingsController::class, 'restore'])
+            ->name('restore');
+    });
+
     Route::prefix('instructor-applications')->name('instructor-applications.')->group(function () {
         Route::get('/', [Admin\InstructorApplicationController::class, 'index'])->name('index');
         Route::get('/{application}', [Admin\InstructorApplicationController::class, 'show'])->name('show');
