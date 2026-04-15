@@ -23,7 +23,9 @@ use App\Models\ModuleReviewRequest;
 use App\Models\ParentChildAccount;
 use App\Models\Quiz;
 use App\Models\User;
+use App\Models\AdminCreatorProfile;
 use App\Observers\PaymentObserver;
+use App\Policies\AdminCreatorProfilePolicy;
 use App\Policies\LessonPolicy;
 use App\Policies\InstructorProfilePolicy;
 use App\Policies\ModulePolicy;
@@ -79,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(User::class, ParentChildPolicy::class);
+        Gate::policy(AdminCreatorProfile::class, AdminCreatorProfilePolicy::class);
         Gate::policy(InstructorProfile::class, InstructorProfilePolicy::class);
         Gate::policy(Module::class, ModulePolicy::class);
         Gate::policy(Lesson::class, LessonPolicy::class);

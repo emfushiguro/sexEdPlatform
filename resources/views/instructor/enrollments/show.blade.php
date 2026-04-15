@@ -60,9 +60,9 @@
                                                 $isAgeAppropriate = $age >= $moduleMinAge && $age <= $moduleMaxAge;
                                             @endphp
                                             @if($isAgeAppropriate)
-                                                <span class="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">✓ Age-appropriate</span>
+                                                <span class="ml-2 text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded">✓ Age-appropriate</span>
                                             @else
-                                                <span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">⚠ Outside target age range</span>
+                                                <span class="ml-2 text-xs bg-rose-100 text-rose-800 px-2 py-1 rounded">⚠ Outside target age range</span>
                                             @endif
                                         @else
                                             -
@@ -156,7 +156,7 @@
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
                             <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                                 Recent Learning Activity
@@ -174,7 +174,7 @@
                                             </div>
                                             <div class="text-right">
                                                 @if($recent->completed_at)
-                                                    <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Completed</span>
+                                                    <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded">Completed</span>
                                                 @else
                                                     <span class="text-xs bg-brand-100 text-brand-800 px-2 py-1 rounded">{{ $recent->completion_percentage }}% Progress</span>
                                                 @endif
@@ -203,13 +203,13 @@
                                 </div>
                                 <div>
                                     <label class="text-sm text-gray-500">Completed Modules</label>
-                                    <p class="text-2xl font-bold text-green-600">{{ $completedModules }}</p>
+                                    <p class="text-2xl font-bold text-emerald-600">{{ $completedModules }}</p>
                                 </div>
                                 <div>
                                     <label class="text-sm text-gray-500">Completion Rate</label>
                                     <div class="flex items-center gap-2">
                                         <div class="flex-1 bg-gray-200 rounded-full h-2">
-                                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ $completionRate }}%"></div>
+                                            <div class="bg-emerald-600 h-2 rounded-full" style="width: {{ $completionRate }}%"></div>
                                         </div>
                                         <span class="text-sm font-semibold">{{ $completionRate }}%</span>
                                     </div>
@@ -231,7 +231,7 @@
                                         <button type="submit" 
                                                 @if($isRestrictedAdminMutation) disabled @endif
                                                 title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Approve enrollment' }}"
-                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-green-600' : 'bg-green-600 hover:bg-green-700' }}"
+                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-emerald-600' : 'bg-emerald-600 hover:bg-emerald-700' }}"
                                                 onclick="@if($isRestrictedAdminMutation) return false; @else return confirm('Approve this enrollment request?'); @endif">
                                             ✓ Approve Enrollment
                                         </button>
@@ -243,7 +243,7 @@
                                         <button type="submit" 
                                                 @if($isRestrictedAdminMutation) disabled @endif
                                                 title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Reject enrollment' }}"
-                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-red-600' : 'bg-red-600 hover:bg-red-700' }}"
+                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-rose-600' : 'bg-rose-600 hover:bg-rose-700' }}"
                                                 onclick="@if($isRestrictedAdminMutation) return false; @else return confirm('Reject this enrollment request? The learner will be notified.'); @endif">
                                             ✗ Reject Request
                                         </button>
@@ -261,19 +261,19 @@
                             <div class="p-6">
                                 <div class="text-center">
                                     @if($enrollment->status === 'approved')
-                                        <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                                            <svg class="w-12 h-12 text-green-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div class="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4">
+                                            <svg class="w-12 h-12 text-emerald-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                             </svg>
-                                            <p class="text-green-800 font-semibold">Already Approved</p>
-                                            <p class="text-xs text-green-600 mt-1">{{ $enrollment->enrolled_at->format('M d, Y') }}</p>
+                                            <p class="text-emerald-800 font-semibold">Already Approved</p>
+                                            <p class="text-xs text-emerald-600 mt-1">{{ $enrollment->enrolled_at->format('M d, Y') }}</p>
                                         </div>
                                     @else
-                                        <div class="bg-red-50 border-2 border-red-200 rounded-lg p-4">
-                                            <svg class="w-12 h-12 text-red-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div class="bg-rose-50 border-2 border-rose-200 rounded-lg p-4">
+                                            <svg class="w-12 h-12 text-rose-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                             </svg>
-                                            <p class="text-red-800 font-semibold">Request Rejected</p>
+                                            <p class="text-rose-800 font-semibold">Request Rejected</p>
                                         </div>
                                     @endif
 

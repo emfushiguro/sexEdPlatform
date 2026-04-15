@@ -18,9 +18,9 @@
         <div>
              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Plans Management</h1>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center justify-end gap-3">
             <a href="{{ route('admin.subscription-plans.archived') }}"
-               class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50">
+               class="inline-flex h-[46px] items-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-brand-100">
                 <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
                 </svg>
@@ -29,63 +29,63 @@
             </a>
             <button type="button"
                data-testid="open-create-plan-modal"
-                  @click="openCreatePlanModal()"
-               class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition-colors shadow-theme-xs hover:bg-brand-600">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               @click="openCreatePlanModal()"
+               class="inline-flex h-[46px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-800 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-300/40 transition hover:brightness-105 focus:outline-none focus:ring-4 focus:ring-brand-100">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
-                New Plan
+                Create New Plan
             </button>
         </div>
     </div>
 
     <div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
-            <div class="flex items-start justify-between gap-4">
+        <div class="rounded-[28px] border p-5 shadow-theme-xs border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100/70 min-h-[116px]">
+            <div class="flex items-center justify-between gap-4">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Total Plans</p>
-                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.total)"></p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">Total Plans</p>
+                    <p class="mt-2 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(stats.total)"></p>
                 </div>
-                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-lg shadow-brand-200">
+                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg from-brand-500 via-brand-700 to-brand-900 shadow-brand-200">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 7h10M7 12h10M7 17h6M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
                     </svg>
                 </span>
             </div>
         </div>
-        <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
-            <div class="flex items-start justify-between gap-4">
+        <div class="rounded-[28px] border p-5 shadow-theme-xs border-brand-100 bg-gradient-to-br from-white via-brand-50/70 to-brand-100/60 min-h-[116px]">
+            <div class="flex items-center justify-between gap-4">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Active Plans</p>
-                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.active)"></p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Active Plans</p>
+                    <p class="mt-2 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(stats.active)"></p>
                 </div>
-                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-200">
+                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg from-brand-400 via-brand-600 to-brand-800 shadow-brand-200">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                     </svg>
                 </span>
             </div>
         </div>
-        <div class="rounded-[28px] border border-rose-100 bg-gradient-to-br from-rose-50 via-white to-orange-50 p-5 shadow-theme-xs">
-            <div class="flex items-start justify-between gap-4">
+        <div class="rounded-[28px] border p-5 shadow-theme-xs border-brand-200 bg-gradient-to-br from-brand-100/60 via-white to-brand-50 min-h-[116px]">
+            <div class="flex items-center justify-between gap-4">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-rose-600">Inactive Plans</p>
-                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.inactive)"></p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-800">Inactive Plans</p>
+                    <p class="mt-2 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(stats.inactive)"></p>
                 </div>
-                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-200">
+                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg from-brand-600 via-brand-700 to-brand-900 shadow-brand-300">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.5 6h9m-9 6h9m-9 6h9M4.5 6h.008v.008H4.5V6Zm0 6h.008v.008H4.5V12Zm0 6h.008v.008H4.5V18Z"/>
                     </svg>
                 </span>
             </div>
         </div>
-        <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
-            <div class="flex items-start justify-between gap-4">
+        <div class="rounded-[28px] border p-5 shadow-theme-xs border-brand-300 bg-gradient-to-br from-brand-100 via-white to-brand-200/70 min-h-[116px]">
+            <div class="flex items-center justify-between gap-4">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Archived</p>
-                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.archived)"></p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-900">Archived</p>
+                    <p class="mt-2 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(stats.archived)"></p>
                 </div>
-                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200">
+                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg from-brand-700 via-brand-800 to-brand-900 shadow-brand-300">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
                     </svg>
@@ -112,11 +112,11 @@
         <!-- Modal Panel -->
         <div x-show="showCreatePlanModal"
              x-transition:enter="ease-out duration-300"
-             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:enter-start="opacity-0 trangray-y-4 sm:trangray-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 trangray-y-0 sm:scale-100"
              x-transition:leave="ease-in duration-200"
-             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:leave-start="opacity-100 trangray-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 trangray-y-4 sm:trangray-y-0 sm:scale-95"
                class="relative transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all w-full max-w-4xl max-h-[90vh] flex flex-col">
 
             {{-- Modal Header with Stepper --}}
@@ -178,7 +178,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan Name <span class="text-red-500">*</span></label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan Name <span class="text-rose-500">*</span></label>
                             <input type="text" name="name" x-model="form.name" required
                                    placeholder="e.g., Premium Learner Plan"
                                 class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all"/>
@@ -192,7 +192,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan For <span class="text-red-500">*</span></label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan For <span class="text-rose-500">*</span></label>
                             <select name="plan_audience" x-model="form.plan_audience" required
                                     class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all">
                                 <option value="">-- Select Target Audience --</option>
@@ -222,7 +222,7 @@
 
                             <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Billing Period <span class="text-red-500">*</span></label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Billing Period <span class="text-rose-500">*</span></label>
                                     <select x-model="form.billing.mode"
                                             class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand-500 focus:ring-brand-500/20">
                                         <option value="monthly">Monthly</option>
@@ -233,7 +233,7 @@
 
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div x-show="form.billing.mode === 'custom'" x-cloak>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Value <span class="text-red-500">*</span></label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Value <span class="text-rose-500">*</span></label>
                                         <input type="number"
                                                x-model.number="form.billing.duration_count"
                                                min="1"
@@ -241,7 +241,7 @@
                                                class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand-500 focus:ring-brand-500/20">
                                     </div>
                                     <div x-show="form.billing.mode === 'custom'" x-cloak>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Unit <span class="text-red-500">*</span></label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Unit <span class="text-rose-500">*</span></label>
                                         <select x-model="form.billing.duration_unit"
                                                 class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand-500 focus:ring-brand-500/20">
                                             <option value="minute">Minutes</option>
@@ -261,9 +261,9 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Price (PHP) <span class="text-red-500">*</span></label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Price (PHP) <span class="text-rose-500">*</span></label>
                                     <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₱</span>
+                                        <span class="absolute left-3 top-1/2 -trangray-y-1/2 text-gray-500 font-medium">₱</span>
                                         <input type="text"
                                                inputmode="decimal"
                                                x-model="form.billing.amount_decimal"
@@ -355,7 +355,7 @@
                     {{-- STEP 4: Review & Confirmation --}}
                     <div x-show="currentStep === 4" x-transition.opacity class="space-y-6 max-w-2xl mx-auto" x-cloak>
                         <div class="mb-4 text-center">
-                            <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <div class="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
                             <h3 class="text-xl font-bold text-gray-900">Final Confirmation</h3>
@@ -475,7 +475,7 @@
     </div>
 
     <section class="mb-8 overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
-        <div class="border-b border-gray-100 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(244,114,182,0.12),_transparent_28%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-6">
+        <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.17),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(59,12,177,0.14),_transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">
             <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                 <div>
                     <div data-testid="admin-table-filter-bar" class="hidden"></div>
@@ -526,7 +526,7 @@
             <div class="flex items-center gap-3">
                 <button type="button"
                         @click="resetFilters()"
-                        class="inline-flex items-center rounded-2xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
+                        class="inline-flex items-center rounded-2xl border border-brand-200 bg-brand-50/60 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70">
                     Reset Filters
                 </button>
                 <a href="{{ route('admin.subscription-plans.archived') }}"
@@ -541,7 +541,7 @@
 
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+                <thead class="bg-brand-50/45">
                     <tr>
                         <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No.</th>
                         <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Plan</th>
@@ -592,7 +592,7 @@
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     <a :href="plan.show_url"
-                                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50 text-brand-700 transition hover:bg-brand-100"
+                                       class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                                        title="View">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -602,7 +602,7 @@
                                     <button type="button"
                                             data-testid="open-edit-plan-modal"
                                             @click="openEditPlanModal(plan.id)"
-                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
+                                            class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                                             title="Edit">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -610,7 +610,7 @@
                                     </button>
                                     <button type="button"
                                             @click="openImpactModal(plan.id, plan.name, plan.is_active ? 'deactivate' : 'activate')"
-                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition"
+                                            class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                                             :class="plan.is_active ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'"
                                             :title="plan.is_active ? 'Deactivate' : 'Activate'">
                                         <template x-if="plan.is_active">
@@ -626,7 +626,7 @@
                                     </button>
                                     <button type="button"
                                             @click="openImpactModal(plan.id, plan.name, 'archive')"
-                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100"
+                                            class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                                             title="Archive">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -702,7 +702,7 @@
                             </td>
                             <td class="px-5 py-4">
                                 @if($plan->is_active)
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
                                         Active
                                     </span>
                                 @else
@@ -714,7 +714,7 @@
                             <td class="px-5 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     <a href="{{ route('admin.subscription-plans.show', $plan) }}"
-                                       class="p-1.5 text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors" title="View">
+                                       class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700" title="View">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -723,7 +723,7 @@
                                     <button type="button"
                                        data-testid="open-edit-plan-modal"
                                        @click="openEditPlanModal({{ $plan->id }})"
-                                       class="p-1.5 text-gray-400 hover:text-warning-500 dark:hover:text-warning-400 rounded-lg hover:bg-warning-50 dark:hover:bg-warning-500/10 transition-colors" title="Edit">
+                                       class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700" title="Edit">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
@@ -740,7 +740,7 @@
                                     </button>
                                     <button type="button"
                                             @click="openImpactModal({{ $plan->id }}, @js($plan->name), 'archive')"
-                                            class="p-1.5 text-gray-400 hover:text-error-500 dark:hover:text-error-400 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/10 transition-colors" title="Archive">
+                                            class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700" title="Archive">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                         </svg>
@@ -976,7 +976,7 @@
                 audienceClass(audience) {
                     return {
                         learner: 'bg-brand-100 text-brand-700',
-                        instructor: 'bg-teal-100 text-teal-700',
+                        instructor: 'bg-brand-100 text-brand-700',
                     }[audience] || 'bg-gray-100 text-gray-600';
                 },
 

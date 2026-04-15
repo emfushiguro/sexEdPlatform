@@ -112,4 +112,28 @@ class AdminParentChildVerificationUiTest extends TestCase
             ->assertSee('data-testid="verification-moderation-modal-shell"', false)
             ->assertSee('data-testid="verification-rejection-form-fields"', false);
     }
+
+    public function test_page_uses_unified_stats_and_standardized_pagination_controls(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($admin)->get(route('admin.parent-verifications.index'));
+
+        $response->assertOk()
+            ->assertSee('Verifications Table', false)
+            ->assertSee('Pending', false)
+            ->assertSee('Approved', false)
+            ->assertSee('Rejected', false)
+            ->assertDontSee('Pending Parents', false)
+            ->assertDontSee('Approved Parents', false)
+            ->assertDontSee('Rejected Parents', false)
+            ->assertDontSee('Pending Children', false)
+            ->assertDontSee('Approved Children', false)
+            ->assertDontSee('Rejected Children', false);
+    }
 }

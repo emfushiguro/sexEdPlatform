@@ -78,9 +78,9 @@
             @if(session($type))
                 @php
                     $cfg = [
-                        'success' => ['bg' => 'bg-success-50 border-success-200 text-success-700', 'icon' => 'M5 13l4 4L19 7'],
-                        'error' => ['bg' => 'bg-error-50 border-error-200 text-error-700', 'icon' => 'M6 18L18 6M6 6l12 12'],
-                        'warning' => ['bg' => 'bg-warning-50 border-warning-200 text-warning-700', 'icon' => 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'],
+                        'success' => ['bg' => 'bg-emerald-50 border-emerald-200 text-emerald-700', 'icon' => 'M5 13l4 4L19 7'],
+                        'error' => ['bg' => 'bg-rose-50 border-rose-200 text-rose-700', 'icon' => 'M6 18L18 6M6 6l12 12'],
+                        'warning' => ['bg' => 'bg-amber-50 border-amber-200 text-amber-700', 'icon' => 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'],
                     ];
                 @endphp
                 <div class="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm {{ $cfg[$type]['bg'] }}">

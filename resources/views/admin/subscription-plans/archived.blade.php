@@ -28,7 +28,7 @@
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-amber-50 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Archived Plans</p>
@@ -56,7 +56,7 @@
                     </span>
                 </div>
             </div>
-            <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-emerald-50 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Active Subscribers Impacted</p>

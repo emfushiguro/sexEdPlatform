@@ -66,13 +66,13 @@
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
-                <div class="flex items-start justify-between gap-4">
+            <div class="rounded-[28px] border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100/70 p-5 shadow-theme-xs min-h-[116px]">
+                <div class="flex items-center justify-between gap-4">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Subscribers</p>
-                        <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.total)"></p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">Subscribers</p>
+                        <p class="mt-2 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(stats.total)"></p>
                     </div>
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-lg shadow-brand-200">
+                    <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg from-brand-500 via-brand-700 to-brand-900 shadow-brand-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H4v-1a4 4 0 014-4h5m0 5v-1a4 4 0 00-4-4H8m5 5h1a4 4 0 004-4v-1m-5-5a3 3 0 11-6 0 3 3 0 016 0zm9 3a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
@@ -80,13 +80,13 @@
                 </div>
             </div>
 
-            <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
-                <div class="flex items-start justify-between gap-4">
+            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-white via-brand-50/70 to-brand-100/60 p-5 shadow-theme-xs min-h-[116px]">
+                <div class="flex items-center justify-between gap-4">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Active</p>
-                        <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.active)"></p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Active</p>
+                        <p class="mt-2 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(stats.active)"></p>
                     </div>
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-200">
+                    <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg from-brand-400 via-brand-600 to-brand-800 shadow-brand-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0Z" />
                         </svg>
@@ -94,13 +94,13 @@
                 </div>
             </div>
 
-            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
-                <div class="flex items-start justify-between gap-4">
+            <div class="rounded-[28px] border border-brand-200 bg-gradient-to-br from-brand-100/60 via-white to-brand-50 p-5 shadow-theme-xs min-h-[116px]">
+                <div class="flex items-center justify-between gap-4">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Revenue</p>
-                        <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatCurrency(stats.total_revenue)"></p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-800">Revenue</p>
+                        <p class="mt-2 text-4xl leading-none font-bold text-gray-900" x-text="formatCurrency(stats.total_revenue)"></p>
                     </div>
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-lg shadow-brand-200">
+                    <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg from-brand-600 via-brand-700 to-brand-900 shadow-brand-300">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6v12m3.5-9.5c0-1.381-1.567-2.5-3.5-2.5S8.5 7.119 8.5 8.5 10.067 11 12 11s3.5 1.119 3.5 2.5S13.933 16 12 16s-3.5-1.119-3.5-2.5" />
                         </svg>
@@ -108,13 +108,13 @@
                 </div>
             </div>
 
-            <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
-                <div class="flex items-start justify-between gap-4">
+            <div class="rounded-[28px] border border-brand-300 bg-gradient-to-br from-brand-100 via-white to-brand-200/70 p-5 shadow-theme-xs min-h-[116px]">
+                <div class="flex items-center justify-between gap-4">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">New This Month</p>
-                        <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.new_this_month)"></p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-900">New This Month</p>
+                        <p class="mt-2 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(stats.new_this_month)"></p>
                     </div>
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200">
+                    <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg from-brand-700 via-brand-800 to-brand-900 shadow-brand-300">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4v16m8-8H4" />
                         </svg>
@@ -124,7 +124,7 @@
         </div>
 
         <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
-            <div class="border-b border-gray-100 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(244,114,182,0.12),_transparent_28%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-6">
+            <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.17),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(59,12,177,0.14),_transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">
                 <div data-testid="admin-table-filter-bar" class="hidden"></div>
                 <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                     <div>
@@ -166,7 +166,7 @@
                         <div class="flex items-end">
                             <button type="button"
                                     @click="resetFilters()"
-                                    class="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
+                                    class="w-full rounded-2xl border border-brand-200 bg-brand-50/60 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70">
                                 Reset Filters
                             </button>
                         </div>
@@ -176,7 +176,7 @@
 
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-brand-50/45">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No.</th>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Subscriber</th>
@@ -217,7 +217,7 @@
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <a :href="subscription.details_url"
-                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50 text-brand-700 transition hover:bg-brand-100"
+                                           class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                                            title="View subscriber">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -227,7 +227,7 @@
 
                                         <button type="button"
                                                 @click="openActionModal('archive', subscription.id, subscription.subscriber)"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
+                                                class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                                                 title="Archive subscriber">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M6 8l1 10h10l1-10M9 8V6a1 1 0 011-1h4a1 1 0 011 1v2" />
@@ -236,7 +236,7 @@
 
                                         <button type="button"
                                                 @click="openActionModal('delete', subscription.id, subscription.subscriber)"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                                                class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                                                 title="Delete subscriber">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -398,7 +398,7 @@
                         expired: 'bg-gray-100 text-gray-600',
                         past_due: 'bg-amber-100 text-amber-700',
                         grace_period: 'bg-brand-100 text-brand-700',
-                        scheduled_cancel: 'bg-orange-100 text-orange-700',
+                        scheduled_cancel: 'bg-amber-100 text-amber-700',
                     }[status] || 'bg-gray-100 text-gray-600';
                 },
             };

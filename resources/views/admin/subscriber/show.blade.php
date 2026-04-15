@@ -14,7 +14,7 @@
         'cancelled' => 'bg-gray-100 text-gray-600',
         'expired' => 'bg-gray-100 text-gray-600',
         'grace_period' => 'bg-brand-100 text-brand-700',
-        'scheduled_cancel' => 'bg-orange-100 text-orange-700',
+        'scheduled_cancel' => 'bg-amber-100 text-amber-700',
     ];
     $user = $subscription->user;
     $profile = $user?->profile;
@@ -77,7 +77,7 @@
                 <p class="mt-3 text-xl font-bold text-gray-900">{{ $currentPlan?->name ?? $subscription->getPlanLabel() }}</p>
                 <p class="mt-2 text-sm text-gray-500">{{ $pricePoint?->duration_label ?? 'Standard billing cycle' }}</p>
             </div>
-            <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-emerald-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Access Window</p>
                 <p class="mt-3 text-xl font-bold text-gray-900">{{ $displayStartedAt?->format('M d, Y') ?? 'Not started' }}</p>
                 <p class="mt-2 text-sm text-gray-500">Ends {{ $displayExpiresAt?->format('M d, Y h:i A') ?? 'without expiry' }}</p>
@@ -87,7 +87,7 @@
                 <p class="mt-3 text-3xl font-bold text-gray-900">&#8369;{{ number_format((float) ($subscription->price_paid ?? 0), 2) }}</p>
                 <p class="mt-2 text-sm text-gray-500">{{ $subscription->auto_renew ? 'Auto renew enabled' : 'Auto renew disabled' }}</p>
             </div>
-            <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-amber-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Payment Records</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($subscription->payments->count()) }}</p>
                 <p class="mt-2 text-sm text-gray-500">Latest status: {{ $latestPayment ? \Illuminate\Support\Str::headline(is_object($latestPayment->status) ? $latestPayment->status->value : (string) $latestPayment->status) : 'No payments yet' }}</p>

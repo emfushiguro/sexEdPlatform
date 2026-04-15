@@ -121,6 +121,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(LearnerProfile::class);
     }
 
+    public function adminCreatorProfile()
+    {
+        return $this->hasOne(AdminCreatorProfile::class);
+    }
+
     public function subscription()
     {
         // Return active subscription first, then fall back to latest

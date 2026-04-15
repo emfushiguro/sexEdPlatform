@@ -303,7 +303,7 @@ class="space-y-5">
                 <div class="border-t border-gray-100 px-4 py-2.5 flex items-center gap-1 bg-gray-50/60">
                     <a href="{{ route('admin.modules.show', $module) }}"
                        title="View"
-                       class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                       class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -330,7 +330,7 @@ class="space-y-5">
                             <button type="submit"
                                     @if($isInstructorOwned) disabled @endif
                                     title="{{ $isInstructorOwned ? 'Instructor-owned content is read-only in the admin panel.' : 'Archive' }}"
-                                    class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 transition-colors {{ $isInstructorOwned ? 'cursor-not-allowed opacity-50' : 'hover:text-amber-700 hover:bg-amber-50' }}">
+                                    class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700'cursor-not-allowed opacity-50' : 'hover:text-amber-700 hover:bg-amber-50' }}">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7l1 12h12l1-12M9 7V4h6v3"/>
                                 </svg>
@@ -357,7 +357,7 @@ class="space-y-5">
                             <button type="submit"
                                     @if($isInstructorOwned) disabled @endif
                                     title="{{ $isInstructorOwned ? 'Instructor-owned content is read-only in the admin panel.' : 'Delete' }}"
-                                    class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 transition-colors {{ $isInstructorOwned ? 'cursor-not-allowed opacity-50' : 'hover:text-rose-700 hover:bg-rose-50' }}">
+                                    class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700'cursor-not-allowed opacity-50' : 'hover:text-rose-700 hover:bg-rose-50' }}">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                 </svg>

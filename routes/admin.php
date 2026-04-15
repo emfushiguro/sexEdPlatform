@@ -20,6 +20,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     // Admin profile context
     Route::get('/profile', [Admin\AdminProfileController::class, 'show'])->name('profile.show');
+    Route::get('/profile/edit', [Admin\AdminProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [Admin\AdminProfileController::class, 'update'])->name('profile.update');
 
     // Notifications
     Route::get('/notifications', [Admin\NotificationController::class, 'index'])->name('notifications.index');

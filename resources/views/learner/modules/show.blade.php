@@ -20,15 +20,17 @@
     $needsParentApproval = $needsParentApproval ?? false;
     $isParentApprovedForPurchase = $isParentApprovedForPurchase ?? false;
 
+    $ownershipDisplay = $ownershipDisplay ?? app(\App\Services\Content\AdminOwnershipDisplayService::class)->forModule($module);
     $creator = $module->creator;
-    $ownerType = in_array($module->content_owner_type, ['admin', 'instructor'], true)
-        ? $module->content_owner_type
-        : ((string) optional($creator)->role === 'admin' ? 'admin' : 'instructor');
+    $ownerType = (string) ($ownershipDisplay['owner_type'] ?? 'instructor');
     $instructorProfile = $creator?->instructorProfile;
     $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
-    $displayOwnerName = $ownerType === 'admin' ? 'Conscious Connections Team' : $instructorName;
+    $displayOwnerName = (string) ($ownershipDisplay['display_owner_name'] ?? ($creator?->full_name ?: $creator?->name ?: 'Instructor'));
+    $creatorProfile = $creator?->adminCreatorProfile;
     $instructorPhoto = $ownerType === 'admin'
-        ? asset('media/Logo.png')
+        ? ($creatorProfile?->avatar_path
+            ? asset('storage/' . ltrim((string) $creatorProfile->avatar_path, '/'))
+            : asset('media/Logo.png'))
         : ($instructorProfile?->profile_photo_path
             ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
             : null);
@@ -193,6 +195,9 @@
                         <div>
                             <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Created by</p>
                             <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ $displayOwnerName }}</p>
+                            @if(!empty($ownershipDisplay['individual_attribution_text']))
+                                <p class="text-xs text-purple-600 dark:text-purple-300 mt-0.5">{{ $ownershipDisplay['individual_attribution_text'] }}</p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -619,7 +624,11 @@
                 @endif
             </div>
 
-            @include('learner.modules.partials.instructor-info-card')
+            @if($ownerType === 'admin')
+                @include('learner.modules.partials.admin-creator-info-card')
+            @else
+                @include('learner.modules.partials.instructor-info-card')
+            @endif
 
             @include('learner.modules.partials.module-info-card')
 

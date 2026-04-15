@@ -18,6 +18,7 @@ use App\Models\UserProgress;
 use App\Notifications\Learner\ModulePurchaseResultNotification;
 use App\Services\ModulePurchaseService;
 use App\Services\LearnerModuleCompletionService;
+use App\Services\Content\AdminOwnershipDisplayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,6 +27,7 @@ class ModuleController extends Controller
     public function __construct(
         private readonly ModulePurchaseService $modulePurchaseService,
         private readonly LearnerModuleCompletionService $completionService,
+        private readonly AdminOwnershipDisplayService $ownershipDisplayService,
     ) {
     }
 
@@ -65,6 +67,7 @@ class ModuleController extends Controller
             ])
             ->with([
                 'creator.instructorProfile',
+                'creator.adminCreatorProfile',
                 'purchases' => fn ($query) => $query
                     ->where('user_id', $user->id)
                     ->where('status', ModulePurchase::STATUS_COMPLETED),
@@ -105,7 +108,14 @@ class ModuleController extends Controller
             ];
         }
 
-        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'enrollments', 'progress'));
+        $ownershipDisplays = [];
+        foreach ($modules as $module) {
+            if ($module instanceof Module) {
+                $ownershipDisplays[$module->id] = $this->ownershipDisplayService->forModule($module);
+            }
+        }
+
+        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'enrollments', 'progress', 'ownershipDisplays'));
     }
 
     /**
@@ -134,8 +144,9 @@ class ModuleController extends Controller
 
         $module->loadMissing('publishedRevision');
         $module->applyPublishedSnapshot();
-        $module->loadMissing('creator.instructorProfile');
+        $module->loadMissing('creator.instructorProfile', 'creator.adminCreatorProfile');
         $creator = $module->creator;
+        $ownershipDisplay = $this->ownershipDisplayService->forModule($module);
 
         // Security: Check age-based access for non-enrolled learners.
         $learnerAge = $learnerProfile->getAge();
@@ -362,7 +373,8 @@ class ModuleController extends Controller
             'reviewEligibility',
             'userFeedback',
             'activeModuleReport',
-            'activeInstructorReport'
+            'activeInstructorReport',
+            'ownershipDisplay'
         ));
     }
 

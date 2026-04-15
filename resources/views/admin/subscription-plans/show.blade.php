@@ -57,7 +57,7 @@
                 <form method="POST" action="{{ route('admin.subscription-plans.archive', $subscriptionPlan) }}" class="inline">
                     @csrf
                     <button type="submit"
-                            class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100"
+                            class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                             title="Archive plan">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
@@ -73,7 +73,7 @@
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($stats['price_points']) }}</p>
                 <p class="mt-2 text-sm text-gray-500">Billing options configured for this plan.</p>
             </div>
-            <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-emerald-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Active Subscribers</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($stats['active_subscribers']) }}</p>
                 <p class="mt-2 text-sm text-gray-500">Subscribers currently receiving access through this plan.</p>
@@ -83,7 +83,7 @@
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($stats['enabled_entitlements']) }}</p>
                 <p class="mt-2 text-sm text-gray-500">Features and quotas currently granted by this plan.</p>
             </div>
-            <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-amber-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Recurring Revenue</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">&#8369;{{ number_format($stats['monthly_revenue'], 2) }}</p>
                 <p class="mt-2 text-sm text-gray-500">Value currently attached to active subscribers.</p>

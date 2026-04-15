@@ -2,7 +2,7 @@
     $roleMap = [
         'learner' => 'bg-brand-50 text-brand-700',
         'instructor' => 'bg-brand-50 text-brand-700',
-        'admin' => 'bg-error-50 text-error-700',
+        'admin' => 'bg-rose-50 text-rose-700',
     ];
 
     $statusMap = [
@@ -41,10 +41,10 @@
         <td class="px-6 py-4 text-sm text-gray-600">{{ optional($user->created_at)->format('M d, Y') }}</td>
         <td class="px-6 py-4">
             <div class="flex items-center justify-end gap-2">
-                <a href="{{ route('admin.users.show', $user) }}" title="View" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-brand-200 bg-brand-50 text-brand-700 transition hover:bg-brand-100">
+                <a href="{{ route('admin.users.show', $user) }}" title="View" class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                 </a>
-                <a href="{{ route('admin.users.edit', $user) }}" title="Edit" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100">
+                <a href="{{ route('admin.users.edit', $user) }}" title="Edit" class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                 </a>
                 @if($user->id !== auth()->id())
@@ -52,7 +52,7 @@
                         type="button"
                         title="Delete"
                         @click="openDeleteModal(@js($user->name), @js(route('admin.users.destroy', $user)))"
-                        class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                        class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                     >
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>

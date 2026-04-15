@@ -7,7 +7,7 @@ Core roles:
 - Admin: platform governance and moderation
 - Instructor: content creation and learner guidance
 - Learner: module and assessment completion
-- Parent: guardian monitoring and enrollment approvals
+- Parent: module and assessment completion + guardian monitoring and enrollment approvals
 
 ## Project Constitution
 1. Learner safety and age appropriateness come first.
@@ -29,18 +29,18 @@ Core roles:
 - Keep existing Blade component patterns and UI language.
 - Run relevant tests and report actual output before handoff.
 
-## Current Snapshot (As of 2026-04-11)
-- Phase: Beta hardening with permission-first RBAC completed and learner safety/reporting UX rollout in progress
+## Current Snapshot (As of 2026-04-16)
+- Phase: Beta hardening with RBAC stabilization complete and ownership/transparency + admin UX standardization rollout active
 - Branch: main
-- Latest observed commit: 419316a (Instructor fixes, module revenue fixes, and admin table refinement)
+- Latest observed commit: b2b8b43 (dynamic gamification design + implementation plan docs)
 - Current focus:
-  - learner feedback, safety reporting, and quiz UX rollout
-  - global pop-up chat UX integration and reliability hardening
-  - subscription lifecycle stabilization and checkout parity
-  - notification refinement and cross-role unread badge consistency
-  - post-RBAC permission/policy regression protection
-- Latest changelog file in repo: docs/changelogs/2026-04-10-complete-rbac-system.md
-- Planning anchor: docs/plans/2026-04-11-learner-feedback-reporting-quiz-ux-implementation-plan.md
+  - admin creator profile transparency and learner ownership attribution UX
+  - admin management table standardization and module revenue detail flows
+  - learner module overview/review/reporting UX hardening and instructor background parity
+  - dynamic gamification configuration architecture and implementation planning
+  - global pop-up chat reliability and subscription/notification stabilization follow-through
+- Latest changelog file in repo: docs/changelogs/2026-04-16-admin-creator-profile-transparency.md
+- Planning anchor: docs/plans/2026-04-16-dynamic-gamification-configuration-implementation-plan.md
 
 ## Project Stack
 | Layer | Technology |
@@ -70,6 +70,11 @@ Core roles:
 - Super-admin gate behavior, policy coverage, and shared content authorization services integrated
 - Route/controller/blade migration from role-string checks to permission/policy checks completed
 
+### Content ownership boundaries and transparency
+- Central ownership guard now enforces admin read-only behavior for instructor-owned module/lesson/topic/quiz mutation flows
+- Admin module cards and learner module surfaces now render normalized ownership/publisher identity
+- Admin creator profile domain added (profile persistence, policy, admin edit/update flow, learner-facing creator page)
+
 ### Authentication and user management
 - Role-specific login flows, email verification, password reset
 - Parent-child account linking and monitoring views
@@ -87,7 +92,8 @@ Core roles:
 - Lesson/topic progression tracking
 - Quiz attempt limits and timer fallback enforcement
 - Certificate flow and learner notifications
-- Learner feedback/reporting and quiz progression UX improvements are in active rollout
+- Learner module overview/reviews/reporting UX refresh delivered (right-rail hierarchy, review/report modals, quiz markers, heart rating visuals)
+- Instructor background page expanded with structured professional profile sections and normalized datasets
 
 ### Subscription and payments
 - Plan management, upgrade/renew/cancel/refund requests
@@ -106,10 +112,13 @@ Core roles:
 - Role-permission management aligned to Spatie authorization boundaries
 - Content governance review queue and decision workflow
 - Instructor application moderation workflow
+- Payment-style table/palette standardization applied across major admin management surfaces
+- Module revenue flow expanded with transaction details and instructor roll-up pages; payout transition UI removed from dashboard
 - Calendar/seminars/organizations/messages/email areas remain stub-first
 
 ## Not Yet Built (Major)
 - Gamification achievement/badge UI and reward history UX
+- Dynamic gamification policy management implementation (active design and plan complete; execution pending)
 - Seminar module end-to-end implementation
 - Organization management implementation
 - Health centers, counselors, consultations product surfaces
@@ -122,29 +131,24 @@ Core roles:
 - PLATFORM_FEATURES_OVERVIEW.md
 - ADMIN_DEVELOPMENT_GUIDE.md
 - QUICK_TESTING_GUIDE.md
+- docs/changelogs/2026-04-16-admin-creator-profile-transparency.md
+- docs/changelogs/2026-04-14-admin-management-table-standardization.md
+- docs/changelogs/2026-04-14-admin-learning-content-ownership-ui-filtering.md
+- docs/changelogs/2026-04-14-learner-module-overview-review-report-instructor-background.md
 - docs/changelogs/2026-04-10-complete-rbac-system.md
-- docs/changelogs/2026-04-05-learner-payment-checkout-refinement.md
-- docs/changelogs/2026-03-30-admin-module-review-system.md
-- docs/changelogs/2026-03-30-admin-ui-ux-alignment.md
+- docs/plans/2026-04-16-dynamic-gamification-configuration-implementation-plan.md
+- docs/plans/2026-04-16-dynamic-gamification-configuration-design.md
+- docs/plans/2026-04-16-admin-creator-profile-transparency-implementation-plan.md
+- docs/plans/2026-04-16-admin-creator-profile-transparency-design.md
 - docs/plans/2026-04-11-learner-feedback-reporting-quiz-ux-implementation-plan.md
-- docs/plans/2026-04-10-complete-rbac-system-implementation-plan.md
-- docs/plans/2026-04-04-global-popup-chat-system-design.md
-- docs/plans/2026-04-04-global-popup-chat-system.md
-- docs/plans/2026-04-05-learner-payment-checkout-refinement-design.md
-- docs/plans/2026-04-05-learner-payment-checkout-refinement-implementation-plan.md
-- docs/plans/2026-04-06-notification-system-refinement-implementation-plan.md
 - docs/plans/2026-04-06-subscription-lifecycle-stabilization-implementation-plan.md
-- docs/plans/2026-04-06-admin-user-management-system-implementation-plan.md
-- docs/plans/2026-04-02-real-time-chat-system-design.md
-- docs/plans/2026-04-02-real-time-chat-system-implementation-plan.md
-- docs/plans/2026-03-31-learner-module-monetization-implementation-plan.md
 
 ## Execution Priorities
-1. docs/plans/2026-04-11-learner-feedback-reporting-quiz-ux-implementation-plan.md
-2. docs/plans/2026-04-06-subscription-lifecycle-stabilization-implementation-plan.md
-3. docs/plans/2026-04-04-global-popup-chat-system.md
-4. docs/plans/2026-04-06-notification-system-refinement-implementation-plan.md
-5. docs/plans/2026-04-05-learner-payment-checkout-refinement-implementation-plan.md
+1. docs/plans/2026-04-16-dynamic-gamification-configuration-implementation-plan.md
+2. docs/plans/2026-04-16-admin-creator-profile-transparency-implementation-plan.md
+3. docs/plans/2026-04-11-learner-feedback-reporting-quiz-ux-implementation-plan.md
+4. docs/plans/2026-04-06-subscription-lifecycle-stabilization-implementation-plan.md
+5. docs/plans/2026-04-04-global-popup-chat-system.md
 
 ## Active Implementation Map
 - Routes: routes/admin.php, routes/instructor.php, routes/web.php, routes/channels.php
@@ -152,46 +156,48 @@ Core roles:
 - RBAC seeders: database/seeders/PermissionSeeder.php, database/seeders/RoleSeeder.php, database/seeders/RolePermissionSeeder.php
 - Governance service: app/Services/ContentGovernanceService.php
 - Subscription service: app/Services/SubscriptionService.php
-- Role and content authorization services:
-  - app/Services/Admin/RoleSyncService.php
-  - app/Services/Content/ContentAuthoringService.php
-  - app/Services/Content/ContentAccessService.php
-- Chat services:
-  - app/Services/Chat/ChatService.php
-  - app/Services/Chat/ChatAuthorizationService.php
-  - app/Services/Chat/ChatContextResolver.php
+- Role and content authorization services: app/Services/Admin/RoleSyncService.php, app/Services/Content/ContentAuthoringService.php, app/Services/Content/ContentAccessService.php, app/Services/Content/ContentOwnershipGuard.php
+- Admin creator profile and ownership transparency:
+  - app/Services/Admin/AdminCreatorProfileService.php
+  - app/Services/Content/AdminOwnershipDisplayService.php
+  - app/Http/Controllers/Learner/AdminCreatorProfileController.php
+  - app/Models/AdminCreatorProfile.php
+- Chat services: app/Services/Chat/ChatService.php, app/Services/Chat/ChatAuthorizationService.php, app/Services/Chat/ChatContextResolver.php
 - Learner feedback/reporting services:
   - app/Services/ModuleFeedbackService.php
   - app/Services/ContentReportService.php
 - Gamification service: app/Services/GamificationService.php
 - Admin moderation controller: app/Http/Controllers/Admin/InstructorApplicationController.php
-- Admin learner report controller: app/Http/Controllers/Admin/LearnerReportController.php
+- Admin monetization controller: app/Http/Controllers/Admin/ModuleRevenueController.php
 - Learner quiz controller: app/Http/Controllers/Learner/QuizController.php
 - Learner feedback controller: app/Http/Controllers/Learner/ModuleFeedbackController.php
 - Popup chat partial: resources/views/chat/partials/global-popup.blade.php
 
-## Workspace Progress (As of 2026-04-11)
+## Workspace Progress (As of 2026-04-16)
 - Branch: main
-- Latest observed commit: 419316a
-- Latest changelog file in repo: docs/changelogs/2026-04-10-complete-rbac-system.md
+- Latest observed commit: b2b8b43
+- Latest changelog file in repo: docs/changelogs/2026-04-16-admin-creator-profile-transparency.md
 - Latest planning wave:
-  - 2026-04-11 learner feedback, reporting, and quiz UX
-  - 2026-04-10 complete RBAC system
-  - 2026-04-06 subscription lifecycle and notification refinement
-  - 2026-04-04 global pop-up chat
-  - 2026-04-05 learner payment checkout refinement
-- Active WIP areas include learner feedback/reporting migrations/controllers/views, quiz UX progression updates, popup chat reliability hardening, subscription/notification stabilization, and cross-role chat/reporting test coverage.
+  - 2026-04-16 dynamic gamification configuration
+  - 2026-04-16 admin creator profile transparency
+  - 2026-04-14 admin management table standardization
+  - 2026-04-14 admin learning content ownership and filtering
+  - 2026-04-14 learner module overview/review/reporting and instructor background
+- Active WIP areas include admin creator profile flows and learner ownership transparency UI, admin table/palette parity cleanup, module revenue detail pages, dynamic gamification implementation prep, and ongoing chat/subscription stabilization follow-through.
 
 ## Current Reality Checks
 - RBAC migration is now permission-first with broad policy/route/blade coverage and compatibility-safe legacy role sync.
+- Admin creator profile transparency domain is implemented and integrated into learner module ownership displays.
+- Admin management pages are actively being standardized to the Payment baseline design language.
 - Admin moderation and governance are active.
 - Several admin areas still ship as stubs.
 - Chat foundation is live; popup UX is still under implementation.
-- Learner feedback/reporting and moderation workflow are in active implementation.
+- Learner feedback/reporting flow is implemented with ongoing moderation/UX hardening in progress.
 - Interactive activities remain documented but not fully implemented.
 - Subscription/payment systems are implemented; current work is mostly checkout refinement + lifecycle stabilization layered on top of existing billing.
 - Paid module entitlement hard-gating is currently relaxed during rollout.
 - Preserve learner quiz timer fallback behavior while extending quiz UX contracts.
+- Dynamic gamification policy architecture is planned; implementation is not yet complete.
 - Treat routes/admin.php and routes/instructor.php as canonical for new role-route additions.
 
 ## Skills Workflow

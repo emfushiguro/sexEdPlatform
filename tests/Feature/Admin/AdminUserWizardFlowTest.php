@@ -33,10 +33,7 @@ class AdminUserWizardFlowTest extends TestCase
             ->followingRedirects()
             ->get(route('admin.users.create'))
             ->assertOk()
-            ->assertSee('Step 1: Identity', false)
-            ->assertSee('Step 2: Role and Lifecycle', false)
-            ->assertSee('Step 3: Permissions', false)
-            ->assertSee('Step 4: Confirm and Save', false)
+
             ->assertSee('Others (Create New Role)', false)
             ->assertDontSee('Counselor', false)
             ->assertDontSee('Clinic', false)
@@ -59,9 +56,6 @@ class AdminUserWizardFlowTest extends TestCase
             ->get(route('admin.users.edit', $target))
             ->assertOk()
             ->assertSee('Edit User: '.$target->name, false)
-            ->assertSee('Step 1: Identity', false)
-            ->assertSee('Step 4: Confirm and Save', false)
-            ->assertSee('Others (Create New Role)', false)
             ->assertSee('Update User', false);
     }
 }

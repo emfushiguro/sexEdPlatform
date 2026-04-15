@@ -59,14 +59,15 @@
                     $isDeactivated = !$module->is_published;
                     $statusValue = $enrollment?->status?->value;
                     $creator = $module->creator;
-                    $ownerType = in_array($module->content_owner_type, ['admin', 'instructor'], true)
-                        ? $module->content_owner_type
-                        : ((string) optional($creator)->role === 'admin' ? 'admin' : 'instructor');
+                    $ownershipDisplay = $ownershipDisplays[$module->id] ?? app(\App\Services\Content\AdminOwnershipDisplayService::class)->forModule($module);
+                    $ownerType = (string) ($ownershipDisplay['owner_type'] ?? 'instructor');
                     $instructorProfile = $creator?->instructorProfile;
-                    $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
-                    $displayOwnerName = $ownerType === 'admin' ? 'Conscious Connections Team' : $instructorName;
+                    $creatorProfile = $creator?->adminCreatorProfile;
+                    $displayOwnerName = (string) ($ownershipDisplay['display_owner_name'] ?? ($creator?->full_name ?: $creator?->name ?: 'Instructor'));
                     $ownerPhoto = $ownerType === 'admin'
-                        ? asset('media/Logo.png')
+                        ? ($creatorProfile?->avatar_path
+                            ? asset('storage/' . ltrim((string) $creatorProfile->avatar_path, '/'))
+                            : asset('media/Logo.png'))
                         : ($instructorProfile?->profile_photo_path
                             ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
                             : null);
@@ -129,6 +130,9 @@
                             @endif
                             <p class="text-xs text-gray-600 dark:text-gray-300 truncate">Created by: {{ $displayOwnerName }}</p>
                         </div>
+                        @if(!empty($ownershipDisplay['individual_attribution_text']))
+                            <p class="text-xs text-purple-600 dark:text-purple-300 -mt-2">{{ $ownershipDisplay['individual_attribution_text'] }}</p>
+                        @endif
 
                         <div>
                             <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
@@ -173,7 +177,10 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @foreach($browseModules as $module)
                 <div x-show="!query.trim() || '{{ addslashes(strtolower($module->title)) }}'.includes(query.toLowerCase().trim())">
-                    <x-learner.module-card-recommended :module="$module" />
+                    <x-learner.module-card-recommended
+                        :module="$module"
+                        :ownership-display="($ownershipDisplays[$module->id] ?? null)"
+                    />
                 </div>
             @endforeach
         </div>

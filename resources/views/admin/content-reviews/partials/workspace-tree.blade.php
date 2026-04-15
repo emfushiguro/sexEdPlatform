@@ -79,11 +79,11 @@
         questionTypeClasses(value) {
             const map = {
                 multiple_choice: 'bg-brand-50 text-brand-700 border-brand-100',
-                true_false: 'bg-green-50 text-green-700 border-green-100',
+                true_false: 'bg-emerald-50 text-emerald-700 border-emerald-100',
                 multiple_select: 'bg-brand-50 text-brand-700 border-brand-100',
-                fill_blank_text: 'bg-yellow-50 text-yellow-700 border-yellow-100',
-                fill_blank_select: 'bg-orange-50 text-orange-700 border-orange-100',
-                identification: 'bg-pink-50 text-pink-700 border-pink-100',
+                fill_blank_text: 'bg-amber-50 text-amber-700 border-amber-100',
+                fill_blank_select: 'bg-amber-50 text-amber-700 border-amber-100',
+                identification: 'bg-rose-50 text-rose-700 border-rose-100',
             };
 
             return map[value] || 'bg-gray-100 text-gray-600 border-gray-200';
@@ -401,7 +401,7 @@
                                                 <span class="inline-flex rounded-lg border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-600"
                                                     x-text="String(question?.attributes?.points || 0) + ' ' + ((Number(question?.attributes?.points || 0) === 1) ? 'pt' : 'pts')"></span>
                                                 <span x-show="Boolean(question?.attributes?.case_sensitive)"
-                                                    class="inline-flex rounded-lg border border-red-100 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
+                                                    class="inline-flex rounded-lg border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-600">
                                                     Case Sensitive
                                                 </span>
                                             </div>
@@ -411,9 +411,9 @@
                                                     <template x-for="(option, optionIndex) in question.options" :key="'quiz-option-' + questionIndex + '-' + optionIndex">
                                                         <div class="flex items-center gap-2 text-xs">
                                                             <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full"
-                                                                :class="Boolean(option?.is_correct) ? 'bg-green-100' : 'bg-gray-100'">
+                                                                :class="Boolean(option?.is_correct) ? 'bg-emerald-100' : 'bg-gray-100'">
                                                                 <template x-if="Boolean(option?.is_correct)">
-                                                                    <svg class="h-2.5 w-2.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <svg class="h-2.5 w-2.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                                                                     </svg>
                                                                 </template>
@@ -422,7 +422,7 @@
                                                                 </template>
                                                             </span>
 
-                                                            <span :class="Boolean(option?.is_correct) ? 'font-semibold text-green-700' : 'text-gray-600'"
+                                                            <span :class="Boolean(option?.is_correct) ? 'font-semibold text-emerald-700' : 'text-gray-600'"
                                                                 x-text="optionLabel(optionIndex) + '. ' + (option?.option_text || 'Option')"></span>
                                                         </div>
                                                     </template>

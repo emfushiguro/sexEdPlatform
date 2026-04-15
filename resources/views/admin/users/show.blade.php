@@ -15,15 +15,15 @@
 	$roleMap = [
 		'learner' => 'bg-brand-50 text-brand-700',
 		'instructor' => 'bg-brand-50 text-brand-700',
-		'counselor' => 'bg-success-50 text-success-700',
-		'clinic' => 'bg-teal-50 text-teal-700',
+		'counselor' => 'bg-emerald-50 text-emerald-700',
+		'clinic' => 'bg-brand-50 text-brand-700',
 		'organization' => 'bg-brand-50 text-brand-700',
-		'admin' => 'bg-error-50 text-error-700',
+		'admin' => 'bg-rose-50 text-rose-700',
 	];
 	$statusMap = [
-		'active' => 'bg-success-50 text-success-700',
+		'active' => 'bg-emerald-50 text-emerald-700',
 		'inactive' => 'bg-gray-100 text-gray-600',
-		'suspended' => 'bg-error-50 text-error-700',
+		'suspended' => 'bg-rose-50 text-rose-700',
 		'archived' => 'bg-amber-50 text-amber-700',
 	];
 @endphp
@@ -50,7 +50,7 @@
 						<div class="flex items-center flex-wrap gap-2 mt-2">
 							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $roleMap[$user->role] ?? 'bg-gray-100 text-gray-600' }}">{{ ucfirst($user->role) }}</span>
 							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusMap[$user->status] ?? 'bg-gray-100 text-gray-600' }}">{{ ucfirst($user->status) }}</span>
-							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">{{ ucfirst(str_replace('-', ' ', (string) ($user->account_type ?: $user->deriveAccountType()))) }}</span>
+							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{{ ucfirst(str_replace('-', ' ', (string) ($user->account_type ?: $user->deriveAccountType()))) }}</span>
 						</div>
 					</div>
 				</div>

@@ -26,9 +26,9 @@
                 @method('PUT')
 
                 @if($errors->any())
-                    <div class="mb-5 rounded-xl border border-error-200 bg-error-50 p-4">
-                        <p class="mb-1 text-sm font-medium text-error-700">Please fix the following errors:</p>
-                        <ul class="list-inside list-disc space-y-1 text-sm text-error-600">
+                    <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                        <p class="mb-1 text-sm font-medium text-rose-700">Please fix the following errors:</p>
+                        <ul class="list-inside list-disc space-y-1 text-sm text-rose-600">
                             @foreach($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
@@ -38,16 +38,16 @@
 
                 {{-- Name --}}
                 <div class="mb-5">
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700">Plan Name <span class="text-error-500">*</span></label>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700">Plan Name <span class="text-rose-500">*</span></label>
                     <input
                         type="text"
                         name="name"
                         value="{{ old('name', $subscriptionPlan->name) }}"
                         required
-                        class="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('name') border-error-400 @enderror"
+                        class="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('name') border-rose-400 @enderror"
                     />
                     @error('name')
-                        <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+                        <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
                     @enderror
                 </div>
 
@@ -64,7 +64,7 @@
                 {{-- Price & Trial --}}
                 <div class="mb-5 grid grid-cols-2 gap-4">
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Price (₱/month) <span class="text-error-500">*</span></label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700">Price (₱/month) <span class="text-rose-500">*</span></label>
                         <input
                             type="number"
                             name="price"
@@ -72,10 +72,10 @@
                             min="0"
                             step="0.01"
                             required
-                            class="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('price') border-error-400 @enderror"
+                            class="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('price') border-rose-400 @enderror"
                         />
                         @error('price')
-                            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+                            <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
@@ -137,7 +137,7 @@
                                 <button
                                     type="button"
                                     @click="removeRow($el.closest('div'))"
-                                    class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-error-50 hover:text-error-500"
+                                    class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
                                 >
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -204,7 +204,7 @@ function planForm() {
                 <input type="text" name="feature_keys[]" placeholder="e.g. Unlimited quizzes"
                     class="flex-1 rounded-xl border border-gray-200 bg-transparent px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
                 <button type="button" onclick="this.closest('div').remove()"
-                    class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500">
+                    class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-500">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
