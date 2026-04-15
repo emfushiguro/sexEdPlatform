@@ -14,7 +14,7 @@
  <div class="xl:col-span-2 space-y-5">
  <div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-6">
  <div class="flex items-start gap-4 mb-6">
- <div class="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 text-2xl font-bold flex-shrink-0">D</div>
+ <div class="w-16 h-16 rounded-2xl bg-brand-100 flex items-center justify-center text-brand-600 text-2xl font-bold flex-shrink-0">D</div>
  <div class="flex-1">
  <h2 class="text-xl font-bold text-gray-900 mb-1">De La Salle University - Manila</h2>
  <div class="flex items-center gap-2">

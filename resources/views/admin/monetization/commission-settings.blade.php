@@ -30,7 +30,7 @@
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900">Commission Settings</h2>
                 </div>
-                <button type="button" @click="openCreate()" class="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">
+                <button type="button" @click="openCreate()" class="inline-flex items-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
                     New Commission Policy
                 </button>
             </div>
@@ -119,9 +119,9 @@
                         <button type="button" @click="closeWizard()" class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">&times;</button>
                     </div>
                     <div class="mt-3 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        <span :class="step >= 1 ? 'text-indigo-600' : ''">1. Scope</span>
-                        <span :class="step >= 2 ? 'text-indigo-600' : ''">2. Commission Rules</span>
-                        <span :class="step >= 3 ? 'text-indigo-600' : ''">3. Effective Window</span>
+                        <span :class="step >= 1 ? 'text-brand-600' : ''">1. Scope</span>
+                        <span :class="step >= 2 ? 'text-brand-600' : ''">2. Commission Rules</span>
+                        <span :class="step >= 3 ? 'text-brand-600' : ''">3. Effective Window</span>
                     </div>
                 </div>
 
@@ -199,8 +199,8 @@
 
                         <div class="flex items-center gap-2">
                             <button type="button" @click="closeWizard()" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
-                            <button type="button" x-show="step < 3" @click="nextStep()" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Continue</button>
-                            <button type="submit" x-show="step === 3" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700" x-text="mode === 'edit' ? 'Update Policy' : 'Save Policy'"></button>
+                            <button type="button" x-show="step < 3" @click="nextStep()" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Continue</button>
+                            <button type="submit" x-show="step === 3" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" x-text="mode === 'edit' ? 'Update Policy' : 'Save Policy'"></button>
                         </div>
                     </div>
                 </form>

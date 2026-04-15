@@ -6,7 +6,7 @@
         
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 bg-gray-50/50 shrink-0">
             <div class="flex items-center gap-3">
-                <span class="inline-flex items-center justify-center rounded-lg bg-violet-100 p-2 text-violet-700">
+                <span class="inline-flex items-center justify-center rounded-lg bg-brand-100 p-2 text-brand-700">
                     <svg x-show="previewNodeType === 'quiz'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -23,7 +23,7 @@
                     </div>
                     <h3 class="text-xl font-bold text-gray-900 mt-1" x-text="previewNodeType === 'quiz' ? (previewQuiz ? previewQuiz.title : 'Quiz Preview') : (previewTopic ? previewTopic.title : 'Topic Preview')"></h3>
                     <div class="flex items-center gap-2 mt-1">
-                        <span class="inline-flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+                        <span class="inline-flex items-center gap-1 rounded bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700">
                             <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                             Module Quiz
                         </span>
@@ -84,7 +84,7 @@
                     </template>
 
                     <template x-if="previewTopic.file_url">
-                        <a class="inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 hover:bg-sky-100 transition-colors" :href="previewTopic.file_url" target="_blank" rel="noopener">
+                        <a class="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-100 transition-colors" :href="previewTopic.file_url" target="_blank" rel="noopener">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
@@ -124,7 +124,7 @@
 
                     <div class="rounded-xl border border-gray-100 bg-white shadow-sm p-6 relative">
                         <div class="flex items-center justify-between mb-8">
-                            <div class="border-l-[3px] border-violet-600 pl-3">
+                            <div class="border-l-[3px] border-brand-600 pl-3">
                                 <h4 class="text-lg font-bold text-gray-900">Questions</h4>
                                 <p class="text-xs text-gray-500 mt-0.5"><span x-text="Array.isArray(previewQuiz.questions) ? previewQuiz.questions.length : 0"></span> questions total</p>
                             </div>
@@ -142,7 +142,7 @@
                                                 <p class="text-[15px] font-bold text-gray-900 leading-relaxed" x-text="question?.attributes?.question_text || 'Untitled question'"></p>
                                                 
                                                 <div class="mt-2.5 flex items-center gap-2">
-                                                    <span class="rounded-[4px] bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-100" x-text="formatLabel(question?.attributes?.question_type)"></span>
+                                                    <span class="rounded-[4px] bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 border border-brand-100" x-text="formatLabel(question?.attributes?.question_type)"></span>
                                                     <span class="rounded-[4px] bg-gray-50 px-2 py-0.5 text-[11px] font-semibold text-gray-600 border border-gray-200" x-text="(question?.attributes?.points || 1) + ' pt' + ((question?.attributes?.points || 1) > 1 ? 's' : '')"></span>
                                                 </div>
                                             </div>

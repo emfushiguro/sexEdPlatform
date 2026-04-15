@@ -10,7 +10,7 @@
 
 {{-- Stats --}}
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
- @foreach([['label'=>'Total Seminars','value'=>'24','bg'=>'bg-brand-50 ','color'=>'text-brand-600 '],['label'=>'Upcoming','value'=>'8','bg'=>'bg-warning-50 ','color'=>'text-warning-600 '],['label'=>'Completed','value'=>'14','bg'=>'bg-success-50 ','color'=>'text-success-600 '],['label'=>'Registrations','value'=>'342','bg'=>'bg-purple-50 ','color'=>'text-purple-600 ']] as $c)
+ @foreach([['label'=>'Total Seminars','value'=>'24','bg'=>'bg-brand-50 ','color'=>'text-brand-600 '],['label'=>'Upcoming','value'=>'8','bg'=>'bg-warning-50 ','color'=>'text-warning-600 '],['label'=>'Completed','value'=>'14','bg'=>'bg-success-50 ','color'=>'text-success-600 '],['label'=>'Registrations','value'=>'342','bg'=>'bg-brand-50 ','color'=>'text-brand-600 ']] as $c)
  <div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-5">
  <div class="w-10 h-10 rounded-xl {{ $c['bg'] }} flex items-center justify-center mb-3">
  <span class="text-lg font-bold {{ $c['color'] }}">{{ $c['value'] }}</span>
@@ -61,7 +61,7 @@
  ['title'=>'Teen Consent & Boundaries Workshop','date'=>'Jul 20, 2025 2:00 PM','type'=>'In-Person','presenter'=>'Prof. Josef Reyes','cap'=>'45/50','status'=>'upcoming'],
  ['title'=>'HIV/AIDS Awareness Forum','date'=>'Jun 28, 2025 9:00 AM','type'=>'Hybrid','presenter'=>'Dr. Ana Lim','cap'=>'98/100','status'=>'completed'],
  ];
- $typeMap = ['Online'=>'bg-brand-50 text-brand-700 ','In-Person'=>'bg-success-50 text-success-700 ','Hybrid'=>'bg-purple-50 text-purple-700 '];
+ $typeMap = ['Online'=>'bg-brand-50 text-brand-700 ','In-Person'=>'bg-success-50 text-success-700 ','Hybrid'=>'bg-brand-50 text-brand-700 '];
  $stMap = ['upcoming'=>'bg-warning-50 text-warning-700 ','ongoing'=>'bg-success-50 text-success-700 ','completed'=>'bg-gray-100 text-gray-500 ','cancelled'=>'bg-error-50 text-error-700 '];
  @endphp
  @foreach($mock as $s)

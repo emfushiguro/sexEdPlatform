@@ -152,7 +152,7 @@
 
                 <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Review Queue</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Review Queue</p>
                         <h2 class="mt-2 text-xl font-bold text-gray-900">Instructor Applications Table</h2>
                     </div>
 
@@ -164,7 +164,7 @@
                                    name="search"
                                    value="{{ $search ?? '' }}"
                                    placeholder="Name, email, username, education"
-                                   class="h-[46px] w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                   class="h-[46px] w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                         </label>
                         <div class="sm:col-span-2 xl:col-span-4">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
@@ -210,7 +210,7 @@
                                     : ($application->status === 'rejected' ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' : 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100');
                                 $rowNumber = ($applications->firstItem() ?? 1) + $loop->index;
                             @endphp
-                            <tr class="transition hover:bg-sky-50/40">
+                            <tr class="transition hover:bg-brand-50/40">
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-500">{{ $rowNumber }}</td>
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ $application->user->name }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $application->user->email }}</td>
@@ -370,7 +370,7 @@
                 <div class="border-b border-gray-100 bg-gray-50/80 px-6 py-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Application Review</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Application Review</p>
                             <h2 class="mt-1 text-xl font-bold text-gray-900">{{ $application->user->name }}</h2>
                             <p class="text-sm text-gray-500">Application #{{ $application->id }}</p>
                         </div>
@@ -394,7 +394,7 @@
                                 @if($avatarUrl)
                                     <img src="{{ $avatarUrl }}" alt="{{ $application->user->name }}" class="h-12 w-12 rounded-full border border-gray-200 object-cover">
                                 @else
-                                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-sm font-bold text-sky-700">
+                                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
                                         {{ strtoupper(substr($application->user->name, 0, 1)) }}
                                     </div>
                                 @endif
@@ -542,16 +542,16 @@
 
                         <div x-show="open" x-cloak class="mt-4 space-y-4">
                             <div class="grid grid-cols-1 gap-3 text-sm text-gray-700 md:grid-cols-3">
-                                <div class="rounded-xl border border-sky-100 bg-sky-50 p-4">
-                                    <p class="text-xs font-semibold uppercase tracking-wider text-sky-600">Total Enrolled Modules</p>
+                                <div class="rounded-xl border border-brand-100 bg-brand-50 p-4">
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-brand-600">Total Enrolled Modules</p>
                                     <p class="mt-2 text-2xl font-bold text-gray-900">{{ (int) ($application->user->enrolled_modules_count ?? 0) }}</p>
                                 </div>
                                 <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
                                     <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Total Finished Modules</p>
                                     <p class="mt-2 text-2xl font-bold text-gray-900">{{ (int) ($application->user->finished_modules_count ?? 0) }}</p>
                                 </div>
-                                <div class="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-                                    <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Total Certificates Earned</p>
+                                <div class="rounded-xl border border-brand-100 bg-brand-50 p-4">
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-brand-600">Total Certificates Earned</p>
                                     <p class="mt-2 text-2xl font-bold text-gray-900">{{ (int) ($application->user->certificates_earned_count ?? 0) }}</p>
                                 </div>
                             </div>

@@ -6,7 +6,7 @@
 @section('content')
 <div class="mx-auto max-w-7xl space-y-8 px-4 py-8">
     <section class="space-y-3">
-        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Admin Operations</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Admin Operations</p>
         <h1 class="text-3xl font-bold tracking-tight text-gray-900">Admin Command Center</h1>
         <p class="max-w-3xl text-sm leading-6 text-gray-500">
             Track platform health, resolve moderation queues quickly, and monitor the latest operational activity from one central dashboard.
@@ -24,13 +24,13 @@
                 @php
                     $accent = $metric['accent'] ?? 'sky';
                     $styles = [
-                        'sky' => 'border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 text-sky-600',
-                        'violet' => 'border-violet-100 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 text-violet-600',
+                        'sky' => 'border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 text-brand-600',
+                        'violet' => 'border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 text-brand-600',
                         'emerald' => 'border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 text-emerald-600',
                         'amber' => 'border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 text-amber-600',
-                        'fuchsia' => 'border-fuchsia-100 bg-gradient-to-br from-fuchsia-50 via-white to-rose-50 text-fuchsia-600',
+                        'fuchsia' => 'border-brand-100 bg-gradient-to-br from-brand-50 via-white to-rose-50 text-brand-600',
                         'orange' => 'border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50 text-orange-600',
-                        'indigo' => 'border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-sky-50 text-indigo-600',
+                        'indigo' => 'border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 text-brand-600',
                         'rose' => 'border-rose-100 bg-gradient-to-br from-rose-50 via-white to-orange-50 text-rose-600',
                     ];
                     $cardClass = $styles[$accent] ?? $styles['sky'];
@@ -79,7 +79,7 @@
                 @forelse($recentActivity as $activity)
                     <a href="{{ $activity['href'] }}" class="block px-6 py-4 transition hover:bg-gray-50">
                         <div class="flex items-start gap-4">
-                            <span class="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl text-xs font-bold {{ $activity['tone'] === 'emerald' ? 'bg-emerald-100 text-emerald-700' : ($activity['tone'] === 'rose' ? 'bg-rose-100 text-rose-700' : ($activity['tone'] === 'amber' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700')) }}">
+                            <span class="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-2xl text-xs font-bold {{ $activity['tone'] === 'emerald' ? 'bg-emerald-100 text-emerald-700' : ($activity['tone'] === 'rose' ? 'bg-rose-100 text-rose-700' : ($activity['tone'] === 'amber' ? 'bg-amber-100 text-amber-700' : 'bg-brand-100 text-brand-700')) }}">
                                 {{ strtoupper(substr($activity['type'], 0, 2)) }}
                             </span>
                             <div class="min-w-0">

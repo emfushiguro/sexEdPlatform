@@ -22,11 +22,11 @@
                         <input type="text"
                                x-model.debounce.150ms="filters.search"
                                placeholder="Module title, instructor, or status"
-                               class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                               class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
-                        <select x-model="filters.status" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                        <select x-model="filters.status" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                             <option value="">All statuses</option>
                             <option value="submitted">Submitted</option>
                             <option value="in_review">Under Review</option>
@@ -34,7 +34,7 @@
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Instructor</span>
-                        <select x-model="filters.instructor" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                        <select x-model="filters.instructor" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                             <option value="">All instructors</option>
                             @foreach($instructors as $instructor)
                                 <option value="{{ $instructor->id }}">{{ $instructor->name }}</option>
@@ -43,7 +43,7 @@
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Submission Date</span>
-                        <input type="date" x-model="filters.submittedDate" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                        <input type="date" x-model="filters.submittedDate" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                     </label>
                 </div>
 
@@ -77,7 +77,7 @@
                                 $statusLabel = $reviewRequest->status === 'submitted' ? 'Submitted' : 'Under Review';
                                 $submittedDateValue = optional($reviewRequest->submitted_at)->format('Y-m-d');
                             @endphp
-                            <tr class="transition hover:bg-violet-50/30"
+                            <tr class="transition hover:bg-brand-50/30"
                                 x-show="matchesRow(@js(strtolower((string) $reviewRequest->module_title)), @js(strtolower((string) $publisherName)), @js((string) $reviewRequest->status), @js((string) $reviewRequest->submitted_by), @js((string) $submittedDateValue))">
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-500">{{ $rowNumber }}</td>
                                 <td class="px-6 py-4">
@@ -98,7 +98,7 @@
                                     @if($reviewRequest->status === 'submitted')
                                         <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">Submitted</span>
                                     @else
-                                        <span class="inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">Under Review</span>
+                                        <span class="inline-flex rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">Under Review</span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ optional($reviewRequest->submitted_at)->format('M d, Y h:i A') }}</td>
@@ -117,7 +117,7 @@
                                         @endif
 
                                         <a href="{{ route('admin.content-reviews.show', $reviewRequest) }}"
-                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50 text-brand-700 transition hover:bg-brand-100"
                                            title="Review"
                                            aria-label="Review module">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

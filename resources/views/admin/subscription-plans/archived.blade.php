@@ -42,14 +42,14 @@
                     </span>
                 </div>
             </div>
-            <div class="rounded-[28px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Plans With History</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Plans With History</p>
                         <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($archivedStats['with_subscribers']) }}</p>
                         <p class="mt-2 text-sm text-gray-500">Archived plans that still have subscriber records attached.</p>
                     </div>
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-lg shadow-brand-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-1a4 4 0 0 0-4-4h-1m-4 5H4v-1a4 4 0 0 1 4-4h5m0 5v-1a4 4 0 0 0-4-4H8m5 5h1a4 4 0 0 0 4-4v-1m-5-5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                         </svg>
@@ -120,7 +120,7 @@
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('admin.subscription-plans.show', $plan) }}"
-                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50 text-brand-700 transition hover:bg-brand-100"
                                            title="View">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>

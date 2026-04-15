@@ -83,7 +83,7 @@
  <label class="flex items-center gap-2 cursor-pointer">
  <input type="checkbox" name="feature_keys[]" value="{{ $val }}"
  {{ in_array($val, $oldFeatures) ? 'checked' : '' }}
- class="w-4 h-4 rounded border-gray-300 {{ ($group['dimmed'] ?? false) ? 'text-purple-600 focus:ring-purple-500' : 'text-brand-500 focus:ring-brand-500' }}">
+ class="w-4 h-4 rounded border-gray-300 {{ ($group['dimmed'] ?? false) ? 'text-brand-600 focus:ring-brand-500' : 'text-brand-500 focus:ring-brand-500' }}">
  <span class="text-sm {{ ($group['dimmed'] ?? false) ? 'text-gray-500 italic' : 'text-gray-700 ' }}">{{ $label }}</span>
  </label>
  @endforeach

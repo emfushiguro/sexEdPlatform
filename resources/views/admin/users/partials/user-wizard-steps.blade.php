@@ -7,20 +7,20 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
-            <input type="text" name="name" id="name" x-model="form.name" value="{{ old('name', $user->name ?? '') }}" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition">
+            <input type="text" name="name" id="name" x-model="form.name" value="{{ old('name', $user->name ?? '') }}" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
         </div>
         <div>
             <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-            <input type="email" name="email" id="email" x-model="form.email" value="{{ old('email', $user->email ?? '') }}" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition">
+            <input type="email" name="email" id="email" x-model="form.email" value="{{ old('email', $user->email ?? '') }}" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
         </div>
         <div>
             <label for="birthdate" class="block text-sm font-medium text-gray-700 mb-1.5">Birthdate</label>
-            <input type="date" name="birthdate" id="birthdate" x-model="form.birthdate" value="{{ old('birthdate', isset($user) ? optional($user->birthdate)->format('Y-m-d') : '') }}" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition">
+            <input type="date" name="birthdate" id="birthdate" x-model="form.birthdate" value="{{ old('birthdate', isset($user) ? optional($user->birthdate)->format('Y-m-d') : '') }}" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
         </div>
         <div>
             <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">{{ $isCreateMode ? 'Password' : 'New Password' }}</label>
             <div class="relative">
-                <input :type="showPassword ? 'text' : 'password'" name="password" id="password" {{ $isCreateMode ? 'required' : '' }} class="w-full px-3 py-2.5 pr-11 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition">
+                <input :type="showPassword ? 'text' : 'password'" name="password" id="password" {{ $isCreateMode ? 'required' : '' }} class="w-full px-3 py-2.5 pr-11 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
                 <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-gray-400 hover:text-brand-700" :aria-label="showPassword ? 'Hide password' : 'Show password'">
                     <svg x-show="!showPassword" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     <svg x-show="showPassword" x-cloak class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 3 18 18"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.584 10.587a2 2 0 0 0 2.829 2.829"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.88 5.09A9.953 9.953 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7a9.963 9.963 0 0 1-4.293 5.067M6.228 6.228A9.957 9.957 0 0 0 2.458 12c1.274 4.057 5.065 7 9.542 7 1.61 0 3.13-.38 4.478-1.055"/></svg>
@@ -33,7 +33,7 @@
         <div class="md:col-span-2">
             <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
             <div class="relative">
-                <input :type="showPasswordConfirmation ? 'text' : 'password'" name="password_confirmation" id="password_confirmation" {{ $isCreateMode ? 'required' : '' }} class="w-full px-3 py-2.5 pr-11 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition">
+                <input :type="showPasswordConfirmation ? 'text' : 'password'" name="password_confirmation" id="password_confirmation" {{ $isCreateMode ? 'required' : '' }} class="w-full px-3 py-2.5 pr-11 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition">
                 <button type="button" @click="showPasswordConfirmation = !showPasswordConfirmation" class="absolute inset-y-0 right-0 inline-flex items-center px-3 text-gray-400 hover:text-brand-700" :aria-label="showPasswordConfirmation ? 'Hide confirmation password' : 'Show confirmation password'">
                     <svg x-show="!showPasswordConfirmation" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     <svg x-show="showPasswordConfirmation" x-cloak class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 3 18 18"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.584 10.587a2 2 0 0 0 2.829 2.829"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.88 5.09A9.953 9.953 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7a9.963 9.963 0 0 1-4.293 5.067M6.228 6.228A9.957 9.957 0 0 0 2.458 12c1.274 4.057 5.065 7 9.542 7 1.61 0 3.13-.38 4.478-1.055"/></svg>
@@ -48,7 +48,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <label for="role" class="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-            <select name="role" id="role" x-model="selectedRole" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30">
+            <select name="role" id="role" x-model="selectedRole" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                 <option value="">Select role</option>
                 @foreach($roles as $role)
                     <option value="{{ $role->name }}" @selected((old('role', $selectedRole ?? '') === $role->name))>{{ str($role->name)->headline() }}</option>
@@ -58,7 +58,7 @@
         </div>
         <div>
             <label for="status" class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
-            <select name="status" id="status" x-model="form.status" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30">
+            <select name="status" id="status" x-model="form.status" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                 <option value="active" @selected(old('status', $selectedStatus ?? 'active') === 'active')>Active</option>
                 <option value="inactive" @selected(old('status', $selectedStatus ?? '') === 'inactive')>Inactive</option>
                 @unless($isCreateMode)
@@ -70,17 +70,17 @@
 
         <div class="md:col-span-2" x-show="selectedRole === 'others'" x-cloak>
             <label for="new_role_name" class="block text-sm font-medium text-gray-700 mb-1.5">New Role Name</label>
-            <input type="text" name="new_role_name" id="new_role_name" value="{{ old('new_role_name') }}" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition" placeholder="e.g. community-moderator">
+            <input type="text" name="new_role_name" id="new_role_name" value="{{ old('new_role_name') }}" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition" placeholder="e.g. community-moderator">
         </div>
 
         @unless($isCreateMode)
             <div class="md:col-span-2">
                 <label for="role_change_reason" class="block text-sm font-medium text-gray-700 mb-1.5">Role Change Reason</label>
-                <textarea name="role_change_reason" id="role_change_reason" rows="2" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition" placeholder="Optional reason for audit trail">{{ old('role_change_reason') }}</textarea>
+                <textarea name="role_change_reason" id="role_change_reason" rows="2" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition" placeholder="Optional reason for audit trail">{{ old('role_change_reason') }}</textarea>
             </div>
             <div class="md:col-span-2">
                 <label for="role_change_custom_notes" class="block text-sm font-medium text-gray-700 mb-1.5">Role Change Notes</label>
-                <textarea name="role_change_custom_notes" id="role_change_custom_notes" rows="4" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition" placeholder="Optional context or guidance notes">{{ old('role_change_custom_notes') }}</textarea>
+                <textarea name="role_change_custom_notes" id="role_change_custom_notes" rows="4" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition" placeholder="Optional context or guidance notes">{{ old('role_change_custom_notes') }}</textarea>
             </div>
         @endunless
     </div>

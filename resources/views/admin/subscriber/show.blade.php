@@ -7,13 +7,13 @@
     $status = is_object($subscription->status) ? $subscription->status->value : (string) $subscription->status;
     $statusClasses = [
         'active' => 'bg-emerald-100 text-emerald-700',
-        'trialing' => 'bg-sky-100 text-sky-700',
+        'trialing' => 'bg-brand-100 text-brand-700',
         'pending' => 'bg-amber-100 text-amber-700',
-        'processing' => 'bg-sky-100 text-sky-700',
+        'processing' => 'bg-brand-100 text-brand-700',
         'past_due' => 'bg-rose-100 text-rose-700',
         'cancelled' => 'bg-gray-100 text-gray-600',
         'expired' => 'bg-gray-100 text-gray-600',
-        'grace_period' => 'bg-violet-100 text-violet-700',
+        'grace_period' => 'bg-brand-100 text-brand-700',
         'scheduled_cancel' => 'bg-orange-100 text-orange-700',
     ];
     $user = $subscription->user;
@@ -54,7 +54,7 @@
             <div class="flex items-center gap-3">
                 @if($currentPlan)
                     <a href="{{ route('admin.subscription-plans.show', $currentPlan) }}"
-                       class="inline-flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100">
+                       class="inline-flex items-center gap-2 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-100">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h10M7 17h6M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
                         </svg>
@@ -72,8 +72,8 @@
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-[28px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5 shadow-theme-xs">
-                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Current Plan</p>
+            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Current Plan</p>
                 <p class="mt-3 text-xl font-bold text-gray-900">{{ $currentPlan?->name ?? $subscription->getPlanLabel() }}</p>
                 <p class="mt-2 text-sm text-gray-500">{{ $pricePoint?->duration_label ?? 'Standard billing cycle' }}</p>
             </div>
@@ -82,8 +82,8 @@
                 <p class="mt-3 text-xl font-bold text-gray-900">{{ $displayStartedAt?->format('M d, Y') ?? 'Not started' }}</p>
                 <p class="mt-2 text-sm text-gray-500">Ends {{ $displayExpiresAt?->format('M d, Y h:i A') ?? 'without expiry' }}</p>
             </div>
-            <div class="rounded-[28px] border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-theme-xs">
-                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">Amount Paid</p>
+            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Amount Paid</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">&#8369;{{ number_format((float) ($subscription->price_paid ?? 0), 2) }}</p>
                 <p class="mt-2 text-sm text-gray-500">{{ $subscription->auto_renew ? 'Auto renew enabled' : 'Auto renew disabled' }}</p>
             </div>
@@ -97,7 +97,7 @@
         <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
             <section class="space-y-6 xl:col-span-2">
                 <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Subscription Information</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Subscription Information</p>
                     <h2 class="mt-2 text-xl font-bold text-gray-900">Account and Billing Summary</h2>
 
                     <div class="mt-6 grid gap-5 md:grid-cols-2">
@@ -114,7 +114,7 @@
                 </div>
 
                 <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">Subscriber Profile</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Subscriber Profile</p>
                     <h2 class="mt-2 text-xl font-bold text-gray-900">Personal and Gamification Information</h2>
 
                     <div class="mt-6 grid gap-4 md:grid-cols-2">
@@ -161,7 +161,7 @@
                             <tbody class="divide-y divide-gray-100 bg-white">
                                 @forelse($subscription->payments as $payment)
                                     @php $paymentStatus = is_object($payment->status) ? $payment->status->value : (string) $payment->status; @endphp
-                                    <tr class="transition hover:bg-sky-50/40">
+                                    <tr class="transition hover:bg-brand-50/40">
                                         <td class="px-6 py-4 text-sm font-semibold text-gray-500">{{ $loop->iteration }}</td>
                                         <td class="px-6 py-4 text-sm font-semibold text-gray-900">&#8369;{{ number_format((float) $payment->amount, 2) }}</td>
                                         <td class="px-6 py-4 text-sm text-gray-600">{{ ucfirst(str_replace('_', ' ', (string) ($payment->method ?? 'Unknown'))) }}</td>
@@ -173,7 +173,7 @@
                                         <td class="px-6 py-4 text-sm text-gray-600">{{ $payment->created_at->format('M d, Y h:i A') }}</td>
                                         <td class="px-6 py-4 text-right">
                                             <a href="{{ route('admin.payments.show', $payment) }}"
-                                               class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+                                               class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50 text-brand-700 transition hover:bg-brand-100"
                                                title="View payment">
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -197,7 +197,7 @@
                 <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
                     <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">Quick Snapshot</p>
                     <div class="mt-5 flex items-center gap-4">
-                        <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-lg font-bold text-sky-700">{{ strtoupper(substr($user?->name ?? 'U', 0, 1)) }}</span>
+                        <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-lg font-bold text-brand-700">{{ strtoupper(substr($user?->name ?? 'U', 0, 1)) }}</span>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">{{ $user?->name ?? 'Unknown user' }}</p>
                             <p class="text-xs text-gray-500">{{ $user?->email ?? 'No email' }}</p>

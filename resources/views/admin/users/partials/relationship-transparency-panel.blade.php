@@ -2,8 +2,8 @@
 <p class="text-xs text-gray-500 mb-4">Relationship updates are managed from the dedicated relationship management page.</p>
 
 @if($linkedParent)
-    <div class="rounded-xl border border-sky-200 bg-sky-50 p-4 mb-4">
-        <p class="text-xs text-sky-700 font-semibold uppercase tracking-wide">Linked Parent</p>
+    <div class="rounded-xl border border-brand-200 bg-brand-50 p-4 mb-4">
+        <p class="text-xs text-brand-700 font-semibold uppercase tracking-wide">Linked Parent</p>
         <p class="text-sm font-semibold text-gray-900 mt-1">{{ $linkedParent->name }}</p>
         <p class="text-xs text-gray-600">{{ $linkedParent->email }}</p>
         @php

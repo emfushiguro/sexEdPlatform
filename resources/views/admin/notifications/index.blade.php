@@ -57,7 +57,7 @@
                             <span class="mt-2 inline-flex h-2 w-2 rounded-full bg-red-500"></span>
                             <div class="min-w-0 flex items-start gap-3">
                                 @if($isChatMessage)
-                                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 overflow-hidden">
+                                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 overflow-hidden">
                                         @if($senderAvatarUrl)
                                             <img src="{{ $senderAvatarUrl }}" alt="{{ $senderName }}" class="h-10 w-10 rounded-full object-cover">
                                         @else

@@ -76,7 +76,7 @@
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ $report->reporter?->email }}</p>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide {{ $targetTypeValue === 'module' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700' }}">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide {{ $targetTypeValue === 'module' ? 'bg-brand-100 text-brand-700' : 'bg-amber-100 text-amber-700' }}">
                                     {{ $targetTypeValue }}
                                 </span>
                                 <p class="mt-1 text-gray-700 dark:text-gray-200">{{ $targetLabel }}</p>
@@ -89,7 +89,7 @@
                             </td>
                             <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ $report->created_at?->diffForHumans() }}</td>
                             <td class="px-4 py-3 text-right">
-                                <a href="{{ route('admin.learner-reports.show', $report) }}" class="text-purple-600 hover:text-purple-700 font-semibold">
+                                <a href="{{ route('admin.learner-reports.show', $report) }}" class="text-brand-600 hover:text-brand-700 font-semibold">
                                     Open
                                 </a>
                             </td>

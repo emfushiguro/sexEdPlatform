@@ -83,8 +83,8 @@
                         <div class="flex flex-col items-center relative z-10 w-24">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm"
                                  :class="{
-                                     'bg-gradient-to-br from-purple-600 to-indigo-700 text-white ring-4 ring-purple-100': currentStep === step,
-                                     'bg-purple-600 text-white': currentStep > step,
+                                     'bg-gradient-to-br from-brand-600 to-brand-700 text-white ring-4 ring-brand-100': currentStep === step,
+                                     'bg-brand-600 text-white': currentStep > step,
                                      'bg-white border-2 border-gray-200 text-gray-400': currentStep < step
                                  }">
                                 <template x-if="currentStep > step">
@@ -95,7 +95,7 @@
                                 </template>
                             </div>
                             <span class="mt-2 text-[11px] font-semibold uppercase tracking-wider text-center"
-                                  :class="currentStep >= step ? 'text-purple-700' : 'text-gray-400'"
+                                  :class="currentStep >= step ? 'text-brand-700' : 'text-gray-400'"
                                   x-text="step === 1 ? 'Identity' : (step === 2 ? 'Access' : (step === 3 ? 'Permissions' : 'Review'))"></span>
                         </div>
                     </template>
@@ -142,7 +142,7 @@
                     <button type="button"
                             x-show="currentStep < maxStep"
                             @click="nextStep()"
-                            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-700 text-sm font-semibold text-white hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+                            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-brand-600 to-brand-700 text-sm font-semibold text-white hover:shadow-lg hover:shadow-brand-500/30 transition-all">
                         Continue
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                     </button>
@@ -151,7 +151,7 @@
                             x-show="currentStep === maxStep"
                             x-cloak
                             :disabled="!confirmed"
-                            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-700 text-sm font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+                            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-brand-600 to-brand-700 text-sm font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-brand-500/30 transition-all">
                         <span>{{ ($mode ?? 'create') === 'edit' ? 'Update User' : 'Create User' }}</span>
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                     </button>

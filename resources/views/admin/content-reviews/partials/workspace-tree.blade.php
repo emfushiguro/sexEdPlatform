@@ -78,9 +78,9 @@
         },
         questionTypeClasses(value) {
             const map = {
-                multiple_choice: 'bg-blue-50 text-blue-700 border-blue-100',
+                multiple_choice: 'bg-brand-50 text-brand-700 border-brand-100',
                 true_false: 'bg-green-50 text-green-700 border-green-100',
-                multiple_select: 'bg-purple-50 text-purple-700 border-purple-100',
+                multiple_select: 'bg-brand-50 text-brand-700 border-brand-100',
                 fill_blank_text: 'bg-yellow-50 text-yellow-700 border-yellow-100',
                 fill_blank_select: 'bg-orange-50 text-orange-700 border-orange-100',
                 identification: 'bg-pink-50 text-pink-700 border-pink-100',
@@ -154,14 +154,14 @@
                 @endphp
                 <div data-testid="review-tree-lesson-node" class="px-4 py-4">
                     <div class="flex items-start gap-3">
-                        <span class="inline-flex mt-0.5 h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold {{ $isRequired ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500' }}">
+                        <span class="inline-flex mt-0.5 h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold {{ $isRequired ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-500' }}">
                             {{ $loop->iteration }}
                         </span>
 
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <p class="truncate text-sm font-semibold text-gray-900">{{ data_get($lesson, 'attributes.title', 'Untitled Lesson') }}</p>
-                                <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $isRequired ? 'bg-purple-50 text-purple-700 border border-purple-100' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
+                                <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $isRequired ? 'bg-brand-50 text-brand-700 border border-brand-100' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
                                     {{ $requirementLabel }}
                                 </span>
                             </div>
@@ -193,7 +193,7 @@
                                                     </div>
                                                     @if($topicId > 0)
                                                         <button type="button"
-                                                            class="inline-flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100"
+                                                            class="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100"
                                                             @click="previewTopicContent({{ $topicId }})">
                                                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -216,14 +216,14 @@
 
                                     <div class="flex gap-3">
                                         <div class="flex flex-col items-center flex-shrink-0" style="width:16px;">
-                                            <div class="mt-2 h-3.5 w-3.5 rounded-full border-2 border-purple-300 bg-purple-50"></div>
+                                            <div class="mt-2 h-3.5 w-3.5 rounded-full border-2 border-brand-300 bg-brand-50"></div>
                                             @if($showConnector)
                                                 <div class="mt-1 min-h-[16px] flex-1 rounded-full bg-gray-200" style="width:2px;"></div>
                                             @endif
                                         </div>
 
                                         <div class="flex-1 {{ $showConnector ? 'pb-2.5' : 'pb-1' }}">
-                                            <div class="rounded-lg border border-purple-100 bg-purple-50/40 px-3 py-2.5">
+                                            <div class="rounded-lg border border-brand-100 bg-brand-50/40 px-3 py-2.5">
                                                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                                     <div class="min-w-0">
                                                         <p class="text-sm font-semibold text-gray-900 truncate">Lesson Quiz: {{ data_get($quiz, 'attributes.title', 'Untitled Quiz') }}</p>
@@ -231,7 +231,7 @@
                                                     </div>
                                                     @if($quizId > 0)
                                                         <button type="button"
-                                                            class="inline-flex items-center gap-1 rounded-lg border border-purple-200 bg-white px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100"
+                                                            class="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100"
                                                             @click="previewQuizContent({{ $quizId }})">
                                                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -266,7 +266,7 @@
             @php
                 $quizId = (int) data_get($quiz, 'attributes.id', 0);
             @endphp
-            <div class="rounded-lg border border-purple-100 bg-purple-50/50 px-3 py-3">
+            <div class="rounded-lg border border-brand-100 bg-brand-50/50 px-3 py-3">
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <p class="text-sm font-semibold text-gray-900">Final Quiz: {{ data_get($quiz, 'attributes.title', 'Untitled Quiz') }}</p>
@@ -274,7 +274,7 @@
                     </div>
                     @if($quizId > 0)
                         <button type="button"
-                            class="inline-flex items-center gap-1 rounded-lg border border-purple-200 bg-white px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100"
+                            class="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100"
                             @click="previewQuizContent({{ $quizId }})">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -331,7 +331,7 @@
                         </template>
 
                         <template x-if="previewTopic.file_url">
-                            <a class="inline-flex items-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700" :href="previewTopic.file_url" target="_blank" rel="noopener">Open Attachment</a>
+                            <a class="inline-flex items-center rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700" :href="previewTopic.file_url" target="_blank" rel="noopener">Open Attachment</a>
                         </template>
 
                         <template x-if="Array.isArray(previewTopic.image_attachment_urls) && previewTopic.image_attachment_urls.length">
@@ -353,23 +353,23 @@
                         </div>
 
                         <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
-                            <div class="rounded-xl border border-purple-100 bg-purple-50/40 px-3 py-2.5">
+                            <div class="rounded-xl border border-brand-100 bg-brand-50/40 px-3 py-2.5">
                                 <dt class="text-xs font-semibold uppercase tracking-widest text-gray-400">Questions</dt>
                                 <dd class="text-2xl font-bold text-gray-900" x-text="quizQuestionCount()"></dd>
                             </div>
-                            <div class="rounded-xl border border-purple-100 bg-purple-50/40 px-3 py-2.5">
+                            <div class="rounded-xl border border-brand-100 bg-brand-50/40 px-3 py-2.5">
                                 <dt class="text-xs font-semibold uppercase tracking-widest text-gray-400">Total Points</dt>
                                 <dd class="text-2xl font-bold text-gray-900" x-text="quizTotalPoints()"></dd>
                             </div>
-                            <div class="rounded-xl border border-purple-100 bg-purple-50/40 px-3 py-2.5">
+                            <div class="rounded-xl border border-brand-100 bg-brand-50/40 px-3 py-2.5">
                                 <dt class="text-xs font-semibold uppercase tracking-widest text-gray-400">Attempt Limit</dt>
                                 <dd class="text-2xl font-bold text-gray-900" x-text="formatLimit(previewQuiz.attempt_limit)"></dd>
                             </div>
-                            <div class="rounded-xl border border-purple-100 bg-purple-50/40 px-3 py-2.5">
+                            <div class="rounded-xl border border-brand-100 bg-brand-50/40 px-3 py-2.5">
                                 <dt class="text-xs font-semibold uppercase tracking-widest text-gray-400">Quiz Timer</dt>
                                 <dd class="text-2xl font-bold text-gray-900" x-text="formatLimit(previewQuiz.time_limit)"></dd>
                             </div>
-                            <div class="rounded-xl border border-purple-100 bg-purple-50/40 px-3 py-2.5">
+                            <div class="rounded-xl border border-brand-100 bg-brand-50/40 px-3 py-2.5">
                                 <dt class="text-xs font-semibold uppercase tracking-widest text-gray-400">Passing Score</dt>
                                 <dd class="text-2xl font-bold text-gray-900" x-text="(previewQuiz.passing_score ?? '-') + '%'">-</dd>
                             </div>

@@ -1,7 +1,7 @@
 @php
     $roleMap = [
         'learner' => 'bg-brand-50 text-brand-700',
-        'instructor' => 'bg-purple-50 text-purple-700',
+        'instructor' => 'bg-brand-50 text-brand-700',
         'admin' => 'bg-error-50 text-error-700',
     ];
 

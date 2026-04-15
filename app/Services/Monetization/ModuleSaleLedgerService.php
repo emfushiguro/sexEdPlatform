@@ -70,7 +70,7 @@ class ModuleSaleLedgerService
                 'tax_basis_snapshot' => (string) $policy->tax_basis,
                 'refund_policy_snapshot' => (string) $policy->refund_policy,
                 'sale_status' => 'completed',
-                'payout_status' => 'pending',
+                'payout_status' => 'paid',
                 'occurred_at' => $payment->paid_at ?? now(),
             ]
         );

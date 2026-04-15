@@ -209,6 +209,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('commission-settings.update');
         Route::get('/module-revenue', [Admin\ModuleRevenueController::class, 'index'])
             ->name('module-revenue.index');
+        Route::get('/module-revenue/transactions/{moduleSaleLedger}', [Admin\ModuleRevenueController::class, 'showTransaction'])
+            ->name('module-revenue.transactions.show');
+        Route::get('/module-revenue/instructors/{instructor}', [Admin\ModuleRevenueController::class, 'showInstructor'])
+            ->name('module-revenue.instructors.show');
+        Route::post('/module-revenue/{moduleSaleLedger}/archive', [Admin\ModuleRevenueController::class, 'archive'])
+            ->name('module-revenue.archive');
+        Route::delete('/module-revenue/{moduleSaleLedger}', [Admin\ModuleRevenueController::class, 'destroy'])
+            ->name('module-revenue.destroy');
         Route::patch('/module-revenue/{moduleSaleLedger}/payout-status', [Admin\ModuleRevenueController::class, 'updatePayoutStatus'])
             ->name('module-revenue.payout.update');
     });

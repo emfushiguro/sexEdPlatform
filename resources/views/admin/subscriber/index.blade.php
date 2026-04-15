@@ -66,13 +66,13 @@
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-[28px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Subscribers</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Subscribers</p>
                         <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.total)"></p>
                     </div>
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-lg shadow-brand-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H4v-1a4 4 0 014-4h5m0 5v-1a4 4 0 00-4-4H8m5 5h1a4 4 0 004-4v-1m-5-5a3 3 0 11-6 0 3 3 0 016 0zm9 3a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
@@ -94,13 +94,13 @@
                 </div>
             </div>
 
-            <div class="rounded-[28px] border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">Revenue</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Revenue</p>
                         <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatCurrency(stats.total_revenue)"></p>
                     </div>
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-200">
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white shadow-lg shadow-brand-200">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6v12m3.5-9.5c0-1.381-1.567-2.5-3.5-2.5S8.5 7.119 8.5 8.5 10.067 11 12 11s3.5 1.119 3.5 2.5S13.933 16 12 16s-3.5-1.119-3.5-2.5" />
                         </svg>
@@ -137,12 +137,12 @@
                                    @input="page = 1"
                                    type="text"
                                    placeholder="Name, email, status, plan, date..."
-                                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                   class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                         </label>
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
                             <select x-model="filters.status" @change="page = 1"
-                                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                                 <option value="">All statuses</option>
                                 <option value="active">Active</option>
                                 <option value="trialing">Trialing</option>
@@ -156,7 +156,7 @@
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Plan</span>
                             <select x-model="filters.planId" @change="page = 1"
-                                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                    class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                                 <option value="">All plans</option>
                                 <template x-for="plan in plans" :key="plan.id">
                                     <option :value="String(plan.id)" x-text="plan.name"></option>
@@ -190,11 +190,11 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
                         <template x-for="(subscription, index) in paginatedSubscriptions" :key="subscription.id">
-                            <tr class="transition hover:bg-sky-50/50">
+                            <tr class="transition hover:bg-brand-50/50">
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="rowNumber(index)"></td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
-                                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100 text-sm font-bold text-sky-700"
+                                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-100 text-sm font-bold text-brand-700"
                                               x-text="subscription.subscriber.charAt(0).toUpperCase()"></span>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-900" x-text="subscription.subscriber"></p>
@@ -217,7 +217,7 @@
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <a :href="subscription.details_url"
-                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50 text-brand-700 transition hover:bg-brand-100"
                                            title="View subscriber">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -393,11 +393,11 @@
                 statusClass(status) {
                     return {
                         active: 'bg-emerald-100 text-emerald-700',
-                        trialing: 'bg-sky-100 text-sky-700',
+                        trialing: 'bg-brand-100 text-brand-700',
                         cancelled: 'bg-rose-100 text-rose-700',
                         expired: 'bg-gray-100 text-gray-600',
                         past_due: 'bg-amber-100 text-amber-700',
-                        grace_period: 'bg-violet-100 text-violet-700',
+                        grace_period: 'bg-brand-100 text-brand-700',
                         scheduled_cancel: 'bg-orange-100 text-orange-700',
                     }[status] || 'bg-gray-100 text-gray-600';
                 },

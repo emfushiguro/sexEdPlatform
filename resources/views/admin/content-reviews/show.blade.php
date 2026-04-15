@@ -71,7 +71,7 @@
                 <h1 class="text-xl font-semibold text-gray-900">{{ data_get($workspace, 'module.title', $reviewRequest->module_title) }}</h1>
                 <p class="text-sm text-gray-500 mt-1">Review status: {{ data_get($workspace, 'module.status_label', ucfirst(str_replace('_', ' ', $reviewRequest->status))) }}</p>
             </div>
-            <span class="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+            <span class="inline-flex items-center rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">
                 {{ data_get($workspace, 'module.status_label', 'Pending Review') }}
             </span>
         </div>

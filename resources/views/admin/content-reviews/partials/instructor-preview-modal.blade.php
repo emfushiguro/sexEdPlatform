@@ -5,7 +5,7 @@
     <div class="w-full max-w-5xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
         <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-600">Instructor Preview</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">Instructor Preview</p>
                 <h3 class="mt-1 text-lg font-semibold text-gray-900">Instructor Evaluation</h3>
             </div>
             <button type="button" class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" @click="instructorPreviewOpen = false">
@@ -17,10 +17,10 @@
 
         <div class="border-b border-gray-100 px-6 py-3">
             <div class="flex flex-wrap gap-2 text-xs font-semibold">
-                <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'profile' ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'profile'">Instructor Basic Profile</button>
-                <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'indicators' ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'indicators'">Credibility Indicators</button>
-                <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'moderation' ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'moderation'">Moderation History</button>
-                <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'portfolio' ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'portfolio'">Module Portfolio</button>
+                <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'profile' ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'profile'">Instructor Basic Profile</button>
+                <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'indicators' ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'indicators'">Credibility Indicators</button>
+                <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'moderation' ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'moderation'">Moderation History</button>
+                <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'portfolio' ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'portfolio'">Module Portfolio</button>
             </div>
         </div>
 
@@ -30,7 +30,7 @@
                     @if(data_get($workspace, 'instructor_preview.profile.profile_picture'))
                         <img src="{{ data_get($workspace, 'instructor_preview.profile.profile_picture') }}" alt="Instructor profile" class="h-16 w-16 rounded-full border border-gray-200 object-cover">
                     @else
-                        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-lg font-bold text-violet-700">
+                        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-700">
                             {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr(data_get($workspace, 'instructor_preview.profile.full_name', 'U'), 0, 1)) }}
                         </div>
                     @endif
@@ -57,16 +57,16 @@
             </div>
 
             <div x-show="instructorPreviewTab === 'indicators'" style="display:none;" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-sky-700">Total Modules Created</p>
+                <div class="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-brand-700">Total Modules Created</p>
                     <p class="mt-1 text-2xl font-bold text-gray-900">{{ data_get($workspace, 'instructor_preview.indicators.total_modules_created', 0) }}</p>
                 </div>
                 <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                     <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Total Published Modules</p>
                     <p class="mt-1 text-2xl font-bold text-gray-900">{{ data_get($workspace, 'instructor_preview.indicators.total_published_modules', 0) }}</p>
                 </div>
-                <div class="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Total Enrolled Learners</p>
+                <div class="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-brand-700">Total Enrolled Learners</p>
                     <p class="mt-1 text-2xl font-bold text-gray-900">{{ data_get($workspace, 'instructor_preview.indicators.total_enrolled_learners', 0) }}</p>
                 </div>
                 <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">

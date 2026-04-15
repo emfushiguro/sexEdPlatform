@@ -63,7 +63,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <a href="{{ route($contentRoutePrefix . '.enrollments.index', array_filter(array_merge(request()->query(), ['status' => 'all', 'page' => null]))) }}"
-           class="rounded-2xl border bg-white px-5 py-4 shadow-sm transition hover:border-purple-200 {{ $statusFilter === 'all' ? 'border-purple-300 ring-1 ring-purple-200' : 'border-gray-200' }}">
+           class="rounded-2xl border bg-white px-5 py-4 shadow-sm transition hover:border-brand-200 {{ $statusFilter === 'all' ? 'border-brand-300 ring-1 ring-brand-200' : 'border-gray-200' }}">
             <p class="text-2xl font-bold text-gray-900">{{ $statusCounts['all'] ?? 0 }}</p>
             <p class="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-500">All Enrollees</p>
         </a>
@@ -95,12 +95,12 @@
                        name="search"
                        value="{{ $search }}"
                        placeholder="Learner name, email, or module..."
-                       class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                       class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
             </div>
 
             <div>
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">Status</label>
-                <select name="status" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                <select name="status" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
                     @foreach($statusOptions as $value => $label)
                         <option value="{{ $value }}" @selected($statusFilter === $value)>{{ $label }}</option>
                     @endforeach
@@ -109,7 +109,7 @@
 
             <div>
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">Module</label>
-                <select name="module_id" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                <select name="module_id" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
                     <option value="0">All modules</option>
                     @foreach($modulesForFilter as $moduleOption)
                         <option value="{{ $moduleOption->id }}" @selected((int) $moduleFilter === (int) $moduleOption->id)>{{ $moduleOption->title }}</option>
@@ -197,7 +197,7 @@
                                 <div class="flex items-center justify-end gap-1">
                                     <a href="{{ route($contentRoutePrefix . '.enrollments.show', $enrollment) }}"
                                        title="Details"
-                                       class="h-8 w-8 rounded-lg text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600">
+                                       class="h-8 w-8 rounded-lg text-gray-400 transition-colors hover:bg-brand-50 hover:text-brand-600">
                                         <svg class="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 21a9 9 0 100-18 9 9 0 000 18z"/>
                                         </svg>
@@ -206,7 +206,7 @@
                                     <button type="button"
                                             @click='openView(@json($payload))'
                                             title="View"
-                                            class="h-8 w-8 rounded-lg text-gray-400 transition-colors hover:bg-purple-50 hover:text-purple-600">
+                                            class="h-8 w-8 rounded-lg text-gray-400 transition-colors hover:bg-brand-50 hover:text-brand-600">
                                         <svg class="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>

@@ -139,12 +139,12 @@ class="space-y-5">
                        x-model.debounce.250ms="searchTerm"
                        placeholder="Search module title..."
                        data-testid="admin-modules-search-input"
-                       class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                       class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
             </div>
             <div class="md:col-span-3">
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">Status</label>
                 <select x-model="statusFilter"
-                        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
                     @foreach($statusOptions as $value => $label)
                         <option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>
                     @endforeach
@@ -153,7 +153,7 @@ class="space-y-5">
             <div class="md:col-span-3">
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">Owner</label>
                 <select x-model="ownerFilter"
-                        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
                     @foreach($ownerTypeOptions as $value => $label)
                         <option value="{{ $value }}" @selected($ownerType === $value)>{{ $label }}</option>
                     @endforeach
@@ -303,7 +303,7 @@ class="space-y-5">
                 <div class="border-t border-gray-100 px-4 py-2.5 flex items-center gap-1 bg-gray-50/60">
                     <a href="{{ route('admin.modules.show', $module) }}"
                        title="View"
-                       class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors">
+                       class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -317,7 +317,7 @@ class="space-y-5">
                                 @endif
                                 @if($isInstructorOwned) disabled @endif
                                 title="{{ $isInstructorOwned ? 'Instructor-owned content is read-only in the admin panel.' : 'Edit' }}"
-                                class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 transition-colors {{ $isInstructorOwned ? 'cursor-not-allowed opacity-50' : 'hover:text-indigo-600 hover:bg-indigo-50' }}">
+                                class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 transition-colors {{ $isInstructorOwned ? 'cursor-not-allowed opacity-50' : 'hover:text-brand-600 hover:bg-brand-50' }}">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
