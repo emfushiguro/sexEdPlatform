@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             InstructorUserSeeder::class,
             ModuleLessonQuizSeeder::class,
             AchievementSeeder::class,
+            GamificationPolicySeeder::class,
             CavitePSGCSeeder::class,
         ]);
     }
