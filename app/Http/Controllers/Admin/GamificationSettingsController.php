@@ -8,6 +8,8 @@ use App\Models\GamificationPolicy;
 use App\Models\GamificationPolicyVersion;
 use App\Services\Gamification\GamificationPolicyAdminService;
 use App\Services\Gamification\GamificationPolicyResolver;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class GamificationSettingsController extends Controller
 {
@@ -19,6 +21,8 @@ class GamificationSettingsController extends Controller
 
     public function index()
     {
+        $this->ensureAuthorized();
+
         $activePolicy = GamificationPolicy::latestActive();
         $resolvedPolicy = $this->resolver->resolve();
         $versions = GamificationPolicyVersion::query()->latest('id')->limit(50)->get();
@@ -28,9 +32,11 @@ class GamificationSettingsController extends Controller
 
     public function update(UpdateGamificationPolicyRequest $request)
     {
+        $this->ensureAuthorized();
+
         $this->adminService->updatePolicy(
             payload: $request->payload(),
-            adminId: auth()->id(),
+            adminId: Auth::id(),
             changeSummary: $request->input('change_summary'),
             versionLabel: $request->input('version_label'),
         );
@@ -42,6 +48,8 @@ class GamificationSettingsController extends Controller
 
     public function history()
     {
+        $this->ensureAuthorized();
+
         $versions = GamificationPolicyVersion::query()->latest('id')->paginate(25);
 
         return response()->json([
@@ -56,14 +64,22 @@ class GamificationSettingsController extends Controller
 
     public function restore(int $version)
     {
+        $this->ensureAuthorized();
+
         $this->adminService->restoreVersion(
             versionId: $version,
-            adminId: auth()->id(),
+            adminId: Auth::id(),
             changeSummary: 'Restored via admin settings.',
         );
 
         return redirect()
             ->route('admin.gamification-settings.index')
             ->with('success', 'Gamification settings restored from selected version.');
+    }
+
+    private function ensureAuthorized(): void
+    {
+        $user = Auth::user();
+        abort_unless($user !== null && Gate::forUser($user)->allows('manage system settings'), 403);
     }
 }

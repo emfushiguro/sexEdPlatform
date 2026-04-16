@@ -223,7 +223,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('module-revenue.payout.update');
     });
 
-    Route::prefix('gamification-settings')->name('gamification-settings.')->group(function () {
+    Route::prefix('gamification-settings')->name('gamification-settings.')->middleware('permission:manage system settings')->group(function () {
         Route::get('/', [Admin\GamificationSettingsController::class, 'index'])
             ->name('index');
         Route::put('/', [Admin\GamificationSettingsController::class, 'update'])
