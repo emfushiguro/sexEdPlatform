@@ -13,8 +13,10 @@
     'gamification',
     'xpInLevel',
     'xpPercent',
+    'xpLevelSpan' => 100,
     'totalEnrolled',
     'shieldsRemaining' => 3,
+    'shieldCap' => 3,
     'recentAchievements',
 ])
 
@@ -66,7 +68,7 @@
             <div class="mt-2">
                 <div class="flex items-center justify-between text-xs mb-1">
                     <span class="font-semibold text-purple-600 dark:text-purple-400">Level {{ $level }}</span>
-                    <span class="text-gray-400 dark:text-gray-500">{{ $xpInLevel }}/100 XP</span>
+                    <span class="text-gray-400 dark:text-gray-500">{{ $xpInLevel }}/{{ $xpLevelSpan }} XP</span>
                 </div>
                 <div class="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                     <div
@@ -157,12 +159,12 @@
                 <span class="text-sm font-bold text-purple-700 dark:text-purple-300">∞</span>
                 <span class="text-xs text-purple-600 dark:text-purple-400 ml-1">Unlimited Shields</span>
             @else
-                @for($i = 0; $i < 3; $i++)
+                @for($i = 0; $i < $shieldCap; $i++)
                     <svg class="w-5 h-5 {{ $i < $shieldsRemaining ? 'text-purple-500' : 'text-gray-300 dark:text-gray-600' }}" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
                     </svg>
                 @endfor
-                <span class="text-xs text-purple-600 dark:text-purple-400 ml-1">{{ $shieldsRemaining }}/3</span>
+                <span class="text-xs text-purple-600 dark:text-purple-400 ml-1">{{ $shieldsRemaining }}/{{ $shieldCap }}</span>
             @endif
         </div>
     </div>

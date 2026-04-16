@@ -158,8 +158,10 @@
                 :gamification="$gamification"
                 :xpInLevel="$xpInLevel"
                 :xpPercent="$xpPercent"
+                :xpLevelSpan="$xpLevelSpan"
                 :totalEnrolled="$totalEnrolled"
                 :shieldsRemaining="$shieldsRemaining"
+                :shieldCap="$shieldCap"
                 :recentAchievements="$recentAchievements"
             />
         </div>
@@ -169,6 +171,8 @@
             :streakActiveDays="$streakActiveDays"
             :longestStreak="$longestStreak"
             :streakSavers="$streakSavers"
+            :maxStreakSavers="$maxStreakSavers"
+            :streakSaverCost="$streakSaverCost"
             :score="$gamification?->score ?? 0"
         />
 
