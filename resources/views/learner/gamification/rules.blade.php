@@ -5,6 +5,30 @@
 @section('content')
 <div class="max-w-4xl mx-auto px-4 py-8 space-y-6">
 
+    @php
+        $pointsRules = data_get($rules ?? [], 'points', []);
+        $streakRules = data_get($rules ?? [], 'streak', []);
+        $shieldRules = data_get($rules ?? [], 'shield', []);
+
+        $shieldDefault = (int) data_get($shieldRules, 'daily_shields_default', 3);
+        $shieldCap = (int) data_get($shieldRules, 'max_shields_per_day_cap', 3);
+        $shieldSingleCost = (int) data_get($shieldRules, 'refill_single_cost_points', 50);
+        $shieldFullCost = (int) data_get($shieldRules, 'refill_full_cost_points', 100);
+        $shieldFullTarget = (int) data_get($shieldRules, 'refill_full_target_shields', 3);
+
+        $streakSaverCost = (int) data_get($streakRules, 'saver_purchase_cost_points', 75);
+        $maxStreakSavers = (int) data_get($streakRules, 'max_savers_held', 3);
+        $streakMilestones = data_get($streakRules, 'milestones', collect());
+
+        $topicPoints = (int) data_get($pointsRules, 'topic_complete_points', 10);
+        $lessonPoints = (int) data_get($pointsRules, 'lesson_complete_points', 15);
+        $modulePoints = (int) data_get($pointsRules, 'module_complete_points', 100);
+        $certificatePoints = (int) data_get($pointsRules, 'certificate_earned_points', 50);
+        $quizPerfectPoints = (int) data_get($pointsRules, 'quiz_perfect_score_points', 30);
+        $quizPassPoints = (int) data_get($pointsRules, 'quiz_pass_score_points', 25);
+        $quizFailPoints = (int) data_get($pointsRules, 'quiz_fail_attempt_points', 5);
+    @endphp
+
     {{-- Back link --}}
     <div>
         <a href="{{ route('learner.dashboard') }}"
@@ -68,7 +92,7 @@
                     <x-icons.shield state="full" :size="16" />
                     Shields
                 </div>
-                <p class="mt-1 text-2xl font-bold">{{ $shieldsRemaining }}/3</p>
+                <p class="mt-1 text-2xl font-bold">{{ $shieldsRemaining }}/{{ $shieldCap }}</p>
             </div>
         </div>
         @endif
@@ -84,14 +108,14 @@
             <h2 class="text-lg font-bold text-gray-900 dark:text-white">Quiz Shields</h2>
         </div>
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Shields protect your streak and let you take quizzes. You start each day with <strong>3 shields</strong>.
+            Shields protect your streak and let you take quizzes. You start each day with <strong>{{ $shieldDefault }} shields</strong>.
         </p>
         <ul class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
             <li class="flex items-start gap-2">
                 <svg class="w-4 h-4 mt-0.5 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Each day you get <strong>3 quiz shields</strong> and they reset at midnight.</span>
+                <span>Each day you get <strong>{{ $shieldDefault }} quiz shields</strong> and they reset at midnight.</span>
             </li>
             <li class="flex items-start gap-2">
                 <svg class="w-4 h-4 mt-0.5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -103,7 +127,7 @@
                 <svg class="w-4 h-4 mt-0.5 text-purple-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2l2.8 5.67L21 8.56l-4.5 4.38 1.06 6.2L12 16.3l-5.56 2.84 1.06-6.2L3 8.56l6.2-.89L12 2z"/>
                 </svg>
-                <span>Spend <strong>50 points</strong> to refill 1 shield, or <strong>100 points</strong> for a full refill (3 shields).</span>
+                <span>Spend <strong>{{ $shieldSingleCost }} points</strong> to refill 1 shield, or <strong>{{ $shieldFullCost }} points</strong> for a full refill ({{ $shieldFullTarget }} shields).</span>
             </li>
         </ul>
     </div>
@@ -124,18 +148,21 @@
                 </svg>
                 <span>Complete at least one lesson topic each day to keep your streak alive.</span>
             </li>
-            <li class="flex items-start gap-2">
-                <svg class="w-4 h-4 mt-0.5 text-yellow-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2l2.8 5.67L21 8.56l-4.5 4.38 1.06 6.2L12 16.3l-5.56 2.84 1.06-6.2L3 8.56l6.2-.89L12 2z"/>
-                </svg>
-                <span><strong>7-day streak:</strong> +50 bonus points</span>
-            </li>
-            <li class="flex items-start gap-2">
-                <svg class="w-4 h-4 mt-0.5 text-yellow-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2l2.8 5.67L21 8.56l-4.5 4.38 1.06 6.2L12 16.3l-5.56 2.84 1.06-6.2L3 8.56l6.2-.89L12 2z"/>
-                </svg>
-                <span><strong>30-day streak (and every 30 days):</strong> +200 bonus points</span>
-            </li>
+            @forelse($streakMilestones as $milestone)
+                <li class="flex items-start gap-2">
+                    <svg class="w-4 h-4 mt-0.5 text-yellow-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l2.8 5.67L21 8.56l-4.5 4.38 1.06 6.2L12 16.3l-5.56 2.84 1.06-6.2L3 8.56l6.2-.89L12 2z"/>
+                    </svg>
+                    <span><strong>{{ (int) data_get($milestone, 'days', 0) }}-day streak:</strong> +{{ (int) data_get($milestone, 'bonus_points', 0) }} bonus points</span>
+                </li>
+            @empty
+                <li class="flex items-start gap-2">
+                    <svg class="w-4 h-4 mt-0.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
+                    </svg>
+                    <span>No streak milestone bonuses are currently configured.</span>
+                </li>
+            @endforelse
             <li class="flex items-start gap-2">
                 <svg class="w-4 h-4 mt-0.5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
@@ -160,7 +187,7 @@
                 <svg class="w-4 h-4 mt-0.5 text-purple-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2l2.8 5.67L21 8.56l-4.5 4.38 1.06 6.2L12 16.3l-5.56 2.84 1.06-6.2L3 8.56l6.2-.89L12 2z"/>
                 </svg>
-                <span>Buy a streak saver for <strong>75 points</strong>. You can hold up to <strong>3 savers</strong>.</span>
+                <span>Buy a streak saver for <strong>{{ $streakSaverCost }} points</strong>. You can hold up to <strong>{{ $maxStreakSavers }} savers</strong>.</span>
             </li>
             <li class="flex items-start gap-2">
                 <svg class="w-4 h-4 mt-0.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -192,23 +219,31 @@
                 <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
                     <tr>
                         <td class="py-3 text-gray-700 dark:text-gray-300">Complete a lesson topic</td>
-                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+10</td>
+                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+{{ $topicPoints }}</td>
                     </tr>
                     <tr>
                         <td class="py-3 text-gray-700 dark:text-gray-300">Complete a lesson (all topics done)</td>
-                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+15</td>
+                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+{{ $lessonPoints }}</td>
                     </tr>
                     <tr>
                         <td class="py-3 text-gray-700 dark:text-gray-300">Pass a quiz</td>
-                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">varies</td>
+                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+{{ $quizPassPoints }}</td>
+                    </tr>
+                    <tr>
+                        <td class="py-3 text-gray-700 dark:text-gray-300">Perfect score on a quiz</td>
+                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+{{ $quizPerfectPoints }}</td>
+                    </tr>
+                    <tr>
+                        <td class="py-3 text-gray-700 dark:text-gray-300">Quiz attempt (not passed)</td>
+                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+{{ $quizFailPoints }}</td>
                     </tr>
                     <tr>
                         <td class="py-3 text-gray-700 dark:text-gray-300">Complete a full module</td>
-                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+100</td>
+                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+{{ $modulePoints }}</td>
                     </tr>
                     <tr>
                         <td class="py-3 text-gray-700 dark:text-gray-300">Download a certificate</td>
-                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+50</td>
+                        <td class="py-3 text-right font-semibold text-purple-600 dark:text-purple-400">+{{ $certificatePoints }}</td>
                     </tr>
                 </tbody>
             </table>
