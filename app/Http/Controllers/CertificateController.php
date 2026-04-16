@@ -69,7 +69,7 @@ class CertificateController extends Controller
             ]);
 
             // Award points for getting certificate
-            app(GamificationService::class)->awardPoints($user, 'certificate_earned', 50);
+            app(GamificationService::class)->awardConfiguredPoints($user, 'certificate_earned');
 
             DB::commit();
 

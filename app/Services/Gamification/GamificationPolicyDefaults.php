@@ -23,6 +23,7 @@ class GamificationPolicyDefaults
                 'qualifying_event' => 'topic_completion',
                 'auto_consume_saver' => true,
                 'max_savers_held' => 3,
+                'saver_purchase_cost_points' => 75,
                 'milestones' => [
                     ['days' => 7, 'bonus_points' => 50, 'priority' => 20],
                     ['days' => 30, 'bonus_points' => 200, 'priority' => 10],

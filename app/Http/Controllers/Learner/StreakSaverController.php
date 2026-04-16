@@ -11,12 +11,14 @@ class StreakSaverController extends Controller
     {
         $user = auth()->user();
         $gamificationRecord = $user->gamification;
+        $maxSavers = $gamification->maxStreakSaversHeld();
+        $saverCost = $gamification->streakSaverCost();
 
-        if (!$gamificationRecord || $gamificationRecord->streak_savers >= 3) {
-            return back()->with('error', 'You already have the maximum number of streak savers (3).');
+        if (!$gamificationRecord || $gamificationRecord->streak_savers >= $maxSavers) {
+            return back()->with('error', "You already have the maximum number of streak savers ({$maxSavers}).");
         }
 
-        if (!$gamification->spendPoints($user, 75)) {
+        if (!$gamification->spendPoints($user, $saverCost)) {
             return back()->with('error', 'Not enough points to buy a streak saver.');
         }
 

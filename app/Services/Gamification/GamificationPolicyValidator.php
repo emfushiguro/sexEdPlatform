@@ -18,6 +18,7 @@ class GamificationPolicyValidator
             'points_config.quiz_bands.pass_score_points',
             'points_config.quiz_bands.fail_attempt_points',
             'streak_config.max_savers_held',
+            'streak_config.saver_purchase_cost_points',
             'shield_config.daily_shields_default',
             'shield_config.max_shields_per_day_cap',
             'shield_config.refill_single_cost_points',

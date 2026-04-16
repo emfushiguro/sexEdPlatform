@@ -84,12 +84,13 @@ class CertificateController extends Controller
         }
 
         // Award bonus points for certificate
+        $certificatePoints = 0;
         if ($user->gamification) {
-            app(GamificationService::class)->awardPoints($user, 'certificate_earned', 50);
+            $certificatePoints = app(GamificationService::class)->awardConfiguredPoints($user, 'certificate_earned');
         }
 
         return redirect()->route('learner.certificates.show', $certificate)
-            ->with('success', 'Congratulations! Your certificate has been generated! You earned 50 bonus points! 🎉');
+            ->with('success', "Congratulations! Your certificate has been generated! You earned {$certificatePoints} bonus points! 🎉");
     }
 
     /**

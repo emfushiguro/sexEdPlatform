@@ -77,6 +77,10 @@
                         <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Max savers held</label>
                         <input type="number" name="streak_config[max_savers_held]" value="{{ data_get($streak, 'max_savers_held', 0) }}" class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" min="0">
                     </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Saver purchase cost points</label>
+                        <input type="number" name="streak_config[saver_purchase_cost_points]" value="{{ data_get($streak, 'saver_purchase_cost_points', 0) }}" class="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" min="0">
+                    </div>
                     <div class="md:col-span-2">
                         <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500">Milestones</label>
                         <div class="mt-1 space-y-2">

@@ -28,6 +28,7 @@ class GamificationPolicyNormalizer
 
         $merged['streak_config']['auto_consume_saver'] = (bool) $merged['streak_config']['auto_consume_saver'];
         $merged['streak_config']['max_savers_held'] = $this->toInt($merged['streak_config']['max_savers_held']);
+        $merged['streak_config']['saver_purchase_cost_points'] = $this->toInt($merged['streak_config']['saver_purchase_cost_points']);
         $merged['streak_config']['milestones'] = $this->normalizeMilestones($merged['streak_config']['milestones'] ?? []);
 
         $merged['leveling_config']['formula']['base_xp_per_level'] = $this->toInt($merged['leveling_config']['formula']['base_xp_per_level']);

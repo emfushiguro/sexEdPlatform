@@ -59,6 +59,64 @@ class GamificationService
         return true;
     }
 
+    public function resolvePointsForReason(string $reason, array $context = []): int
+    {
+        return match ($reason) {
+            'topic_complete' => (int) data_get($this->resolvedPolicy, 'points_config.topic_complete_points', 0),
+            'lesson_complete' => (int) data_get($this->resolvedPolicy, 'points_config.lesson_complete_points', 0),
+            'module_completed' => (int) data_get($this->resolvedPolicy, 'points_config.module_complete_points', 0),
+            'certificate_earned' => (int) data_get($this->resolvedPolicy, 'points_config.certificate_earned_points', 0),
+            'quiz_passed' => ((int) ($context['score'] ?? 0) === 100)
+                ? (int) data_get($this->resolvedPolicy, 'points_config.quiz_bands.perfect_score_points', 0)
+                : (int) data_get($this->resolvedPolicy, 'points_config.quiz_bands.pass_score_points', 0),
+            'quiz_attempted' => (int) data_get($this->resolvedPolicy, 'points_config.quiz_bands.fail_attempt_points', 0),
+            default => 0,
+        };
+    }
+
+    public function awardConfiguredPoints(User $user, string $reason, array $context = []): int
+    {
+        $points = $this->resolvePointsForReason($reason, $context);
+
+        if ($points > 0) {
+            $this->awardPoints($user, $reason, $points);
+        }
+
+        return $points;
+    }
+
+    public function maxStreakSaversHeld(): int
+    {
+        return max(0, (int) data_get($this->resolvedPolicy, 'streak_config.max_savers_held', 0));
+    }
+
+    public function streakSaverCost(): int
+    {
+        return max(0, (int) data_get($this->resolvedPolicy, 'streak_config.saver_purchase_cost_points', 0));
+    }
+
+    public function shieldRefillCost(string $type): int
+    {
+        return $type === 'full'
+            ? max(0, (int) data_get($this->resolvedPolicy, 'shield_config.refill_full_cost_points', 0))
+            : max(0, (int) data_get($this->resolvedPolicy, 'shield_config.refill_single_cost_points', 0));
+    }
+
+    public function shieldFullRefillTarget(): int
+    {
+        return max(0, (int) data_get($this->resolvedPolicy, 'shield_config.refill_full_target_shields', 0));
+    }
+
+    public function dailyShieldDefault(): int
+    {
+        return max(0, (int) data_get($this->resolvedPolicy, 'shield_config.daily_shields_default', 0));
+    }
+
+    public function dailyShieldCap(): int
+    {
+        return max(0, (int) data_get($this->resolvedPolicy, 'shield_config.max_shields_per_day_cap', 0));
+    }
+
     public function updateStreak(User $user): void
     {
         $gamification = $user->gamification;

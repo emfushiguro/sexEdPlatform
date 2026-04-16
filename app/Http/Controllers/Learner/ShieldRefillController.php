@@ -15,7 +15,7 @@ class ShieldRefillController extends Controller
 
         $user = auth()->user();
         $type = $request->input('type');
-        $cost = $type === 'full' ? 100 : 50;
+        $cost = $gamification->shieldRefillCost($type);
 
         if (!$gamification->spendPoints($user, $cost)) {
             return back()->with('error', 'Not enough points to refill shields.');
@@ -30,8 +30,10 @@ class ShieldRefillController extends Controller
         $remaining = UserDailyShield::getShields($user);
         session()->flash('shield_refilled', ['type' => $type, 'remaining' => $remaining]);
 
+        $fullTarget = $gamification->shieldFullRefillTarget();
+
         return back()->with('success', $type === 'full'
-            ? "Full shield refill! You're back to 3 shields."
+            ? "Full shield refill! You're back to {$fullTarget} shields."
             : '+1 Shield restored.');
     }
 }
