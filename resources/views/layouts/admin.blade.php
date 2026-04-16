@@ -559,6 +559,23 @@
                                           x-cloak class="truncate">Commission Settings</span>
                                 </a>
                             </li>
+                            <li>
+                                <a href="{{ route('admin.gamification-settings.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.gamification-settings.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.gamification-settings.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.gamification-settings.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.038 3.19a1 1 0 00.95.69h3.354c.969 0 1.371 1.24.588 1.81l-2.714 1.972a1 1 0 00-.364 1.118l1.037 3.19c.3.922-.755 1.688-1.538 1.118l-2.713-1.972a1 1 0 00-1.176 0l-2.714 1.972c-.783.57-1.838-.196-1.539-1.118l1.038-3.19a1 1 0 00-.364-1.118L2.12 8.617c-.783-.57-.38-1.81.588-1.81h3.354a1 1 0 00.95-.69l1.037-3.19z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Gamification Settings</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
 
