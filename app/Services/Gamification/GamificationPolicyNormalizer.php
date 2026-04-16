@@ -8,6 +8,14 @@ class GamificationPolicyNormalizer
     {
         $merged = array_replace_recursive(GamificationPolicyDefaults::baseline(), $payload);
 
+        if (isset($payload['streak_config']) && is_array($payload['streak_config']) && array_key_exists('milestones', $payload['streak_config']) && is_array($payload['streak_config']['milestones'])) {
+            $merged['streak_config']['milestones'] = $payload['streak_config']['milestones'];
+        }
+
+        if (isset($payload['leveling_config']) && is_array($payload['leveling_config']) && array_key_exists('explicit_thresholds', $payload['leveling_config']) && is_array($payload['leveling_config']['explicit_thresholds'])) {
+            $merged['leveling_config']['explicit_thresholds'] = $payload['leveling_config']['explicit_thresholds'];
+        }
+
         $merged['points_config']['topic_complete_points'] = $this->toInt($merged['points_config']['topic_complete_points']);
         $merged['points_config']['lesson_complete_points'] = $this->toInt($merged['points_config']['lesson_complete_points']);
         $merged['points_config']['module_complete_points'] = $this->toInt($merged['points_config']['module_complete_points']);
