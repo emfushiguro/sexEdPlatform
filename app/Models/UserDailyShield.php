@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\GamificationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Throwable;
 
 class UserDailyShield extends Model
 {
@@ -16,12 +18,12 @@ class UserDailyShield extends Model
         return $this->belongsTo(User::class);
     }
 
-    /** Return the user's shield record for today, creating it with 3 shields if absent. */
+    /** Return the user's shield record for today, creating it with configured default shields if absent. */
     public static function todayForUser(User $user): self
     {
         return static::firstOrCreate(
             ['user_id' => $user->id, 'date' => today()->toDateString()],
-            ['shields_remaining' => 3]
+            ['shields_remaining' => static::initialShieldCount()]
         );
     }
 
@@ -45,19 +47,43 @@ class UserDailyShield extends Model
         return true;
     }
 
-    /** Refill one shield (caps at 3). */
+    /** Refill one shield (caps at configured daily cap). */
     public static function refillOne(User $user): void
     {
         $record = static::todayForUser($user);
+        $cap = static::shieldCap();
 
-        if ($record->shields_remaining < 3) {
+        if ($record->shields_remaining < $cap) {
             $record->increment('shields_remaining');
         }
     }
 
-    /** Restore all shields to 3. */
+    /** Restore all shields to configured daily cap. */
     public static function refillFull(User $user): void
     {
-        static::todayForUser($user)->update(['shields_remaining' => 3]);
+        static::todayForUser($user)->update(['shields_remaining' => static::shieldCap()]);
+    }
+
+    private static function initialShieldCount(): int
+    {
+        return min(static::shieldDefault(), static::shieldCap());
+    }
+
+    private static function shieldDefault(): int
+    {
+        try {
+            return max(0, app(GamificationService::class)->dailyShieldDefault());
+        } catch (Throwable) {
+            return 3;
+        }
+    }
+
+    private static function shieldCap(): int
+    {
+        try {
+            return max(0, app(GamificationService::class)->dailyShieldCap());
+        } catch (Throwable) {
+            return 3;
+        }
     }
 }
