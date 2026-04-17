@@ -530,6 +530,26 @@
                                 </a>
                             </li>
 
+                            {{-- Financial Reports --}}
+                            <li>
+                                <a href="{{ route('admin.financial-reports.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.financial-reports.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.financial-reports.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.financial-reports.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M9 17v-6m3 6V7m3 10v-4m5 6H4a1 1 0 01-1-1V4a1 1 0 011-1h16a1 1 0 011 1v14a1 1 0 01-1 1z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Financial Reports</span>
+                                </a>
+                            </li>
+
                         </ul>
                     </div>
 

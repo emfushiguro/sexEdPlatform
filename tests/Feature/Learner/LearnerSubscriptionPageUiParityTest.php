@@ -25,8 +25,11 @@ class LearnerSubscriptionPageUiParityTest extends TestCase
             ->assertSee('Access to core age-appropriate learning modules', false)
             ->assertSee('3 quiz shields per day', false)
             ->assertSee('Username change every 7 days', false)
+                ->assertSee('All Free Plan Features', false)
+                ->assertDontSee('Current premium controls', false)
             ->assertDontSee('Free forever', false)
-            ->assertDontSee('PHP 0.00', false);
+            ->assertDontSee('PHP 0.00', false)
+            ->assertDontSee('Certificate downloads unlock on supported premium plans.', false);
     }
 
     public function test_subscription_page_shows_renewal_notice_for_expired_subscription(): void

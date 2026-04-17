@@ -12,6 +12,7 @@ use App\Services\InstructorModerationPenaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class ContentReviewController extends Controller
 {
@@ -120,11 +121,16 @@ class ContentReviewController extends Controller
             'moderation_notes' => ['nullable', 'string', 'max:10000'],
         ]);
 
-        $this->contentGovernanceService->approveReview(
-            $reviewRequest,
-            request()->user(),
-            $validated['moderation_notes'] ?? null,
-        );
+        try {
+            $this->contentGovernanceService->approveReview(
+                $reviewRequest,
+                request()->user(),
+                $validated['moderation_notes'] ?? null,
+            );
+        } catch (InvalidArgumentException $exception) {
+            return redirect()->route('admin.content-reviews.show', $reviewRequest)
+                ->with('warning', $exception->getMessage());
+        }
 
         return redirect()->route('admin.content-reviews.show', $reviewRequest)
             ->with('success', 'Content review approved.');

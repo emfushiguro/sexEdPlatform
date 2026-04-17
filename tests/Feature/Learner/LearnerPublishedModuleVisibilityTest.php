@@ -92,6 +92,35 @@ class LearnerPublishedModuleVisibilityTest extends DatabaseTestCase
             ->assertDontSee('Pending Revision Title', false);
     }
 
+    public function test_learner_can_access_published_approved_module_without_revision_snapshot(): void
+    {
+        $this->withoutMiddleware(EnsureProfileCompleted::class);
+
+        $instructor = $this->createUserWithRole('instructor');
+        $learner = $this->createLearner();
+
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'content_owner_type' => 'instructor',
+            'title' => 'Approved Without Snapshot',
+            'is_published' => true,
+            'current_review_status' => 'approved',
+            'published_revision_id' => null,
+            'min_age' => 13,
+            'max_age' => 17,
+        ]);
+
+        $this->actingAs($learner)
+            ->get(route('learner.modules.index'))
+            ->assertOk()
+            ->assertSee('Approved Without Snapshot', false);
+
+        $this->actingAs($learner)
+            ->get(route('learner.modules.show', $module))
+            ->assertOk()
+            ->assertSee('Approved Without Snapshot', false);
+    }
+
     private function createUserWithRole(string $role): User
     {
         $user = User::factory()->create([

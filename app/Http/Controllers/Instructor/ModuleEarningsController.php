@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Instructor\InstructorFinancialReportFilterRequest;
 use App\Models\InstructorEarningsVisibility;
+use App\Models\Module;
 use App\Models\ModuleSaleLedger;
 use App\Models\User;
+use App\Services\Finance\FinancialReportFilterNormalizer;
+use App\Services\Finance\FinancialReportService;
+use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\Monetization\CommissionPolicyResolver;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -14,52 +19,52 @@ class ModuleEarningsController extends Controller
 {
     public function __construct(
         private readonly CommissionPolicyResolver $commissionPolicyResolver,
+        private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
+        private readonly FinancialReportService $financialReportService,
+        private readonly FinancialReportFilterNormalizer $financialReportFilterNormalizer,
     ) {
     }
 
-    public function index(Request $request)
+    public function index(InstructorFinancialReportFilterRequest $request)
     {
+        $this->authorize('viewEarnings', Module::class);
+        $this->ensureEarningsVisibilityAllowed($request->user());
+
         $instructorId = (int) $request->user()->id;
 
-        $baseQuery = ModuleSaleLedger::query()
-            ->forInstructor($instructorId)
-            ->whereDoesntHave('visibility', function ($visibilityQuery) use ($instructorId) {
-                $visibilityQuery
-                    ->where('instructor_id', $instructorId)
-                    ->whereNotNull('deleted_at');
-            });
+        $reportFilter = $this->financialReportFilterNormalizer->normalize(
+            filters: $request->validated(),
+            forcedInstructorId: $instructorId,
+        );
 
-        $transactions = (clone $baseQuery)
-            ->with([
-                'module:id,title,thumbnail',
-                'learner:id,name,first_name,last_name',
-                'learner.learnerProfile:id,user_id,avatar_path',
-                'payment:id,transaction_id,method,status,paid_at',
-                'modulePurchase:id,module_id,purchased_at,status',
-            ])
-            ->latest('occurred_at')
-            ->paginate(15)
-            ->withQueryString();
+        $earningsPayload = $this->financialReportService->getInstructorEarnings($reportFilter);
+        $transactions = $this->financialReportService->getInstructorVisibleTransactions($reportFilter, 15);
 
-        $last7DaysBaseQuery = (clone $baseQuery)
-            ->where('occurred_at', '>=', now()->subDays(7));
-
+        $summary = (array) ($earningsPayload['summary'] ?? []);
         $stats = [
-            'total_sales' => (clone $baseQuery)->count(),
-            'gross_revenue' => (float) (clone $baseQuery)->sum('gross_amount'),
-            'platform_commission' => (float) (clone $baseQuery)->sum('commission_amount'),
-            'net_earnings' => (float) (clone $baseQuery)->sum('instructor_earnings_amount'),
-            'last_7_days_sales' => (clone $last7DaysBaseQuery)->count(),
-            'last_7_days_earnings' => (float) (clone $last7DaysBaseQuery)->sum('instructor_earnings_amount'),
+            'total_sales' => (int) ($summary['total_transactions'] ?? 0),
+            'gross_revenue' => (float) ($summary['gross_revenue'] ?? 0),
+            'platform_commission' => (float) ($summary['platform_commission'] ?? 0),
+            'net_earnings' => (float) ($summary['instructor_earnings'] ?? 0),
+            'range_label' => ucfirst((string) $reportFilter->reportType),
         ];
 
         $effectiveCommissionPolicy = $this->resolveEffectiveCommissionPolicyPayload($request->user());
 
-        return view('instructor.earnings.index', compact('transactions', 'stats', 'effectiveCommissionPolicy'));
+        return view('instructor.earnings.index', [
+            'transactions' => $transactions,
+            'stats' => $stats,
+            'effectiveCommissionPolicy' => $effectiveCommissionPolicy,
+            'moduleBreakdown' => $earningsPayload['module_breakdown'] ?? collect(),
+            'reportFilter' => $reportFilter,
+        ]);
     }
 
     public function show(Request $request, ModuleSaleLedger $moduleSaleLedger)
     {
+        $this->authorize('viewEarnings', Module::class);
+        $this->ensureEarningsVisibilityAllowed($request->user());
+
         $instructorId = (int) $request->user()->id;
 
         abort_unless((int) $moduleSaleLedger->instructor_id === $instructorId, 404);
@@ -122,6 +127,9 @@ class ModuleEarningsController extends Controller
         string $successMessage,
     )
     {
+        $this->authorize('viewEarnings', Module::class);
+        $this->ensureEarningsVisibilityAllowed($request->user());
+
         $instructorId = (int) $request->user()->id;
 
         abort_unless((int) $moduleSaleLedger->instructor_id === $instructorId, 404);
@@ -163,6 +171,19 @@ class ModuleEarningsController extends Controller
             ];
         } catch (RuntimeException) {
             return null;
+        }
+    }
+
+    private function ensureEarningsVisibilityAllowed(?User $user): void
+    {
+        abort_unless($user !== null, 403);
+
+        if (!$this->instructorPlanCapabilityService->isStrictRolloutMode()) {
+            return;
+        }
+
+        if (!$this->instructorPlanCapabilityService->canViewEarnings($user)) {
+            abort(403, 'Your current instructor plan does not include earnings visibility.');
         }
     }
 }

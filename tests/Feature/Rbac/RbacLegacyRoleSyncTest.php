@@ -30,6 +30,7 @@ class RbacLegacyRoleSyncTest extends TestCase
             user: $target,
             newRole: 'admin',
             reason: 'Promotion for governance ownership',
+            customNotes: null,
             actorId: (int) $adminActor->id,
             request: null,
         );

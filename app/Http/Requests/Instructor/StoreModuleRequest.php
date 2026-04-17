@@ -2,12 +2,11 @@
 
 namespace App\Http\Requests\Instructor;
 
+use App\Services\Instructor\InstructorPlanCapabilityService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreModuleRequest extends FormRequest
 {
-    private const ENROLLMENT_LIMIT_CAP = 20;
-
     public function authorize(): bool
     {
         return true;
@@ -15,6 +14,8 @@ class StoreModuleRequest extends FormRequest
 
     public function rules(): array
     {
+        $enrollmentLimitCap = $this->resolveEnrollmentLimitCap();
+
         return [
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -27,7 +28,21 @@ class StoreModuleRequest extends FormRequest
             'access_type' => 'nullable|in:free,paid',
             'price_amount' => 'nullable|numeric|min:0.01|required_if:access_type,paid',
             'price_currency' => 'nullable|string|size:3',
-            'enrollment_limit' => 'nullable|integer|min:1|max:' . self::ENROLLMENT_LIMIT_CAP,
+            'enrollment_limit' => $enrollmentLimitCap !== null
+                ? 'nullable|integer|min:1|max:' . $enrollmentLimitCap
+                : 'nullable|integer|min:1',
         ];
+    }
+
+    private function resolveEnrollmentLimitCap(): ?int
+    {
+        $user = $this->user();
+        if (!$user || !$user->hasRole('instructor')) {
+            return null;
+        }
+
+        $accessType = (string) ($this->input('access_type') ?: 'free');
+
+        return app(InstructorPlanCapabilityService::class)->getLearnerCapForModule($user, $accessType);
     }
 }

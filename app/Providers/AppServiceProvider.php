@@ -32,6 +32,8 @@ use App\Policies\ModulePolicy;
 use App\Policies\ParentChildPolicy;
 use App\Policies\QuizPolicy;
 use App\Policies\TopicPolicy;
+use App\Services\Instructor\InstructorPlanCapabilityService;
+use App\Services\SubscriptionService;
 use App\Support\ContentPanelContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -155,6 +157,65 @@ class AppServiceProvider extends ServiceProvider
                 'unread_count' => (int) $operationalSignalItems->sum('value'),
             ]);
             $view->with('adminModerationCounts', $moderationCounts);
+        });
+
+        View::composer('layouts.instructor-app', function ($view): void {
+            /** @var User|null $user */
+            $user = Auth::user();
+
+            $indicator = [
+                'plan_name' => 'Free Plan',
+                'is_premium' => false,
+                'status_key' => 'free',
+                'status_label' => 'Free',
+                'ends_at' => null,
+            ];
+
+            if ($user && $user->hasRole('instructor')) {
+                $subscriptionService = app(SubscriptionService::class);
+                $capabilityService = app(InstructorPlanCapabilityService::class);
+
+                $subscriptionService->reconcileLifecycleForUser($user);
+
+                $eligibleSubscription = $subscriptionService->getEligibleSubscriptionForEntitlements($user);
+                $latestInstructorSubscription = $user->subscriptions()
+                    ->whereHas('plan', function ($query) {
+                        $query->where('plan_audience', 'instructor');
+                    })
+                    ->with('plan')
+                    ->latest('id')
+                    ->first();
+
+                if ($eligibleSubscription && (string) ($eligibleSubscription->plan?->plan_audience ?? '') === 'instructor') {
+                    $latestInstructorSubscription = $eligibleSubscription->loadMissing('plan');
+                }
+
+                if ($latestInstructorSubscription) {
+                    $statusKey = (string) ($latestInstructorSubscription->status->value ?? $latestInstructorSubscription->status);
+                    $isPremium = (float) ($latestInstructorSubscription->plan?->price ?? 0) > 0
+                        && in_array($statusKey, ['active', 'grace_period'], true);
+
+                    $indicator['is_premium'] = $isPremium;
+                    $indicator['plan_name'] = $isPremium
+                        ? ($latestInstructorSubscription->plan?->name ?? 'Premium Plan')
+                        : ($capabilityService->resolveBaselinePlan()?->name ?? 'Free Plan');
+                    $indicator['status_key'] = $isPremium
+                        ? 'active'
+                        : (in_array($statusKey, ['expired', 'cancelled', 'pending'], true) ? $statusKey : 'free');
+                    $indicator['status_label'] = match ($indicator['status_key']) {
+                        'active' => 'Premium Active',
+                        'expired' => 'Expired',
+                        'cancelled' => 'Cancelled',
+                        'pending' => 'Pending Payment',
+                        default => 'Free',
+                    };
+                    $indicator['ends_at'] = $latestInstructorSubscription->ends_at ?? $latestInstructorSubscription->end_date;
+                } else {
+                    $indicator['plan_name'] = $capabilityService->resolveBaselinePlan()?->name ?? 'Free Plan';
+                }
+            }
+
+            $view->with('instructorSubscriptionIndicator', $indicator);
         });
 
         View::composer([

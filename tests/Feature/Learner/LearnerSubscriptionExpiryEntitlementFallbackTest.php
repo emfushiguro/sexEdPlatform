@@ -66,13 +66,15 @@ class LearnerSubscriptionExpiryEntitlementFallbackTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $feature = FeatureCatalog::create([
-            'key' => SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS,
-            'name' => 'Unlimited Quiz Shields',
-            'value_type' => 'boolean',
-            'category' => 'learner',
-            'is_active' => true,
-        ]);
+        $feature = FeatureCatalog::query()->updateOrCreate(
+            ['key' => SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS],
+            [
+                'name' => 'Unlimited Quiz Shields',
+                'value_type' => 'boolean',
+                'category' => 'learner',
+                'is_active' => true,
+            ]
+        );
 
         PlanFeatureEntitlement::create([
             'plan_id' => $plan->id,

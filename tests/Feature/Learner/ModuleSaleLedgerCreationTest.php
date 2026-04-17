@@ -63,7 +63,7 @@ class ModuleSaleLedgerCreationTest extends TestCase
             'learner_id' => $learner->id,
             'commission_amount' => 20.00,
             'instructor_earnings_amount' => 179.99,
-            'payout_status' => 'pending',
+            'payout_status' => 'paid',
         ]);
     }
 

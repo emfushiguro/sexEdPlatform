@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\Payment;
 use App\Models\User;
 use App\Services\SubscriptionService;
 use Carbon\Carbon;
@@ -44,6 +45,13 @@ class SubscriptionServiceBillingWindowTest extends TestCase
             $service = app(SubscriptionService::class);
 
             $subscription = $service->create($user, $plan);
+            Payment::query()
+                ->where('subscription_id', $subscription->id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'completed',
+                    'paid_at' => $createdAt->copy()->addHour(),
+                ]);
 
             $activationTime = $createdAt->copy()->addHours(5);
             Carbon::setTestNow($activationTime);

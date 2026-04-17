@@ -93,6 +93,8 @@ class ParentEnrollmentNotificationTest extends TestCase
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
+            'verification_status' => 'approved',
+            'verification_approved_at' => now(),
         ]);
 
         return [$parent, $child];

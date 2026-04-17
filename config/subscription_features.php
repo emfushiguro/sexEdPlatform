@@ -15,6 +15,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Instructor Rollout Mode
+    |--------------------------------------------------------------------------
+    | soft   = allow legacy behavior while surfacing capability messaging
+    | strict = enforce instructor subscription entitlements at runtime
+    */
+    'instructor_rollout_mode' => env(
+        'INSTRUCTOR_SUBSCRIPTION_ROLLOUT_MODE',
+        env('BILLING_INSTRUCTOR_ROLLOUT_MODE', 'soft')
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
     | Feature Groups
     |--------------------------------------------------------------------------
     | Each group has:
@@ -79,6 +91,21 @@ return [
     | Used for table display and the upgrade page feature lists.
     */
     'labels' => [
+        // ── Learner canonical entitlement keys ──
+        'unlimited_username_change'   => 'Unlimited Username Changes',
+        'unlimited_quiz_shields'      => 'Unlimited Quiz Shields',
+        'text_translator'             => 'Text Translator',
+        'voice_speech_translator'     => 'Voice Speech Translator',
+        'downloadable_certificates'   => 'Downloadable Certificates',
+
+        // ── Instructor canonical entitlement keys ──
+        'instructor_published_modules_limit' => 'Published Modules Limit',
+        'instructor_max_learners_per_free_module' => 'Free Module Learner Cap',
+        'instructor_max_learners_per_paid_module' => 'Paid Module Learner Cap',
+        'instructor_can_publish_paid_modules' => 'Can Publish Paid Modules',
+        'instructor_can_receive_paid_enrollments' => 'Can Receive Paid Enrollments',
+        'instructor_can_view_earnings' => 'Can View Earnings',
+
         // ── Current canonical keys (keep in sync with groups above) ──
         'full_course_access'          => 'Full Course Access',
         'offline_access'              => 'Offline Access',

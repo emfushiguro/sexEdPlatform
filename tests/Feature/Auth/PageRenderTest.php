@@ -78,10 +78,14 @@ class PageRenderTest extends TestCase
     public function test_create_child_page_shows_set_up_their_account_panel(): void
     {
         $parent = User::factory()->create([
+            'role' => 'admin',
             'birthdate' => now()->subYears(25)->toDateString(),
             'email_verified_at' => now(),
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
         ]);
-        $parent->assignRole('learner');
+        $parent->assignRole('admin');
+
         $response = $this->actingAs($parent)->get(route('parent.create-child'));
         $response->assertStatus(200);
         $response->assertSee('Set up their account');

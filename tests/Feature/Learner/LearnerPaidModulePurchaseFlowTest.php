@@ -4,11 +4,14 @@ namespace Tests\Feature\Learner;
 
 use App\Enums\EnrollmentStatus;
 use App\Http\Middleware\EnsureProfileCompleted;
+use App\Models\FeatureCatalog;
 use App\Models\LearnerProfile;
 use App\Models\Module;
 use App\Models\ModuleRevision;
 use App\Models\ModuleEnrollment;
 use App\Models\Payment;
+use App\Models\PlanFeatureEntitlement;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\PayMongoPaymentLinkService;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +25,16 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
         $this->withoutMiddleware(EnsureProfileCompleted::class);
 
         $learner = $this->createLearner();
+        $instructor = User::factory()->create([
+            'role' => 'instructor',
+            'birthdate' => now()->subYears(30)->toDateString(),
+        ]);
+        $instructor->assignRole('instructor');
+        $this->createInstructorBaselinePlanWithPaidEnrollmentAccess();
+
         $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'content_owner_type' => 'instructor',
             'is_published' => true,
             'access_type' => 'paid',
             'price_amount' => 499,
@@ -86,10 +98,17 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
             'birthdate' => now()->subYears(35)->toDateString(),
         ]);
         $parent->assignRole('learner');
+        $instructor = User::factory()->create([
+            'role' => 'instructor',
+            'birthdate' => now()->subYears(30)->toDateString(),
+        ]);
+        $instructor->assignRole('instructor');
+        $this->createInstructorBaselinePlanWithPaidEnrollmentAccess();
 
         DB::table('parent_child_accounts')->insert([
             'parent_user_id' => $parent->id,
             'child_user_id' => $learner->id,
+            'verification_status' => 'approved',
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
@@ -99,6 +118,8 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
         ]);
 
         $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'content_owner_type' => 'instructor',
             'is_published' => true,
             'access_type' => 'paid',
             'price_amount' => 299,
@@ -137,8 +158,16 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
 
         $existingLearner = $this->createLearner('existing_paid_capacity');
         $newLearner = $this->createLearner('new_paid_capacity');
+        $instructor = User::factory()->create([
+            'role' => 'instructor',
+            'birthdate' => now()->subYears(30)->toDateString(),
+        ]);
+        $instructor->assignRole('instructor');
+        $this->createInstructorBaselinePlanWithPaidEnrollmentAccess();
 
         $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'content_owner_type' => 'instructor',
             'is_published' => true,
             'access_type' => 'paid',
             'price_amount' => 499,
@@ -172,6 +201,79 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
         ]);
     }
 
+    public function test_paid_module_checkout_is_blocked_when_instructor_plan_cannot_receive_paid_enrollments(): void
+    {
+        $this->withoutMiddleware(EnsureProfileCompleted::class);
+
+        $learner = $this->createLearner('paid_entitlement_blocked');
+        $instructor = User::factory()->create([
+            'role' => 'instructor',
+            'birthdate' => now()->subYears(30)->toDateString(),
+        ]);
+        $instructor->assignRole('instructor');
+
+        $this->createInstructorBaselinePlanWithoutReceivePaidEntitlement();
+
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'content_owner_type' => 'instructor',
+            'is_published' => true,
+            'current_review_status' => null,
+            'access_type' => 'paid',
+            'price_amount' => 399,
+            'price_currency' => 'PHP',
+            'enrollment_mode' => 'auto',
+            'min_age' => 18,
+            'max_age' => 25,
+        ]);
+
+        $this->mock(PayMongoPaymentLinkService::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('createCheckoutSession');
+        });
+
+        $this->actingAs($learner)
+            ->post(route('learner.modules.purchase', $module))
+            ->assertRedirect(route('learner.modules.show', $module))
+            ->assertSessionHas('error', 'Paid enrollment is currently unavailable for this module.');
+
+        $this->assertDatabaseMissing('module_purchases', [
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+        ]);
+    }
+
+    public function test_paid_module_show_page_displays_checkout_block_reason_when_paid_enrollment_is_disabled(): void
+    {
+        $this->withoutMiddleware(EnsureProfileCompleted::class);
+
+        $learner = $this->createLearner('paid_block_reason');
+        $instructor = User::factory()->create([
+            'role' => 'instructor',
+            'birthdate' => now()->subYears(30)->toDateString(),
+        ]);
+        $instructor->assignRole('instructor');
+
+        $this->createInstructorBaselinePlanWithoutReceivePaidEntitlement();
+
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'content_owner_type' => 'instructor',
+            'is_published' => true,
+            'current_review_status' => null,
+            'access_type' => 'paid',
+            'price_amount' => 399,
+            'price_currency' => 'PHP',
+            'enrollment_mode' => 'auto',
+            'min_age' => 18,
+            'max_age' => 25,
+        ]);
+
+        $this->actingAs($learner)
+            ->get(route('learner.modules.show', $module))
+            ->assertOk()
+            ->assertSeeText('Paid enrollment is not enabled for this module yet.');
+    }
+
     public function test_purchase_does_not_404_when_snapshot_has_stale_unpublished_flag(): void
     {
         $this->withoutMiddleware(EnsureProfileCompleted::class);
@@ -182,6 +284,7 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
             'birthdate' => now()->subYears(30)->toDateString(),
         ]);
         $instructor->assignRole('instructor');
+        $this->createInstructorBaselinePlanWithPaidEnrollmentAccess();
 
         $module = Module::factory()->create([
             'created_by' => $instructor->id,
@@ -290,5 +393,81 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
         ]);
 
         return $user;
+    }
+
+    private function createInstructorBaselinePlanWithoutReceivePaidEntitlement(): SubscriptionPlan
+    {
+        $plan = SubscriptionPlan::create([
+            'name' => 'Instructor Free Baseline',
+            'slug' => 'instructor-free-baseline-' . uniqid(),
+            'description' => 'Instructor baseline',
+            'price' => 0,
+            'features' => [],
+            'plan_audience' => 'instructor',
+            'billing_mode' => 'monthly',
+            'trial_days' => 0,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $feature = FeatureCatalog::updateOrCreate(
+            ['key' => 'instructor_can_publish_paid_modules'],
+            [
+                'name' => 'Instructor Can Publish Paid Modules',
+                'value_type' => 'boolean',
+                'category' => 'instructor',
+                'is_active' => true,
+            ]
+        );
+
+        PlanFeatureEntitlement::create([
+            'plan_id' => $plan->id,
+            'feature_id' => $feature->id,
+            'is_enabled' => true,
+            'is_unlimited' => true,
+        ]);
+
+        return $plan;
+    }
+
+    private function createInstructorBaselinePlanWithPaidEnrollmentAccess(): SubscriptionPlan
+    {
+        $plan = SubscriptionPlan::create([
+            'name' => 'Instructor Free Baseline',
+            'slug' => 'instructor-free-baseline-' . uniqid(),
+            'description' => 'Instructor baseline',
+            'price' => 0,
+            'features' => [],
+            'plan_audience' => 'instructor',
+            'billing_mode' => 'monthly',
+            'trial_days' => 0,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        foreach (['instructor_can_publish_paid_modules', 'instructor_can_receive_paid_enrollments'] as $key) {
+            $feature = FeatureCatalog::updateOrCreate(
+                ['key' => $key],
+                [
+                    'name' => str($key)->headline()->toString(),
+                    'value_type' => 'boolean',
+                    'category' => 'instructor',
+                    'is_active' => true,
+                ]
+            );
+
+            PlanFeatureEntitlement::updateOrCreate(
+                [
+                    'plan_id' => $plan->id,
+                    'feature_id' => $feature->id,
+                ],
+                [
+                    'is_enabled' => true,
+                    'is_unlimited' => true,
+                ]
+            );
+        }
+
+        return $plan;
     }
 }

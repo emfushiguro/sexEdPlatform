@@ -26,6 +26,36 @@
                     View Earnings Policy
                 </button>
             </div>
+
+            <form method="GET" action="{{ route('instructor.earnings.index') }}" class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Report Type</span>
+                    <select name="report_type" onchange="this.form.submit()" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
+                        <option value="weekly" @selected(($reportFilter->reportType ?? 'monthly') === 'weekly')>Weekly</option>
+                        <option value="monthly" @selected(($reportFilter->reportType ?? 'monthly') === 'monthly')>Monthly</option>
+                        <option value="yearly" @selected(($reportFilter->reportType ?? 'monthly') === 'yearly')>Yearly</option>
+                        <option value="custom" @selected(($reportFilter->reportType ?? 'monthly') === 'custom')>Custom Range</option>
+                    </select>
+                </label>
+
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Date From</span>
+                    <input type="date" name="date_from" value="{{ request('date_from', $reportFilter->localStart?->toDateString()) }}" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
+                </label>
+
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Date To</span>
+                    <input type="date" name="date_to" value="{{ request('date_to', $reportFilter->localEnd?->toDateString()) }}" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
+                </label>
+
+                <div class="flex items-end gap-2 sm:col-span-2 xl:col-span-3">
+                    <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Apply Filters</button>
+                    <a href="{{ route('instructor.earnings.index') }}" class="inline-flex items-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Reset</a>
+                    <a href="{{ route('instructor.earnings.export', ['format' => 'pdf'] + request()->query()) }}" class="inline-flex items-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100">PDF</a>
+                    <a href="{{ route('instructor.earnings.export', ['format' => 'csv'] + request()->query()) }}" class="inline-flex items-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100">CSV</a>
+                    <a href="{{ route('instructor.earnings.export', ['format' => 'xlsx'] + request()->query()) }}" class="inline-flex items-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100">XLSX</a>
+                </div>
+            </form>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -46,9 +76,43 @@
                 <p class="mt-2 text-3xl font-bold text-gray-900">P{{ number_format((float) $stats['net_earnings'], 2) }}</p>
             </div>
             <div class="rounded-2xl border border-sky-100 bg-sky-50 p-5">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Last 7 Days</p>
-                <p class="mt-2 text-xl font-bold text-gray-900">{{ number_format((int) $stats['last_7_days_sales']) }} sales</p>
-                <p class="mt-1 text-sm font-semibold text-sky-700">P{{ number_format((float) $stats['last_7_days_earnings'], 2) }}</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Selected Range</p>
+                <p class="mt-2 text-xl font-bold text-gray-900">{{ number_format((int) $stats['total_sales']) }} sales</p>
+                <p class="mt-1 text-sm font-semibold text-sky-700">{{ $stats['range_label'] ?? 'Monthly' }} report</p>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-xs">
+            <div class="border-b border-gray-100 px-6 py-4">
+                <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">Earnings Per Module</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Module</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Sales</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Revenue</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Commission</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Earnings</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                    @forelse($moduleBreakdown as $item)
+                        <tr>
+                            <td class="px-6 py-3 text-sm font-semibold text-gray-900">{{ $item->module?->title ?? 'Unknown Module' }}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700">{{ number_format((int) $item->sales_count) }}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700">P{{ number_format((float) $item->gross_amount, 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700">P{{ number_format((float) $item->commission_amount, 2) }}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700">P{{ number_format((float) $item->instructor_earnings_amount, 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500">No module breakdown data for selected range.</td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
 

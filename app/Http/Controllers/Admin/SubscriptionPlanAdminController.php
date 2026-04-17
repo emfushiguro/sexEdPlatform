@@ -46,7 +46,16 @@ class SubscriptionPlanAdminController extends Controller
             'average_price' => (float) SubscriptionPlan::query()->notArchived()->avg('price'),
         ];
 
-        return view('admin.subscription-plans.index', compact('plans', 'stats', 'highlightPlanId'));
+        $instructorBaselinePlan = SubscriptionPlan::query()
+            ->notArchived()
+            ->where('plan_audience', 'instructor')
+            ->where('price', '<=', 0)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->with(['featureEntitlements.feature'])
+            ->first();
+
+        return view('admin.subscription-plans.index', compact('plans', 'stats', 'highlightPlanId', 'instructorBaselinePlan'));
     }
 
     public function archived(Request $request)
@@ -374,7 +383,7 @@ class SubscriptionPlanAdminController extends Controller
      */
     public function getFeatures(Request $request)
     {
-        $this->ensureCoreLearnerFeatures();
+        $this->ensureCorePlanFeatures();
 
         $audience = (string) $request->query('audience', '');
 
@@ -404,9 +413,9 @@ class SubscriptionPlanAdminController extends Controller
         return response()->json(['features' => $features]);
     }
 
-    private function ensureCoreLearnerFeatures(): void
+    private function ensureCorePlanFeatures(): void
     {
-        $coreLearnerFeatures = [
+        $coreFeatures = [
             [
                 'key' => 'unlimited_username_change',
                 'name' => 'Unlimited Username Changes',
@@ -426,17 +435,80 @@ class SubscriptionPlanAdminController extends Controller
                 'is_active' => true,
             ],
             [
-                'key' => 'downloadable_certificates',
-                'name' => 'Downloadable PDF Certificates',
-                'description' => 'Allow learners to download completion certificates as PDF files.',
+                'key' => 'text_translator',
+                'name' => 'Text Translator',
+                'description' => 'Unlock page and lesson text translation tools for learners.',
                 'value_type' => 'boolean',
                 'unit_label' => null,
                 'category' => 'learner',
                 'is_active' => true,
             ],
+            [
+                'key' => 'voice_speech_translator',
+                'name' => 'Voice Speech Translator',
+                'description' => 'Unlock translated text-to-speech lesson narration.',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'learner',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'instructor_published_modules_limit',
+                'name' => 'Published Modules Limit',
+                'description' => 'Maximum number of instructor-owned modules that can be published.',
+                'value_type' => 'quota',
+                'unit_label' => 'modules',
+                'category' => 'instructor',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'instructor_max_learners_per_free_module',
+                'name' => 'Free Module Learner Cap',
+                'description' => 'Maximum approved learners allowed per free module.',
+                'value_type' => 'quota',
+                'unit_label' => 'learners',
+                'category' => 'instructor',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'instructor_max_learners_per_paid_module',
+                'name' => 'Paid Module Learner Cap',
+                'description' => 'Maximum approved learners allowed per paid module.',
+                'value_type' => 'quota',
+                'unit_label' => 'learners',
+                'category' => 'instructor',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'instructor_can_publish_paid_modules',
+                'name' => 'Can Publish Paid Modules',
+                'description' => 'Allow instructors to mark modules as paid.',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'instructor',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'instructor_can_receive_paid_enrollments',
+                'name' => 'Can Receive Paid Enrollments',
+                'description' => 'Allow paid module transactions and enrollments to be processed.',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'instructor',
+                'is_active' => true,
+            ],
+            [
+                'key' => 'instructor_can_view_earnings',
+                'name' => 'Can View Earnings',
+                'description' => 'Allow access to instructor earnings and monetization reporting surfaces.',
+                'value_type' => 'boolean',
+                'unit_label' => null,
+                'category' => 'instructor',
+                'is_active' => true,
+            ],
         ];
 
-        foreach ($coreLearnerFeatures as $featureData) {
+        foreach ($coreFeatures as $featureData) {
             FeatureCatalog::updateOrCreate(
                 ['key' => $featureData['key']],
                 $featureData

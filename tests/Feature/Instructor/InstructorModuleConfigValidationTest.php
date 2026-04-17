@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Instructor;
 
+use App\Models\FeatureCatalog;
 use App\Models\Module;
+use App\Models\PlanFeatureEntitlement;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use Tests\TestCase;
 
@@ -10,6 +13,9 @@ class InstructorModuleConfigValidationTest extends TestCase
 {
     public function test_paid_module_requires_price_amount(): void
     {
+        config()->set('subscription_features.instructor_rollout_mode', 'soft');
+
+        /** @var User $instructor */
         $instructor = User::factory()->create(['role' => 'instructor']);
         $instructor->assignRole('instructor');
 
@@ -27,6 +33,9 @@ class InstructorModuleConfigValidationTest extends TestCase
 
     public function test_free_module_stores_null_price_amount(): void
     {
+        config()->set('subscription_features.instructor_rollout_mode', 'soft');
+
+        /** @var User $instructor */
         $instructor = User::factory()->create(['role' => 'instructor']);
         $instructor->assignRole('instructor');
 
@@ -49,10 +58,15 @@ class InstructorModuleConfigValidationTest extends TestCase
         ]);
     }
 
-    public function test_enrollment_limit_accepts_null_or_up_to_twenty(): void
+    public function test_enrollment_limit_accepts_null_or_up_to_plan_cap(): void
     {
+        $planCap = 30;
+
+        /** @var User $instructor */
         $instructor = User::factory()->create(['role' => 'instructor']);
         $instructor->assignRole('instructor');
+
+        $this->createInstructorBaselineWithFreeLearnerCap($planCap);
 
         $this->actingAs($instructor)
             ->post(route('instructor.modules.store'), [
@@ -74,20 +88,25 @@ class InstructorModuleConfigValidationTest extends TestCase
                 'age_bracket' => 'kids',
                 'enrollment_mode' => 'manual',
                 'access_type' => 'free',
-                'enrollment_limit' => 20,
+                'enrollment_limit' => $planCap,
             ])
             ->assertRedirect();
 
         $this->assertDatabaseHas('modules', [
             'id' => $module->id,
-            'enrollment_limit' => 20,
+            'enrollment_limit' => $planCap,
         ]);
     }
 
-    public function test_enrollment_limit_above_twenty_is_rejected(): void
+    public function test_enrollment_limit_above_plan_cap_is_rejected(): void
     {
+        $planCap = 30;
+
+        /** @var User $instructor */
         $instructor = User::factory()->create(['role' => 'instructor']);
         $instructor->assignRole('instructor');
+
+        $this->createInstructorBaselineWithFreeLearnerCap($planCap);
 
         $this->actingAs($instructor)
             ->post(route('instructor.modules.store'), [
@@ -96,12 +115,50 @@ class InstructorModuleConfigValidationTest extends TestCase
                 'age_bracket' => 'kids',
                 'enrollment_mode' => 'manual',
                 'access_type' => 'free',
-                'enrollment_limit' => 21,
+                'enrollment_limit' => $planCap + 1,
             ])
             ->assertSessionHasErrors(['enrollment_limit']);
 
         $this->assertDatabaseMissing('modules', [
             'title' => 'Over cap module',
         ]);
+    }
+
+    private function createInstructorBaselineWithFreeLearnerCap(int $cap): SubscriptionPlan
+    {
+        $plan = SubscriptionPlan::query()->create([
+            'name' => 'Instructor Free Baseline',
+            'slug' => 'instructor-baseline-' . uniqid(),
+            'description' => 'Baseline for validation tests',
+            'price' => 0,
+            'features' => [],
+            'plan_audience' => 'instructor',
+            'billing_mode' => 'monthly',
+            'trial_days' => 0,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $feature = FeatureCatalog::query()->updateOrCreate(
+            ['key' => 'instructor_max_learners_per_free_module'],
+            [
+                'name' => 'Free Module Learner Cap',
+                'description' => 'Free Module Learner Cap',
+                'value_type' => 'quota',
+                'unit_label' => 'learners',
+                'category' => 'instructor',
+                'is_active' => true,
+            ]
+        );
+
+        PlanFeatureEntitlement::query()->create([
+            'plan_id' => $plan->id,
+            'feature_id' => $feature->id,
+            'is_enabled' => true,
+            'quota_value' => $cap,
+            'is_unlimited' => false,
+        ]);
+
+        return $plan;
     }
 }

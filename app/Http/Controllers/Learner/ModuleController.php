@@ -16,6 +16,7 @@ use App\Models\ModuleFeedback;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use App\Notifications\Learner\ModulePurchaseResultNotification;
+use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\ModulePurchaseService;
 use App\Services\LearnerModuleCompletionService;
 use App\Services\Content\AdminOwnershipDisplayService;
@@ -28,6 +29,7 @@ class ModuleController extends Controller
         private readonly ModulePurchaseService $modulePurchaseService,
         private readonly LearnerModuleCompletionService $completionService,
         private readonly AdminOwnershipDisplayService $ownershipDisplayService,
+        private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
     ) {
     }
 
@@ -191,8 +193,9 @@ class ModuleController extends Controller
             ->approvedForModule($module->id)
             ->count();
 
-        $isAtCapacity = $module->enrollment_limit !== null
-            && $approvedEnrollmentsCount >= (int) $module->enrollment_limit;
+        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
+        $isAtCapacity = $effectiveEnrollmentLimit !== null
+            && $approvedEnrollmentsCount >= $effectiveEnrollmentLimit;
 
         $needsParentApproval = ParentChildAccount::query()
             ->where('child_user_id', $user->id)
@@ -203,11 +206,30 @@ class ModuleController extends Controller
         $isParentApprovedForPurchase = !$needsParentApproval
             || ($enrollment && in_array($enrollment->status, [EnrollmentStatus::Pending, EnrollmentStatus::Approved], true));
 
+        $checkoutUnavailableReason = null;
+
+        if ($isPaidModule && !$hasPurchased) {
+            if (!$this->canReceivePaidEnrollments($module)) {
+                $checkoutUnavailableReason = 'Paid enrollment is not enabled for this module yet.';
+            } elseif ($isAtCapacity) {
+                $checkoutUnavailableReason = 'Enrollment capacity has been reached for this module.';
+            } elseif ($needsParentApproval && !$isParentApprovedForPurchase) {
+                $checkoutUnavailableReason = 'Parent approval is required before checkout.';
+            } elseif ($enrollment && $enrollment->status === EnrollmentStatus::Rejected) {
+                $checkoutUnavailableReason = 'Your enrollment request was rejected, so checkout is unavailable right now.';
+            }
+        }
+
         $canPurchase = $isPaidModule
             && !$hasPurchased
+            && $this->canReceivePaidEnrollments($module)
             && !$isAtCapacity
             && $isParentApprovedForPurchase
             && (!$enrollment || $enrollment->status !== EnrollmentStatus::Rejected);
+
+        if ($canPurchase) {
+            $checkoutUnavailableReason = null;
+        }
 
         // Calculate progress
         $totalLessons = $lessons->count();
@@ -359,6 +381,7 @@ class ModuleController extends Controller
             'isAtCapacity',
             'needsParentApproval',
             'isParentApprovedForPurchase',
+            'checkoutUnavailableReason',
             'canPurchase',
             'progress', 
             'completedLessonIds',
@@ -391,6 +414,11 @@ class ModuleController extends Controller
         if (!$user->learnerProfile) {
             return redirect()->route('profile.complete')
                 ->with('error', 'Please complete your profile to access modules.');
+        }
+
+        if ($module->isPaidAccess() && !$this->canReceivePaidEnrollments($module)) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'Paid enrollment is currently unavailable for this module.');
         }
 
         if ($module->isPaidAccess() && !$this->modulePurchaseService->hasCompletedPurchase($user, $module)) {
@@ -444,10 +472,11 @@ class ModuleController extends Controller
                 ->with('success', 'Your enrollment request has been submitted. Please wait for parental approval.');
         }
 
-        $isAtCapacity = $module->enrollment_limit !== null
+        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
+        $isAtCapacity = $effectiveEnrollmentLimit !== null
             && ModuleEnrollment::query()
                 ->approvedForModule($module->id)
-                ->count() >= (int) $module->enrollment_limit;
+                ->count() >= $effectiveEnrollmentLimit;
 
         if ($isAtCapacity) {
             ModuleEnrollment::create([
@@ -508,6 +537,11 @@ class ModuleController extends Controller
                 ->with('info', 'This module does not require payment.');
         }
 
+        if (!$this->canReceivePaidEnrollments($module)) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'Paid enrollment is currently unavailable for this module.');
+        }
+
         $learnerAge = $user->learnerProfile->getAge();
         if (!$this->canAccessModule($module, $learnerAge)) {
             return redirect()->route('learner.modules.index')
@@ -553,8 +587,9 @@ class ModuleController extends Controller
             }
         }
 
-        $isAtCapacity = $module->enrollment_limit !== null
-            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= (int) $module->enrollment_limit;
+        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
+        $isAtCapacity = $effectiveEnrollmentLimit !== null
+            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= $effectiveEnrollmentLimit;
 
         if ($isAtCapacity) {
             return redirect()->route('learner.modules.show', $module)
@@ -583,6 +618,11 @@ class ModuleController extends Controller
         if (!$module->isPaidAccess()) {
             return redirect()->route('learner.modules.show', $module)
                 ->with('info', 'This module does not require payment.');
+        }
+
+        if (!$this->canReceivePaidEnrollments($module)) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'Paid enrollment is currently unavailable for this module.');
         }
 
         $learnerAge = $user->learnerProfile->getAge();
@@ -614,8 +654,9 @@ class ModuleController extends Controller
                 ->with('info', 'Parent approval is required before payment.');
         }
 
-        $isAtCapacity = $module->enrollment_limit !== null
-            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= (int) $module->enrollment_limit;
+        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
+        $isAtCapacity = $effectiveEnrollmentLimit !== null
+            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= $effectiveEnrollmentLimit;
 
         if ($isAtCapacity) {
             return redirect()->route('learner.modules.show', $module)
@@ -662,6 +703,11 @@ class ModuleController extends Controller
                 ->with('info', 'This module does not require payment.');
         }
 
+        if (!$this->canReceivePaidEnrollments($module)) {
+            return redirect()->route('learner.modules.show', $module)
+                ->with('error', 'Paid enrollment is currently unavailable for this module.');
+        }
+
         $learnerAge = $user->learnerProfile->getAge();
         if (!$this->canAccessModule($module, $learnerAge)) {
             return redirect()->route('learner.modules.index')
@@ -691,8 +737,9 @@ class ModuleController extends Controller
                 ->with('info', 'Parent approval is required before payment.');
         }
 
-        $isAtCapacity = $module->enrollment_limit !== null
-            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= (int) $module->enrollment_limit;
+        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
+        $isAtCapacity = $effectiveEnrollmentLimit !== null
+            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= $effectiveEnrollmentLimit;
 
         if ($isAtCapacity) {
             return redirect()->route('learner.modules.show', $module)
@@ -812,5 +859,51 @@ class ModuleController extends Controller
     private function canAccessModule(Module $module, int $learnerAge): bool
     {
         return $module->isAppropriateForAge($learnerAge);
+    }
+
+    private function canReceivePaidEnrollments(Module $module): bool
+    {
+        if (!$module->isPaidAccess()) {
+            return true;
+        }
+
+        if ((string) ($module->content_owner_type ?? '') !== 'instructor') {
+            return true;
+        }
+
+        $instructor = $module->creator;
+        if (!$instructor) {
+            return false;
+        }
+
+        return $this->instructorPlanCapabilityService->canReceivePaidEnrollments($instructor);
+    }
+
+    private function resolveEffectiveEnrollmentLimit(Module $module): ?int
+    {
+        $effectiveLimit = $module->enrollment_limit !== null ? (int) $module->enrollment_limit : null;
+
+        if ((string) ($module->content_owner_type ?? '') !== 'instructor') {
+            return $effectiveLimit;
+        }
+
+        $instructor = $module->creator;
+        if (!$instructor) {
+            return $effectiveLimit;
+        }
+
+        $planCap = $this->instructorPlanCapabilityService->getLearnerCapForModule(
+            $instructor,
+            $module->isPaidAccess() ? 'paid' : 'free'
+        );
+        if ($planCap === null) {
+            return $effectiveLimit;
+        }
+
+        if ($effectiveLimit === null) {
+            return $planCap;
+        }
+
+        return min($effectiveLimit, $planCap);
     }
 }

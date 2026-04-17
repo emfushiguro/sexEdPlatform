@@ -7,6 +7,7 @@ use App\Models\ModuleReviewRequest;
 use App\Models\ModuleRevision;
 use App\Models\User;
 use App\Services\Content\ContentAuthoringService;
+use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Notifications\Admin\NewModuleSubmissionNotification;
 use App\Notifications\InstructorModuleReviewDecisionNotification;
 use App\Notifications\InstructorModuleReviewStatusNotification;
@@ -23,6 +24,7 @@ class ContentGovernanceService
         private readonly AdminActivityLogService $adminActivityLogService,
         private readonly InstructorModerationPenaltyService $instructorModerationPenaltyService,
         private readonly ContentAuthoringService $contentAuthoringService,
+        private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
     ) {
     }
 
@@ -229,6 +231,8 @@ class ContentGovernanceService
             $revision = $reviewRequest->revision;
             $module = $reviewRequest->module;
 
+            $this->assertInstructorPublishQuotaAvailable($module);
+
             $revision->forceFill([
                 'status' => 'approved',
                 'reviewed_at' => now(),
@@ -278,6 +282,36 @@ class ContentGovernanceService
 
             return $revision->fresh();
         });
+    }
+
+    private function assertInstructorPublishQuotaAvailable(Module $module): void
+    {
+        if ((string) ($module->content_owner_type ?? '') !== 'instructor') {
+            return;
+        }
+
+        $instructor = User::query()->find($module->created_by);
+        if (!$instructor) {
+            return;
+        }
+
+        $publishedLimit = $this->instructorPlanCapabilityService->getPublishedModuleLimit($instructor);
+        if ($publishedLimit === null) {
+            return;
+        }
+
+        $publishedCount = Module::query()
+            ->where('created_by', $instructor->id)
+            ->where('content_owner_type', 'instructor')
+            ->where('is_published', true)
+            ->where('id', '!=', $module->id)
+            ->count();
+
+        if ($publishedCount >= $publishedLimit && $this->instructorPlanCapabilityService->isStrictRolloutMode()) {
+            throw new InvalidArgumentException(
+                "This instructor has reached the published module limit ({$publishedLimit}) for the current plan."
+            );
+        }
     }
 
     public function rejectReview(

@@ -126,7 +126,7 @@
                                 @if(!empty($plan['description']))
                                 <p class="mt-2 text-sm font-medium leading-relaxed text-gray-500">{{ $plan['description'] }}</p>
                             @endif
-                            <p class="mt-2 text-xs text-gray-400">{{ count($plan['feature_labels']) }} visible features</p>
+                            <p class="mt-2 text-xs text-gray-400">{{ (int) ($plan['visible_feature_count'] ?? count($plan['feature_labels'] ?? [])) }} visible features</p>
                         </div>
                         <div class="flex flex-col items-end gap-2 shrink-0">
                             @if($plan['is_current'])
@@ -154,12 +154,23 @@
 
                     <div class="flex-grow pt-6 mt-6 border-t border-gray-100">
                         <ul class="space-y-3.5 text-sm text-gray-600">
-                            @foreach(array_slice(array_values($plan['feature_labels']), 0, 5) as $featureLabel)
+                            @if(!empty($plan['includes_free_features']))
+                                <li class="flex items-start gap-3 rounded-xl border border-purple-100 bg-purple-50/70 px-3 py-2 text-sm font-semibold text-purple-700">
+                                    <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-purple-700">+</span>
+                                    <span class="leading-tight">All Free Plan Features</span>
+                                </li>
+                            @endif
+
+                            @foreach(array_values($plan['feature_labels']) as $featureLabel)
                                 <li class="flex items-start gap-3 transition-colors duration-200 group-hover:text-gray-900">
                                     <svg class="h-5 w-5 text-purple-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                                     <span class="leading-tight">{{ $featureLabel }}</span>
                                 </li>
                             @endforeach
+
+                            @if(empty($plan['feature_labels']) && !empty($plan['includes_free_features']))
+                                <li class="text-xs font-medium text-gray-500">No additional premium features are configured yet.</li>
+                            @endif
                         </ul>
                     </div>
 

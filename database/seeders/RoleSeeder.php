@@ -63,6 +63,8 @@ class RoleSeeder extends Seeder
             'manage enrollments',
             'approve enrollments',
             'reject enrollments',
+            'view own financial reports',
+            'export own financial reports',
             'view analytics',
             'view activity logs',
         ]);

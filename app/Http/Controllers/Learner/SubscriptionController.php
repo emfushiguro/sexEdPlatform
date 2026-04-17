@@ -77,10 +77,7 @@ class SubscriptionController extends Controller
                                 ? $paymongoService->retrieveCheckoutSession($sessionId)
                                 : $paymongoService->retrievePaymentLink($linkId);
 
-                            $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
-                            $hasPayments = !empty(data_get($response, 'data.attributes.payments', []));
-
-                            if ($status === 'paid' || $status === 'completed' || $hasPayments) {
+                            if ($this->paymongoResponseIndicatesPaid($response)) {
                                 DB::transaction(function () use ($pendingPayment, $pendingSubscription) {
                                     $pendingPayment->update([
                                         'status'  => PaymentStatus::Completed,
@@ -130,6 +127,7 @@ class SubscriptionController extends Controller
         $subscriptionSummary = $this->entitlementService->getSubscriptionSummary($user);
 
         $availablePlans = SubscriptionPlan::active()
+            ->where('plan_audience', 'learner')
             ->ordered()
             ->with(['planPrices' => function ($q) {
                 $q->where('is_active', true)
@@ -141,7 +139,6 @@ class SubscriptionController extends Controller
         $planCards = $this->buildPlanCards($availablePlans, $activeSubscription);
         $planCards = $this->prependFreeBaselineCard($planCards, $activeSubscription);
         $comparisonFeatures = $this->buildComparisonFeatures($planCards);
-        $entitlementHighlights = $this->buildEntitlementHighlights($user);
         $renewalNotice = $this->buildRenewalNotice($latestSubscription);
 
         return view('subscriptions.index', compact(
@@ -151,11 +148,31 @@ class SubscriptionController extends Controller
             'subscriptionSummary',
             'planCards',
             'comparisonFeatures',
-            'entitlementHighlights',
             'renewalNotice'
         ));
     }
 
+    private function paymongoResponseIndicatesPaid(array $response): bool
+    {
+        $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
+        if (in_array($status, ['paid', 'completed', 'succeeded', 'successful'], true)) {
+            return true;
+        }
+
+        $payments = data_get($response, 'data.attributes.payments', []);
+        if (!is_array($payments) || empty($payments)) {
+            return false;
+        }
+
+        foreach ($payments as $item) {
+            $paymentStatus = strtolower((string) data_get($item, 'attributes.status', data_get($item, 'status', '')));
+            if (in_array($paymentStatus, ['paid', 'completed', 'succeeded', 'successful'], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
     /**
      * Show the upgrade page with available plans
      */
@@ -170,7 +187,9 @@ class SubscriptionController extends Controller
         $currentSubscription = $user->subscription;
         $availablePlans      = SubscriptionPlan::active()->ordered()->with(['planPrices' => function ($q) {
             $q->where('is_active', true)->orderByDesc('is_default')->orderBy('duration_count');
-        }, 'featureEntitlements.feature'])->get();
+        }, 'featureEntitlements.feature'])
+            ->where('plan_audience', 'learner')
+            ->get();
         $currentPlanId       = $currentSubscription?->plan_id;
         $hasActiveSubscription = $currentSubscription && $currentSubscription->status === SubscriptionStatus::Active;
 
@@ -195,7 +214,15 @@ class SubscriptionController extends Controller
                 ->with('error', 'You already have an active premium subscription.');
         }
 
-        $plan = SubscriptionPlan::findOrFail($request->plan_id);
+        $plan = SubscriptionPlan::query()
+            ->active()
+            ->where('plan_audience', 'learner')
+            ->findOrFail($request->plan_id);
+
+        if ((float) ($plan->price ?? 0) <= 0) {
+            return redirect()->route('subscription.index')
+                ->with('info', 'Free access is already included by default. Choose a paid learner plan to continue checkout.');
+        }
 
         try {
             $subscription = $this->subscriptionService->create($user, $plan);
@@ -220,7 +247,15 @@ class SubscriptionController extends Controller
                 ->with('error', 'You already have an active premium subscription. Cancel first to switch plans.');
         }
 
-        $plan = SubscriptionPlan::findOrFail($request->plan_id);
+        $plan = SubscriptionPlan::query()
+            ->active()
+            ->where('plan_audience', 'learner')
+            ->findOrFail($request->plan_id);
+
+        if ((float) ($plan->price ?? 0) <= 0) {
+            return redirect()->route('subscription.index')
+                ->with('info', 'Free access is already included by default. Choose a paid learner plan to continue checkout.');
+        }
 
         try {
             $subscription = $this->subscriptionService->create($user, $plan);
@@ -245,8 +280,12 @@ class SubscriptionController extends Controller
                 ->with('error', 'You already have an active premium subscription.');
         }
 
-        $plan = SubscriptionPlan::where('slug', 'premium')
-            ->orWhere('slug', 'like', 'premium-%')
+        $plan = SubscriptionPlan::query()
+            ->where('plan_audience', 'learner')
+            ->where(function ($query) {
+                $query->where('slug', 'premium')
+                    ->orWhere('slug', 'like', 'premium-%');
+            })
             ->first();
 
         try {
@@ -413,10 +452,11 @@ class SubscriptionController extends Controller
     {
         $labelMap = config('subscription_features.labels', []);
         $hiddenKeys = config('subscription_features.hidden', ['test_mode', 'duration_minutes']);
+        $freeFeatureLabels = $this->defaultFreePlanFeatureLabels();
         $hasActiveSubscription = $currentSubscription && $currentSubscription->status === SubscriptionStatus::Active;
         $today = now()->startOfDay();
 
-        $cards = collect($plans)->map(function ($plan) use ($currentSubscription, $hasActiveSubscription, $today, $labelMap, $hiddenKeys) {
+        $cards = collect($plans)->map(function ($plan) use ($currentSubscription, $hasActiveSubscription, $today, $labelMap, $hiddenKeys, $freeFeatureLabels) {
             $isCurrentPlan = $currentSubscription?->plan_id === $plan->id;
 
             $prices = collect($plan->planPrices ?? [])->map(function ($price) {
@@ -439,14 +479,23 @@ class SubscriptionController extends Controller
             $defaultPrice = collect($prices)->firstWhere('is_default', true)
                 ?? (count($prices) > 0 ? $prices[0] : null);
 
-            $featureLabels = $this->extractEntitlementFeatureLabels($plan, $labelMap, $hiddenKeys);
+            $resolvedFeatureLabels = $this->extractEntitlementFeatureLabels($plan, $labelMap, $hiddenKeys);
 
-            if (empty($featureLabels)) {
-                $featureLabels = $this->flattenFeatureLabels((array) ($plan->features ?? []), $labelMap, $hiddenKeys);
+            if (empty($resolvedFeatureLabels)) {
+                $resolvedFeatureLabels = $this->flattenFeatureLabels((array) ($plan->features ?? []), $labelMap, $hiddenKeys);
             }
 
+            $cardFeatureLabels = $resolvedFeatureLabels;
+            $comparisonFeatureLabels = $resolvedFeatureLabels;
+            $includesFreeFeatures = false;
+
             if ($plan->isFree()) {
-                $featureLabels = $this->defaultFreePlanFeatureLabels();
+                $cardFeatureLabels = $freeFeatureLabels;
+                $comparisonFeatureLabels = $freeFeatureLabels;
+            } else {
+                $cardFeatureLabels = $this->filterOutDuplicateLabels($resolvedFeatureLabels, $freeFeatureLabels);
+                $comparisonFeatureLabels = $this->mergeUniqueLabels($freeFeatureLabels, $cardFeatureLabels);
+                $includesFreeFeatures = true;
             }
 
             $isEligible = true;
@@ -481,8 +530,11 @@ class SubscriptionController extends Controller
                 'ineligible_reason' => $ineligibleReason,
                 'prices' => $prices,
                 'default_price' => $defaultPrice,
-                'feature_labels' => $featureLabels,
-                'feature_keys' => array_keys($featureLabels),
+                'feature_labels' => $cardFeatureLabels,
+                'feature_keys' => array_keys($comparisonFeatureLabels),
+                'comparison_feature_labels' => $comparisonFeatureLabels,
+                'includes_free_features' => $includesFreeFeatures,
+                'visible_feature_count' => count($comparisonFeatureLabels),
                 'is_baseline' => false,
             ];
         })->values();
@@ -521,6 +573,9 @@ class SubscriptionController extends Controller
             'default_price' => null,
             'feature_labels' => $freeFeatureLabels,
             'feature_keys' => array_keys($freeFeatureLabels),
+            'comparison_feature_labels' => $freeFeatureLabels,
+            'includes_free_features' => false,
+            'visible_feature_count' => count($freeFeatureLabels),
             'is_recommended' => false,
             'is_baseline' => true,
         ];
@@ -534,57 +589,62 @@ class SubscriptionController extends Controller
             'free_core_learning' => 'Access to core age-appropriate learning modules',
             'free_quiz_shields' => '3 quiz shields per day',
             'free_username_changes' => 'Username change every 7 days',
+            'free_certificate_downloads' => 'View and download completion certificates',
             'free_progress_tracking' => 'Track module progress and quiz completion history',
             'free_upgrade_anytime' => 'Upgrade any time for premium controls',
         ];
     }
 
-    private function buildEntitlementHighlights(User $user): array
+    private function filterOutDuplicateLabels(array $candidateLabels, array $referenceLabels): array
     {
-        $hasUnlimitedUsernameChanges = $this->entitlementService->canAccessFeature(
-            $user,
-            SubscriptionFeatureKeys::UNLIMITED_USERNAME_CHANGE
-        );
+        $referenceMap = [];
 
-        $hasUnlimitedQuizShields = $this->entitlementService->canAccessFeature(
-            $user,
-            SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS
-        );
+        foreach ($referenceLabels as $referenceLabel) {
+            $referenceMap[$this->normalizeLabel((string) $referenceLabel)] = true;
+        }
 
-        $canDownloadCertificates = $this->entitlementService->canAccessFeature(
-            $user,
-            SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES
-        );
+        $output = [];
+        foreach ($candidateLabels as $featureKey => $featureLabel) {
+            $normalized = $this->normalizeLabel((string) $featureLabel);
 
-        return [
-            [
-                'key' => 'username_changes',
-                'label' => 'Username changes',
-                'value' => $hasUnlimitedUsernameChanges ? 'Unlimited' : 'Every 7 days',
-                'description' => $hasUnlimitedUsernameChanges
-                    ? 'Current plan removes username cooldown.'
-                    : 'Free baseline applies one change every 7 days.',
-                'is_enabled' => $hasUnlimitedUsernameChanges,
-            ],
-            [
-                'key' => 'quiz_shields',
-                'label' => 'Quiz shields',
-                'value' => $hasUnlimitedQuizShields ? 'Unlimited' : '3 per day',
-                'description' => $hasUnlimitedQuizShields
-                    ? 'Retry quizzes without consuming daily shields.'
-                    : 'Free baseline includes 3 shields and resets daily.',
-                'is_enabled' => $hasUnlimitedQuizShields,
-            ],
-            [
-                'key' => 'certificates',
-                'label' => 'Certificate downloads',
-                'value' => $canDownloadCertificates ? 'Included' : 'Upgrade required',
-                'description' => $canDownloadCertificates
-                    ? 'Download your completion certificates any time.'
-                    : 'Certificate downloads unlock on supported premium plans.',
-                'is_enabled' => $canDownloadCertificates,
-            ],
-        ];
+            if (isset($referenceMap[$normalized])) {
+                continue;
+            }
+
+            $output[$featureKey] = $featureLabel;
+        }
+
+        return $output;
+    }
+
+    private function mergeUniqueLabels(array $primaryLabels, array $secondaryLabels): array
+    {
+        $output = $primaryLabels;
+        $existing = [];
+
+        foreach ($primaryLabels as $featureLabel) {
+            $existing[$this->normalizeLabel((string) $featureLabel)] = true;
+        }
+
+        foreach ($secondaryLabels as $featureKey => $featureLabel) {
+            $normalized = $this->normalizeLabel((string) $featureLabel);
+
+            if (isset($existing[$normalized])) {
+                continue;
+            }
+
+            $output[$featureKey] = $featureLabel;
+            $existing[$normalized] = true;
+        }
+
+        return $output;
+    }
+
+    private function normalizeLabel(string $label): string
+    {
+        $normalized = strtolower(trim($label));
+
+        return preg_replace('/[^a-z0-9]+/', '', $normalized) ?? $normalized;
     }
 
     /**
@@ -659,7 +719,7 @@ class SubscriptionController extends Controller
         $features = [];
 
         foreach ($planCards as $card) {
-            foreach (($card['feature_labels'] ?? []) as $featureKey => $featureLabel) {
+            foreach (($card['comparison_feature_labels'] ?? []) as $featureKey => $featureLabel) {
                 if (!isset($features[$featureKey])) {
                     $features[$featureKey] = [
                         'key' => $featureKey,
@@ -672,7 +732,8 @@ class SubscriptionController extends Controller
         $priorityFeatures = [
             SubscriptionFeatureKeys::UNLIMITED_USERNAME_CHANGE => 'Unlimited Username Changes',
             SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS => 'Unlimited Quiz Shields',
-            SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES => 'Downloadable Certificates',
+            SubscriptionFeatureKeys::TEXT_TRANSLATOR => 'Text Translator',
+            SubscriptionFeatureKeys::VOICE_SPEECH_TRANSLATOR => 'Voice Speech Translator',
         ];
 
         foreach ($priorityFeatures as $featureKey => $featureLabel) {

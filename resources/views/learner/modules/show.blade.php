@@ -383,12 +383,10 @@
                                    style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
                                     View Certificate
                                 </a>
-                                @if(auth()->user()->isPremium())
-                                    <a href="{{ route('learner.certificates.download', $moduleCertificate) }}"
-                                       class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors">
-                                        Download PDF
-                                    </a>
-                                @endif
+                                <a href="{{ route('learner.certificates.download', $moduleCertificate) }}"
+                                   class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors">
+                                    Download PDF
+                                </a>
                             </div>
                         @elseif($certificateEligible)
                             <p class="text-sm text-gray-600 dark:text-gray-400">You completed this module. Generate your certificate now.</p>
@@ -576,7 +574,7 @@
                                 Pay {{ $module->display_price }}
                             </a>
                         @else
-                            <p class="text-xs text-gray-500 dark:text-gray-400 text-center">Checkout is not available right now.</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 text-center">{{ $checkoutUnavailableReason ?? 'Checkout is not available right now.' }}</p>
                         @endif
                     @else
                         <form method="POST" action="{{ route('learner.modules.enroll', $module) }}">

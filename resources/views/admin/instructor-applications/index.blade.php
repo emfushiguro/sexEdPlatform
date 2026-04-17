@@ -34,15 +34,28 @@
         openReview(id) {
             this.activeReview = id;
         },
-        closeReview() {
-            if (typeof tinymce !== 'undefined') {
-                tinymce.editors
-                    .filter((editor) => editor.id.startsWith('approve_admin_message_') || editor.id.startsWith('reject_admin_message_'))
-                    .forEach((editor) => {
-                        editor.save();
-                        editor.remove();
-                    });
+        getModerationEditors() {
+            if (typeof tinymce === 'undefined') {
+                return [];
             }
+
+            if (Array.isArray(tinymce.editors)) {
+                return tinymce.editors;
+            }
+
+            if (tinymce.EditorManager && Array.isArray(tinymce.EditorManager.editors)) {
+                return tinymce.EditorManager.editors;
+            }
+
+            return [];
+        },
+        closeReview() {
+            this.getModerationEditors()
+                .filter((editor) => editor.id.startsWith('approve_admin_message_') || editor.id.startsWith('reject_admin_message_'))
+                .forEach((editor) => {
+                    editor.save();
+                    editor.remove();
+                });
 
             this.activeReview = null;
         },

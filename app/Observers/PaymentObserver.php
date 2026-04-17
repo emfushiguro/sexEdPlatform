@@ -38,7 +38,14 @@ class PaymentObserver
                 ]);
             } else {
                 // Fire PaymentSuccessful event (invoice + receipt email queued)
-                event(new PaymentSuccessful($payment));
+                try {
+                    event(new PaymentSuccessful($payment));
+                } catch (\Throwable $exception) {
+                    Log::warning('PaymentSuccessful dispatch failed', [
+                        'payment_id' => $payment->id,
+                        'message' => $exception->getMessage(),
+                    ]);
+                }
 
                 // Activate subscription via service.
                 // Always load a FRESH instance from the DB so the idempotency guard inside
@@ -46,11 +53,26 @@ class PaymentObserver
                 // activate() is idempotent — safe to call even if already active.
                 $subscription = $payment->subscription()->first();
                 if ($subscription) {
-                    app(SubscriptionService::class)->activate($subscription);
+                    try {
+                        app(SubscriptionService::class)->activate($subscription);
+                    } catch (\Throwable $exception) {
+                        Log::warning('Subscription activation from PaymentObserver failed', [
+                            'payment_id' => $payment->id,
+                            'subscription_id' => $subscription->id,
+                            'message' => $exception->getMessage(),
+                        ]);
+                    }
                 }
 
                 if ($payment->user) {
-                    $payment->user->notify(new SubscriptionResultNotification('completed', $subscription, $payment));
+                    try {
+                        $payment->user->notify(new SubscriptionResultNotification('completed', $subscription, $payment));
+                    } catch (\Throwable $exception) {
+                        Log::warning('Failed to send subscription completion notification', [
+                            'payment_id' => $payment->id,
+                            'message' => $exception->getMessage(),
+                        ]);
+                    }
                 }
 
                 $this->notifyAdmins(new NewSubscriptionPurchaseNotification($payment));
@@ -68,7 +90,14 @@ class PaymentObserver
             $payment->loadMissing(['user', 'subscription']);
 
             if (!$payment->isModulePurchase() && $payment->user) {
-                $payment->user->notify(new SubscriptionResultNotification('failed', $payment->subscription, $payment));
+                try {
+                    $payment->user->notify(new SubscriptionResultNotification('failed', $payment->subscription, $payment));
+                } catch (\Throwable $exception) {
+                    Log::warning('Failed to send subscription failure notification', [
+                        'payment_id' => $payment->id,
+                        'message' => $exception->getMessage(),
+                    ]);
+                }
             }
 
             $this->notifyAdmins(new NewPaymentTransactionNotification($payment));

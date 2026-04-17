@@ -6,6 +6,8 @@
 @php
     $paymentContext = $paymentContext ?? 'subscription';
     $redirectUrl = $redirectUrl ?? route('subscription.index');
+    $statusUrl = $statusUrl ?? route('payment.status', $payment);
+    $historyUrl = $historyUrl ?? route('payment.history');
     $contextLabel = $paymentContext === 'module' ? 'module access' : 'subscription';
 @endphp
 <div class="max-w-3xl mx-auto space-y-6 py-6">
@@ -94,7 +96,7 @@
             <i class="fi fi-rr-arrow-small-left"></i>
             {{ $paymentContext === 'module' ? 'Back to Module' : 'Back to Subscription' }}
         </a>
-        <a href="{{ route('payment.history') }}" class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors">
+        <a href="{{ $historyUrl }}" class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors">
             View Payment History
             <i class="fi fi-rr-arrow-small-right"></i>
         </a>
@@ -132,7 +134,7 @@
             // ── 2. Poll for payment confirmation every 4 s ───────────────────────
             // This catches the case where success_url redirect fails (e.g. user
             // closes PayMongo tab, poor connectivity, etc.) and auto-activates.
-            const statusUrl   = '{{ route('payment.status', $payment) }}';
+            const statusUrl   = '{{ $statusUrl }}';
             const pollEvery   = 4000;
             let   attempts    = 0;
             const maxAttempts = 75; // poll for ~5 minutes

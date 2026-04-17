@@ -13,19 +13,12 @@ use App\Notifications\Instructor\LearnerCertificateIssuedNotification;
 use App\Notifications\Learner\CertificateIssuedNotification;
 use App\Services\CertificatePdfService;
 use App\Services\GamificationService;
-use App\Services\SubscriptionService;
-use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class CertificateController extends Controller
 {
-    public function __construct(
-        private readonly SubscriptionService $subscriptionService,
-    ) {
-    }
-
     /**
      * Display user's certificates
      */
@@ -129,17 +122,6 @@ class CertificateController extends Controller
         // Security check
         if ($certificate->user_id !== $user->id) {
             abort(403);
-        }
-
-        $canDownloadCertificate = $this->subscriptionService->hasFeature(
-            $user,
-            SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES
-        );
-
-        if (!$canDownloadCertificate) {
-            return redirect()
-                ->route('subscription.upgrade')
-                ->with('error', 'Certificate PDF downloads are available only on plans with downloadable certificates.');
         }
 
         $pdfPath = app(CertificatePdfService::class)->ensureStoredPdf($certificate);

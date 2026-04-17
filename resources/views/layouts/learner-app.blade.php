@@ -27,6 +27,32 @@
         })();
     </script>
 
+    {{-- Bootstrap translation preference early to minimize default-English flash --}}
+    <script>
+        (function () {
+            var storageKey = 'cc_page_translation_language';
+            var preferredLanguage = 'en';
+
+            try {
+                preferredLanguage = localStorage.getItem(storageKey) || 'en';
+            } catch (error) {
+                preferredLanguage = 'en';
+            }
+
+            if (!['en', 'tl'].includes(preferredLanguage)) {
+                preferredLanguage = 'en';
+            }
+
+            window.__ccPreferredTranslationLanguage = preferredLanguage;
+            window.__ccPageTranslationBootedAt = Date.now();
+
+            if (preferredLanguage !== 'en') {
+                document.documentElement.setAttribute('lang', preferredLanguage);
+                document.documentElement.setAttribute('data-cc-translation-pending', '1');
+            }
+        })();
+    </script>
+
     @stack('head')
 </head>
 <body
@@ -84,8 +110,18 @@
     @stack('scripts')
 
     @auth
+        @php
+            $canUseTextTranslator = app(\App\Services\EntitlementService::class)
+                ->canAccessFeature(auth()->user(), \App\Support\SubscriptionFeatureKeys::TEXT_TRANSLATOR);
+            $canUseVoiceTranslator = app(\App\Services\EntitlementService::class)
+                ->canAccessFeature(auth()->user(), \App\Support\SubscriptionFeatureKeys::VOICE_SPEECH_TRANSLATOR);
+        @endphp
+
         <x-learner.out-of-shields-modal :score="auth()->user()->gamification?->score ?? 0" />
-        @include('learner.partials.global-page-translator')
+        @include('learner.partials.global-page-translator', [
+            'canUseTextTranslator' => $canUseTextTranslator,
+            'canUseVoiceTranslator' => $canUseVoiceTranslator,
+        ])
     @endauth
 
     {{-- ─── Flash toast notifications ─── --}}

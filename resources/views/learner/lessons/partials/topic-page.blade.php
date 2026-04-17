@@ -306,8 +306,14 @@
                             isReading: false,
                             ttsError: '',
                             audioPlayer: null,
+                                     canUseVoiceTranslator: @js(app(\App\Services\EntitlementService::class)->canAccessFeature(auth()->user(), \App\Support\SubscriptionFeatureKeys::VOICE_SPEECH_TRANSLATOR)),
                             topicId: @js($currentTopic->id),
                             ttsApiUrl: @js(route('learner.translator.tts')),
+                            translationLanguage: 'en',
+                            translationLanguageEventName: 'cc:translation-language-changed',
+                            translationStorageKey: 'cc_page_translation_language',
+                            onTranslationLanguageChange: null,
+                            onTranslationLanguageStorage: null,
                             initReader() {
                                 this.audioPlayer = new Audio();
                                 this.audioPlayer.preload = 'none';
@@ -320,10 +326,63 @@
                                     this.isReading = false;
                                     this.ttsError = 'Failed to load audio source. Please try again.';
                                 });
+
+                                this.onTranslationLanguageChange = (event) => {
+                                    this.syncTranslationLanguage(event?.detail?.language, true);
+                                };
+
+                                this.onTranslationLanguageStorage = (event) => {
+                                    if (event.key !== this.translationStorageKey) {
+                                        return;
+                                    }
+
+                                    this.syncTranslationLanguage(event.newValue, true);
+                                };
+
+                                window.addEventListener(this.translationLanguageEventName, this.onTranslationLanguageChange);
+                                window.addEventListener('storage', this.onTranslationLanguageStorage);
+                                this.syncTranslationLanguage(localStorage.getItem(this.translationStorageKey), false);
+                            },
+                            normalizeLanguage(language) {
+                                if (language === 'tl') {
+                                    return 'tl';
+                                }
+
+                                return 'en';
+                            },
+                            syncTranslationLanguage(language, stopCurrentAudio) {
+                                const nextLanguage = this.normalizeLanguage(language);
+                                if (this.translationLanguage === nextLanguage) {
+                                    return;
+                                }
+
+                                this.translationLanguage = nextLanguage;
+
+                                if (stopCurrentAudio && this.isReading) {
+                                    this.stopReading();
+                                    this.ttsError = `Reader language updated to ${this.currentVoiceLanguageLabel()}. Tap play to continue.`;
+                                }
+                            },
+                            currentVoiceLanguageLabel() {
+                                if (this.translationLanguage === 'tl') {
+                                    return 'Tagalog';
+                                }
+
+                                return 'English';
                             },
                             getPreferredLanguageCode() {
-                                const preferred = localStorage.getItem('cc_page_translation_language') || 'en';
-                                return preferred === 'tl' ? 'fil-PH' : 'en-US';
+                                if (this.translationLanguage === 'tl') {
+                                    return 'fil-PH';
+                                }
+
+                                return 'en-US';
+                            },
+                            getVisibleLessonText() {
+                                if (!this.$refs.lessonContent) {
+                                    return '';
+                                }
+
+                                return (this.$refs.lessonContent.innerText || '').replace(/\s+/g, ' ').trim();
                             },
                             async resolvePlayableUrl(payload) {
                                 const candidates = [payload.audio_relative_url, payload.audio_url]
@@ -350,6 +409,11 @@
                                 throw new Error('Generated lesson audio file is not reachable.');
                             },
                             async toggleReadLesson() {
+                                if (!this.canUseVoiceTranslator) {
+                                    this.ttsError = 'Upgrade to unlock translated lesson narration.';
+                                    return;
+                                }
+
                                 if (this.isReading) {
                                     this.stopReading();
                                     return;
@@ -373,6 +437,8 @@
                                         body: JSON.stringify({
                                             topic_id: this.topicId,
                                             language_code: this.getPreferredLanguageCode(),
+                                            translation_language: this.translationLanguage,
+                                            text: this.getVisibleLessonText() || null,
                                             speaking_rate: 1.0,
                                         }),
                                     });
@@ -410,7 +476,7 @@
                                 <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Lesson Reader</p>
                                 <button type="button"
                                         @click="toggleReadLesson()"
-                                        :disabled="isPreparingAudio"
+                                    :disabled="isPreparingAudio || !canUseVoiceTranslator"
                                         :title="isReading ? 'Stop reading lesson' : 'Read lesson text'"
                                         class="inline-flex items-center justify-center w-8 h-8 rounded-full border border-purple-300 text-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                                     <svg x-show="!isReading" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -423,7 +489,15 @@
                                 </button>
                                 <span x-show="isPreparingAudio" class="text-[11px] text-gray-500">Preparing...</span>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Tap the speaker icon to read this lesson.</p>
+                            <template x-if="canUseVoiceTranslator">
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Voice: <span class="font-semibold text-brand-600" x-text="currentVoiceLanguageLabel()"></span></p>
+                            </template>
+                            <template x-if="!canUseVoiceTranslator">
+                                <p class="text-xs text-amber-700">
+                                    Premium-only voice translator.
+                                    <a href="{{ route('subscription.index') }}" class="font-semibold underline">Upgrade</a>
+                                </p>
+                            </template>
                         </div>
 
                         <div x-show="ttsError" class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" x-text="ttsError"></div>

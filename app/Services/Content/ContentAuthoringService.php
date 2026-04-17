@@ -3,9 +3,16 @@
 namespace App\Services\Content;
 
 use App\Models\Module;
+use App\Models\User;
+use App\Services\Instructor\InstructorPlanCapabilityService;
+use InvalidArgumentException;
 
 class ContentAuthoringService
 {
+    public function __construct(private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService)
+    {
+    }
+
     /**
      * Build normalized module payload from form data.
      *
@@ -15,6 +22,7 @@ class ContentAuthoringService
     public function toInstructorDraftPayload(array $validated, int $authorId, ?Module $existing = null): array
     {
         $payload = $this->normalizeCommonPayload($validated, $existing);
+        $payload = $this->enforceInstructorPlanConstraints($payload, $authorId, $existing);
 
         return $payload + [
             'created_by' => $authorId,
@@ -71,6 +79,57 @@ class ContentAuthoringService
             'order' => $order,
             'certificate_pass_score' => (int) ($validated['certificate_pass_score'] ?? ($existing?->certificate_pass_score ?? 70)),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function enforceInstructorPlanConstraints(array $payload, int $authorId, ?Module $existing = null): array
+    {
+        $instructor = User::query()->find($authorId);
+        if (!$instructor) {
+            return $payload;
+        }
+
+        $isCreateFlow = !$existing || !$existing->exists;
+
+        if ($isCreateFlow && !$this->instructorPlanCapabilityService->canCreateModule($instructor)) {
+            throw new InvalidArgumentException($this->instructorPlanCapabilityService->reachedModuleLimitMessage($instructor));
+        }
+
+        $accessType = (string) ($payload['access_type'] ?? 'free');
+
+        if (
+            $accessType === 'paid'
+            && !$this->instructorPlanCapabilityService->canPublishPaidModules($instructor)
+            && $this->instructorPlanCapabilityService->isStrictRolloutMode()
+        ) {
+            throw new InvalidArgumentException(
+                'Your current instructor plan does not allow publishing paid modules. Upgrade your instructor subscription to continue.'
+            );
+        }
+
+        if (
+            $accessType === 'paid'
+            && !$this->instructorPlanCapabilityService->canReceivePaidEnrollments($instructor)
+            && $this->instructorPlanCapabilityService->isStrictRolloutMode()
+        ) {
+            throw new InvalidArgumentException(
+                'Your current instructor plan cannot receive paid enrollments yet. Upgrade your instructor subscription to continue.'
+            );
+        }
+
+        $planCap = $this->instructorPlanCapabilityService->getLearnerCapForModule($instructor, $accessType);
+        if (
+            $planCap !== null
+            && array_key_exists('enrollment_limit', $payload)
+            && $payload['enrollment_limit'] !== null
+        ) {
+            $payload['enrollment_limit'] = min((int) $payload['enrollment_limit'], $planCap);
+        }
+
+        return $payload;
     }
 
     /**

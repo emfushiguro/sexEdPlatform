@@ -223,6 +223,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('module-revenue.payout.update');
     });
 
+    Route::prefix('financial-reports')->name('financial-reports.')
+        ->middleware('permission:view financial reports|export financial reports')
+        ->group(function () {
+            Route::get('/', [Admin\FinancialReportController::class, 'index'])
+                ->name('index');
+            Route::get('/export/{format}', [Admin\FinancialReportController::class, 'export'])
+                ->whereIn('format', ['pdf', 'csv', 'xlsx'])
+                ->name('export');
+        });
+
     Route::prefix('gamification-settings')->name('gamification-settings.')->middleware('permission:manage system settings')->group(function () {
         Route::get('/', [Admin\GamificationSettingsController::class, 'index'])
             ->name('index');

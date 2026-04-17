@@ -4,7 +4,9 @@ namespace App\Policies;
 
 use App\Models\Module;
 use App\Models\User;
+use App\Services\Instructor\InstructorPlanCapabilityService;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Auth\Access\Response;
 
 class ModulePolicy
 {
@@ -26,6 +28,22 @@ class ModulePolicy
     public function create(User $user): bool
     {
         return $user->can('create modules');
+    }
+
+    public function createWithinPlanLimit(User $user): Response
+    {
+        if ($user->hasRole('admin') || !$user->isInstructor()) {
+            return Response::allow();
+        }
+
+        /** @var InstructorPlanCapabilityService $capabilityService */
+        $capabilityService = app(InstructorPlanCapabilityService::class);
+
+        if ($capabilityService->canCreateModule($user)) {
+            return Response::allow();
+        }
+
+        return Response::deny($capabilityService->reachedModuleLimitMessage($user));
     }
 
     public function update(User $user, Module $module): bool
@@ -62,6 +80,47 @@ class ModulePolicy
     public function publish(User $user, Module $module): bool
     {
         return $user->can('publish modules');
+    }
+
+    public function publishPaid(User $user): bool
+    {
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        if (!$user->isInstructor()) {
+            return false;
+        }
+
+        /** @var InstructorPlanCapabilityService $capabilityService */
+        $capabilityService = app(InstructorPlanCapabilityService::class);
+
+        if (!$capabilityService->isStrictRolloutMode()) {
+            return true;
+        }
+
+        return $capabilityService->canPublishPaidModules($user)
+            && $capabilityService->canReceivePaidEnrollments($user);
+    }
+
+    public function viewEarnings(User $user): bool
+    {
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        if (!$user->isInstructor()) {
+            return false;
+        }
+
+        /** @var InstructorPlanCapabilityService $capabilityService */
+        $capabilityService = app(InstructorPlanCapabilityService::class);
+
+        if (!$capabilityService->isStrictRolloutMode()) {
+            return true;
+        }
+
+        return $capabilityService->canViewEarnings($user);
     }
 
     public function review(User $user, Module $module): bool
