@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class UserSuspension extends Model
 {
@@ -59,5 +60,10 @@ class UserSuspension extends Model
     public function createdByAdmin(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_admin_id');
+    }
+
+    public function appeals(): HasMany
+    {
+        return $this->hasMany(SuspensionAppeal::class, 'user_suspension_id');
     }
 }
