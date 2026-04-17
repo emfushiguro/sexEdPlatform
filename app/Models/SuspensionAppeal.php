@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SuspensionAppeal extends Model
 {
@@ -46,5 +47,10 @@ class SuspensionAppeal extends Model
     public function reviewedByAdmin(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by_admin_id');
+    }
+
+    public function threadMessages(): HasMany
+    {
+        return $this->hasMany(AppealThreadMessage::class, 'suspension_appeal_id');
     }
 }

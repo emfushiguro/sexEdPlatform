@@ -2,6 +2,8 @@
 
 namespace App\Services\Moderation;
 
+use App\Models\AppealThreadMessage;
+use App\Models\ParentChildAccount;
 use App\Enums\EnforcementActionType;
 use App\Models\SuspensionAppeal;
 use App\Models\User;
@@ -87,6 +89,27 @@ class SuspensionAppealService
         });
     }
 
+    public function postThreadMessage(
+        SuspensionAppeal $appeal,
+        User $sender,
+        string $messageBody,
+        ?AppealThreadMessage $parentMessage = null,
+    ): AppealThreadMessage {
+        if ($parentMessage && (int) $parentMessage->suspension_appeal_id !== (int) $appeal->id) {
+            throw new InvalidArgumentException('Parent message must belong to the same suspension appeal thread.');
+        }
+
+        $senderRole = $this->resolveThreadSenderRole($appeal, $sender);
+
+        return AppealThreadMessage::query()->create([
+            'suspension_appeal_id' => $appeal->id,
+            'sender_user_id' => $sender->id,
+            'sender_role' => $senderRole,
+            'message_body' => $messageBody,
+            'parent_message_id' => $parentMessage?->id,
+        ]);
+    }
+
     private function guardSubmissionEligibility(UserSuspension $suspension, User $user): void
     {
         if ((int) $suspension->user_id !== (int) $user->id) {
@@ -115,5 +138,29 @@ class SuspensionAppealService
         }
 
         throw new InvalidArgumentException('This suspension is not currently eligible for appeal submission.');
+    }
+
+    private function resolveThreadSenderRole(SuspensionAppeal $appeal, User $sender): string
+    {
+        if ((int) $sender->id === (int) $appeal->user_id) {
+            return 'learner';
+        }
+
+        if ($sender->isAdmin()) {
+            return 'admin';
+        }
+
+        $isLinkedVerifiedParent = ParentChildAccount::query()
+            ->where('parent_user_id', $sender->id)
+            ->where('child_user_id', $appeal->user_id)
+            ->where('verification_status', 'approved')
+            ->whereNotNull('relationship_verified_at')
+            ->exists();
+
+        if ($isLinkedVerifiedParent) {
+            return 'parent';
+        }
+
+        throw new InvalidArgumentException('Sender is not authorized to post in this appeal thread.');
     }
 }
