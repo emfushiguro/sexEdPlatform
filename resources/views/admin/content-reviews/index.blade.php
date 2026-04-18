@@ -74,8 +74,9 @@
                 
                 <select x-model="filters.status" class="w-full rounded-full border-gray-300 focus:border-brand-500 focus:ring-brand-500 sm:w-auto sm:text-sm">
                     <option value="">All statuses</option>
-                    <option value="submitted">Submitted</option>
-                    <option value="in_review">Under Review</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
                 </select>
 
                 <select x-model="filters.instructor" class="w-full rounded-full border-gray-300 focus:border-brand-500 focus:ring-brand-500 sm:w-auto sm:text-sm">
@@ -112,7 +113,13 @@
                                 $thumbnailUrl = $module?->thumbnail_url;
                                 $publisherName = $reviewRequest->submitter?->name ?? 'Unknown Instructor';
                                 $rowNumber = ($reviewRequests->firstItem() ?? 1) + $loop->index;
-                                $statusLabel = $reviewRequest->status === 'submitted' ? 'Submitted' : 'Under Review';
+                                $statusLabel = match ((string) $reviewRequest->status) {
+                                    'submitted' => 'Submitted',
+                                    'in_review' => 'Under Review',
+                                    'approved' => 'Approved',
+                                    'rejected' => 'Rejected',
+                                    default => \Illuminate\Support\Str::title(str_replace('_', ' ', (string) $reviewRequest->status)),
+                                };
                                 $submittedDateValue = optional($reviewRequest->submitted_at)->format('Y-m-d');
                             @endphp
                             <tr class="transition hover:bg-brand-50/30"
@@ -133,11 +140,11 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $publisherName }}</td>
                                 <td class="px-6 py-4">
-                                    @if($reviewRequest->status === 'submitted')
-                                        <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">Submitted</span>
-                                    @else
-                                        <span class="inline-flex rounded-full bg-brand-100 px-3 py-1 text-xs font-bold text-brand-700">Under Review</span>
-                                    @endif
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold {{
+                                        $reviewRequest->status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                                        ($reviewRequest->status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                                        ($reviewRequest->status === 'submitted' ? 'bg-amber-100 text-amber-700' : 'bg-brand-100 text-brand-700'))
+                                    }}">{{ $statusLabel }}</span>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ optional($reviewRequest->submitted_at)->format('M d, Y h:i A') }}</td>
                                 <td class="px-6 py-4">
@@ -187,8 +194,8 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
                                             </svg>
                                         </div>
-                                        <h3 class="mt-4 text-sm font-semibold text-gray-900">No pending module reviews</h3>
-                                        <p class="mt-1 text-sm text-gray-500">Instructor submissions that need moderation will appear here.</p>
+                                        <h3 class="mt-4 text-sm font-semibold text-gray-900">No module reviews found</h3>
+                                        <p class="mt-1 text-sm text-gray-500">No module reviews matched the selected filters.</p>
                                     </div>
                                 </td>
                             </tr>
@@ -215,7 +222,8 @@
                 },
                 matchesRow(moduleTitle, instructorName, status, instructorId, submittedDate) {
                     const search = (this.filters.search || '').trim().toLowerCase();
-                    const statusMatch = !this.filters.status || this.filters.status === status;
+                    const statusMatch = !this.filters.status
+                        || (this.filters.status === 'pending' ? ['submitted', 'in_review'].includes(status) : this.filters.status === status);
                     const instructorMatch = !this.filters.instructor || this.filters.instructor === String(instructorId || '');
                     const dateMatch = !this.filters.submittedDate || this.filters.submittedDate === String(submittedDate || '');
                     const searchBlob = `${moduleTitle} ${instructorName} ${status}`;

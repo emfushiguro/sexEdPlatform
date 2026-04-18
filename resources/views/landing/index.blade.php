@@ -1,6 +1,6 @@
 @extends('layouts.landing')
 
-@section('title', 'Concious Connections — Breaking Taboos Through Education')
+@section('title', 'Concious Connections — Safe, Honest Sex Education for Filipino Learners')
 @section('meta_description', 'A safe and judgment-free space for Filipino youth to learn about sexual health, relationships, and well-being with confidence.')
 
 @section('content')
@@ -37,7 +37,7 @@
             {{-- Desktop nav: links + CTA grouped on right (BrightMind layout) --}}
             <div class="hidden lg:flex items-center gap-10">
                 <ul class="flex items-center gap-8">
-                    @foreach ([['#for-who', "Who It's For"], ['#features', 'Features'], ['#pricing', 'Pricing'], ['#vision', 'About']] as [$href, $label])
+                    @foreach ([['#for-who', "Who It's For"], ['#features', 'Features'], ['#vision', 'About']] as [$href, $label])
                     <li>
                         <a href="{{ $href }}"
                            :class="scrolled ? 'text-gray-600 hover:text-purple-700' : 'text-white/85 hover:text-white'"
@@ -90,8 +90,7 @@
                     ['#vision',      'Who We Are'],
                     ['#for-who',     "Who It's For"],
                     ['#features',    'Features'],
-                    ['#pricing',     'Pricing'],
-                    ['#about',       'About'],
+                    ['#vision',      'About'],
                 ] as [$href, $label])
                 <a href="{{ $href }}" @click="mobileOpen = false"
                    :class="scrolled ? 'text-gray-700 hover:bg-purple-50' : 'text-white hover:bg-white/10'"
@@ -149,7 +148,7 @@
         {{-- Decorative animated rule --}}
         <div class="lp-title-rule"></div>
 
-        <p class="lp-hero-sub">Breaking taboos through education</p>
+        <p class="lp-hero-sub">Safe, honest sex education for every Filipino learner.</p>
     </div>
 
     {{-- Wave to white START section --}}
@@ -438,12 +437,12 @@
 
         @php
         $features = [
-            ['module.png',  'Topic Modules',      'Curated short courses on anatomy, consent, STIs, relationships, and more — structured by age and learning level.',        '0.1s'],
-            ['goal.png',    'Quizzes & Progress', 'Test your understanding with interactive quizzes after every lesson and watch your growth over time.',                     '0.2s'],
-            ['edu.png',     'Earn Certificates',  'Complete modules and receive verified certificates of completion — tangible proof of the knowledge you have built.',       '0.3s'],
-            ['shields.png', 'Pass Protection',    'Up to 3 daily shields protect your learning progress. Pass comfortably; retry on fail without losing momentum.',          '0.4s'],
-            ['streak.png',  'Daily Streaks',      'Build consistent learning habits with streak tracking, daily nudges, and rewards that keep you coming back.',              '0.5s'],
-            ['premium.png', 'Premium Access',     'Unlock expert consultations, seminars, and unlimited module access with a Premium Individual or Organization plan.',      '0.6s'],
+            ['module.png',  'Structured Learning Modules', 'Age-appropriate lessons on anatomy, consent, relationships, and sexual health, arranged into guided learning paths.', '0.1s'],
+            ['goal.png',    'Interactive Quizzes', 'Check what you learned with built-in quizzes and get immediate feedback to strengthen understanding.', '0.2s'],
+            ['edu.png',     'Verified Certificates', 'Earn shareable certificates when you complete modules and pass required assessments.', '0.3s'],
+            ['shields.png', 'Progress Protection', 'Use learning shields so one failed quiz does not break your momentum while you practice.', '0.4s'],
+            ['streak.png',  'Gamified Motivation', 'Stay consistent through streaks, points, and milestone rewards designed to keep learners engaged.', '0.5s'],
+            ['connectors.png', 'Parent and Educator Support', 'Enable safe guidance through parent account tools, instructor-authored modules, and moderated communication.', '0.6s'],
         ];
         @endphp
 
@@ -458,229 +457,6 @@
                 <p class="text-sm text-gray-500 leading-relaxed">{{ $desc }}</p>
             </div>
             @endforeach
-        </div>
-    </div>
-</section>
-
-
-{{-- ═══════════════════════════════════════════════════
-     PRICING — Cards + Comparison Table (Alpine toggle)
-     Hover: lift + glow; Popular card: pulse; Table rows: highlight
-═══════════════════════════════════════════════════ --}}
-<section id="pricing" class="py-20 lg:py-28" style="background: #F9F7FF;">
-    <div class="max-w-7xl mx-auto px-6 lg:px-8" x-data="{ view: 'cards' }">
-
-        <div class="text-center mb-10 scroll-reveal">
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4 text-xs font-bold tracking-widest uppercase"
-                 style="background: rgba(163,14,178,0.07); color: #730DB1; border: 1px solid rgba(163,14,178,0.14);">
-                Pricing Plans
-            </div>
-            <h2 class="text-3xl lg:text-4xl font-bold mb-3" style="color: #1A1033;">Choose your plan</h2>
-            <p class="text-gray-500 text-base max-w-xl mx-auto leading-relaxed">
-                Start free and upgrade anytime. Access the learning material you need, at the pace that suits you.
-            </p>
-        </div>
-
-        {{-- Toggle pill --}}
-        <div class="flex justify-center mb-10 scroll-reveal">
-            <div class="inline-flex items-center rounded-full p-1 gap-1"
-                 style="background: rgba(163,14,178,0.07); border: 1px solid rgba(163,14,178,0.14);">
-                <button @click="view = 'cards'"
-                        :style="view === 'cards' ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1)' : ''"
-                        :class="view === 'cards' ? 'text-white shadow-sm' : 'text-purple-700 hover:text-purple-900'"
-                        class="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200">
-                    View Plans
-                </button>
-                <button @click="view = 'table'"
-                        :style="view === 'table' ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1)' : ''"
-                        :class="view === 'table' ? 'text-white shadow-sm' : 'text-purple-700 hover:text-purple-900'"
-                        class="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200">
-                    Compare Features
-                </button>
-            </div>
-        </div>
-
-        {{-- Cards view --}}
-        <div x-show="view === 'cards'" x-cloak
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 translate-y-2"
-             x-transition:enter-end="opacity-100 translate-y-0"
-             x-transition:leave="transition ease-in duration-150"
-             x-transition:leave-start="opacity-100 translate-y-0"
-             x-transition:leave-end="opacity-0 translate-y-2">
-            <div class="grid md:grid-cols-3 gap-6 items-start">
-
-                {{-- Standard --}}
-                <div class="pricing-card rounded-2xl bg-white p-7 scroll-reveal"
-                     style="border: 2px solid #e9d5ff; transition-delay: 0.1s;">
-                    <div class="text-xs font-bold tracking-widest uppercase mb-3" style="color: #A30EB2;">Standard</div>
-                    <div class="font-extrabold text-3xl mb-0.5" style="color: #1A1033;">Free</div>
-                    <div class="text-sm text-gray-400 mb-5">Forever free to use</div>
-                    <hr class="border-gray-100 mb-5">
-                    <ul class="space-y-2.5 text-sm text-gray-600 mb-7">
-                        @foreach (['1 learner account', 'Full module access', 'Interactive quizzes', 'Community forums', '3 pass shields / day'] as $f)
-                        <li class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 flex-shrink-0" style="color: #730DB1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                            </svg>{{ $f }}
-                        </li>
-                        @endforeach
-                    </ul>
-                    <a href="{{ route('register') }}"
-                       class="w-full flex items-center justify-center px-5 py-3 rounded-full font-semibold text-sm text-white hover:opacity-90 transition-all duration-200"
-                       style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">Get Started Free</a>
-                    <a href="{{ route('login') }}"
-                       class="w-full flex items-center justify-center px-5 py-3 mt-2.5 rounded-full font-semibold text-sm text-gray-500 border border-gray-200 hover:border-purple-200 hover:text-purple-700 transition-all duration-200">
-                        Already have an account
-                    </a>
-                    <p class="text-center text-xs text-gray-400 mt-4">Terms apply.</p>
-                </div>
-
-                {{-- Individual Premium (popular) --}}
-                <div class="pricing-card pricing-popular rounded-2xl bg-white p-7 shadow-xl relative scroll-reveal"
-                     style="background: linear-gradient(#ffffff, #ffffff) padding-box,
-                                        linear-gradient(135deg, #A30EB2, #3B0CB1) border-box;
-                            border: 2px solid transparent;
-                            transform: scale(1.03);
-                            transition-delay: 0.2s;">
-                    <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 pointer-events-none">
-                        <span class="px-4 py-1.5 rounded-full text-xs font-bold text-white whitespace-nowrap"
-                              style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">Most Popular</span>
-                    </div>
-                    <div class="text-xs font-bold tracking-widest uppercase mb-3" style="color: #A30EB2;">Premium</div>
-                    <div class="flex items-baseline gap-1 mb-0.5">
-                        <span class="font-extrabold text-3xl" style="color: #1A1033;">₱85</span>
-                        <span class="text-sm text-gray-400">/ month</span>
-                    </div>
-                    <div class="text-sm text-gray-400 mb-5">Individual learner</div>
-                    <hr class="border-gray-100 mb-5">
-                    <ul class="space-y-2.5 text-sm text-gray-600 mb-7">
-                        @foreach (['Everything in Standard', 'Verified certificates', 'Expert consultations', 'Seminars &amp; webinars', 'Priority support'] as $f)
-                        <li class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 flex-shrink-0" style="color: #730DB1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                            </svg>{!! $f !!}
-                        </li>
-                        @endforeach
-                    </ul>
-                    <a href="{{ route('register') }}"
-                       class="w-full flex items-center justify-center px-5 py-3 rounded-full font-semibold text-sm text-white hover:opacity-90 transition-all duration-200"
-                       style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">Get Premium Individual</a>
-                    <a href="#"
-                       class="w-full flex items-center justify-center px-5 py-3 mt-2.5 rounded-full font-semibold text-sm hover:bg-purple-50 transition-all duration-200"
-                       style="color: #730DB1; border: 1px solid rgba(163,14,178,0.22);">Learn More</a>
-                    <p class="text-center text-xs text-gray-400 mt-4">Cancel anytime. Terms apply.</p>
-                </div>
-
-                {{-- Organization --}}
-                <div class="pricing-card rounded-2xl bg-white p-7 scroll-reveal"
-                     style="border: 2px solid #e9d5ff; transition-delay: 0.3s;">
-                    <div class="text-xs font-bold tracking-widest uppercase mb-3" style="color: #A30EB2;">Premium</div>
-                    <div class="flex items-baseline gap-1 mb-0.5">
-                        <span class="font-extrabold text-3xl" style="color: #1A1033;">₱229</span>
-                        <span class="text-sm text-gray-400">/ month</span>
-                    </div>
-                    <div class="text-sm text-gray-400 mb-5">Organization</div>
-                    <hr class="border-gray-100 mb-5">
-                    <ul class="space-y-2.5 text-sm text-gray-600 mb-7">
-                        @foreach (['20–50 premium accounts', 'All Individual features', 'Organization dashboard', 'Bulk enrollment tools', 'Cancel anytime'] as $f)
-                        <li class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 flex-shrink-0" style="color: #730DB1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                            </svg>{{ $f }}
-                        </li>
-                        @endforeach
-                    </ul>
-                    <a href="mailto:taboo@gmail.com"
-                       class="w-full flex items-center justify-center px-5 py-3 rounded-full font-semibold text-sm text-white hover:opacity-90 transition-all duration-200"
-                       style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">Contact Us</a>
-                    <a href="#"
-                       class="w-full flex items-center justify-center px-5 py-3 mt-2.5 rounded-full font-semibold text-sm text-gray-500 border border-gray-200 hover:border-purple-200 hover:text-purple-700 transition-all duration-200">
-                        More Details
-                    </a>
-                    <p class="text-center text-xs text-gray-400 mt-4">For institutional partnerships. Terms apply.</p>
-                </div>
-
-            </div>
-        </div>
-
-        {{-- Comparison table --}}
-        <div x-show="view === 'table'" x-cloak
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 translate-y-2"
-             x-transition:enter-end="opacity-100 translate-y-0"
-             x-transition:leave="transition ease-in duration-150"
-             x-transition:leave-start="opacity-100 translate-y-0"
-             x-transition:leave-end="opacity-0 translate-y-2">
-            <div class="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm min-w-[560px]">
-                        <thead>
-                            <tr style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
-                                <th class="px-6 py-4 text-left text-white font-semibold w-2/5">Feature</th>
-                                <th class="px-4 py-4 text-center text-white font-semibold">
-                                    <div>Standard</div>
-                                    <div class="text-xs font-normal mt-0.5 opacity-65">Free</div>
-                                </th>
-                                <th class="px-4 py-4 text-center text-white font-semibold" style="background: rgba(0,0,0,0.12);">
-                                    <div>Individual</div>
-                                    <div class="text-xs font-normal mt-0.5 opacity-65">₱85 / mo</div>
-                                </th>
-                                <th class="px-4 py-4 text-center text-white font-semibold">
-                                    <div>Organization</div>
-                                    <div class="text-xs font-normal mt-0.5 opacity-65">₱229 / mo</div>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            @php
-                            $rows = [
-                                ['Module Access',           true,    true,    true   ],
-                                ['Interactive Quizzes',     true,    true,    true   ],
-                                ['Community Forums',        true,    true,    true   ],
-                                ['Pass Protection Shields', '3/day', '3/day', '3/day'],
-                                ['Verified Certificates',   false,   true,    true   ],
-                                ['Expert Consultations',    false,   true,    true   ],
-                                ['Seminars & Webinars',     false,   true,    true   ],
-                                ['Team Accounts',           '1',     '1',     '20–50'],
-                                ['Organization Dashboard',  false,   false,   true   ],
-                                ['Priority Support',        false,   true,    true   ],
-                                ['Cancel Anytime',          'N/A',   true,    true   ],
-                            ];
-                            @endphp
-                            @foreach ($rows as $i => [$feature, $std, $ind, $org])
-                            <tr class="pricing-table-row {{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50' }}">
-                                <td class="px-6 py-3.5 font-medium text-gray-700">{{ $feature }}</td>
-                                @foreach ([$std, $ind, $org] as $val)
-                                <td class="px-4 py-3.5 text-center">
-                                    @if ($val === true)
-                                        <svg class="w-5 h-5 mx-auto" style="color: #730DB1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                    @elseif ($val === false)
-                                        <svg class="w-4 h-4 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                        </svg>
-                                    @else
-                                        <span class="text-xs font-semibold text-gray-500">{{ $val }}</span>
-                                    @endif
-                                </td>
-                                @endforeach
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                <div class="grid grid-cols-3 border-t border-gray-100 bg-gray-50/40">
-                    @foreach ([['Get Started Free', route('register')], ['Get Premium', route('register')], ['Contact Us', 'mailto:taboo@gmail.com']] as [$label, $href])
-                    <div class="px-4 py-4 flex justify-center {{ !$loop->last ? 'border-r border-gray-100' : '' }}">
-                        <a href="{{ $href }}"
-                           class="px-5 py-2 rounded-full text-xs font-semibold text-white hover:opacity-90 transition-all"
-                           style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">{{ $label }}</a>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
         </div>
     </div>
 </section>
@@ -728,7 +504,7 @@
             <div>
                 <h4 class="font-bold text-xs text-white tracking-widest uppercase mb-5">Quick Links</h4>
                 <ul class="space-y-3">
-                    @foreach ([['#home','Home'],['#for-who',"Who It's For"],['#features','Features'],['#pricing','Pricing'],['#vision','About']] as [$href, $label])
+                    @foreach ([['#home','Home'],['#for-who',"Who It's For"],['#features','Features'],['#vision','About']] as [$href, $label])
                     <li><a href="{{ $href }}" class="text-sm hover:text-white transition-colors" style="color: rgba(255,255,255,0.6);">{{ $label }}</a></li>
                     @endforeach
                 </ul>
@@ -755,7 +531,8 @@
                     <li class="flex items-center gap-2.5 text-sm" style="color: rgba(255,255,255,0.6);">
                         <svg class="w-4 h-4 flex-shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                        </svg>taboo@gmail.com
+                        </svg>
+                        <a href="mailto:consciousconnections@gmail.com" class="hover:text-white transition-colors">consciousconnections@gmail.com</a>
                     </li>
                     <li class="flex items-center gap-2.5 text-sm" style="color: rgba(255,255,255,0.6);">
                         <svg class="w-4 h-4 flex-shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1306,35 +1083,6 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-}
-
-
-/* ══════════════════════════════════════════════════
-   PRICING — card hovers
-══════════════════════════════════════════════════ */
-.pricing-card {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-.pricing-card:hover {
-    transform: translateY(-10px) !important;
-    box-shadow: 0 24px 50px rgba(115,13,177,0.18) !important;
-}
-.pricing-popular {
-    animation: popularPulse 3s ease-in-out infinite;
-}
-@keyframes popularPulse {
-    0%,  100% { box-shadow: 0 10px 30px rgba(163,14,178,0.18); }
-    50%        { box-shadow: 0 10px 45px rgba(163,14,178,0.32); }
-}
-.pricing-popular:hover {
-    animation: none;
-    box-shadow: 0 28px 56px rgba(115,13,177,0.28) !important;
-}
-.pricing-table-row {
-    transition: background-color 0.15s ease;
-}
-.pricing-table-row:hover {
-    background-color: rgba(163,14,178,0.04) !important;
 }
 
 

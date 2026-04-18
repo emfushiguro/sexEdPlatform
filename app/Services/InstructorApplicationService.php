@@ -10,6 +10,8 @@ use App\Models\RoleTransition;
 use App\Models\User;
 use App\Notifications\InstructorApplicationStatusUpdate;
 use App\Notifications\InstructorApplicationSubmitted;
+use App\Services\Admin\RoleSyncService;
+use App\Services\Moderation\SourceAdapters\InstructorApplicationModerationAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +26,11 @@ class InstructorApplicationService
 
     private const DEFAULT_REJECTION_MESSAGE = '<p>Thank you for applying to become an instructor on our platform.</p><p>After reviewing your application, we regret to inform you that it has not been approved at this time.</p>';
 
-    public function __construct(private readonly SubscriptionService $subscriptionService)
+    public function __construct(
+        private readonly SubscriptionService $subscriptionService,
+        private readonly RoleSyncService $roleSyncService,
+        private readonly InstructorApplicationModerationAdapter $instructorApplicationModerationAdapter,
+    )
     {
     }
 
@@ -59,6 +65,8 @@ class InstructorApplicationService
             'application_metadata' => $metadata,
         ], $paths));
 
+        $this->instructorApplicationModerationAdapter->syncSubmission($application);
+
         User::role('admin')->get()->each(function (User $admin) use ($application): void {
             $this->notifySafely($admin, new InstructorApplicationSubmitted($application));
         });
@@ -69,7 +77,7 @@ class InstructorApplicationService
     public function approve(InstructorApplication $application, ?string $adminMessage = null): void
     {
         DB::transaction(function () use ($application): void {
-            $application->loadMissing('user');
+            $application->loadMissing('user.learnerProfile', 'user.instructorProfile');
             $user = $application->user;
             $reviewedAt = now();
             $sanitizedMessage = $this->sanitizeAdminMessage($adminMessage ?? self::DEFAULT_APPROVAL_MESSAGE, self::DEFAULT_APPROVAL_MESSAGE);
@@ -93,10 +101,9 @@ class InstructorApplicationService
                 'transitioned_at' => now(),
             ]);
 
-            $user->update(['role' => 'instructor']);
-            if (! $user->hasRole('instructor')) {
-                $user->assignRole('instructor');
-            }
+            $this->roleSyncService->assignPrimaryRole($user, 'instructor');
+
+            $profilePhotoPath = $user->instructorProfile?->profile_photo_path ?: $user->learnerProfile?->avatar_path;
 
             InstructorProfile::updateOrCreate(
                 ['user_id' => $user->id],
@@ -104,14 +111,7 @@ class InstructorApplicationService
                     'bio' => $application->bio,
                     'educational_background' => $application->educational_background,
                     'professional_background' => $application->bio,
-                    'credentials' => [
-                        'government_id_path' => $application->government_id_path,
-                        'clearance_path' => $application->clearance_path,
-                        'cv_resume_path' => $application->cv_resume_path,
-                        'teaching_credential_path' => $application->teaching_credential_path,
-                        'sexed_certificate_path' => $application->sexed_certificate_path,
-                        'professional_license_path' => $application->professional_license_path,
-                    ],
+                    'profile_photo_path' => $profilePhotoPath,
                 ]
             );
 
@@ -124,6 +124,8 @@ class InstructorApplicationService
                 'rejection_reason_note' => null,
                 'review_message' => $sanitizedMessage,
             ]);
+
+            $this->instructorApplicationModerationAdapter->syncSubmission($application->fresh());
 
             InstructorApplicationReview::query()->create([
                 'instructor_application_id' => $application->id,
@@ -158,6 +160,8 @@ class InstructorApplicationService
             'approved_at' => $reviewedAt,
             'review_message' => $sanitizedMessage,
         ]);
+
+        $this->instructorApplicationModerationAdapter->syncSubmission($application->fresh());
 
         InstructorApplicationReview::query()->create([
             'instructor_application_id' => $application->id,

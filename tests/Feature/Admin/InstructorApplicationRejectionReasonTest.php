@@ -36,7 +36,7 @@ class InstructorApplicationRejectionReasonTest extends TestCase
             ->assertSessionHasErrors(['rejection_reason_code']);
     }
 
-    public function test_reject_requires_note_when_reason_code_is_other(): void
+    public function test_reject_allows_other_reason_without_plain_note(): void
     {
         $admin = $this->createUserWithRole('admin');
         $application = $this->createPendingApplication();
@@ -45,12 +45,18 @@ class InstructorApplicationRejectionReasonTest extends TestCase
             ->from(route('admin.instructor-applications.index'))
             ->post(route('admin.instructor-applications.reject', $application), [
                 'rejection_reason_code' => 'other',
-                'rejection_reason_note' => '',
                 'admin_message' => '<p>Validation test message.</p>',
                 'review_application_id' => $application->id,
             ])
             ->assertRedirect(route('admin.instructor-applications.index'))
-            ->assertSessionHasErrors(['rejection_reason_note']);
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('instructor_applications', [
+            'id' => $application->id,
+            'status' => 'rejected',
+            'rejection_reason_code' => 'other',
+            'rejection_reason_note' => null,
+        ]);
     }
 
     private function createPendingApplication(): InstructorApplication

@@ -104,22 +104,18 @@
             <span x-text="loading ? 'Logging in...' : 'Login'">Login</span>
         </button>
 
-        <!-- Instructor Login Link -->
-        <div class="mt-6 text-center">
-            <p class="text-sm text-gray-600">
-                or login as 
-                <a href="{{ route('instructor.login') }}" class="font-medium text-brand-purple-primary hover:text-brand-purple-light transition-colors">
-                    Instructor
-                </a>
-            </p>
-        </div>
-
-        <!-- Register Link -->
+        <!-- Register Links -->
         <div class="mt-6 text-center">
             <p class="text-sm text-gray-600">
                 Don't have an account yet? 
                 <a href="{{ route('register') }}" class="font-semibold text-brand-purple-primary hover:text-brand-purple-light transition-colors">
-                    Register
+                    Create a Learner Account
+                </a>
+            </p>
+            <p class="mt-2 text-sm text-gray-600">
+                Need a parent account?
+                <a href="{{ route('parent.register') }}" class="font-semibold text-brand-purple-primary hover:text-brand-purple-light transition-colors">
+                    Create a Parent Account
                 </a>
             </p>
         </div>

@@ -27,19 +27,19 @@ class LearnerSubscriptionRenewalFlowTest extends TestCase
 
             $this->actingAs($user)
                 ->post(route('subscription.renew'))
-                ->assertRedirect(route('subscription.index'));
+                ->assertRedirect(route('payment.create', ['subscription' => $subscription->id]));
 
             $subscription->refresh();
             $renewalPayment = $subscription->payments()->latest('id')->first();
 
-            $this->assertSame('active', $subscription->status->value);
-            $this->assertTrue($subscription->ends_at->greaterThan(now()));
+            $this->assertSame('expired', $subscription->status->value);
+            $this->assertTrue($subscription->ends_at->equalTo(now()->subDay()));
             $this->assertTrue((bool) $subscription->auto_renew);
             $this->assertNotNull($renewalPayment);
-            $this->assertSame('completed', $renewalPayment->status->value);
+            $this->assertSame('pending', $renewalPayment->status->value);
             $this->assertSame(199.0, (float) $renewalPayment->amount);
             $this->assertSame('subscription', data_get($renewalPayment->payment_details, 'payment_scope'));
-            $this->assertSame('renewal', data_get($renewalPayment->payment_details, 'lifecycle_action'));
+            $this->assertSame('renewal_checkout', data_get($renewalPayment->payment_details, 'lifecycle_action'));
         } finally {
             Carbon::setTestNow();
         }
@@ -61,17 +61,19 @@ class LearnerSubscriptionRenewalFlowTest extends TestCase
 
             $this->actingAs($user)
                 ->post(route('subscription.renew'))
-                ->assertRedirect(route('subscription.index'));
+                ->assertRedirect(route('payment.create', ['subscription' => $subscription->id]));
 
             $subscription->refresh();
             $renewalPayment = $subscription->payments()->latest('id')->first();
 
             $this->assertSame('active', $subscription->status->value);
-            $this->assertTrue($subscription->starts_at->equalTo(now()));
-            $this->assertTrue($subscription->ends_at->equalTo($existingEnd->copy()->addDays(30)));
+            $this->assertTrue($subscription->starts_at->equalTo(now()->subMonth()));
+            $this->assertTrue($subscription->ends_at->equalTo($existingEnd));
             $this->assertNotNull($renewalPayment);
-            $this->assertSame('completed', $renewalPayment->status->value);
+            $this->assertSame('pending', $renewalPayment->status->value);
             $this->assertSame($subscription->id, $renewalPayment->subscription_id);
+            $this->assertSame('subscription', data_get($renewalPayment->payment_details, 'payment_scope'));
+            $this->assertSame('renewal_checkout', data_get($renewalPayment->payment_details, 'lifecycle_action'));
         } finally {
             Carbon::setTestNow();
         }

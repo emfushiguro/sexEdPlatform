@@ -7,7 +7,7 @@
 
 <div class="mb-6" x-data="instructorSearch()">
     <div class="relative max-w-2xl">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+        <span class="absolute text-gray-400 -translate-y-1/2 pointer-events-none left-3 top-1/2">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -26,7 +26,7 @@
         <div
             x-show="open && (results.modules.length || results.lessons.length || results.learners.length)"
             x-cloak
-            class="absolute top-full mt-1 left-0 right-0 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 z-50 overflow-hidden"
+            class="absolute left-0 right-0 z-50 mt-1 overflow-hidden bg-white border border-gray-100 shadow-lg top-full dark:bg-gray-900 rounded-xl dark:border-gray-800"
         >
             <template x-if="results.modules.length">
                 <div class="p-2">
@@ -64,33 +64,33 @@
     </div>
 </div>
 
-<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 mb-6" data-testid="stats-grid">
+<div class="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-3 lg:grid-cols-3" data-testid="stats-grid">
     @foreach($statCards as $card)
         <x-instructor.stat-card :card="$card" :avg-quiz-score-scopes="$avgQuizScoreScopes" />
     @endforeach
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <div class="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4" data-testid="dashboard-assessment-insights-cta">
+<div class="grid grid-cols-1 gap-4 mb-6 lg:grid-cols-2">
+    <div class="p-4 border border-indigo-100 rounded-2xl bg-indigo-50/40" data-testid="dashboard-assessment-insights-cta">
         <h2 class="text-sm font-semibold text-indigo-900">Assessment Insights</h2>
-        <p class="text-xs text-indigo-700 mt-1">Review score distributions, learner attempt counts, and at-risk flags.</p>
+        <p class="mt-1 text-xs text-indigo-700">Review score distributions, learner attempt counts, and at-risk flags.</p>
         <a href="{{ route('instructor.assessments.index') }}" class="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-indigo-700 hover:text-indigo-900">
             Open Assessment Dashboard
             <span aria-hidden="true">→</span>
         </a>
     </div>
-    <div class="rounded-2xl border border-purple-100 bg-white p-4" data-testid="dashboard-notification-summary">
+    <div class="p-4 bg-white border border-purple-100 rounded-2xl" data-testid="dashboard-notification-summary">
         <h2 class="text-sm font-semibold text-gray-900">Notification Snapshot</h2>
-        <p class="text-xs text-gray-600 mt-1">
+        <p class="mt-1 text-xs text-gray-600">
             New quiz taking in last 24h: <span class="font-semibold text-purple-700">{{ $quizTakingSummary['attempt_count'] ?? 0 }}</span>
             ({{ $quizTakingSummary['learner_count'] ?? 0 }} learners)
         </p>
-        <p class="text-xs text-gray-500 mt-2">Use the header bell to review instructor activity and enrollment decision updates.</p>
+        <p class="mt-2 text-xs text-gray-500">Use the header bell to review instructor activity and enrollment decision updates.</p>
     </div>
 </div>
 
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-    <div class="xl:col-span-2 space-y-6">
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="space-y-6 xl:col-span-2">
         <x-instructor.section-shell
             title="Recent Activities"
             subtitle="Latest enrollment events across your modules"
@@ -98,18 +98,18 @@
             :action-href="route('instructor.enrollments.index')"
             action-label="View All →">
             @if($recentActivities->isEmpty())
-                <div class="bg-white rounded-xl border border-dashed border-gray-200 p-8 text-center">
+                <div class="p-8 text-center bg-white border border-gray-200 border-dashed rounded-xl">
                     <p class="text-sm text-gray-400">No recent activity yet</p>
                 </div>
             @else
                 <div class="space-y-2">
                     @foreach($recentActivities as $activity)
-                        <div class="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between gap-3">
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-gray-100 rounded-xl">
                             <p class="text-sm font-medium text-gray-900 truncate">
                                 {{ $activity->user->first_name ?? $activity->user->name }} enrolled in
                                 <span class="text-purple-700">{{ $activity->module->title ?? 'Unknown module' }}</span>
                             </p>
-                            <span class="text-xs text-gray-400 flex-shrink-0">{{ $activity->created_at->diffForHumans() }}</span>
+                            <span class="flex-shrink-0 text-xs text-gray-400">{{ $activity->created_at->diffForHumans() }}</span>
                         </div>
                     @endforeach
                 </div>
@@ -125,7 +125,7 @@
                 action-label="View All →">
                 <div class="space-y-2">
                     @foreach($pendingEnrollments as $enrollment)
-                        <div class="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center justify-between gap-3">
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white border rounded-xl border-amber-100">
                             <div class="min-w-0">
                                 <p class="text-sm font-medium text-gray-900 truncate">{{ $enrollment->user->first_name ?? $enrollment->user->name }}</p>
                                 <p class="text-xs text-gray-500 truncate">{{ $enrollment->module->title ?? 'Unknown module' }}</p>
@@ -155,13 +155,13 @@
             :action-href="route('instructor.modules.index')"
             action-label="View All →">
             @if($moduleStats->isEmpty())
-                <div class="bg-white rounded-xl border border-dashed border-gray-200 p-6 text-center">
+                <div class="p-6 text-center bg-white border border-gray-200 border-dashed rounded-xl">
                     <p class="text-sm text-gray-400">No modules yet</p>
                 </div>
             @else
                 <div class="space-y-2">
                     @foreach($moduleStats as $index => $mod)
-                        <div class="bg-white rounded-xl border border-indigo-50 px-4 py-3 flex items-center justify-between gap-3">
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white border rounded-xl border-indigo-50">
                             <p class="text-sm font-medium text-gray-900 truncate">{{ $index + 1 }}. {{ $mod->title }}</p>
                             <span class="flex-shrink-0 text-xs font-semibold text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full">{{ $mod->enrollments_count }} enrolled</span>
                         </div>
@@ -177,14 +177,14 @@
             :action-href="route('instructor.quizzes.index')"
             action-label="View All →">
             @if($quizStats->isEmpty())
-                <div class="bg-white rounded-xl border border-dashed border-gray-200 p-6 text-center">
+                <div class="p-6 text-center bg-white border border-gray-200 border-dashed rounded-xl">
                     <p class="text-sm text-gray-400">No quiz attempts yet</p>
                 </div>
             @else
                 <div class="overflow-x-auto rounded-xl">
-                    <table class="w-full text-sm bg-white rounded-xl overflow-hidden">
+                    <table class="w-full overflow-hidden text-sm bg-white rounded-xl">
                         <thead>
-                            <tr class="text-xs text-gray-500 bg-gray-50 border-b border-gray-100">
+                            <tr class="text-xs text-gray-500 border-b border-gray-100 bg-gray-50">
                                 <th class="text-left px-4 py-2.5 font-semibold">Quiz</th>
                                 <th class="text-left px-4 py-2.5 font-semibold">Module</th>
                                 <th class="text-right px-4 py-2.5 font-semibold">Attempts</th>
@@ -193,7 +193,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             @foreach($quizStats as $quiz)
-                                <tr class="hover:bg-green-50/30 transition-colors">
+                                <tr class="transition-colors hover:bg-green-50/30">
                                     <td class="px-4 py-2.5"><a href="{{ route('instructor.quizzes.show', $quiz) }}" class="font-medium text-gray-900 hover:text-green-700 truncate block max-w-[160px]">{{ $quiz->title }}</a></td>
                                     <td class="px-4 py-2.5 text-gray-500 truncate max-w-[120px]">{{ $quiz->module->title ?? '—' }}</td>
                                     <td class="px-4 py-2.5 text-right text-gray-700 font-medium">{{ $quiz->attempts_count }}</td>
@@ -240,16 +240,16 @@
                 <div class="flex items-center justify-between mb-3">
                     <h2 class="text-sm font-semibold text-gray-900" x-text="monthName + ' ' + year"></h2>
                     <div class="flex gap-1">
-                        <button @click="prevMonth()" aria-label="Previous month" class="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 transition-colors">
+                        <button @click="prevMonth()" aria-label="Previous month" class="flex items-center justify-center w-6 h-6 text-gray-400 transition-colors rounded-md hover:bg-gray-100">
                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
                         </button>
-                        <button @click="nextMonth()" aria-label="Next month" class="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 transition-colors">
+                        <button @click="nextMonth()" aria-label="Next month" class="flex items-center justify-center w-6 h-6 text-gray-400 transition-colors rounded-md hover:bg-gray-100">
                             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
                         </button>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-7 text-center mb-1">
+                <div class="grid grid-cols-7 mb-1 text-center">
                     @foreach(['S','M','T','W','T','F','S'] as $day)
                         <div class="text-[10px] font-semibold text-gray-400 py-1">{{ $day }}</div>
                     @endforeach

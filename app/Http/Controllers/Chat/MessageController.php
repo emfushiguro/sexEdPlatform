@@ -12,6 +12,7 @@ use App\Models\Message;
 use App\Models\MessageReport;
 use App\Services\Chat\ChatAuthorizationService;
 use App\Services\Chat\ChatService;
+use App\Services\Moderation\SourceAdapters\ChatReportModerationAdapter;
 use App\Support\Chat\MessagePayloadFormatter;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +24,7 @@ class MessageController extends Controller
         protected ChatService $chatService,
         protected ChatAuthorizationService $chatAuthorizationService,
         protected MessagePayloadFormatter $messagePayloadFormatter,
+        protected ChatReportModerationAdapter $chatReportModerationAdapter,
     ) {
     }
 
@@ -212,7 +214,7 @@ class MessageController extends Controller
             'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
-        MessageReport::query()->updateOrCreate(
+        $messageReport = MessageReport::query()->updateOrCreate(
             [
                 'message_id' => $message->id,
                 'reporter_id' => $user->id,
@@ -223,6 +225,8 @@ class MessageController extends Controller
                 'status' => 'open',
             ]
         );
+
+        $this->chatReportModerationAdapter->syncReport($messageReport);
 
         return response()->json([
             'reported' => true,

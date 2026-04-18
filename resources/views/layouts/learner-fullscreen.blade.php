@@ -5,8 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'Lesson') | Concious Connections</title>
+    @php
+        $metaTitle = trim($__env->yieldContent('title', 'Lesson') . ' | Concious Connections');
+        $metaDescription = trim($__env->yieldContent('meta_description', 'Concious Connections interactive lesson experience for Filipino learners.'));
+        $metaImage = trim($__env->yieldContent('meta_image', asset('media/Logo.png')));
+    @endphp
+
+    <title>{{ $metaTitle }}</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('media/Logo.png') }}">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ asset('media/Logo.png') }}">
+    <meta name="description" content="{{ $metaDescription }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $metaTitle }}">
+    <meta property="og:description" content="{{ $metaDescription }}">
+    <meta property="og:image" content="{{ $metaImage }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $metaTitle }}">
+    <meta name="twitter:description" content="{{ $metaDescription }}">
+    <meta name="twitter:image" content="{{ $metaImage }}">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -103,7 +122,7 @@
                 <svg class="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 23c-4.97 0-9-3.582-9-8 0-3.5 2-6.5 5-8-.5 1.5 0 3 1 4 .5-2 2-4 4-5-.5 2 1 4 2 5 .5-1 .5-2.5 0-3.5 2 1.5 3 4 3 7.5 1-1 1.5-2.5 1.5-4 1.5 1.5 2.5 3.5 2.5 6 0 4.418-4.03 8-9 8z"/>
                 </svg>
-                <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{{ $fsGami?->current_streak ?? 0 }}</span>
+                <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{{ $fsGami?->streak_count ?? 0 }}</span>
             </div>
             {{-- Shields --}}
             <div class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/40">

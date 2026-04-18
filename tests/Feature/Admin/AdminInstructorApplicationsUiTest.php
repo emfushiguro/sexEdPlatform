@@ -28,6 +28,7 @@ class AdminInstructorApplicationsUiTest extends TestCase
             ->get(route('admin.instructor-applications.index'))
             ->assertOk()
             ->assertSeeText($application->user->name)
+            ->assertSee('storage/avatars/applicant-avatar.png', false)
             ->assertSee('data-testid="applications-col-applicant"', false)
             ->assertSee('data-testid="applications-col-email"', false)
             ->assertSee('Date Applied', false)
@@ -60,9 +61,10 @@ class AdminInstructorApplicationsUiTest extends TestCase
             ->assertSee('Section 3 - Learner Data Snapshot', false)
             ->assertSee('Section 4 - Moderation History', false)
             ->assertSee('Section 5 - Moderation Actions', false)
+            ->assertSee('Age:', false)
             ->assertSee('Finished Modules Breakdown', false)
             ->assertSee('name="rejection_reason_code"', false)
-            ->assertSee('name="rejection_reason_note"', false)
+            ->assertDontSee('name="rejection_reason_note"', false)
             ->assertSee('name="admin_message"', false)
                 ->assertSee('getModerationEditors()', false)
                 ->assertDontSee('tinymce.editors.filter(', false)
@@ -83,6 +85,7 @@ class AdminInstructorApplicationsUiTest extends TestCase
             'city_code' => null,
             'barangay' => 'Barangay Test',
             'barangay_code' => null,
+            'avatar_path' => 'avatars/applicant-avatar.png',
         ]);
 
         return InstructorApplication::query()->create([

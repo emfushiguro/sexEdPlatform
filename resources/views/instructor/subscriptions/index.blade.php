@@ -3,7 +3,7 @@
 @section('title', 'Instructor Subscriptions')
 
 @section('content')
-<div class="max-w-6xl mx-auto space-y-6">
+<div class="max-w-6xl mx-auto space-y-8">
     @php
         $currentPlanName = $currentPlanDisplayName ?? 'Free Plan';
         $currentStatus = (string) ($currentSubscription?->status?->value ?? 'free');
@@ -37,17 +37,17 @@
                 </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('instructor.payments.history') }}" class="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20">
+                <a href="{{ route('instructor.payments.history') }}" class="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/20">
                     Payment history
                 </a>
-                <a href="{{ route('instructor.modules.index') }}" class="inline-flex items-center justify-center rounded-xl bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/25">
+                <a href="{{ route('instructor.modules.index') }}" class="inline-flex items-center justify-center rounded-xl bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/25">
                     Back to modules
                 </a>
             </div>
         </div>
     </div>
 
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="instructor-current-subscription-card">
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md" data-testid="instructor-current-subscription-card">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Current plan</p>
@@ -69,7 +69,7 @@
     </div>
 
     <div class="grid gap-5 lg:grid-cols-3">
-        <article class="rounded-3xl border border-purple-200 ring-1 ring-purple-100 bg-white p-6 shadow-sm" data-testid="instructor-free-baseline-card">
+        <article class="group rounded-3xl border border-purple-200 ring-1 ring-purple-100 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl" data-testid="instructor-free-baseline-card">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Free baseline</p>
@@ -107,7 +107,7 @@
         </article>
 
         @forelse($paidCards as $plan)
-            <article class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+            <article class="group rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Paid</p>
@@ -116,13 +116,13 @@
                             <p class="mt-2 text-sm text-gray-500">{{ $plan['description'] }}</p>
                         @endif
                     </div>
-                    <div class="rounded-2xl bg-purple-50 px-4 py-2 text-right">
+                    <div class="rounded-2xl bg-purple-50 px-4 py-2 text-right min-w-[104px]">
                         <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-purple-500">From</p>
                         <p class="text-xl font-bold text-purple-900">{{ $plan['price_display'] ?? '0.00' }}</p>
                     </div>
                 </div>
 
-                <div class="mt-5 space-y-2 text-sm text-gray-600">
+                <div class="mt-5 space-y-2 text-sm text-gray-600 min-h-[168px]">
                     @forelse(($plan['features'] ?? []) as $feature)
                         <div class="flex items-start gap-2">
                             <span class="mt-1 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full {{ !empty($feature['included']) ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500' }}">{{ !empty($feature['included']) ? '✓' : '−' }}</span>
@@ -141,7 +141,7 @@
                     @elseif(!empty($plan['is_pending_selection']))
                         @if(!empty($pendingPayment))
                             <a href="{{ route('instructor.payments.pending', $pendingPayment) }}"
-                               class="inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100">
+                                         class="inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition duration-200 hover:bg-indigo-100">
                                 Resume pending checkout
                             </a>
                         @else
@@ -153,7 +153,7 @@
                         <form method="POST" action="{{ route('instructor.subscriptions.subscribe') }}">
                             @csrf
                             <input type="hidden" name="plan_id" value="{{ $plan['id'] }}">
-                            <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-purple-700 via-fuchsia-700 to-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95">
+                            <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-purple-700 via-fuchsia-700 to-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:opacity-95 hover:shadow-lg">
                                 Choose plan
                             </button>
                         </form>

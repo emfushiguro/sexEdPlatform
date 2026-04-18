@@ -106,6 +106,15 @@ class PayMongoPaymentLinkService
     }
 
     /**
+     * Convert a PHP major-unit amount (e.g. 79.99) into minor units (centavos).
+     * Uses half-up rounding to avoid floating-point truncation (e.g. 79.99 -> 7999).
+     */
+    private function toMinorUnits(float $amount): int
+    {
+        return (int) round($amount * 100, 0, PHP_ROUND_HALF_UP);
+    }
+
+    /**
      * Create a PayMongo Payment Link
      *
      * @param float $amount Amount in PHP (e.g., 299.00)
@@ -129,7 +138,7 @@ class PayMongoPaymentLinkService
     ): array {
         try {
             // Convert amount to centavos (PayMongo expects amount in centavos)
-            $amountInCentavos = (int) ($amount * 100);
+            $amountInCentavos = $this->toMinorUnits($amount);
             $paymentMethodTypes = $this->resolvePaymentMethodTypes($preferredPaymentMethod, $allowedPaymentMethods);
 
             $payload = [
@@ -224,7 +233,7 @@ class PayMongoPaymentLinkService
         int $quantity = 1,
     ): array {
         try {
-            $amountInCentavos = (int) ($amount * 100);
+            $amountInCentavos = $this->toMinorUnits($amount);
             $paymentMethodTypes = $this->resolvePaymentMethodTypes($preferredPaymentMethod, $allowedPaymentMethods);
 
             $payload = [

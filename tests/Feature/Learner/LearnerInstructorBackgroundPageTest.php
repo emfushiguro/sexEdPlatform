@@ -17,6 +17,7 @@ class LearnerInstructorBackgroundPageTest extends DatabaseTestCase
     {
         $this->withoutMiddleware(EnsureProfileCompleted::class);
 
+        /** @var User $learner */
         $learner = User::factory()->create([
             'role' => 'learner',
             'status' => 'active',
@@ -35,6 +36,7 @@ class LearnerInstructorBackgroundPageTest extends DatabaseTestCase
             'requires_parental_consent' => false,
         ]);
 
+        /** @var User $instructor */
         $instructor = User::factory()->create([
             'role' => 'instructor',
             'status' => 'active',
@@ -45,7 +47,11 @@ class LearnerInstructorBackgroundPageTest extends DatabaseTestCase
             'user_id' => $instructor->id,
             'bio' => 'Instructor biography sample',
             'professional_background' => 'Professional instructor details',
-            'educational_background' => 'BSEd, Major in Science',
+            'educational_background' => 'college_graduate',
+            'credentials' => [
+                'government_id_path' => 'instructor-applications/id.pdf',
+                'Licensed Professional Teacher',
+            ],
             'certifications' => [
                 [
                     'title' => 'Licensed Professional Teacher',
@@ -56,7 +62,7 @@ class LearnerInstructorBackgroundPageTest extends DatabaseTestCase
             'educational_background_entries' => [
                 [
                     'school_name' => 'State University',
-                    'degree_program' => 'BS Education',
+                    'degree_program' => 'college_graduate',
                     'graduation_date' => '2018-04-01',
                 ],
             ],
@@ -67,6 +73,10 @@ class LearnerInstructorBackgroundPageTest extends DatabaseTestCase
             ->assertOk()
             ->assertSee('Professional Background', false)
             ->assertSee('Certifications', false)
-            ->assertSee('Educational Background', false);
+            ->assertSee('Educational Background', false)
+            ->assertSee('College Graduate', false)
+            ->assertDontSee('college_graduate', false)
+            ->assertSee('Licensed Professional Teacher', false)
+            ->assertDontSee('instructor-applications/id.pdf', false);
     }
 }

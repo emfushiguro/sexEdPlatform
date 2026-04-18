@@ -27,10 +27,10 @@ class StoreModuleRequest extends FormRequest
             'is_published' => 'nullable|boolean',
             'access_type' => 'nullable|in:free,paid',
             'price_amount' => 'nullable|numeric|min:0.01|required_if:access_type,paid',
-            'price_currency' => 'nullable|string|size:3',
+            'price_currency' => 'nullable|in:PHP',
             'enrollment_limit' => $enrollmentLimitCap !== null
-                ? 'nullable|integer|min:1|max:' . $enrollmentLimitCap
-                : 'nullable|integer|min:1',
+                ? 'required|integer|min:1|max:' . $enrollmentLimitCap
+                : 'required|integer|min:1',
         ];
     }
 

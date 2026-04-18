@@ -29,6 +29,8 @@
     q: '',
     deleteModalOpen: false,
     deleteForm: null,
+    withdrawModalOpen: false,
+    withdrawForm: null,
     openDeleteConfirm(form) {
         this.deleteForm = form;
         this.deleteModalOpen = true;
@@ -40,6 +42,19 @@
     confirmDelete() {
         if (this.deleteForm) {
             this.deleteForm.submit();
+        }
+    },
+    openWithdrawConfirm(form) {
+        this.withdrawForm = form;
+        this.withdrawModalOpen = true;
+    },
+    closeWithdrawConfirm() {
+        this.withdrawModalOpen = false;
+        this.withdrawForm = null;
+    },
+    confirmWithdraw() {
+        if (this.withdrawForm) {
+            this.withdrawForm.submit();
         }
     }
 }"
@@ -77,55 +92,6 @@
             </button>
         @endif
     </div>
-
-    @if(!empty($instructorCapabilitySnapshot))
-        @php
-            $publishedLimit = $instructorCapabilitySnapshot['published_modules_limit'];
-            $publishedRemaining = $instructorCapabilitySnapshot['published_modules_remaining'];
-            $freeCap = $instructorCapabilitySnapshot['free_module_learner_cap'];
-            $paidCap = $instructorCapabilitySnapshot['paid_module_learner_cap'];
-        @endphp
-        <div class="mb-5 rounded-2xl border border-purple-200 bg-purple-50/80 p-4 shadow-sm" data-testid="instructor-plan-usage-summary">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-purple-600">Instructor Plan</p>
-                    <h2 class="mt-1 text-lg font-bold text-purple-950">
-                        {{ $instructorCapabilitySnapshot['effective_plan']['name'] ?? 'Free baseline plan' }}
-                    </h2>
-                    <p class="mt-1 text-sm text-purple-800">
-                        Published modules: {{ $instructorCapabilitySnapshot['published_modules_count'] }}
-                        @if($publishedLimit !== null)
-                            / {{ $publishedLimit }} allowed
-                        @else
-                            / unlimited
-                        @endif
-                        @if($publishedRemaining !== null)
-                            · {{ $publishedRemaining }} remaining
-                        @endif
-                    </p>
-                    <p class="mt-1 text-xs font-medium text-purple-700">
-                        Rollout mode: {{ ucfirst($instructorCapabilitySnapshot['rollout_mode'] ?? 'soft') }}
-                    </p>
-                </div>
-                <div class="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:min-w-[420px]">
-                    <div class="rounded-xl bg-white px-3 py-2 border border-purple-100">
-                        <p class="text-[10px] uppercase tracking-widest text-purple-400">Free modules</p>
-                        <p class="mt-1 text-sm font-semibold text-gray-900">{{ $freeCap ?? 'Unlimited' }} learners/module</p>
-                    </div>
-                    <div class="rounded-xl bg-white px-3 py-2 border border-purple-100">
-                        <p class="text-[10px] uppercase tracking-widest text-purple-400">Paid modules</p>
-                        <p class="mt-1 text-sm font-semibold text-gray-900">{{ $paidCap ?? 'Unlimited' }} learners/module</p>
-                    </div>
-                    <div class="rounded-xl bg-white px-3 py-2 border border-purple-100">
-                        <p class="text-[10px] uppercase tracking-widest text-purple-400">Paid publish</p>
-                        <p class="mt-1 text-sm font-semibold text-gray-900">
-                            {{ !empty($instructorCapabilitySnapshot['can_publish_paid_modules']) ? 'Enabled' : 'Locked' }}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
 
     @if(($isRestricted ?? false) === true)
         <div class="rounded-2xl bg-rose-50 border border-rose-200 px-5 py-3.5 mb-5">
@@ -274,11 +240,6 @@
                         Draft
                     @endif
                     </span>
-                    @if(!empty($instructorCapabilitySnapshot))
-                        <span class="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-medium text-purple-700 border border-purple-100">
-                            Plan-aware capacity
-                        </span>
-                    @endif
                     <span class="text-gray-200 dark:text-gray-600 text-xs">·</span>
                     <span class="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
                         <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -366,7 +327,8 @@
                                     </button>
                                 </form>
                             @elseif($moduleReviewStatus === 'submitted')
-                                <form action="{{ route($contentRoutePrefix . '.modules.review.withdraw', $module) }}" method="POST" class="inline-flex" onsubmit="return confirm('Withdraw this submission before admin review starts?');">
+                                  <form action="{{ route($contentRoutePrefix . '.modules.review.withdraw', $module) }}" method="POST" class="inline-flex"
+                                      @submit.prevent="openWithdrawConfirm($event.target)">
                                     @csrf
                                     <button type="submit" title="Withdraw submission"
                                             class="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors action-icon-standard">
@@ -488,6 +450,18 @@
             <div class="mt-6 flex items-center justify-end gap-3">
                 <button type="button" data-delete-confirm-cancel @click="closeDeleteConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
                 <button type="button" data-delete-confirm-submit @click="confirmDelete()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="withdrawModalOpen" x-cloak class="fixed inset-0 z-40 bg-gray-900/50" @click="closeWithdrawConfirm()"></div>
+    <div x-show="withdrawModalOpen" x-cloak id="modules-withdraw-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl border border-gray-100 dark:border-gray-700" @click.stop>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Confirm Submission Withdrawal</h3>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">This module will be moved back to draft so you can revise and submit again later.</p>
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <button type="button" @click="closeWithdrawConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
+                <button type="button" @click="confirmWithdraw()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors">Confirm</button>
             </div>
         </div>
     </div>

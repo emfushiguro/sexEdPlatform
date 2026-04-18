@@ -8,6 +8,7 @@ use App\Models\ModuleRevision;
 use App\Models\User;
 use App\Services\Content\ContentAuthoringService;
 use App\Services\Instructor\InstructorPlanCapabilityService;
+use App\Services\Moderation\SourceAdapters\ModuleReviewModerationAdapter;
 use App\Notifications\Admin\NewModuleSubmissionNotification;
 use App\Notifications\InstructorModuleReviewDecisionNotification;
 use App\Notifications\InstructorModuleReviewStatusNotification;
@@ -25,6 +26,7 @@ class ContentGovernanceService
         private readonly InstructorModerationPenaltyService $instructorModerationPenaltyService,
         private readonly ContentAuthoringService $contentAuthoringService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
+        private readonly ModuleReviewModerationAdapter $moduleReviewModerationAdapter,
     ) {
     }
 
@@ -61,6 +63,8 @@ class ContentGovernanceService
                 'submitted_at' => now(),
             ]);
 
+            $this->moduleReviewModerationAdapter->syncSubmission($reviewRequest, $actor);
+
             $module->forceFill([
                 'current_review_status' => self::STATUS_SUBMITTED,
             ])->save();
@@ -90,6 +94,8 @@ class ContentGovernanceService
             $reviewRequest->forceFill([
                 'status' => self::STATUS_IN_REVIEW,
             ])->save();
+
+            $this->moduleReviewModerationAdapter->syncSubmission($reviewRequest, $admin);
 
             $reviewRequest->revision?->forceFill([
                 'status' => self::STATUS_IN_REVIEW,
@@ -148,6 +154,8 @@ class ContentGovernanceService
                 'reviewed_at' => now(),
                 'feedback' => 'Withdrawn by instructor before review started.',
             ])->save();
+
+            $this->moduleReviewModerationAdapter->syncSubmission($reviewRequest, $actor);
 
             $reviewRequest->revision?->forceFill([
                 'status' => self::STATUS_WITHDRAWN,
@@ -246,6 +254,8 @@ class ContentGovernanceService
                 'reviewed_by' => $admin->id,
                 'feedback' => $notes,
             ])->save();
+
+            $this->moduleReviewModerationAdapter->syncSubmission($reviewRequest, $admin);
 
             $module->forceFill([
                 'is_published' => true,
@@ -351,6 +361,8 @@ class ContentGovernanceService
                 'reviewed_by' => $admin->id,
                 'feedback' => $feedback,
             ])->save();
+
+            $this->moduleReviewModerationAdapter->syncSubmission($reviewRequest, $admin);
 
             $module->forceFill([
                 'current_review_status' => 'needs_revision',

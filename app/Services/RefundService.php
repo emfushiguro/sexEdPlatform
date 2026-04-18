@@ -250,7 +250,7 @@ class RefundService
 
     private function createPayMongoRefund(string $paymentId, float $amount, string $reason = null): array
     {
-        $amountInCentavos = (int) ($amount * 100);
+        $amountInCentavos = (int) round($amount * 100, 0, PHP_ROUND_HALF_UP);
 
         $payload = [
             'data' => [

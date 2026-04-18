@@ -19,6 +19,24 @@
     $ownershipRestrictionTooltip = 'Instructor-owned content is read-only in the admin panel.';
 @endphp
 
+<div x-data="{
+    withdrawModalOpen: false,
+    withdrawForm: null,
+    openWithdrawConfirm(form) {
+        this.withdrawForm = form;
+        this.withdrawModalOpen = true;
+    },
+    closeWithdrawConfirm() {
+        this.withdrawModalOpen = false;
+        this.withdrawForm = null;
+    },
+    confirmWithdraw() {
+        if (this.withdrawForm) {
+            this.withdrawForm.submit();
+        }
+    }
+}">
+
 {{-- Page Header --}}
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
@@ -135,7 +153,9 @@
             @if(optional($module->reviewRequests->sortByDesc('id')->first())->feedback)
                 <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                     <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Review feedback</p>
-                    <p class="mt-1 text-sm text-amber-900">{{ $module->reviewRequests->sortByDesc('id')->first()->feedback }}</p>
+                    <div class="prose prose-sm mt-1 max-w-none text-amber-900">
+                        {!! strip_tags((string) $module->reviewRequests->sortByDesc('id')->first()->feedback, '<p><br><strong><em><ul><ol><li><a><blockquote><code>') !!}
+                    </div>
                 </div>
             @endif
         </div>
@@ -148,7 +168,8 @@
                     </button>
                 </form>
             @elseif(($contentRoutePrefix ?? 'instructor') === 'instructor' && $reviewStatus === 'submitted')
-                <form method="POST" action="{{ route($contentRoutePrefix . '.modules.review.withdraw', $module) }}" onsubmit="return confirm('Withdraw this submission before admin review starts?');">
+                <form method="POST" action="{{ route($contentRoutePrefix . '.modules.review.withdraw', $module) }}"
+                      @submit.prevent="openWithdrawConfirm($event.target)">
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-xl hover:bg-gray-200 transition-all shadow-sm">
                         Withdraw Submission
@@ -162,87 +183,6 @@
                     </button>
                 </form>
             @endif
-        </div>
-    </div>
-</div>
-
-{{-- ══  Section 2: Learner Reviews  ══ --}}
-@php
-    $feedbackCollection = $module->feedback ?? collect();
-    $feedbackCount = $feedbackCollection->count();
-    $feedbackAverage = $feedbackCount > 0 ? round((float) $feedbackCollection->avg('rating'), 1) : 0;
-    $feedbackDistribution = collect(range(1, 5))->mapWithKeys(function ($rating) use ($feedbackCollection) {
-        return [$rating => $feedbackCollection->where('rating', $rating)->count()];
-    });
-@endphp
-<div class="rounded-2xl bg-white shadow-sm border border-gray-100 p-6 mb-5">
-    <div class="flex items-start justify-between gap-4 mb-4">
-        <div>
-            <p class="text-[10px] font-semibold uppercase tracking-widest text-purple-500">Learner Feedback</p>
-            <h2 class="text-base font-semibold text-gray-900 mt-1">Review Transparency</h2>
-            <p class="text-xs text-gray-500 mt-1">Use this feedback to improve lesson clarity and learner outcomes.</p>
-        </div>
-        <div class="text-right">
-            <p class="text-2xl font-bold text-gray-900">{{ number_format($feedbackAverage, 1) }}</p>
-            <p class="text-xs text-gray-500">{{ $feedbackCount }} total reviews</p>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="lg:col-span-1 rounded-xl border border-gray-200 p-4">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Rating Distribution</h3>
-            <div class="space-y-2">
-                @foreach(range(5, 1) as $rating)
-                    @php
-                        $count = (int) ($feedbackDistribution[$rating] ?? 0);
-                        $width = $feedbackCount > 0 ? round(($count / $feedbackCount) * 100) : 0;
-                    @endphp
-                    <div>
-                        <div class="flex items-center justify-between text-xs text-gray-600">
-                            <span>{{ $rating }} hearts</span>
-                            <span>{{ $count }}</span>
-                        </div>
-                        <div class="mt-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                            <div class="h-full rounded-full" style="width: {{ $width }}%; background: linear-gradient(135deg, #A30EB2, #3B0CB1);"></div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-
-        <div class="lg:col-span-2 space-y-3">
-            @forelse($feedbackCollection as $feedback)
-                <article class="rounded-xl border border-gray-200 p-4">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">{{ $feedback->learner?->full_name ?: ($feedback->learner?->name ?? 'Learner') }}</p>
-                            <p class="text-xs text-gray-500">{{ $feedback->created_at?->format('M d, Y') }}</p>
-                        </div>
-                        <x-reviews.heart-rating :rating="$feedback->rating" size-class="h-4 w-4" text-class="text-sm font-semibold text-gray-600" />
-                    </div>
-                    <div class="mt-3 prose prose-sm max-w-none">
-                        {!! $feedback->review_html !!}
-                    </div>
-
-                    @if(($contentRoutePrefix ?? 'instructor') === 'instructor')
-                        <form method="POST" action="{{ route($contentRoutePrefix . '.modules.feedback.reply', [$module, $feedback]) }}" class="mt-3">
-                            @csrf
-                            @method('PUT')
-                            <label class="block text-xs font-semibold text-gray-600 mb-1">Your Public Reply</label>
-                            <textarea name="reply_content" rows="3" class="w-full rounded-xl border-gray-200 text-sm">{{ old('reply_content', strip_tags((string) $feedback->instructor_reply_html)) }}</textarea>
-                            <div class="mt-2 flex justify-end">
-                                <button type="submit" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-lg hover:opacity-90 transition" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
-                                    {{ $feedback->instructor_reply_html ? 'Update Reply' : 'Post Reply' }}
-                                </button>
-                            </div>
-                        </form>
-                    @endif
-                </article>
-            @empty
-                <div class="rounded-xl border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-500">
-                    No learner reviews yet for this module.
-                </div>
-            @endforelse
         </div>
     </div>
 </div>
@@ -270,14 +210,63 @@
              'name'      => trim(($e->user->first_name ?? '').( ' ').($e->user->last_name ?? '')) ?: ($e->user->name ?? 'Learner'),
              'email'     => $e->user->email ?? '',
              'status'    => $e->status,
+             'rejection_reason_code' => $e->rejection_reason_code,
              'enrolled'  => optional($e->created_at)->format('M d, Y') ?? '',
              'initials'  => strtoupper(substr($e->user->first_name ?? $e->user->name ?? 'L', 0, 1) . substr($e->user->last_name ?? '', 0, 1)),
          ])) }},
+         normalizeStatus(status, rejectionReasonCode = null) {
+             const rawStatus = String(status || '').toLowerCase();
+             const reasonCode = String(rejectionReasonCode || '').toLowerCase();
+
+             if (rawStatus === 'pending_parent_approval' || rawStatus === 'pending') {
+                 return 'pending';
+             }
+
+             if (rawStatus === 'approved') {
+                 return 'approved';
+             }
+
+             if (rawStatus === 'rejected' && reasonCode === 'archived_enrollment') {
+                 return 'archived';
+             }
+
+             if (rawStatus === 'rejected') {
+                 return 'rejected';
+             }
+
+             return rawStatus || 'pending';
+         },
+         statusLabel(entry) {
+             const normalized = this.normalizeStatus(entry?.status, entry?.rejection_reason_code);
+
+             if (normalized === 'pending') return 'Pending';
+             if (normalized === 'approved') return 'Approved';
+             if (normalized === 'rejected') return 'Rejected';
+             if (normalized === 'archived') return 'Archived';
+
+             return 'Pending';
+         },
+         statusClass(entry) {
+             const normalized = this.normalizeStatus(entry?.status, entry?.rejection_reason_code);
+
+             if (normalized === 'pending') return 'bg-amber-100 text-amber-700 border-amber-200';
+             if (normalized === 'approved') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+             if (normalized === 'rejected') return 'bg-red-100 text-red-600 border-red-200';
+             if (normalized === 'archived') return 'bg-gray-100 text-gray-700 border-gray-200';
+
+             return 'bg-amber-100 text-amber-700 border-amber-200';
+         },
          get filtered() {
              if (this.tab === 'all') return this.enrollments.slice(0, 5);
-             return this.enrollments.filter(e => e.status === this.tab).slice(0, 5);
+             return this.enrollments
+                 .filter(e => this.normalizeStatus(e.status, e.rejection_reason_code) === this.tab)
+                 .slice(0, 5);
          },
-         get pendingCount() { return this.enrollments.filter(e => e.status === 'pending').length; },
+         get pendingCount() {
+             return this.enrollments
+                 .filter(e => this.normalizeStatus(e.status, e.rejection_reason_code) === 'pending')
+                 .length;
+         },
          async approveEnrollment(id) {
              if (this.isReadOnlyAdminPanel) {
                  return;
@@ -289,7 +278,10 @@
              });
              if (res.ok) {
                  const i = this.enrollments.findIndex(e => e.id === id);
-                 if (i > -1) this.enrollments[i].status = 'approved';
+                 if (i > -1) {
+                     this.enrollments[i].status = 'approved';
+                     this.enrollments[i].rejection_reason_code = null;
+                 }
                  if (window.toast) {
                      window.toast.success('Enrollment approved.');
                  }
@@ -346,7 +338,10 @@
 
              if (res.ok) {
                  const i = this.enrollments.findIndex(e => e.id === this.rejectEnrollmentId);
-                 if (i > -1) this.enrollments[i].status = 'rejected';
+                 if (i > -1) {
+                     this.enrollments[i].status = 'rejected';
+                     this.enrollments[i].rejection_reason_code = this.rejectReasonCode || null;
+                 }
                  this.rejectModalOpen = false;
                  this.rejectEnrollmentId = null;
                  if (window.toast) {
@@ -359,12 +354,38 @@
                  window.toast.error('Unable to reject enrollment. Please try again.');
              }
          },
-         async unenroll(id) {
+         async archiveEnrollment(id) {
              if (this.isReadOnlyAdminPanel) {
                  return;
              }
 
-             if (!confirm('Remove this learner from the module?')) return;
+             if (!confirm('Archive this enrollment record?')) return;
+             const res = await fetch('/{{ $contentRoutePrefix ?? 'instructor' }}/enrollments/' + id + '/archive', {
+                 method: 'PATCH',
+                 headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+             });
+             if (res.ok) {
+                 const i = this.enrollments.findIndex(e => e.id === id);
+                 if (i > -1) {
+                     this.enrollments[i].status = 'archived';
+                     this.enrollments[i].rejection_reason_code = 'archived_enrollment';
+                 }
+                 if (window.toast) {
+                     window.toast.success('Enrollment archived.');
+                 }
+                 return;
+             }
+
+             if (window.toast) {
+                 window.toast.error('Unable to archive enrollment right now.');
+             }
+         },
+         async deleteEnrollment(id) {
+             if (this.isReadOnlyAdminPanel) {
+                 return;
+             }
+
+             if (!confirm('Permanently delete this enrollment record?')) return;
              const res = await fetch('/{{ $contentRoutePrefix ?? 'instructor' }}/enrollments/' + id, {
                  method: 'DELETE',
                  headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
@@ -372,13 +393,13 @@
              if (res.ok) {
                  this.enrollments = this.enrollments.filter(e => e.id !== id);
                  if (window.toast) {
-                     window.toast.success('Learner removed from module.');
+                     window.toast.success('Enrollment deleted.');
                  }
                  return;
              }
 
              if (window.toast) {
-                 window.toast.error('Unable to remove learner right now.');
+                 window.toast.error('Unable to delete enrollment right now.');
              }
          }
      }">
@@ -437,16 +458,21 @@
                             <td class="px-4 py-3 text-gray-500 text-xs hidden md:table-cell" x-text="e.email"></td>
                             <td class="px-4 py-3 text-gray-400 text-xs hidden sm:table-cell" x-text="e.enrolled"></td>
                             <td class="px-4 py-3">
-                                <span :class="{
-                                    'bg-amber-100 text-amber-700 border-amber-200': e.status === 'pending',
-                                    'bg-emerald-100 text-emerald-700 border-emerald-200': e.status === 'approved',
-                                    'bg-red-100 text-red-600 border-red-200': e.status === 'rejected'
-                                }" class="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border" x-text="e.status"></span>
+                                <span :class="statusClass(e)" class="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border" x-text="statusLabel(e)"></span>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
+                                    <a :href="`{{ url($contentRoutePrefix . '/enrollments') }}/${e.id}`"
+                                       class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                                       title="View details">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                    </a>
+
                                     {{-- Approve (pending only) --}}
-                                    <button x-show="e.status === 'pending'"
+                                    <button x-show="normalizeStatus(e.status, e.rejection_reason_code) === 'pending'"
                                             @click="approveEnrollment(e.id)"
                                             :disabled="isReadOnlyAdminPanel"
                                             :title="isReadOnlyAdminPanel ? ownershipRestrictionTooltip : 'Approve enrollment'"
@@ -457,7 +483,7 @@
                                         </svg>
                                     </button>
                                     {{-- Reject (pending only) --}}
-                                    <button x-show="e.status === 'pending'"
+                                        <button x-show="normalizeStatus(e.status, e.rejection_reason_code) === 'pending'"
                                             @click="openRejectModal(e.id)"
                                             :disabled="isReadOnlyAdminPanel"
                                             :title="isReadOnlyAdminPanel ? ownershipRestrictionTooltip : 'Reject enrollment'"
@@ -467,11 +493,22 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                                         </svg>
                                     </button>
-                                    {{-- Remove (approved only) --}}
-                                    <button x-show="e.status === 'approved'"
-                                            @click="unenroll(e.id)"
+                                    {{-- Archive (approved/rejected tabs only) --}}
+                                        <button x-show="(tab === 'approved' || tab === 'rejected') && (normalizeStatus(e.status, e.rejection_reason_code) === 'approved' || normalizeStatus(e.status, e.rejection_reason_code) === 'rejected')"
+                                            @click="archiveEnrollment(e.id)"
                                             :disabled="isReadOnlyAdminPanel"
-                                            :title="isReadOnlyAdminPanel ? ownershipRestrictionTooltip : 'Remove learner'"
+                                            :title="isReadOnlyAdminPanel ? ownershipRestrictionTooltip : 'Archive enrollment'"
+                                            :class="isReadOnlyAdminPanel ? 'cursor-not-allowed opacity-50' : ''"
+                                            class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7l1 12h12l1-12M9 7V4h6v3"/>
+                                        </svg>
+                                    </button>
+                                    {{-- Delete (approved/rejected tabs only) --}}
+                                        <button x-show="(tab === 'approved' || tab === 'rejected') && (normalizeStatus(e.status, e.rejection_reason_code) === 'approved' || normalizeStatus(e.status, e.rejection_reason_code) === 'rejected')"
+                                            @click="deleteEnrollment(e.id)"
+                                            :disabled="isReadOnlyAdminPanel"
+                                            :title="isReadOnlyAdminPanel ? ownershipRestrictionTooltip : 'Delete enrollment'"
                                             :class="isReadOnlyAdminPanel ? 'cursor-not-allowed opacity-50' : ''"
                                             class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -684,10 +721,105 @@
     @endif
 </div>
 
+{{-- ══  Section 4: Learner Reviews  ══ --}}
+@php
+    $feedbackCollection = $module->feedback ?? collect();
+    $feedbackCount = $feedbackCollection->count();
+    $feedbackAverage = $feedbackCount > 0 ? round((float) $feedbackCollection->avg('rating'), 1) : 0;
+    $feedbackDistribution = collect(range(1, 5))->mapWithKeys(function ($rating) use ($feedbackCollection) {
+        return [$rating => $feedbackCollection->where('rating', $rating)->count()];
+    });
+@endphp
+<div class="rounded-2xl bg-white shadow-sm border border-gray-100 p-6 mt-5">
+    <div class="flex items-start justify-between gap-4 mb-4">
+        <div>
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-purple-500">Learner Feedback</p>
+            <h2 class="text-base font-semibold text-gray-900 mt-1">Review Transparency</h2>
+            <p class="text-xs text-gray-500 mt-1">Use this feedback to improve lesson clarity and learner outcomes.</p>
+        </div>
+        <div class="text-right">
+            <p class="text-2xl font-bold text-gray-900">{{ number_format($feedbackAverage, 1) }}</p>
+            <p class="text-xs text-gray-500">{{ $feedbackCount }} total reviews</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-1 rounded-xl border border-gray-200 p-4">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Rating Distribution</h3>
+            <div class="space-y-2">
+                @foreach(range(5, 1) as $rating)
+                    @php
+                        $count = (int) ($feedbackDistribution[$rating] ?? 0);
+                        $width = $feedbackCount > 0 ? round(($count / $feedbackCount) * 100) : 0;
+                    @endphp
+                    <div>
+                        <div class="flex items-center justify-between text-xs text-gray-600">
+                            <span>{{ $rating }} hearts</span>
+                            <span>{{ $count }}</span>
+                        </div>
+                        <div class="mt-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                            <div class="h-full rounded-full" style="width: {{ $width }}%; background: linear-gradient(135deg, #A30EB2, #3B0CB1);"></div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="lg:col-span-2 space-y-3">
+            @forelse($feedbackCollection as $feedback)
+                <article class="rounded-xl border border-gray-200 p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">{{ $feedback->learner?->full_name ?: ($feedback->learner?->name ?? 'Learner') }}</p>
+                            <p class="text-xs text-gray-500">{{ $feedback->created_at?->format('M d, Y') }}</p>
+                        </div>
+                        <x-reviews.heart-rating :rating="$feedback->rating" size-class="h-4 w-4" text-class="text-sm font-semibold text-gray-600" />
+                    </div>
+                    <div class="mt-3 prose prose-sm max-w-none">
+                        {!! $feedback->review_html !!}
+                    </div>
+
+                    @if(($contentRoutePrefix ?? 'instructor') === 'instructor')
+                        <form method="POST" action="{{ route($contentRoutePrefix . '.modules.feedback.reply', [$module, $feedback]) }}" class="mt-3">
+                            @csrf
+                            @method('PUT')
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Your Public Reply</label>
+                            <textarea name="reply_content" rows="3" class="w-full rounded-xl border-gray-200 text-sm">{{ old('reply_content', strip_tags((string) $feedback->instructor_reply_html)) }}</textarea>
+                            <div class="mt-2 flex justify-end">
+                                <button type="submit" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-lg hover:opacity-90 transition" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                                    {{ $feedback->instructor_reply_html ? 'Update Reply' : 'Post Reply' }}
+                                </button>
+                            </div>
+                        </form>
+                    @endif
+                </article>
+            @empty
+                <div class="rounded-xl border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-500">
+                    No learner reviews yet for this module.
+                </div>
+            @endforelse
+        </div>
+    </div>
+</div>
+
+<div x-show="withdrawModalOpen" x-cloak class="fixed inset-0 z-40 bg-gray-900/50" @click="closeWithdrawConfirm()"></div>
+<div x-show="withdrawModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-gray-100" @click.stop>
+        <h3 class="text-lg font-semibold text-gray-900">Confirm Submission Withdrawal</h3>
+        <p class="mt-2 text-sm text-gray-600">This module will return to draft so you can update and submit it again later.</p>
+        <div class="mt-6 flex items-center justify-end gap-3">
+            <button type="button" @click="closeWithdrawConfirm()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">Cancel</button>
+            <button type="button" @click="confirmWithdraw()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors">Confirm</button>
+        </div>
+    </div>
+</div>
+
 {{-- Lesson Slide-Over Modal --}}
 @if(!$isReadOnlyAdminPanel)
     @include('instructor.lessons.partials.lesson-slideout')
 @endif
+
+</div>
 
 @endsection
 

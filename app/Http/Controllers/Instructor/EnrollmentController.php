@@ -7,6 +7,7 @@ use App\Http\Requests\Instructor\RejectEnrollmentRequest;
 use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
+use App\Models\UserProgress;
 use App\Notifications\Learner\EnrollmentApprovedNotification;
 use App\Notifications\Learner\EnrollmentRejectedNotification;
 use App\Services\Content\ContentOwnershipGuard;
@@ -138,10 +139,11 @@ class EnrollmentController extends Controller
 
         // Load relationships
         $enrollment->load([
-            'user.learnerProfile.city', 
+            'user.learnerProfile.city',
             'user.learnerProfile.barangay',
+            'user.parentLinks.parent',
             'user.moduleEnrollments.module',
-            'module'
+            'module.lessons:id,module_id',
         ]);
 
         // Calculate learner statistics
@@ -164,12 +166,46 @@ class EnrollmentController extends Controller
             ->take(5)
             ->get();
 
+        $moduleLessonCount = (int) ($enrollment->module?->lessons?->count() ?? 0);
+        $completedLessonCount = UserProgress::query()
+            ->where('user_id', $enrollment->user_id)
+            ->where('module_id', $enrollment->module_id)
+            ->whereNotNull('lesson_id')
+            ->where('completed', true)
+            ->distinct('lesson_id')
+            ->count('lesson_id');
+
+        $moduleProgressPercent = $moduleLessonCount > 0
+            ? min(100, (int) round(($completedLessonCount / $moduleLessonCount) * 100))
+            : (int) ($enrollment->completion_percentage ?? 0);
+
+        $parentConnections = $enrollment->user->parentLinks
+            ->filter(fn ($link) => $link->parent !== null)
+            ->values()
+            ->map(function ($link): array {
+                $parentName = trim((string) ($link->parent?->full_name ?? $link->parent?->name ?? 'Parent'));
+
+                return [
+                    'parent_name' => $parentName !== '' ? $parentName : 'Parent',
+                    'verification_status' => (string) ($link->verification_status ?? 'pending'),
+                    'can_view_progress' => (bool) ($link->can_view_progress ?? false),
+                    'can_view_quiz_answers' => (bool) ($link->can_view_quiz_answers ?? false),
+                    'can_approve_content' => (bool) ($link->can_approve_content ?? false),
+                    'relationship_verified_at' => $link->relationship_verified_at,
+                ];
+            })
+            ->all();
+
         return view('instructor.enrollments.show', compact(
             'enrollment',
             'totalEnrollments',
             'completedModules',
             'completionRate',
-            'recentEnrollments'
+            'recentEnrollments',
+            'moduleLessonCount',
+            'completedLessonCount',
+            'moduleProgressPercent',
+            'parentConnections'
         ));
     }
 

@@ -15,11 +15,26 @@ $headerInstructorNotifications = $instructorNotifications ?? auth()->user()->not
 $headerUnreadCount = auth()->user()->unreadNotifications()->count();
 $notificationBadgeCount = $headerUnreadCount;
 $payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
+$headerUser = auth()->user();
+$headerAvatarPath = $headerUser?->instructorProfile?->profile_photo_path ?? $headerUser?->learnerProfile?->avatar_path;
+$headerAvatarUrl = null;
+if (is_string($headerAvatarPath) && trim($headerAvatarPath) !== '') {
+    $normalizedHeaderAvatarPath = ltrim(trim($headerAvatarPath), '/');
+
+    if (\Illuminate\Support\Str::startsWith($normalizedHeaderAvatarPath, ['http://', 'https://', '//'])) {
+        $headerAvatarUrl = $normalizedHeaderAvatarPath;
+    } else {
+        if (\Illuminate\Support\Str::startsWith($normalizedHeaderAvatarPath, 'storage/')) {
+            $normalizedHeaderAvatarPath = substr($normalizedHeaderAvatarPath, 8);
+        }
+
+        $headerAvatarUrl = asset('storage/' . $normalizedHeaderAvatarPath);
+    }
+}
 @endphp
 
 <header
     class="sticky top-0 z-[9998] bg-white border-b border-gray-200 h-16 flex items-center px-4 md:px-6 gap-4"
-    x-data="instructorSearch()"
 >
     <span class="hidden" data-chat-unread-badge-role="instructor"></span>
 
@@ -45,80 +60,7 @@ $payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
         </svg>
     </button>
 
-    {{-- ── Search bar (dashboard only) ── --}}
-    @if(request()->routeIs('instructor.dashboard'))
-    <div class="flex-1 max-w-lg relative">
-        <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-            </span>
-            <input
-                type="text"
-                x-model="query"
-                @input.debounce.300ms="search()"
-                @focus="open = true"
-                @click.away="open = false"
-                placeholder="Search modules, lessons, learners..."
-                class="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all"
-                autocomplete="off"
-            >
-        </div>
-
-        {{-- Search results dropdown --}}
-        <div
-            x-show="open && (results.modules.length || results.lessons.length || results.learners.length)"
-            x-cloak
-            @click.away="open = false"
-            class="absolute top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden"
-        >
-            <template x-if="results.modules.length">
-                <div class="p-2">
-                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-2 mb-1">Modules</p>
-                    <template x-for="item in results.modules" :key="item.id">
-                        <a :href="item.url" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-purple-50 transition-colors text-sm text-gray-700">
-                            <svg class="w-3.5 h-3.5 text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253" />
-                            </svg>
-                            <span x-text="item.title" class="truncate"></span>
-                        </a>
-                    </template>
-                </div>
-            </template>
-
-            <template x-if="results.lessons.length">
-                <div class="p-2 border-t border-gray-50">
-                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-2 mb-1">Lessons</p>
-                    <template x-for="item in results.lessons" :key="item.id">
-                        <a :href="item.url" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-purple-50 transition-colors text-sm text-gray-700">
-                            <svg class="w-3.5 h-3.5 text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span x-text="item.title" class="truncate"></span>
-                        </a>
-                    </template>
-                </div>
-            </template>
-
-            <template x-if="results.learners.length">
-                <div class="p-2 border-t border-gray-50">
-                    <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-2 mb-1">Learners</p>
-                    <template x-for="item in results.learners" :key="item.id">
-                        <a :href="item.url" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-purple-50 transition-colors text-sm text-gray-700">
-                            <svg class="w-3.5 h-3.5 text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            <span x-text="item.name" class="truncate"></span>
-                        </a>
-                    </template>
-                </div>
-            </template>
-        </div>
-    </div>
-    @else
     <div class="flex-1"></div>
-    @endif
 
     <div class="flex items-center gap-3 ml-auto">
 
@@ -277,9 +219,13 @@ $payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
                 class="flex items-center gap-2 px-2 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors"
                 title="Account menu"
             >
-                <span class="w-8 h-8 rounded-full inline-flex items-center justify-center text-white text-sm font-bold bg-gradient-to-r from-brand-500 to-brand-900">
-                    {{ strtoupper(mb_substr(Auth::user()->first_name ?? Auth::user()->name, 0, 1)) }}
-                </span>
+                @if($headerAvatarUrl)
+                    <img src="{{ $headerAvatarUrl }}" alt="Instructor profile" class="w-8 h-8 rounded-full object-cover border border-gray-200">
+                @else
+                    <span class="w-8 h-8 rounded-full inline-flex items-center justify-center text-white text-sm font-bold bg-gradient-to-r from-brand-500 to-brand-900">
+                        {{ strtoupper(mb_substr(Auth::user()->first_name ?? Auth::user()->name, 0, 1)) }}
+                    </span>
+                @endif
                 <span class="hidden sm:block max-w-[110px] truncate text-sm font-medium text-gray-700">{{ Auth::user()->first_name ?? Auth::user()->name }}</span>
                 <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
@@ -303,6 +249,13 @@ $payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
                     <p class="text-[11px] text-gray-400 truncate">Instructor</p>
                 </div>
 
+                <a href="{{ route('instructor.profile.show') }}" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.4 0 4.66.605 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    View Profile
+                </a>
+
                 @include('partials.chat-status-selector')
 
                 <form method="POST" action="{{ route('instructor.logout') }}">
@@ -319,36 +272,3 @@ $payloadNormalizer = app(\App\Support\NotificationPayloadNormalizer::class);
 
     </div>
 </header>
-
-@push('scripts')
-<script>
-function instructorSearch() {
-    return {
-        query: '',
-        open: false,
-        results: { modules: [], lessons: [], learners: [] },
-        async search() {
-            if (this.query.length < 2) {
-                this.results = { modules: [], lessons: [], learners: [] };
-                this.open = false;
-                return;
-            }
-            try {
-                const res = await fetch(`/instructor/search?q=${encodeURIComponent(this.query)}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    }
-                });
-                if (res.ok) {
-                    this.results = await res.json();
-                    this.open = true;
-                }
-            } catch(e) {
-                console.error('Search failed', e);
-            }
-        }
-    };
-}
-</script>
-@endpush

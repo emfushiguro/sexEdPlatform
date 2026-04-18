@@ -103,7 +103,13 @@
                         </div>
                         <div>
                             <p class="text-xs uppercase tracking-wide text-gray-500">Admin Notes / Feedback</p>
-                            <p class="mt-1 text-sm text-gray-700">{{ $reviewRequest->feedback ?: 'No moderation notes recorded.' }}</p>
+                            @if($reviewRequest->feedback)
+                                <div class="prose prose-sm mt-1 max-w-none text-gray-700">
+                                    {!! strip_tags((string) $reviewRequest->feedback, '<p><br><strong><em><ul><ol><li><a><blockquote><code>') !!}
+                                </div>
+                            @else
+                                <p class="mt-1 text-sm text-gray-700">No moderation notes recorded.</p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -124,7 +130,9 @@
                     @if ($reviewRequest->feedback)
                         <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                             <p class="font-semibold">Previous Feedback</p>
-                            <p class="mt-1">{{ $reviewRequest->feedback }}</p>
+                            <div class="prose prose-sm mt-1 max-w-none text-amber-800">
+                                {!! strip_tags((string) $reviewRequest->feedback, '<p><br><strong><em><ul><ol><li><a><blockquote><code>') !!}
+                            </div>
                         </div>
                     @endif
 
@@ -178,7 +186,15 @@
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ optional($historyItem->reviewed_at)->format('M d, Y h:i A') ?? 'Pending' }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ $historyItem->submitter?->name ?? 'Unknown' }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ $historyItem->reviewer?->name ?? 'Not assigned' }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-600">{{ $historyItem->feedback ?: 'No notes' }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600">
+                                    @if($historyItem->feedback)
+                                        <div class="prose prose-sm max-w-none text-gray-600">
+                                            {!! strip_tags((string) $historyItem->feedback, '<p><br><strong><em><ul><ol><li><a><blockquote><code>') !!}
+                                        </div>
+                                    @else
+                                        No notes
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr>

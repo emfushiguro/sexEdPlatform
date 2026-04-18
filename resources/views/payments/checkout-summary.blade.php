@@ -10,6 +10,14 @@
     $submitUrl = $submitUrl ?? '#';
     $backUrl = $backUrl ?? route('subscription.index');
     $amount = (float) ($amount ?? 0);
+    $selectedPaymentMethod = old('payment_method', $paymentMethod ?? 'gcash');
+    $paymentMethodLabels = [
+        'gcash' => 'GCash',
+        'paymaya' => 'PayMaya',
+        'grab_pay' => 'GrabPay',
+        'card' => 'Card',
+    ];
+    $selectedPaymentMethodLabel = $paymentMethodLabels[$selectedPaymentMethod] ?? 'GCash';
 @endphp
 
 @section('title', $pageTitle)
@@ -81,7 +89,25 @@
         @csrf
 
         <h2 class="text-lg font-bold text-gray-900">Confirm And Continue</h2>
-        <p class="mt-1 text-sm text-gray-600">You will choose your preferred payment method directly on PayMongo checkout.</p>
+        <p class="mt-1 text-sm text-gray-600">
+            Preferred payment method:
+            <span id="selected-method-label" class="font-semibold text-gray-900">{{ $selectedPaymentMethodLabel }}</span>
+        </p>
+
+        <div class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <label for="payment_method" class="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">Payment Method</label>
+            <select id="payment_method"
+                    name="payment_method"
+                    class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                    required>
+                @foreach($paymentMethodLabels as $methodValue => $methodLabel)
+                    <option value="{{ $methodValue }}" {{ $selectedPaymentMethod === $methodValue ? 'selected' : '' }}>{{ $methodLabel }}</option>
+                @endforeach
+            </select>
+            @error('payment_method')
+                <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
 
         <div class="mt-6 p-4 rounded-xl border border-gray-200 bg-gray-50">
             <div class="flex items-start gap-3">
@@ -99,7 +125,7 @@
         </div>
 
         <button type="submit" id="submit-btn" class="mt-6 w-full py-3.5 px-6 rounded-xl font-bold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-base bg-brand-500 hover:bg-brand-600 hover:shadow-lg hover:shadow-purple-300/40 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
-            <span id="btn-text">Proceed to PayMongo</span>
+            <span id="btn-text">Proceed to {{ $selectedPaymentMethodLabel }} Checkout</span>
         </button>
     </form>
 
@@ -112,10 +138,45 @@
 
 @push('scripts')
 <script>
+    (function () {
+        const methodLabels = {
+            gcash: 'GCash',
+            paymaya: 'PayMaya',
+            grab_pay: 'GrabPay',
+            card: 'Card',
+        };
+
+        const methodSelect = document.getElementById('payment_method');
+        const methodLabel = document.getElementById('selected-method-label');
+        const buttonText = document.getElementById('btn-text');
+
+        const syncMethodLabel = () => {
+            const method = methodSelect?.value || 'gcash';
+            const text = methodLabels[method] || 'GCash';
+
+            if (methodLabel) {
+                methodLabel.textContent = text;
+            }
+
+            if (buttonText) {
+                buttonText.textContent = `Proceed to ${text} Checkout`;
+            }
+        };
+
+        if (methodSelect) {
+            methodSelect.addEventListener('change', syncMethodLabel);
+            syncMethodLabel();
+        }
+    })();
+
     document.getElementById('payment-form').addEventListener('submit', function() {
         const btn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
         btn.disabled = true;
-        btn.innerHTML = 'Processing...';
+
+        if (btnText) {
+            btnText.textContent = 'Processing...';
+        }
     });
 </script>
 @endpush

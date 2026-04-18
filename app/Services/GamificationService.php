@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Models\UserGamification;
 use App\Services\Gamification\GamificationPolicyResolver;
 
 class GamificationService
@@ -15,12 +16,14 @@ class GamificationService
         $this->resolvedPolicy = $resolver->resolve();
     }
 
-    public function awardPoints(User $user, string $reason, int $points): void
+    public function awardPoints(User $user, string $reason, int $points): int
     {
-        $gamification = $user->gamification;
-        if (!$gamification) {
-            return;
+        if ($points <= 0) {
+            return 0;
         }
+
+        $gamification = $this->resolveGamification($user);
+        $beforeTotalPoints = (int) $gamification->total_points;
 
         $gamification->increment('score', $points);
         $gamification->increment('total_points', $points);
@@ -44,12 +47,20 @@ class GamificationService
 
             $freshGamification->update(['level' => $newLevel]);
         }
+
+        $persisted = $freshGamification->fresh();
+
+        return max(0, ((int) $persisted->total_points) - $beforeTotalPoints);
     }
 
     public function spendPoints(User $user, int $points): bool
     {
-        $gamification = $user->gamification;
-        if (!$gamification || $gamification->score < $points) {
+        if ($points <= 0) {
+            return true;
+        }
+
+        $gamification = $this->resolveGamification($user);
+        if ((int) $gamification->score < $points) {
             return false;
         }
 
@@ -79,10 +90,10 @@ class GamificationService
         $points = $this->resolvePointsForReason($reason, $context);
 
         if ($points > 0) {
-            $this->awardPoints($user, $reason, $points);
+            return $this->awardPoints($user, $reason, $points);
         }
 
-        return $points;
+        return 0;
     }
 
     public function maxStreakSaversHeld(): int
@@ -119,10 +130,7 @@ class GamificationService
 
     public function updateStreak(User $user): void
     {
-        $gamification = $user->gamification;
-        if (!$gamification) {
-            return;
-        }
+        $gamification = $this->resolveGamification($user);
 
         $lastAct = $gamification->last_act_at;
 
@@ -178,8 +186,8 @@ class GamificationService
 
     public function checkStreakMilestone(User $user): ?int
     {
-        $gamification = $user->gamification;
-        if (!$gamification || $gamification->streak_count === 0) {
+        $gamification = $this->resolveGamification($user);
+        if ($gamification->streak_count === 0) {
             return null;
         }
 
@@ -246,6 +254,24 @@ class GamificationService
         }
 
         return $resolvedLevel;
+    }
+
+    private function resolveGamification(User $user): UserGamification
+    {
+        $existing = $user->gamification()->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        return $user->gamification()->create([
+            'level' => 1,
+            'score' => 0,
+            'total_points' => 0,
+            'streak_count' => 0,
+            'longest_streak' => 0,
+            'streak_savers' => 0,
+            'last_act_at' => null,
+        ]);
     }
 
 }

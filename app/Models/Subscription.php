@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Subscription extends Model
 {
@@ -75,7 +76,7 @@ class Subscription extends Model
         // Only responsibility: clear the premium cache so isPremium() reflects reality instantly.
         static::updated(function (Subscription $subscription) {
             if ($subscription->isDirty('status')) {
-                \Cache::forget("user.{$subscription->user_id}.is_premium");
+                Cache::forget("user.{$subscription->user_id}.is_premium");
             }
         });
     }
@@ -218,7 +219,18 @@ class Subscription extends Model
 
     public function getAmount(): float
     {
-        // Use price_paid if available (set during subscription creation).
+        // Prioritize configured plan price amount for consistency across UI and checkout.
+        if ($this->plan_price_id) {
+            $planPrice = $this->relationLoaded('planPrice')
+                ? $this->getRelation('planPrice')
+                : $this->planPrice()->first();
+
+            if ($planPrice && isset($planPrice->amount_minor)) {
+                return round(((int) $planPrice->amount_minor) / 100, 2);
+            }
+        }
+
+        // Fallback to recorded paid amount.
         if ($this->price_paid) {
             return (float) $this->price_paid;
         }

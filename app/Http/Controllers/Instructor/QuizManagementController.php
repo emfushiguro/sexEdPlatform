@@ -237,7 +237,7 @@ class QuizManagementController extends Controller
             // Handle image upload for identification questions
             $imagePath = null;
             if ($request->has('image') && $request->file('image')) {
-                $imagePath = $request->file('image')->store('quiz-images', 'public');
+                $imagePath = $request->file('image')->store($this->imageLibraryDirectory(), 'public');
             }
 
             // Create question record
@@ -351,7 +351,7 @@ class QuizManagementController extends Controller
                 if ($question->image_path) {
                     \Storage::disk('public')->delete($question->image_path);
                 }
-                $imagePath = $request->file('image')->store('quiz-images', 'public');
+                $imagePath = $request->file('image')->store($this->imageLibraryDirectory(), 'public');
             }
 
             // Convert acceptable_answers array to pipe-separated string for storage
@@ -737,18 +737,35 @@ class QuizManagementController extends Controller
 
     private function resolveImageFilename($filename)
     {
+        $safeFilename = basename((string) $filename);
+
+        if (str_contains((string) $filename, '/')) {
+            if (\Storage::disk('public')->exists((string) $filename)) {
+                return (string) $filename;
+            }
+        }
+
+        $scopedPath = $this->imageLibraryDirectory() . '/' . $safeFilename;
+        if (\Storage::disk('public')->exists($scopedPath)) {
+            return $scopedPath;
+        }
+
         // Check exact match first
-        if (\Storage::disk('public')->exists('quiz-images/' . $filename)) {
-            return 'quiz-images/' . $filename;
+        if (\Storage::disk('public')->exists('quiz-images/' . $safeFilename)) {
+            return 'quiz-images/' . $safeFilename;
         }
         
         // Try to find image with timestamp prefix (e.g., 1234567890_plant_leaf.jpg)
-        $allImages = \Storage::disk('public')->files('quiz-images');
+        $allImages = array_merge(
+            \Storage::disk('public')->files($this->imageLibraryDirectory()),
+            \Storage::disk('public')->files('quiz-images')
+        );
+
         foreach ($allImages as $imagePath) {
             $imageFilename = basename($imagePath);
             // Check if filename ends with the provided name (ignoring timestamp prefix)
-            if (str_ends_with($imageFilename, $filename) || 
-                preg_match('/^\d+_' . preg_quote($filename, '/') . '$/', $imageFilename)) {
+            if (str_ends_with($imageFilename, $safeFilename) || 
+                preg_match('/^\d+_' . preg_quote($safeFilename, '/') . '$/', $imageFilename)) {
                 return $imagePath;
             }
         }
@@ -807,7 +824,7 @@ class QuizManagementController extends Controller
                     $questionData['image_path'] = $row['_resolved_image'];
                 } elseif (!empty($row['image_filename'])) {
                     // Fallback to direct filename
-                    $questionData['image_path'] = 'quiz-images/' . $row['image_filename'];
+                    $questionData['image_path'] = $this->imageLibraryDirectory() . '/' . basename((string) $row['image_filename']);
                 }
 
                 if ($existingQuestion) {
@@ -921,6 +938,11 @@ class QuizManagementController extends Controller
     private function ownershipGuard(): ContentOwnershipGuard
     {
         return app(ContentOwnershipGuard::class);
+    }
+
+    private function imageLibraryDirectory(): string
+    {
+        return 'quiz-images/user-' . (int) Auth::id();
     }
 }
 

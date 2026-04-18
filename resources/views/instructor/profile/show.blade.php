@@ -1,13 +1,17 @@
 @extends('layouts.instructor-app')
 
 @section('content')
+@php
+    $profilePhotoPath = $profile->profile_photo_path ?: $learnerProfile?->avatar_path;
+    $profilePhotoUrl = $profilePhotoPath ? Storage::url($profilePhotoPath) : null;
+@endphp
 <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
     <section class="overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-sm">
         <div class="px-6 py-8 md:px-8" style="background: linear-gradient(120deg, #A30EB2 0%, #730DB1 55%, #3B0CB1 100%);">
             <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div class="flex items-center gap-4">
                     <div class="h-24 w-24 overflow-hidden rounded-full border-4 border-white/80 bg-white shadow-lg">
-                        <img src="{{ $profile->profile_photo_path ? Storage::url($profile->profile_photo_path) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&color=1d4ed8&background=eff6ff' }}" alt="{{ $user->name }}" class="h-full w-full object-cover">
+                        <img src="{{ $profilePhotoUrl ?: 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&color=1d4ed8&background=eff6ff' }}" alt="{{ $user->name }}" class="h-full w-full object-cover">
                     </div>
                     <div>
                         <h1 class="text-2xl font-bold tracking-tight text-white md:text-3xl">{{ $user->full_name ?: $user->name }}</h1>
@@ -88,9 +92,9 @@
 
             <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold text-gray-900">Credentials</h2>
-                @if(!empty($profile->credentials) && count($profile->credentials) > 0)
+                @if(!empty($credentials) && count($credentials) > 0)
                     <ul class="mt-4 space-y-2 text-sm text-gray-700">
-                        @foreach($profile->credentials as $credential)
+                        @foreach($credentials as $credential)
                             <li class="flex gap-2">
                                 <span class="mt-1 h-1.5 w-1.5 rounded-full bg-brand-500"></span>
                                 <span>{{ $credential }}</span>

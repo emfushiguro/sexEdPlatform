@@ -37,11 +37,9 @@ class AdminInstructorPlanEntitlementDefaultsTest extends TestCase
 		$this->actingAs($admin)
 			->get(route('admin.subscription-plans.index'))
 			->assertOk()
-			->assertSee('data-testid="instructor-baseline-plan-banner"', false)
-			->assertSeeText('Free instructor plan: Instructor Baseline Free')
-			->assertSeeText('Published modules')
-			->assertSeeText('Paid enrollments')
-			->assertSeeText('Earnings visibility');
+			->assertDontSee('data-testid="instructor-baseline-plan-banner"', false)
+			->assertSeeText('Plans Management')
+			->assertSeeText('Instructor Baseline Free');
 	}
 
 	private function createAdminUser(): User

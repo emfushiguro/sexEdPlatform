@@ -52,9 +52,16 @@ class PaymentObserver
                 // activate() sees the real current status, not a stale in-memory value.
                 // activate() is idempotent — safe to call even if already active.
                 $subscription = $payment->subscription()->first();
+                $details = is_array($payment->payment_details) ? $payment->payment_details : [];
                 if ($subscription) {
                     try {
-                        app(SubscriptionService::class)->activate($subscription);
+                        $lifecycleAction = (string) data_get($details, 'lifecycle_action', '');
+
+                        if ($lifecycleAction === 'renewal_checkout') {
+                            app(SubscriptionService::class)->renewFromPayment($subscription, $payment);
+                        } else {
+                            app(SubscriptionService::class)->activate($subscription);
+                        }
                     } catch (\Throwable $exception) {
                         Log::warning('Subscription activation from PaymentObserver failed', [
                             'payment_id' => $payment->id,

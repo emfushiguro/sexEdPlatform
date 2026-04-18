@@ -29,10 +29,70 @@
 
     <form method="POST" action="{{ route('profile.store') }}"
           x-data="{
+              username: '{{ old('username', $learnerProfile?->username) }}',
+              usernameMessage: '',
+              usernameState: 'idle',
+              usernameTimer: null,
               cityCode: '{{ old('city_code', $learnerProfile?->city_code) }}',
               selectedBarangayCode: '{{ old('barangay_code', $learnerProfile?->barangay_code) }}',
               barangays: [],
               loading: false,
+              normalizeUsername() {
+                  this.username = this.username.toLowerCase().replace(/\s+/g, '');
+              },
+              usernameFormatError() {
+                  if (!this.username) {
+                      return '';
+                  }
+
+                  if (this.username.length < 3 || this.username.length > 30) {
+                      return 'Username must be between 3 and 30 characters.';
+                  }
+
+                  if (!/^[a-z0-9_-]+$/.test(this.username)) {
+                      return 'Use only lowercase letters, numbers, underscores, and hyphens.';
+                  }
+
+                  return '';
+              },
+              scheduleUsernameCheck() {
+                  clearTimeout(this.usernameTimer);
+                  this.normalizeUsername();
+
+                  if (!this.username) {
+                      this.usernameState = 'idle';
+                      this.usernameMessage = '';
+                      return;
+                  }
+
+                  const formatError = this.usernameFormatError();
+                  if (formatError) {
+                      this.usernameState = 'error';
+                      this.usernameMessage = formatError;
+                      return;
+                  }
+
+                  this.usernameState = 'checking';
+                  this.usernameTimer = setTimeout(() => this.checkUsernameAvailability(), 350);
+              },
+              async checkUsernameAvailability() {
+                  try {
+                      const response = await fetch('{{ route('profile.username-availability') }}?username=' + encodeURIComponent(this.username), {
+                          headers: { 'Accept': 'application/json' },
+                          credentials: 'same-origin',
+                      });
+
+                      const payload = await response.json().catch(() => ({}));
+                      const available = Boolean(payload?.available);
+                      const message = payload?.message || '';
+
+                      this.usernameState = available ? 'success' : 'error';
+                      this.usernameMessage = message;
+                  } catch (error) {
+                      this.usernameState = 'error';
+                      this.usernameMessage = 'Unable to validate username right now. Please try again.';
+                  }
+              },
               async loadBarangays(code) {
                   code = String(code || '').trim();
 
@@ -69,7 +129,7 @@
                   }
               }
           }"
-          x-init="if (cityCode) loadBarangays(cityCode)">
+          x-init="if (cityCode) loadBarangays(cityCode); scheduleUsernameCheck()">
         @csrf
 
         <div class="space-y-3">
@@ -81,11 +141,20 @@
                         Username <span class="text-red-500">*</span>
                     </label>
                     <input id="username" name="username" type="text" required
-                           value="{{ old('username', $learnerProfile?->username) }}"
+                                    x-model="username"
+                                    @input="scheduleUsernameCheck()"
+                                    @blur="scheduleUsernameCheck()"
                            placeholder="e.g., cool_learner_123"
                               pattern="^[a-z0-9_\-]{3,30}$" minlength="3" maxlength="30"
                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
-                    <p class="mt-1 text-xs text-gray-500">3–30 chars: including letters, numbers, symbol</p>
+                          <p class="mt-1 text-xs text-gray-500">3-30 chars: lowercase letters, numbers, _ and -</p>
+                          <p x-show="usernameMessage" x-cloak class="mt-1 text-xs"
+                              :class="{
+                                    'text-gray-500': usernameState === 'checking',
+                                    'text-emerald-600': usernameState === 'success',
+                                    'text-red-600': usernameState === 'error'
+                              }"
+                              x-text="usernameMessage"></p>
                     @error('username')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
 

@@ -177,7 +177,7 @@
                             <input x-model.debounce.150ms="filters.search"
                                 @input="page = 1"
                                    type="text"
-                                   placeholder="Type, module, learner, instructor, ref..."
+                                   placeholder="Type, module, name, ref..."
                                    class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                         </label>
                         <label class="block">
@@ -249,8 +249,7 @@
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No. #</th>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Type</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Learner</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Instructor</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Name</th>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Amount</th>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Method</th>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Status</th>
@@ -283,7 +282,6 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="payment.instructor"></td>
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-900" x-text="formatCurrency(payment.amount)"></td>
                                 <td class="px-6 py-4">
                                     <span class="inline-flex px-3 py-1 text-xs font-bold rounded-full"
@@ -330,7 +328,7 @@
                             </tr>
                         </template>
                         <tr x-show="filteredPayments.length === 0" x-cloak>
-                            <td colspan="10" class="px-6 text-center py-14">
+                            <td colspan="9" class="px-6 text-center py-14">
                                 <div class="max-w-sm mx-auto">
                                     <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-50 text-brand-600">
                                         <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">

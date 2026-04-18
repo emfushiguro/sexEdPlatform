@@ -28,6 +28,7 @@ class AssessmentLogController extends Controller
             'scoreDistributionByModule' => $insights['scoreDistributionByModule'],
             'attemptCountByLearner' => $insights['attemptCountByLearner'],
             'atRiskLearners' => $insights['atRiskLearners'],
+            'recentAttemptPreviews' => $insights['recentAttemptPreviews'] ?? [],
             'assessmentThresholds' => [
                 'low_score_threshold' => $lowScoreThreshold,
                 'low_activity_threshold' => $lowActivityThreshold,

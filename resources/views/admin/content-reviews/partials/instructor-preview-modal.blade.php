@@ -1,3 +1,8 @@
+@php
+    $previewUserId = (int) data_get($workspace, 'instructor_preview.profile.user_id', 0);
+    $previewFullName = (string) data_get($workspace, 'instructor_preview.profile.full_name', 'Unknown Instructor');
+@endphp
+
 <div x-show="instructorPreviewOpen"
      x-cloak
      class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/55 px-4"
@@ -36,11 +41,26 @@
                     @endif
                     <div>
                         <p class="text-base font-semibold text-gray-900">{{ data_get($workspace, 'instructor_preview.profile.full_name', 'Unknown Instructor') }}</p>
-                        <p class="text-sm text-gray-500">{{ '@' . data_get($workspace, 'instructor_preview.profile.username', 'N/A') }}</p>
+                        <div class="mt-1 flex flex-wrap items-center gap-2">
+                            <span class="inline-flex rounded-full bg-brand-100 px-2.5 py-0.5 text-[11px] font-semibold text-brand-700">{{ data_get($workspace, 'instructor_preview.profile.role_badge', 'Instructor') }}</span>
+                            <span class="text-xs text-gray-500">{{ '@' . data_get($workspace, 'instructor_preview.profile.username', 'N/A') }}</span>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">{{ data_get($workspace, 'instructor_preview.profile.affiliation', 'N/A') }}</p>
                     </div>
+                    @if($previewUserId > 0)
+                        <button type="button"
+                            class="ml-auto inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                            @click="$dispatch('open-global-chat', { target_user_id: {{ $previewUserId }}, conversation_type: 'direct', name: @js($previewFullName) })">
+                            Direct Message
+                        </button>
+                    @endif
                 </div>
 
                 <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                    <div class="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                        <dt class="text-gray-500">Role</dt>
+                        <dd class="font-semibold text-gray-900">{{ data_get($workspace, 'instructor_preview.profile.role_badge', 'Instructor') }}</dd>
+                    </div>
                     <div class="rounded-lg border border-gray-200 bg-white px-3 py-2">
                         <dt class="text-gray-500">Location</dt>
                         <dd class="font-semibold text-gray-900">{{ data_get($workspace, 'instructor_preview.profile.location', 'N/A') }}</dd>

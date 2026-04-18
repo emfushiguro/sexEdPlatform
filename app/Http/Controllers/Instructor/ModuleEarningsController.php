@@ -39,6 +39,11 @@ class ModuleEarningsController extends Controller
 
         $earningsPayload = $this->financialReportService->getInstructorEarnings($reportFilter);
         $transactions = $this->financialReportService->getInstructorVisibleTransactions($reportFilter, 15);
+        $moduleFilterOptions = Module::query()
+            ->select('id', 'title')
+            ->where('created_by', $instructorId)
+            ->orderBy('title')
+            ->get();
 
         $summary = (array) ($earningsPayload['summary'] ?? []);
         $stats = [
@@ -57,6 +62,7 @@ class ModuleEarningsController extends Controller
             'effectiveCommissionPolicy' => $effectiveCommissionPolicy,
             'moduleBreakdown' => $earningsPayload['module_breakdown'] ?? collect(),
             'reportFilter' => $reportFilter,
+            'moduleFilterOptions' => $moduleFilterOptions,
         ]);
     }
 

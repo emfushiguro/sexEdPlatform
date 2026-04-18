@@ -147,11 +147,11 @@ class AdminModuleRevenueDashboardTest extends TestCase
             ->get(route('admin.monetization.module-revenue.index', [
                 'instructor_id' => $instructorA->id,
                 'module_id' => $moduleA->id,
-                'payout_status' => 'paid',
             ]))
             ->assertOk()
             ->assertSee('Module Alpha', false)
-            ->assertSee('Paid', false);
+            ->assertSee('Completed', false)
+            ->assertDontSee('name="payout_status"', false);
 
         $filteredHtml = $filteredResponse->getContent();
 

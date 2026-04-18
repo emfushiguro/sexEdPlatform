@@ -27,6 +27,28 @@ Shared password for all accounts: `password123`
 
 ---
 
+## Centralized Moderation Verification Pack (2026-04-18)
+
+Run this full targeted pack before moderation cutover:
+
+```bash
+php artisan test --filter="Moderation|Suspension|Appeal|Automation|ContentReportFlowTest|AdminContentReviewWorkflowTest|AdminInstructorApplicationsUiTest"
+```
+
+Focused follow-up packs:
+
+```bash
+php artisan test --filter="ModerationDualWriteParityTest|BackfillCentralizedModerationTest|ModerationParityReconciliationTest"
+php artisan test --filter="SuspensionAppealUiFlowTest|AdminAppealReviewUiTest|ModerationLifecycleNotificationTest"
+php artisan moderation:backfill-centralized --reconcile-only
+```
+
+Checklist and recorded execution summary:
+
+- [2026-04-17-centralized-moderation-cutover-checklist.md](plans/2026-04-17-centralized-moderation-cutover-checklist.md)
+
+---
+
 ## Instructor Profile And Module/Quiz Configuration Smoke Tests
 
 Run these after migrations to verify the instructor profile rollout and scalable module/quiz settings:

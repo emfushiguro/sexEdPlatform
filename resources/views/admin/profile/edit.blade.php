@@ -47,7 +47,14 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                <input id="username" type="text" name="username" value="{{ old('username', $user->name) }}" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500" required>
+                <p class="mt-1 text-xs text-gray-500">Used across admin identity and chat visibility.</p>
+                @error('username')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+
             <div>
                 <label for="public_display_name" class="block text-sm font-medium text-gray-700">Public Display Name</label>
                 <input id="public_display_name" type="text" name="public_display_name" value="{{ old('public_display_name', $profile->public_display_name) }}" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500" required>
@@ -64,7 +71,32 @@
         <div>
             <label for="bio" class="block text-sm font-medium text-gray-700">Bio</label>
             <textarea id="bio" name="bio" rows="4" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">{{ old('bio', $profile->bio) }}</textarea>
+            <p class="mt-1 text-xs text-gray-500">Professional, platform-focused biography shown in creator transparency views.</p>
             @error('bio')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+        </div>
+
+        <div class="rounded-xl border border-gray-200 bg-white p-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Credentials</p>
+            <p class="mt-1 text-sm text-gray-600">Update your password when needed. Leave password fields blank to keep your current password.</p>
+
+            <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                    <label for="current_password" class="block text-sm font-medium text-gray-700">Current Password</label>
+                    <input id="current_password" type="password" name="current_password" autocomplete="current-password" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                    @error('current_password')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                </div>
+
+                <div>
+                    <label for="new_password" class="block text-sm font-medium text-gray-700">New Password</label>
+                    <input id="new_password" type="password" name="new_password" autocomplete="new-password" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                    @error('new_password')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                </div>
+
+                <div>
+                    <label for="new_password_confirmation" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                    <input id="new_password_confirmation" type="password" name="new_password_confirmation" autocomplete="new-password" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                </div>
+            </div>
         </div>
 
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">

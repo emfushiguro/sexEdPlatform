@@ -67,7 +67,7 @@
                  this.enrollmentMode = draft.enrollment_mode || 'auto';
                  this.accessType = draft.access_type || 'free';
                  this.priceAmount = draft.price_amount ?? '';
-                 this.priceCurrency = draft.price_currency || 'PHP';
+                 this.priceCurrency = 'PHP';
                  this.enrollmentLimit = draft.enrollment_limit ?? '';
                  this.isPublished = !!draft.is_published;
                  this.actionChoice = draft.action || (this.isPublished ? 'publish' : 'draft');
@@ -86,6 +86,12 @@
                  const file = event.target.files[0];
                  if (file) {
                      this.thumbnailPreview = URL.createObjectURL(file);
+                 }
+            },
+            clearThumbnail(input) {
+                 this.thumbnailPreview = null;
+                 if (input) {
+                     input.value = '';
                  }
              },
              init() {
@@ -178,9 +184,17 @@
                     {{-- Upload input --}}
                     <div class="flex-1">
                         <input type="file" name="thumbnail" accept="image/*"
+                               x-ref="thumbnailInput"
                                @change="previewImage($event)"
                                class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 dark:file:bg-purple-900/20 dark:file:text-purple-300 hover:file:bg-purple-100 dark:hover:file:bg-purple-900/40 transition-colors cursor-pointer">
-                        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">JPG, PNG, GIF up to 2MB. If none, a gradient background is used.</p>
+                        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">JPG, PNG, GIF up to 2MB.</p>
+                        <button type="button"
+                                x-show="thumbnailPreview"
+                                x-cloak
+                                @click="clearThumbnail($refs.thumbnailInput)"
+                                class="mt-2 inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+                            Remove thumbnail
+                        </button>
                     </div>
                 </div>
                 @error('thumbnail')
@@ -243,15 +257,10 @@
                         <span class="text-[10px] font-normal normal-case tracking-normal text-gray-400 ml-1"
                               x-show="effectiveEnrollmentCap() !== null"
                               x-text="`(max ${effectiveEnrollmentCap()} learners)`"></span>
-                        <span class="text-[10px] font-normal normal-case tracking-normal text-gray-400 ml-1"
-                              x-show="effectiveEnrollmentCap() === null">(plan-based)</span>
                     </label>
-                    <input type="number" name="enrollment_limit" x-model="enrollmentLimit" min="1" :max="effectiveEnrollmentCap()"
-                           placeholder="Leave blank for unlimited"
+                    <input type="number" name="enrollment_limit" x-model="enrollmentLimit" min="1" :max="effectiveEnrollmentCap()" required
+                           placeholder="Enter learner capacity"
                            class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
-                    <p class="mt-1 text-xs text-gray-500" x-show="effectiveEnrollmentCap() !== null" x-cloak>
-                        Your active plan currently allows up to <span class="font-semibold" x-text="effectiveEnrollmentCap()"></span> learners for this access type.
-                    </p>
                     @error('enrollment_limit')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror
@@ -274,9 +283,10 @@
                     <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
                         Price Currency
                     </label>
-                    <input type="text" name="price_currency" x-model="priceCurrency" maxlength="3"
-                           @input="priceCurrency = ($event.target.value || '').toUpperCase()"
-                           class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
+                    <div class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 px-3.5 py-2.5">
+                        PHP (Peso)
+                    </div>
+                    <input type="hidden" name="price_currency" value="PHP">
                     @error('price_currency')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror

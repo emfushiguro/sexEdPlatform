@@ -70,8 +70,21 @@ class AdminModuleReviewWorkspaceService
                 'learnerProfile.city',
                 'learnerProfile.barangayLocation',
                 'instructorProfile',
+                'adminCreatorProfile',
             ]);
         }
+
+        $moduleOwnerType = strtolower((string) data_get($moduleData, 'content_owner_type', $module?->content_owner_type ?? ''));
+        if (!in_array($moduleOwnerType, ['admin', 'platform', 'instructor'], true)) {
+            $moduleOwnerType = strtolower((string) ($instructor?->role ?? '')) === 'admin'
+                ? 'admin'
+                : 'instructor';
+        }
+
+        $isPlatformOwned = in_array($moduleOwnerType, ['admin', 'platform'], true);
+        $creatorAffiliation = $isPlatformOwned
+            ? (string) data_get($instructor?->adminCreatorProfile, 'affiliation', 'Conscious Connections Team')
+            : 'Independent Instructor';
 
         $moderationProfile = $instructor?->moderationProfile()->first();
         $recentViolations = $instructor
@@ -85,6 +98,7 @@ class AdminModuleReviewWorkspaceService
                 ...$moduleData,
                 'id' => data_get($moduleData, 'id', $reviewRequest->module_id),
                 'title' => data_get($moduleData, 'title', $reviewRequest->module_title),
+                'content_owner_type' => $moduleOwnerType,
                 'thumbnail_url' => $thumbnailUrl,
                 'age_group' => $this->ageGroupLabel(
                     data_get($moduleData, 'min_age', $module?->min_age),
@@ -123,6 +137,9 @@ class AdminModuleReviewWorkspaceService
             'instructor' => [
                 'id' => $instructor?->id,
                 'name' => $instructor?->name ?? $reviewRequest->revision?->submitter?->name ?? 'Unknown Instructor',
+                'role' => strtolower((string) ($instructor?->role ?? ($isPlatformOwned ? 'admin' : 'instructor'))),
+                'is_platform_owner' => $isPlatformOwned,
+                'affiliation' => $creatorAffiliation,
                 'avatar' => $this->resolveMediaUrl(
                     (string) (
                         data_get($instructor?->instructorProfile, 'profile_photo_path')
@@ -516,8 +533,12 @@ class AdminModuleReviewWorkspaceService
         if (!$instructor) {
             return [
                 'profile' => [
+                    'user_id' => null,
                     'profile_picture' => null,
                     'full_name' => 'Unknown Instructor',
+                    'role' => 'instructor',
+                    'role_badge' => 'Instructor',
+                    'affiliation' => 'N/A',
                     'username' => 'N/A',
                     'location' => 'N/A',
                     'educational_background' => 'N/A',
@@ -588,6 +609,7 @@ class AdminModuleReviewWorkspaceService
 
         return [
             'profile' => [
+                'user_id' => $instructor->id,
                 'profile_picture' => $this->resolveMediaUrl(
                     (string) (
                         data_get($instructor->instructorProfile, 'profile_photo_path')
@@ -598,6 +620,11 @@ class AdminModuleReviewWorkspaceService
                     'avatars',
                 ),
                 'full_name' => $instructor->name,
+                'role' => strtolower((string) ($instructor->role ?? 'instructor')),
+                'role_badge' => strtolower((string) ($instructor->role ?? '')) === 'admin' ? 'Platform Developer' : 'Instructor',
+                'affiliation' => strtolower((string) ($instructor->role ?? '')) === 'admin'
+                    ? (string) data_get($instructor->adminCreatorProfile, 'affiliation', 'Conscious Connections Team')
+                    : 'Independent Instructor',
                 'username' => data_get($instructor->learnerProfile, 'username', 'N/A'),
                 'location' => $location !== '' ? $location : 'N/A',
                 'educational_background' => data_get($instructor->instructorProfile, 'educational_background', 'N/A'),

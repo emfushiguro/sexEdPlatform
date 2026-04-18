@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ImageLibraryController extends Controller
@@ -14,7 +16,7 @@ class ImageLibraryController extends Controller
     public function index()
     {
         $images = [];
-        $files = Storage::disk('public')->files('quiz-images');
+        $files = $this->listImageFiles();
         
         foreach ($files as $file) {
             $images[] = [
@@ -39,7 +41,7 @@ class ImageLibraryController extends Controller
     public function indexJson()
     {
         $images = [];
-        $files = Storage::disk('public')->files('quiz-images');
+        $files = $this->listImageFiles();
 
         foreach ($files as $file) {
             $images[] = [
@@ -66,7 +68,7 @@ class ImageLibraryController extends Controller
         try {
             $file = $request->file('image');
             $filename = time() . '_' . str_replace(' ', '_', $file->getClientOriginalName());
-            $path = $file->storeAs('quiz-images', $filename, 'public');
+            $path = $file->storeAs($this->userImageDirectory(), $filename, 'public');
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -79,7 +81,7 @@ class ImageLibraryController extends Controller
 
             return back()->with('success', "Image '{$filename}' uploaded successfully!");
         } catch (\Exception $e) {
-            \Log::error('Image upload failed: ' . $e->getMessage());
+            Log::error('Image upload failed: ' . $e->getMessage());
 
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Failed to upload image.'], 500);
@@ -95,9 +97,9 @@ class ImageLibraryController extends Controller
     public function delete($filename)
     {
         try {
-            $path = 'quiz-images/' . $filename;
+            $path = $this->resolveDeletePath($filename);
             
-            if (!Storage::disk('public')->exists($path)) {
+            if (!$path || !Storage::disk('public')->exists($path)) {
                 return back()->with('error', 'Image not found.');
             }
             
@@ -105,8 +107,39 @@ class ImageLibraryController extends Controller
             
             return back()->with('success', "Image '{$filename}' deleted successfully!");
         } catch (\Exception $e) {
-            \Log::error('Image delete failed: ' . $e->getMessage());
+            Log::error('Image delete failed: ' . $e->getMessage());
             return back()->with('error', 'Failed to delete image.');
         }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function listImageFiles(): array
+    {
+        $disk = Storage::disk('public');
+        $userDir = $this->userImageDirectory();
+
+        return $disk->exists($userDir) ? $disk->files($userDir) : [];
+    }
+
+    private function resolveDeletePath(string $filename): ?string
+    {
+        $disk = Storage::disk('public');
+        $safeFilename = basename($filename);
+
+        $scopedPath = $this->userImageDirectory() . '/' . $safeFilename;
+        if ($disk->exists($scopedPath)) {
+            return $scopedPath;
+        }
+
+        return null;
+    }
+
+    private function userImageDirectory(): string
+    {
+        $userId = (int) Auth::id();
+
+        return 'quiz-images/user-' . $userId;
     }
 }

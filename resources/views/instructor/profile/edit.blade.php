@@ -3,6 +3,8 @@
 @section('content')
 @php
     $hasPasswordErrors = $errors->hasAny(['current_password', 'password', 'password_confirmation']);
+    $fallbackPhotoPath = $profile->profile_photo_path ?: $user->learnerProfile?->avatar_path;
+    $fallbackPhotoUrl = $fallbackPhotoPath ? Storage::url($fallbackPhotoPath) : null;
 @endphp
 
 <div class="mx-auto max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8" x-data="{ activeTab: '{{ $hasPasswordErrors ? 'password' : 'profile' }}' }">
@@ -38,7 +40,7 @@
                 <div x-data="{ photoPreview: null }" class="flex flex-wrap items-center gap-4 sm:gap-6">
                     <div class="h-24 w-24 overflow-hidden rounded-full border-2 border-brand-100 bg-gray-50">
                         <template x-if="!photoPreview">
-                            <img src="{{ $profile->profile_photo_path ? Storage::url($profile->profile_photo_path) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&color=1d4ed8&background=eff6ff' }}" alt="{{ $user->name }}" class="h-full w-full object-cover">
+                            <img src="{{ $fallbackPhotoUrl ?: 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&color=1d4ed8&background=eff6ff' }}" alt="{{ $user->name }}" class="h-full w-full object-cover">
                         </template>
                         <template x-if="photoPreview">
                             <img :src="photoPreview" alt="Profile photo preview" class="h-full w-full object-cover">

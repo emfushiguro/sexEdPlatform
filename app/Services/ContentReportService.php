@@ -13,11 +13,16 @@ use App\Models\User;
 use App\Notifications\Admin\LearnerReportSubmittedNotification;
 use App\Notifications\Instructor\InstructorReportOutcomeNotification;
 use App\Notifications\Learner\ContentReportStatusNotification;
+use App\Services\Moderation\SourceAdapters\LearnerReportModerationAdapter;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class ContentReportService
 {
+    public function __construct(private readonly LearnerReportModerationAdapter $learnerReportModerationAdapter)
+    {
+    }
+
     public function submitOrUpdateActive(
         User $reporter,
         string $targetType,
@@ -45,6 +50,8 @@ class ContentReportService
                     'reason_code' => $reasonCode,
                 ]);
 
+                $this->learnerReportModerationAdapter->syncReport($activeReport->fresh());
+
                 return $activeReport->fresh(['reporter']);
             }
 
@@ -60,6 +67,8 @@ class ContentReportService
             $this->logActivity($report, $reporter, 'report_submitted', [
                 'reason_code' => $reasonCode,
             ]);
+
+            $this->learnerReportModerationAdapter->syncReport($report);
 
             User::query()
                 ->where('role', 'admin')
@@ -111,6 +120,8 @@ class ContentReportService
                 'action_code' => $action->value,
                 'notes' => $moderationNotes,
             ]);
+
+            $this->learnerReportModerationAdapter->syncReport($report->fresh());
 
             $report->loadMissing('reporter');
             if ($report->reporter) {

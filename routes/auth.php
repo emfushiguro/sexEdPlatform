@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -97,6 +98,13 @@ Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
+
+    Route::get('email/verification-status', function (Request $request) {
+        return response()->json([
+            'verified' => (bool) $request->user()?->hasVerifiedEmail(),
+            'profile_completed' => (bool) $request->user()?->hasCompletedProfile(),
+        ]);
+    })->name('verification.status');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')

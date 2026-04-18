@@ -376,21 +376,58 @@ class SubscriptionController extends Controller
     {
         /** @var User $user */
         $user         = Auth::user();
-        $subscription = $user->subscriptions()->latest('id')->first();
+        $subscription = $user->subscriptions()
+            ->latest('id')
+            ->get()
+            ->first(fn (Subscription $candidate) => $this->subscriptionService->isRenewableNow($candidate));
 
-        if (!$subscription || !$this->subscriptionService->isRenewableNow($subscription)) {
+        if (!$subscription) {
             return redirect()->route('subscription.index')
                 ->with('error', 'Your current subscription is not yet eligible for renewal.');
         }
 
         try {
-            $this->subscriptionService->renew($subscription);
+            $pendingPayment = $subscription->payments()
+                ->where('status', PaymentStatus::Pending->value)
+                ->latest('id')
+                ->first();
+
+            if (!$pendingPayment) {
+                $renewalAmount = (float) $subscription->getAmount();
+
+                if ($renewalAmount <= 0) {
+                    return redirect()->route('subscription.index')
+                        ->with('error', 'Unable to determine the renewal amount for your plan.');
+                }
+
+                $pendingPayment = $subscription->payments()->create([
+                    'user_id' => $user->id,
+                    'amount' => $renewalAmount,
+                    'method' => null,
+                    'status' => PaymentStatus::Pending,
+                    'transaction_id' => 'RENCHK-' . strtoupper(uniqid()),
+                    'payment_details' => [
+                        'payment_scope' => 'subscription',
+                        'lifecycle_action' => 'renewal_checkout',
+                        'requested_at' => now()->toDateTimeString(),
+                    ],
+                ]);
+            } else {
+                $pendingPayment->update([
+                    'amount' => (float) $subscription->getAmount(),
+                    'payment_details' => array_merge((array) $pendingPayment->payment_details, [
+                        'payment_scope' => 'subscription',
+                        'lifecycle_action' => 'renewal_checkout',
+                        'requested_at' => now()->toDateTimeString(),
+                    ]),
+                ]);
+            }
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('subscription.index')
-            ->with('success', 'Your subscription has been renewed successfully!');
+        return redirect()->route('payment.create', ['subscription' => $subscription->id])
+            ->with('info', 'Continue to checkout to confirm your renewal payment.');
     }
 
     private function buildRenewalNotice(?Subscription $subscription): ?array

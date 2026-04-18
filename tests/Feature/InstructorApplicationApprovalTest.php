@@ -23,9 +23,11 @@ class InstructorApplicationApprovalTest extends TestCase
 
     public function test_admin_can_approve_application(): void
     {
+        /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         $admin->assignRole('admin');
 
+        /** @var User $learner */
         $learner = User::factory()->create(['role' => 'learner']);
         $learner->assignRole('learner');
 
@@ -52,6 +54,9 @@ class InstructorApplicationApprovalTest extends TestCase
             'educational_background' => 'Bachelor of Secondary Education',
             'professional_background' => str_repeat('B', 120),
         ]);
+        $this->assertTrue($learner->fresh()->hasRole('instructor'));
+        $this->assertNotContains('instructor-applications/id.pdf', $learner->fresh()->instructorProfile?->credentials ?? []);
+        $this->assertNotContains('instructor-applications/clearance.pdf', $learner->fresh()->instructorProfile?->credentials ?? []);
         $this->assertDatabaseHas('role_transitions', [
             'user_id' => $learner->id,
             'to_role' => 'instructor',
@@ -65,9 +70,11 @@ class InstructorApplicationApprovalTest extends TestCase
 
     public function test_admin_can_reject_application_with_reason(): void
     {
+        /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         $admin->assignRole('admin');
 
+        /** @var User $learner */
         $learner = User::factory()->create(['role' => 'learner']);
         $learner->assignRole('learner');
 

@@ -27,6 +27,21 @@ class FinancialReportFilterNormalizer
 
         $instructorId = $forcedInstructorId ?? (isset($filters['instructor_id']) ? (int) $filters['instructor_id'] : null);
         $moduleId = isset($filters['module_id']) ? (int) $filters['module_id'] : null;
+        $searchTerm = isset($filters['search']) ? trim((string) $filters['search']) : null;
+        $paymentMethod = isset($filters['payment_method']) ? trim((string) $filters['payment_method']) : null;
+        $payoutStatus = isset($filters['payout_status']) ? trim((string) $filters['payout_status']) : null;
+
+        if ($searchTerm === '') {
+            $searchTerm = null;
+        }
+
+        if ($paymentMethod === '') {
+            $paymentMethod = null;
+        }
+
+        if ($payoutStatus === '') {
+            $payoutStatus = null;
+        }
 
         return new FinancialReportFilter(
             reportType: $reportType,
@@ -38,6 +53,9 @@ class FinancialReportFilterNormalizer
             granularity: $this->resolveGranularity($reportType, $localStart, $localEnd),
             instructorId: $instructorId,
             moduleId: $moduleId,
+            searchTerm: $searchTerm,
+            paymentMethod: $paymentMethod,
+            payoutStatus: $payoutStatus,
         );
     }
 

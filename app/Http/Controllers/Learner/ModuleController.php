@@ -18,6 +18,7 @@ use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use App\Notifications\Learner\ModulePurchaseResultNotification;
 use App\Notifications\Parent\ChildEnrollmentApprovalRequestedNotification;
+use App\Services\GamificationService;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\ModulePurchaseService;
 use App\Services\LearnerModuleCompletionService;
@@ -30,6 +31,7 @@ class ModuleController extends Controller
     public function __construct(
         private readonly ModulePurchaseService $modulePurchaseService,
         private readonly LearnerModuleCompletionService $completionService,
+        private readonly GamificationService $gamificationService,
         private readonly AdminOwnershipDisplayService $ownershipDisplayService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
     ) {
@@ -713,6 +715,18 @@ class ModuleController extends Controller
 
         $amount = (float) ($module->price_amount ?? 0);
 
+        $pendingPayment = $user->payments()
+            ->where('status', \App\Enums\PaymentStatus::Pending)
+            ->where('payment_details->payment_scope', 'module_purchase')
+            ->where('payment_details->module_id', $module->id)
+            ->latest('id')
+            ->first();
+
+        $preferredPaymentMethod = (string) ($pendingPayment?->method ?? data_get($pendingPayment?->payment_details, 'payment_method', 'gcash'));
+        if (!in_array($preferredPaymentMethod, ['gcash', 'paymaya', 'grab_pay', 'card'], true)) {
+            $preferredPaymentMethod = 'gcash';
+        }
+
         $module->loadMissing('creator');
 
         return view('payments.checkout-summary', [
@@ -720,6 +734,7 @@ class ModuleController extends Controller
             'module' => $module,
             'amount' => $amount,
             'paymongoMode' => $paymongoMode,
+            'paymentMethod' => $preferredPaymentMethod,
             'submitUrl' => route('learner.modules.purchase.process', $module),
             'backUrl' => route('learner.modules.show', $module),
         ]);
@@ -790,10 +805,15 @@ class ModuleController extends Controller
                 ->with('error', 'Enrollment Closed: this module is already full.');
         }
 
+        $selectedMethod = (string) ($request->input('payment_method') ?: 'gcash');
+        if (!in_array($selectedMethod, ['gcash', 'paymaya', 'grab_pay', 'card'], true)) {
+            $selectedMethod = 'gcash';
+        }
+
         $checkout = $this->modulePurchaseService->createCheckout(
             $user,
             $module,
-            (string) ($request->input('payment_method') ?: 'paymongo'),
+            $selectedMethod,
             [
                 'name' => (string) ($request->input('billing_name') ?: $user->name),
                 'email' => (string) ($request->input('billing_email') ?: ($user->email ?? '')),
@@ -885,6 +905,18 @@ class ModuleController extends Controller
         if (!$hasPassedFinalQuiz) {
             return redirect()->route('learner.modules.show', $module)
                 ->with('error', 'Pass the final quiz first to unlock module completion.');
+        }
+
+        if ($enrollment->completed_at === null && $this->completionService->isFullyCompleted($user, $module)) {
+            $enrollment->update([
+                'completed_at' => now(),
+                'completion_percentage' => 100,
+            ]);
+
+            $moduleCompletionPoints = $this->gamificationService->awardConfiguredPoints($user, 'module_completed');
+            if ($moduleCompletionPoints > 0) {
+                session()->flash('points_earned', $moduleCompletionPoints);
+            }
         }
 
         $module->loadMissing('publishedRevision');

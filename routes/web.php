@@ -24,6 +24,7 @@ use App\Http\Controllers\ParentInvitationController;
 use App\Http\Controllers\Api\LocationController;
 use App\Models\Conversation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,7 +35,7 @@ use Illuminate\Support\Facades\Route;
 
 // Default entry point — landing page for guests, dashboard for authenticated users
 Route::get('/', function () {
-    if (auth()->check()) {
+    if (Auth::check()) {
         return redirect('/learn/dashboard');
     }
     return view('landing.index');
@@ -69,6 +70,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/profile/username-availability', [ProfileCompletionController::class, 'checkUsername'])
+        ->middleware('throttle:30,1')
+        ->name('profile.username-availability');
 
     // Learner profile edit
     Route::get('/profile/learner/edit', [ProfileCompletionController::class, 'edit'])->name('profile.learner.edit');
