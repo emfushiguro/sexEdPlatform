@@ -10,6 +10,7 @@ use App\Models\RoleTransition;
 use App\Models\User;
 use App\Notifications\InstructorApplicationStatusUpdate;
 use App\Notifications\InstructorApplicationSubmitted;
+use App\Services\Moderation\SourceAdapters\InstructorApplicationModerationAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +25,10 @@ class InstructorApplicationService
 
     private const DEFAULT_REJECTION_MESSAGE = '<p>Thank you for applying to become an instructor on our platform.</p><p>After reviewing your application, we regret to inform you that it has not been approved at this time.</p>';
 
-    public function __construct(private readonly SubscriptionService $subscriptionService)
+    public function __construct(
+        private readonly SubscriptionService $subscriptionService,
+        private readonly InstructorApplicationModerationAdapter $instructorApplicationModerationAdapter,
+    )
     {
     }
 
@@ -58,6 +62,8 @@ class InstructorApplicationService
             'bio' => (string) Arr::get($data, 'bio'),
             'application_metadata' => $metadata,
         ], $paths));
+
+        $this->instructorApplicationModerationAdapter->syncSubmission($application);
 
         User::role('admin')->get()->each(function (User $admin) use ($application): void {
             $this->notifySafely($admin, new InstructorApplicationSubmitted($application));
@@ -125,6 +131,8 @@ class InstructorApplicationService
                 'review_message' => $sanitizedMessage,
             ]);
 
+            $this->instructorApplicationModerationAdapter->syncSubmission($application->fresh());
+
             InstructorApplicationReview::query()->create([
                 'instructor_application_id' => $application->id,
                 'status' => 'approved',
@@ -158,6 +166,8 @@ class InstructorApplicationService
             'approved_at' => $reviewedAt,
             'review_message' => $sanitizedMessage,
         ]);
+
+        $this->instructorApplicationModerationAdapter->syncSubmission($application->fresh());
 
         InstructorApplicationReview::query()->create([
             'instructor_application_id' => $application->id,
