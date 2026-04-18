@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/admin.php'));
             Route::middleware('web')
                 ->group(base_path('routes/instructor.php'));
+            Route::middleware(['web', 'auth'])
+                ->get('/suspension-status', [\App\Http\Controllers\Moderation\SuspensionStatusController::class, 'show'])
+                ->name('moderation.suspension-status');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -26,9 +29,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission'       => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'profile.completed' => \App\Http\Middleware\EnsureProfileCompleted::class,
+            'suspension.guard' => \App\Http\Middleware\CheckUserSuspensionStatus::class,
             // PayMongo webhook HMAC signature verification
             'paymongo.webhook' => \App\Http\Middleware\VerifyPayMongoWebhook::class,
         ]);
+
+        $middleware->appendToGroup('web', \App\Http\Middleware\CheckUserSuspensionStatus::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
