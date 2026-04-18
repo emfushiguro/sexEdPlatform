@@ -6,6 +6,12 @@
 @section('content')
 <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white py-10 px-4 sm:px-6 lg:px-8">
     <div class="mx-auto max-w-3xl space-y-6">
+        @if(session('success'))
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-4 text-sm text-emerald-700">
+                {{ session('success') }}
+            </div>
+        @endif
+
         <div class="rounded-2xl border border-red-200 bg-red-50 px-6 py-5">
             <h1 class="text-2xl font-bold text-red-800">Your access is temporarily restricted</h1>
             <p class="mt-2 text-sm text-red-700">
@@ -49,6 +55,13 @@
             @endif
 
             <div class="mt-6 flex flex-wrap items-center gap-3">
+                @if((string) $suspension->status === 'active')
+                    <a href="{{ route('moderation.appeals.create', $suspension) }}"
+                       class="inline-flex items-center rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100">
+                        Submit Appeal
+                    </a>
+                @endif
+
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="inline-flex items-center rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-900">

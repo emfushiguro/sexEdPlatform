@@ -51,6 +51,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/{userSuspension}', [Admin\ModerationSuspensionController::class, 'show'])->name('show');
     });
 
+    Route::prefix('moderation-appeals')->name('moderation-appeals.')->group(function () {
+        Route::get('/', [Admin\ModerationAppealController::class, 'index'])->name('index');
+        Route::get('/{appeal}', [Admin\ModerationAppealController::class, 'show'])->name('show');
+        Route::post('/{appeal}/review', [Admin\ModerationAppealController::class, 'review'])->name('review');
+        Route::post('/{appeal}/thread', [Admin\ModerationAppealController::class, 'storeThreadMessage'])->name('thread.store');
+    });
+
     // Shared learning content authoring (reuses instructor content controllers)
     Route::resource('modules', Instructor\ModuleController::class);
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])

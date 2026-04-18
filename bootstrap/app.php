@@ -20,6 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware(['web', 'auth'])
                 ->get('/suspension-status', [\App\Http\Controllers\Moderation\SuspensionStatusController::class, 'show'])
                 ->name('moderation.suspension-status');
+            Route::middleware(['web', 'auth'])
+                ->get('/suspensions/{userSuspension}/appeals/create', [\App\Http\Controllers\Moderation\SuspensionAppealController::class, 'create'])
+                ->name('moderation.appeals.create');
+            Route::middleware(['web', 'auth'])
+                ->post('/suspensions/{userSuspension}/appeals', [\App\Http\Controllers\Moderation\SuspensionAppealController::class, 'store'])
+                ->name('moderation.appeals.store');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
