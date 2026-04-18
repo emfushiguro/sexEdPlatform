@@ -49,7 +49,9 @@ class LearnerSubscriptionEntitlementsActivationTest extends TestCase
 
         $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::UNLIMITED_USERNAME_CHANGE));
         $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS));
-        $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES));
+        $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::TEXT_TRANSLATOR));
+        $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::VOICE_SPEECH_TRANSLATOR));
+        $this->assertFalse($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES));
     }
 
     public function test_subscription_success_page_recovers_missed_callback_and_activates_entitlements(): void
@@ -110,7 +112,9 @@ class LearnerSubscriptionEntitlementsActivationTest extends TestCase
 
         $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::UNLIMITED_USERNAME_CHANGE));
         $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS));
-        $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES));
+        $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::TEXT_TRANSLATOR));
+        $this->assertTrue($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::VOICE_SPEECH_TRANSLATOR));
+        $this->assertFalse($subscriptionService->hasFeature($freshLearner, SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES));
     }
 
     public function test_subscription_index_does_not_keep_expired_active_subscription_as_premium(): void
@@ -181,17 +185,27 @@ class LearnerSubscriptionEntitlementsActivationTest extends TestCase
             ]
         );
 
-        $certificateFeature = FeatureCatalog::query()->firstOrCreate(
-            ['key' => SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES],
+        $textTranslatorFeature = FeatureCatalog::query()->firstOrCreate(
+            ['key' => SubscriptionFeatureKeys::TEXT_TRANSLATOR],
             [
-                'name' => 'Downloadable Certificates',
+                'name' => 'Text Translator',
                 'value_type' => 'boolean',
                 'category' => 'learner',
                 'is_active' => true,
             ]
         );
 
-        foreach ([$usernameFeature, $shieldFeature, $certificateFeature] as $feature) {
+        $voiceTranslatorFeature = FeatureCatalog::query()->firstOrCreate(
+            ['key' => SubscriptionFeatureKeys::VOICE_SPEECH_TRANSLATOR],
+            [
+                'name' => 'Voice Speech Translator',
+                'value_type' => 'boolean',
+                'category' => 'learner',
+                'is_active' => true,
+            ]
+        );
+
+        foreach ([$usernameFeature, $shieldFeature, $textTranslatorFeature, $voiceTranslatorFeature] as $feature) {
             PlanFeatureEntitlement::query()->create([
                 'plan_id' => $plan->id,
                 'feature_id' => $feature->id,

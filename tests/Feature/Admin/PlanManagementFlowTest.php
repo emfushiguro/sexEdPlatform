@@ -122,7 +122,7 @@ class PlanManagementFlowTest extends TestCase
             'name' => 'Monthly Streak Savers',
         ]);
 
-        $this->assertDatabaseCount('plan_feature_entitlements', 2);
+        $this->assertSame(2, (int) $plan->featureEntitlements()->count());
     }
 
     public function test_admin_can_create_monthly_plan_with_preview_dates_and_learner_audience(): void
@@ -250,6 +250,47 @@ class PlanManagementFlowTest extends TestCase
             ->assertSessionHasErrors(['price']);
     }
 
+    public function test_admin_can_create_zero_priced_free_plan_with_price_rows(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $payload = [
+            'name' => 'Instructor Free Baseline Clone',
+            'description' => 'Zero priced instructor free plan',
+            'plan_audience' => 'instructor',
+            'billing_mode' => 'monthly',
+            'is_active' => true,
+            'prices' => [
+                [
+                    'duration_mode' => 'preset',
+                    'duration_unit' => 'month',
+                    'duration_count' => 1,
+                    'duration_label' => 'Monthly',
+                    'amount_minor' => 0,
+                    'currency' => 'PHP',
+                    'is_default' => true,
+                    'is_active' => true,
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($admin)
+            ->post(route('admin.subscription-plans.store'), $payload);
+
+        $plan = SubscriptionPlan::query()->where('slug', 'instructor-free-baseline-clone')->first();
+
+        $this->assertNotNull($plan);
+        $response->assertRedirect(route('admin.subscription-plans.index', ['highlight_plan' => $plan->id]));
+        $this->assertSame('instructor', (string) $plan->plan_audience);
+        $this->assertSame('0.00', number_format((float) $plan->price, 2, '.', ''));
+
+        $this->assertDatabaseHas('plan_prices', [
+            'plan_id' => $plan->id,
+            'amount_minor' => 0,
+            'is_default' => 1,
+        ]);
+    }
+
     public function test_admin_can_create_custom_price_plan_with_minute_duration_unit(): void
     {
         $admin = $this->createAdminUser();
@@ -305,17 +346,16 @@ class PlanManagementFlowTest extends TestCase
             'price' => '149.00',
             'is_active' => true,
             'entitlement_enabled' => [
-                'unlimited_username_changes' => '1',
-                'certificate_pdf_download' => '1',
-                'unlimited_quiz_retaking' => '1',
-                'monthly_streak_savers' => '1',
+                'unlimited_username_change' => '1',
+                'unlimited_quiz_shields' => '1',
+                'text_translator' => '1',
+                'voice_speech_translator' => '1',
             ],
             'entitlement_unlimited' => [
-                'unlimited_username_changes' => '1',
-                'unlimited_quiz_retaking' => '1',
-            ],
-            'entitlement_limits' => [
-                'monthly_streak_savers' => 5,
+                'unlimited_username_change' => '1',
+                'unlimited_quiz_shields' => '1',
+                'text_translator' => '1',
+                'voice_speech_translator' => '1',
             ],
         ];
 
@@ -327,13 +367,13 @@ class PlanManagementFlowTest extends TestCase
         $this->assertNotNull($plan);
 
         $this->assertDatabaseHas('feature_catalog', [
-            'key' => 'unlimited_username_changes',
-            'category' => 'account_profile',
+            'key' => 'unlimited_username_change',
+            'category' => 'learner',
         ]);
 
         $this->assertDatabaseHas('feature_catalog', [
-            'key' => 'certificate_pdf_download',
-            'category' => 'learning_access',
+            'key' => 'text_translator',
+            'category' => 'learner',
         ]);
 
         $this->assertDatabaseHas('plan_feature_entitlements', [
@@ -344,8 +384,8 @@ class PlanManagementFlowTest extends TestCase
 
         $this->assertDatabaseHas('plan_feature_entitlements', [
             'plan_id' => $plan->id,
-            'quota_value' => 5,
-            'is_unlimited' => 0,
+            'is_enabled' => 1,
+            'is_unlimited' => 1,
         ]);
     }
 
@@ -361,11 +401,12 @@ class PlanManagementFlowTest extends TestCase
             'price' => '199.00',
             'is_active' => true,
             'entitlement_enabled' => [
-                'unlimited_shields' => '1',
-                'certificate_pdf_download_access' => '1',
+                'unlimited_quiz_shields' => '1',
+                'text_translator' => '1',
             ],
             'entitlement_unlimited' => [
-                'unlimited_shields' => '1',
+                'unlimited_quiz_shields' => '1',
+                'text_translator' => '1',
             ],
         ];
 
@@ -376,8 +417,8 @@ class PlanManagementFlowTest extends TestCase
         $plan = SubscriptionPlan::query()->where('slug', 'phase-1-learner-access')->first();
         $this->assertNotNull($plan);
 
-        $this->assertContains('unlimited_shields', $plan->features ?? []);
-        $this->assertContains('certificate_pdf_download_access', $plan->features ?? []);
+        $this->assertContains('unlimited_quiz_shields', $plan->features ?? []);
+        $this->assertContains('text_translator', $plan->features ?? []);
     }
 
     public function test_plans_index_exposes_shared_three_step_wizard_markers_for_create_and_edit(): void

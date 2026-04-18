@@ -363,6 +363,49 @@ class SubscriptionService
                 'certificate_pdf_download',
                 'certificates',
             ],
+            'text_translator' => [
+                'text_translator',
+                'text_translation',
+                'translator_text',
+                'page_translator',
+            ],
+            'voice_speech_translator' => [
+                'voice_speech_translator',
+                'voice_translator',
+                'voice_speech_translation',
+                'tts_translator',
+                'speech_translator',
+            ],
+            'instructor_published_modules_limit' => [
+                'instructor_published_modules_limit',
+                'max_published_modules',
+                'published_modules_limit',
+            ],
+            'instructor_max_learners_per_free_module' => [
+                'instructor_max_learners_per_free_module',
+                'max_learners_per_free_module',
+                'free_module_learner_cap',
+            ],
+            'instructor_max_learners_per_paid_module' => [
+                'instructor_max_learners_per_paid_module',
+                'max_learners_per_paid_module',
+                'paid_module_learner_cap',
+            ],
+            'instructor_can_publish_paid_modules' => [
+                'instructor_can_publish_paid_modules',
+                'can_publish_paid_module',
+                'publish_paid_modules',
+            ],
+            'instructor_can_receive_paid_enrollments' => [
+                'instructor_can_receive_paid_enrollments',
+                'can_receive_paid_enrollments',
+                'receive_paid_enrollments',
+            ],
+            'instructor_can_view_earnings' => [
+                'instructor_can_view_earnings',
+                'can_view_earnings',
+                'view_earnings',
+            ],
         ];
 
         return $aliases[$featureKey] ?? [$featureKey];
@@ -384,6 +427,17 @@ class SubscriptionService
             throw new \RuntimeException("Plan '{$plan->name}' is not available.");
         }
 
+        $defaultPrice = $plan->defaultPlanPrice()->first()
+            ?? $plan->planPrices()->where('is_active', true)->orderByDesc('is_default')->orderBy('id')->first();
+
+        $resolvedAmount = $defaultPrice
+            ? ((int) $defaultPrice->amount_minor) / 100
+            : (float) ($plan->price ?? 0);
+
+        if ($resolvedAmount <= 0) {
+            throw new \RuntimeException('Free plans are included by default and do not require checkout.');
+        }
+
         // Cancel any dangling pending subscriptions to avoid orphans
         $user->subscriptions()->where('status', 'pending')->update([
             'status'              => 'cancelled',
@@ -391,10 +445,7 @@ class SubscriptionService
             'cancellation_reason' => 'Superseded by new subscription attempt',
         ]);
 
-        $defaultPrice = $plan->defaultPlanPrice()->first()
-            ?? $plan->planPrices()->where('is_active', true)->orderByDesc('is_default')->orderBy('id')->first();
-
-        $price = $defaultPrice ? ((int) $defaultPrice->amount_minor) / 100 : $plan->getPrice();
+        $price = $resolvedAmount;
         $startDate = now();
         $trialDays = (int) ($plan->trial_days ?? 0);
         $trialEnds = $this->resolveTrialEndDate($plan, $startDate);
@@ -605,6 +656,14 @@ class SubscriptionService
             return; // idempotent
         }
 
+        $hasCompletedPayment = $subscription->payments()
+            ->where('status', PaymentStatus::Completed->value)
+            ->exists();
+
+        if (!$hasCompletedPayment) {
+            throw new \RuntimeException('Cannot activate a subscription without a completed payment.');
+        }
+
         $activationDate = now();
         $endDate = $this->resolveSubscriptionEndDate($subscription, $activationDate);
         $plan = $this->resolvePlanForSubscription($subscription);
@@ -630,18 +689,26 @@ class SubscriptionService
 
             DB::commit();
 
-            event(new SubscriptionCreated($subscription));
-
-            Log::info('Subscription activated', [
-                'subscription_id' => $subscription->id,
-                'user_id'         => $subscription->user_id,
-            ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SubscriptionService::activate failed', ['error' => $e->getMessage()]);
             throw new \RuntimeException('Failed to activate subscription: ' . $e->getMessage(), 0, $e);
         }
+
+        try {
+            event(new SubscriptionCreated($subscription));
+        } catch (\Throwable $eventError) {
+            // Listener failures should not roll back an already committed activation.
+            Log::error('Subscription activation follow-up failed', [
+                'subscription_id' => $subscription->id,
+                'error' => $eventError->getMessage(),
+            ]);
+        }
+
+        Log::info('Subscription activated', [
+            'subscription_id' => $subscription->id,
+            'user_id'         => $subscription->user_id,
+        ]);
     }
 
     /**

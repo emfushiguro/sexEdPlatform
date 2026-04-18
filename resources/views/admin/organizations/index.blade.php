@@ -10,7 +10,7 @@
 
 {{-- Stats --}}
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
- @foreach([['label'=>'Partner Orgs','value'=>'28','bg'=>'bg-brand-50 ','color'=>'text-brand-600 '],['label'=>'Schools','value'=>'12','bg'=>'bg-purple-50 ','color'=>'text-purple-600 '],['label'=>'Clinics / NGOs','value'=>'10','bg'=>'bg-success-50 ','color'=>'text-success-600 '],['label'=>'Active Agreements','value'=>'22','bg'=>'bg-warning-50 ','color'=>'text-warning-600 ']] as $c)
+ @foreach([['label'=>'Partner Orgs','value'=>'28','bg'=>'bg-brand-50 ','color'=>'text-brand-600 '],['label'=>'Schools','value'=>'12','bg'=>'bg-brand-50 ','color'=>'text-brand-600 '],['label'=>'Clinics / NGOs','value'=>'10','bg'=>'bg-success-50 ','color'=>'text-success-600 '],['label'=>'Active Agreements','value'=>'22','bg'=>'bg-warning-50 ','color'=>'text-warning-600 ']] as $c)
  <div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-5">
  <div class="w-10 h-10 rounded-xl {{ $c['bg'] }} flex items-center justify-center mb-3">
  <span class="text-lg font-bold {{ $c['color'] }}">{{ $c['value'] }}</span>
@@ -59,13 +59,13 @@
  ['name'=>'Likhaan Center for Women','type'=>'NGO','loc'=>'Cubao, NCR','members'=>'85','status'=>'active'],
  ['name'=>'Cebu City Health Department','type'=>'Government','loc'=>'Cebu City, Region VII','members'=>'52','status'=>'pending'],
  ];
- $typeColor = ['School'=>'bg-brand-50 text-brand-700 ','Clinic'=>'bg-success-50 text-success-700 ','NGO'=>'bg-purple-50 text-purple-700 ','Government'=>'bg-indigo-50 text-indigo-700 ','Corporate'=>'bg-gray-100 text-gray-600 '];
+ $typeColor = ['School'=>'bg-brand-50 text-brand-700 ','Clinic'=>'bg-success-50 text-success-700 ','NGO'=>'bg-brand-50 text-brand-700 ','Government'=>'bg-brand-50 text-brand-700 ','Corporate'=>'bg-gray-100 text-gray-600 '];
  @endphp
  @foreach($orgs as $org)
  <tr class="hover:bg-gray-50 transition-colors">
  <td class="px-5 py-3">
  <div class="flex items-center gap-3">
- <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold flex-shrink-0">{{ substr($org['name'],0,1) }}</div>
+ <div class="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center text-brand-600 text-xs font-bold flex-shrink-0">{{ substr($org['name'],0,1) }}</div>
  <p class="text-sm font-semibold text-gray-900 ">{{ $org['name'] }}</p>
  </div>
  </td>

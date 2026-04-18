@@ -7,6 +7,7 @@
 @php
     use App\Models\UserDailyShield;
     use App\Services\EntitlementService;
+    use App\Services\GamificationService;
     use App\Support\SubscriptionFeatureKeys;
 
     $modalUser = auth()->user();
@@ -17,6 +18,11 @@
         ? null
         : UserDailyShield::getShields($modalUser);
     $isOutOfShields = !$hasUnlimitedShields && (int) ($shieldsRemaining ?? 0) <= 0;
+
+    $gamificationService = app(GamificationService::class);
+    $singleRefillCost = $gamificationService->shieldRefillCost('single');
+    $fullRefillCost = $gamificationService->shieldRefillCost('full');
+    $fullRefillTarget = $gamificationService->shieldFullRefillTarget();
 @endphp
 
 <div
@@ -94,15 +100,15 @@
                     <input type="hidden" name="type" value="single">
                     <button
                         type="submit"
-                        @if(($score ?? 0) < 50) disabled @endif
+                        @if(($score ?? 0) < $singleRefillCost) disabled @endif
                         class="w-full flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 transition-all
-                            {{ ($score ?? 0) >= 50
+                            {{ ($score ?? 0) >= $singleRefillCost
                                 ? 'border-purple-200 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
                                 : 'border-gray-200 opacity-50 cursor-not-allowed dark:border-gray-700' }}"
                     >
                         <x-icons.shield state="full" :size="28" />
                         <span class="text-sm font-semibold text-gray-900 dark:text-white">+1 Shield</span>
-                        <span class="text-xs text-purple-600 dark:text-purple-400 font-bold">⭐ 50 pts</span>
+                        <span class="text-xs text-purple-600 dark:text-purple-400 font-bold">⭐ {{ $singleRefillCost }} pts</span>
                     </button>
                 </form>
 
@@ -112,19 +118,19 @@
                     <input type="hidden" name="type" value="full">
                     <button
                         type="submit"
-                        @if(($score ?? 0) < 100) disabled @endif
+                        @if(($score ?? 0) < $fullRefillCost) disabled @endif
                         class="w-full flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 transition-all
-                            {{ ($score ?? 0) >= 100
+                            {{ ($score ?? 0) >= $fullRefillCost
                                 ? 'border-purple-200 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
                                 : 'border-gray-200 opacity-50 cursor-not-allowed dark:border-gray-700' }}"
                     >
                         <div class="flex gap-1">
-                            <x-icons.shield state="full" :size="20" />
-                            <x-icons.shield state="full" :size="20" />
-                            <x-icons.shield state="full" :size="20" />
+                            @for($i = 0; $i < $fullRefillTarget; $i++)
+                                <x-icons.shield state="full" :size="20" />
+                            @endfor
                         </div>
-                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Full Refill</span>
-                        <span class="text-xs text-purple-600 dark:text-purple-400 font-bold">⭐ 100 pts</span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Full Refill ({{ $fullRefillTarget }} Shields)</span>
+                        <span class="text-xs text-purple-600 dark:text-purple-400 font-bold">⭐ {{ $fullRefillCost }} pts</span>
                     </button>
                 </form>
             </div>

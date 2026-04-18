@@ -23,9 +23,9 @@
  @csrf
 
  @if($errors->any())
- <div class="mb-5 rounded-xl bg-error-50 border border-error-200 p-4">
- <p class="text-sm font-medium text-error-700 mb-1">Please fix the following errors:</p>
- <ul class="list-disc list-inside text-sm text-error-600 space-y-1">
+ <div class="mb-5 rounded-xl bg-rose-50 border border-rose-200 p-4">
+ <p class="text-sm font-medium text-rose-700 mb-1">Please fix the following errors:</p>
+ <ul class="list-disc list-inside text-sm text-rose-600 space-y-1">
  @foreach($errors->all() as $error)
  <li>{{ $error }}</li>
  @endforeach
@@ -35,10 +35,10 @@
 
  {{-- Name --}}
  <div class="mb-5">
- <label class="block text-sm font-medium text-gray-700 mb-1.5">Plan Name <span class="text-error-500">*</span></label>
+ <label class="block text-sm font-medium text-gray-700 mb-1.5">Plan Name <span class="text-rose-500">*</span></label>
  <input type="text" name="name" value="{{ old('name') }}" required
- class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('name') border-error-400 @enderror"/>
- @error('name')<p class="mt-1 text-xs text-error-500">{{ $message }}</p>@enderror
+ class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('name') border-rose-400 @enderror"/>
+ @error('name')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
  </div>
 
  {{-- Description --}}
@@ -51,10 +51,10 @@
  {{-- Price & Trial --}}
  <div class="grid grid-cols-2 gap-4 mb-5">
  <div>
- <label class="block text-sm font-medium text-gray-700 mb-1.5">Price (₱/month) <span class="text-error-500">*</span></label>
+ <label class="block text-sm font-medium text-gray-700 mb-1.5">Price (₱/month) <span class="text-rose-500">*</span></label>
  <input type="number" name="price" value="{{ old('price', 0) }}" min="0" step="0.01" required
- class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('price') border-error-400 @enderror"/>
- @error('price')<p class="mt-1 text-xs text-error-500">{{ $message }}</p>@enderror
+ class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('price') border-rose-400 @enderror"/>
+ @error('price')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
  </div>
  <div>
  <label class="block text-sm font-medium text-gray-700 mb-1.5">Trial Days</label>
@@ -83,7 +83,7 @@
  <label class="flex items-center gap-2 cursor-pointer">
  <input type="checkbox" name="feature_keys[]" value="{{ $val }}"
  {{ in_array($val, $oldFeatures) ? 'checked' : '' }}
- class="w-4 h-4 rounded border-gray-300 {{ ($group['dimmed'] ?? false) ? 'text-purple-600 focus:ring-purple-500' : 'text-brand-500 focus:ring-brand-500' }}">
+ class="w-4 h-4 rounded border-gray-300 {{ ($group['dimmed'] ?? false) ? 'text-brand-600 focus:ring-brand-500' : 'text-brand-500 focus:ring-brand-500' }}">
  <span class="text-sm {{ ($group['dimmed'] ?? false) ? 'text-gray-500 italic' : 'text-gray-700 ' }}">{{ $label }}</span>
  </label>
  @endforeach
@@ -127,7 +127,7 @@ function planForm() {
  <input type="text" name="feature_keys[]" placeholder="e.g. Unlimited quizzes"
  class="flex-1 px-3 py-2 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
  <button type="button" onclick="this.closest('div').remove()"
- class="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
+ class="p-2 text-gray-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors">
  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
  </svg>

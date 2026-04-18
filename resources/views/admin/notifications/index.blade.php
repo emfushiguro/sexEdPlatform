@@ -34,7 +34,7 @@
                 $isChatMessage = ($payload['type'] ?? '') === 'chat_message_received';
                 $senderName = $payload['sender_name'] ?? 'User';
                 $senderAvatarUrl = $payload['sender_avatar_url'] ?? null;
-                $messagePreview = $payload['message_preview'] ?? $payload['message'];
+                $messagePreview = $payload['message_preview'] ?? ($payload['message'] ?? '');
 
                 $toneClass = match($severity) {
                     'success' => 'border-l-4 border-emerald-500',
@@ -50,31 +50,38 @@
                     <div class="min-w-0">
                         <h2 class="text-sm font-semibold text-gray-900">{{ $payload['title'] }}</h2>
                         <p class="mt-1 text-sm text-gray-600">{{ $payload['message'] }}</p>
+
+                        @if($isChatMessage)
+                            <div class="mt-3 flex items-start gap-3">
+                                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-100 text-brand-700">
+                                    @if($senderAvatarUrl)
+                                        <img src="{{ $senderAvatarUrl }}" alt="{{ $senderName }}" class="h-10 w-10 rounded-full object-cover">
+                                    @else
+                                        <span class="text-xs font-bold">{{ $payload['sender_initial'] ?? 'U' }}</span>
+                                    @endif
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="text-xs font-medium text-gray-500">{{ $senderName }}</p>
+                                    <p class="mt-1 text-sm text-gray-600">{{ '"' . $messagePreview . '"' }}</p>
+                                </div>
+                            </div>
+                        @endif
                     </div>
+
                     <div class="text-right">
                         <p class="whitespace-nowrap text-xs text-gray-500">{{ $notification->created_at->diffForHumans() }}</p>
                         @if($isUnread)
                             <span class="mt-2 inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                            <div class="min-w-0 flex items-start gap-3">
-                                @if($isChatMessage)
-                                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 overflow-hidden">
-                                        @if($senderAvatarUrl)
-                                            <img src="{{ $senderAvatarUrl }}" alt="{{ $senderName }}" class="h-10 w-10 rounded-full object-cover">
-                                        @else
-                                            <span class="text-xs font-bold">{{ $payload['sender_initial'] ?? 'U' }}</span>
-                                        @endif
-                                    </span>
-                                @endif
-                                <div class="min-w-0">
-                                    <h2 class="text-sm font-semibold text-gray-900">{{ $payload['title'] }}</h2>
-                                    @if($isChatMessage)
-                                        <p class="mt-1 text-xs font-medium text-gray-500">{{ $senderName }}</p>
-                                    @endif
-                                    <p class="mt-1 text-sm text-gray-600">{{ $isChatMessage ? '"' . $messagePreview . '"' : $payload['message'] }}</p>
-                                </div>
-                            </div>
+                        @endif
                     </div>
-                No notifications right now.
+                </div>
+            </a>
+        @empty
+            <div class="px-6 py-10 text-center">
+                <svg class="mx-auto mb-3 h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+                <p class="text-sm text-gray-500">No notifications right now.</p>
             </div>
         @endforelse
     </section>

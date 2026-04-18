@@ -14,14 +14,14 @@
     <span class="hidden">{{ route('admin.subscribers.store-plan') }}</span>
 
     {{-- Page Header --}}
-    <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+    <div class="flex flex-col gap-4 mb-6 xl:flex-row xl:items-start xl:justify-between">
         <div>
              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Plans Management</h1>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center justify-end gap-3">
             <a href="{{ route('admin.subscription-plans.archived') }}"
-               class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50">
-                <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               class="inline-flex h-[46px] items-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-brand-100">
+                <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
                 </svg>
                 <span>Archived Plans</span>
@@ -29,64 +29,131 @@
             </a>
             <button type="button"
                data-testid="open-create-plan-modal"
-                  @click="openCreatePlanModal()"
-               class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition-colors shadow-theme-xs hover:bg-brand-600">
+               @click="openCreatePlanModal()"
+               class="inline-flex h-[46px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-800 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-300/40 transition hover:brightness-105 focus:outline-none focus:ring-4 focus:ring-brand-100">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
-                New Plan
+                Create New Plan
             </button>
         </div>
     </div>
 
-    <div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-[28px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5 shadow-theme-xs">
-            <div class="flex items-start justify-between gap-4">
+    @if(!empty($instructorBaselinePlan))
+        @php
+            $publishedModulesLimitEntitlement = $instructorBaselinePlan->featureEntitlements->first(fn ($entitlement) => (string) ($entitlement->feature?->key) === 'instructor_published_modules_limit');
+            $freeLearnerCapEntitlement = $instructorBaselinePlan->featureEntitlements->first(fn ($entitlement) => (string) ($entitlement->feature?->key) === 'instructor_max_learners_per_free_module');
+            $paidLearnerCapEntitlement = $instructorBaselinePlan->featureEntitlements->first(fn ($entitlement) => (string) ($entitlement->feature?->key) === 'instructor_max_learners_per_paid_module');
+            $paidPublishEntitlement = $instructorBaselinePlan->featureEntitlements->first(fn ($entitlement) => (string) ($entitlement->feature?->key) === 'instructor_can_publish_paid_modules');
+            $paidEnrollmentsEntitlement = $instructorBaselinePlan->featureEntitlements->first(fn ($entitlement) => (string) ($entitlement->feature?->key) === 'instructor_can_receive_paid_enrollments');
+            $earningsEntitlement = $instructorBaselinePlan->featureEntitlements->first(fn ($entitlement) => (string) ($entitlement->feature?->key) === 'instructor_can_view_earnings');
+
+            $formatQuota = function ($entitlement): string {
+                if (!$entitlement || !$entitlement->is_enabled) {
+                    return 'Not configured';
+                }
+
+                if ($entitlement->is_unlimited) {
+                    return 'Unlimited';
+                }
+
+                return (string) ((int) ($entitlement->quota_value ?? 0));
+            };
+
+            $formatToggle = fn ($entitlement): string => ($entitlement && $entitlement->is_enabled) ? 'Enabled' : 'Disabled';
+        @endphp
+        <div class="px-5 py-4 mb-6 border border-purple-200 shadow-sm rounded-2xl bg-purple-50" data-testid="instructor-baseline-plan-banner">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-purple-600">Instructor baseline</p>
+            <div class="flex flex-col gap-2 mt-2 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Total Plans</p>
-                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.total)"></p>
+                    <p class="text-sm font-semibold text-purple-950">
+                        Free instructor plan: {{ $instructorBaselinePlan->name }}
+                    </p>
+                    <p class="mt-1 text-xs text-purple-800">
+                        Use this plan to define default published-module quotas, learner caps, and paid monetization permissions for instructors.
+                    </p>
                 </div>
-                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="text-xs font-medium text-purple-700">
+                    {{ $instructorBaselinePlan->featureEntitlements->count() }} configured feature{{ $instructorBaselinePlan->featureEntitlements->count() === 1 ? '' : 's' }}
+                </div>
+            </div>
+            <div class="grid gap-2 mt-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="px-3 py-2 bg-white border border-purple-100 rounded-xl">
+                    <p class="text-[10px] uppercase tracking-widest text-purple-500">Published modules</p>
+                    <p class="mt-1 text-sm font-semibold text-purple-900">{{ $formatQuota($publishedModulesLimitEntitlement) }}</p>
+                </div>
+                <div class="px-3 py-2 bg-white border border-purple-100 rounded-xl">
+                    <p class="text-[10px] uppercase tracking-widest text-purple-500">Free learner cap</p>
+                    <p class="mt-1 text-sm font-semibold text-purple-900">{{ $formatQuota($freeLearnerCapEntitlement) }}</p>
+                </div>
+                <div class="px-3 py-2 bg-white border border-purple-100 rounded-xl">
+                    <p class="text-[10px] uppercase tracking-widest text-purple-500">Paid learner cap</p>
+                    <p class="mt-1 text-sm font-semibold text-purple-900">{{ $formatQuota($paidLearnerCapEntitlement) }}</p>
+                </div>
+                <div class="px-3 py-2 bg-white border border-purple-100 rounded-xl">
+                    <p class="text-[10px] uppercase tracking-widest text-purple-500">Paid publishing</p>
+                    <p class="mt-1 text-sm font-semibold text-purple-900">{{ $formatToggle($paidPublishEntitlement) }}</p>
+                </div>
+                <div class="px-3 py-2 bg-white border border-purple-100 rounded-xl">
+                    <p class="text-[10px] uppercase tracking-widest text-purple-500">Paid enrollments</p>
+                    <p class="mt-1 text-sm font-semibold text-purple-900">{{ $formatToggle($paidEnrollmentsEntitlement) }}</p>
+                </div>
+                <div class="px-3 py-2 bg-white border border-purple-100 rounded-xl">
+                    <p class="text-[10px] uppercase tracking-widest text-purple-500">Earnings visibility</p>
+                    <p class="mt-1 text-sm font-semibold text-purple-900">{{ $formatToggle($earningsEntitlement) }}</p>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <div class="grid gap-4 mb-8 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-[28px] border p-5 shadow-theme-xs border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100/70 min-h-[116px]">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">Total Plans</p>
+                    <p class="mt-2 text-4xl font-bold leading-none text-gray-900" x-text="formatNumber(stats.total)"></p>
+                </div>
+                <span class="inline-flex items-center justify-center text-white shadow-lg h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-brand-500 via-brand-700 to-brand-900 shadow-brand-200">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 7h10M7 12h10M7 17h6M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
                     </svg>
                 </span>
             </div>
         </div>
-        <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
-            <div class="flex items-start justify-between gap-4">
+        <div class="rounded-[28px] border p-5 shadow-theme-xs border-brand-100 bg-gradient-to-br from-white via-brand-50/70 to-brand-100/60 min-h-[116px]">
+            <div class="flex items-center justify-between gap-4">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Active Plans</p>
-                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.active)"></p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Active Plans</p>
+                    <p class="mt-2 text-4xl font-bold leading-none text-gray-900" x-text="formatNumber(stats.active)"></p>
                 </div>
-                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-200">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <span class="inline-flex items-center justify-center text-white shadow-lg h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-brand-400 via-brand-600 to-brand-800 shadow-brand-200">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                     </svg>
                 </span>
             </div>
         </div>
-        <div class="rounded-[28px] border border-rose-100 bg-gradient-to-br from-rose-50 via-white to-orange-50 p-5 shadow-theme-xs">
-            <div class="flex items-start justify-between gap-4">
+        <div class="rounded-[28px] border p-5 shadow-theme-xs border-brand-200 bg-gradient-to-br from-brand-100/60 via-white to-brand-50 min-h-[116px]">
+            <div class="flex items-center justify-between gap-4">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-rose-600">Inactive Plans</p>
-                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.inactive)"></p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-800">Inactive Plans</p>
+                    <p class="mt-2 text-4xl font-bold leading-none text-gray-900" x-text="formatNumber(stats.inactive)"></p>
                 </div>
-                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-200">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <span class="inline-flex items-center justify-center text-white shadow-lg h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-brand-600 via-brand-700 to-brand-900 shadow-brand-300">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.5 6h9m-9 6h9m-9 6h9M4.5 6h.008v.008H4.5V6Zm0 6h.008v.008H4.5V12Zm0 6h.008v.008H4.5V18Z"/>
                     </svg>
                 </span>
             </div>
         </div>
-        <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
-            <div class="flex items-start justify-between gap-4">
+        <div class="rounded-[28px] border p-5 shadow-theme-xs border-brand-300 bg-gradient-to-br from-brand-100 via-white to-brand-200/70 min-h-[116px]">
+            <div class="flex items-center justify-between gap-4">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Archived</p>
-                    <p class="mt-3 text-3xl font-bold text-gray-900" x-text="formatNumber(stats.archived)"></p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-900">Archived</p>
+                    <p class="mt-2 text-4xl font-bold leading-none text-gray-900" x-text="formatNumber(stats.archived)"></p>
                 </div>
-                <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <span class="inline-flex items-center justify-center text-white shadow-lg h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900 shadow-brand-300">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
                     </svg>
                 </span>
@@ -106,39 +173,39 @@
         <!-- Backdrop -->
         <div x-show="showCreatePlanModal"
              x-transition.opacity
-             class="fixed inset-0 bg-gray-900/65 backdrop-blur-md transition-opacity"
+             class="fixed inset-0 transition-opacity bg-gray-900/65 backdrop-blur-md"
              @click="closeCreatePlanModal()"></div>
 
         <!-- Modal Panel -->
         <div x-show="showCreatePlanModal"
              x-transition:enter="ease-out duration-300"
-             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:enter-start="opacity-0 trangray-y-4 sm:trangray-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 trangray-y-0 sm:scale-100"
              x-transition:leave="ease-in duration-200"
-             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:leave-start="opacity-100 trangray-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 trangray-y-4 sm:trangray-y-0 sm:scale-95"
                class="relative transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all w-full max-w-4xl max-h-[90vh] flex flex-col">
 
             {{-- Modal Header with Stepper --}}
-            <div class="px-6 pt-6 pb-4 border-b border-gray-100 bg-gray-50/70 flex-shrink-0">
+            <div class="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-100 bg-gray-50/70">
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-xl font-bold text-gray-900" id="modal-title" x-text="wizardMode === 'edit' ? 'Edit Plan' : 'Create New Subscription Plan'"></h2>
-                    <button type="button" @click="closeCreatePlanModal()" class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 transition-colors">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <button type="button" @click="closeCreatePlanModal()" class="p-2 text-gray-400 transition-colors rounded-full hover:bg-gray-100 hover:text-gray-500">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
 
                 {{-- Reactive Stepper Visual --}}
                 <div class="max-w-xl mx-auto">
-                    <div class="flex items-center justify-between relative">
+                    <div class="relative flex items-center justify-between">
                         <template x-for="s in [1,2,3,4]" :key="s">
-                            <div class="flex flex-col items-center relative z-10 w-24 cursor-pointer"
+                            <div class="relative z-10 flex flex-col items-center w-24 cursor-pointer"
                                  :data-testid="s <= 3 ? 'plan-wizard-step-' + s : null"
                                  @click="currentStep > s ? currentStep = s : null">
-                                <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm"
+                                <div class="flex items-center justify-center w-10 h-10 transition-all duration-300 rounded-full shadow-sm"
                                      :class="{
-                                         'bg-gradient-to-br from-purple-600 to-indigo-700 text-white ring-4 ring-purple-100': currentStep === s,
-                                         'bg-purple-600 text-white': currentStep > s,
+                                         'bg-gradient-to-br from-brand-600 to-brand-700 text-white ring-4 ring-brand-100': currentStep === s,
+                                         'bg-brand-600 text-white': currentStep > s,
                                          'bg-white border-2 border-gray-200 text-gray-400': currentStep < s
                                      }">
                                     <template x-if="currentStep > s">
@@ -148,14 +215,14 @@
                                         <span class="text-sm font-bold" x-text="s"></span>
                                     </template>
                                 </div>
-                                <span class="mt-2 text-xs font-semibold uppercase tracking-wider text-center"
-                                      :class="currentStep >= s ? 'text-purple-700' : 'text-gray-400'"
+                                <span class="mt-2 text-xs font-semibold tracking-wider text-center uppercase"
+                                      :class="currentStep >= s ? 'text-brand-700' : 'text-gray-400'"
                                       x-text="s === 1 ? 'Basics' : (s === 2 ? 'Billing' : (s === 3 ? 'Features' : 'Review'))"></span>
                             </div>
                         </template>
                         <!-- Connecting Lines -->
                         <div class="absolute top-5 left-12 right-12 h-0.5 bg-gray-200 -z-10">
-                            <div class="h-full bg-purple-600 transition-all duration-500 ease-in-out"
+                            <div class="h-full transition-all duration-500 ease-in-out bg-brand-600"
                                  :style="'width: ' + ((currentStep - 1) / 3 * 100) + '%'"></div>
                         </div>
                     </div>
@@ -169,32 +236,32 @@
                     <input type="hidden" name="_method" value="PUT">
                 </template>
 
-                <div class="p-6 overflow-y-auto flex-1 bg-white">
+                <div class="flex-1 p-6 overflow-y-auto bg-white">
                     {{-- STEP 1: Plan Basics + Audience --}}
-                    <div x-show="currentStep === 1" x-transition.opacity class="space-y-6 max-w-2xl mx-auto">
+                    <div x-show="currentStep === 1" x-transition.opacity class="max-w-2xl mx-auto space-y-6">
                         <div class="mb-2">
-                            <h3 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Plan Basics</h3>
+                            <h3 class="pb-2 text-lg font-bold text-gray-900 border-b border-gray-100">Plan Basics</h3>
                             <p class="mt-2 text-sm text-gray-500">Define the core identity and target audience for this plan.</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan Name <span class="text-red-500">*</span></label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan Name <span class="text-rose-500">*</span></label>
                             <input type="text" name="name" x-model="form.name" required
                                    placeholder="e.g., Premium Learner Plan"
-                                class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all"/>
+                                class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all"/>
                         </div>
 
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
                             <textarea name="description" x-model="form.description" rows="3"
                                       placeholder="Describe what makes this plan special for your audience..."
-                                      class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 resize-none transition-all"></textarea>
+                                      class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 resize-none transition-all"></textarea>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan For <span class="text-red-500">*</span></label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Plan For <span class="text-rose-500">*</span></label>
                             <select name="plan_audience" x-model="form.plan_audience" required
-                                    class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all">
+                                    class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all">
                                 <option value="">-- Select Target Audience --</option>
                                 <option value="learner">Learner Plan</option>
                                 <option value="instructor">Instructor Plan</option>
@@ -204,15 +271,15 @@
                     </div>
 
                     {{-- STEP 2: Flexible Billing Configuration --}}
-                    <div x-show="currentStep === 2" x-transition.opacity class="space-y-6 max-w-3xl mx-auto" x-cloak>
+                    <div x-show="currentStep === 2" x-transition.opacity class="max-w-3xl mx-auto space-y-6" x-cloak>
                         <div class="mb-4">
-                            <h3 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Billing Configuration</h3>
+                            <h3 class="pb-2 text-lg font-bold text-gray-900 border-b border-gray-100">Billing Configuration</h3>
                             <p class="mt-2 text-sm text-gray-500">Choose monthly, annual, or a custom billing period.</p>
                         </div>
 
-                        <div class="bg-gray-50 rounded-xl border border-gray-200 p-5">
+                        <div class="p-5 border border-gray-200 bg-gray-50 rounded-xl">
                             <div class="flex items-center gap-3 mb-4">
-                                <span class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600">
+                                <span class="flex items-center justify-center w-8 h-8 text-gray-600 bg-white border border-gray-200 rounded-full">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l2.5 2.5M12 3a9 9 0 100 18 9 9 0 000-18z" />
                                     </svg>
@@ -222,28 +289,28 @@
 
                             <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Billing Period <span class="text-red-500">*</span></label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Billing Period <span class="text-rose-500">*</span></label>
                                     <select x-model="form.billing.mode"
-                                            class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
+                                            class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand-500 focus:ring-brand-500/20">
                                         <option value="monthly">Monthly</option>
                                         <option value="annual">Annually</option>
                                         <option value="custom">Custom Period</option>
                                     </select>
                                 </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div x-show="form.billing.mode === 'custom'" x-cloak>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Value <span class="text-red-500">*</span></label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Value <span class="text-rose-500">*</span></label>
                                         <input type="number"
                                                x-model.number="form.billing.duration_count"
                                                min="1"
                                                placeholder="e.g., 1"
-                                               class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
+                                               class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand-500 focus:ring-brand-500/20">
                                     </div>
                                     <div x-show="form.billing.mode === 'custom'" x-cloak>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Unit <span class="text-red-500">*</span></label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Duration Unit <span class="text-rose-500">*</span></label>
                                         <select x-model="form.billing.duration_unit"
-                                                class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
+                                                class="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand-500 focus:ring-brand-500/20">
                                             <option value="minute">Minutes</option>
                                             <option value="hour">Hours</option>
                                             <option value="day">Days</option>
@@ -252,8 +319,8 @@
                                             <option value="year">Years</option>
                                         </select>
                                     </div>
-                                    <div x-show="form.billing.mode !== 'custom'" class="sm:col-span-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3" x-cloak>
-                                        <p class="text-sm text-blue-800">
+                                    <div x-show="form.billing.mode !== 'custom'" class="px-4 py-3 border rounded-lg sm:col-span-2 border-brand-100 bg-brand-50" x-cloak>
+                                        <p class="text-sm text-brand-800">
                                             <span class="font-semibold" x-text="form.billing.mode === 'monthly' ? 'Monthly preset selected.' : 'Annual preset selected.'"></span>
                                             <span class="ml-1">You can switch to Custom Period if you need a different duration.</span>
                                         </p>
@@ -261,15 +328,15 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Price (PHP) <span class="text-red-500">*</span></label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Price (PHP) <span class="text-rose-500">*</span></label>
                                     <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₱</span>
+                                        <span class="absolute font-medium text-gray-500 left-3 top-1/2 -trangray-y-1/2">₱</span>
                                         <input type="text"
                                                inputmode="decimal"
                                                x-model="form.billing.amount_decimal"
                                                @input="updateMoney($event.target.value)"
                                                placeholder="499.99"
-                                               class="w-full pl-8 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
+                                               class="w-full pl-8 pr-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm focus:border-brand-500 focus:ring-brand-500/20">
                                     </div>
                                     <p class="text-xs text-gray-500 mt-1.5">
                                         Renews every <span x-text="effectiveDurationCount()"></span>
@@ -290,28 +357,28 @@
                     </div>
 
                     {{-- STEP 3: Entitlements (Dynamic based on plan_audience) --}}
-                    <div x-show="currentStep === 3" x-transition.opacity class="space-y-6 max-w-4xl mx-auto" x-cloak>
+                    <div x-show="currentStep === 3" x-transition.opacity class="max-w-4xl mx-auto space-y-6" x-cloak>
                         <div class="mb-4">
-                            <h3 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Feature Entitlements</h3>
-                            <div class="mt-3 flex items-start gap-2 bg-indigo-50 border border-indigo-100 p-3 rounded-lg">
-                                <svg class="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <p class="text-sm text-indigo-800">Configure features available for <strong class="capitalize" x-text="form.plan_audience || 'selected audience'"></strong>. Toggle each feature or set quotas where applicable.</p>
+                            <h3 class="pb-2 text-lg font-bold text-gray-900 border-b border-gray-100">Feature Entitlements</h3>
+                            <div class="flex items-start gap-2 p-3 mt-3 border rounded-lg bg-brand-50 border-brand-100">
+                                <svg class="w-5 h-5 text-brand-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <p class="text-sm text-brand-800">Configure features available for <strong class="capitalize" x-text="form.plan_audience || 'selected audience'"></strong>. Toggle each feature or set quotas where applicable.</p>
                             </div>
                         </div>
 
                         {{-- Dynamic Entitlements Grid --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <template x-for="(feature, index) in availableFeatures" :key="feature.key">
-                                <div class="rounded-xl border-2 bg-white p-4 shadow-sm hover:border-purple-300 transition-colors"
-                                     :class="form.entitlements[feature.key]?.is_enabled ? 'border-purple-200 bg-purple-50' : 'border-gray-200'">
-                                    <label class="flex items-start gap-3 cursor-pointer mb-3">
+                                <div class="p-4 transition-colors bg-white border-2 shadow-sm rounded-xl hover:border-brand-300"
+                                     :class="form.entitlements[feature.key]?.is_enabled ? 'border-brand-200 bg-brand-50' : 'border-gray-200'">
+                                    <label class="flex items-start gap-3 mb-3 cursor-pointer">
                                         <input type="checkbox"
                                                :name="'entitlements[' + index + '][is_enabled]'"
                                                value="1"
                                                x-model="form.entitlements[feature.key].is_enabled"
-                                               class="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                               class="mt-1 border-gray-300 rounded text-brand-600 focus:ring-brand-500">
                                         <div class="flex-1">
-                                            <span class="block font-medium text-gray-900 text-sm" x-text="feature.name"></span>
+                                            <span class="block text-sm font-medium text-gray-900" x-text="feature.name"></span>
                                             <span class="text-xs text-gray-500" x-text="feature.description || getFeatureDescription(feature)"></span>
                                         </div>
                                     </label>
@@ -323,17 +390,17 @@
                                                    :name="'entitlements[' + index + '][is_unlimited]'"
                                                    value="1"
                                                    x-model="form.entitlements[feature.key].is_unlimited"
-                                                   class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                                   class="border-gray-300 rounded text-brand-600 focus:ring-brand-500">
                                               <span class="text-xs font-medium text-gray-700">Unlimited</span>
                                         </div>
                                         <div x-show="!form.entitlements[feature.key].is_unlimited">
-                                              <label class="block text-xs font-medium text-gray-600 mb-1">Quota Value</label>
+                                              <label class="block mb-1 text-xs font-medium text-gray-600">Quota Value</label>
                                             <input type="number"
                                                    :name="'entitlements[' + index + '][quota_value]'"
                                                    x-model="form.entitlements[feature.key].quota_value"
                                                    min="0"
                                                    :placeholder="'Enter ' + (feature.unit_label || 'quantity')"
-                                                  class="w-full rounded-lg border border-gray-200 bg-white text-sm focus:border-purple-500 focus:ring-purple-500/20">
+                                                  class="w-full text-sm bg-white border border-gray-200 rounded-lg focus:border-brand-500 focus:ring-brand-500/20">
                                         </div>
                                     </div>
 
@@ -345,7 +412,7 @@
                                 </div>
                             </template>
 
-                            <div x-show="availableFeatures.length === 0" class="col-span-2 text-center py-8 text-gray-500">
+                            <div x-show="availableFeatures.length === 0" class="col-span-2 py-8 text-center text-gray-500">
                                 <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                                 <p class="text-sm">No features available for <span class="font-semibold capitalize" x-text="form.plan_audience"></span></p>
                             </div>
@@ -353,53 +420,53 @@
                     </div>
 
                     {{-- STEP 4: Review & Confirmation --}}
-                    <div x-show="currentStep === 4" x-transition.opacity class="space-y-6 max-w-2xl mx-auto" x-cloak>
+                    <div x-show="currentStep === 4" x-transition.opacity class="max-w-2xl mx-auto space-y-6" x-cloak>
                         <div class="mb-4 text-center">
-                            <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 text-emerald-500">
                                 <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
                             <h3 class="text-xl font-bold text-gray-900">Final Confirmation</h3>
-                            <p class="mt-2 text-sm text-gray-500 max-w-md mx-auto">Review your plan configuration before saving.</p>
+                            <p class="max-w-md mx-auto mt-2 text-sm text-gray-500">Review your plan configuration before saving.</p>
                         </div>
 
-                        <div class="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-3">
-                            <div class="flex justify-between items-center border-b border-gray-200 pb-3">
+                        <div class="p-6 space-y-3 border border-gray-200 bg-gray-50 rounded-xl">
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-200">
                                 <span class="text-sm text-gray-600">Plan Name</span>
                                 <span class="font-semibold text-gray-900" x-text="form.name || 'Untitled'"></span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-gray-200 pb-3">
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-200">
                                 <span class="text-sm text-gray-600">Target Audience</span>
                                 <span class="font-semibold text-gray-900 capitalize" x-text="form.plan_audience || 'Not set'"></span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-gray-200 pb-3">
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-200">
                                 <span class="text-sm text-gray-600">Billing Duration</span>
                                 <span class="font-semibold text-gray-900" x-text="durationLabel()"></span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-gray-200 pb-3">
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-200">
                                 <span class="text-sm text-gray-600">Price</span>
                                 <span class="font-semibold text-gray-900" data-testid="plan-wizard-billing-preview">
                                     <span x-text="'PHP ' + (Number(form.billing.amount || 0) / 100).toFixed(2)"></span>
                                 </span>
                             </div>
-                            <div class="flex justify-between items-start pt-2">
+                            <div class="flex items-start justify-between pt-2">
                                 <span class="text-sm text-gray-600">Enabled Features</span>
                                 <div class="text-right">
                                     <template x-for="(data, key) in form.entitlements" :key="key">
-                                        <span x-show="data.is_enabled" class="block text-sm font-medium text-gray-900 mb-1" x-text="availableFeatures.find(f => f.key === key)?.name || key"></span>
+                                        <span x-show="data.is_enabled" class="block mb-1 text-sm font-medium text-gray-900" x-text="availableFeatures.find(f => f.key === key)?.name || key"></span>
                                     </template>
                                     <span x-show="!Object.values(form.entitlements).some(e => e.is_enabled)" class="text-sm text-gray-400">No features enabled</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-gray-50 rounded-xl p-5 border border-gray-200 mt-6">
+                        <div class="p-5 mt-6 border border-gray-200 bg-gray-50 rounded-xl">
                             <label class="flex items-start gap-4 cursor-pointer group">
                                 <div class="flex items-center h-6">
                                     <input type="checkbox" name="is_active" value="1" x-model="form.is_active"
-                                           class="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 transition-colors cursor-pointer">
+                                           class="w-5 h-5 transition-colors border-gray-300 rounded cursor-pointer text-brand-600 focus:ring-brand-500">
                                 </div>
                                 <div class="flex-1">
-                                    <span class="block text-sm font-semibold text-gray-900 mb-1 group-hover:text-purple-700 transition-colors">Make plan active immediately</span>
+                                    <span class="block mb-1 text-sm font-semibold text-gray-900 transition-colors group-hover:text-brand-700">Make plan active immediately</span>
                                     <span class="block text-sm text-gray-500">If checked, this plan will be visible to users right after creation.</span>
                                 </div>
                             </label>
@@ -408,7 +475,7 @@
                 </div>
 
                 {{-- Modal Footer --}}
-                <div class="p-6 border-t border-gray-100 bg-gray-50 flex items-center justify-between flex-shrink-0 rounded-b-2xl">
+                <div class="flex items-center justify-between flex-shrink-0 p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
                     <button type="button"
                             x-show="currentStep > 1"
                             @click="currentStep--"
@@ -419,12 +486,12 @@
                     <div x-show="currentStep === 1" class="w-20"></div>
 
                     <div class="flex items-center gap-3">
-                        <button type="button" @click="closeCreatePlanModal()" class="text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors px-4">Cancel</button>
+                        <button type="button" @click="closeCreatePlanModal()" class="px-4 text-sm font-semibold text-gray-500 transition-colors hover:text-gray-800">Cancel</button>
 
                         <button type="button"
                                 x-show="currentStep < 4"
                                 @click="nextStep()"
-                                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-700 text-sm font-semibold text-white hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+                                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-brand-600 to-brand-700 text-sm font-semibold text-white hover:shadow-lg hover:shadow-brand-500/30 transition-all">
                             Continue
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                         </button>
@@ -432,7 +499,7 @@
                         <button type="submit"
                                 x-show="currentStep === 4"
                                 x-cloak
-                                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-700 text-sm font-semibold text-white hover:shadow-lg hover:shadow-purple-500/30 transition-all">
+                                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-brand-600 to-brand-700 text-sm font-semibold text-white hover:shadow-lg hover:shadow-brand-500/30 transition-all">
                             <span x-text="wizardMode === 'edit' ? 'Update Plan' : 'Create Plan'"></span>
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                         </button>
@@ -446,27 +513,27 @@
     <div x-show="showImpactModal" x-cloak data-testid="plan-impact-modal" class="fixed inset-0 z-[100000]" @keydown.escape.window="closeImpactModal()">
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeImpactModal()"></div>
         <div class="relative flex items-center justify-center min-h-full p-4">
-             <div class="w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xl p-6" @click.stop>
+             <div class="w-full max-w-md p-6 bg-white border border-gray-200 shadow-2xl rounded-2xl dark:border-gray-800 dark:bg-gray-900" @click.stop>
                 <h3 class="text-base font-bold text-gray-900 dark:text-white" x-text="impactActionLabel()"></h3>
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
                     You are about to <span class="font-semibold lowercase" x-text="impactAction"></span>
                     <span class="font-semibold" x-text="impactPlanName"></span>.
                 </p>
 
-                <div class="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/30 p-3 text-sm text-gray-700 dark:text-gray-200">
+                <div class="p-3 mt-4 text-sm text-gray-700 border border-gray-200 rounded-lg dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/30 dark:text-gray-200">
                     <p>Total subscribers: <span class="font-semibold" x-text="impactCounts.total_subscribers"></span></p>
                     <p>Active subscribers: <span class="font-semibold" x-text="impactCounts.active_subscribers"></span></p>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Existing subscribers keep their current entitlement until renewal or expiry.</p>
                 </div>
 
-                <form method="POST" :action="impactActionUrl()" class="mt-5 flex items-center justify-end gap-3">
+                <form method="POST" :action="impactActionUrl()" class="flex items-center justify-end gap-3 mt-5">
                     @csrf
                     <button type="button" @click="closeImpactModal()"
-                            class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                            class="px-4 py-2 text-sm text-gray-600 transition-colors border border-gray-200 rounded-lg dark:border-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5">
                         Cancel
                     </button>
                     <button type="submit"
-                            class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors"
+                            class="px-4 py-2 text-sm font-medium text-white transition-colors rounded-lg bg-brand-500 hover:bg-brand-600"
                             x-text="impactActionLabel()">
                     </button>
                 </form>
@@ -475,7 +542,7 @@
     </div>
 
     <section class="mb-8 overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
-        <div class="border-b border-gray-100 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(244,114,182,0.12),_transparent_28%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-6">
+        <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.17),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(59,12,177,0.14),_transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">
             <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                 <div>
                     <div data-testid="admin-table-filter-bar" class="hidden"></div>
@@ -488,12 +555,12 @@
                                @input="page = 1"
                                type="text"
                                placeholder="Plan, audience, billing, status..."
-                               class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                               class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
                         <select x-model="filters.status" @change="page = 1"
-                                class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                             <option value="">All statuses</option>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
@@ -502,7 +569,7 @@
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Audience</span>
                         <select x-model="filters.audience" @change="page = 1"
-                                class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                             <option value="">All audiences</option>
                             <option value="learner">Learner</option>
                             <option value="instructor">Instructor</option>
@@ -511,7 +578,7 @@
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Billing</span>
                         <select x-model="filters.billing" @change="page = 1"
-                                class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100">
+                                class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-gray-200 shadow-sm outline-none rounded-2xl focus:border-brand-400 focus:ring-4 focus:ring-brand-100">
                             <option value="">All billing modes</option>
                             <option value="monthly">Monthly</option>
                             <option value="annual">Annual</option>
@@ -526,12 +593,12 @@
             <div class="flex items-center gap-3">
                 <button type="button"
                         @click="resetFilters()"
-                        class="inline-flex items-center rounded-2xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">
+                        class="inline-flex items-center rounded-2xl border border-brand-200 bg-brand-50/60 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70">
                     Reset Filters
                 </button>
                 <a href="{{ route('admin.subscription-plans.archived') }}"
                    class="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
                     </svg>
                     <span>Archived Plans</span>
@@ -541,7 +608,7 @@
 
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+                <thead class="bg-brand-50/45">
                     <tr>
                         <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">No.</th>
                         <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Plan</th>
@@ -553,22 +620,22 @@
                         <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 bg-white">
+                <tbody class="bg-white divide-y divide-gray-100">
                     <template x-for="(plan, index) in paginatedPlans" :key="plan.id">
-                        <tr class="transition hover:bg-sky-50/50">
+                        <tr class="transition hover:bg-brand-50/50">
                             <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="rowNumber(index)"></td>
                             <td class="px-6 py-4">
                                 <div class="flex items-start gap-3">
-                                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-100 text-sm font-bold text-sky-700"
+                                    <span class="inline-flex items-center justify-center text-sm font-bold h-11 w-11 rounded-2xl bg-brand-100 text-brand-700"
                                           x-text="plan.name.charAt(0).toUpperCase()"></span>
                                     <div class="space-y-1">
                                         <p class="text-sm font-semibold text-gray-900" x-text="plan.name"></p>
-                                        <p class="line-clamp-2 text-xs text-gray-500" x-text="plan.description || 'No description added yet.'"></p>
+                                        <p class="text-xs text-gray-500 line-clamp-2" x-text="plan.description || 'No description added yet.'"></p>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold capitalize"
+                                <span class="inline-flex px-3 py-1 text-xs font-bold capitalize rounded-full"
                                       :class="audienceClass(plan.plan_audience)"
                                       x-text="plan.plan_audience || 'learner'"></span>
                             </td>
@@ -585,16 +652,16 @@
                                 <p class="text-xs text-gray-500"><span x-text="formatNumber(plan.active_subscriptions_count || 0)"></span> active</p>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
+                                <span class="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full"
                                       :class="statusClass(plan.is_active)"
                                       x-text="plan.is_active ? 'Active' : 'Inactive'"></span>
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     <a :href="plan.show_url"
-                                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100"
+                                       class="inline-flex items-center justify-center w-10 h-10 text-gray-700 transition bg-white border rounded-2xl border-brand-200 hover:bg-brand-50"
                                        title="View">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                         </svg>
@@ -602,33 +669,33 @@
                                     <button type="button"
                                             data-testid="open-edit-plan-modal"
                                             @click="openEditPlanModal(plan.id)"
-                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
+                                            class="inline-flex items-center justify-center w-10 h-10 text-gray-700 transition bg-white border rounded-2xl border-brand-200 hover:bg-brand-50"
                                             title="Edit">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
                                     </button>
                                     <button type="button"
                                             @click="openImpactModal(plan.id, plan.name, plan.is_active ? 'deactivate' : 'activate')"
-                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition"
+                                            class="inline-flex items-center justify-center w-10 h-10 text-gray-700 transition bg-white border rounded-2xl border-brand-200 hover:bg-brand-50"
                                             :class="plan.is_active ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'"
                                             :title="plan.is_active ? 'Deactivate' : 'Activate'">
                                         <template x-if="plan.is_active">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
                                             </svg>
                                         </template>
                                         <template x-if="!plan.is_active">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                             </svg>
                                         </template>
                                     </button>
                                     <button type="button"
                                             @click="openImpactModal(plan.id, plan.name, 'archive')"
-                                            class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100"
+                                            class="inline-flex items-center justify-center w-10 h-10 text-gray-700 transition bg-white border rounded-2xl border-brand-200 hover:bg-brand-50"
                                             title="Archive">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                         </svg>
                                     </button>
@@ -637,10 +704,10 @@
                         </tr>
                     </template>
                     <tr x-show="filteredPlans.length === 0" x-cloak>
-                        <td colspan="8" class="px-6 py-14 text-center">
-                            <div class="mx-auto max-w-sm">
-                                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-gray-400">
-                                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <td colspan="8" class="px-6 text-center py-14">
+                            <div class="max-w-sm mx-auto">
+                                <div class="flex items-center justify-center w-16 h-16 mx-auto text-gray-400 bg-gray-100 rounded-full">
+                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 7h10M7 12h10M7 17h6M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>
                                     </svg>
                                 </div>
@@ -653,7 +720,7 @@
             </table>
         </div>
 
-        <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-end gap-3">
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
             <div class="flex items-center gap-2">
                 <button type="button" @click="prevPage()" :disabled="page === 1" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                 <span class="text-sm text-gray-600">Page <span class="font-semibold" x-text="safePage"></span> of <span class="font-semibold" x-text="totalPages"></span></span>
@@ -684,7 +751,7 @@
                                 {{ $loop->iteration }}
                             </td>
                             <td class="px-5 py-4">
-                                <p class="font-semibold text-gray-900 dark:text-white text-sm">{{ $plan->name }}</p>
+                                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $plan->name }}</p>
                                 @if($plan->description)
                                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1">{{ $plan->description }}</p>
                                 @endif
@@ -702,7 +769,7 @@
                             </td>
                             <td class="px-5 py-4">
                                 @if($plan->is_active)
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
                                         Active
                                     </span>
                                 @else
@@ -714,7 +781,7 @@
                             <td class="px-5 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     <a href="{{ route('admin.subscription-plans.show', $plan) }}"
-                                       class="p-1.5 text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors" title="View">
+                                       class="inline-flex items-center justify-center w-10 h-10 text-gray-700 transition bg-white border rounded-2xl border-brand-200 hover:bg-brand-50" title="View">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -723,7 +790,7 @@
                                     <button type="button"
                                        data-testid="open-edit-plan-modal"
                                        @click="openEditPlanModal({{ $plan->id }})"
-                                       class="p-1.5 text-gray-400 hover:text-warning-500 dark:hover:text-warning-400 rounded-lg hover:bg-warning-50 dark:hover:bg-warning-500/10 transition-colors" title="Edit">
+                                       class="inline-flex items-center justify-center w-10 h-10 text-gray-700 transition bg-white border rounded-2xl border-brand-200 hover:bg-brand-50" title="Edit">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
@@ -740,7 +807,7 @@
                                     </button>
                                     <button type="button"
                                             @click="openImpactModal({{ $plan->id }}, @js($plan->name), 'archive')"
-                                            class="p-1.5 text-gray-400 hover:text-error-500 dark:hover:text-error-400 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/10 transition-colors" title="Archive">
+                                            class="inline-flex items-center justify-center w-10 h-10 text-gray-700 transition bg-white border rounded-2xl border-brand-200 hover:bg-brand-50" title="Archive">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                         </svg>
@@ -752,7 +819,7 @@
                         <tr>
                             <td colspan="7" class="px-5 py-12 text-center">
                                 <p class="text-sm text-gray-400 dark:text-gray-500">No subscription plans found.</p>
-                                <button type="button" @click="openCreatePlanModal()" class="mt-2 inline-block text-sm text-brand-500 hover:text-brand-600">Create your first plan →</button>
+                                <button type="button" @click="openCreatePlanModal()" class="inline-block mt-2 text-sm text-brand-500 hover:text-brand-600">Create your first plan →</button>
                             </td>
                         </tr>
                     @endforelse
@@ -776,7 +843,8 @@
             const learnerCoreFeatureKeys = [
                 'unlimited_username_change',
                 'unlimited_quiz_shields',
-                'downloadable_certificates',
+                'text_translator',
+                'voice_speech_translator',
             ];
 
             const learnerCoreFallbackCatalog = [
@@ -795,11 +863,66 @@
                     category: 'learner',
                 },
                 {
-                    key: 'downloadable_certificates',
-                    name: 'Downloadable PDF Certificates',
-                    description: 'Allow learners to download certificate PDFs.',
+                    key: 'text_translator',
+                    name: 'Text Translator',
+                    description: 'Unlock page and lesson text translation tools.',
                     value_type: 'boolean',
                     category: 'learner',
+                },
+                {
+                    key: 'voice_speech_translator',
+                    name: 'Voice Speech Translator',
+                    description: 'Unlock translated text-to-speech lesson narration.',
+                    value_type: 'boolean',
+                    category: 'learner',
+                },
+            ];
+
+            const instructorCoreFallbackCatalog = [
+                {
+                    key: 'instructor_published_modules_limit',
+                    name: 'Published Modules Limit',
+                    description: 'Maximum number of instructor-owned modules that can be published.',
+                    value_type: 'quota',
+                    unit_label: 'modules',
+                    category: 'instructor',
+                },
+                {
+                    key: 'instructor_max_learners_per_free_module',
+                    name: 'Free Module Learner Cap',
+                    description: 'Maximum approved learners allowed per free module.',
+                    value_type: 'quota',
+                    unit_label: 'learners',
+                    category: 'instructor',
+                },
+                {
+                    key: 'instructor_max_learners_per_paid_module',
+                    name: 'Paid Module Learner Cap',
+                    description: 'Maximum approved learners allowed per paid module.',
+                    value_type: 'quota',
+                    unit_label: 'learners',
+                    category: 'instructor',
+                },
+                {
+                    key: 'instructor_can_publish_paid_modules',
+                    name: 'Can Publish Paid Modules',
+                    description: 'Allow instructors to mark modules as paid.',
+                    value_type: 'boolean',
+                    category: 'instructor',
+                },
+                {
+                    key: 'instructor_can_receive_paid_enrollments',
+                    name: 'Can Receive Paid Enrollments',
+                    description: 'Allow paid module transactions and enrollments to be processed.',
+                    value_type: 'boolean',
+                    category: 'instructor',
+                },
+                {
+                    key: 'instructor_can_view_earnings',
+                    name: 'Can View Earnings',
+                    description: 'Allow access to instructor earnings and monetization reporting surfaces.',
+                    value_type: 'boolean',
+                    category: 'instructor',
                 },
             ];
 
@@ -875,7 +998,7 @@
 
                     const catalog = Array.isArray(this.featureCatalog) && this.featureCatalog.length > 0
                         ? this.featureCatalog
-                        : learnerCoreFallbackCatalog;
+                        : [...learnerCoreFallbackCatalog, ...instructorCoreFallbackCatalog];
 
                     if (this.form.plan_audience === 'learner') {
                         return learnerCoreFeatureKeys
@@ -975,8 +1098,8 @@
 
                 audienceClass(audience) {
                     return {
-                        learner: 'bg-sky-100 text-sky-700',
-                        instructor: 'bg-teal-100 text-teal-700',
+                        learner: 'bg-brand-100 text-brand-700',
+                        instructor: 'bg-brand-100 text-brand-700',
                     }[audience] || 'bg-gray-100 text-gray-600';
                 },
 
@@ -1102,7 +1225,7 @@
                 initializeEntitlements() {
                     const featuresToInitialize = Array.isArray(this.featureCatalog) && this.featureCatalog.length > 0
                         ? this.featureCatalog
-                        : learnerCoreFallbackCatalog;
+                        : [...learnerCoreFallbackCatalog, ...instructorCoreFallbackCatalog];
 
                     featuresToInitialize.forEach(feature => {
                         if (!this.form.entitlements[feature.key]) {
@@ -1278,8 +1401,9 @@
                     }
 
                     if (this.currentStep === 2) {
-                        if (!this.form.billing.amount_decimal || this.form.billing.amount_decimal <= 0) {
-                            this.notifyValidation('error', 'Please enter a valid plan price.');
+                        const amountValue = Number(this.form.billing.amount_decimal);
+                        if (this.form.billing.amount_decimal === '' || Number.isNaN(amountValue) || amountValue < 0) {
+                            this.notifyValidation('error', 'Please enter a valid plan price (0 or higher).');
                             return;
                         }
 

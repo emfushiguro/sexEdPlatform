@@ -19,12 +19,13 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PermissionSeeder::class,
             RoleSeeder::class,
+            InstructorBaselinePlanSeeder::class,
             AdminUserSeeder::class,
             InstructorUserSeeder::class,
             ModuleLessonQuizSeeder::class,
             AchievementSeeder::class,
+            GamificationPolicySeeder::class,
             CavitePSGCSeeder::class,
-            ParentMonitoringSeeder::class,
         ]);
     }
 }

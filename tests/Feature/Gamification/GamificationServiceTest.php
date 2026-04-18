@@ -3,7 +3,6 @@
 namespace Tests\Feature\Gamification;
 
 use App\Models\User;
-use App\Models\UserGamification;
 use App\Services\GamificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -17,7 +16,7 @@ class GamificationServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new GamificationService();
+        $this->service = app(GamificationService::class);
     }
 
     private function userWithGamification(): User

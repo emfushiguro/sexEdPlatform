@@ -27,7 +27,7 @@
         <div class="xl:col-span-2 space-y-5">
             <div class="rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 space-y-3">
                 <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide {{ $targetTypeValue === 'module' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700' }}">{{ $targetTypeValue }}</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide {{ $targetTypeValue === 'module' ? 'bg-brand-100 text-brand-700' : 'bg-amber-100 text-amber-700' }}">{{ $targetTypeValue }}</span>
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide {{ $statusValue === 'submitted' ? 'bg-rose-100 text-rose-700' : ($statusValue === 'under_review' ? 'bg-amber-100 text-amber-700' : ($statusValue === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700')) }}">
                         {{ is_object($report->status) ? $report->status->label() : ucfirst(str_replace('_', ' ', (string) $report->status)) }}
                     </span>
@@ -42,7 +42,7 @@
                     </div>
                 @endif
                 @if($report->latest_outcome_message)
-                    <div class="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800">
+                    <div class="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
                         {{ $report->latest_outcome_message }}
                     </div>
                 @endif

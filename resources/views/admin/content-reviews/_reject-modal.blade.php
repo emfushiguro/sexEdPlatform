@@ -40,7 +40,7 @@
             </div>
 
             <label for="issue_warning" class="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
-                <input type="checkbox" id="issue_warning" name="issue_warning" value="1" @checked(old('issue_warning')) class="mt-0.5 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500">
+                <input type="checkbox" id="issue_warning" name="issue_warning" value="1" @checked(old('issue_warning')) class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
                 <span>
                     <span class="font-semibold text-gray-900">Issue Warning to Instructor</span>
                     <span class="mt-0.5 block text-xs text-gray-500">Enable only for policy or safety violations. Disable for non-violation corrections.</span>

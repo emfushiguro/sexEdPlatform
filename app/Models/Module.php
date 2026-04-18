@@ -152,6 +152,7 @@ class Module extends Model
         return $query->where('is_published', true)
             ->where(function ($inner) {
                 $inner->whereNotNull('published_revision_id')
+                    ->orWhere('current_review_status', 'approved')
                     ->orWhereNull('current_review_status');
             });
     }
@@ -246,7 +247,9 @@ class Module extends Model
             return false;
         }
 
-        return $this->published_revision_id !== null || $this->current_review_status === null;
+        return $this->published_revision_id !== null
+            || $this->current_review_status === 'approved'
+            || $this->current_review_status === null;
     }
 
     public function publishedSnapshot(): ?array

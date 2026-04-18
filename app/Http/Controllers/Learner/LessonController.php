@@ -354,12 +354,12 @@ class LessonController extends Controller
             'completed_at' => now(),
         ]);
 
-        // Award gamification points (15 points per lesson)
-        $this->gamificationService->awardPoints($user, 'lesson_complete', 15);
+        // Award gamification points using dynamic policy values
+        $lessonPoints = $this->gamificationService->awardConfiguredPoints($user, 'lesson_complete');
         $this->gamificationService->updateStreak($user);
-        session()->flash('points_earned', ['points' => 15, 'reason' => 'lesson complete']);
+        session()->flash('points_earned', $lessonPoints);
 
-        return back()->with('success', 'Lesson completed! You earned 15 points! 🎉');
+        return back()->with('success', "Lesson completed! You earned {$lessonPoints} points! 🎉");
     }
 
     /**
@@ -393,10 +393,10 @@ class LessonController extends Controller
         // Mark topic as completed
         $topic->markCompleted($user->id);
 
-        // Award topic completion points (+10) and update streak
-        $this->gamificationService->awardPoints($user, 'topic_complete', 10);
+        // Award topic completion points and update streak
+        $topicPoints = $this->gamificationService->awardConfiguredPoints($user, 'topic_complete');
         $this->gamificationService->updateStreak($user);
-        session()->flash('points_earned', ['points' => 10, 'reason' => 'topic complete']);
+        session()->flash('points_earned', $topicPoints);
 
         // Check if all topics are completed to auto-complete lesson
         $allTopics = $lesson->topics()->ordered()->get();
@@ -419,20 +419,20 @@ class LessonController extends Controller
                     'completed_at' => now(),
                 ]
             );
-            // Award lesson complete bonus (+15)
-            $this->gamificationService->awardPoints($user, 'lesson_complete', 15);
-            session()->flash('points_earned', ['points' => 15, 'reason' => 'lesson complete']);
+            // Award lesson complete bonus using dynamic policy values
+            $lessonCompletePoints = $this->gamificationService->awardConfiguredPoints($user, 'lesson_complete');
+            session()->flash('points_earned', $lessonCompletePoints);
         }
 
         // Check if we should navigate to next topic
         $nextTopicIndex = request()->input('next_topic_index');
         if ($nextTopicIndex !== null) {
             return redirect()->route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $nextTopicIndex])
-                ->with('success', 'Topic completed! +10 points ✓');
+                ->with('success', "Topic completed! +{$topicPoints} points ✓");
         }
 
         return redirect()->route('learner.lessons.show', $lesson)
-            ->with('success', 'Topic completed! +10 points ✓');
+            ->with('success', "Topic completed! +{$topicPoints} points ✓");
     }
 
     /**

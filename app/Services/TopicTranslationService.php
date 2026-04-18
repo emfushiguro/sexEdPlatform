@@ -9,6 +9,74 @@ use RuntimeException;
 
 class TopicTranslationService
 {
+    public function prepareTextForSpeech(string $text, string $languageCode = 'en-US', ?string $preferredTargetLanguage = null): string
+    {
+        $normalizedText = preg_replace('/\s+/u', ' ', trim($text));
+        $normalizedText = is_string($normalizedText) ? trim($normalizedText) : trim($text);
+
+        if ($normalizedText === '') {
+            throw new RuntimeException('Cannot synthesize empty text.');
+        }
+
+        $targetLanguage = $this->normalizeTranslationLanguage($preferredTargetLanguage)
+            ?? $this->mapSpeechLanguageToTranslationTarget($languageCode);
+
+        if ($targetLanguage === 'en') {
+            return $normalizedText;
+        }
+
+        $translation = $this->translateText($normalizedText, $targetLanguage);
+        $translatedText = trim((string) ($translation['translated_text'] ?? ''));
+
+        if ($translatedText === '') {
+            throw new RuntimeException('Unable to translate text for speech synthesis.');
+        }
+
+        return $translatedText;
+    }
+
+    private function mapSpeechLanguageToTranslationTarget(string $languageCode): string
+    {
+        $normalizedCode = strtolower(str_replace('_', '-', trim($languageCode)));
+        if ($normalizedCode === '') {
+            return 'en';
+        }
+
+        $baseLanguage = explode('-', $normalizedCode)[0] ?? 'en';
+
+        if (in_array($baseLanguage, ['fil', 'tl', 'tgl'], true)) {
+            return 'tl';
+        }
+
+        if ($baseLanguage === 'en') {
+            return 'en';
+        }
+
+        return 'en';
+    }
+
+    private function normalizeTranslationLanguage(?string $language): ?string
+    {
+        if (!is_string($language)) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($language));
+        if ($normalized === '') {
+            return null;
+        }
+
+        if ($normalized === 'en') {
+            return 'en';
+        }
+
+        if (in_array($normalized, ['tl', 'fil', 'tgl'], true)) {
+            return 'tl';
+        }
+
+        return null;
+    }
+
     public function translateHtml(string $html, string $targetLanguage, ?string $sourceLanguage = null): array
     {
         $apiKey = config('services.google_cloud.api_key');

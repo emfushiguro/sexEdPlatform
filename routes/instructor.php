@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Instructor;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,6 +43,32 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'permissio
     Route::put('/profile', [Instructor\ProfileController::class, 'update'])
         ->name('profile.update');
 
+    // Instructor subscription offers
+    Route::get('/subscriptions', [Instructor\SubscriptionController::class, 'index'])
+        ->name('subscriptions.index');
+    Route::post('/subscriptions/subscribe', [Instructor\SubscriptionController::class, 'subscribe'])
+        ->name('subscriptions.subscribe');
+
+    // Instructor subscription checkout and payment history
+    Route::prefix('payments')->name('payments.')->group(function () {
+        Route::get('/checkout/{subscription}', [PaymentController::class, 'create'])
+            ->name('checkout.summary');
+        Route::post('/checkout/{subscription}', [PaymentController::class, 'process'])
+            ->name('checkout.proceed');
+        Route::get('/pending/{payment}', [PaymentController::class, 'pending'])
+            ->name('pending');
+        Route::get('/status/{payment}', [PaymentController::class, 'checkStatus'])
+            ->name('status');
+        Route::get('/history', [PaymentController::class, 'history'])
+            ->name('history');
+        Route::get('/receipt/{payment}', [PaymentController::class, 'receipt'])
+            ->name('receipt');
+        Route::get('/paymongo/success/{subscription}', [PaymentController::class, 'paymongoSuccess'])
+            ->name('paymongo.success');
+        Route::get('/paymongo/failed/{subscription}', [PaymentController::class, 'paymongoFailed'])
+            ->name('paymongo.failed');
+    });
+
     // Learner Management (view-only)
     Route::resource('users', Instructor\UserController::class)->only(['index', 'show']);
     Route::patch('users/{user}/archive', [Instructor\UserController::class, 'archive'])
@@ -57,14 +84,14 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'permissio
         ->name('modules.review.resubmit');
     Route::post('modules/{module}/review/withdraw', [Instructor\ModuleReviewController::class, 'withdraw'])
         ->name('modules.review.withdraw');
-    Route::put('modules/{module}/feedback/{feedback}/reply', [Instructor\ModuleFeedbackController::class, 'updateReply'])
-        ->name('modules.feedback.reply');
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
         ->name('modules.activate');
     Route::patch('modules/{module}/deactivate', [Instructor\ModuleController::class, 'deactivate'])
         ->name('modules.deactivate');
     Route::patch('modules/{id}/restore', [Instructor\ModuleController::class, 'restore'])
         ->name('modules.restore');
+    Route::put('modules/{module}/feedback/{feedback}/reply', [Instructor\ModuleFeedbackController::class, 'updateReply'])
+        ->name('modules.feedback.reply');
 
     // Enrollment Management
     Route::get('enrollments', [Instructor\EnrollmentController::class, 'index'])
@@ -93,6 +120,10 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'permissio
         ->name('earnings.delete');
     Route::delete('earnings/{moduleSaleLedger}/visibility', [Instructor\ModuleEarningsController::class, 'destroyVisibility'])
         ->name('earnings.visibility.destroy');
+    Route::get('earnings/export/{format}', [Instructor\InstructorFinancialReportExportController::class, 'export'])
+        ->whereIn('format', ['pdf', 'csv', 'xlsx'])
+        ->middleware('permission:view own financial reports|export own financial reports')
+        ->name('earnings.export');
 
     // Lesson Management
     Route::patch('lessons/reorder', [Instructor\LessonController::class, 'reorder'])

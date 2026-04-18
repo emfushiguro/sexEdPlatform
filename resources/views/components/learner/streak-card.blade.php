@@ -1,14 +1,22 @@
 {{--
     Streak card — shows weekly activity dots, current/longest streak, and streak savers.
-    Props: $gamification, $streakActiveDays (array of 0-6 int), $longestStreak, $streakSavers, $score
+    Props: $gamification, $streakActiveDays (array of 0-6 int), $longestStreak, $streakSavers, $maxStreakSavers, $streakSaverCost, $score
 --}}
-@props(['gamification', 'streakActiveDays' => [], 'longestStreak' => 0, 'streakSavers' => 0, 'score' => 0])
+@props([
+    'gamification',
+    'streakActiveDays' => [],
+    'longestStreak' => 0,
+    'streakSavers' => 0,
+    'maxStreakSavers' => 3,
+    'streakSaverCost' => 75,
+    'score' => 0,
+])
 
 @php
     $currentStreak = $gamification?->streak_count ?? 0;
     $days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     $todayDow = (int) now()->dayOfWeek; // 0=Sun, 6=Sat
-    $canBuySaver = $streakSavers < 3 && $score >= 75;
+    $canBuySaver = $streakSavers < $maxStreakSavers && $score >= $streakSaverCost;
 @endphp
 
 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
@@ -69,10 +77,10 @@
         <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">Streak Savers</span>
             <div class="flex items-center gap-1">
-                @for($i = 0; $i < 3; $i++)
+                @for($i = 0; $i < $maxStreakSavers; $i++)
                     <x-icons.shield :state="$i < $streakSavers ? 'full' : 'empty'" :size="16" />
                 @endfor
-                <span class="text-xs text-gray-500 ml-1">{{ $streakSavers }}/3</span>
+                <span class="text-xs text-gray-500 ml-1">{{ $streakSavers }}/{{ $maxStreakSavers }}</span>
             </div>
         </div>
 
@@ -85,9 +93,9 @@
                         ? 'text-white hover:opacity-90'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500' }}"
                 @if($canBuySaver) style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);" @endif
-                title="{{ !$canBuySaver ? ($streakSavers >= 3 ? 'Already at max savers' : 'Not enough points (need 75)') : '' }}"
+                title="{{ !$canBuySaver ? ($streakSavers >= $maxStreakSavers ? 'Already at max savers' : "Not enough points (need {$streakSaverCost})") : '' }}"
             >
-                Buy Saver — ⭐ 75
+                Buy Saver — ⭐ {{ $streakSaverCost }}
             </button>
         </form>
     </div>

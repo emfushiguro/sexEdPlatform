@@ -27,7 +27,7 @@ class ModuleRevenueController extends Controller
             'learner.learnerProfile:id,user_id,avatar_path',
             'payment:id,transaction_id,method,status,paid_at',
             'modulePurchase:id,module_id,purchased_at,status',
-        ]);
+        ])->where('sale_status', '!=', 'archived');
 
         if ($request->filled('instructor_id')) {
             $query->where('instructor_id', (int) $request->integer('instructor_id'));
@@ -91,6 +91,95 @@ class ModuleRevenueController extends Controller
             'instructors',
             'modules'
         ));
+    }
+
+    public function showTransaction(ModuleSaleLedger $moduleSaleLedger)
+    {
+        $transaction = ModuleSaleLedger::query()
+            ->with([
+                'module:id,title,thumbnail,created_by',
+                'instructor:id,name,email',
+                'instructor.instructorProfile:id,user_id,profile_photo_path',
+                'learner:id,name,email',
+                'learner.learnerProfile:id,user_id,avatar_path',
+                'payment:id,user_id,transaction_id,method,status,paid_at,payment_details,amount',
+                'modulePurchase:id,module_id,purchased_at,status,amount,currency',
+            ])
+            ->findOrFail($moduleSaleLedger->id);
+
+        return view('admin.monetization.module-revenue-transaction-show', [
+            'transaction' => $transaction,
+        ]);
+    }
+
+    public function showInstructor(Request $request, User $instructor)
+    {
+        $query = ModuleSaleLedger::query()
+            ->where('instructor_id', $instructor->id)
+            ->where('sale_status', '!=', 'archived')
+            ->with([
+                'module:id,title,thumbnail,created_by',
+                'payment:id,transaction_id,method,status,paid_at',
+                'learner:id,name,email',
+                'learner.learnerProfile:id,user_id,avatar_path',
+                'modulePurchase:id,module_id,purchased_at,status',
+            ]);
+
+        if ($request->filled('module_id')) {
+            $query->where('module_id', (int) $request->integer('module_id'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('occurred_at', '>=', (string) $request->string('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('occurred_at', '<=', (string) $request->string('date_to'));
+        }
+
+        $statsQuery = clone $query;
+        $stats = [
+            'total_transactions' => (clone $statsQuery)->count(),
+            'total_module_revenue' => (float) (clone $statsQuery)->sum('gross_amount'),
+            'total_platform_commission' => (float) (clone $statsQuery)->sum('commission_amount'),
+            'total_instructor_earnings' => (float) (clone $statsQuery)->sum('instructor_earnings_amount'),
+        ];
+
+        $transactions = (clone $query)
+            ->latest('occurred_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        $modules = Module::query()
+            ->where('created_by', $instructor->id)
+            ->where('access_type', 'paid')
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        return view('admin.monetization.module-revenue-instructor-show', [
+            'instructor' => $instructor,
+            'transactions' => $transactions,
+            'stats' => $stats,
+            'modules' => $modules,
+        ]);
+    }
+
+    public function archive(ModuleSaleLedger $moduleSaleLedger)
+    {
+        $moduleSaleLedger->forceFill([
+            'sale_status' => 'archived',
+        ])->save();
+
+        return redirect()->route('admin.monetization.module-revenue.index')
+            ->with('success', 'Transaction archived successfully.');
+    }
+
+    public function destroy(ModuleSaleLedger $moduleSaleLedger)
+    {
+        $moduleSaleLedger->delete();
+
+        return redirect()->route('admin.monetization.module-revenue.index')
+            ->with('success', 'Transaction deleted successfully.');
     }
 
     public function updatePayoutStatus(Request $request, ModuleSaleLedger $moduleSaleLedger)

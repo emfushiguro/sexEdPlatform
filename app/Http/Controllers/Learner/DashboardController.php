@@ -12,6 +12,7 @@ use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use App\Models\InstructorApplication;
 use App\Models\ParentChildInvitation;
+use App\Services\Gamification\GamificationPolicyResolver;
 use App\Services\SubscriptionService;
 use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +21,7 @@ class DashboardController extends Controller
 {
     public function __construct(
         private readonly SubscriptionService $subscriptionService,
+        private readonly GamificationPolicyResolver $gamificationPolicyResolver,
     ) {
     }
 
@@ -114,9 +116,19 @@ class DashboardController extends Controller
 
         // ── Gamification ────────────────────────────────────────────────
         $gamification = $user->gamification;
-        $xpInLevel    = $gamification ? ($gamification->score % 100) : 0;
-        $xpToNext     = 100 - $xpInLevel;
-        $xpPercent    = $xpInLevel; // out of 100
+        $policy = $this->gamificationPolicyResolver->resolve();
+
+        $currentScore = (int) ($gamification?->score ?? 0);
+        $currentLevel = max(1, (int) ($gamification?->level ?? 1));
+        [$xpInLevel, $xpToNext, $xpPercent, $xpLevelSpan] = $this->resolveXpProgress($currentScore, $currentLevel, $policy);
+
+        $maxStreakSavers = max(0, (int) data_get($policy, 'streak_config.max_savers_held', 3));
+        $streakSaverCost = max(0, (int) data_get($policy, 'streak_config.saver_purchase_cost_points', 75));
+        $shieldCap = max(0, (int) data_get($policy, 'shield_config.max_shields_per_day_cap', 3));
+
+        $singleShieldRefillCost = max(0, (int) data_get($policy, 'shield_config.refill_single_cost_points', 50));
+        $fullShieldRefillCost = max(0, (int) data_get($policy, 'shield_config.refill_full_cost_points', 100));
+        $fullShieldRefillTarget = max(0, (int) data_get($policy, 'shield_config.refill_full_target_shields', $shieldCap));
 
         // ── Shields today ───────────────────────────────────────────────
         $shieldsRemaining = UserDailyShield::getShields($user);
@@ -229,10 +241,17 @@ class DashboardController extends Controller
             'xpInLevel',
             'xpToNext',
             'xpPercent',
+            'xpLevelSpan',
             'shieldsRemaining',
+            'shieldCap',
+            'singleShieldRefillCost',
+            'fullShieldRefillCost',
+            'fullShieldRefillTarget',
             'streakActiveDays',
             'longestStreak',
             'streakSavers',
+            'maxStreakSavers',
+            'streakSaverCost',
             'recentAchievements',
             'greeting',
             'currentSubscription',
@@ -246,6 +265,56 @@ class DashboardController extends Controller
             'canApplyAsInstructor',
             'incomingParentInvitations',
         ));
+    }
+
+    private function resolveXpProgress(int $score, int $level, array $policy): array
+    {
+        $currentLevelXp = $this->xpRequirementForLevel($level, $policy);
+        $nextLevelXp = $this->xpRequirementForLevel($level + 1, $policy);
+        $xpLevelSpan = max(1, $nextLevelXp - $currentLevelXp);
+        $xpInLevel = max(0, $score - $currentLevelXp);
+        $xpToNext = max(0, $nextLevelXp - $score);
+        $xpPercent = (int) max(0, min(100, round(($xpInLevel / $xpLevelSpan) * 100)));
+
+        return [$xpInLevel, $xpToNext, $xpPercent, $xpLevelSpan];
+    }
+
+    private function xpRequirementForLevel(int $level, array $policy): int
+    {
+        $level = max(1, $level);
+        $levelingConfig = data_get($policy, 'leveling_config', []);
+        $resolutionMode = (string) data_get($levelingConfig, 'threshold_resolution', 'explicit_then_formula');
+        $thresholds = data_get($levelingConfig, 'explicit_thresholds', []);
+
+        if (!is_array($thresholds)) {
+            $thresholds = [];
+        }
+
+        $normalizedThresholds = [];
+        foreach ($thresholds as $thresholdLevel => $xp) {
+            $normalizedThresholds[(int) $thresholdLevel] = (int) $xp;
+        }
+
+        ksort($normalizedThresholds);
+
+        $baseXpPerLevel = max(1, (int) data_get($levelingConfig, 'formula.base_xp_per_level', 100));
+        $growthFactor = max(1, (int) data_get($levelingConfig, 'formula.growth_factor', 1));
+        $effectiveStep = max(1, $baseXpPerLevel * $growthFactor);
+
+        if (array_key_exists($level, $normalizedThresholds)) {
+            return $normalizedThresholds[$level];
+        }
+
+        if ($resolutionMode === 'explicit_then_formula' && !empty($normalizedThresholds)) {
+            $highestLevel = (int) max(array_keys($normalizedThresholds));
+            $highestXp = (int) ($normalizedThresholds[$highestLevel] ?? 0);
+
+            if ($level > $highestLevel) {
+                return $highestXp + (($level - $highestLevel) * $effectiveStep);
+            }
+        }
+
+        return ($level - 1) * $effectiveStep;
     }
 }
 

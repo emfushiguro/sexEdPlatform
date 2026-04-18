@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Learner;
 use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\LessonTopic;
+use App\Models\User;
+use App\Services\EntitlementService;
 use App\Services\TopicTranslationService;
+use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +20,11 @@ use Throwable;
 
 class TopicTranslationController extends Controller
 {
+    public function __construct(
+        private readonly EntitlementService $entitlementService,
+    ) {
+    }
+
     public function translate(Request $request, LessonTopic $topic, TopicTranslationService $translationService): JsonResponse
     {
         $validated = $request->validate([
@@ -36,7 +44,14 @@ class TopicTranslationController extends Controller
             abort(404);
         }
 
+        /** @var User $user */
         $user = Auth::user();
+
+        $translatorGate = $this->requireTranslatorEntitlement($user, SubscriptionFeatureKeys::TEXT_TRANSLATOR);
+        if ($translatorGate) {
+            return $translatorGate;
+        }
+
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
             ->where('status', EnrollmentStatus::Approved)
@@ -80,6 +95,14 @@ class TopicTranslationController extends Controller
 
     public function translateText(Request $request, TopicTranslationService $translationService): JsonResponse
     {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $translatorGate = $this->requireTranslatorEntitlement($user, SubscriptionFeatureKeys::TEXT_TRANSLATOR);
+        if ($translatorGate) {
+            return $translatorGate;
+        }
+
         $validated = $request->validate([
             'text' => ['required', 'string', 'max:5000'],
             'target_language' => ['required', 'string', 'max:10', 'regex:/^[a-z]{2,3}(-[A-Za-z]{2})?$/'],
@@ -110,6 +133,14 @@ class TopicTranslationController extends Controller
 
     public function translatePage(Request $request, TopicTranslationService $translationService): JsonResponse
     {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $translatorGate = $this->requireTranslatorEntitlement($user, SubscriptionFeatureKeys::TEXT_TRANSLATOR);
+        if ($translatorGate) {
+            return $translatorGate;
+        }
+
         $validated = $request->validate([
             'texts' => ['required', 'array', 'min:1', 'max:150'],
             'texts.*' => ['required', 'string', 'max:1000'],
@@ -143,10 +174,20 @@ class TopicTranslationController extends Controller
     {
         $validated = $request->validate([
             'topic_id' => ['required', 'integer', 'exists:lesson_topics,id'],
+            'text' => ['nullable', 'string', 'max:12000'],
+            'translation_language' => ['nullable', 'string', 'in:en,tl'],
             'language_code' => ['nullable', 'string', 'max:10', 'regex:/^[a-z]{2,3}-[A-Za-z]{2}$/'],
             'voice_name' => ['nullable', 'string', 'max:64'],
             'speaking_rate' => ['nullable', 'numeric', 'min:0.25', 'max:4'],
         ]);
+
+        /** @var User $user */
+        $user = Auth::user();
+
+        $translatorGate = $this->requireTranslatorEntitlement($user, SubscriptionFeatureKeys::VOICE_SPEECH_TRANSLATOR);
+        if ($translatorGate) {
+            return $translatorGate;
+        }
 
         $topic = LessonTopic::query()->with('lesson.module')->findOrFail((int) $validated['topic_id']);
         $lesson = $topic->lesson;
@@ -158,7 +199,6 @@ class TopicTranslationController extends Controller
             ], 404);
         }
 
-        $user = Auth::user();
         $isEnrolled = $user->moduleEnrollments()
             ->where('module_id', $module->id)
             ->where('status', EnrollmentStatus::Approved)
@@ -170,7 +210,15 @@ class TopicTranslationController extends Controller
             ], 403);
         }
 
-        $text = trim((string) preg_replace('/\s+/u', ' ', strip_tags((string) $topic->text_content)));
+        $requestedText = preg_replace('/\s+/u', ' ', strip_tags((string) ($validated['text'] ?? '')));
+        $requestedText = is_string($requestedText) ? trim($requestedText) : '';
+
+        $text = $requestedText;
+        if ($text === '') {
+            $topicText = preg_replace('/\s+/u', ' ', strip_tags((string) $topic->text_content));
+            $text = is_string($topicText) ? trim($topicText) : '';
+        }
+
         if ($text === '') {
             return response()->json([
                 'message' => 'This topic has no readable text content.',
@@ -181,14 +229,22 @@ class TopicTranslationController extends Controller
             $text = mb_substr($text, 0, 5000);
         }
 
+        $languageCode = $validated['language_code'] ?? 'en-US';
+        $translationLanguage = isset($validated['translation_language']) ? strtolower((string) $validated['translation_language']) : null;
+        $voiceName = $validated['voice_name'] ?? null;
+        $speakingRate = isset($validated['speaking_rate']) ? (float) $validated['speaking_rate'] : 1.0;
+
         try {
+            $speechText = $translationService->prepareTextForSpeech($text, $languageCode, $translationLanguage);
+
             $result = $translationService->synthesizeText(
-                $text,
+                $speechText,
                 $user->id,
-                $validated['language_code'] ?? 'en-US',
-                $validated['voice_name'] ?? null,
-                isset($validated['speaking_rate']) ? (float) $validated['speaking_rate'] : 1.0
+                $languageCode,
+                $voiceName,
+                $speakingRate
             );
+
         } catch (Throwable $e) {
             report($e);
 
@@ -213,6 +269,19 @@ class TopicTranslationController extends Controller
             'voice_name' => $result['voice_name'],
             'speaking_rate' => $result['speaking_rate'],
         ]);
+    }
+
+    private function requireTranslatorEntitlement(User $user, string $featureKey): ?JsonResponse
+    {
+        if ($this->entitlementService->canAccessFeature($user, $featureKey)) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => 'This translator feature is available only on premium learner plans.',
+            'code' => 'PREMIUM_TRANSLATOR_REQUIRED',
+            'feature_key' => $featureKey,
+        ], 403);
     }
 
     /**

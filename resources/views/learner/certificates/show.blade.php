@@ -90,18 +90,11 @@
                            class="flex-1 text-center px-6 py-3 rounded-xl text-sm font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
                             ← Back to Certificates
                         </a>
-                        @if(auth()->user()->isPremium())
-                            <a href="{{ route('learner.certificates.download', $certificate) }}"
-                               class="flex-1 text-center px-6 py-3 rounded-xl text-sm font-semibold text-white transition hover:opacity-90"
-                               style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
-                                Download PDF
-                            </a>
-                        @else
-                            <a href="{{ route('subscription.index') }}"
-                               class="flex-1 text-center px-6 py-3 rounded-xl text-sm font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
-                                Upgrade to Download
-                            </a>
-                        @endif
+                        <a href="{{ route('learner.certificates.download', $certificate) }}"
+                           class="flex-1 text-center px-6 py-3 rounded-xl text-sm font-semibold text-white transition hover:opacity-90"
+                           style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                            Download PDF
+                        </a>
                     </div>
             </div>
         </div>

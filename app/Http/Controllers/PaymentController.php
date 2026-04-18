@@ -6,11 +6,13 @@ use App\Http\Controllers\Api\WebhookController;
 use App\Http\Requests\ProcessPaymentRequest;
 use App\Models\Payment;
 use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\PayMongoPaymentLinkService;
 use App\Enums\PaymentStatus;
 use App\Services\ModulePurchaseService;
 use App\Services\SubscriptionService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,9 +40,23 @@ class PaymentController extends Controller
             abort(403);
         }
 
+        $routeContextRedirect = $this->resolveSubscriptionRouteAudienceRedirect($subscription);
+        if ($routeContextRedirect !== null) {
+            return $routeContextRedirect;
+        }
+
+        $isInstructorContext = $this->resolveSubscriptionRouteContext($subscription) === 'instructor';
+        $checkoutSummaryRoute = $isInstructorContext
+            ? 'instructor.payments.checkout.summary'
+            : 'payment.checkout.summary';
+        $checkoutProceedRoute = $isInstructorContext
+            ? 'instructor.payments.checkout.proceed'
+            : 'payment.checkout.proceed';
+
         if ((bool) config('billing.features.learner_checkout_refinement', false)
-            && request()->routeIs('payment.create')) {
-            return redirect()->route('payment.checkout.summary', ['subscription' => $subscription->id]);
+            && request()->routeIs('payment.create')
+            && !$isInstructorContext) {
+            return redirect()->route($checkoutSummaryRoute, ['subscription' => $subscription->id]);
         }
 
         // Eager-load the plan so getPlanLabel() returns the correct name (not "Free")
@@ -54,13 +70,13 @@ class PaymentController extends Controller
             ? 'sandbox'
             : (str_starts_with($secretKey, 'sk_live_') ? 'live' : 'unknown');
 
-        return view('payments.checkout-summary', [
+        return view($isInstructorContext ? 'instructor.payments.checkout-summary' : 'payments.checkout-summary', [
             'scope' => 'subscription',
             'subscription' => $subscription,
             'amount' => (float) $amount,
             'paymongoMode' => $paymongoMode,
-            'submitUrl' => route('payment.checkout.proceed', $subscription),
-            'backUrl' => route('subscription.index'),
+            'submitUrl' => route($checkoutProceedRoute, $subscription),
+            'backUrl' => route($isInstructorContext ? 'instructor.subscriptions.index' : 'subscription.index'),
         ]);
     }
 
@@ -73,6 +89,16 @@ class PaymentController extends Controller
         if ($subscription->user_id !== Auth::id()) {
             abort(403);
         }
+
+        $routeContextRedirect = $this->resolveSubscriptionRouteAudienceRedirect($subscription);
+        if ($routeContextRedirect !== null) {
+            return $routeContextRedirect;
+        }
+
+        $isInstructorContext = $this->resolveSubscriptionRouteContext($subscription) === 'instructor';
+        $pendingRoute = $isInstructorContext ? 'instructor.payments.pending' : 'payment.pending';
+        $successRoute = $isInstructorContext ? 'instructor.payments.paymongo.success' : 'payment.paymongo.success';
+        $failedRoute = $isInstructorContext ? 'instructor.payments.paymongo.failed' : 'payment.paymongo.failed';
 
         DB::beginTransaction();
 
@@ -98,6 +124,7 @@ class PaymentController extends Controller
                     'transaction_id' => 'TXN-' . strtoupper(uniqid()),
                     'payment_details' => [
                         'payment_scope' => 'subscription',
+                        'role_context' => $isInstructorContext ? 'instructor' : 'learner',
                         'plan' => $subscription->plan,
                         'payment_method' => $selectedMethod,
                         'billing' => [
@@ -113,6 +140,7 @@ class PaymentController extends Controller
                     'method' => $selectedMethod,
                     'payment_details' => array_merge($payment->payment_details ?? [], [
                         'payment_scope' => 'subscription',
+                        'role_context' => $isInstructorContext ? 'instructor' : 'learner',
                         'payment_method' => $selectedMethod,
                         'billing' => [
                             'name' => $billingName,
@@ -137,6 +165,7 @@ class PaymentController extends Controller
                     remarks: "Subscription for " . Auth::user()->name,
                     metadata: [
                         'payment_scope' => 'subscription',
+                        'role_context' => $isInstructorContext ? 'instructor' : 'learner',
                         'user_id' => Auth::id(),
                         'subscription_id' => $subscription->id,
                         'payment_id' => $payment->id,
@@ -144,8 +173,8 @@ class PaymentController extends Controller
                         'billing_name' => $billingName,
                         'billing_email' => $billingEmail,
                     ],
-                    successUrl: route('payment.paymongo.success', ['subscription' => $subscription->id]),
-                    cancelUrl: route('payment.paymongo.failed', ['subscription' => $subscription->id]),
+                    successUrl: route($successRoute, ['subscription' => $subscription->id]),
+                    cancelUrl: route($failedRoute, ['subscription' => $subscription->id]),
                     preferredPaymentMethod: $selectedMethod,
                     lineItemName: $planName,
                 );
@@ -171,7 +200,7 @@ class PaymentController extends Controller
                 // Redirect to pending page — it will auto-forward to PayMongo.
                 // This keeps the page (and its polling JS) active the whole time,
                 // so auto-activation fires even if the success_url redirect fails.
-                return redirect()->route('payment.pending', ['payment' => $payment->id])
+                return redirect()->route($pendingRoute, ['payment' => $payment->id])
                     ->with('paymongo_checkout_url', $checkoutUrl);
 
             } catch (\Exception $e) {
@@ -183,7 +212,7 @@ class PaymentController extends Controller
                 // If PayMongo fails, redirect to pending page with simulation option
                 DB::commit();
 
-                return redirect()->route('payment.pending', ['payment' => $payment->id])
+                return redirect()->route($pendingRoute, ['payment' => $payment->id])
                     ->with('warning', 'Payment gateway is being configured. Use the simulation button for testing.');
             }
 
@@ -203,6 +232,7 @@ class PaymentController extends Controller
      */
     public function pending(Payment $payment)
     {
+        $isInstructorContext = $this->isInstructorPaymentContext($payment);
         $isModulePayment = $payment->isModulePurchase();
 
         if ($isModulePayment) {
@@ -232,7 +262,7 @@ class PaymentController extends Controller
             } else {
                 $activated = $this->verifyAndActivateIfPaid($payment);
                 if ($activated) {
-                    return redirect()->route('subscription.index')
+                    return redirect($this->resolvePaymentRedirectUrl($payment))
                         ->with('success', 'Payment confirmed. Your subscription is now active.');
                 }
             }
@@ -240,8 +270,16 @@ class PaymentController extends Controller
 
         $paymentContext = $isModulePayment ? 'module' : 'subscription';
         $redirectUrl = $this->resolvePaymentRedirectUrl($payment);
+        $statusUrl = route($isInstructorContext ? 'instructor.payments.status' : 'payment.status', $payment);
+        $historyUrl = route($isInstructorContext ? 'instructor.payments.history' : 'payment.history');
 
-        return view('payments.pending', compact('payment', 'paymentContext', 'redirectUrl'));
+        return view($isInstructorContext ? 'instructor.payments.pending' : 'payments.pending', compact(
+            'payment',
+            'paymentContext',
+            'redirectUrl',
+            'statusUrl',
+            'historyUrl'
+        ));
     }
 
     /**
@@ -310,11 +348,7 @@ class PaymentController extends Controller
                 ? $paymongoService->retrieveCheckoutSession($sessionId)
                 : $paymongoService->retrievePaymentLink($linkId);
 
-            $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
-            $hasPayments = !empty(data_get($response, 'data.attributes.payments', []));
-
-            // PayMongo marks a paid link as 'paid'
-            if ($status !== 'paid' && $status !== 'completed' && !$hasPayments) {
+            if (!$this->paymongoResponseIndicatesPaid($response)) {
                 return false;
             }
 
@@ -406,12 +440,22 @@ class PaymentController extends Controller
             abort(403);
         }
 
-        // Reconcile stale pending records before rendering history table.
-        $pendingPayments = $user->payments()
+        $isInstructorContext = request()->routeIs('instructor.payments.history');
+
+        $pendingPaymentsQuery = $user->payments()
             ->where('status', PaymentStatus::Pending->value)
             ->latest('id')
-            ->limit(20)
-            ->get();
+            ->limit(20);
+
+        if ($isInstructorContext) {
+            $pendingPaymentsQuery->whereNotNull('subscription_id')
+                ->whereHas('subscription.plan', function ($query) {
+                    $query->where('plan_audience', 'instructor');
+                });
+        }
+
+        // Reconcile stale pending records before rendering history table.
+        $pendingPayments = $pendingPaymentsQuery->get();
 
         foreach ($pendingPayments as $pendingPayment) {
             if ($pendingPayment->isModulePurchase()) {
@@ -422,12 +466,20 @@ class PaymentController extends Controller
             $this->verifyAndActivateIfPaid($pendingPayment);
         }
 
-        $payments = $user->payments()
+        $paymentsQuery = $user->payments()
             ->with(['subscription.plan', 'modulePurchase.module'])
-            ->latest()
-            ->paginate(10);
+            ->latest();
 
-        return view('payments.history', compact('payments'));
+        if ($isInstructorContext) {
+            $paymentsQuery->whereNotNull('subscription_id')
+                ->whereHas('subscription.plan', function ($query) {
+                    $query->where('plan_audience', 'instructor');
+                });
+        }
+
+        $payments = $paymentsQuery->paginate(10);
+
+        return view($isInstructorContext ? 'instructor.payments.history' : 'payments.history', compact('payments'));
     }
 
     /**
@@ -435,8 +487,13 @@ class PaymentController extends Controller
      */
     public function receipt(Payment $payment)
     {
+        $isInstructorContext = request()->routeIs('instructor.payments.receipt');
+
         if ($payment->isModulePurchase()) {
             if ($payment->user_id !== Auth::id()) {
+                abort(403);
+            }
+            if ($isInstructorContext) {
                 abort(403);
             }
         } else {
@@ -444,12 +501,20 @@ class PaymentController extends Controller
             if (!$payment->subscription || $payment->subscription->user_id !== Auth::id()) {
                 abort(403);
             }
+
+            if ($isInstructorContext) {
+                $payment->load('subscription.plan');
+                $subscriptionPlan = $this->resolveSubscriptionPlan($payment->subscription);
+                if ((string) ($subscriptionPlan?->plan_audience ?? '') !== 'instructor') {
+                    abort(403);
+                }
+            }
         }
 
         // Eager-load the plan relationship for the subscription
         $payment->load(['subscription.plan', 'modulePurchase.module']);
 
-        return view('payments.receipt', compact('payment'));
+        return view($isInstructorContext ? 'instructor.payments.receipt' : 'payments.receipt', compact('payment'));
     }
 
     /**
@@ -459,6 +524,7 @@ class PaymentController extends Controller
     {
         try {
             $subscription = Subscription::findOrFail($subscriptionId);
+            $isInstructorContext = $this->resolveSubscriptionRouteContext($subscription) === 'instructor';
 
             // Verify user owns this subscription
             if ($subscription->user_id !== Auth::id()) {
@@ -472,28 +538,45 @@ class PaymentController extends Controller
                 ->orderByDesc('id')
                 ->first();
 
+            $activated = false;
             if ($payment) {
                 $payment->update([
-                    'status'  => PaymentStatus::Completed,
-                    'paid_at' => now(),
                     'payment_details' => array_merge($payment->payment_details ?? [], [
                         'paymongo_callback_received' => true,
                         'callback_received_at'       => now()->toDateTimeString(),
                     ]),
                 ]);
 
-                Log::info('PayMongo Payment Completed via Callback', [
-                    'payment_id'      => $payment->id,
-                    'subscription_id' => $subscription->id,
-                ]);
+                $activated = $this->verifyAndActivateIfPaid($payment->fresh());
             }
 
-            // Safety net: ensure the subscription is active regardless of whether
-            // PaymentObserver already handled it (activate() is idempotent).
-            $subscription->refresh();
-            $this->subscriptionService->activate($subscription);
+            $completedPayment = Payment::where('subscription_id', $subscription->id)
+                ->where('status', PaymentStatus::Completed->value)
+                ->latest('id')
+                ->first();
 
-            return redirect()->route('subscription.index')
+            if ($completedPayment) {
+                $this->subscriptionService->activate($subscription->fresh());
+                $activated = true;
+            }
+
+            if (!$activated) {
+                $pendingRoute = $isInstructorContext ? 'instructor.payments.pending' : 'payment.pending';
+                $pendingPayment = Payment::where('subscription_id', $subscription->id)
+                    ->whereIn('status', [PaymentStatus::Pending->value, PaymentStatus::Processing->value])
+                    ->orderByDesc('id')
+                    ->first();
+
+                if ($pendingPayment) {
+                    return redirect()->route($pendingRoute, ['payment' => $pendingPayment->id])
+                        ->with('warning', 'Payment is still pending confirmation. We will activate your subscription once PayMongo confirms it.');
+                }
+
+                return redirect()->route($isInstructorContext ? 'instructor.subscriptions.index' : 'subscription.index')
+                    ->with('warning', 'Payment confirmation is still pending. Please check your payment history in a moment.');
+            }
+
+            return redirect()->route($isInstructorContext ? 'instructor.subscriptions.index' : 'subscription.index')
                 ->with('success', 'Payment successful. Your subscription is now active.');
 
         } catch (\Exception $e) {
@@ -502,7 +585,11 @@ class PaymentController extends Controller
                 'error'           => $e->getMessage(),
             ]);
 
-            return redirect()->route('subscription.index')
+            $fallbackRoute = request()->routeIs('instructor.payments.paymongo.success')
+                ? 'instructor.subscriptions.index'
+                : 'subscription.index';
+
+            return redirect()->route($fallbackRoute)
                 ->with('error', 'Payment processing error. Please contact support if your subscription is not activated.');
         }
     }
@@ -514,6 +601,7 @@ class PaymentController extends Controller
     {
         try {
             $subscription = Subscription::findOrFail($subscriptionId);
+            $isInstructorContext = $this->resolveSubscriptionRouteContext($subscription) === 'instructor';
             
             // Verify user owns this subscription
             if ($subscription->user_id !== Auth::id()) {
@@ -525,7 +613,10 @@ class PaymentController extends Controller
                 'user_id' => Auth::id(),
             ]);
 
-            return redirect()->route('payment.checkout.summary', ['subscription' => $subscription->id])
+            return redirect()->route(
+                $isInstructorContext ? 'instructor.payments.checkout.summary' : 'payment.checkout.summary',
+                ['subscription' => $subscription->id]
+            )
                 ->with('error', 'Payment was cancelled or failed. Review your checkout details and try again.');
 
         } catch (\Exception $e) {
@@ -534,7 +625,11 @@ class PaymentController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return redirect()->route('subscription.index')
+            $fallbackRoute = request()->routeIs('instructor.payments.paymongo.failed')
+                ? 'instructor.subscriptions.index'
+                : 'subscription.index';
+
+            return redirect()->route($fallbackRoute)
                 ->with('error', 'An error occurred. Please contact support.');
         }
     }
@@ -572,22 +667,20 @@ class PaymentController extends Controller
                     ->with('success', 'Payment confirmed. Your subscription is now active.');
             }
 
-            $completedQuery = $user->payments()
-                ->where('status', PaymentStatus::Completed->value)
-                ->whereNotNull('subscription_id')
-                ->latest('id');
-
             if ($paymentId > 0) {
-                $completedQuery->where('id', $paymentId);
-            }
+                $completedPayment = $user->payments()
+                    ->where('status', PaymentStatus::Completed->value)
+                    ->whereNotNull('subscription_id')
+                    ->where('id', $paymentId)
+                    ->latest('id')
+                    ->first();
 
-            $completedPayment = $completedQuery->first();
+                if ($completedPayment?->subscription) {
+                    $this->subscriptionService->activate($completedPayment->subscription);
 
-            if ($completedPayment?->subscription) {
-                $this->subscriptionService->activate($completedPayment->subscription);
-
-                return redirect()->route('subscription.index')
-                    ->with('success', 'Your subscription is active.');
+                    return redirect()->route('subscription.index')
+                        ->with('success', 'Your subscription is active.');
+                }
             }
         }
 
@@ -734,6 +827,110 @@ class PaymentController extends Controller
             return route('learner.modules.index');
         }
 
+        if ($this->isInstructorPaymentContext($payment)) {
+            return route('instructor.subscriptions.index');
+        }
+
         return route('subscription.index');
+    }
+
+    private function resolveSubscriptionRouteContext(Subscription $subscription): string
+    {
+        $subscriptionPlan = $this->resolveSubscriptionPlan($subscription);
+        $planAudience = strtolower(trim((string) ($subscriptionPlan?->plan_audience ?? '')));
+        if ($planAudience === 'instructor') {
+            return 'instructor';
+        }
+
+        if ($planAudience === 'learner') {
+            return 'learner';
+        }
+
+        $latestRoleContext = strtolower((string) data_get(
+            $subscription->payments()->latest('id')->first(),
+            'payment_details.role_context',
+            ''
+        ));
+
+        if (in_array($latestRoleContext, ['instructor', 'learner'], true)) {
+            return $latestRoleContext;
+        }
+
+        $subscription->loadMissing('user.roles');
+        if ($subscription->user?->hasRole('instructor')) {
+            return 'instructor';
+        }
+
+        return 'learner';
+    }
+
+    private function resolveSubscriptionRouteAudienceRedirect(Subscription $subscription): ?RedirectResponse
+    {
+        $context = $this->resolveSubscriptionRouteContext($subscription);
+        $isInstructorPaymentRoute = request()->is('instructor/payments/*');
+        $isLearnerPaymentRoute = request()->is('payment/*');
+
+        if ($isInstructorPaymentRoute && $context !== 'instructor') {
+            return redirect()
+                ->route('instructor.subscriptions.index')
+                ->with('error', 'This checkout link is not valid for instructor subscriptions. Please choose an instructor plan and try again.');
+        }
+
+        if ($isLearnerPaymentRoute && $context !== 'learner') {
+            return redirect()
+                ->route('subscription.index')
+                ->with('error', 'This checkout link is not valid for learner subscriptions. Please choose a learner plan and try again.');
+        }
+
+        return null;
+    }
+
+    private function paymongoResponseIndicatesPaid(array $response): bool
+    {
+        $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
+        if (in_array($status, ['paid', 'completed', 'succeeded', 'successful'], true)) {
+            return true;
+        }
+
+        $payments = data_get($response, 'data.attributes.payments', []);
+        if (!is_array($payments) || empty($payments)) {
+            return false;
+        }
+
+        foreach ($payments as $item) {
+            $paymentStatus = strtolower((string) data_get($item, 'attributes.status', data_get($item, 'status', '')));
+            if (in_array($paymentStatus, ['paid', 'completed', 'succeeded', 'successful'], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isInstructorPaymentContext(Payment $payment): bool
+    {
+        if ((string) data_get($payment->payment_details, 'role_context') === 'instructor') {
+            return true;
+        }
+
+        if (!$payment->subscription_id) {
+            return false;
+        }
+
+        $payment->loadMissing('subscription.plan');
+
+        return (string) ($this->resolveSubscriptionPlan($payment->subscription)?->plan_audience ?? '') === 'instructor';
+    }
+
+    private function resolveSubscriptionPlan(?Subscription $subscription): ?SubscriptionPlan
+    {
+        if (!$subscription) {
+            return null;
+        }
+
+        $subscription->loadMissing('plan');
+        $plan = $subscription->getRelation('plan');
+
+        return $plan instanceof SubscriptionPlan ? $plan : null;
     }
 }

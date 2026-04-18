@@ -9,6 +9,8 @@ class InstructorPaidModuleEntitlementTest extends TestCase
 {
     public function test_instructor_can_save_paid_module_without_entitlement_during_rollout(): void
     {
+        config()->set('subscription_features.instructor_rollout_mode', 'soft');
+
         /** @var User $instructor */
         $instructor = User::factory()->create(['role' => 'instructor']);
         $instructor->assignRole('instructor');
@@ -33,6 +35,8 @@ class InstructorPaidModuleEntitlementTest extends TestCase
 
     public function test_admin_acting_as_instructor_can_save_paid_module(): void
     {
+        config()->set('subscription_features.instructor_rollout_mode', 'soft');
+
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         $admin->assignRole('admin');

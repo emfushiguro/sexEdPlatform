@@ -11,11 +11,15 @@ use App\Services\Content\ContentAccessService;
 use App\Services\Content\ContentOwnershipGuard;
 use App\Services\Content\ContentAuthoringService;
 use App\Services\ContentGovernanceService;
+use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\Monetization\CommissionPolicyResolver;
 use App\Support\ContentPanelContext;
 use App\Support\InstructorRestrictionGate;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use InvalidArgumentException;
 use RuntimeException;
 
 class ModuleController extends Controller
@@ -27,6 +31,7 @@ class ModuleController extends Controller
         private readonly ContentOwnershipGuard $contentOwnershipGuard,
         private readonly ContentAuthoringService $contentAuthoringService,
         private readonly ContentGovernanceService $contentGovernanceService,
+        private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
     ) {
     }
 
@@ -75,6 +80,7 @@ class ModuleController extends Controller
             : null;
 
         $effectiveCommissionPolicy = $this->resolveEffectiveCommissionPolicyPayload($user);
+        $instructorCapabilitySnapshot = $user ? $this->instructorPlanCapabilityService->getUsageSnapshot($user) : null;
 
         return view('instructor.modules.index', compact(
             'modules',
@@ -85,6 +91,7 @@ class ModuleController extends Controller
             'restrictionProfile',
             'restrictionMessage',
             'effectiveCommissionPolicy',
+            'instructorCapabilitySnapshot',
         ));
     }
 
@@ -104,11 +111,18 @@ class ModuleController extends Controller
                 ->with('error', $this->instructorRestrictionGate->restrictionMessage($user));
         }
 
+        $createWithinPlanLimit = Gate::inspect('createWithinPlanLimit', Module::class);
+        if ($createWithinPlanLimit->denied()) {
+            return redirect()->route($this->routeName('modules.index'))
+                ->with('error', $createWithinPlanLimit->message() ?: 'You have reached your plan limit.');
+        }
+
         return view('instructor.modules.create', [
             'isRestricted' => false,
             'restrictionProfile' => null,
             'restrictionMessage' => null,
             'effectiveCommissionPolicy' => $this->resolveEffectiveCommissionPolicyPayload($user),
+            'instructorCapabilitySnapshot' => $user ? $this->instructorPlanCapabilityService->getUsageSnapshot($user) : null,
         ]);
     }
 
@@ -121,9 +135,30 @@ class ModuleController extends Controller
                 ->with('error', $this->instructorRestrictionGate->restrictionMessage($request->user()));
         }
 
+        $createWithinPlanLimit = Gate::inspect('createWithinPlanLimit', Module::class);
+        if ($createWithinPlanLimit->denied()) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'title' => $createWithinPlanLimit->message() ?: 'You have reached your plan limit.',
+                ]);
+        }
+
         $validated = $request->validated();
 
         $validated['access_type'] = $validated['access_type'] ?? 'free';
+
+        if ($this->panelContext()->isInstructor() && (string) $validated['access_type'] === 'paid') {
+            try {
+                $this->authorize('publishPaid', Module::class);
+            } catch (AuthorizationException) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'access_type' => 'Your current instructor plan does not allow publishing paid modules. Upgrade your instructor subscription to continue.',
+                    ]);
+            }
+        }
 
         if ($request->hasFile('thumbnail')) {
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
@@ -148,10 +183,16 @@ class ModuleController extends Controller
                 ->with('success', $message);
         }
 
-        $payload = $this->contentAuthoringService->toInstructorDraftPayload(
-            $validated,
-            (int) Auth::id(),
-        );
+        try {
+            $payload = $this->contentAuthoringService->toInstructorDraftPayload(
+                $validated,
+                (int) Auth::id(),
+            );
+        } catch (InvalidArgumentException $exception) {
+            return back()
+                ->withInput()
+                ->withErrors(['access_type' => $exception->getMessage()]);
+        }
 
         if (isset($validated['thumbnail'])) {
             $payload['thumbnail'] = $validated['thumbnail'];
@@ -239,6 +280,18 @@ class ModuleController extends Controller
 
         $validated['access_type'] = $validated['access_type'] ?? ($module->access_type ?? 'free');
 
+        if ($this->panelContext()->isInstructor() && (string) $validated['access_type'] === 'paid') {
+            try {
+                $this->authorize('publishPaid', Module::class);
+            } catch (AuthorizationException) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'access_type' => 'Your current instructor plan does not allow publishing paid modules. Upgrade your instructor subscription to continue.',
+                    ]);
+            }
+        }
+
         if ($request->hasFile('thumbnail')) {
             $validated['thumbnail'] = $request->file('thumbnail')->store('modules', 'public');
         }
@@ -262,11 +315,17 @@ class ModuleController extends Controller
                 ->with('success', $message);
         }
 
-        $payload = $this->contentAuthoringService->toInstructorDraftPayload(
-            $validated,
-            (int) ($module->created_by ?? Auth::id()),
-            $module,
-        );
+        try {
+            $payload = $this->contentAuthoringService->toInstructorDraftPayload(
+                $validated,
+                (int) ($module->created_by ?? Auth::id()),
+                $module,
+            );
+        } catch (InvalidArgumentException $exception) {
+            return back()
+                ->withInput()
+                ->withErrors(['access_type' => $exception->getMessage()]);
+        }
 
         if (isset($validated['thumbnail'])) {
             $payload['thumbnail'] = $validated['thumbnail'];

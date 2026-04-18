@@ -15,6 +15,7 @@ use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
 use App\Http\Controllers\Learner\TopicTranslationController;
 use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
 use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
+use App\Http\Controllers\Learner\AdminCreatorProfileController as LearnerAdminCreatorProfileController;
 use App\Http\Controllers\Chat\ConversationController as ChatConversationController;
 use App\Http\Controllers\Chat\MessageController as ChatMessageController;
 use App\Http\Controllers\Chat\MessageRequestController as ChatMessageRequestController;
@@ -145,6 +146,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/modules/{module}/purchase/success', [LearnerModuleController::class, 'purchaseSuccess'])->name('modules.purchase.success');
         Route::get('/modules/{module}/purchase/failed', [LearnerModuleController::class, 'purchaseFailed'])->name('modules.purchase.failed');
         Route::get('/instructors/{instructor}', [LearnerInstructorProfileController::class, 'show'])->name('instructors.show');
+        Route::get('/admin-creators/{admin}', [LearnerAdminCreatorProfileController::class, 'show'])->name('admin-creators.show');
         Route::post('/reports', [LearnerContentReportController::class, 'store'])->name('reports.store');
 
         Route::get('/lessons/{lesson}', [LearnerLessonController::class, 'show'])->name('lessons.show');

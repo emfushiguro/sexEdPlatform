@@ -73,13 +73,15 @@ class SubscriptionLifecycleStateTest extends TestCase
             'ends_at' => now()->subMinute(),
         ]);
 
-        $feature = FeatureCatalog::create([
-            'key' => SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS,
-            'name' => 'Unlimited Quiz Shields',
-            'value_type' => 'boolean',
-            'category' => 'learner',
-            'is_active' => true,
-        ]);
+        $feature = FeatureCatalog::query()->updateOrCreate(
+            ['key' => SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS],
+            [
+                'name' => 'Unlimited Quiz Shields',
+                'value_type' => 'boolean',
+                'category' => 'learner',
+                'is_active' => true,
+            ]
+        );
 
         PlanFeatureEntitlement::create([
             'plan_id' => $subscription->plan_id,

@@ -32,8 +32,7 @@
                 </div>
             </article>
         @endforeach
-    </section>
-
+    </section>`r`n
     <section class="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <div class="space-y-6 xl:col-span-8">
             <article class="overflow-hidden rounded-2xl border border-brand-200/80 bg-white shadow-soft ring-1 ring-brand-200/30 dark:border-slate-700/70 dark:bg-slate-900 dark:ring-slate-700/30">
@@ -164,8 +163,7 @@
             @empty
                 <div class="px-6 py-12 text-center text-sm text-slate-500 dark:text-slate-400">No recent system activity to display yet.</div>
             @endforelse
-        </div>
-    </section>
+        </div>`r`n    </section>
 </div>
 @endsection
 

@@ -101,7 +101,7 @@
                     <h3 class="text-sm font-semibold text-gray-700 ">Upcoming Events</h3>
                 </div>
                 <div class="divide-y divide-gray-100 ">
-                    @foreach ([['title' => 'SexEd Awareness Seminar', 'date' => 'Tomorrow', 'type' => 'Seminar', 'color' => 'bg-brand-500'], ['title' => 'Teen Health Workshop', 'date' => 'In 3 days', 'type' => 'Workshop', 'color' => 'bg-success-500'], ['title' => 'Educators Q&A Session', 'date' => 'Next week', 'type' => 'Session', 'color' => 'bg-purple-500']] as $ev)
+                    @foreach ([['title' => 'SexEd Awareness Seminar', 'date' => 'Tomorrow', 'type' => 'Seminar', 'color' => 'bg-brand-500'], ['title' => 'Teen Health Workshop', 'date' => 'In 3 days', 'type' => 'Workshop', 'color' => 'bg-success-500'], ['title' => 'Educators Q&A Session', 'date' => 'Next week', 'type' => 'Session', 'color' => 'bg-brand-500']] as $ev)
                         <div class="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-gray-50">
                             <div class="w-2 h-2 rounded-full {{ $ev['color'] }} flex-shrink-0"></div>
                             <div class="flex-1 min-w-0">

@@ -366,10 +366,16 @@ class UnifiedSubscriptionAdminController extends Controller
 
     private function learnerEntitlementDefinitions(): array
     {
+        $approvedKeys = [
+            'unlimited_username_change',
+            'unlimited_quiz_shields',
+            'text_translator',
+            'voice_speech_translator',
+        ];
+
         $catalogDefinitions = FeatureCatalog::query()
             ->where('is_active', true)
-            ->orderBy('category')
-            ->orderBy('name')
+            ->whereIn('key', $approvedKeys)
             ->get(['key', 'name', 'value_type', 'unit_label', 'category'])
             ->mapWithKeys(function (FeatureCatalog $feature) {
                 return [
@@ -383,68 +389,35 @@ class UnifiedSubscriptionAdminController extends Controller
             })
             ->toArray();
 
-        if (!empty($catalogDefinitions)) {
-            return $catalogDefinitions;
-        }
-
-        return [
-            'unlimited_username_changes' => [
+        $fallback = [
+            'unlimited_username_change' => [
                 'name' => 'Unlimited Username Changes',
                 'value_type' => 'boolean',
-                'category' => 'account_profile',
+                'category' => 'learner',
             ],
-            'profile_customization_perks' => [
-                'name' => 'Profile Customization Perks',
+            'unlimited_quiz_shields' => [
+                'name' => 'Unlimited Quiz Shields',
                 'value_type' => 'boolean',
-                'category' => 'account_profile',
+                'category' => 'learner',
             ],
-            'early_access_profile_features' => [
-                'name' => 'Early Access to Profile Features',
+            'text_translator' => [
+                'name' => 'Text Translator',
                 'value_type' => 'boolean',
-                'category' => 'account_profile',
+                'category' => 'learner',
             ],
-            'certificate_pdf_download' => [
-                'name' => 'Certificate PDF Download',
+            'voice_speech_translator' => [
+                'name' => 'Voice Speech Translator',
                 'value_type' => 'boolean',
-                'category' => 'learning_access',
-            ],
-            'certificate_pdf_download_access' => [
-                'name' => 'Certificate PDF Download Access',
-                'value_type' => 'boolean',
-                'category' => 'learning_access',
-            ],
-            'premium_module_access' => [
-                'name' => 'Premium Module Access',
-                'value_type' => 'boolean',
-                'category' => 'learning_access',
-            ],
-            'lesson_attachment_downloads' => [
-                'name' => 'Lesson Attachment Downloads',
-                'value_type' => 'boolean',
-                'category' => 'learning_access',
-            ],
-            'advanced_topic_bundles' => [
-                'name' => 'Advanced Topic Bundles',
-                'value_type' => 'boolean',
-                'category' => 'learning_access',
-            ],
-            'unlimited_quiz_retaking' => [
-                'name' => 'Unlimited Shields / Unlimited Quiz Retaking',
-                'value_type' => 'boolean',
-                'category' => 'quiz_practice',
-            ],
-            'unlimited_shields' => [
-                'name' => 'Unlimited Shields',
-                'value_type' => 'boolean',
-                'category' => 'quiz_practice',
-            ],
-            'monthly_streak_savers' => [
-                'name' => 'Monthly Streak Savers',
-                'value_type' => 'quota',
-                'unit_label' => 'count',
-                'category' => 'quiz_practice',
+                'category' => 'learner',
             ],
         ];
+
+        $definitions = [];
+        foreach ($approvedKeys as $key) {
+            $definitions[$key] = $catalogDefinitions[$key] ?? $fallback[$key];
+        }
+
+        return $definitions;
     }
 
     // -------------------------------------------------------------------------

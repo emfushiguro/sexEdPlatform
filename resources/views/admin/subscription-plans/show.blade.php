@@ -26,7 +26,7 @@
                     @else
                         <span class="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">Inactive</span>
                     @endif
-                    <span class="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-bold capitalize text-sky-700">{{ $subscriptionPlan->plan_audience ?? 'learner' }}</span>
+                    <span class="inline-flex rounded-full bg-brand-100 px-3 py-1 text-xs font-bold capitalize text-brand-700">{{ $subscriptionPlan->plan_audience ?? 'learner' }}</span>
                 </div>
                 <p class="mt-2 max-w-3xl text-sm leading-6 text-gray-500">{{ $subscriptionPlan->description ?: 'No plan description added yet.' }}</p>
             </div>
@@ -57,7 +57,7 @@
                 <form method="POST" action="{{ route('admin.subscription-plans.archive', $subscriptionPlan) }}" class="inline">
                     @csrf
                     <button type="submit"
-                            class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100"
+                            class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700"
                             title="Archive plan">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8l1 11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-11M9 8V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
@@ -68,22 +68,22 @@
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-[28px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5 shadow-theme-xs">
-                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Price Points</p>
+            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Price Points</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($stats['price_points']) }}</p>
                 <p class="mt-2 text-sm text-gray-500">Billing options configured for this plan.</p>
             </div>
-            <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-emerald-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">Active Subscribers</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($stats['active_subscribers']) }}</p>
                 <p class="mt-2 text-sm text-gray-500">Subscribers currently receiving access through this plan.</p>
             </div>
-            <div class="rounded-[28px] border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-theme-xs">
-                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">Enabled Entitlements</p>
+            <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-50 p-5 shadow-theme-xs">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Enabled Entitlements</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">{{ number_format($stats['enabled_entitlements']) }}</p>
                 <p class="mt-2 text-sm text-gray-500">Features and quotas currently granted by this plan.</p>
             </div>
-            <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-theme-xs">
+            <div class="rounded-[28px] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-amber-50 p-5 shadow-theme-xs">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">Recurring Revenue</p>
                 <p class="mt-3 text-3xl font-bold text-gray-900">&#8369;{{ number_format($stats['monthly_revenue'], 2) }}</p>
                 <p class="mt-2 text-sm text-gray-500">Value currently attached to active subscribers.</p>
@@ -95,7 +95,7 @@
                 <section class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Pricing Matrix</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Pricing Matrix</p>
                             <h2 class="mt-2 text-xl font-bold text-gray-900">Billing and Availability</h2>
                         </div>
                     </div>
@@ -111,7 +111,7 @@
                                     </div>
                                     <div class="flex flex-col items-end gap-2">
                                         @if($price->is_default)
-                                            <span class="inline-flex rounded-full bg-sky-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-700">Default</span>
+                                            <span class="inline-flex rounded-full bg-brand-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-brand-700">Default</span>
                                         @endif
                                         <span class="inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide {{ $price->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600' }}">
                                             {{ $price->is_active ? 'Active' : 'Inactive' }}
@@ -152,12 +152,12 @@
                 </section>
 
                 <section class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-violet-600">Entitlements</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Entitlements</p>
                     <h2 class="mt-2 text-xl font-bold text-gray-900">What This Plan Unlocks</h2>
 
                     <div class="mt-5 grid gap-4 md:grid-cols-2">
                         @forelse($enabledEntitlements as $entitlement)
-                            <div class="rounded-3xl border border-violet-100 bg-violet-50/50 p-5">
+                            <div class="rounded-3xl border border-brand-100 bg-brand-50/50 p-5">
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <p class="text-sm font-semibold text-gray-900">{{ $entitlement->feature?->name ?? $entitlement->feature?->key ?? 'Feature' }}</p>
@@ -211,17 +211,17 @@
                                         $status = is_object($subscription->status) ? $subscription->status->value : (string) $subscription->status;
                                         $statusClass = match ($status) {
                                             'active' => 'bg-emerald-100 text-emerald-700',
-                                            'trialing' => 'bg-sky-100 text-sky-700',
+                                            'trialing' => 'bg-brand-100 text-brand-700',
                                             'past_due' => 'bg-amber-100 text-amber-700',
                                             'cancelled', 'expired' => 'bg-gray-100 text-gray-600',
-                                            default => 'bg-violet-100 text-violet-700',
+                                            default => 'bg-brand-100 text-brand-700',
                                         };
                                     @endphp
-                                    <tr class="transition hover:bg-sky-50/40">
+                                    <tr class="transition hover:bg-brand-50/40">
                                         <td class="px-6 py-4 text-sm font-semibold text-gray-500">{{ $loop->iteration }}</td>
                                         <td class="px-6 py-4">
                                             <div class="flex items-center gap-3">
-                                                <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100 text-sm font-bold text-sky-700">
+                                                <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-100 text-sm font-bold text-brand-700">
                                                     {{ strtoupper(substr($subscription->user->name ?? '?', 0, 1)) }}
                                                 </span>
                                                 <div>

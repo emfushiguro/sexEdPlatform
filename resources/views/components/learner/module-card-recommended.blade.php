@@ -2,7 +2,10 @@
     Recommended module card.
     Props: $module (Module model, with lessons_count loaded)
 --}}
-@props(['module'])
+@props([
+    'module',
+    'ownershipDisplay' => null,
+])
 
 @php
     $thumbnail   = $module->thumbnail ? asset('storage/' . $module->thumbnail) : null;
@@ -14,14 +17,15 @@
         : null;
 
     $creator = $module->creator;
-    $ownerType = in_array($module->content_owner_type, ['admin', 'instructor'], true)
-        ? $module->content_owner_type
-        : ((string) optional($creator)->role === 'admin' ? 'admin' : 'instructor');
+    $ownershipDisplay = $ownershipDisplay ?? app(\App\Services\Content\AdminOwnershipDisplayService::class)->forModule($module);
+    $ownerType = (string) ($ownershipDisplay['owner_type'] ?? 'instructor');
     $instructorProfile = $creator?->instructorProfile;
-    $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
-    $displayOwnerName = $ownerType === 'admin' ? 'Conscious Connections Team' : $instructorName;
+    $creatorProfile = $creator?->adminCreatorProfile;
+    $displayOwnerName = (string) ($ownershipDisplay['display_owner_name'] ?? ($creator?->full_name ?: $creator?->name ?: 'Instructor'));
     $instructorPhoto = $ownerType === 'admin'
-        ? asset('media/Logo.png')
+        ? ($creatorProfile?->avatar_path
+            ? asset('storage/' . ltrim((string) $creatorProfile->avatar_path, '/'))
+            : asset('media/Logo.png'))
         : ($instructorProfile?->profile_photo_path
             ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
             : null);
@@ -125,6 +129,9 @@
             @endif
             <p class="text-xs text-gray-600 dark:text-gray-300 truncate">Created by: {{ $displayOwnerName }}</p>
         </div>
+        @if(!empty($ownershipDisplay['individual_attribution_text']))
+            <p class="text-xs text-purple-600 dark:text-purple-300 -mt-2">{{ $ownershipDisplay['individual_attribution_text'] }}</p>
+        @endif
 
         {{-- CTA button --}}
         @if($isFull)

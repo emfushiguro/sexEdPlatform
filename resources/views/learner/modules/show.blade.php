@@ -20,15 +20,17 @@
     $needsParentApproval = $needsParentApproval ?? false;
     $isParentApprovedForPurchase = $isParentApprovedForPurchase ?? false;
 
+    $ownershipDisplay = $ownershipDisplay ?? app(\App\Services\Content\AdminOwnershipDisplayService::class)->forModule($module);
     $creator = $module->creator;
-    $ownerType = in_array($module->content_owner_type, ['admin', 'instructor'], true)
-        ? $module->content_owner_type
-        : ((string) optional($creator)->role === 'admin' ? 'admin' : 'instructor');
+    $ownerType = (string) ($ownershipDisplay['owner_type'] ?? 'instructor');
     $instructorProfile = $creator?->instructorProfile;
     $instructorName = $creator?->full_name ?: $creator?->name ?: 'Instructor';
-    $displayOwnerName = $ownerType === 'admin' ? 'Conscious Connections Team' : $instructorName;
+    $displayOwnerName = (string) ($ownershipDisplay['display_owner_name'] ?? ($creator?->full_name ?: $creator?->name ?: 'Instructor'));
+    $creatorProfile = $creator?->adminCreatorProfile;
     $instructorPhoto = $ownerType === 'admin'
-        ? asset('media/Logo.png')
+        ? ($creatorProfile?->avatar_path
+            ? asset('storage/' . ltrim((string) $creatorProfile->avatar_path, '/'))
+            : asset('media/Logo.png'))
         : ($instructorProfile?->profile_photo_path
             ? asset('storage/' . ltrim($instructorProfile->profile_photo_path, '/'))
             : null);
@@ -193,6 +195,9 @@
                         <div>
                             <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Created by</p>
                             <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ $displayOwnerName }}</p>
+                            @if(!empty($ownershipDisplay['individual_attribution_text']))
+                                <p class="text-xs text-purple-600 dark:text-purple-300 mt-0.5">{{ $ownershipDisplay['individual_attribution_text'] }}</p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -378,12 +383,10 @@
                                    style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
                                     View Certificate
                                 </a>
-                                @if(auth()->user()->isPremium())
-                                    <a href="{{ route('learner.certificates.download', $moduleCertificate) }}"
-                                       class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors">
-                                        Download PDF
-                                    </a>
-                                @endif
+                                <a href="{{ route('learner.certificates.download', $moduleCertificate) }}"
+                                   class="inline-flex items-center justify-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors">
+                                    Download PDF
+                                </a>
                             </div>
                         @elseif($certificateEligible)
                             <p class="text-sm text-gray-600 dark:text-gray-400">You completed this module. Generate your certificate now.</p>
@@ -588,7 +591,7 @@
                                 Pay {{ $module->display_price }}
                             </a>
                         @else
-                            <p class="text-xs text-gray-500 dark:text-gray-400 text-center">Checkout is not available right now.</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 text-center">{{ $checkoutUnavailableReason ?? 'Checkout is not available right now.' }}</p>
                         @endif
                     @else
                         <form method="POST" action="{{ route('learner.modules.enroll', $module) }}">
@@ -636,7 +639,11 @@
                 @endif
             </div>
 
-            @include('learner.modules.partials.instructor-info-card')
+            @if($ownerType === 'admin')
+                @include('learner.modules.partials.admin-creator-info-card')
+            @else
+                @include('learner.modules.partials.instructor-info-card')
+            @endif
 
             @include('learner.modules.partials.module-info-card')
 

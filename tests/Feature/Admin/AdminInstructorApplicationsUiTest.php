@@ -64,6 +64,8 @@ class AdminInstructorApplicationsUiTest extends TestCase
             ->assertSee('name="rejection_reason_code"', false)
             ->assertSee('name="rejection_reason_note"', false)
             ->assertSee('name="admin_message"', false)
+                ->assertSee('getModerationEditors()', false)
+                ->assertDontSee('tinymce.editors.filter(', false)
             ->assertSee('Reject Application', false);
     }
 

@@ -9,6 +9,7 @@ use App\Models\ModuleEnrollment;
 use App\Models\ModulePurchase;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\Monetization\ModuleSaleLedgerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +19,7 @@ class ModulePurchaseService
     public function __construct(
         private readonly PayMongoPaymentLinkService $payMongoPaymentLinkService,
         private readonly ModuleSaleLedgerService $moduleSaleLedgerService,
+        private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
     ) {
     }
 
@@ -45,6 +47,13 @@ class ModulePurchaseService
      */
     public function createCheckout(User $user, Module $module, string $paymentMethod, array $billing = []): array
     {
+        if (!$this->canReceivePaidEnrollments($module)) {
+            return [
+                'status' => 'paid_enrollment_unavailable',
+                'message' => 'Paid enrollment is currently unavailable for this module.',
+            ];
+        }
+
         if ($this->hasCompletedPurchase($user, $module)) {
             return [
                 'status' => 'already_purchased',
@@ -318,6 +327,10 @@ class ModulePurchaseService
 
     private function ensureEnrollmentAfterPurchase(int $userId, Module $module): void
     {
+        if (!$this->canReceivePaidEnrollments($module)) {
+            return;
+        }
+
         $enrollment = ModuleEnrollment::query()
             ->where('user_id', $userId)
             ->where('module_id', $module->id)
@@ -344,5 +357,25 @@ class ModulePurchaseService
                 'enrolled_at' => now(),
             ]);
         }
+    }
+
+    private function canReceivePaidEnrollments(Module $module): bool
+    {
+        if (!$module->isPaidAccess()) {
+            return true;
+        }
+
+        if ((string) ($module->content_owner_type ?? '') !== 'instructor') {
+            return true;
+        }
+
+        $module->loadMissing('creator');
+        $instructor = $module->creator;
+
+        if (!$instructor) {
+            return false;
+        }
+
+        return $this->instructorPlanCapabilityService->canReceivePaidEnrollments($instructor);
     }
 }

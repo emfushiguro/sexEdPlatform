@@ -34,6 +34,8 @@
              priceAmount: '',
              priceCurrency: 'PHP',
              enrollmentLimit: '',
+             freeModuleCap: @js($instructorCapabilitySnapshot['free_module_learner_cap'] ?? null),
+             paidModuleCap: @js($instructorCapabilitySnapshot['paid_module_learner_cap'] ?? null),
              isPublished: false,
              actionChoice: '{{ ($isContentAdminPanel ?? false) ? 'publish' : 'draft' }}',
              thumbnailPreview: null,
@@ -76,6 +78,9 @@
              },
              get formAction() {
                  return this.isEdit ? `${this.actionBase}/${this.editModuleId}` : '{{ route($contentRoutePrefix . '.modules.store') }}';
+             },
+             effectiveEnrollmentCap() {
+                 return this.accessType === 'paid' ? this.paidModuleCap : this.freeModuleCap;
              },
              previewImage(event) {
                  const file = event.target.files[0];
@@ -235,11 +240,18 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-1.5">
                         Enrollment Limit
-                        <span class="text-[10px] font-normal normal-case tracking-normal text-gray-400 ml-1">(max 20 learners)</span>
+                        <span class="text-[10px] font-normal normal-case tracking-normal text-gray-400 ml-1"
+                              x-show="effectiveEnrollmentCap() !== null"
+                              x-text="`(max ${effectiveEnrollmentCap()} learners)`"></span>
+                        <span class="text-[10px] font-normal normal-case tracking-normal text-gray-400 ml-1"
+                              x-show="effectiveEnrollmentCap() === null">(plan-based)</span>
                     </label>
-                    <input type="number" name="enrollment_limit" x-model="enrollmentLimit" min="1" max="20"
+                    <input type="number" name="enrollment_limit" x-model="enrollmentLimit" min="1" :max="effectiveEnrollmentCap()"
                            placeholder="Leave blank for unlimited"
                            class="block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
+                    <p class="mt-1 text-xs text-gray-500" x-show="effectiveEnrollmentCap() !== null" x-cloak>
+                        Your active plan currently allows up to <span class="font-semibold" x-text="effectiveEnrollmentCap()"></span> learners for this access type.
+                    </p>
                     @error('enrollment_limit')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror

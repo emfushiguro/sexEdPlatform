@@ -20,7 +20,7 @@ class EntitlementServiceTest extends TestCase
     {
         [$user, $plan] = $this->createActiveSubscription();
 
-        $feature = FeatureCatalog::create([
+        $feature = $this->firstOrCreateFeature([
             'key' => 'certificate_pdf_download',
             'name' => 'Certificate PDF Download',
             'value_type' => 'boolean',
@@ -44,7 +44,7 @@ class EntitlementServiceTest extends TestCase
     {
         [$user, $plan] = $this->createActiveSubscription();
 
-        $feature = FeatureCatalog::create([
+        $feature = $this->firstOrCreateFeature([
             'key' => 'monthly_streak_savers_quota',
             'name' => 'Monthly Streak Savers',
             'value_type' => 'quota',
@@ -69,7 +69,7 @@ class EntitlementServiceTest extends TestCase
     {
         [$user, $plan] = $this->createActiveSubscription();
 
-        $feature = FeatureCatalog::create([
+        $feature = $this->firstOrCreateFeature([
             'key' => SubscriptionFeatureKeys::UNLIMITED_SHIELDS,
             'name' => 'Unlimited Shields',
             'value_type' => 'boolean',
@@ -90,11 +90,11 @@ class EntitlementServiceTest extends TestCase
         $this->assertNull($service->getFeatureQuota($user, SubscriptionFeatureKeys::UNLIMITED_SHIELDS));
     }
 
-    public function test_phase1_boolean_entitlement_keys_are_readable_from_plan_entitlements(): void
+    public function test_current_boolean_entitlement_keys_are_readable_from_plan_entitlements(): void
     {
         [$user, $plan] = $this->createActiveSubscription();
 
-        $unlimitedShields = FeatureCatalog::create([
+        $unlimitedShields = $this->firstOrCreateFeature([
             'key' => SubscriptionFeatureKeys::UNLIMITED_SHIELDS,
             'name' => 'Unlimited Shields',
             'value_type' => 'boolean',
@@ -102,9 +102,17 @@ class EntitlementServiceTest extends TestCase
             'is_active' => true,
         ]);
 
-        $certificateDownload = FeatureCatalog::create([
-            'key' => SubscriptionFeatureKeys::CERTIFICATE_PDF_DOWNLOAD_ACCESS,
-            'name' => 'Certificate PDF Download Access',
+        $textTranslation = $this->firstOrCreateFeature([
+            'key' => SubscriptionFeatureKeys::TEXT_TRANSLATION,
+            'name' => 'Text Translator',
+            'value_type' => 'boolean',
+            'category' => 'core',
+            'is_active' => true,
+        ]);
+
+        $voiceTranslator = $this->firstOrCreateFeature([
+            'key' => SubscriptionFeatureKeys::VOICE_TRANSLATOR,
+            'name' => 'Voice Speech Translator',
             'value_type' => 'boolean',
             'category' => 'core',
             'is_active' => true,
@@ -119,7 +127,14 @@ class EntitlementServiceTest extends TestCase
 
         PlanFeatureEntitlement::create([
             'plan_id' => $plan->id,
-            'feature_id' => $certificateDownload->id,
+            'feature_id' => $textTranslation->id,
+            'is_enabled' => true,
+            'is_unlimited' => false,
+        ]);
+
+        PlanFeatureEntitlement::create([
+            'plan_id' => $plan->id,
+            'feature_id' => $voiceTranslator->id,
             'is_enabled' => true,
             'is_unlimited' => false,
         ]);
@@ -127,7 +142,8 @@ class EntitlementServiceTest extends TestCase
         $service = app(EntitlementService::class);
 
         $this->assertTrue($service->canAccessFeature($user, SubscriptionFeatureKeys::UNLIMITED_SHIELDS));
-        $this->assertTrue($service->canAccessFeature($user, SubscriptionFeatureKeys::CERTIFICATE_PDF_DOWNLOAD_ACCESS));
+        $this->assertTrue($service->canAccessFeature($user, SubscriptionFeatureKeys::TEXT_TRANSLATOR));
+        $this->assertTrue($service->canAccessFeature($user, SubscriptionFeatureKeys::VOICE_SPEECH_TRANSLATOR));
     }
 
     public function test_missing_feature_falls_back_to_denied_and_null_quota(): void
@@ -181,5 +197,15 @@ class EntitlementServiceTest extends TestCase
         ]);
 
         return [$user, $plan];
+    }
+
+    private function firstOrCreateFeature(array $attributes): FeatureCatalog
+    {
+        $key = (string) $attributes['key'];
+
+        return FeatureCatalog::query()->firstOrCreate(
+            ['key' => $key],
+            $attributes,
+        );
     }
 }

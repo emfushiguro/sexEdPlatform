@@ -26,6 +26,7 @@
         ]))));
 
         return [
+            'id' => (int) $application->id,
             'status' => $statusValue,
             'search' => $search,
         ];
@@ -42,6 +43,7 @@
         ]))));
 
         return [
+            'id' => (int) $application->id,
             'status' => $statusValue,
             'search' => $search,
         ];
@@ -57,6 +59,8 @@
         parentSearchRows: @js($parentSearchRows),
         childSearchRows: @js($childSearchRows),
         searchQuery: '',
+        page: 1,
+        perPage: 10,
         flashMessage: '',
         flashType: 'success',
         previewOpen: false,
@@ -73,8 +77,7 @@
         },
         setStatus(status) {
             this.activeStatus = status;
-            this.navigate();
-        },
+            this.navigate();`r`n        },
         navigate() {
             const params = new URLSearchParams();
             params.set('type', this.activeType);
@@ -93,14 +96,16 @@
 
             return String(searchableText || '').toLowerCase().includes(query);
         },
-        filteredCountFor(type, status) {
-            const rows = type === 'parents' ? this.parentSearchRows : this.childSearchRows;
+        rowsFor(type) {
+            return type === 'parents' ? this.parentSearchRows : this.childSearchRows;
+        },
+        filteredRowsFor(type, status = null) {
             const query = this.normalizedSearchQuery();
 
-            return rows.filter((row) => {
+            return this.rowsFor(type).filter((row) => {
                 const rowStatus = row.status || 'pending';
 
-                if (rowStatus !== status) {
+                if (status && rowStatus !== status) {
                     return false;
                 }
 
@@ -109,7 +114,10 @@
                 }
 
                 return String(row.search || '').includes(query);
-            }).length;
+            });
+        },
+        filteredCountFor(type, status) {
+            return this.filteredRowsFor(type, status).length;
         },
         countFor(type, status) {
             const query = this.normalizedSearchQuery();
@@ -121,8 +129,60 @@
             const counts = type === 'parents' ? this.parentCounts : this.childCounts;
             return Number(counts[status] || 0);
         },
+        totalCountFor(type) {
+            const counts = type === 'parents' ? this.parentCounts : this.childCounts;
+
+            return Number(counts.pending || 0)
+                + Number(counts.approved || 0)
+                + Number(counts.rejected || 0);
+        },
+        totalRowsForCurrent() {
+            return this.filteredRowsFor(this.activeType, this.activeStatus).length;
+        },
+        totalPages() {
+            const pages = Math.ceil(this.totalRowsForCurrent() / this.perPage);
+
+            return pages > 0 ? pages : 1;
+        },
+        safePage() {
+            return Math.min(Math.max(this.page, 1), this.totalPages());
+        },
+        setPage(page) {
+            const targetPage = Number(page);
+
+            if (!Number.isFinite(targetPage)) {
+                return;
+            }
+
+            this.page = Math.min(Math.max(Math.floor(targetPage), 1), this.totalPages());
+        },
+        prevPage() {
+            this.setPage(this.safePage() - 1);
+        },
+        nextPage() {
+            this.setPage(this.safePage() + 1);
+        },
+        formatNumber(value) {
+            const numeric = Number(value || 0);
+
+            return Number.isFinite(numeric) ? numeric.toLocaleString() : '0';
+        },
+        rowOnCurrentPage(type, rowId) {
+            const rows = this.filteredRowsFor(type, this.activeStatus);
+            const safePage = this.safePage();
+            const start = (safePage - 1) * this.perPage;
+            const visibleRows = rows.slice(start, start + this.perPage);
+
+            return visibleRows.some((row) => Number(row.id) === Number(rowId));
+        },
+        rowNumberFor(type, rowId) {
+            const rows = this.filteredRowsFor(type, this.activeStatus);
+            const index = rows.findIndex((row) => Number(row.id) === Number(rowId));
+
+            return index >= 0 ? index + 1 : '-';
+        },
         hasRowsForCurrent() {
-            return this.countFor(this.activeType, this.activeStatus) > 0;
+            return this.totalRowsForCurrent() > 0;
         },
         notify(message, type = 'success') {
             if (window.toast && typeof window.toast[type] === 'function') {
@@ -138,13 +198,25 @@
         },
         handleModerationUpdated(detail) {
             const countsKey = detail.type === 'parents' ? 'parentCounts' : 'childCounts';
+            const rowsKey = detail.type === 'parents' ? 'parentSearchRows' : 'childSearchRows';
             const fromStatus = detail.oldStatus || 'pending';
             const toStatus = detail.newStatus || 'pending';
+            const rowId = Number(detail.rowId || 0);
 
             if (fromStatus !== toStatus) {
                 this[countsKey][fromStatus] = Math.max(Number(this[countsKey][fromStatus] || 0) - 1, 0);
                 this[countsKey][toStatus] = Number(this[countsKey][toStatus] || 0) + 1;
             }
+
+            if (rowId > 0) {
+                const row = this[rowsKey].find((item) => Number(item.id) === rowId);
+
+                if (row) {
+                    row.status = toStatus;
+                }
+            }
+
+            this.page = this.safePage();
 
             this.notify(detail.message || 'Moderation decision saved successfully.', 'success');
         },
@@ -181,164 +253,81 @@
                  x-text="flashMessage"></div>
         </template>
 
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <article class="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
+        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+            <article class="min-h-[116px] rounded-[28px] border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100/70 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">Pending Parents</p>
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l2 2m6-2a8 8 0 11-16 0 8 8 0 0116 0z" />
-                        </svg>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700" x-text="activeType === 'parents' ? 'Parent Applications' : 'Child Applications'">Parent Applications</p>
+                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-700 to-brand-900 text-white shadow-lg shadow-brand-200">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </span>
                 </div>
-                <p class="mt-3 text-3xl font-bold text-gray-900" x-text="Number(parentCounts.pending || 0).toLocaleString()">{{ number_format($pendingParentCount) }}</p>
-                <p class="mt-1 text-xs text-amber-800">Parent applications waiting for admin moderation.</p>
+                <p class="mt-3 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(totalCountFor(activeType))">{{ number_format($pendingParentCount + $approvedParentCount + $rejectedParentCount) }}</p>
             </article>
-            <article class="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
+            <article class="min-h-[116px] rounded-[28px] border border-brand-100 bg-gradient-to-br from-white via-brand-50/70 to-brand-100/60 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Approved Parents</p>
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Pending</p>
+                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-400 via-brand-600 to-brand-800 text-white shadow-lg shadow-brand-200">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </span>
                 </div>
-                <p class="mt-3 text-3xl font-bold text-gray-900" x-text="Number(parentCounts.approved || 0).toLocaleString()">{{ number_format($approvedParentCount) }}</p>
-                <p class="mt-1 text-xs text-emerald-800">Parent accounts approved and allowed to create child profiles.</p>
+                <p class="mt-3 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(countFor(activeType, 'pending'))">{{ number_format($pendingParentCount) }}</p>
             </article>
-            <article class="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 via-white to-orange-50 p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
+            <article class="min-h-[116px] rounded-[28px] border border-brand-200 bg-gradient-to-br from-brand-100/60 via-white to-brand-50 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Rejected Parents</p>
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-800">Approved</p>
+                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 via-brand-700 to-brand-900 text-white shadow-lg shadow-brand-300">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                     </span>
                 </div>
-                <p class="mt-3 text-3xl font-bold text-gray-900" x-text="Number(parentCounts.rejected || 0).toLocaleString()">{{ number_format($rejectedParentCount) }}</p>
-                <p class="mt-1 text-xs text-rose-800">Submissions returned with required fixes or invalid documents.</p>
+                <p class="mt-3 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(countFor(activeType, 'approved'))">{{ number_format($approvedParentCount) }}</p>
             </article>
-        </section>
-
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <article class="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
+            <article class="min-h-[116px] rounded-[28px] border border-brand-300 bg-gradient-to-br from-brand-100 via-white to-brand-200/70 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">Pending Children</p>
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l2 2m6-2a8 8 0 11-16 0 8 8 0 0116 0z" />
-                        </svg>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-900">Rejected</p>
+                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900 text-white shadow-lg shadow-brand-300">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v2m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                     </span>
                 </div>
-                <p class="mt-3 text-3xl font-bold text-gray-900" x-text="Number(childCounts.pending || 0).toLocaleString()">{{ number_format($pendingChildCount) }}</p>
-                <p class="mt-1 text-xs text-amber-800">Child accounts pending relationship and document verification.</p>
-            </article>
-            <article class="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
-                <div class="flex items-start justify-between gap-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Approved Children</p>
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                    </span>
-                </div>
-                <p class="mt-3 text-3xl font-bold text-gray-900" x-text="Number(childCounts.approved || 0).toLocaleString()">{{ number_format($approvedChildCount) }}</p>
-                <p class="mt-1 text-xs text-emerald-800">Children approved and unlocked for monitored learning access.</p>
-            </article>
-            <article class="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 via-white to-orange-50 p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
-                <div class="flex items-start justify-between gap-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Rejected Children</p>
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </span>
-                </div>
-                <p class="mt-3 text-3xl font-bold text-gray-900" x-text="Number(childCounts.rejected || 0).toLocaleString()">{{ number_format($rejectedChildCount) }}</p>
-                <p class="mt-1 text-xs text-rose-800">Applications rejected until parent submits corrected details.</p>
+                <p class="mt-3 text-4xl leading-none font-bold text-gray-900" x-text="formatNumber(countFor(activeType, 'rejected'))">{{ number_format($rejectedParentCount) }}</p>
             </article>
         </section>
 
-        <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
-            <div class="border-b border-gray-100 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-6 space-y-5">
-                @include('admin.partials.table-filter-bar', ['label' => 'Parent and Child Verification Filters', 'hint' => 'Switch between parent and child queues and moderate records instantly without reloading the page.'])
-
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Moderation Queue</p>
-                    <h2 class="mt-2 text-xl font-bold text-gray-900">Parent and Child Verification Table</h2>
-                    <p class="mt-1 text-sm text-gray-500">Use the controls below to review parent IDs and child verification documents, then approve or reject each application.</p>
-                </div>
-
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-                    <div class="flex flex-wrap gap-2 lg:flex-none">
-                        <button type="button"
-                                @click="setType('parents')"
-                                class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-                                :class="activeType === 'parents' ? 'bg-brand-500 text-white shadow-theme-xs' : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200'">
-                            <span>Parent Accounts</span>
-                            <span class="inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                                  :class="activeType === 'parents' ? 'bg-white/20 text-white' : 'bg-brand-100 text-brand-700'"
-                                  x-text="countFor('parents', activeStatus)"></span>
-                        </button>
-                        <button type="button"
-                                @click="setType('children')"
-                                class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-                                :class="activeType === 'children' ? 'bg-brand-500 text-white shadow-theme-xs' : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200'">
-                            <span>Child Accounts</span>
-                            <span class="inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                                  :class="activeType === 'children' ? 'bg-white/20 text-white' : 'bg-brand-100 text-brand-700'"
-                                  x-text="countFor('children', activeStatus)"></span>
-                        </button>
+                <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
+            <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.17),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(59,12,177,0.14),_transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">
+                <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                    <div>
+                        <h2 class="mt-2 text-xl font-bold text-gray-900">Verifications Table</h2>
                     </div>
 
-                    <div class="w-full lg:flex-1 lg:min-w-0">
-                        <div class="relative">
-                            <input type="text"
-                                   x-model.debounce.250ms="searchQuery"
-                                   placeholder="Search parent, child, email, username..."
-                                   class="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-16 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
-                            <button type="button"
-                                    x-show="searchQuery"
-                                    x-cloak
-                                    @click="searchQuery = ''"
-                                    class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1 text-xs font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-gray-700">
-                                Clear
-                            </button>
-                        </div>
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" data-testid="admin-table-filter-bar">
+                        <label class="block xl:col-span-2">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
+                            <input type="text" x-model.debounce.300ms="searchQuery" placeholder="Name, email, ID number..." class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
+                            <select x-model="activeStatus" @change="setStatus($event.target.value)" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </label>
+                        <div class="hidden xl:block"></div>
+                        <div class="hidden xl:block"></div>
+                        <div class="hidden xl:block"></div>
                     </div>
                 </div>
-
-                <div class="flex flex-wrap gap-2">
-                    @foreach(['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $statusKey => $statusLabel)
-                        <button type="button"
-                                @click="setStatus('{{ $statusKey }}')"
-                                class="inline-flex items-center rounded-xl px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-gray-300/50"
-                                :class="activeStatus === '{{ $statusKey }}'
-                                    ? '{{ $statusKey === 'pending' ? 'bg-amber-500 text-white' : ($statusKey === 'approved' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white') }} shadow-theme-xs'
-                                    : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50'">
-                            {{ $statusLabel }}
-                            <span class="ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold"
-                                  :class="activeStatus === '{{ $statusKey }}' ? 'bg-white/20 text-white' : '{{ $statusKey === 'pending' ? 'bg-amber-100 text-amber-700' : ($statusKey === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700') }}'"
-                                  x-text="countFor(activeType, '{{ $statusKey }}')"></span>
-                        </button>
-                    @endforeach
-                </div>
-
-                @if($errors->any())
-                    <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                        {{ $errors->first() }}
-                    </div>
-                @endif
             </div>
 
-            <div class="overflow-x-auto" x-show="activeType === 'parents'" x-cloak>
-                <table class="w-full table-fixed divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-brand-50/45">
                         <tr>
-                            <th class="w-[38%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Parent</th>
+                            <th class="w-[10%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">No. #</th>
+                            <th class="w-[32%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Parent</th>
                             <th class="w-[14%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Status</th>
-                            <th class="w-[24%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>
-                            <th class="w-[24%] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
+                            <th class="w-[22%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>
+                            <th class="w-[22%] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
@@ -483,6 +472,7 @@
 
                                             this.$dispatch('moderation-updated', {
                                                 type: 'parents',
+                                                rowId: {{ (int) $application->id }},
                                                 oldStatus: previousStatus,
                                                 newStatus: this.currentStatus,
                                                 message: payload.message,
@@ -526,6 +516,7 @@
 
                                             this.$dispatch('moderation-updated', {
                                                 type: 'parents',
+                                                rowId: {{ (int) $application->id }},
                                                 oldStatus: previousStatus,
                                                 newStatus: this.currentStatus,
                                                 message: payload.message,
@@ -539,9 +530,10 @@
                                         }
                                     }
                                 }"
-                                x-show="activeStatus === currentStatus && rowMatchesSearch(@js($parentSearchText))"
+                                x-show="activeStatus === currentStatus && rowMatchesSearch(@js($parentSearchText)) && rowOnCurrentPage('parents', {{ (int) $application->id }})"
                                 x-cloak
-                                class="transition hover:bg-sky-50/50">
+                                class="transition hover:bg-brand-50/55">
+                                <td class="px-4 py-3 align-top text-sm font-semibold text-gray-500" x-text="rowNumberFor('parents', {{ (int) $application->id }})"></td>
                                 <td class="px-4 py-3 align-top">
                                     <p class="text-sm font-semibold text-gray-900 break-words">{{ $application->full_name }}</p>
                                     <p class="text-xs text-gray-500 break-words">{{ $application->email }}</p>
@@ -747,8 +739,7 @@
                                                     </div>
                                                 </section>
                                             </div>
-
-                                        </div>
+`r`n                                        </div>
                                     </div>
 
                                     @include('admin.parent-verifications.partials.moderation-modal-shell', [
@@ -762,7 +753,7 @@
                         @empty
                         @endforelse
                         <tr x-show="!hasRowsForCurrent()">
-                            <td colspan="4" class="px-4 py-10 text-center text-sm text-gray-500">No parent verification records found for this status. Try another status tab or switch account type.</td>
+                            <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500">No parent verification records found for this status. Try another status tab or switch account type.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -770,13 +761,12 @@
 
             <div class="overflow-x-auto" x-show="activeType === 'children'" x-cloak>
                 <table class="w-full table-fixed divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-brand-50/45">
                         <tr>
                             <th class="w-[24%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Parent</th>
                             <th class="w-[26%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Child</th>
                             <th class="w-[14%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Status</th>
-                            <th class="w-[20%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>
-                            <th class="w-[170px] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
+                            <th class="w-[20%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>`r`n                            <th class="w-[170px] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
@@ -946,6 +936,7 @@
 
                                             this.$dispatch('moderation-updated', {
                                                 type: 'children',
+                                                rowId: {{ (int) $application->id }},
                                                 oldStatus: previousStatus,
                                                 newStatus: this.currentStatus,
                                                 message: payload.message,
@@ -989,6 +980,7 @@
 
                                             this.$dispatch('moderation-updated', {
                                                 type: 'children',
+                                                rowId: {{ (int) $application->id }},
                                                 oldStatus: previousStatus,
                                                 newStatus: this.currentStatus,
                                                 message: payload.message,
@@ -1002,9 +994,10 @@
                                         }
                                     }
                                 }"
-                                x-show="activeStatus === currentStatus && rowMatchesSearch(@js($childSearchText))"
+                                x-show="activeStatus === currentStatus && rowMatchesSearch(@js($childSearchText)) && rowOnCurrentPage('children', {{ (int) $application->id }})"
                                 x-cloak
-                                class="transition hover:bg-sky-50/50">
+                                class="transition hover:bg-brand-50/55">
+                                <td class="px-4 py-3 align-top text-sm font-semibold text-gray-500" x-text="rowNumberFor('children', {{ (int) $application->id }})"></td>
                                 <td class="px-4 py-3 align-top">
                                     <p class="text-sm font-semibold text-gray-900 break-words">{{ $application->parent?->full_name ?? 'Unknown parent' }}</p>
                                     <p class="text-xs text-gray-500 break-words">{{ $application->parent?->email }}</p>
@@ -1013,8 +1006,7 @@
                                     <p class="text-sm font-semibold text-gray-900 break-words">{{ $application->child?->full_name ?? 'Unknown child' }}</p>
                                     <p class="text-xs text-gray-500 break-words">{{ $application->child?->learnerProfile?->username ?: 'No username' }}</p>
                                     @if(!is_null($childAge))
-                                        <p class="text-xs text-gray-500 break-words">{{ $childAge }} years old</p>
-                                    @endif
+                                        <p class="text-xs text-gray-500 break-words">{{ $childAge }} years old</p>`r`n                                    @endif
                                 </td>
                                 <td class="px-4 py-3 align-top">
                                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold"
@@ -1244,8 +1236,7 @@
                                                 </section>
                                             </div>
 
-
-                                        </div>
+`r`n                                        </div>
                                     </div>
 
                                     @include('admin.parent-verifications.partials.moderation-modal-shell', [
@@ -1259,10 +1250,27 @@
                         @empty
                         @endforelse
                         <tr x-show="!hasRowsForCurrent()">
-                            <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500">No child verification records found for this status. Try another status tab or switch account type.</td>
-                        </tr>
+                            <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500">No child verification records found for this status. Try another status tab or switch account type.</td>`r`n                        </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
+                <div class="flex items-center gap-2">
+                    <button type="button"
+                            @click="prevPage()"
+                            :disabled="safePage() === 1"
+                            class="rounded-lg border border-brand-200 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
+                        Previous
+                    </button>
+                    <span class="text-sm text-gray-600">Page <span class="font-semibold" x-text="safePage()"></span> of <span class="font-semibold" x-text="totalPages()"></span></span>
+                    <button type="button"
+                            @click="nextPage()"
+                            :disabled="safePage() >= totalPages()"
+                            class="rounded-lg border border-brand-200 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
+                        Next
+                    </button>
+                </div>
             </div>
         </section>
     </div>

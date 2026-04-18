@@ -8,6 +8,7 @@
 5. [Database Schema Reference](#database-schema-reference)
 6. [Implementation Examples](#implementation-examples)
 7. [Testing Checklist](#testing-checklist)
+8. [Dynamic Gamification Settings](#dynamic-gamification-settings)
 
 ---
 
@@ -124,6 +125,36 @@ Route::middleware(['auth', 'role:instructor'])->prefix('instructor')->name('inst
 - **Admin Dashboard**: `http://localhost:8000/admin/dashboard`
 - **Instructor Dashboard**: `http://localhost:8000/instructor/dashboard`
 - **Learner Dashboard**: `http://localhost:8000/learner/dashboard`
+
+---
+
+## ⚙️ Dynamic Gamification Settings
+
+This area is now implemented and should be treated as the canonical admin configuration surface for learner gamification behavior.
+
+### Canonical Routes
+- Route file ownership: `routes/admin.php`
+- Prefix: `/admin/gamification-settings`
+- Names:
+    - `admin.gamification-settings.index`
+    - `admin.gamification-settings.update`
+    - `admin.gamification-settings.history`
+    - `admin.gamification-settings.restore`
+
+### Authorization Boundary
+- Route and controller enforcement require admin access plus `manage system settings` capability.
+- Do not expose learner/instructor entry points for policy mutation.
+
+### Architecture Summary
+- Active policy source: `gamification_policies`
+- Historical snapshots: `gamification_policy_versions`
+- Runtime resolver: `App\Services\Gamification\GamificationPolicyResolver`
+- Admin mutation orchestration: `App\Services\Gamification\GamificationPolicyAdminService`
+
+### References
+- Design: `docs/plans/2026-04-16-dynamic-gamification-configuration-design.md`
+- Implementation plan: `docs/plans/2026-04-16-dynamic-gamification-configuration-implementation-plan.md`
+- Changelog: `docs/changelogs/2026-04-16-dynamic-gamification-configuration.md`
 
 ---
 

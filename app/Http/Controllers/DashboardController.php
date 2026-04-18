@@ -228,10 +228,7 @@ class DashboardController extends Controller
                 ? $paymongoService->retrieveCheckoutSession($sessionId)
                 : $paymongoService->retrievePaymentLink($linkId);
 
-            $pmStatus = strtolower((string) data_get($response, 'data.attributes.status', ''));
-            $hasPayments = !empty(data_get($response, 'data.attributes.payments', []));
-
-            if ($pmStatus === 'paid' || $pmStatus === 'completed' || $hasPayments) {
+            if ($this->paymongoResponseIndicatesPaid($response)) {
                 DB::transaction(function () use ($pendingPayment, $pendingSubscription) {
                     $pendingPayment->update([
                         'status'  => PaymentStatus::Completed,
@@ -249,5 +246,27 @@ class DashboardController extends Controller
             // Non-critical — don't break the dashboard if PayMongo is unavailable
             Log::info('Dashboard auto-verify skipped', ['error' => $e->getMessage()]);
         }
+    }
+
+    private function paymongoResponseIndicatesPaid(array $response): bool
+    {
+        $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
+        if (in_array($status, ['paid', 'completed', 'succeeded', 'successful'], true)) {
+            return true;
+        }
+
+        $payments = data_get($response, 'data.attributes.payments', []);
+        if (!is_array($payments) || empty($payments)) {
+            return false;
+        }
+
+        foreach ($payments as $item) {
+            $paymentStatus = strtolower((string) data_get($item, 'attributes.status', data_get($item, 'status', '')));
+            if (in_array($paymentStatus, ['paid', 'completed', 'succeeded', 'successful'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -54,6 +54,10 @@ return [
         // Number of calendar days after payment within which the user may request a refund.
         // Changing this value here automatically updates the controller, service, and Terms page.
         'refund_window_days' => 3,
+
+        // Backward-compatible rollout switch for instructor entitlement enforcement.
+        'instructor_rollout_mode' => env('BILLING_INSTRUCTOR_ROLLOUT_MODE', 'soft'),
+
     ],
 
     'payment_methods' => [

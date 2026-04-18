@@ -13,19 +13,12 @@ use App\Notifications\Instructor\LearnerCertificateIssuedNotification;
 use App\Notifications\Learner\CertificateIssuedNotification;
 use App\Services\CertificatePdfService;
 use App\Services\GamificationService;
-use App\Services\SubscriptionService;
-use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class CertificateController extends Controller
 {
-    public function __construct(
-        private readonly SubscriptionService $subscriptionService,
-    ) {
-    }
-
     /**
      * Display user's certificates
      */
@@ -84,12 +77,13 @@ class CertificateController extends Controller
         }
 
         // Award bonus points for certificate
+        $certificatePoints = 0;
         if ($user->gamification) {
-            app(GamificationService::class)->awardPoints($user, 'certificate_earned', 50);
+            $certificatePoints = app(GamificationService::class)->awardConfiguredPoints($user, 'certificate_earned');
         }
 
         return redirect()->route('learner.certificates.show', $certificate)
-            ->with('success', 'Congratulations! Your certificate has been generated! You earned 50 bonus points! 🎉');
+            ->with('success', "Congratulations! Your certificate has been generated! You earned {$certificatePoints} bonus points! 🎉");
     }
 
     /**
@@ -128,17 +122,6 @@ class CertificateController extends Controller
         // Security check
         if ($certificate->user_id !== $user->id) {
             abort(403);
-        }
-
-        $canDownloadCertificate = $this->subscriptionService->hasFeature(
-            $user,
-            SubscriptionFeatureKeys::DOWNLOADABLE_CERTIFICATES
-        );
-
-        if (!$canDownloadCertificate) {
-            return redirect()
-                ->route('subscription.upgrade')
-                ->with('error', 'Certificate PDF downloads are available only on plans with downloadable certificates.');
         }
 
         $pdfPath = app(CertificatePdfService::class)->ensureStoredPdf($certificate);

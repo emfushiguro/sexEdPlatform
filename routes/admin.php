@@ -20,6 +20,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     // Admin profile context
     Route::get('/profile', [Admin\AdminProfileController::class, 'show'])->name('profile.show');
+    Route::get('/profile/edit', [Admin\AdminProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [Admin\AdminProfileController::class, 'update'])->name('profile.update');
 
     // Notifications
     Route::get('/notifications', [Admin\NotificationController::class, 'index'])->name('notifications.index');
@@ -209,8 +211,37 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('commission-settings.update');
         Route::get('/module-revenue', [Admin\ModuleRevenueController::class, 'index'])
             ->name('module-revenue.index');
+        Route::get('/module-revenue/transactions/{moduleSaleLedger}', [Admin\ModuleRevenueController::class, 'showTransaction'])
+            ->name('module-revenue.transactions.show');
+        Route::get('/module-revenue/instructors/{instructor}', [Admin\ModuleRevenueController::class, 'showInstructor'])
+            ->name('module-revenue.instructors.show');
+        Route::post('/module-revenue/{moduleSaleLedger}/archive', [Admin\ModuleRevenueController::class, 'archive'])
+            ->name('module-revenue.archive');
+        Route::delete('/module-revenue/{moduleSaleLedger}', [Admin\ModuleRevenueController::class, 'destroy'])
+            ->name('module-revenue.destroy');
         Route::patch('/module-revenue/{moduleSaleLedger}/payout-status', [Admin\ModuleRevenueController::class, 'updatePayoutStatus'])
             ->name('module-revenue.payout.update');
+    });
+
+    Route::prefix('financial-reports')->name('financial-reports.')
+        ->middleware('permission:view financial reports|export financial reports')
+        ->group(function () {
+            Route::get('/', [Admin\FinancialReportController::class, 'index'])
+                ->name('index');
+            Route::get('/export/{format}', [Admin\FinancialReportController::class, 'export'])
+                ->whereIn('format', ['pdf', 'csv', 'xlsx'])
+                ->name('export');
+        });
+
+    Route::prefix('gamification-settings')->name('gamification-settings.')->middleware('permission:manage system settings')->group(function () {
+        Route::get('/', [Admin\GamificationSettingsController::class, 'index'])
+            ->name('index');
+        Route::put('/', [Admin\GamificationSettingsController::class, 'update'])
+            ->name('update');
+        Route::get('/history', [Admin\GamificationSettingsController::class, 'history'])
+            ->name('history');
+        Route::post('/restore/{version}', [Admin\GamificationSettingsController::class, 'restore'])
+            ->name('restore');
     });
 
     Route::prefix('instructor-applications')->name('instructor-applications.')->group(function () {

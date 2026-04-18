@@ -21,7 +21,7 @@ class AdminContentReviewUiTest extends DatabaseTestCase
         $this->actingAs($admin)
             ->get(route('admin.content-reviews.index'))
             ->assertOk()
-            ->assertSee('Pending Content Reviews', false)
+            ->assertSee('Review Queue Filters', false)
             ->assertSee('Module Thumbnail', false)
             ->assertSee('Module Name', false)
             ->assertSee('Publisher', false)
@@ -60,7 +60,7 @@ class AdminContentReviewUiTest extends DatabaseTestCase
         $this->actingAs($admin)
             ->get(route('admin.content-reviews.index'))
             ->assertOk()
-            ->assertSee('Pending Content Reviews', false)
+            ->assertSee('Review Queue Filters', false)
             ->assertSee($reviewRequest->module_title, false);
     }
 

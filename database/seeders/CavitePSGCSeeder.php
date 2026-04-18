@@ -33,7 +33,7 @@ class CavitePSGCSeeder extends Seeder
             $this->seedBarangays($now);
         });
 
-        $this->command->info('✅ Cavite PSGC data seeded successfully!');
+        $this->command->info(' Cavite PSGC data seeded successfully!');
         $this->showSummary();
     }
 

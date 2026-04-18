@@ -50,17 +50,10 @@
                            style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
                             View Certificate
                         </a>
-                        @if(auth()->user()->isPremium())
-                            <a href="{{ route('learner.certificates.download', $certificate) }}"
-                               class="w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
-                                Download PDF
-                            </a>
-                        @else
-                            <a href="{{ route('subscription.index') }}"
-                               class="w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
-                                Upgrade to Download
-                            </a>
-                        @endif
+                        <a href="{{ route('learner.certificates.download', $certificate) }}"
+                           class="w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
+                            Download PDF
+                        </a>
                     </div>
                 </div>
             @endforeach

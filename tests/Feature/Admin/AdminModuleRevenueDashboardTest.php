@@ -18,6 +18,7 @@ class AdminModuleRevenueDashboardTest extends TestCase
     {
         $this->withoutVite();
 
+        /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         $admin->assignRole('admin');
 
@@ -105,7 +106,7 @@ class AdminModuleRevenueDashboardTest extends TestCase
             'tax_basis_snapshot' => 'gross',
             'refund_policy_snapshot' => 'disabled',
             'sale_status' => 'completed',
-            'payout_status' => 'pending',
+            'payout_status' => 'paid',
             'occurred_at' => now()->subDay(),
         ]);
 
@@ -137,17 +138,20 @@ class AdminModuleRevenueDashboardTest extends TestCase
             ->assertSee('Module Alpha', false)
             ->assertSee('Module Beta', false)
             ->assertSee('Instructor A', false)
-            ->assertSee('Instructor B', false);
+            ->assertSee('Instructor B', false)
+            ->assertSee('View transaction details', false)
+            ->assertDontSee('Mark as payable', false)
+            ->assertDontSee('Mark as paid', false);
 
         $filteredResponse = $this->actingAs($admin)
             ->get(route('admin.monetization.module-revenue.index', [
                 'instructor_id' => $instructorA->id,
                 'module_id' => $moduleA->id,
-                'payout_status' => 'pending',
+                'payout_status' => 'paid',
             ]))
             ->assertOk()
             ->assertSee('Module Alpha', false)
-            ->assertSee('Pending', false);
+            ->assertSee('Paid', false);
 
         $filteredHtml = $filteredResponse->getContent();
 

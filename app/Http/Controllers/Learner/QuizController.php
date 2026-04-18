@@ -399,13 +399,13 @@ class QuizController extends Controller
 
             // Award points based on performance
             if ($passed) {
-                $points = $score === 100 ? 30 : 25;
+                $points = $this->gamificationService->resolvePointsForReason('quiz_passed', ['score' => $score]);
                 $this->gamificationService->awardPoints($user, 'quiz_passed', $points);
                 $message = "Congratulations! You passed and earned {$points} points!";
             } else {
-                $points = 5;
+                $points = $this->gamificationService->resolvePointsForReason('quiz_attempted');
                 $this->gamificationService->awardPoints($user, 'quiz_attempted', $points);
-                $message = "You earned 5 points for trying! Keep practicing!";
+                $message = "You earned {$points} points for trying! Keep practicing!";
             }
 
             $this->gamificationService->updateStreak($user);
@@ -587,8 +587,8 @@ class QuizController extends Controller
                 'completed_at' => now(),
             ]);
 
-            // Award completion bonus
-            $this->gamificationService->awardPoints($user, 'module_completed', 100);
+            // Award completion bonus from dynamic policy values
+            $this->gamificationService->awardConfiguredPoints($user, 'module_completed');
         }
     }
 

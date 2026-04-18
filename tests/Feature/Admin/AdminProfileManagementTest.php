@@ -28,7 +28,7 @@ class AdminProfileManagementTest extends TestCase
             ->get(route('admin.profile.show'))
             ->assertOk()
             ->assertSee('My Admin Profile', false)
-            ->assertSee('Edit Profile Details', false)
-            ->assertSee(route('profile.edit'), false);
+            ->assertSee('Edit Profile', false)
+            ->assertSee(route('admin.profile.edit'), false);
     }
 }

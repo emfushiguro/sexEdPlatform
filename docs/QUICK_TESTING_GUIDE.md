@@ -4,6 +4,29 @@ This is a quick reference for testing the new authentication system.
 
 ---
 
+## Seeded Test Accounts (Reusable)
+
+Seed dedicated role and workflow test accounts:
+
+```bash
+php artisan db:seed --class=Database\\Seeders\\TestUserSeeder
+```
+
+Shared password for all accounts: `password123`
+
+- `admin@test.local` - Admin account for platform governance and management flows.
+- `instructor@test.local` - Approved instructor account for module and publishing workflows.
+- `instructor.paid@test.local` - Instructor with an active paid subscription plan.
+- `instructor.pending@test.local` - Pending instructor applicant for moderation queue checks.
+- `kid@test.local` - Learner account in kids age bracket.
+- `teen@test.local` - Learner account in teens age bracket.
+- `adult@test.local` - Learner account in adults age bracket.
+- `premium.learner@test.local` - Learner with an active premium subscription plan.
+- `parent@test.local` - Approved parent account.
+- `linked.child@test.local` - Child account already linked to `parent@test.local`.
+
+---
+
 ## Instructor Profile And Module/Quiz Configuration Smoke Tests
 
 Run these after migrations to verify the instructor profile rollout and scalable module/quiz settings:

@@ -99,11 +99,7 @@ class AdminUserManagementFeatureTest extends TestCase
             ->get(route('admin.users.index'))
             ->assertOk()
             ->assertSee('Admin User Management', false)
-            ->assertSee('All Users', false)
-            ->assertSee('Parents', false)
-            ->assertSee('Instructors', false)
-            ->assertSee('All account types', false)
-            ->assertSee('Search name or email', false);
+            ->assertSee('Monitor account lifecycle', false);
     }
 
     public function test_admin_can_set_direct_permission_overrides_when_creating_user(): void

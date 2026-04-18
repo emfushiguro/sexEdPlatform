@@ -9,7 +9,7 @@
         'completed' => 'bg-emerald-100 text-emerald-700',
         'failed' => 'bg-rose-100 text-rose-700',
         'pending' => 'bg-amber-100 text-amber-700',
-        'processing' => 'bg-sky-100 text-sky-700',
+        'processing' => 'bg-brand-100 text-brand-700',
         'refunded' => 'bg-gray-100 text-gray-600',
     ];
     $user = $payment->user;
@@ -36,7 +36,7 @@
             <span>Back to Payments</span>
         </a>
         <div class="flex items-center gap-3">
-            <a href="{{ $receiptUrl }}" target="_blank" rel="noreferrer" class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 hover:bg-sky-100">View Receipt</a>
+            <a href="{{ $receiptUrl }}" target="_blank" rel="noreferrer" class="rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 hover:bg-brand-100">View Receipt</a>
         </div>
     </div>
 
@@ -45,7 +45,7 @@
             <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Payment Information</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Payment Information</p>
                         <h2 class="mt-2 text-xl font-bold text-gray-900">Transaction Summary</h2>
                     </div>
                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold {{ $statusClasses[$status] ?? 'bg-gray-100 text-gray-600' }}">{{ ucfirst(str_replace('_', ' ', $status)) }}</span>
@@ -65,7 +65,7 @@
 
             @if($isModulePurchase)
                 <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Module Purchase Information</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Module Purchase Information</p>
                     <h2 class="mt-2 text-xl font-bold text-gray-900">Module Transaction Details</h2>
                     @if($module)
                         <div class="mt-6 grid gap-5 md:grid-cols-2">
@@ -80,7 +80,7 @@
                 </div>
             @else
                 <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Subscription Information</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">Subscription Information</p>
                     <h2 class="mt-2 text-xl font-bold text-gray-900">Linked Subscription</h2>
                     @if($subscription)
                     @php
@@ -106,10 +106,10 @@
 
         <aside class="space-y-6">
             <div class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
-                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">User Information</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-600">User Information</p>
                 <h2 class="mt-2 text-xl font-bold text-gray-900">Account Snapshot</h2>
                 <div class="mt-5 flex items-center gap-4">
-                    <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-lg font-bold text-sky-700">{{ strtoupper(substr($user?->name ?? 'U', 0, 1)) }}</span>
+                    <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-lg font-bold text-brand-700">{{ strtoupper(substr($user?->name ?? 'U', 0, 1)) }}</span>
                     <div>
                         <p class="text-sm font-semibold text-gray-900">{{ $user?->name ?? 'Unknown user' }}</p>
                         <p class="text-xs text-gray-500">{{ $user?->email ?? 'No email' }}</p>

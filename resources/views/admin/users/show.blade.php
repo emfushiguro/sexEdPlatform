@@ -14,16 +14,16 @@
 @php
 	$roleMap = [
 		'learner' => 'bg-brand-50 text-brand-700',
-		'instructor' => 'bg-purple-50 text-purple-700',
-		'counselor' => 'bg-success-50 text-success-700',
-		'clinic' => 'bg-teal-50 text-teal-700',
-		'organization' => 'bg-indigo-50 text-indigo-700',
-		'admin' => 'bg-error-50 text-error-700',
+		'instructor' => 'bg-brand-50 text-brand-700',
+		'counselor' => 'bg-emerald-50 text-emerald-700',
+		'clinic' => 'bg-brand-50 text-brand-700',
+		'organization' => 'bg-brand-50 text-brand-700',
+		'admin' => 'bg-rose-50 text-rose-700',
 	];
 	$statusMap = [
-		'active' => 'bg-success-50 text-success-700',
+		'active' => 'bg-emerald-50 text-emerald-700',
 		'inactive' => 'bg-gray-100 text-gray-600',
-		'suspended' => 'bg-error-50 text-error-700',
+		'suspended' => 'bg-rose-50 text-rose-700',
 		'archived' => 'bg-amber-50 text-amber-700',
 	];
 @endphp
@@ -50,7 +50,7 @@
 						<div class="flex items-center flex-wrap gap-2 mt-2">
 							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $roleMap[$user->role] ?? 'bg-gray-100 text-gray-600' }}">{{ ucfirst($user->role) }}</span>
 							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusMap[$user->status] ?? 'bg-gray-100 text-gray-600' }}">{{ ucfirst($user->status) }}</span>
-							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">{{ ucfirst(str_replace('-', ' ', (string) ($user->account_type ?: $user->deriveAccountType()))) }}</span>
+							<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{{ ucfirst(str_replace('-', ' ', (string) ($user->account_type ?: $user->deriveAccountType()))) }}</span>
 						</div>
 					</div>
 				</div>
@@ -140,7 +140,7 @@
 					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
 					Change Status
 				</button>
-				<button type="button" @click="openRoleModal()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors">
+				<button type="button" @click="openRoleModal()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">
 					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.467 0 4.785.636 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
 					Change Role
 				</button>
@@ -165,7 +165,7 @@
 
 				<div>
 					<label for="status_modal_status" class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
-					<select id="status_modal_status" name="status" x-model="statusForm.status" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30" required>
+					<select id="status_modal_status" name="status" x-model="statusForm.status" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30" required>
 						@foreach(['active','inactive','suspended','archived'] as $status)
 							<option value="{{ $status }}">{{ ucfirst($status) }}</option>
 						@endforeach
@@ -180,7 +180,7 @@
 						name="reason"
 						x-model="statusForm.reason"
 						:required="statusForm.status === 'archived' || (currentStatus === 'archived' && statusForm.status !== 'archived')"
-						class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+						class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
 						placeholder="Required when archiving or restoring archived users"
 					>
 				</div>
@@ -208,7 +208,7 @@
 
 				<div>
 					<label for="role_modal_role" class="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-					<select id="role_modal_role" name="role" x-model="roleForm.role" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30" required>
+					<select id="role_modal_role" name="role" x-model="roleForm.role" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30" required>
 						<option value="admin">Admin</option>
 						<option value="instructor">Instructor</option>
 						<option value="learner">Learner</option>
@@ -223,7 +223,7 @@
 						id="role_modal_new_role_name"
 						name="new_role_name"
 						x-model="roleForm.newRoleName"
-						class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+						class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
 						placeholder="e.g. community-moderator"
 					>
 				</div>
@@ -241,7 +241,7 @@
 
 				<div class="flex items-center justify-end gap-3 pt-2">
 					<button type="button" @click="closeRoleModal()" class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
-					<button type="submit" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors">Confirm Role Change</button>
+					<button type="submit" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">Confirm Role Change</button>
 				</div>
 			</form>
 		</div>
