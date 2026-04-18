@@ -7,6 +7,7 @@ use App\Enums\ViolationSeverity;
 use App\Models\EnforcementAction;
 use App\Models\ModerationCase;
 use App\Models\User;
+use App\Notifications\Moderation\EnforcementIssuedNotification;
 use InvalidArgumentException;
 
 class EnforcementActionService
@@ -25,7 +26,7 @@ class EnforcementActionService
         $this->guardEscalationSkipPolicy($severity, $skipLadder, $skipRationale);
         $this->guardPermanentSuspensionIssuance($actionType, $triggerType);
 
-        return EnforcementAction::query()->create([
+        $action = EnforcementAction::query()->create([
             'user_id' => $user->id,
             'moderation_case_id' => $moderationCase?->id,
             'action_type' => $actionType,
@@ -39,6 +40,10 @@ class EnforcementActionService
             'skip_rationale' => $skipRationale,
             'notes' => $notes,
         ]);
+
+        $user->notify(new EnforcementIssuedNotification($action));
+
+        return $action;
     }
 
     private function guardEscalationSkipPolicy(

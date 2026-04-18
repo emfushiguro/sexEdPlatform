@@ -6,6 +6,7 @@ use App\Enums\EnforcementActionType;
 use App\Models\EnforcementAction;
 use App\Models\User;
 use App\Models\UserSuspension;
+use App\Notifications\Moderation\SuspensionIssuedNotification;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -27,7 +28,13 @@ class SuspensionService
                 'created_by_admin_id' => $admin?->id,
             ]);
 
-            $this->syncUserStatus($suspension->user()->first());
+            $user = User::query()->find($suspension->user_id);
+
+            $this->syncUserStatus($user);
+
+            if ($user) {
+                $user->notify(new SuspensionIssuedNotification($suspension));
+            }
 
             return $suspension;
         });

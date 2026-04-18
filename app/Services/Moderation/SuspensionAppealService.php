@@ -8,6 +8,8 @@ use App\Enums\EnforcementActionType;
 use App\Models\SuspensionAppeal;
 use App\Models\User;
 use App\Models\UserSuspension;
+use App\Notifications\Moderation\AppealDecisionNotification;
+use App\Notifications\Moderation\AppealSubmittedNotification;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -43,6 +45,13 @@ class SuspensionAppealService
                 'appeal_status' => 'appeal_pending',
                 'appeal_submitted_at' => now(),
             ])->save();
+
+            $appeal->loadMissing('user:id,name,email');
+
+            User::query()
+                ->role('admin')
+                ->get()
+                ->each(fn (User $admin) => $admin->notify(new AppealSubmittedNotification($appeal)));
 
             return $appeal;
         });
@@ -83,6 +92,11 @@ class SuspensionAppealService
                 $suspension->forceFill([
                     'appeal_status' => $action === 'clarification_requested' ? 'clarification_requested' : 'resolved',
                 ])->save();
+            }
+
+            $appeal->loadMissing('user:id,name,email');
+            if ($appeal->user) {
+                $appeal->user->notify(new AppealDecisionNotification($appeal));
             }
 
             return $appeal->fresh();
