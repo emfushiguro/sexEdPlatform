@@ -46,6 +46,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::put('/{report}', [Admin\LearnerReportController::class, 'update'])->name('update');
     });
 
+    Route::prefix('moderation-suspensions')->name('moderation-suspensions.')->group(function () {
+        Route::get('/', [Admin\ModerationSuspensionController::class, 'index'])->name('index');
+        Route::get('/{userSuspension}', [Admin\ModerationSuspensionController::class, 'show'])->name('show');
+    });
+
     // Shared learning content authoring (reuses instructor content controllers)
     Route::resource('modules', Instructor\ModuleController::class);
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])

@@ -5,8 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'Admin') | {{ config('app.name') }}</title>
+    @php
+        $metaTitle = trim($__env->yieldContent('title', 'Admin') . ' | ' . config('app.name', 'Concious Connections'));
+        $metaDescription = trim($__env->yieldContent('meta_description', 'Concious Connections administration panel for platform moderation and operations.'));
+        $metaImage = trim($__env->yieldContent('meta_image', asset('media/Logo.png')));
+    @endphp
+
+    <title>{{ $metaTitle }}</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <meta name="description" content="{{ $metaDescription }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $metaTitle }}">
+    <meta property="og:description" content="{{ $metaDescription }}">
+    <meta property="og:image" content="{{ $metaImage }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $metaTitle }}">
+    <meta name="twitter:description" content="{{ $metaDescription }}">
+    <meta name="twitter:image" content="{{ $metaImage }}">
 
     <!-- Poppins font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -312,6 +328,25 @@
                                             {{ $adminModerationCounts['pending_learner_reports'] }}
                                         </span>
                                     @endif
+                                </a>
+                            </li>
+
+                            <li>
+                                <a href="{{ route('admin.moderation-suspensions.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.moderation-suspensions.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.moderation-suspensions.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.moderation-suspensions.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 9v3.75m0 3.75h.007v.008H12v-.008zm8.25-1.5a8.25 8.25 0 11-16.5 0 8.25 8.25 0 0116.5 0z"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Suspension Dashboard</span>
                                 </a>
                             </li>
                         </ul>
