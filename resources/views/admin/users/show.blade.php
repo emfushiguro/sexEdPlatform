@@ -82,7 +82,6 @@
 
 		<div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-6">
 			@include('admin.users.partials.relationship-transparency-panel', [
-				'linkedParent' => $linkedParent,
 				'parentRelationships' => $parentRelationships,
 				'childRelationships' => $childRelationships,
 			])

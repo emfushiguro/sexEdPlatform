@@ -104,7 +104,6 @@ class UserAdminController extends Controller
 
         $parentRelationships = $user->parentLinks()->with('parent')->latest()->get();
         $childRelationships = $user->childLinks()->with('child')->latest()->get();
-        $linkedParent = optional($parentRelationships->first())->parent;
 
         $stats = [
             'total_payments' => $user->payments()->sum('amount'),
@@ -121,7 +120,6 @@ class UserAdminController extends Controller
             'stats',
             'parentRelationships',
             'childRelationships',
-            'linkedParent',
             'instructorLineage',
             'roleTransitions',
         ));

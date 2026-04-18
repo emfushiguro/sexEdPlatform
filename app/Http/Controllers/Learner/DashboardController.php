@@ -11,6 +11,7 @@ use App\Models\RewardLog;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use App\Models\InstructorApplication;
+use App\Models\ParentChildInvitation;
 use App\Services\Gamification\GamificationPolicyResolver;
 use App\Services\SubscriptionService;
 use App\Support\SubscriptionFeatureKeys;
@@ -221,6 +222,14 @@ class DashboardController extends Controller
             && ! $user->children()->exists()
             && ! $hasPendingInstructorApplication;
 
+        $incomingParentInvitations = ParentChildInvitation::query()
+            ->where('child_user_id', $user->id)
+            ->where('status', 'pending')
+            ->with(['inviterParent:id,name,email'])
+            ->latest('id')
+            ->take(5)
+            ->get();
+
         return view('learner.dashboard', compact(
             'learnerProfile',
             'enrollmentData',
@@ -254,6 +263,7 @@ class DashboardController extends Controller
             'latestInstructorApplication',
             'hasPendingInstructorApplication',
             'canApplyAsInstructor',
+            'incomingParentInvitations',
         ));
     }
 

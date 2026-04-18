@@ -35,7 +35,7 @@ class ChildEnrollmentApprovedNotification extends Notification
             'module_id' => $module->id,
             'module_title' => $module->title,
             'status' => 'approved',
-            'action_url' => route('parent.children.show', $this->child),
+            'action_url' => route('parent.children.enrollments.show', [$this->child, $this->enrollment, 'from' => 'notification']),
             'severity' => 'success',
         ];
     }

@@ -483,8 +483,9 @@
                                         @if(! empty($document['path']))
                                             @php
                                                 $documentPath = (string) $document['path'];
-                                                $documentUrl = asset('storage/' . $documentPath);
-                                                $extension = strtolower(pathinfo($documentPath, PATHINFO_EXTENSION));
+                                                $documentUrl = $application->resolveDocumentUrl($documentPath);
+                                                $extensionSourcePath = parse_url($documentPath, PHP_URL_PATH) ?: $documentPath;
+                                                $extension = strtolower(pathinfo((string) $extensionSourcePath, PATHINFO_EXTENSION));
                                                 $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
                                                 $isPdf = $extension === 'pdf';
                                             @endphp
@@ -534,8 +535,9 @@
                                         @if(! empty($document['path']))
                                             @php
                                                 $documentPath = (string) $document['path'];
-                                                $documentUrl = asset('storage/' . $documentPath);
-                                                $extension = strtolower(pathinfo($documentPath, PATHINFO_EXTENSION));
+                                                $documentUrl = $application->resolveDocumentUrl($documentPath);
+                                                $extensionSourcePath = parse_url($documentPath, PHP_URL_PATH) ?: $documentPath;
+                                                $extension = strtolower(pathinfo((string) $extensionSourcePath, PATHINFO_EXTENSION));
                                                 $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
                                                 $isPdf = $extension === 'pdf';
                                             @endphp

@@ -5,6 +5,9 @@
     $sidebarAvatar   = $sidebarProfile?->avatar_path
         ? asset('storage/' . $sidebarProfile->avatar_path)
         : null;
+    $pendingParentApprovalRequestCount = $authUser->unreadNotifications()
+        ->where('data->type', 'child_enrollment_approval_requested')
+        ->count();
 
     $navItems = [
         [
@@ -57,6 +60,7 @@
             'label'  => 'My Children',
             'route'  => 'parent.children.index',
             'active' => request()->routeIs('parent.children.*'),
+            'badge'  => $pendingParentApprovalRequestCount,
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M9 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM4.25 7a4.75 4.75 0 1 1 9.5 0 4.75 4.75 0 0 1-9.5 0Zm10.5-1.25a.75.75 0 0 1 .75-.75 4.75 4.75 0 0 1 0 9.5.75.75 0 0 1 0-1.5 3.25 3.25 0 0 0 0-6.5.75.75 0 0 1-.75-.75ZM2.75 17.5A3.25 3.25 0 0 1 6 14.25h6A3.25 3.25 0 0 1 15.25 17.5v.5a.75.75 0 0 1-1.5 0v-.5A1.75 1.75 0 0 0 12 15.75H6A1.75 1.75 0 0 0 4.25 17.5v.5a.75.75 0 0 1-1.5 0v-.5Zm15 0a.75.75 0 0 1 .75-.75 1.75 1.75 0 0 1 1.75 1.75v.5a.75.75 0 0 1-1.5 0v-.5a.25.25 0 0 0-.25-.25.75.75 0 0 1-.75-.75Z"/></svg>',
         ];
     }
@@ -132,6 +136,15 @@
                     x-cloak
                     class="truncate"
                 >{{ $item['label'] }}</span>
+                @if(($item['badge'] ?? 0) > 0)
+                    <span class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white"
+                          x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                          x-cloak>
+                        {{ ($item['badge'] ?? 0) > 9 ? '9+' : (int) $item['badge'] }}
+                    </span>
+                    <span class="h-2 w-2 rounded-full bg-rose-500"
+                          x-show="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen"></span>
+                @endif
             </a>
         @endforeach
     </nav>

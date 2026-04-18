@@ -26,7 +26,6 @@ class DatabaseSeeder extends Seeder
             AchievementSeeder::class,
             GamificationPolicySeeder::class,
             CavitePSGCSeeder::class,
-            TestUserSeeder::class,
         ]);
     }
 }

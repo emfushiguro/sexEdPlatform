@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ParentChildAccount extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'parent_user_id',
         'child_user_id',

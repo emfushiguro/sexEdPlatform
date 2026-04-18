@@ -69,6 +69,37 @@
                 </div>
             </div>
         </div>
+
+        @if(($incomingParentInvitations ?? collect())->isNotEmpty())
+            <section class="p-5 border bg-amber-50/60 dark:bg-amber-900/10 rounded-2xl border-amber-100/60 dark:border-amber-800/30">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="pl-3 border-l-4 border-amber-400">
+                        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Parent Invitation Requests</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Review pending invitations from parent accounts.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    @foreach($incomingParentInvitations as $invitation)
+                        <div class="rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                        {{ $invitation->inviterParent?->name ?? 'Parent' }} invited you to link accounts
+                                    </p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $invitation->created_at?->diffForHumans() }}</p>
+                                </div>
+                                <a href="{{ route('parent.invitations.show', $invitation) }}"
+                                   class="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100">
+                                    Review Invitation
+                                </a>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         {{-- Active Learning Modules --}}
         <section class="p-5 border bg-purple-50/40 dark:bg-purple-900/10 rounded-2xl border-purple-100/60 dark:border-purple-800/30">
             <div class="flex items-center justify-between mb-4">

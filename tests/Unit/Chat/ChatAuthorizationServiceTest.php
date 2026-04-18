@@ -6,6 +6,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Conversation;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
+use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Services\Chat\ChatAuthorizationService;
 use Tests\TestCase;
@@ -79,6 +80,72 @@ class ChatAuthorizationServiceTest extends TestCase
 
         $this->assertFalse($decision['allowed']);
         $this->assertSame('no-enrollment-relation', $decision['reason']);
+    }
+
+    public function test_parent_and_linked_child_can_start_direct_chat_without_request_gate(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+
+        $parent = User::factory()->create(['role' => 'learner']);
+        $child = User::factory()->create(['role' => 'learner']);
+
+        ParentChildAccount::create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'approved',
+            'relationship_verified_at' => now(),
+        ]);
+
+        $parentToChild = $service->evaluateStart($parent, $child);
+        $childToParent = $service->evaluateStart($child, $parent);
+
+        $this->assertTrue($parentToChild['allowed']);
+        $this->assertFalse($parentToChild['requires_request']);
+        $this->assertTrue($childToParent['allowed']);
+        $this->assertFalse($childToParent['requires_request']);
+    }
+
+    public function test_parent_and_instructor_are_directly_allowed_when_linked_child_is_enrolled(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+
+        $parent = User::factory()->create(['role' => 'learner']);
+        $child = User::factory()->create(['role' => 'learner']);
+        $instructor = User::factory()->create(['role' => 'instructor']);
+
+        ParentChildAccount::create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'approved',
+            'relationship_verified_at' => now(),
+        ]);
+
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'is_published' => true,
+            'content_owner_type' => 'instructor',
+        ]);
+
+        ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => EnrollmentStatus::Approved,
+            'enrolled_at' => now(),
+        ]);
+
+        $parentToInstructor = $service->evaluateStart($parent, $instructor);
+        $instructorToParent = $service->evaluateStart($instructor, $parent);
+
+        $this->assertTrue($parentToInstructor['allowed']);
+        $this->assertFalse($parentToInstructor['requires_request']);
+        $this->assertTrue($instructorToParent['allowed']);
+        $this->assertFalse($instructorToParent['requires_request']);
     }
 
     public function test_send_and_subscribe_require_participation_and_active_state(): void

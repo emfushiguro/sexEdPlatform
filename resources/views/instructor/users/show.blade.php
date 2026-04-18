@@ -18,7 +18,6 @@
                         <div class="mt-2 flex flex-wrap items-center gap-2">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">{{ $learnerCategoryLabel }}</span>
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ ($user->status ?? 'active') === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700' }}">{{ ucfirst((string) ($user->status ?? 'active')) }}</span>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ $user->email_verified_at ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">{{ $user->email_verified_at ? 'Email Verified' : 'Email Not Verified' }}</span>
                         </div>
                     </div>
                 </div>
@@ -56,20 +55,90 @@
             </div>
         </div>
 
-        @if($parentLink && $parentLink->relationship_verified_at && $parentLink->parent)
+        @if($parentLinks->isNotEmpty())
             <div class="rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Parent Transparency</h2>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">This learner is linked to a parent account. You may coordinate updates when guidance is needed.</p>
-                <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-gray-100 dark:border-gray-700 p-4 bg-gray-50/80 dark:bg-gray-900/30">
-                    <div>
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $parentLink->parent->name }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $parentLink->parent->email }}</p>
-                    </div>
-                    <button type="button"
-                       @click="window.dispatchEvent(new CustomEvent('open-global-chat', { detail: { target_user_id: {{ (int) $parentLink->parent->id }}, conversation_type: 'direct', name: @js($parentLink->parent->name) } }))"
-                       class="inline-flex items-center justify-center px-3.5 py-2 rounded-lg text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors">
-                        Message Parent
-                    </button>
+                <div class="mt-4 space-y-3">
+                    @foreach($parentLinks as $parentLink)
+                        @php
+                            $parentUser = $parentLink->parent;
+                            $parentAvatar = $parentUser?->learnerProfile?->avatar_path
+                                ? asset('storage/' . ltrim((string) $parentUser->learnerProfile->avatar_path, '/'))
+                                : null;
+                            $parentBirthdate = $parentUser?->birthdate ?? $parentUser?->learnerProfile?->birthdate;
+                            $parentAge = $parentBirthdate
+                                ? \Carbon\Carbon::parse($parentBirthdate)->age
+                                : null;
+                        @endphp
+                        @if($parentUser)
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-gray-100 dark:border-gray-700 p-4 bg-gray-50/80 dark:bg-gray-900/30">
+                                <div class="flex items-center gap-3">
+                                    @if($parentAvatar)
+                                        <img src="{{ $parentAvatar }}" alt="{{ $parentUser->name }} avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-gray-600">
+                                    @else
+                                        <div class="h-10 w-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold dark:bg-purple-900/30 dark:text-purple-300">
+                                            {{ strtoupper(substr((string) $parentUser->name, 0, 1)) }}
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $parentUser->name }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $parentUser->email }}</p>
+                                        @if(!is_null($parentAge))
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $parentAge }} years old</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                <button type="button"
+                                   @click="window.dispatchEvent(new CustomEvent('open-global-chat', { detail: { target_user_id: {{ (int) $parentUser->id }}, conversation_type: 'direct', name: @js($parentUser->name) } }))"
+                                   class="inline-flex items-center justify-center px-3.5 py-2 rounded-lg text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors">
+                                    Message Parent
+                                </button>
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        @if($linkedChildren->isNotEmpty())
+            <div class="rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Parent Account Details</h2>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">All children currently linked to this parent account.</p>
+                <div class="mt-4 space-y-3">
+                    @foreach($linkedChildren as $childLink)
+                        @php
+                            $linkedChild = $childLink->child;
+                            $linkedChildAvatar = $linkedChild?->learnerProfile?->avatar_path
+                                ? asset('storage/' . ltrim((string) $linkedChild->learnerProfile->avatar_path, '/'))
+                                : null;
+                            $linkedChildBirthdate = $linkedChild?->birthdate ?? $linkedChild?->learnerProfile?->birthdate;
+                            $linkedChildAge = $linkedChildBirthdate
+                                ? \Carbon\Carbon::parse($linkedChildBirthdate)->age
+                                : null;
+                        @endphp
+                        @if($linkedChild)
+                            <div class="flex items-center justify-between gap-3 rounded-xl border border-gray-100 dark:border-gray-700 p-4 bg-gray-50/80 dark:bg-gray-900/30">
+                                <div class="flex items-center gap-3">
+                                    @if($linkedChildAvatar)
+                                        <img src="{{ $linkedChildAvatar }}" alt="{{ $linkedChild->name }} avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-gray-600">
+                                    @else
+                                        <div class="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold dark:bg-indigo-900/30 dark:text-indigo-300">
+                                            {{ strtoupper(substr((string) $linkedChild->name, 0, 1)) }}
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $linkedChild->name }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $linkedChild->email }}</p>
+                                        @if(!is_null($linkedChildAge))
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $linkedChildAge }} years old</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Verified Link</span>
+                            </div>
+                        @endif
+                    @endforeach
                 </div>
             </div>
         @endif

@@ -6,6 +6,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Conversation;
 use App\Models\MessageRequest;
 use App\Models\ModuleEnrollment;
+use App\Models\ParentChildAccount;
 use App\Models\User;
 
 class ChatAuthorizationService
@@ -53,6 +54,12 @@ class ChatAuthorizationService
             return $this->allow(false);
         }
 
+        if ($initiatorIsLearner && $targetIsLearner) {
+            if ($this->hasApprovedParentChildRelation($initiator->id, $target->id)) {
+                return $this->allow(false);
+            }
+        }
+
         return $this->deny('unsupported-context-pair');
     }
 
@@ -95,11 +102,50 @@ class ChatAuthorizationService
 
     protected function hasLearnerInstructorEnrollmentRelation(int $learnerId, int $instructorId): bool
     {
-        return ModuleEnrollment::query()
+        $hasDirectEnrollment = ModuleEnrollment::query()
             ->where('user_id', $learnerId)
             ->where('status', EnrollmentStatus::Approved)
             ->whereHas('module', function ($query) use ($instructorId) {
                 $query->where('created_by', $instructorId);
+            })
+            ->exists();
+
+        if ($hasDirectEnrollment) {
+            return true;
+        }
+
+        $linkedChildIds = ParentChildAccount::query()
+            ->where('parent_user_id', $learnerId)
+            ->where('verification_status', 'approved')
+            ->whereNull('deleted_at')
+            ->pluck('child_user_id');
+
+        if ($linkedChildIds->isEmpty()) {
+            return false;
+        }
+
+        return ModuleEnrollment::query()
+            ->whereIn('user_id', $linkedChildIds)
+            ->where('status', EnrollmentStatus::Approved)
+            ->whereHas('module', function ($query) use ($instructorId) {
+                $query->where('created_by', $instructorId);
+            })
+            ->exists();
+    }
+
+    protected function hasApprovedParentChildRelation(int $firstUserId, int $secondUserId): bool
+    {
+        return ParentChildAccount::query()
+            ->where('verification_status', 'approved')
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($firstUserId, $secondUserId) {
+                $query->where(function ($innerQuery) use ($firstUserId, $secondUserId) {
+                    $innerQuery->where('parent_user_id', $firstUserId)
+                        ->where('child_user_id', $secondUserId);
+                })->orWhere(function ($innerQuery) use ($firstUserId, $secondUserId) {
+                    $innerQuery->where('parent_user_id', $secondUserId)
+                        ->where('child_user_id', $firstUserId);
+                });
             })
             ->exists();
     }
@@ -151,7 +197,9 @@ class ChatAuthorizationService
                 $user->can('access learner platform')
                 || $user->can('take quizzes')
                 || $user->hasRole('learner')
+                || $user->hasRole('parent')
                 || $user->role === 'learner'
+                || $user->role === 'parent'
             );
     }
 

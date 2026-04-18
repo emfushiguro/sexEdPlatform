@@ -8,6 +8,132 @@ use Tests\TestCase;
 
 class AdminParentChildVerificationUiTest extends TestCase
 {
+    public function test_parent_tab_uses_server_side_status_filtering_for_pending_records(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $pendingParent = User::factory()->create([
+            'first_name' => 'Pending',
+            'last_name' => 'Guardian',
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'pending',
+            'parent_id_document_path' => 'parent-verifications/temp/pending-id.pdf',
+        ]);
+        $pendingParent->assignRole('learner');
+
+        $approvedParent = User::factory()->create([
+            'first_name' => 'Approved',
+            'last_name' => 'Guardian',
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
+            'parent_id_document_path' => 'parent-verifications/temp/approved-id.pdf',
+        ]);
+        $approvedParent->assignRole('learner');
+
+        $rejectedParent = User::factory()->create([
+            'first_name' => 'Rejected',
+            'last_name' => 'Guardian',
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'rejected',
+            'parent_id_document_path' => 'parent-verifications/temp/rejected-id.pdf',
+        ]);
+        $rejectedParent->assignRole('learner');
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.index', [
+                'type' => 'parents',
+                'status' => 'pending',
+            ]));
+
+        $response->assertOk()
+            ->assertSee($pendingParent->full_name, false)
+            ->assertDontSee($approvedParent->full_name, false)
+            ->assertDontSee($rejectedParent->full_name, false);
+    }
+
+    public function test_child_tab_uses_server_side_status_filtering_for_pending_records(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $linkedParent = User::factory()->create([
+            'first_name' => 'Linked',
+            'last_name' => 'Parent',
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
+            'parent_id_document_path' => 'parent-verifications/approved/linked-id.pdf',
+        ]);
+        $linkedParent->assignRole('learner');
+
+        $pendingChild = User::factory()->create([
+            'first_name' => 'QueuePending',
+            'last_name' => 'Learner',
+        ]);
+        $pendingChild->assignRole('learner');
+
+        $approvedChild = User::factory()->create([
+            'first_name' => 'HiddenApproved',
+            'last_name' => 'Learner',
+        ]);
+        $approvedChild->assignRole('learner');
+
+        $rejectedChild = User::factory()->create([
+            'first_name' => 'HiddenRejected',
+            'last_name' => 'Learner',
+        ]);
+        $rejectedChild->assignRole('learner');
+
+        ParentChildAccount::create([
+            'parent_user_id' => $linkedParent->id,
+            'child_user_id' => $pendingChild->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'pending',
+            'verification_document_path' => 'child-verifications/temp/pending-doc.pdf',
+        ]);
+
+        ParentChildAccount::create([
+            'parent_user_id' => $linkedParent->id,
+            'child_user_id' => $approvedChild->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'approved',
+            'verification_document_path' => 'child-verifications/temp/approved-doc.pdf',
+        ]);
+
+        ParentChildAccount::create([
+            'parent_user_id' => $linkedParent->id,
+            'child_user_id' => $rejectedChild->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'rejected',
+            'verification_document_path' => 'child-verifications/temp/rejected-doc.pdf',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.index', [
+                'type' => 'children',
+                'status' => 'pending',
+            ]));
+
+        $response->assertOk()
+            ->assertSee($pendingChild->full_name, false)
+            ->assertDontSee($approvedChild->full_name, false)
+            ->assertDontSee($rejectedChild->full_name, false);
+    }
+
     public function test_verification_preview_details_use_standardized_copy_and_hide_removed_fields(): void
     {
         /** @var User $admin */

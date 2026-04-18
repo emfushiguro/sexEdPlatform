@@ -6,7 +6,11 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\MessageAttachment;
 use App\Models\MessageRequest;
+use App\Models\Module;
+use App\Models\ModuleEnrollment;
+use App\Models\ParentChildAccount;
 use App\Models\User;
+use App\Enums\EnrollmentStatus;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -187,6 +191,60 @@ class ChatHttpFlowTest extends TestCase
 
         $this->assertCount(5, $secondPage->json('conversations'));
         $this->assertFalse((bool) $secondPage->json('pagination.has_more'));
+    }
+
+    public function test_parent_can_start_chat_with_linked_child_and_child_instructor(): void
+    {
+        $parent = User::factory()->create(['role' => 'learner']);
+        $parent->assignRole('learner');
+
+        $child = User::factory()->create(['role' => 'learner']);
+        $child->assignRole('learner');
+
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+
+        ParentChildAccount::create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'approved',
+            'relationship_verified_at' => now(),
+        ]);
+
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'is_published' => true,
+            'content_owner_type' => 'instructor',
+        ]);
+
+        ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => EnrollmentStatus::Approved,
+            'enrolled_at' => now(),
+        ]);
+
+        $this->actingAs($parent)
+            ->postJson(route('chat.conversations.start'), [
+                'target_user_id' => $child->id,
+                'conversation_type' => Conversation::TYPE_DIRECT,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('requires_request', false)
+            ->assertJsonPath('conversation.conversation_type', Conversation::TYPE_DIRECT);
+
+        $this->actingAs($parent)
+            ->postJson(route('chat.conversations.start'), [
+                'target_user_id' => $instructor->id,
+                'conversation_type' => Conversation::TYPE_MODULE_CHAT,
+                'module_id' => $module->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('requires_request', false)
+            ->assertJsonPath('conversation.conversation_type', Conversation::TYPE_MODULE_CHAT);
     }
 
     public function test_message_index_returns_latest_window_and_supports_loading_older_messages(): void

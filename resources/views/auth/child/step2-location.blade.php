@@ -39,17 +39,36 @@
               selectedBarangayCode: '{{ old('barangay_code', $preFilledBarangay ?? '') }}',
               barangays: [],
               loading: false,
+              lastRequestToken: '',
+              loadError: '',
+              handleCityChange(code) {
+                  this.cityCode = String(code || '').trim();
+                  this.selectedBarangayCode = '';
+                  this.barangays = [];
+                  this.loadError = '';
+                  this.loadBarangays(this.cityCode);
+              },
+              canSubmit() {
+                  return Boolean(this.cityCode)
+                      && Boolean(this.selectedBarangayCode)
+                      && !this.loading
+                      && this.loadError === '';
+              },
               async loadBarangays(code) {
                   code = String(code || '').trim();
 
                   if (!code) {
                       this.barangays = [];
                       this.selectedBarangayCode = '';
+                      this.loadError = '';
                       return;
                   }
 
                   this.cityCode = code;
+                  this.loadError = '';
 
+                  const requestToken = `${Date.now()}-${Math.random()}`;
+                  this.lastRequestToken = requestToken;
                   this.loading = true;
                   try {
                       const res = await fetch('/api/barangays/' + encodeURIComponent(code), {
@@ -61,17 +80,29 @@
                       }
 
                       const data = await res.json();
+
+                      if (requestToken !== this.lastRequestToken) {
+                          return;
+                      }
+
                       this.barangays = Array.isArray(data) ? data : [];
 
                       if (this.selectedBarangayCode && !this.barangays.some((b) => b.code === this.selectedBarangayCode)) {
                           this.selectedBarangayCode = '';
                       }
                   } catch (error) {
+                      if (requestToken !== this.lastRequestToken) {
+                          return;
+                      }
+
                       this.barangays = [];
                       this.selectedBarangayCode = '';
+                      this.loadError = 'Unable to load barangays. Please select the city again.';
                       console.error(error);
                   } finally {
-                      this.loading = false;
+                      if (requestToken === this.lastRequestToken) {
+                          this.loading = false;
+                      }
                   }
               }
           }"
@@ -100,7 +131,7 @@
             </label>
             <select id="city_code" name="city_code" required
                     x-model="cityCode"
-                    @change="loadBarangays($event.target.value)"
+                    @change="handleCityChange($event.target.value)"
                     class="{{ $locSelectClass }}">
                 <option value="">Select municipality / city</option>
                 @foreach($cities as $city)
@@ -128,6 +159,7 @@
                     <option :value="b.code" x-text="b.name"></option>
                 </template>
             </select>
+            <p x-show="loadError" x-cloak class="mt-1 text-xs text-red-600" x-text="loadError"></p>
             @error('barangay_code')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
             @enderror
@@ -138,7 +170,8 @@
             <a href="{{ route('parent.create-child') }}" class="text-sm text-gray-500 hover:text-gray-700">← Back</a>
             <button type="submit"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
-                    class="inline-flex items-center justify-center gap-2 px-8 py-3.5 font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200">
+                    :disabled="!canSubmit()"
+                    class="inline-flex items-center justify-center gap-2 px-8 py-3.5 font-semibold text-white rounded-xl shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60">
                 Continue — Login Details →
             </button>
         </div>

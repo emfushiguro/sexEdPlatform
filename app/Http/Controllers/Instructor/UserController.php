@@ -80,8 +80,11 @@ class UserController extends Controller
             'certificates' => fn ($query) => $query
                 ->whereHas('module', fn ($moduleQuery) => $moduleQuery->where('created_by', $instructorId))
                 ->with('module:id,title'),
-            'parentLinks.parent:id,name,email,status',
-            'childLinks:id,parent_user_id,relationship_verified_at',
+            'parentLinks.parent:id,name,email,status,birthdate',
+            'parentLinks.parent.learnerProfile:id,user_id,avatar_path,birthdate',
+            'childLinks:id,parent_user_id,child_user_id,relationship_verified_at,verification_status',
+            'childLinks.child:id,name,first_name,last_name,email,birthdate,status',
+            'childLinks.child.learnerProfile:id,user_id,avatar_path,birthdate',
         ]);
 
         $moduleIds = $user->moduleEnrollments->pluck('module_id')->filter()->values();
@@ -163,11 +166,27 @@ class UserController extends Controller
                 ->avg('score'),
         ];
 
-        $parentLink = ParentChildAccount::query()
+        $parentLinks = ParentChildAccount::query()
             ->where('child_user_id', $user->id)
-            ->with('parent:id,name,email,status')
+            ->where('verification_status', 'approved')
+            ->whereNotNull('relationship_verified_at')
+            ->with([
+                'parent:id,name,email,status,birthdate',
+                'parent.learnerProfile:id,user_id,avatar_path,birthdate',
+            ])
             ->latest('id')
-            ->first();
+            ->get();
+
+        $linkedChildren = ParentChildAccount::query()
+            ->where('parent_user_id', $user->id)
+            ->where('verification_status', 'approved')
+            ->whereNotNull('relationship_verified_at')
+            ->with([
+                'child:id,name,first_name,last_name,email,birthdate,status',
+                'child.learnerProfile:id,user_id,avatar_path,birthdate',
+            ])
+            ->latest('id')
+            ->get();
 
         $engagementStatus = 'Low';
         $lastActivityAt = $recentProgressTimeline->first()?->updated_at;
@@ -186,7 +205,8 @@ class UserController extends Controller
             'lastLessonCompleted',
             'recentProgressTimeline',
             'quizPerformanceSummary',
-            'parentLink',
+            'parentLinks',
+            'linkedChildren',
             'engagementStatus',
             'learnerCategoryLabel',
             'avatarUrl',

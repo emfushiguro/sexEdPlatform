@@ -97,71 +97,71 @@
                 $cards = [
                     [
                         'label' => 'Total Revenue',
-                        'value' => null,
                         'valueKey' => 'total_revenue',
                         'type' => 'currency',
                         'icon' => 'currency',
-                        'cardClass' => 'border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100/70',
-                        'labelClass' => 'text-brand-700',
+                        'accent' => 'brand',
                     ],
                     [
                         'label' => 'Completed',
-                        'value' => null,
                         'valueKey' => 'completed',
                         'type' => 'number',
                         'icon' => 'check',
-                        'cardClass' => 'border-brand-100 bg-gradient-to-br from-white via-brand-50/70 to-brand-100/60',
-                        'labelClass' => 'text-brand-600',
+                        'accent' => 'brand',
                     ],
                     [
                         'label' => 'Needs Review',
-                        'value' => null,
                         'valueKey' => null,
                         'type' => 'computed-review',
                         'icon' => 'clock',
-                        'cardClass' => 'border-brand-200 bg-gradient-to-br from-brand-100/60 via-white to-brand-50',
-                        'labelClass' => 'text-brand-800',
+                        'accent' => 'brand',
                     ],
                     [
                         'label' => 'Failed',
-                        'value' => null,
                         'valueKey' => 'failed',
                         'type' => 'number',
                         'icon' => 'warning',
-                        'cardClass' => 'border-brand-300 bg-gradient-to-br from-brand-100 via-white to-brand-200/70',
-                        'labelClass' => 'text-brand-900',
+                        'accent' => 'brand',
                     ],
                 ];
             @endphp
 
             @foreach($cards as $card)
-                <div class="rounded-[28px] border p-5 shadow-theme-xs {{ $card['cardClass'] }} min-h-[116px]">
-                    <div class="flex items-center justify-between gap-4">
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.24em] {{ $card['labelClass'] }}">{{ $card['label'] }}</p>
-                            <p class="mt-2 text-4xl leading-none font-bold text-gray-900">
-                                @if($card['type'] === 'currency')
-                                    <span x-text="formatCurrency(stats.{{ $card['valueKey'] }})"></span>
-                                @elseif($card['type'] === 'computed-review')
-                                    <span x-text="formatNumber((stats.pending || 0) + (stats.processing || 0))"></span>
-                                @else
-                                    <span x-text="formatNumber(stats.{{ $card['valueKey'] }})"></span>
-                                @endif
-                            </p>
-                        </div>
-                        <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg {{ $card['icon'] === 'currency' ? 'from-brand-500 via-brand-700 to-brand-900 shadow-brand-200' : ($card['icon'] === 'check' ? 'from-brand-400 via-brand-600 to-brand-800 shadow-brand-200' : ($card['icon'] === 'clock' ? 'from-brand-600 via-brand-700 to-brand-900 shadow-brand-300' : 'from-brand-700 via-brand-800 to-brand-900 shadow-brand-300')) }}">
+                @php
+                    $accent = $card['accent'];
+                    $bgClass = "border-{$accent}-200/80 bg-gradient-to-br from-{$accent}-50 via-white to-{$accent}-100/70 shadow-soft ring-1 ring-{$accent}-200/40 dark:border-slate-700/70 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 dark:ring-slate-700/40";
+                    $labelClass = "text-{$accent}-700/80 dark:text-{$accent}-200/80";
+                    $iconClass = "from-{$accent}-600 to-{$accent}-500 shadow-glow-{$accent} ring-{$accent}-600/40 dark:bg-{$accent}-500/25 dark:ring-{$accent}-500/30";
+                    $iconTextClass = "text-white dark:text-{$accent}-100";
+                    if ($accent === 'brand') {
+                        $iconClass = str_replace('shadow-glow-brand', 'shadow-glow-purple', $iconClass);
+                    }
+                @endphp
+                <article class="group relative overflow-hidden rounded-[24px] border p-6 transition duration-200 hover:-translate-y-0.5 hover:shadow-medium before:pointer-events-none before:absolute before:inset-0 before:content-[''] before:bg-gradient-to-br before:from-{{ $accent }}-100/60 before:via-transparent before:to-transparent before:opacity-70 dark:before:opacity-0 {{ $bgClass }}">
+                    <div class="flex items-start justify-between">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] {{ $labelClass }}">{{ $card['label'] }}</p>
+                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ring-1 {{ $iconClass }} {{ $iconTextClass }}">
                             @if($card['icon'] === 'currency')
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             @elseif($card['icon'] === 'check')
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                             @elseif($card['icon'] === 'clock')
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                             @else
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                             @endif
                         </span>
                     </div>
-                </div>
+                    <p class="mt-4 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                        @if($card['type'] === 'currency')
+                            <span x-text="formatCurrency(stats.{{ $card['valueKey'] }})"></span>
+                        @elseif($card['type'] === 'computed-review')
+                            <span x-text="formatNumber((stats.pending || 0) + (stats.processing || 0))"></span>
+                        @else
+                            <span x-text="formatNumber(stats.{{ $card['valueKey'] }})"></span>
+                        @endif
+                    </p>
+                </article>
             @endforeach
         </div>
 
@@ -298,7 +298,7 @@
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <a :href="payment.show_url"
-                                                         class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50"
+                                                         class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50/60 text-brand-700 transition hover:bg-brand-100"
                                            title="View payment">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -308,7 +308,7 @@
 
                                         <button type="button"
                                                 @click="openActionModal('archive', payment.id, payment.reference)"
-                                                class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
                                                 title="Archive payment">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M6 8l1 10h10l1-10M9 8V6a1 1 0 011-1h4a1 1 0 011 1v2" />
@@ -317,7 +317,7 @@
 
                                         <button type="button"
                                                 @click="openActionModal('delete', payment.id, payment.reference)"
-                                                class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
                                                 title="Delete payment">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -330,7 +330,7 @@
                         <tr x-show="filteredPayments.length === 0" x-cloak>
                             <td colspan="9" class="px-6 text-center py-14">
                                 <div class="max-w-sm mx-auto">
-                                    <div class="flex items-center justify-center w-16 h-16 mx-auto text-gray-400 bg-gray-100 rounded-full">
+                                    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-50 text-brand-600">
                                         <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
