@@ -2,7 +2,7 @@
     $canUseTextTranslator = (bool) ($canUseTextTranslator ?? false);
 @endphp
 
-<div id="cc-page-translator" class="fixed bottom-4 right-4 z-[9998]">
+<div id="cc-page-translator" class="fixed top-24 right-4 z-[9998]">
     <button type="button"
             id="cc-translator-toggle"
             class="w-11 h-11 rounded-full border {{ $canUseTextTranslator ? 'border-brand-200 bg-white text-brand-600 hover:bg-brand-50' : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100' }} shadow-lg hover:shadow-xl transition-all"

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Learner;
 
+use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Models\Quiz;
@@ -17,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class QuizController extends Controller
 {
@@ -399,12 +401,10 @@ class QuizController extends Controller
 
             // Award points based on performance
             if ($passed) {
-                $points = $this->gamificationService->resolvePointsForReason('quiz_passed', ['score' => $score]);
-                $this->gamificationService->awardPoints($user, 'quiz_passed', $points);
+                $points = $this->gamificationService->awardConfiguredPoints($user, 'quiz_passed', ['score' => $score]);
                 $message = "Congratulations! You passed and earned {$points} points!";
             } else {
-                $points = $this->gamificationService->resolvePointsForReason('quiz_attempted');
-                $this->gamificationService->awardPoints($user, 'quiz_attempted', $points);
+                $points = $this->gamificationService->awardConfiguredPoints($user, 'quiz_attempted');
                 $message = "You earned {$points} points for trying! Keep practicing!";
             }
 
@@ -418,11 +418,28 @@ class QuizController extends Controller
 
             DB::commit();
 
+            $moduleCompletionPoints = 0;
+            if ($completedFinalQuizModule && $this->completionService->isFullyCompleted($user, $completedFinalQuizModule)) {
+                $moduleCompletionPoints = $this->completeModuleAndAwardCompletionPoints($user, $completedFinalQuizModule);
+            }
+
             if ($completedFinalQuizModule) {
-                return redirect()->route('learner.modules.completion', $completedFinalQuizModule)
-                    ->with('success', 'Congratulations! You have successfully completed this module.')
+                $completionMessage = 'Congratulations! You have successfully completed this module.';
+                if ($moduleCompletionPoints > 0) {
+                    $completionMessage .= " Module completion bonus: +{$moduleCompletionPoints} points.";
+                }
+
+                $completionRedirect = redirect()->route('learner.modules.completion', $completedFinalQuizModule)
+                    ->with('success', $completionMessage)
                     ->with('shield_delta', $shieldDelta)
-                    ->with('xp_earned', $points);
+                    ->with('xp_earned', $points)
+                    ->with('module_completion_points_earned', $moduleCompletionPoints);
+
+                if ($moduleCompletionPoints > 0) {
+                    $completionRedirect->with('points_earned', $moduleCompletionPoints);
+                }
+
+                return $completionRedirect;
             }
 
             // Redirect: lesson quizzes return to the lesson viewer; standalone go to result page
@@ -432,13 +449,15 @@ class QuizController extends Controller
                     ->with('quiz_result', true)
                     ->with('quiz_attempt_id', $attempt->id)
                     ->with('shield_delta', $shieldDelta)
-                    ->with('xp_earned', $points);
+                    ->with('xp_earned', $points)
+                    ->with('points_earned', $points);
             }
 
             $resultRedirect = redirect()->route('quizzes.result', $attempt)
                 ->with('success', $message)
                 ->with('shield_delta', $shieldDelta)
-                ->with('xp_earned', $points);
+                ->with('xp_earned', $points)
+                ->with('points_earned', $points);
 
             if ($attemptLimitReached) {
                 $resultRedirect->with('attempt_limit_reached', true)
@@ -453,6 +472,12 @@ class QuizController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
+            Log::error('Quiz submission transaction failed.', [
+                'quiz_id' => $quiz->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
             
             return redirect()->back()
                 ->with('error', 'Failed to submit quiz. Please try again.');
@@ -590,6 +615,25 @@ class QuizController extends Controller
             // Award completion bonus from dynamic policy values
             $this->gamificationService->awardConfiguredPoints($user, 'module_completed');
         }
+    }
+
+    private function completeModuleAndAwardCompletionPoints(User $user, Module $module): int
+    {
+        $enrollment = $user->moduleEnrollments()
+            ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved->value)
+            ->first();
+
+        if (!$enrollment || $enrollment->completed_at !== null) {
+            return 0;
+        }
+
+        $enrollment->update([
+            'completed_at' => now(),
+            'completion_percentage' => 100,
+        ]);
+
+        return $this->gamificationService->awardConfiguredPoints($user, 'module_completed');
     }
 
     private function canStartAttempt(Quiz $quiz, int $userId): bool

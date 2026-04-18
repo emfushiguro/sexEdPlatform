@@ -89,6 +89,9 @@ function quizTable() {
         get totalPages() {
             return Math.max(1, Math.ceil(this.filtered.length / this.perPage));
         },
+        get hasActiveFilters() {
+            return Boolean(this.search || this.moduleFilter || this.typeFilter);
+        },
         openDeleteConfirm(form) {
             this.deleteForm = form;
             this.deleteModalOpen = true;
@@ -101,6 +104,15 @@ function quizTable() {
             if (this.deleteForm) {
                 this.deleteForm.submit();
             }
+        },
+        clearFilters() {
+            this.search = '';
+            this.moduleFilter = '';
+            this.typeFilter = '';
+            this.resetPage();
+        },
+        setPage(page) {
+            this.currentPage = Math.min(this.totalPages, Math.max(1, page));
         },
         resetPage() { this.currentPage = 1; },
     };
@@ -151,7 +163,7 @@ function quizTable() {
             <input type="text"
                    x-model.debounce.300ms="search"
                    @input="resetPage()"
-                   placeholder="Search quizzesâ€¦"
+                     placeholder="Search quizzes..."
                    class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400 transition-colors">
         </div>
         <select x-model="moduleFilter" @change="resetPage()"
@@ -167,6 +179,12 @@ function quizTable() {
             <option value="module">Module Quiz</option>
             <option value="lesson">Lesson Quiz</option>
         </select>
+        <button type="button"
+                x-show="hasActiveFilters"
+                @click="clearFilters()"
+                class="px-3.5 py-2.5 text-sm font-semibold rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
+            Clear Filters
+        </button>
     </div>
 
     {{-- Table --}}
@@ -198,7 +216,7 @@ function quizTable() {
                         <tr class="hover:bg-purple-50/30 transition-colors">
                             <td class="px-5 py-3.5">
                                 <p class="text-sm font-semibold text-gray-900" x-text="quiz.title"></p>
-                                <p class="text-xs text-gray-400 truncate max-w-xs mt-0.5" x-text="quiz.description || 'â€”'"></p>
+                                <p class="text-xs text-gray-400 truncate max-w-xs mt-0.5" x-text="quiz.description || '-'"></p>
                             </td>
                             <td class="px-5 py-3.5">
                                 <template x-if="quiz.type === 'module'">
@@ -279,24 +297,20 @@ function quizTable() {
             <p class="text-xs text-gray-400">
                 Showing
                 <span class="font-semibold text-gray-600"
-                      x-text="filtered.length === 0 ? 0 : ((currentPage-1)*perPage+1)"></span>â€“<span
+                      x-text="filtered.length === 0 ? 0 : ((currentPage-1)*perPage+1)"></span>-<span
                       class="font-semibold text-gray-600"
                       x-text="Math.min(currentPage*perPage, filtered.length)"></span>
                 of <span class="font-semibold text-gray-600" x-text="filtered.length"></span> quizzes
             </p>
             <div class="flex items-center gap-1.5">
-                <button @click="currentPage = Math.max(1, currentPage - 1)" :disabled="currentPage === 1"
+                <button @click="setPage(currentPage - 1)" :disabled="currentPage === 1"
                         class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <template x-for="page in totalPages" :key="page">
-                    <button @click="currentPage = page"
-                            :class="currentPage === page ? 'text-white border-transparent' : 'text-gray-500 border-gray-200 hover:bg-gray-100'"
-                            :style="currentPage === page ? 'background: linear-gradient(135deg, #A30EB2, #3B0CB1);' : ''"
-                            class="w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-semibold transition-colors"
-                            x-text="page"></button>
-                </template>
-                <button @click="currentPage = Math.min(totalPages, currentPage + 1)" :disabled="currentPage === totalPages"
+                <span class="px-3 py-1 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 bg-white">
+                    Page <span x-text="currentPage"></span> of <span x-text="totalPages"></span>
+                </span>
+                <button @click="setPage(currentPage + 1)" :disabled="currentPage === totalPages"
                         class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                 </button>

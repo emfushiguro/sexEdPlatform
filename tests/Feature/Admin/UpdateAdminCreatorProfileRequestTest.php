@@ -49,4 +49,38 @@ class UpdateAdminCreatorProfileRequestTest extends TestCase
 
         $this->assertFalse($valid->fails());
     }
+
+    public function test_credentials_tab_requires_email_but_not_public_profile_fields(): void
+    {
+        $request = new UpdateAdminCreatorProfileRequest();
+
+        $missingEmail = Validator::make([
+            'profile_tab' => 'credentials',
+        ], $request->rules());
+
+        $this->assertTrue($missingEmail->fails());
+        $this->assertArrayHasKey('email', $missingEmail->errors()->messages());
+        $this->assertArrayNotHasKey('public_display_name', $missingEmail->errors()->messages());
+        $this->assertArrayNotHasKey('affiliation', $missingEmail->errors()->messages());
+
+        $validCredentialsOnly = Validator::make([
+            'profile_tab' => 'credentials',
+            'email' => 'admin.profile.owner@gmail.com',
+        ], $request->rules());
+
+        $this->assertFalse($validCredentialsOnly->fails());
+    }
+
+    public function test_credentials_tab_rejects_non_gmail_email(): void
+    {
+        $request = new UpdateAdminCreatorProfileRequest();
+
+        $invalidCredentials = Validator::make([
+            'profile_tab' => 'credentials',
+            'email' => 'admin.owner@yahoo.com',
+        ], $request->rules());
+
+        $this->assertTrue($invalidCredentials->fails());
+        $this->assertArrayHasKey('email', $invalidCredentials->errors()->messages());
+    }
 }

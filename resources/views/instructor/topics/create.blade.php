@@ -87,7 +87,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-4">
                     Topic Type <span class="text-red-500">*</span>
                 </label>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <!-- Video Type -->
                     <label
                         class="relative flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 hover:shadow-md transition-all topic-type-card">
@@ -127,21 +127,6 @@
                         <span class="text-sm font-semibold text-gray-900">Worksheet</span>
                     </label>
 
-                    <!-- Interactive Type -->
-                    <label
-                        class="relative flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 hover:shadow-md transition-all topic-type-card">
-                        <input type="radio" name="type" value="interactive" class="sr-only topic-type-radio"
-                            {{ old('type') === 'interactive' ? 'checked' : '' }} required>
-                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
-                            </path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span class="text-sm font-semibold text-gray-900">Interactive</span>
-                    </label>
                 </div>
             </div>
         </div>
@@ -250,10 +235,7 @@
                             </svg>
                             <p class="mt-2 text-sm text-gray-600"><span class="font-semibold text-purple-700">Click to
                                     upload</span> or drag and drop</p>
-                            <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 2MB each (Multiple images supported)
-                            </p>
-                            <p class="text-xs text-purple-600 mt-1 font-medium">ðŸ“¸ Both Gallery & Slideshow views
-                                available to learners</p>
+                            <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 2MB each</p>
                         </div>
                     </label>
                 </div>
@@ -308,51 +290,8 @@
             </div>
         </div>
 
-        <!-- Interactive Content -->
-        <div id="interactiveContent"
-            class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 content-section hidden">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Interactive Activity</h2>
-
-            <!-- Activity Type -->
-            <div class="mb-6">
-                <label for="interactive_type" class="block text-sm font-medium text-gray-700 mb-2">
-                    Activity Type <span class="text-red-500">*</span>
-                </label>
-                <select name="interactive_type" id="interactive_type"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400">
-                    <option value="">Select activity type</option>
-                    <option value="activity" {{ old('interactive_type') === 'activity' ? 'selected' : '' }}>Activity
-                    </option>
-                    <option value="simulation" {{ old('interactive_type') === 'simulation' ? 'selected' : '' }}>Simulation
-                    </option>
-                    <option value="exercise" {{ old('interactive_type') === 'exercise' ? 'selected' : '' }}>Exercise
-                    </option>
-                </select>
-            </div>
-
-            <!-- Instructions -->
-            <div class="mb-6">
-                <label for="interactive_instructions" class="block text-sm font-medium text-gray-700 mb-2">
-                    Instructions <span class="text-red-500">*</span>
-                </label>
-                <textarea name="interactive_instructions" id="interactive_instructions" rows="6"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
-                    placeholder="Provide detailed instructions for this interactive activity...">{{ old('interactive_instructions') }}</textarea>
-            </div>
-        </div>
-
         <!-- Form Actions -->
-        <div class="flex justify-between items-center">
-            <button type="button" onclick="previewTopic()"
-                class="px-6 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Preview Topic
-            </button>
+        <div class="flex justify-end items-center">
             <div class="flex gap-4">
                 <a href="{{ route($contentRoutePrefix . '.lessons.show', $lesson) }}"
                     class="px-6 py-2 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors">
@@ -733,122 +672,6 @@
                     addMoreBtn.remove();
                 }
             }
-        }
-
-        // Preview topic functionality
-        function previewTopic() {
-            const type = document.querySelector('input[name="type"]:checked')?.value;
-            const title = document.getElementById('title').value;
-            const duration = document.getElementById('duration').value;
-
-            if (!type) {
-                alert('Please select a topic type first.');
-                return;
-            }
-
-            if (!title) {
-                alert('Please enter a topic title first.');
-                return;
-            }
-
-            let content = '';
-
-            if (type === 'video') {
-                const videoSource = document.getElementById('video_source').value;
-                const videoUrl = document.getElementById('video_url').value;
-                const videoFile = document.getElementById('video_file').files[0];
-                const videoDesc = document.getElementById('video_description').value;
-
-                if (videoSource === 'url' && videoUrl) {
-                    content = `<div class="space-y-4">
-                <div class="aspect-w-16 aspect-h-9 bg-gray-900 rounded-xl flex items-center justify-center">
-                    <p class="text-white">Video Preview: ${videoUrl}</p>
-                </div>
-                ${videoDesc ? `<div class="prose max-w-none text-sm">${videoDesc}</div>` : ''}
-            </div>`;
-                } else if (videoSource === 'upload' && videoFile) {
-                    content = `<div class="space-y-4">
-                <div class="aspect-w-16 aspect-h-9 bg-gray-900 rounded-xl flex items-center justify-center">
-                    <p class="text-white">Uploaded Video: ${videoFile.name}</p>
-                </div>
-                ${videoDesc ? `<div class="prose max-w-none text-sm">${videoDesc}</div>` : ''}
-            </div>`;
-                } else {
-                    content = '<p class="text-gray-500">No video source selected</p>';
-                }
-            } else if (type === 'text') {
-                const textContent = tinymce.get('text_content')?.getContent() || '';
-                content = textContent ? `<div class="prose max-w-none">${textContent}</div>` :
-                    '<p class="text-gray-500">No content added yet</p>';
-
-                if (selectedImages.length > 0) {
-                    content +=
-                        `<div class="mt-4"><p class="text-sm font-semibold text-gray-700 mb-2">${selectedImages.length} image(s) attached</p></div>`;
-                }
-            } else if (type === 'worksheet') {
-                const worksheetFile = document.getElementById('worksheet_file').files[0];
-                const instructions = document.getElementById('worksheet_instructions').value;
-                content = `<div class="space-y-4">
-            ${worksheetFile ? `<p class="text-sm"><strong>File:</strong> ${worksheetFile.name}</p>` : '<p class="text-gray-500">No file uploaded</p>'}
-            ${instructions ? `<div class="prose max-w-none text-sm">${instructions.replace(/\n/g, '<br>')}</div>` : ''}
-        </div>`;
-            } else if (type === 'interactive') {
-                const interactiveType = document.getElementById('interactive_type').value;
-                const instructions = document.getElementById('interactive_instructions').value;
-                content = `<div class="space-y-4">
-            <p class="text-sm"><strong>Activity Type:</strong> ${interactiveType || 'Not selected'}</p>
-            ${instructions ? `<div class="prose max-w-none text-sm">${instructions.replace(/\n/g, '<br>')}</div>` : ''}
-        </div>`;
-            }
-
-            const isPrerequisite = document.getElementById('is_prerequisite').checked;
-
-            // Create preview modal
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
-            modal.innerHTML = `
-        <div class="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-gray-900">Topic Preview</h3>
-                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="p-6">
-                <div class="mb-4 pb-4 border-b border-gray-200">
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <h4 class="text-2xl font-bold text-gray-900">${title}</h4>
-                            <div class="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                                <span class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                    ${duration} minutes
-                                </span>
-                                <span class="px-2 py-1 rounded text-xs font-medium ${type === 'video' ? 'bg-purple-100 text-purple-800' : type === 'text' ? 'bg-purple-100 text-purple-800' : type === 'worksheet' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}">
-                                    ${type.charAt(0).toUpperCase() + type.slice(1)}
-                                </span>
-                                ${isPrerequisite ? '<span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">Required</span>' : '<span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">Optional</span>'}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="prose max-w-none">
-                    ${content}
-                </div>
-            </div>
-            <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end">
-                <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors">
-                    Close Preview
-                </button>
-            </div>
-        </div>
-    `;
-
-            document.body.appendChild(modal);
         }
 
         // Initialize drag and drop on page load

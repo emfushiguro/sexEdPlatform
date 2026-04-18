@@ -84,7 +84,7 @@
             <svg class="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 23c-4.97 0-9-3.582-9-8 0-3.5 2-6.5 5-8-.5 1.5 0 3 1 4 .5-2 2-4 4-5-.5 2 1 4 2 5 .5-1 .5-2.5 0-3.5 2 1.5 3 4 3 7.5 1-1 1.5-2.5 1.5-4 1.5 1.5 2.5 3.5 2.5 6 0 4.418-4.03 8-9 8z"/>
             </svg>
-            <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $gami?->current_streak ?? 0 }}</span>
+            <span class="text-sm font-bold text-gray-900 dark:text-white">{{ $gami?->streak_count ?? 0 }}</span>
             <span class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Day Streak</span>
         </div>
         {{-- Shields --}}

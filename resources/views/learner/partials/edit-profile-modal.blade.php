@@ -352,23 +352,36 @@
 
                 {{-- Renewal / upgrade info --}}
                 @if($isPremium && $currentSubscription)
+                    @php
+                        $subscriptionStatusRaw = $currentSubscription->status ?? null;
+                        $subscriptionStatus = $subscriptionStatusRaw instanceof \BackedEnum
+                            ? $subscriptionStatusRaw->value
+                            : (string) ($subscriptionStatusRaw ?? 'inactive');
+
+                        $subscriptionStatusLabel = match($subscriptionStatus) {
+                            'scheduled_cancel' => 'Scheduled to Cancel',
+                            'grace_period' => 'Grace Period',
+                            default => ucfirst(str_replace('_', ' ', $subscriptionStatus)),
+                        };
+                        $subscriptionEndDate = $currentSubscription->ends_at ?? $currentSubscription->end_date;
+                    @endphp
                     <div class="text-sm text-gray-600 dark:text-gray-400 space-y-2">
                         <div class="flex items-center justify-between py-1 border-b border-purple-100/60 dark:border-purple-800/30">
                             <span class="text-gray-500 dark:text-gray-500 text-xs uppercase tracking-wide font-medium">Status</span>
-                            <span class="font-semibold capitalize text-green-600 dark:text-green-400">{{ $currentSubscription->status }}</span>
+                            <span class="font-semibold text-green-600 dark:text-green-400">{{ $subscriptionStatusLabel }}</span>
                         </div>
-                        @if($currentSubscription->ends_at || $currentSubscription->end_date)
+                        @if($subscriptionEndDate)
                             <div class="flex items-center justify-between py-1">
-                                <span class="text-gray-500 dark:text-gray-500 text-xs uppercase tracking-wide font-medium">Renews</span>
+                                <span class="text-gray-500 dark:text-gray-500 text-xs uppercase tracking-wide font-medium">Next Billing Date</span>
                                 <span class="font-semibold text-gray-700 dark:text-gray-200">
-                                    {{ ($currentSubscription->ends_at ?? $currentSubscription->end_date)?->format('M d, Y') }}
+                                    {{ $subscriptionEndDate->format('M d, Y') }}
                                 </span>
                             </div>
                         @endif
                     </div>
                 @elseif(!$isPremium)
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                        Upgrade to Premium for unlimited username changes, priority features, and more.
+                        Upgrade to Premium to unlock advanced learning features.
                     </p>
                 @endif
 

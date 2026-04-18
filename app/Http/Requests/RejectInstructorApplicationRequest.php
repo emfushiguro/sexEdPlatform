@@ -22,7 +22,6 @@ class RejectInstructorApplicationRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:2000',
-                Rule::requiredIf(fn (): bool => (string) $this->input('rejection_reason_code') === InstructorApplicationRejectionReason::Other->value),
             ],
             'admin_message' => ['required', 'string', 'max:10000'],
         ];

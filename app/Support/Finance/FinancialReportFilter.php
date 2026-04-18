@@ -16,6 +16,9 @@ class FinancialReportFilter
         public readonly string $granularity,
         public readonly ?int $instructorId = null,
         public readonly ?int $moduleId = null,
+        public readonly ?string $searchTerm = null,
+        public readonly ?string $paymentMethod = null,
+        public readonly ?string $payoutStatus = null,
     ) {
     }
 
@@ -31,6 +34,9 @@ class FinancialReportFilter
             'granularity' => $this->granularity,
             'instructor_id' => $this->instructorId,
             'module_id' => $this->moduleId,
+            'search' => $this->searchTerm,
+            'payment_method' => $this->paymentMethod,
+            'payout_status' => $this->payoutStatus,
         ];
     }
 

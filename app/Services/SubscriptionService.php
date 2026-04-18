@@ -827,6 +827,86 @@ class SubscriptionService
     }
 
     /**
+     * Finalize a manual renewal after checkout payment completion.
+     * Unlike renew(), this reuses the completed checkout payment record
+     * and does not create an additional synthetic payment row.
+     *
+     * @throws \RuntimeException
+     */
+    public function renewFromPayment(Subscription $subscription, Payment $payment): void
+    {
+        $subscription = $this->reconcileLifecycleState($subscription->fresh());
+
+        if (!$this->isRenewableNow($subscription)) {
+            throw new \RuntimeException('This subscription cannot be renewed right now.');
+        }
+
+        if ((string) $payment->status->value !== PaymentStatus::Completed->value) {
+            throw new \RuntimeException('Renewal requires a completed payment.');
+        }
+
+        $renewedAt = now();
+        $existingEndDate = $this->resolveEffectiveEndTimestamp($subscription);
+        $extensionAnchor = $existingEndDate && $existingEndDate->isFuture()
+            ? $existingEndDate->copy()
+            : $renewedAt->copy();
+        $newEndDate = $this->resolveSubscriptionEndDate($subscription, $extensionAnchor);
+        $planPrice = $this->resolvePlanPriceForSubscription($subscription);
+        $renewalAmount = $this->resolveRenewalChargeAmount($subscription, $planPrice);
+        $renewalReference = (string) ($payment->transaction_id ?: ('REN-' . strtoupper(uniqid())));
+        $renewedFromStatus = $subscription->status instanceof SubscriptionStatus
+            ? $subscription->status->value
+            : (string) $subscription->status;
+
+        DB::beginTransaction();
+
+        try {
+            $subscription->update([
+                'status'              => 'active',
+                'cancelled_at'        => null,
+                'cancellation_reason' => null,
+                'start_date'          => $renewedAt,
+                'end_date'            => $newEndDate,
+                'starts_at'           => $renewedAt,
+                'ends_at'             => $newEndDate,
+                'next_billing_at'     => $newEndDate,
+                'plan_price_id'       => $planPrice?->id ?? $subscription->plan_price_id,
+                'price_paid'          => $renewalAmount,
+                'trial_ends_at'       => null,
+                'auto_renew'          => true,
+                'source_provider'     => 'manual_renewal',
+                'source_reference'    => $renewalReference,
+            ]);
+
+            $details = is_array($payment->payment_details) ? $payment->payment_details : [];
+            $payment->forceFill([
+                'amount' => $renewalAmount,
+                'payment_details' => array_merge($details, [
+                    'payment_scope' => 'subscription',
+                    'lifecycle_action' => 'renewal',
+                    'renewed_from_status' => $renewedFromStatus,
+                    'renewed_at' => $renewedAt->toDateTimeString(),
+                    'created_via' => 'renewal_checkout',
+                ]),
+            ])->saveQuietly();
+
+            DB::commit();
+
+            Log::info('Subscription renewed from completed checkout payment', [
+                'subscription_id' => $subscription->id,
+                'user_id' => $subscription->user_id,
+                'payment_id' => $payment->id,
+                'new_end_date' => $newEndDate,
+                'renewal_amount' => $renewalAmount,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('SubscriptionService::renewFromPayment failed', ['error' => $e->getMessage()]);
+            throw new \RuntimeException('Failed to finalize renewal: ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
      * Expire an active subscription that has passed its end date.
      *
      * @throws \RuntimeException
@@ -992,7 +1072,6 @@ class SubscriptionService
      * Legacy path: no SubscriptionPlan record exists.
      * Creates an immediately-active subscription with a PayMongo payment link.
      *
-     * @param string $planType 'monthly' | 'annual'
      * @return array{subscription: Subscription, checkout_url: string}
      * @throws \RuntimeException
      */

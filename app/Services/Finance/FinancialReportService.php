@@ -7,6 +7,7 @@ use App\Models\ModuleSaleLedger;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Support\Finance\FinancialReportFilter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class FinancialReportService
@@ -169,9 +170,7 @@ class FinancialReportService
                     ->whereNotNull('deleted_at');
             });
 
-        if ($filter->moduleId !== null) {
-            $baseQuery->where('module_id', $filter->moduleId);
-        }
+        $this->applyInstructorLedgerFilters($baseQuery, $filter, applySearch: true);
 
         $moduleBreakdown = (clone $baseQuery)
             ->selectRaw('module_id, COUNT(*) as sales_count, SUM(gross_amount) as gross_amount, SUM(commission_amount) as commission_amount, SUM(instructor_earnings_amount) as instructor_earnings_amount')
@@ -213,9 +212,7 @@ class FinancialReportService
                     ->whereNotNull('deleted_at');
             });
 
-        if ($filter->moduleId !== null) {
-            $query->where('module_id', $filter->moduleId);
-        }
+        $this->applyInstructorLedgerFilters($query, $filter, applySearch: true);
 
         return $query
             ->latest('occurred_at')
@@ -246,5 +243,44 @@ class FinancialReportService
         }
 
         return $this->filterNormalizer->normalize($filters);
+    }
+
+    private function applyInstructorLedgerFilters(Builder $query, FinancialReportFilter $filter, bool $applySearch = false): void
+    {
+        if ($filter->moduleId !== null) {
+            $query->where('module_id', $filter->moduleId);
+        }
+
+        if ($filter->payoutStatus !== null) {
+            $query->where('payout_status', $filter->payoutStatus);
+        }
+
+        if ($filter->paymentMethod !== null) {
+            $query->whereHas('payment', function (Builder $paymentQuery) use ($filter): void {
+                $paymentQuery->where('method', $filter->paymentMethod);
+            });
+        }
+
+        if (!$applySearch || $filter->searchTerm === null) {
+            return;
+        }
+
+        $searchTerm = '%' . $filter->searchTerm . '%';
+
+        $query->where(function (Builder $searchQuery) use ($searchTerm): void {
+            $searchQuery->where('learner_name_snapshot', 'like', $searchTerm)
+                ->orWhereHas('module', function (Builder $moduleQuery) use ($searchTerm): void {
+                    $moduleQuery->where('title', 'like', $searchTerm);
+                })
+                ->orWhereHas('learner', function (Builder $learnerQuery) use ($searchTerm): void {
+                    $learnerQuery->where('name', 'like', $searchTerm)
+                        ->orWhere('email', 'like', $searchTerm)
+                        ->orWhere('first_name', 'like', $searchTerm)
+                        ->orWhere('last_name', 'like', $searchTerm);
+                })
+                ->orWhereHas('payment', function (Builder $paymentQuery) use ($searchTerm): void {
+                    $paymentQuery->where('transaction_id', 'like', $searchTerm);
+                });
+        });
     }
 }

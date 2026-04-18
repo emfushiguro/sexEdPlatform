@@ -59,7 +59,8 @@ class LearnerAdminCreatorProfilePageTest extends TestCase
             ->assertOk()
             ->assertSee('View Full Information page', false)
             ->assertSee('Platform Developer', false)
-            ->assertSee('Creator Admin', false);
+            ->assertSee('Creator Admin', false)
+            ->assertDontSee('tracking-wide text-white">Developer</span>', false);
     }
 
     public function test_non_admin_target_returns_404_for_admin_creator_public_page(): void

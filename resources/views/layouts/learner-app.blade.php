@@ -5,8 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'Dashboard') | Concious Connections</title>
+    @php
+        $metaTitle = trim($__env->yieldContent('title', 'Dashboard') . ' | Concious Connections');
+        $metaDescription = trim($__env->yieldContent('meta_description', 'Concious Connections learner dashboard for safe, inclusive, and accessible sexual health education.'));
+        $metaImage = trim($__env->yieldContent('meta_image', asset('media/Logo.png')));
+    @endphp
+
+    <title>{{ $metaTitle }}</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('media/Logo.png') }}">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ asset('media/Logo.png') }}">
+    <meta name="description" content="{{ $metaDescription }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $metaTitle }}">
+    <meta property="og:description" content="{{ $metaDescription }}">
+    <meta property="og:image" content="{{ $metaImage }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $metaTitle }}">
+    <meta name="twitter:description" content="{{ $metaDescription }}">
+    <meta name="twitter:image" content="{{ $metaImage }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

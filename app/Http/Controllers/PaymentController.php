@@ -63,7 +63,17 @@ class PaymentController extends Controller
         $subscription->load('plan');
 
         // Get amount from subscription
-        $amount = $subscription->getAmount();
+        $amount = round((float) $subscription->getAmount(), 2);
+
+        $pendingPayment = $subscription->payments()
+            ->where('status', PaymentStatus::Pending)
+            ->latest('id')
+            ->first();
+
+        $preferredPaymentMethod = (string) ($pendingPayment?->method ?? data_get($pendingPayment?->payment_details, 'payment_method', 'gcash'));
+        if (!in_array($preferredPaymentMethod, ['gcash', 'paymaya', 'grab_pay', 'card'], true)) {
+            $preferredPaymentMethod = 'gcash';
+        }
 
         $secretKey = (string) config('paymongo.secret_key', '');
         $paymongoMode = str_starts_with($secretKey, 'sk_test_')
@@ -75,6 +85,7 @@ class PaymentController extends Controller
             'subscription' => $subscription,
             'amount' => (float) $amount,
             'paymongoMode' => $paymongoMode,
+            'paymentMethod' => $preferredPaymentMethod,
             'submitUrl' => route($checkoutProceedRoute, $subscription),
             'backUrl' => route($isInstructorContext ? 'instructor.subscriptions.index' : 'subscription.index'),
         ]);
@@ -106,19 +117,27 @@ class PaymentController extends Controller
             $billingName = (string) ($request->input('billing_name') ?: (Auth::user()?->name ?? ''));
             $billingEmail = (string) ($request->input('billing_email') ?: (Auth::user()?->email ?? ''));
             $billingPhone = (string) ($request->input('billing_phone') ?: '');
-            $selectedMethod = (string) ($request->input('payment_method') ?: 'paymongo');
+            $checkoutAmount = round((float) $subscription->getAmount(), 2);
 
             // Get the pending payment for this subscription
             $payment = Payment::where('subscription_id', $subscription->id)
                 ->where('status', PaymentStatus::Pending->value)
                 ->orderByDesc('id')
                 ->first();
+
+            $selectedMethod = (string) ($request->input('payment_method')
+                ?: data_get($payment?->payment_details, 'payment_method')
+                ?: 'gcash');
+
+            if (!in_array($selectedMethod, ['gcash', 'paymaya', 'grab_pay', 'card'], true)) {
+                $selectedMethod = 'gcash';
+            }
             
             if (!$payment) {
                 // Create new payment if none exists
                 $payment = $subscription->payments()->create([
                     'user_id' => Auth::id(),
-                    'amount' => $subscription->getAmount(),
+                    'amount' => $checkoutAmount,
                     'method' => $selectedMethod,
                     'status' => PaymentStatus::Pending,
                     'transaction_id' => 'TXN-' . strtoupper(uniqid()),
@@ -137,6 +156,7 @@ class PaymentController extends Controller
             } else {
                 // Update existing pending payment with selected method
                 $payment->update([
+                    'amount' => $checkoutAmount,
                     'method' => $selectedMethod,
                     'payment_details' => array_merge($payment->payment_details ?? [], [
                         'payment_scope' => 'subscription',
@@ -160,7 +180,7 @@ class PaymentController extends Controller
                     : ucfirst($subscription->plan) . ' Subscription';
                 
                 $response = $paymongoService->createCheckoutSession(
-                    amount: $subscription->getAmount(),
+                    amount: $checkoutAmount,
                     description: $planName,
                     remarks: "Subscription for " . Auth::user()->name,
                     metadata: [

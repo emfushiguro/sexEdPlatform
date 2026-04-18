@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $photoPath = $profile?->profile_photo_path;
+    $photoPath = $profile?->profile_photo_path ?: $instructor->learnerProfile?->avatar_path;
     $photoUrl = $photoPath ? asset('storage/' . ltrim($photoPath, '/')) : null;
     $displayName = $instructor->full_name ?: $instructor->name;
 @endphp
@@ -68,9 +68,9 @@
 
             <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Credentials</h2>
-                @if(!empty($profile?->credentials) && count($profile->credentials) > 0)
+                @if(!empty($credentials) && count($credentials) > 0)
                     <ul class="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                        @foreach($profile->credentials as $credential)
+                        @foreach($credentials as $credential)
                             <li class="flex gap-2">
                                 <span class="mt-1 h-1.5 w-1.5 rounded-full bg-purple-500"></span>
                                 <span>{{ $credential }}</span>

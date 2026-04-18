@@ -15,11 +15,18 @@ class InstructorLifecycleIntegrationTest extends TestCase
     {
         Storage::fake('public');
 
+        /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         $admin->assignRole('admin');
 
+        /** @var User $learner */
         $learner = User::factory()->create(['role' => 'learner']);
         $learner->assignRole('learner');
+        $learner->learnerProfile()->create([
+            'username' => 'lifecycle-learner-' . $learner->id,
+            'birthdate' => now()->subYears(21)->toDateString(),
+            'avatar_path' => 'avatars/lifecycle-learner.png',
+        ]);
 
         $service = app(InstructorApplicationService::class);
 
@@ -44,12 +51,17 @@ class InstructorLifecycleIntegrationTest extends TestCase
         ]);
         $this->assertDatabaseHas('instructor_profiles', [
             'user_id' => $learner->id,
+            'profile_photo_path' => 'avatars/lifecycle-learner.png',
         ]);
         $this->assertDatabaseHas('role_transitions', [
             'user_id' => $learner->id,
             'from_role' => 'learner',
             'to_role' => 'instructor',
         ]);
+
+        $this->assertNotNull($learner->fresh()->instructorProfile);
+        $this->assertNotContains('instructor-applications/id.pdf', $learner->fresh()->instructorProfile->credentials ?? []);
+        $this->assertNotContains('instructor-applications/clearance.pdf', $learner->fresh()->instructorProfile->credentials ?? []);
 
         $approved = InstructorApplication::findOrFail($application->id);
         $this->assertSame('approved', $approved->status);

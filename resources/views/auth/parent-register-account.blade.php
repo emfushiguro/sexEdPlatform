@@ -29,7 +29,31 @@
     @endif
 
     <form method="POST" action="{{ route('parent.register.account.store') }}"
-          x-data="{ showPassword: false, showConfirm: false }">
+          x-data="{
+              showPassword: false,
+              showConfirm: false,
+              password: '',
+              passwordConfirmation: '',
+              checks() {
+                  return {
+                      length: this.password.length >= 8,
+                      lower: /[a-z]/.test(this.password),
+                      upper: /[A-Z]/.test(this.password),
+                      number: /\d/.test(this.password),
+                      symbol: /[^A-Za-z0-9]/.test(this.password),
+                  };
+              },
+              score() {
+                  const checks = this.checks();
+                  return Object.values(checks).filter(Boolean).length;
+              },
+              strengthLabel() {
+                  const score = this.score();
+                  if (score <= 2) return 'Weak';
+                  if (score <= 4) return 'Good';
+                  return 'Strong';
+              },
+          }">
         @csrf
 
         <div class="space-y-4">
@@ -53,6 +77,7 @@
                 </label>
                 <div class="relative">
                     <input id="password" name="password" :type="showPassword ? 'text' : 'password'" required
+                              x-model="password"
                            placeholder="••••••••"
                            class="w-full px-3 py-2 pr-10 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                     <button type="button" @click="showPassword = !showPassword"
@@ -66,7 +91,21 @@
                         </svg>
                     </button>
                 </div>
-                <p class="mt-1 text-xs text-gray-500">Min. 8 characters, mixed case, numbers & symbols</p>
+                <div x-show="password" x-cloak class="mt-2">
+                    <div class="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+                        <div class="h-full transition-all duration-300"
+                             :style="`width: ${password ? (score() / 5) * 100 : 0}%`"
+                             :class="score() <= 2 ? 'bg-red-500' : (score() <= 4 ? 'bg-amber-500' : 'bg-emerald-500')"></div>
+                    </div>
+                    <div class="mt-1.5 min-h-[18px] flex items-center justify-between gap-2 text-xs">
+                        <span class="font-medium"
+                              :class="password ? (score() <= 2 ? 'text-red-600' : (score() <= 4 ? 'text-amber-600' : 'text-emerald-600')) : 'text-gray-500'"
+                              x-text="password ? `Strength: ${strengthLabel()}` : 'Strength: -'"></span>
+                        <span class="text-right"
+                              :class="password ? (score() === 5 ? 'text-emerald-600' : 'text-gray-500') : 'text-gray-500'"
+                              x-text="password ? (score() === 5 ? 'All requirements met' : 'Use upper, lower, number, symbol') : 'Min 8 chars'"></span>
+                    </div>
+                </div>
                 @error('password')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
 
@@ -77,6 +116,7 @@
                 </label>
                 <div class="relative">
                     <input id="password_confirmation" name="password_confirmation" :type="showConfirm ? 'text' : 'password'" required
+                              x-model="passwordConfirmation"
                            placeholder="••••••••"
                            class="w-full px-3 py-2 pr-10 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
                     <button type="button" @click="showConfirm = !showConfirm"
@@ -90,6 +130,9 @@
                         </svg>
                     </button>
                 </div>
+                     <p class="mt-1 min-h-[18px] text-xs"
+                         :class="!passwordConfirmation ? 'text-gray-500' : (passwordConfirmation === password ? 'text-emerald-600' : 'text-red-600')"
+                         x-text="!passwordConfirmation ? 'Confirm your password.' : (passwordConfirmation === password ? 'Passwords match.' : 'Passwords do not match.')"></p>
             </div>
 
             <!-- Terms -->

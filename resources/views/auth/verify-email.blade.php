@@ -286,7 +286,34 @@
 
     @else
         {{-- WAITING STATE: Inbox-style verification guidance --}}
-        <div class="space-y-4">
+        <div class="space-y-4"
+             x-data="{
+                pollingHandle: null,
+                async checkVerificationStatus() {
+                    try {
+                        const response = await fetch(@js(route('verification.status')), {
+                            headers: { 'Accept': 'application/json' },
+                            credentials: 'same-origin',
+                        });
+
+                        if (!response.ok) {
+                            return;
+                        }
+
+                        const payload = await response.json();
+                        if (payload && payload.verified) {
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
+                init() {
+                    this.pollingHandle = setInterval(() => this.checkVerificationStatus(), 5000);
+                    this.checkVerificationStatus();
+                }
+             }"
+             x-init="init()">
             @if (session('success'))
                 <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
                     {{ session('success') }}
@@ -323,7 +350,7 @@
                     </article>
 
                     <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <a href="https://mail.google.com" target="_blank" rel="noopener"
+                        <a href="https://mail.google.com"
                            class="inline-flex w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
                             Open Gmail
                         </a>

@@ -61,7 +61,7 @@
         </div>
     </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
         <a href="{{ route($contentRoutePrefix . '.enrollments.index', array_filter(array_merge(request()->query(), ['status' => 'all', 'page' => null]))) }}" class="transition hover:border-brand-300 {{ $statusFilter === 'all' ? 'ring-2 ring-brand-400 border-brand-400' : '' }} min-h-[116px] rounded-[28px] border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100/70 p-5 shadow-theme-xs block">
             <div class="flex items-start justify-between gap-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">All</p>
@@ -97,6 +97,15 @@
                 </span>
             </div>
             <p class="mt-3 text-4xl leading-none font-bold text-gray-900">{{ $statusCounts['rejected'] ?? 0 }}</p>
+        </a>
+        <a href="{{ route($contentRoutePrefix . '.enrollments.index', array_filter(array_merge(request()->query(), ['status' => 'archived', 'page' => null]))) }}" class="transition hover:border-brand-300 {{ $statusFilter === 'archived' ? 'ring-2 ring-brand-400 border-brand-400' : '' }} min-h-[116px] rounded-[28px] border border-gray-200 bg-gradient-to-br from-gray-50 via-white to-gray-100 p-5 shadow-theme-xs block">
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-gray-700">Archived</p>
+                <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-500 via-gray-600 to-gray-700 text-white shadow-lg shadow-gray-200">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7h18M5 7l1 12h12l1-12M9 7V4h6v3"/></svg>
+                </span>
+            </div>
+            <p class="mt-3 text-4xl leading-none font-bold text-gray-900">{{ $statusCounts['archived'] ?? 0 }}</p>
         </a>
     </div>
 
@@ -211,22 +220,13 @@
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
                                     <a href="{{ route($contentRoutePrefix . '.enrollments.show', $enrollment) }}"
-                                       title="Details"
+                                       title="View details"
                                        class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700">
-                                        <svg class="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 21a9 9 0 100-18 9 9 0 000 18z"/>
-                                        </svg>
-                                    </a>
-
-                                    <button type="button"
-                                            @click='openView(@json($payload))'
-                                            title="View"
-                                            class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700">
                                         <svg class="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                         </svg>
-                                    </button>
+                                    </a>
 
                                     @if($isPendingDecision)
                                         <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.approve', $enrollment) }}" class="inline"
@@ -252,7 +252,7 @@
                                             <button type="submit"
                                                     @if($isRestrictedAdminMutation) disabled @endif
                                                     title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Reject' }}"
-                                                    class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700'cursor-not-allowed opacity-50' : 'hover:bg-rose-50 hover:text-rose-700' }}">
+                                                    class="h-8 w-8 rounded-lg text-gray-400 transition-colors {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50' : 'hover:bg-rose-50 hover:text-rose-700' }}">
                                                 <svg class="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                                                 </svg>
@@ -260,7 +260,7 @@
                                         </form>
                                     @endif
 
-                                    @if(!$isArchived)
+                                    @if((string) $enrollment->status->value === 'approved' && $statusFilter === 'approved')
                                         <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.archive', $enrollment) }}" class="inline"
                                               @submit.prevent="@if($isRestrictedAdminMutation) false @else openConfirm($event.target, 'Archive this enrollment record?', 'Archive') @endif">
                                             @csrf
@@ -268,7 +268,7 @@
                                             <button type="submit"
                                                     @if($isRestrictedAdminMutation) disabled @endif
                                                     title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Archive' }}"
-                                                    class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700'cursor-not-allowed opacity-50' : 'hover:bg-amber-50 hover:text-amber-700' }}">
+                                                    class="h-8 w-8 rounded-lg text-gray-400 transition-colors {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50' : 'hover:bg-amber-50 hover:text-amber-700' }}">
                                                 <svg class="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7l1 12h12l1-12M9 7V4h6v3"/>
                                                 </svg>
@@ -276,19 +276,21 @@
                                         </form>
                                     @endif
 
-                                    <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.destroy', $enrollment) }}" class="inline"
-                                          @submit.prevent="@if($isRestrictedAdminMutation) false @else openConfirm($event.target, 'Permanently delete this enrollment record?', 'Delete') @endif">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                                @if($isRestrictedAdminMutation) disabled @endif
-                                                title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Delete' }}"
-                                                class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700'cursor-not-allowed opacity-50' : 'hover:bg-rose-50 hover:text-rose-700' }}">
-                                            <svg class="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                            </svg>
-                                        </button>
-                                    </form>
+                                    @if(in_array($statusFilter, ['rejected', 'archived'], true))
+                                        <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.destroy', $enrollment) }}" class="inline"
+                                              @submit.prevent="@if($isRestrictedAdminMutation) false @else openConfirm($event.target, 'Permanently delete this enrollment record?', 'Delete') @endif">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    @if($isRestrictedAdminMutation) disabled @endif
+                                                    title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Delete' }}"
+                                                    class="h-8 w-8 rounded-lg text-gray-400 transition-colors {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50' : 'hover:bg-rose-50 hover:text-rose-700' }}">
+                                                <svg class="mx-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -305,6 +307,7 @@
             </div>
         @endif
     </div>
+    </section>
 
     <div x-show="viewModalOpen" x-cloak class="fixed inset-0 z-40 bg-gray-900/60" @click="closeView()"></div>
     <div x-show="viewModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -365,7 +368,6 @@
                 <button type="button" @click="confirmAction()" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700" x-text="confirmButtonLabel"></button>
             </div>
         </div>
-    </section>
 </div>
 @endsection
 

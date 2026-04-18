@@ -1,10 +1,12 @@
 @extends($contentPanelLayout ?? 'layouts.instructor-app')
 
 @section('content')
-<div x-data='{
-    images: @json($images),
+<div x-data="{
+    images: @js($images),
     selectedImage: null,
     copiedImage: null,
+    searchQuery: '',
+    sortBy: 'newest',
     deleteModalOpen: false,
     deleteForm: null,
     init() {
@@ -16,7 +18,7 @@
         this.selectedImage = image;
     },
     formatUploaded(unixTs) {
-        if (!unixTs) return "Unknown";
+        if (!unixTs) return 'Unknown';
         return new Date(unixTs * 1000).toLocaleString();
     },
     formatSize(bytes) {
@@ -27,6 +29,32 @@
             this.copiedImage = filename;
             setTimeout(() => this.copiedImage = null, 1200);
         });
+    },
+    get filteredImages() {
+        let rows = [...this.images];
+        const term = this.searchQuery.trim().toLowerCase();
+
+        if (term.length > 0) {
+            rows = rows.filter((row) => String(row.filename || '').toLowerCase().includes(term));
+        }
+
+        if (this.sortBy === 'oldest') {
+            rows.sort((a, b) => Number(a.uploaded || 0) - Number(b.uploaded || 0));
+            return rows;
+        }
+
+        if (this.sortBy === 'name_asc') {
+            rows.sort((a, b) => String(a.filename || '').localeCompare(String(b.filename || '')));
+            return rows;
+        }
+
+        if (this.sortBy === 'name_desc') {
+            rows.sort((a, b) => String(b.filename || '').localeCompare(String(a.filename || '')));
+            return rows;
+        }
+
+        rows.sort((a, b) => Number(b.uploaded || 0) - Number(a.uploaded || 0));
+        return rows;
     },
     openDeleteConfirm(form) {
         this.deleteForm = form;
@@ -41,12 +69,13 @@
             this.deleteForm.submit();
         }
     }
-}' class="space-y-6">
+}" class="space-y-6">
 
     <div class="rounded-3xl border border-indigo-100 dark:border-indigo-900/40 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
         <div class="bg-gradient-to-r from-indigo-500 via-brand-500 to-cyan-500 px-6 py-5 text-white">
             <h1 class="text-xl font-bold">Image Library</h1>
             <p class="text-sm text-white/90 mt-1">Curate quiz assets with quick copy, preview metadata, and safe deletion controls.</p>
+            <p class="mt-2 inline-flex items-center rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white/95">Only your uploaded assets are shown in this library.</p>
         </div>
         <div class="p-6">
             <form method="POST" action="{{ route($contentRoutePrefix . '.image-library.upload') }}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end" data-image-action-controls>
@@ -72,13 +101,36 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <section class="lg:col-span-2 rounded-3xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-5">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-base font-semibold text-gray-900 dark:text-white">Gallery</h2>
-                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300" x-text="`${images.length} items`"></span>
+            <div class="flex flex-col gap-3 mb-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">Gallery</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Search and sort assets to quickly locate quiz images.</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="sr-only">Search images</span>
+                        <input type="text" x-model.debounce.150ms="searchQuery" placeholder="Search filename" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
+                    </label>
+                    <label class="block">
+                        <span class="sr-only">Sort images</span>
+                        <select x-model="sortBy" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="name_asc">Filename A-Z</option>
+                            <option value="name_desc">Filename Z-A</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mb-4 flex items-center justify-between">
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300" x-text="`${filteredImages.length} of ${images.length} images`"></span>
+                <button type="button" @click="searchQuery = ''; sortBy = 'newest'" class="text-xs font-semibold text-cyan-700 hover:text-cyan-800">Reset</button>
             </div>
 
             <div id="image-gallery-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                <template x-for="image in images" :key="image.filename">
+                <template x-for="image in filteredImages" :key="image.filename">
                     <article class="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md"
                              :class="selectedImage && selectedImage.filename === image.filename ? 'ring-2 ring-cyan-400' : ''"
                              @click="selectImage(image)">
@@ -95,6 +147,10 @@
 
             <div x-show="images.length === 0" class="rounded-2xl border border-dashed border-gray-300 dark:border-gray-600 p-10 text-center text-sm text-gray-500 dark:text-gray-400">
                 No images uploaded yet. Upload your first asset to populate the gallery.
+            </div>
+
+            <div x-show="images.length > 0 && filteredImages.length === 0" class="rounded-2xl border border-dashed border-gray-300 dark:border-gray-600 p-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                No images matched your search filters.
             </div>
         </section>
 
@@ -122,7 +178,7 @@
                     </dl>
 
                     <div class="grid grid-cols-2 gap-2" data-image-action-controls>
-                        <button type="button" @click="copyFilename(selectedImage.filename)" class="inline-flex justify-center items-center rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-xs font-semibold px-3 py-2 transition-colors" x-text="copiedImage === selectedImage.filename ? 'Copied!' : 'Copy Name'"></button>
+                        <button type="button" @click="copyFilename(selectedImage.filename)" class="inline-flex justify-center items-center rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-xs font-semibold px-3 py-2 transition-colors" x-text="copiedImage === selectedImage.filename ? 'Copied!' : 'Copy Filename'"></button>
                         <form method="POST" :action="`{{ url($contentRoutePrefix . '/image-library') }}/${selectedImage.filename}`" @submit.prevent="openDeleteConfirm($event.target)">
                             @csrf
                             @method('DELETE')

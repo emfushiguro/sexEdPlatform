@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 class InstructorAssessmentInsightsService
 {
     /**
-     * @return array{scoreDistributionByModule: array<int, array<string, mixed>>, attemptCountByLearner: array<int, array<string, mixed>>, atRiskLearners: array<int, array<string, mixed>>}
+    * @return array{scoreDistributionByModule: array<int, array<string, mixed>>, attemptCountByLearner: array<int, array<string, mixed>>, atRiskLearners: array<int, array<string, mixed>>, recentAttemptPreviews: array<int, array<string, mixed>>}
      */
     public function buildInsights(User $instructor, int $lowScoreThreshold = 60, int $lowActivityThreshold = 2): array
     {
@@ -24,11 +24,13 @@ class InstructorAssessmentInsightsService
                 'scoreDistributionByModule' => [],
                 'attemptCountByLearner' => [],
                 'atRiskLearners' => [],
+                'recentAttemptPreviews' => [],
             ];
         }
 
         $scoreDistribution = $this->scoreDistributionByModule($moduleIds, $lowScoreThreshold);
         $attemptCounts = $this->attemptCountByLearner($moduleIds);
+        $recentAttemptPreviews = $this->recentAttemptPreviews($moduleIds);
 
         $atRiskLearners = $attemptCounts
             ->filter(function (array $entry) use ($lowScoreThreshold, $lowActivityThreshold): bool {
@@ -47,7 +49,106 @@ class InstructorAssessmentInsightsService
             'scoreDistributionByModule' => $scoreDistribution->all(),
             'attemptCountByLearner' => $attemptCounts->all(),
             'atRiskLearners' => $atRiskLearners,
+            'recentAttemptPreviews' => $recentAttemptPreviews,
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function recentAttemptPreviews(Collection $moduleIds, int $limit = 12): array
+    {
+        return QuizAttempt::query()
+            ->whereHas('quiz', fn ($query) => $query->whereIn('module_id', $moduleIds))
+            ->with([
+                'user:id,first_name,last_name,name,email',
+                'quiz:id,module_id,title',
+                'quiz.module:id,title',
+                'quiz.questions:id,quiz_id,question_text,question_type,order',
+                'quiz.questions.options:id,quiz_question_id,option_text',
+            ])
+            ->latest('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(function (QuizAttempt $attempt): array {
+                $questions = $this->buildQuestionBreakdown($attempt);
+                $totalQuestions = count($questions);
+                $correctAnswers = collect($questions)->where('is_correct', true)->count();
+
+                return [
+                    'attempt_id' => (int) $attempt->id,
+                    'learner_name' => (string) ($attempt->user?->full_name ?: $attempt->user?->name ?: $attempt->user?->email ?: 'Learner'),
+                    'module_title' => (string) ($attempt->quiz?->module?->title ?? 'Unknown module'),
+                    'quiz_title' => (string) ($attempt->quiz?->title ?? 'Untitled quiz'),
+                    'score' => (int) ($attempt->score ?? 0),
+                    'passed' => (bool) ($attempt->passed ?? false),
+                    'attempted_at' => optional($attempt->completed_at ?: $attempt->created_at)?->toIso8601String(),
+                    'correct_answers' => $correctAnswers,
+                    'incorrect_answers' => max(0, $totalQuestions - $correctAnswers),
+                    'total_questions' => $totalQuestions,
+                    'questions' => $questions,
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildQuestionBreakdown(QuizAttempt $attempt): array
+    {
+        $answers = is_array($attempt->answers) ? $attempt->answers : [];
+        $questions = $attempt->quiz?->questions?->sortBy('order') ?? collect();
+
+        return $questions->map(function ($question) use ($answers): array {
+            $answerPayload = $answers[$question->id] ?? $answers[(string) $question->id] ?? [];
+            $selected = data_get($answerPayload, 'selected');
+            $correct = data_get($answerPayload, 'correct');
+
+            return [
+                'question_id' => (int) $question->id,
+                'question_text' => (string) $question->question_text,
+                'question_type' => (string) ($question->question_type ?: data_get($answerPayload, 'type', 'unknown')),
+                'learner_answer' => $this->formatAnswerValue($selected, $question),
+                'correct_answer' => $this->formatAnswerValue($correct, $question),
+                'is_correct' => (bool) data_get($answerPayload, 'is_correct', false),
+            ];
+        })->all();
+    }
+
+    private function formatAnswerValue(mixed $value, mixed $question): string
+    {
+        if ($value === null || $value === '') {
+            return 'No answer';
+        }
+
+        if (is_array($value)) {
+            if ($value === []) {
+                return 'No answer';
+            }
+
+            return collect($value)
+                ->map(fn ($item) => $this->formatSingleAnswerValue($item, $question))
+                ->implode(', ');
+        }
+
+        return $this->formatSingleAnswerValue($value, $question);
+    }
+
+    private function formatSingleAnswerValue(mixed $value, mixed $question): string
+    {
+        if (is_numeric($value)) {
+            $optionText = $question->options?->firstWhere('id', (int) $value)?->option_text;
+            if (is_string($optionText) && trim($optionText) !== '') {
+                return $optionText;
+            }
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'True' : 'False';
+        }
+
+        return trim((string) $value) !== '' ? (string) $value : 'No answer';
     }
 
     private function scoreDistributionByModule(Collection $moduleIds, int $lowScoreThreshold): Collection

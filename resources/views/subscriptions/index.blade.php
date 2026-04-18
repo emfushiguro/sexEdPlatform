@@ -86,7 +86,7 @@
                     <p class="mt-1 text-sm text-gray-700">{{ $renewalNotice['message'] }}</p>
                     @if($renewEndsAt)
                         <p class="mt-1 text-xs text-gray-500">
-                            Previous cycle ended on {{ $renewEndsAt->format('M d, Y h:i A') }}.
+                            {{ ($renewalNotice['tone'] ?? 'expiring') === 'expired' ? 'Previous cycle ended on' : 'Current cycle ends on' }} {{ $renewEndsAt->format('M d, Y h:i A') }}.
                         </p>
                     @endif
                 </div>
@@ -94,7 +94,7 @@
                     @csrf
                     <button type="submit"
                             class="inline-flex w-full items-center justify-center rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-600 sm:w-auto">
-                        Renew Subscription
+                        Renew via Checkout
                     </button>
                 </form>
             </div>

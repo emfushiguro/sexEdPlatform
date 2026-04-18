@@ -17,8 +17,8 @@ class RbacBladePermissionVisibilityTest extends TestCase
         $this->assertIsString($learnerHeaderLayout);
 
         $this->assertStringNotContainsString('hasRole(', $appLayout);
-        $this->assertStringContainsString("can('access learner platform')", $appLayout);
-        $this->assertStringContainsString("can('access parent dashboard')", $appLayout);
+        $this->assertStringContainsString("@canany(['access learner platform', 'access parent dashboard'])", $appLayout);
+        $this->assertStringContainsString("@elsecanany(['access admin dashboard', 'access instructor dashboard'])", $appLayout);
 
         $this->assertStringNotContainsString('hasRole(', $navigationLayout);
         $this->assertStringContainsString("can('create modules')", $navigationLayout);

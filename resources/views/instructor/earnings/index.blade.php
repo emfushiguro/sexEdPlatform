@@ -48,6 +48,43 @@
                     <input type="date" name="date_to" value="{{ request('date_to', $reportFilter->localEnd?->toDateString()) }}" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
                 </label>
 
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Module</span>
+                    <select name="module_id" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
+                        <option value="">All modules</option>
+                        @foreach(($moduleFilterOptions ?? collect()) as $moduleOption)
+                            <option value="{{ $moduleOption->id }}" @selected((string) request('module_id') === (string) $moduleOption->id)>
+                                {{ Illuminate\Support\Str::limit($moduleOption->title, 35) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Payment Method</span>
+                    <select name="payment_method" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
+                        <option value="">All methods</option>
+                        @foreach(['gcash' => 'GCash', 'paymaya' => 'PayMaya', 'grab_pay' => 'GrabPay', 'card' => 'Card', 'billease' => 'BillEase', 'bank_transfer' => 'Bank Transfer', 'paymongo' => 'PayMongo'] as $methodValue => $methodLabel)
+                            <option value="{{ $methodValue }}" @selected(request('payment_method') === $methodValue)>{{ $methodLabel }}</option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Payout Status</span>
+                    <select name="payout_status" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
+                        <option value="">All payouts</option>
+                        @foreach(['pending' => 'Pending', 'payable' => 'Payable', 'paid' => 'Paid', 'reversed' => 'Reversed'] as $payoutValue => $payoutLabel)
+                            <option value="{{ $payoutValue }}" @selected(request('payout_status') === $payoutValue)>{{ $payoutLabel }}</option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <label class="block sm:col-span-2 xl:col-span-2">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Module, learner, or reference" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-100">
+                </label>
+
                 <div class="flex items-end gap-2 sm:col-span-2 xl:col-span-3">
                     <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Apply Filters</button>
                     <a href="{{ route('instructor.earnings.index') }}" class="inline-flex items-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Reset</a>
@@ -59,23 +96,23 @@
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <div class="rounded-2xl border border-brand-100 bg-brand-50 p-5">
+            <div class="rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-100/70 p-5">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Total Sales</p>
                 <p class="mt-2 text-3xl font-bold text-gray-900">{{ number_format((int) $stats['total_sales']) }}</p>
             </div>
-            <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+            <div class="rounded-2xl border border-brand-100 bg-gradient-to-br from-white via-brand-50/70 to-brand-100/60 p-5">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Sales Revenue</p>
                 <p class="mt-2 text-3xl font-bold text-gray-900">P{{ number_format((float) $stats['gross_revenue'], 2) }}</p>
             </div>
-            <div class="rounded-2xl border border-amber-100 bg-amber-50 p-5">
+            <div class="rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-100/60 via-white to-brand-50 p-5">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Platform Fee</p>
                 <p class="mt-2 text-3xl font-bold text-gray-900">P{{ number_format((float) $stats['platform_commission'], 2) }}</p>
             </div>
-            <div class="rounded-2xl border border-purple-100 bg-purple-50 p-5">
+            <div class="rounded-2xl border border-brand-300 bg-gradient-to-br from-brand-100 via-white to-brand-200/70 p-5">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-purple-700">Your Earnings</p>
                 <p class="mt-2 text-3xl font-bold text-gray-900">P{{ number_format((float) $stats['net_earnings'], 2) }}</p>
             </div>
-            <div class="rounded-2xl border border-sky-100 bg-sky-50 p-5">
+            <div class="rounded-2xl border border-gray-200 bg-gray-50 p-5">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Selected Range</p>
                 <p class="mt-2 text-xl font-bold text-gray-900">{{ number_format((int) $stats['total_sales']) }} sales</p>
                 <p class="mt-1 text-sm font-semibold text-sky-700">{{ $stats['range_label'] ?? 'Monthly' }} report</p>
@@ -127,6 +164,7 @@
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">No.</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Module</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Learner</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Method</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Sale Amount</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Platform Fee</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Your Earnings</th>
@@ -179,6 +217,7 @@
                                         </div>
                                     </div>
                                 </td>
+                                <td class="px-6 py-3 text-sm text-gray-700">{{ ucfirst(str_replace('_', ' ', (string) ($tx->payment?->method ?? 'unknown'))) }}</td>
                                 <td class="px-6 py-3 text-sm font-semibold text-gray-900">P{{ number_format((float) $tx->gross_amount, 2) }}</td>
                                 <td class="px-6 py-3 text-sm font-semibold text-gray-900">P{{ number_format((float) $tx->commission_amount, 2) }}</td>
                                 <td class="px-6 py-3 text-sm font-semibold text-gray-900">P{{ number_format((float) $tx->instructor_earnings_amount, 2) }}</td>
@@ -231,7 +270,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="px-6 py-10 text-center text-sm text-gray-500">No earnings transactions yet.</td>
+                                <td colspan="10" class="px-6 py-10 text-center text-sm text-gray-500">No earnings transactions yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

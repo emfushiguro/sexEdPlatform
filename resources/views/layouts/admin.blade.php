@@ -12,7 +12,9 @@
     @endphp
 
     <title>{{ $metaTitle }}</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('media/Logo.png') }}">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <meta name="description" content="{{ $metaDescription }}">
     <meta property="og:type" content="website">
     <meta property="og:title" content="{{ $metaTitle }}">
@@ -190,7 +192,14 @@
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="truncate">Chat</span>
+                                          x-cloak class="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                        <span class="truncate">Chat</span>
+                                        <span data-chat-unread-badge
+                                              hidden
+                                              class="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                            0
+                                        </span>
+                                    </span>
                                 </a>
                             </li>
                             <li>
@@ -207,7 +216,14 @@
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="truncate">Notifications</span>
+                                          x-cloak class="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                        <span class="truncate">Notifications</span>
+                                        @if(($adminNotifications['unread_count'] ?? 0) > 0)
+                                            <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                {{ ($adminNotifications['unread_count'] ?? 0) > 99 ? '99+' : ($adminNotifications['unread_count'] ?? 0) }}
+                                            </span>
+                                        @endif
+                                    </span>
                                 </a>
                             </li>
                         </ul>
@@ -834,13 +850,36 @@
                         </div>
 
                         {{-- User dropdown --}}
+                        @php
+                            $adminHeaderUser = Auth::user();
+                            $adminHeaderProfile = $adminHeaderUser?->adminCreatorProfile;
+                            $adminHeaderDisplayName = $adminHeaderProfile?->public_display_name ?: ($adminHeaderUser?->name ?? 'Admin');
+                            $adminHeaderAvatarPath = (string) ($adminHeaderProfile?->avatar_path ?? '');
+                            $adminHeaderAvatarUrl = null;
+
+                            if (trim($adminHeaderAvatarPath) !== '') {
+                                $normalizedAdminHeaderAvatarPath = ltrim(trim($adminHeaderAvatarPath), '/');
+                                if (\Illuminate\Support\Str::startsWith($normalizedAdminHeaderAvatarPath, ['http://', 'https://', '//'])) {
+                                    $adminHeaderAvatarUrl = $normalizedAdminHeaderAvatarPath;
+                                } else {
+                                    if (\Illuminate\Support\Str::startsWith($normalizedAdminHeaderAvatarPath, 'storage/')) {
+                                        $normalizedAdminHeaderAvatarPath = substr($normalizedAdminHeaderAvatarPath, 8);
+                                    }
+                                    $adminHeaderAvatarUrl = asset('storage/' . $normalizedAdminHeaderAvatarPath);
+                                }
+                            }
+                        @endphp
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open"
                                     class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
-                                <div class="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-white text-xs font-bold uppercase">
-                                    {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
-                                </div>
-                                <span class="hidden sm:block max-w-[120px] truncate">{{ Auth::user()->name }}</span>
+                                @if($adminHeaderAvatarUrl)
+                                    <img src="{{ $adminHeaderAvatarUrl }}" alt="Admin avatar" class="w-8 h-8 rounded-full object-cover border border-gray-200">
+                                @else
+                                    <div class="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-white text-xs font-bold uppercase">
+                                        {{ strtoupper(substr((string) $adminHeaderDisplayName, 0, 1)) }}
+                                    </div>
+                                @endif
+                                <span class="hidden sm:block max-w-[140px] truncate">{{ $adminHeaderDisplayName }}</span>
                                 <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"
                                      fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -859,7 +898,7 @@
                                  class="absolute right-0 mt-2 w-56 rounded-xl bg-white border border-gray-200 shadow-theme-md overflow-hidden"
                                  style="z-index: 100;">
                                 <div class="px-4 py-3 border-b border-gray-100">
-                                    <p class="text-sm font-semibold text-gray-900 truncate">{{ Auth::user()->name }}</p>
+                                    <p class="text-sm font-semibold text-gray-900 truncate">{{ $adminHeaderDisplayName }}</p>
                                     <p class="text-xs text-gray-500 truncate mt-0.5">{{ Auth::user()->email }}</p>
                                 </div>
                                 <div class="py-1">

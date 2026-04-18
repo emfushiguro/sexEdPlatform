@@ -147,6 +147,12 @@ class ModuleController extends Controller
         $validated = $request->validated();
 
         $validated['access_type'] = $validated['access_type'] ?? 'free';
+        if ((string) $validated['access_type'] === 'paid') {
+            $validated['price_currency'] = 'PHP';
+        } else {
+            $validated['price_currency'] = null;
+            $validated['price_amount'] = null;
+        }
 
         if ($this->panelContext()->isInstructor() && (string) $validated['access_type'] === 'paid') {
             try {
@@ -279,6 +285,12 @@ class ModuleController extends Controller
         $validated = $request->validated();
 
         $validated['access_type'] = $validated['access_type'] ?? ($module->access_type ?? 'free');
+        if ((string) $validated['access_type'] === 'paid') {
+            $validated['price_currency'] = 'PHP';
+        } else {
+            $validated['price_currency'] = null;
+            $validated['price_amount'] = null;
+        }
 
         if ($this->panelContext()->isInstructor() && (string) $validated['access_type'] === 'paid') {
             try {

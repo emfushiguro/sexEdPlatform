@@ -83,4 +83,38 @@ class PayMongoPaymentLinkServiceTest extends TestCase
                 && data_get($lineItems, '0.amount') === 9999;
         });
     }
+
+    public function test_create_checkout_session_rounds_minor_units_without_precision_loss(): void
+    {
+        config()->set('paymongo.secret_key', 'sk_test_example');
+        config()->set('paymongo.public_key', 'pk_test_example');
+        config()->set('paymongo.api_base_url', 'https://api.paymongo.com/v1');
+        config()->set('paymongo.payment_link.allowed_payment_method_types', ['gcash', 'card']);
+
+        Http::fake([
+            'https://api.paymongo.com/v1/checkout_sessions' => Http::response([
+                'data' => [
+                    'id' => 'cs_test_345',
+                    'attributes' => [
+                        'checkout_url' => 'https://checkout.paymongo.test/cs_test_345',
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $service = app(PayMongoPaymentLinkService::class);
+
+        $service->createCheckoutSession(
+            amount: 79.99,
+            description: 'Precision check',
+            preferredPaymentMethod: 'gcash',
+        );
+
+        Http::assertSent(function ($request) {
+            $lineItems = data_get($request->data(), 'data.attributes.line_items', []);
+
+            return $request->url() === 'https://api.paymongo.com/v1/checkout_sessions'
+                && data_get($lineItems, '0.amount') === 7999;
+        });
+    }
 }

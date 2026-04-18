@@ -1,4 +1,9 @@
 <div class="bg-white shadow-sm rounded-xl border border-gray-200 p-5" x-data="{ overviewOpen: true, summaryOpen: true, thumbnailPreviewOpen: false }">
+    @php
+        $isPlatformOwner = (bool) data_get($workspace, 'instructor.is_platform_owner', in_array((string) data_get($workspace, 'module.content_owner_type', ''), ['admin', 'platform'], true));
+        $creatorRoleLabel = $isPlatformOwner ? 'Platform Developer' : 'Instructor';
+        $creatorAffiliation = (string) data_get($workspace, 'instructor.affiliation', $isPlatformOwner ? 'Conscious Connections Team' : 'Independent Instructor');
+    @endphp
     <div class="flex items-center justify-between gap-3">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Module Overview</h2>
     </div>
@@ -37,14 +42,15 @@
                 @endif
             </div>
             <div>
-                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Publisher</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Creator Information</p>
                 <p class="text-sm font-semibold text-gray-900">{{ data_get($workspace, 'instructor.name', 'Unknown Instructor') }}</p>
+                <p class="text-[11px] text-gray-500">{{ $creatorRoleLabel }} · {{ $creatorAffiliation }}</p>
             </div>
 
             <button type="button"
                 class="ml-2 inline-flex items-center rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
                 @click="instructorPreviewOpen = true; instructorPreviewTab = 'profile'">
-                View Instructor Profile
+                View Creator Profile
             </button>
         </div>
     </div>

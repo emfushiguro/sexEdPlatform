@@ -58,6 +58,61 @@ class ProfileCompletionController extends Controller
     }
 
     /**
+     * Live username validator for profile completion and profile edits.
+     */
+    public function checkUsername(Request $request)
+    {
+        $user = Auth::user();
+        $rawUsername = (string) $request->query('username', '');
+        $username = strtolower(trim($rawUsername));
+
+        if ($username === '') {
+            return response()->json([
+                'available' => false,
+                'valid_format' => false,
+                'message' => 'Enter a username to continue.',
+            ], 422);
+        }
+
+        if (strlen($username) < 3 || strlen($username) > 30) {
+            return response()->json([
+                'available' => false,
+                'valid_format' => false,
+                'message' => 'Username must be between 3 and 30 characters.',
+            ], 422);
+        }
+
+        if (!preg_match('/^[a-z0-9_-]+$/', $username)) {
+            return response()->json([
+                'available' => false,
+                'valid_format' => false,
+                'message' => 'Use only lowercase letters, numbers, underscores, and hyphens.',
+            ], 422);
+        }
+
+        $currentProfileId = $user->learnerProfile?->id;
+
+        $isTaken = LearnerProfile::query()
+            ->whereRaw('LOWER(username) = ?', [$username])
+            ->when($currentProfileId, fn ($query) => $query->where('id', '!=', $currentProfileId))
+            ->exists();
+
+        if ($isTaken) {
+            return response()->json([
+                'available' => false,
+                'valid_format' => true,
+                'message' => 'That username is already taken.',
+            ]);
+        }
+
+        return response()->json([
+            'available' => true,
+            'valid_format' => true,
+            'message' => 'Username is available.',
+        ]);
+    }
+
+    /**
      * Store the completed profile.
      * Note: Birthdate is already set during registration, so we don't collect it here.
      */

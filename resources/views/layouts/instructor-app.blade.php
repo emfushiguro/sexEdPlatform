@@ -4,8 +4,27 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') | Instructor Panel</title>
+
+    @php
+        $metaTitle = trim($__env->yieldContent('title', 'Dashboard') . ' | Instructor Panel | Concious Connections');
+        $metaDescription = trim($__env->yieldContent('meta_description', 'Concious Connections instructor workspace for managing modules, learners, and assessments.'));
+        $metaImage = trim($__env->yieldContent('meta_image', asset('media/Logo.png')));
+    @endphp
+
+    <title>{{ $metaTitle }}</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" href="{{ asset('media/Logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('media/Logo.png') }}">
+    <meta name="description" content="{{ $metaDescription }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $metaTitle }}">
+    <meta property="og:description" content="{{ $metaDescription }}">
+    <meta property="og:image" content="{{ $metaImage }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $metaTitle }}">
+    <meta name="twitter:description" content="{{ $metaDescription }}">
+    <meta name="twitter:image" content="{{ $metaImage }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -143,7 +162,7 @@
                         ],
                     ],
                     [
-                        'label' => 'ASSESSMENTS',
+                        'label' => 'TEACHING',
                         'items' => [
                             ['label' => 'Learners',     'route' => 'instructor.users.index',       'active' => request()->routeIs('instructor.users.*'),       'badge' => 0,            'icon' => 'users'],
                             ['label' => 'Modules',     'route' => 'instructor.modules.index',     'active' => request()->routeIs('instructor.modules.*'),     'badge' => 0,            'icon' => 'book'],
@@ -154,12 +173,22 @@
                         ],
                     ],
                     [
-                        'label' => 'EXTRAS',
+                        'label' => 'COMMUNICATION',
                         'items' => [
                             ['label' => 'Chat', 'route' => 'chat.page', 'active' => request()->routeIs('chat.*'), 'badge' => 0, 'icon' => 'chat'],
-                            ['label' => 'Subscriptions', 'route' => 'instructor.subscriptions.index', 'active' => request()->routeIs('instructor.subscriptions.*'), 'badge' => 0, 'icon' => 'wallet'],
-                            ['label' => 'Payment History', 'route' => 'instructor.payments.history', 'active' => request()->routeIs('instructor.payments.*'), 'badge' => 0, 'icon' => 'wallet'],
-                            ['label' => 'Earnings', 'route' => 'instructor.earnings.index', 'active' => request()->routeIs('instructor.earnings.*'), 'badge' => 0, 'icon' => 'wallet'],
+                        ],
+                    ],
+                    [
+                        'label' => 'FINANCE',
+                        'items' => [
+                            ['label' => 'Subscriptions', 'route' => 'instructor.subscriptions.index', 'active' => request()->routeIs('instructor.subscriptions.*'), 'badge' => 0, 'icon' => 'sparkles'],
+                            ['label' => 'Payment History', 'route' => 'instructor.payments.history', 'active' => request()->routeIs('instructor.payments.*'), 'badge' => 0, 'icon' => 'card'],
+                            ['label' => 'Earnings', 'route' => 'instructor.earnings.index', 'active' => request()->routeIs('instructor.earnings.*'), 'badge' => 0, 'icon' => 'cash'],
+                        ],
+                    ],
+                    [
+                        'label' => 'ASSETS',
+                        'items' => [
                             ['label' => 'Image Library', 'route' => 'instructor.image-library.index', 'active' => request()->routeIs('instructor.image-library.*'), 'badge' => 0, 'icon' => 'sparkles'],
                         ],
                     ],
@@ -215,6 +244,14 @@
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2m0-6h3m0 0v6m0-6a2 2 0 100-4h-3a2 2 0 000 4h3z" />
                                     </svg>
+                                    @elseif($item['icon'] === 'card')
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8h18M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zM7 16h4" />
+                                    </svg>
+                                    @elseif($item['icon'] === 'cash')
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 9c0-1.657-2.239-3-5-3s-5 1.343-5 3m10 0c0 1.657-2.239 3-5 3s-5-1.343-5-3m10 0v6c0 1.657-2.239 3-5 3s-5-1.343-5-3V9" />
+                                    </svg>
                                     @elseif($item['icon'] === 'chat')
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8m-8 4h5m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -252,10 +289,37 @@
                     class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
                     :class="(!$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isHovered && !$store.instructorSidebar.isMobileOpen) ? 'justify-center' : ''"
                 >
+                    @php
+                        $indicator = $instructorSubscriptionIndicator ?? [
+                            'plan_name' => 'Free Plan',
+                            'is_premium' => false,
+                            'status_key' => 'free',
+                            'status_label' => 'Free',
+                        ];
+
+                        $sidebarAvatarPath = auth()->user()?->instructorProfile?->profile_photo_path ?? auth()->user()?->learnerProfile?->avatar_path;
+                        $sidebarAvatarUrl = null;
+                        if (is_string($sidebarAvatarPath) && trim($sidebarAvatarPath) !== '') {
+                            $normalizedSidebarAvatar = ltrim(trim($sidebarAvatarPath), '/');
+                            if (\Illuminate\Support\Str::startsWith($normalizedSidebarAvatar, ['http://', 'https://', '//'])) {
+                                $sidebarAvatarUrl = $normalizedSidebarAvatar;
+                            } else {
+                                if (\Illuminate\Support\Str::startsWith($normalizedSidebarAvatar, 'storage/')) {
+                                    $normalizedSidebarAvatar = substr($normalizedSidebarAvatar, 8);
+                                }
+                                $sidebarAvatarUrl = asset('storage/' . $normalizedSidebarAvatar);
+                            }
+                        }
+                    @endphp
+
                     {{-- Avatar --}}
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 bg-gradient-to-r from-brand-500 to-brand-900">
-                        {{ strtoupper(mb_substr(Auth::user()->first_name ?? Auth::user()->name, 0, 1)) }}
-                    </div>
+                    @if($sidebarAvatarUrl)
+                        <img src="{{ $sidebarAvatarUrl }}" alt="Instructor profile" class="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0">
+                    @else
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 bg-gradient-to-r from-brand-500 to-brand-900">
+                            {{ strtoupper(mb_substr(Auth::user()->first_name ?? Auth::user()->name, 0, 1)) }}
+                        </div>
+                    @endif
 
                     {{-- Name + logout --}}
                     <div
@@ -263,33 +327,11 @@
                         x-cloak
                         class="flex-1 min-w-0"
                     >
-                        @php
-                            $indicator = $instructorSubscriptionIndicator ?? [
-                                'plan_name' => 'Free Plan',
-                                'is_premium' => false,
-                                'status_key' => 'free',
-                                'status_label' => 'Free',
-                            ];
-
-                            $badgeTone = ($indicator['is_premium'] ?? false)
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-gray-100 text-gray-600';
-
-                            $statusTone = match ((string) ($indicator['status_key'] ?? 'free')) {
-                                'active' => 'bg-emerald-100 text-emerald-700',
-                                'pending' => 'bg-indigo-100 text-indigo-700',
-                                'expired', 'cancelled' => 'bg-rose-100 text-rose-700',
-                                default => 'bg-gray-100 text-gray-600',
-                            };
-                        @endphp
                         <p class="text-xs font-semibold text-gray-900 truncate">{{ Auth::user()->first_name ?? Auth::user()->name }}</p>
                         <p class="text-[10px] text-brand-600 truncate uppercase tracking-wider">Instructor</p>
                         <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $badgeTone }}">
-                                {{ ($indicator['is_premium'] ?? false) ? 'Premium' : 'Free' }}
-                            </span>
-                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $statusTone }}">
-                                {{ $indicator['status_label'] ?? 'Free' }}
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-brand-50 text-brand-700">
+                                {{ ($indicator['plan_name'] ?? 'Free Plan') . ' · ' . ($indicator['status_label'] ?? 'Free') }}
                             </span>
                         </div>
                     </div>

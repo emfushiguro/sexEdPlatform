@@ -27,6 +27,7 @@ class ContentReviewController extends Controller
     {
         $search = trim((string) $request->string('search'));
         $statusFilter = (string) $request->string('status');
+        $trackedStatuses = ['submitted', 'in_review', 'approved', 'rejected'];
         $instructorFilter = $request->filled('instructor_id')
             ? (int) $request->integer('instructor_id')
             : null;
@@ -34,7 +35,7 @@ class ContentReviewController extends Controller
 
         $reviewRequests = ModuleReviewRequest::query()
             ->with(['module', 'revision', 'submitter'])
-            ->whereIn('status', ['submitted', 'in_review'])
+            ->whereIn('status', $trackedStatuses)
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($nested) use ($search): void {
                     $nested->where('status', 'like', '%' . $search . '%')
@@ -47,8 +48,15 @@ class ContentReviewController extends Controller
                         });
                 });
             })
-            ->when(in_array($statusFilter, ['submitted', 'in_review'], true), function ($query) use ($statusFilter): void {
-                $query->where('status', $statusFilter);
+            ->when($statusFilter !== '', function ($query) use ($statusFilter): void {
+                if ($statusFilter === 'pending') {
+                    $query->whereIn('status', ['submitted', 'in_review']);
+                    return;
+                }
+
+                if (in_array($statusFilter, ['approved', 'rejected'], true)) {
+                    $query->where('status', $statusFilter);
+                }
             })
             ->when(($instructorFilter ?? 0) > 0, function ($query) use ($instructorFilter): void {
                 $query->where('submitted_by', $instructorFilter);

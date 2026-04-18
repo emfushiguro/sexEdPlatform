@@ -494,7 +494,6 @@
                             </template>
                             <template x-if="!canUseVoiceTranslator">
                                 <p class="text-xs text-amber-700">
-                                    Premium-only voice translator.
                                     <a href="{{ route('subscription.index') }}" class="font-semibold underline">Upgrade</a>
                                 </p>
                             </template>

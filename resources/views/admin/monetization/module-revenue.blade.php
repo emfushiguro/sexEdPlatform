@@ -84,7 +84,7 @@
                             Manage Commission Settings &rarr;
                         </a>
                     </div>
-                    <form method="GET" action="{{ route('admin.monetization.module-revenue.index') }}" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" data-testid="admin-table-filter-bar">
+                    <form method="GET" action="{{ route('admin.monetization.module-revenue.index') }}" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" data-testid="admin-table-filter-bar">
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Instructor</span>
                             <select name="instructor_id" onchange="this.form.submit()" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
@@ -101,13 +101,6 @@
                                 @foreach($modules as $module)
                                     <option value="{{ $module->id }}" @selected((string) request('module_id') === (string) $module->id)>{{ Str::limit($module->title, 20) }}</option>
                                 @endforeach
-                            </select>
-                        </label>
-                        <label class="block">
-                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Payout</span>
-                            <select name="payout_status" onchange="this.form.submit()" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
-                                <option value="">All statuses</option>
-                                <option value="paid" @selected(request('payout_status') === 'paid')>Paid</option>
                             </select>
                         </label>
                         <label class="block">
@@ -139,7 +132,6 @@
                             <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Platform Fee</th>
                             <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Instructor Earnings</th>
                             <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Payment Context</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Payout</th>
                             <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Purchased Date</th>
                             <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Actions</th>
                         </tr>
@@ -199,9 +191,6 @@
                                     <p class="font-semibold text-gray-900">{{ ucfirst(str_replace('_', ' ', (string) ($tx->payment?->method ?? 'unknown'))) }}</p>
                                     <p class="text-xs text-gray-500">{{ ucfirst((string) ($tx->payment?->status?->value ?? $tx->payment?->status ?? 'N/A')) }}</p>
                                 </td>
-                                <td class="px-6 py-3">
-                                    <span class="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Paid</span>
-                                </td>
                                 <td class="px-6 py-3 text-sm text-gray-700">{{ optional($tx->modulePurchase?->purchased_at ?: $tx->occurred_at)->format('M d, Y h:i A') ?? 'N/A' }}</td>
                                 <td class="px-6 py-3 text-right">
                                     <div class="flex items-center justify-end gap-2">
@@ -238,7 +227,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="px-6 py-10 text-center text-sm text-gray-500">No transactions found for the selected filters.</td>
+                                <td colspan="10" class="px-6 py-10 text-center text-sm text-gray-500">No transactions found for the selected filters.</td>
                             </tr>
                         @endforelse
                     </tbody>

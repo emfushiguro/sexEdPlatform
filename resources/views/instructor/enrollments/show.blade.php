@@ -4,6 +4,27 @@
     $isAdminPanel = ($isContentAdminPanel ?? false) === true;
     $ownershipRestrictionTooltip = 'Instructor-owned content is read-only in the admin panel.';
     $moduleOwnerType = strtolower(trim((string) ($enrollment->module->content_owner_type ?? '')));
+    $enrollmentStatus = (string) ($enrollment->status->value ?? $enrollment->status);
+
+    $learnerAvatarPath = $enrollment->user?->learnerProfile?->avatar_path;
+    $learnerAvatarUrl = null;
+    if (!empty($learnerAvatarPath)) {
+        if (\Illuminate\Support\Str::startsWith($learnerAvatarPath, ['http://', 'https://', '//'])) {
+            $learnerAvatarUrl = $learnerAvatarPath;
+        } else {
+            $learnerAvatarUrl = asset('storage/' . ltrim(str_replace('storage/', '', (string) $learnerAvatarPath), '/'));
+        }
+    }
+
+    $statusBadgeClasses = match ($enrollmentStatus) {
+        'approved' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        'pending', 'pending_parent_approval' => 'bg-amber-100 text-amber-700 border-amber-200',
+        default => 'bg-rose-100 text-rose-700 border-rose-200',
+    };
+    $statusLabel = match ($enrollmentStatus) {
+        'pending_parent_approval' => 'Pending Parent Approval',
+        default => ucfirst(str_replace('_', ' ', $enrollmentStatus)),
+    };
 
     if (!in_array($moduleOwnerType, ['admin', 'platform', 'instructor'], true)) {
         $moduleCreator = $enrollment->module->creator;
@@ -16,18 +37,63 @@
 @endphp
 
 @section('content')
+    <div x-data="{
+        confirmModalOpen: false,
+        confirmForm: null,
+        confirmMessage: '',
+        confirmButtonLabel: 'Confirm',
+        confirmTone: 'approve',
+        openDecisionConfirm(form, message, label, tone = 'approve') {
+            this.confirmForm = form;
+            this.confirmMessage = message;
+            this.confirmButtonLabel = label;
+            this.confirmTone = tone;
+            this.confirmModalOpen = true;
+        },
+        closeDecisionConfirm() {
+            this.confirmModalOpen = false;
+            this.confirmForm = null;
+            this.confirmMessage = '';
+            this.confirmButtonLabel = 'Confirm';
+            this.confirmTone = 'approve';
+        },
+        submitDecisionConfirm() {
+            if (this.confirmForm) {
+                this.confirmForm.submit();
+            }
+        }
+    }" class="space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Main Content - Learner Profile -->
                 <div class="lg:col-span-2 space-y-6">
                     <!-- Basic Information -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                </svg>
-                                Learner Information
-                            </h3>
+                            <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="flex items-center gap-3">
+                                    @if($learnerAvatarUrl)
+                                        <img src="{{ $learnerAvatarUrl }}" alt="Learner avatar" class="h-14 w-14 rounded-full border border-gray-200 object-cover">
+                                    @else
+                                        <span class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-700">
+                                            {{ strtoupper(substr((string) ($enrollment->user->name ?? 'L'), 0, 1)) }}
+                                        </span>
+                                    @endif
+
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-900">Learner Information</h3>
+                                        <p class="text-sm text-gray-500">Profile, enrollment context, and learning activity snapshot.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold {{ $statusBadgeClasses }}">
+                                        {{ $statusLabel }}
+                                    </span>
+                                    <span class="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
+                                        {{ $enrollment->module->title }}
+                                    </span>
+                                </div>
+                            </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -121,6 +187,53 @@
                         </div>
                     </div>
 
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6">
+                            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V9a2 2 0 00-2-2h-4m1 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v15h5m10 0H7"/>
+                                </svg>
+                                Parent-Child Connection
+                            </h3>
+
+                            @if(!empty($parentConnections))
+                                <div class="space-y-3">
+                                    @foreach($parentConnections as $connection)
+                                        @php
+                                            $verificationTone = match ((string) ($connection['verification_status'] ?? 'pending')) {
+                                                'approved' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                                                'rejected' => 'bg-rose-100 text-rose-700 border-rose-200',
+                                                default => 'bg-amber-100 text-amber-700 border-amber-200',
+                                            };
+                                        @endphp
+                                        <article class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                                <p class="text-sm font-semibold text-gray-900">{{ $connection['parent_name'] }}</p>
+                                                <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold {{ $verificationTone }}">
+                                                    {{ ucfirst((string) ($connection['verification_status'] ?? 'pending')) }}
+                                                </span>
+                                            </div>
+
+                                            <div class="mt-2 flex flex-wrap gap-1.5">
+                                                <span class="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-700 border border-gray-200">
+                                                    {{ !empty($connection['can_view_progress']) ? 'Can view progress' : 'No progress access' }}
+                                                </span>
+                                                <span class="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-700 border border-gray-200">
+                                                    {{ !empty($connection['can_view_quiz_answers']) ? 'Can view quiz answers' : 'No quiz-answer access' }}
+                                                </span>
+                                                <span class="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-700 border border-gray-200">
+                                                    {{ !empty($connection['can_approve_content']) ? 'Can approve content' : 'No approval access' }}
+                                                </span>
+                                            </div>
+                                        </article>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-500">No linked parent account was found for this learner profile.</p>
+                            @endif
+                        </div>
+                    </div>
+
                     <!-- Module Requested -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
@@ -143,7 +256,7 @@
                                     <div class="flex gap-3 mt-2 text-xs text-gray-500">
                                         <span>Age: {{ $enrollment->module->min_age }}-{{ $enrollment->module->max_age }} years</span>
                                         <span>•</span>
-                                        <span>{{ $enrollment->module->lessons_count ?? 0 }} lessons</span>
+                                        <span>{{ $moduleLessonCount ?? 0 }} lessons</span>
                                         <span>•</span>
                                         <span>Requested {{ $enrollment->created_at->diffForHumans() }}</span>
                                     </div>
@@ -214,37 +327,47 @@
                                         <span class="text-sm font-semibold">{{ $completionRate }}%</span>
                                     </div>
                                 </div>
+                                <div>
+                                    <label class="text-sm text-gray-500">Current Module Progress</label>
+                                    <div class="mt-1 flex items-center gap-2">
+                                        <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-brand-600 h-2 rounded-full" style="width: {{ $moduleProgressPercent }}%"></div>
+                                        </div>
+                                        <span class="text-sm font-semibold">{{ $moduleProgressPercent }}%</span>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500">{{ $completedLessonCount }} of {{ $moduleLessonCount }} lessons completed</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Action Buttons -->
-                    @if($enrollment->status === 'pending')
+                    @if(in_array($enrollmentStatus, ['pending', 'pending_parent_approval'], true))
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6">
                                 <h3 class="text-lg font-semibold mb-4">Review Decision</h3>
                                 
                                 <div class="space-y-3">
-                                    <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.approve', $enrollment) }}">
+                                    <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.approve', $enrollment) }}"
+                                          @submit.prevent="@if($isRestrictedAdminMutation) false @else openDecisionConfirm($event.target, 'Approve this enrollment request?', 'Approve Enrollment', 'approve') @endif">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" 
                                                 @if($isRestrictedAdminMutation) disabled @endif
                                                 title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Approve enrollment' }}"
-                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-emerald-600' : 'bg-emerald-600 hover:bg-emerald-700' }}"
-                                                onclick="@if($isRestrictedAdminMutation) return false; @else return confirm('Approve this enrollment request?'); @endif">
+                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-emerald-600' : 'bg-emerald-600 hover:bg-emerald-700' }}">
                                             ✓ Approve Enrollment
                                         </button>
                                     </form>
 
-                                    <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.reject', $enrollment) }}">
+                                    <form method="POST" action="{{ route($contentRoutePrefix . '.enrollments.reject', $enrollment) }}"
+                                          @submit.prevent="@if($isRestrictedAdminMutation) false @else openDecisionConfirm($event.target, 'Reject this enrollment request? The learner will be notified.', 'Reject Request', 'reject') @endif">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" 
                                                 @if($isRestrictedAdminMutation) disabled @endif
                                                 title="{{ $isRestrictedAdminMutation ? $ownershipRestrictionTooltip : 'Reject enrollment' }}"
-                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-rose-600' : 'bg-rose-600 hover:bg-rose-700' }}"
-                                                onclick="@if($isRestrictedAdminMutation) return false; @else return confirm('Reject this enrollment request? The learner will be notified.'); @endif">
+                                                class="w-full text-white font-semibold py-3 px-4 rounded-lg transition {{ $isRestrictedAdminMutation ? 'cursor-not-allowed opacity-50 bg-rose-600' : 'bg-rose-600 hover:bg-rose-700' }}">
                                             ✗ Reject Request
                                         </button>
                                     </form>
@@ -260,13 +383,13 @@
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6">
                                 <div class="text-center">
-                                    @if($enrollment->status === 'approved')
+                                    @if($enrollmentStatus === 'approved')
                                         <div class="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4">
                                             <svg class="w-12 h-12 text-emerald-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                             </svg>
                                             <p class="text-emerald-800 font-semibold">Already Approved</p>
-                                            <p class="text-xs text-emerald-600 mt-1">{{ $enrollment->enrolled_at->format('M d, Y') }}</p>
+                                            <p class="text-xs text-emerald-600 mt-1">{{ $enrollment->enrolled_at?->format('M d, Y') ?? 'Date unavailable' }}</p>
                                         </div>
                                     @else
                                         <div class="bg-rose-50 border-2 border-rose-200 rounded-lg p-4">
@@ -287,5 +410,21 @@
                     @endif
                 </div>
             </div>
+            <div x-show="confirmModalOpen" x-cloak class="fixed inset-0 z-40 bg-gray-900/60" @click="closeDecisionConfirm()"></div>
+            <div x-show="confirmModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl" @click.stop>
+                    <h3 class="text-lg font-semibold text-gray-900">Confirm Action</h3>
+                    <p class="mt-2 text-sm text-gray-600" x-text="confirmMessage"></p>
+                    <div class="mt-6 flex items-center justify-end gap-2">
+                        <button type="button" @click="closeDecisionConfirm()" class="rounded-xl bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200">Cancel</button>
+                        <button type="button"
+                                @click="submitDecisionConfirm()"
+                                :class="confirmTone === 'reject' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'"
+                                class="rounded-xl px-4 py-2 text-sm font-semibold text-white"
+                                x-text="confirmButtonLabel"></button>
+                    </div>
+                </div>
+            </div>
+    </div>
 @endsection
 

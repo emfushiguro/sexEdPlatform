@@ -227,6 +227,8 @@
                                 $latestReview = $application->latestReview;
                                 $reviewedByName = $latestReview?->reviewedBy?->name ?? $application->approvedBy?->name;
                                 $decisionAt = $latestReview?->reviewed_at ?? $application->approved_at;
+                                $tableAvatarPath = $application->user->learnerProfile?->avatar_path;
+                                $tableAvatarUrl = $tableAvatarPath ? asset('storage/' . ltrim($tableAvatarPath, '/')) : null;
                                 $actionLabel = $application->status === 'approved'
                                     ? 'View Approved Application'
                                     : ($application->status === 'rejected' ? 'View Rejected Application' : 'Review Application');
@@ -237,7 +239,18 @@
                             @endphp
                             <tr class="transition hover:bg-brand-50/40">
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-500">{{ $rowNumber }}</td>
-                                <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ $application->user->name }}</td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        @if($tableAvatarUrl)
+                                            <img src="{{ $tableAvatarUrl }}" alt="{{ $application->user->name }}" class="h-10 w-10 rounded-full border border-gray-200 object-cover">
+                                        @else
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+                                                {{ strtoupper(substr($application->user->name, 0, 1)) }}
+                                            </div>
+                                        @endif
+                                        <span class="text-sm font-semibold text-gray-900">{{ $application->user->name }}</span>
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $application->user->email }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-700">{{ $application->created_at->format('M d, Y') }}</td>
                                 <td class="px-6 py-4">
@@ -361,15 +374,15 @@
                 ['label' => 'Professional License', 'path' => $application->professional_license_path],
             ];
             $defaultReasonCode = old('review_application_id') == $application->id ? old('rejection_reason_code') : '';
-            $defaultReasonNote = old('review_application_id') == $application->id ? old('rejection_reason_note') : '';
             $defaultAdminMessage = old('review_application_id') == $application->id ? old('admin_message') : null;
             $approveMessage = $defaultAdminMessage ?? $defaultApprovalMessage;
             $rejectMessage = $defaultAdminMessage ?? $defaultRejectionMessage;
             $approveModalDefaultOpen = old('review_application_id') == $application->id && old('modal_action') === 'approve' && $errors->has('admin_message');
-            $rejectModalDefaultOpen = old('review_application_id') == $application->id && old('modal_action') === 'reject' && ($errors->has('rejection_reason_code') || $errors->has('rejection_reason_note') || $errors->has('admin_message'));
+            $rejectModalDefaultOpen = old('review_application_id') == $application->id && old('modal_action') === 'reject' && ($errors->has('rejection_reason_code') || $errors->has('admin_message'));
             $latestReview = $application->latestReview;
             $latestReviewerName = $latestReview?->reviewedBy?->name ?? $application->approvedBy?->name;
             $latestDecisionAt = $latestReview?->reviewed_at ?? $application->approved_at;
+            $applicantAge = $profile?->birthdate ? \Carbon\Carbon::parse($profile->birthdate)->age : $application->user?->calculateAge();
         @endphp
 
         <div x-show="activeReview === {{ $application->id }}"
@@ -390,7 +403,7 @@
                  x-transition:leave-start="opacity-100 trangray-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 trangray-y-4 sm:trangray-y-0 sm:scale-95"
                  class="relative z-50 w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl"
-                 x-data="{ approveModalOpen: @js($approveModalDefaultOpen), rejectModalOpen: @js($rejectModalDefaultOpen), selectedCode: @js($defaultReasonCode), chars: {{ strlen((string) $defaultReasonNote) }} }">
+                 x-data="{ approveModalOpen: @js($approveModalDefaultOpen), rejectModalOpen: @js($rejectModalDefaultOpen), selectedCode: @js($defaultReasonCode) }">
 
                 <div class="border-b border-gray-100 bg-brand-50/45/80 px-6 py-4">
                     <div class="flex items-center justify-between">
@@ -408,24 +421,37 @@
                 </div>
 
                 <div class="max-h-[80vh] space-y-6 overflow-y-auto bg-white px-6 py-6">
-                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: true }">
+                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: false }">
                         <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
                             <h3 class="text-base font-bold text-gray-900">Section 1 - Application Information</h3>
                             <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-brand-50/45" x-text="open ? 'Hide' : 'Show'"></button>
                         </div>
 
                         <div x-show="open" x-cloak class="mt-4 space-y-4">
-                            <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-brand-50/45/70 p-3">
-                                @if($avatarUrl)
-                                    <img src="{{ $avatarUrl }}" alt="{{ $application->user->name }}" class="h-12 w-12 rounded-full border border-gray-200 object-cover">
-                                @else
-                                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-                                        {{ strtoupper(substr($application->user->name, 0, 1)) }}
+                            <div class="rounded-xl border border-gray-200 bg-brand-50/45/70 p-3">
+                                <div class="flex flex-wrap items-center gap-3">
+                                    @if($avatarUrl)
+                                        <img src="{{ $avatarUrl }}" alt="{{ $application->user->name }}" class="h-12 w-12 rounded-full border border-gray-200 object-cover">
+                                    @else
+                                        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+                                            {{ strtoupper(substr($application->user->name, 0, 1)) }}
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900">{{ $application->user->name }}</p>
+                                        <p class="text-xs text-gray-500">{{ $application->user->email }}</p>
+                                        <div class="mt-1 flex flex-wrap items-center gap-2">
+                                            <span class="inline-flex rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700">Instructor Applicant</span>
+                                            <span class="text-[11px] text-gray-500">{{ $location !== '' ? $location : 'Location pending' }}</span>
+                                        </div>
                                     </div>
-                                @endif
-                                <div>
-                                    <p class="text-sm font-semibold text-gray-900">{{ $application->user->name }}</p>
-                                    <p class="text-xs text-gray-500">{{ $application->user->email }}</p>
+                                    <button
+                                        type="button"
+                                        class="ml-auto inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                                        @click="$dispatch('open-global-chat', { target_user_id: {{ (int) $application->user->id }}, conversation_type: 'direct', name: @js($application->user->name) })"
+                                    >
+                                        Direct Message
+                                    </button>
                                 </div>
                             </div>
 
@@ -433,6 +459,7 @@
                                 <p><span class="font-semibold">Application Status:</span> <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold {{ $application->status === 'approved' ? 'bg-emerald-100 text-emerald-700' : ($application->status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700') }}">{{ ucfirst($application->status) }}</span></p>
                                 <p><span class="font-semibold">Date Applied:</span> {{ $application->created_at->format('M d, Y h:i A') }}</p>
                                 <p><span class="font-semibold">Username:</span> {{ $profile?->username ?? 'N/A' }}</p>
+                                <p><span class="font-semibold">Age:</span> {{ $applicantAge !== null ? $applicantAge . ' years old' : 'N/A' }}</p>
                                 <p><span class="font-semibold">Location:</span> {{ $location !== '' ? $location : 'Not set' }}</p>
                                 <p><span class="font-semibold">Educational Background:</span> {{ $application->educational_background_label ?: 'Not provided' }}</p>
                                 <p><span class="font-semibold">Professional Background:</span> {{ $application->bio ?: 'Not provided' }}</p>
@@ -442,7 +469,7 @@
                         </div>
                     </section>
 
-                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: true }">
+                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: false }">
                         <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
                             <h3 class="text-base font-bold text-gray-900">Section 2 - Submitted Documents</h3>
                             <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-brand-50/45" x-text="open ? 'Hide' : 'Show'"></button>
@@ -559,7 +586,7 @@
                         </div>
                     </section>
 
-                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: true }">
+                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: false }">
                         <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
                             <h3 class="text-base font-bold text-gray-900">Section 3 - Learner Data Snapshot</h3>
                             <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-brand-50/45" x-text="open ? 'Hide' : 'Show'"></button>
@@ -609,7 +636,7 @@
                         </div>
                     </section>
 
-                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: true }">
+                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: false }">
                         <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
                             <h3 class="text-base font-bold text-gray-900">Section 4 - Moderation History</h3>
                             <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-brand-50/45" x-text="open ? 'Hide' : 'Show'"></button>
@@ -643,7 +670,7 @@
                         </div>
                     </section>
 
-                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: true }">
+                    <section class="rounded-2xl border border-gray-200 bg-white p-5" x-data="{ open: false }">
                         <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
                             <h3 class="text-base font-bold text-gray-900">Section 5 - Moderation Actions</h3>
                             <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-brand-50/45" x-text="open ? 'Hide' : 'Show'"></button>
@@ -742,27 +769,6 @@
                                 </select>
                                 @if(old('review_application_id') == $application->id && old('modal_action') === 'reject')
                                     @error('rejection_reason_code')
-                                        <p class="mt-1 text-xs text-rose-700">{{ $message }}</p>
-                                    @enderror
-                                @endif
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700" for="rejection_reason_note_{{ $application->id }}">Custom note <span class="text-xs text-gray-500">(required when reason is Other)</span></label>
-                                <textarea id="rejection_reason_note_{{ $application->id }}"
-                                          name="rejection_reason_note"
-                                          rows="3"
-                                          x-bind:required="selectedCode === 'other'"
-                                          x-on:input="chars = $event.target.value.length"
-                                          class="mt-1 block w-full rounded-lg border-gray-300 text-sm"
-                                          placeholder="Add actionable guidance for the applicant.">{{ $defaultReasonNote }}</textarea>
-                                <div class="mt-1 flex justify-between text-xs text-gray-500">
-                                    <span x-show="selectedCode === 'other'" x-cloak>Required for Other reason</span>
-                                    <span x-show="selectedCode !== 'other'" x-cloak>Optional but recommended for clarity</span>
-                                    <span x-text="chars + ' characters'"></span>
-                                </div>
-                                @if(old('review_application_id') == $application->id && old('modal_action') === 'reject')
-                                    @error('rejection_reason_note')
                                         <p class="mt-1 text-xs text-rose-700">{{ $message }}</p>
                                     @enderror
                                 @endif

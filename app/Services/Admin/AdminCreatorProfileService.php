@@ -15,6 +15,7 @@ class AdminCreatorProfileService
             ['user_id' => $user->id],
             [
                 'public_display_name' => $user->full_name,
+                'bio' => 'I lead platform quality, content governance, and learning experience standards for Conscious Connections.',
                 'affiliation' => 'Conscious Connections Team',
                 'show_individual_attribution' => false,
             ]

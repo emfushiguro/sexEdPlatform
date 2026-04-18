@@ -111,7 +111,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-4">
                     Topic Type <span class="text-red-500">*</span>
                 </label>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <!-- Video Type -->
                     <label class="relative flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 hover:shadow-md transition-all topic-type-card">
                         <input 
@@ -160,22 +160,6 @@
                         <span class="text-sm font-semibold text-gray-900">Worksheet</span>
                     </label>
 
-                    <!-- Interactive Type -->
-                    <label class="relative flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 hover:shadow-md transition-all topic-type-card">
-                        <input 
-                            type="radio" 
-                            name="type" 
-                            value="interactive" 
-                            class="sr-only topic-type-radio"
-                            {{ old('type', $topic->type) === 'interactive' ? 'checked' : '' }}
-                            required
-                        >
-                        <svg class="w-12 h-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span class="text-sm font-semibold text-gray-900">Interactive</span>
-                    </label>
                 </div>
                 @error('type')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -331,16 +315,23 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     {{ $topic->image_attachments ? 'Add More Images (Optional)' : 'Image Attachments (Optional)' }}
                 </label>
-                <input 
-                    type="file" 
-                    name="image_attachments[]" 
-                    id="image_attachments" 
+                <input
+                    type="file"
+                    name="image_attachments[]"
+                    id="image_attachments"
                     accept="image/*"
                     multiple
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
+                    class="hidden"
                 >
-                <p class="mt-1 text-sm text-gray-500">Max 5 images. Supported: JPG, PNG, GIF</p>
-                <p class="mt-1 text-xs text-purple-600 font-medium">Both Gallery and Slideshow views remain available to learners.</p>
+                <label for="image_attachments"
+                    class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-purple-400 hover:bg-purple-50/20 transition-colors">
+                    <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                    </svg>
+                    <p class="text-sm text-gray-600"><span class="font-semibold text-purple-700">Click to upload</span> new image attachments</p>
+                    <p class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 2MB each</p>
+                </label>
             </div>
         </div>
 
@@ -404,54 +395,6 @@
                     placeholder="Enter instructions for completing this worksheet..."
                 >{{ old('worksheet_instructions', $topic->text_content) }}</textarea>
                 @error('worksheet_instructions')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
-
-        <!-- Interactive Content Section -->
-        <div id="interactiveContent" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 content-section hidden">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Interactive Content</h2>
-
-            <!-- Activity Type -->
-            <div class="mb-6">
-                <label for="interactive_type" class="block text-sm font-medium text-gray-700 mb-2">
-                    Activity Type
-                </label>
-                @php
-                    $interactiveType = old('interactive_type', $topic->interactive_config['type'] ?? '');
-                @endphp
-                <select 
-                    name="interactive_type" 
-                    id="interactive_type"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('interactive_type') border-red-500 @enderror"
-                >
-                    <option value="">-- Select Activity Type --</option>
-                    <option value="activity" {{ $interactiveType === 'activity' ? 'selected' : '' }}>Activity</option>
-                    <option value="simulation" {{ $interactiveType === 'simulation' ? 'selected' : '' }}>Simulation</option>
-                    <option value="exercise" {{ $interactiveType === 'exercise' ? 'selected' : '' }}>Exercise</option>
-                </select>
-                @error('interactive_type')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <!-- Instructions -->
-            <div class="mb-6">
-                <label for="interactive_instructions" class="block text-sm font-medium text-gray-700 mb-2">
-                    Instructions
-                </label>
-                @php
-                    $interactiveInstructions = old('interactive_instructions', $topic->interactive_config['instructions'] ?? '');
-                @endphp
-                <textarea 
-                    name="interactive_instructions" 
-                    id="interactive_instructions" 
-                    rows="8"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('interactive_instructions') border-red-500 @enderror"
-                    placeholder="Enter detailed instructions for this interactive activity..."
-                >{{ $interactiveInstructions }}</textarea>
-                @error('interactive_instructions')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>

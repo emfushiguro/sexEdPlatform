@@ -6,6 +6,70 @@ import './toast'; // Toast notification system
 import './chat/store';
 import './chat/global-popup';
 
+const emptyInstructorSearchResults = () => ({
+    modules: [],
+    lessons: [],
+    learners: [],
+});
+
+const createInstructorSearch = () => ({
+    query: '',
+    open: false,
+    loading: false,
+    results: emptyInstructorSearchResults(),
+    abortController: null,
+
+    resetResults() {
+        this.results = emptyInstructorSearchResults();
+        this.open = false;
+    },
+
+    async search() {
+        const trimmedQuery = String(this.query || '').trim();
+
+        if (trimmedQuery.length < 2) {
+            this.resetResults();
+            return;
+        }
+
+        if (this.abortController) {
+            this.abortController.abort();
+        }
+
+        this.abortController = new AbortController();
+        this.loading = true;
+
+        try {
+            const response = await window.axios.get('/instructor/search', {
+                params: { q: trimmedQuery },
+                signal: this.abortController.signal,
+            });
+
+            const payload = response?.data ?? {};
+
+            this.results = {
+                modules: Array.isArray(payload.modules) ? payload.modules : [],
+                lessons: Array.isArray(payload.lessons) ? payload.lessons : [],
+                learners: Array.isArray(payload.learners) ? payload.learners : [],
+            };
+            this.open = true;
+        } catch (error) {
+            const cancelled = error?.name === 'AbortError'
+                || error?.name === 'CanceledError'
+                || error?.code === 'ERR_CANCELED';
+
+            if (!cancelled) {
+                this.resetResults();
+            }
+        } finally {
+            this.loading = false;
+        }
+    },
+});
+
+// Keep this on window for Blade usage: x-data="instructorSearch()"
+window.instructorSearch = createInstructorSearch;
+
 // Heavy libraries are loaded on-demand to keep the main bundle small.
 let cachedPdfJsLib = null;
 window.ensurePdfJsLib = async function ensurePdfJsLib() {
@@ -57,6 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.Alpine = Alpine;
 Alpine.plugin(collapse);
 Alpine.plugin(persist);
+Alpine.data('instructorSearch', createInstructorSearch);
 
 // Theme store — dark / light mode, persisted in localStorage
 Alpine.store('theme', {

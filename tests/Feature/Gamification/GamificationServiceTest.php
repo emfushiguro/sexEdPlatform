@@ -44,6 +44,23 @@ class GamificationServiceTest extends TestCase
         $this->assertEquals(10, $gamification->total_points);
     }
 
+    public function test_award_configured_points_recreates_missing_gamification_record(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole('learner');
+        $user->gamification()->delete();
+
+        $expected = $this->service->resolvePointsForReason('topic_complete');
+        $awarded = $this->service->awardConfiguredPoints($user, 'topic_complete');
+
+        $user->refresh();
+
+        $this->assertNotNull($user->gamification);
+        $this->assertEquals($expected, $awarded);
+        $this->assertEquals($expected, $user->gamification->score);
+        $this->assertEquals($expected, $user->gamification->total_points);
+    }
+
     public function test_spend_points_decrements_score_only(): void
     {
         $user = $this->userWithGamification();
