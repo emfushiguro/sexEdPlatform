@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Chat;
 
+use App\Models\AdminCreatorProfile;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\MessageAttachment;
@@ -51,6 +52,39 @@ class ChatHttpFlowTest extends TestCase
 
         $this->assertCount(1, $response->json('conversations'));
         $this->assertSame($forLearner->id, $response->json('conversations.0.id'));
+    }
+
+    public function test_conversation_index_uses_admin_affiliation_for_admin_other_participant_name(): void
+    {
+        $platformOwner = User::factory()->create(['role' => 'instructor']);
+        $platformOwner->assignRole('instructor');
+
+        $admin = User::factory()->create(['role' => 'admin', 'name' => 'admin_username']);
+        $admin->assignRole('admin');
+
+        AdminCreatorProfile::query()->create([
+            'user_id' => $admin->id,
+            'public_display_name' => 'Admin Creator',
+            'bio' => null,
+            'affiliation' => 'Conscious Connections Team',
+            'avatar_path' => null,
+            'show_individual_attribution' => false,
+        ]);
+
+        Conversation::query()->create([
+            'participant_one_id' => $platformOwner->id,
+            'participant_two_id' => $admin->id,
+            'pair_key' => Conversation::makePairKey($platformOwner->id, $admin->id),
+            'conversation_type' => Conversation::TYPE_DIRECT,
+            'status' => Conversation::STATUS_ACTIVE,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_DIRECT, null),
+        ]);
+
+        $response = $this->actingAs($platformOwner)
+            ->getJson(route('chat.conversations.index'))
+            ->assertOk();
+
+        $this->assertSame('Conscious Connections Team', $response->json('conversations.0.other_participant.name'));
     }
 
     public function test_start_send_accept_decline_and_forbidden_flows(): void

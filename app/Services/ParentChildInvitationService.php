@@ -170,7 +170,12 @@ class ParentChildInvitationService
     {
         $invitations = ParentChildInvitation::query()
             ->where('inviter_parent_user_id', $parent->id)
-            ->with(['child:id,name,email,first_name,last_name', 'child.learnerProfile:id,user_id,username,birthdate'])
+            ->with([
+                'inviterParent:id,name,email',
+                'inviterParent.learnerProfile:id,user_id,avatar_path',
+                'child:id,name,email,first_name,last_name',
+                'child.learnerProfile:id,user_id,username,birthdate,avatar_path',
+            ])
             ->latest('id')
             ->get();
 

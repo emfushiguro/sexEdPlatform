@@ -23,9 +23,9 @@ class ParentChildVerificationController extends Controller
 
     public function index(Request $request): View
     {
-        $type = $request->string('type')->toString() ?: 'parents';
+        $type = $request->string('type')->toString() ?: 'children';
         if (! in_array($type, ['parents', 'children'], true)) {
-            $type = 'parents';
+            $type = 'children';
         }
 
         $status = $request->string('status')->toString() ?: VerificationStatus::Pending->value;
@@ -251,7 +251,10 @@ class ParentChildVerificationController extends Controller
     {
         $query = User::query()
             ->where('is_parent_registration', true)
-            ->with('learnerProfile')
+            ->with([
+                'learnerProfile',
+                'children.learnerProfile',
+            ])
             ->latest();
 
         if ($status === VerificationStatus::Pending->value) {

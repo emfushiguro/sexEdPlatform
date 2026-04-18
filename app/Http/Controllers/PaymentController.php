@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\PayMongoPaymentLinkService;
 use App\Enums\PaymentStatus;
 use App\Services\ModulePurchaseService;
+use App\Services\PaymentReceiptService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class PaymentController extends Controller
     public function __construct(
         protected SubscriptionService $subscriptionService,
         protected ModulePurchaseService $modulePurchaseService,
+        protected PaymentReceiptService $paymentReceiptService,
     ) {}
 
     public function webhook(Request $request, WebhookController $webhookController)
@@ -531,10 +533,9 @@ class PaymentController extends Controller
             }
         }
 
-        // Eager-load the plan relationship for the subscription
-        $payment->load(['subscription.plan', 'modulePurchase.module']);
+        $receiptData = $this->paymentReceiptService->resolveViewData($payment);
 
-        return view($isInstructorContext ? 'instructor.payments.receipt' : 'payments.receipt', compact('payment'));
+        return view($isInstructorContext ? 'instructor.payments.receipt' : 'payments.receipt', $receiptData);
     }
 
     /**

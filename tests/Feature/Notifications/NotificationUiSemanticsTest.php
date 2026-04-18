@@ -15,7 +15,7 @@ class NotificationUiSemanticsTest extends TestCase
 
         $this->assertStringContainsString("{{ \$unreadCount > 9 ? '9+' : \$unreadCount }}", $learnerHeader);
         $this->assertStringContainsString("{{ \$notificationBadgeCount > 9 ? '9+' : \$notificationBadgeCount }}", $instructorHeader);
-        $this->assertStringContainsString("{{ \$adminNotifications['unread_count'] > 9 ? '9+' : \$adminNotifications['unread_count'] }}", $adminLayout);
+        $this->assertStringContainsString("{{ \$adminNotificationUnreadCount > 9 ? '9+' : \$adminNotificationUnreadCount }}", $adminLayout);
     }
 
     public function test_unread_indicators_use_red_semantics_across_role_headers(): void

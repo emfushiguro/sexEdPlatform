@@ -15,7 +15,7 @@ class AdminUserRelationshipManagementPageTest extends TestCase
 
     private function createAdminUser(): User
     {
-        $permissions = ['view users', 'manage user relationships'];
+        $permissions = ['view users', 'manage user relationships', 'access chat'];
 
         foreach ($permissions as $permission) {
             Permission::findOrCreate($permission, 'web');
@@ -60,7 +60,7 @@ class AdminUserRelationshipManagementPageTest extends TestCase
             ->assertSee(route('admin.users.relationships.index'), false);
     }
 
-    public function test_user_profile_relationship_panel_links_to_dedicated_management_page(): void
+    public function test_user_profile_relationship_panel_hides_management_shortcut(): void
     {
         $this->withoutVite();
 
@@ -70,8 +70,8 @@ class AdminUserRelationshipManagementPageTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.users.show', $target))
             ->assertOk()
-            ->assertSee('data-testid="admin-users-relationships-link"', false)
-            ->assertSee(route('admin.users.relationships.index'), false);
+            ->assertDontSee('data-testid="admin-users-relationships-link"', false)
+            ->assertDontSee('Manage Relationships', false);
     }
 
     public function test_relationship_management_page_filters_verified_relationships(): void

@@ -6,22 +6,29 @@
 <div class="max-w-5xl mx-auto space-y-6">
 
     {{-- Gradient banner header --}}
-    <div class="rounded-2xl p-6 text-white flex items-center justify-between"
+    <div class="flex items-center justify-between p-6 text-white rounded-2xl"
          style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
         <div>
             <h1 class="text-2xl font-bold">My Children</h1>
-            <p class="text-white/80 text-sm mt-1">Manage your child applications and monitor approved accounts.</p>
+            <p class="mt-1 text-sm text-white/80">Manage your child applications and monitor approved accounts.</p>
         </div>
         <div class="flex items-center gap-2">
+            <a href="{{ route('parent.invitations.history') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white transition border bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-sm border-white/20">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8m-8 5h8m-8 5h5M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+                </svg>
+                Invitation History
+            </a>
             <a href="{{ route('parent.invitations.index') }}"
-               class="inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white font-semibold py-2 px-4 rounded-xl transition text-sm backdrop-blur-sm border border-white/20">
+               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white transition border bg-white/15 hover:bg-white/25 rounded-xl backdrop-blur-sm border-white/20">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H6a4 4 0 00-4 4v1h5m6-5a4 4 0 10-8 0 4 4 0 008 0zm6-3a3 3 0 10-6 0 3 3 0 006 0z"/>
                 </svg>
                 Invite Existing Learner
             </a>
             <a href="{{ route('parent.create-child') }}"
-               class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-xl transition text-sm backdrop-blur-sm">
+               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white transition bg-white/20 hover:bg-white/30 rounded-xl backdrop-blur-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
@@ -32,19 +39,19 @@
 
     {{-- Flash messages --}}
     @if(session('success'))
-        <div class="bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm">
+        <div class="px-4 py-3 text-sm text-green-800 border border-green-200 bg-green-50 rounded-xl">
             {{ session('success') }}
         </div>
     @endif
 
     @if(session('error'))
-        <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm">
+        <div class="px-4 py-3 text-sm text-red-800 border border-red-200 bg-red-50 rounded-xl">
             {{ session('error') }}
         </div>
     @endif
 
     @if($errors->has('verification_document'))
-        <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm">
+        <div class="px-4 py-3 text-sm text-red-800 border border-red-200 bg-red-50 rounded-xl">
             {{ $errors->first('verification_document') }}
         </div>
     @endif
@@ -55,11 +62,11 @@
     @endphp
 
     @if($pendingApprovalNotifications->isNotEmpty())
-        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+        <div class="p-5 bg-white border border-gray-200 shadow-sm rounded-2xl">
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900">Pending Enrollment Approvals</h2>
-                    <p class="text-sm text-gray-500 mt-1">Unread child enrollment requests that need your review.</p>
+                    <p class="mt-1 text-sm text-gray-500">Unread child enrollment requests that need your review.</p>
                 </div>
                 <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
                     {{ $pendingApprovalNotifications->count() }} unread
@@ -74,11 +81,11 @@
                         $actionUrl = data_get($notification->data, 'action_url');
                     @endphp
 
-                    <div class="rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-3">
+                    <div class="px-4 py-3 border border-gray-100 rounded-xl bg-gray-50/70">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-gray-900 truncate">{{ $childName }} requested access to {{ $moduleTitle }}</p>
-                                <p class="text-xs text-gray-500 mt-1">{{ $notification->created_at?->diffForHumans() }}</p>
+                                <p class="mt-1 text-xs text-gray-500">{{ $notification->created_at?->diffForHumans() }}</p>
                             </div>
 
                             @if($actionUrl)
@@ -95,55 +102,89 @@
     @endif
 
     @if($outgoingInvitations->isNotEmpty())
-        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+        @php
+            $latestInvitation = $outgoingInvitations->first();
+            $statusValue = $latestInvitation->status instanceof \App\Enums\ParentChildInvitationStatus
+                ? $latestInvitation->status->value
+                : (string) $latestInvitation->status;
+            $statusClass = match ($statusValue) {
+                'accepted' => 'bg-emerald-100 text-emerald-700',
+                'rejected' => 'bg-rose-100 text-rose-700',
+                'cancelled' => 'bg-gray-100 text-gray-700',
+                'expired' => 'bg-orange-100 text-orange-700',
+                default => 'bg-amber-100 text-amber-700',
+            };
+            $parentAvatarPath = auth()->user()?->learnerProfile?->avatar_path;
+            $parentAvatarUrl = $parentAvatarPath
+                ? asset('storage/' . ltrim((string) $parentAvatarPath, '/'))
+                : null;
+            $invitedChildAvatarPath = $latestInvitation->child?->learnerProfile?->avatar_path;
+            $invitedChildAvatarUrl = $invitedChildAvatarPath
+                ? asset('storage/' . ltrim((string) $invitedChildAvatarPath, '/'))
+                : null;
+            $statusDescription = match ($statusValue) {
+                'accepted' => 'Accepted. Parent-child link is active.',
+                'rejected' => 'Rejected by learner.',
+                'cancelled' => 'Cancelled by parent.',
+                'expired' => 'Expired with no response.',
+                default => 'Pending learner response.',
+            };
+            $latestActivityAt = $latestInvitation->responded_at ?? $latestInvitation->updated_at ?? $latestInvitation->created_at;
+            $sentAtText = $latestInvitation->created_at?->diffForHumans() ?? 'N/A';
+            $latestActivityText = $latestActivityAt?->diffForHumans() ?? 'N/A';
+        @endphp
+        <div class="p-5 bg-white border border-gray-200 shadow-sm rounded-2xl">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <h2 class="text-lg font-semibold text-gray-900">Parent Link Invitations</h2>
-                    <p class="text-sm text-gray-500 mt-1">Track invitations sent to existing learner accounts.</p>
+                    <h2 class="text-lg font-semibold text-gray-900">Latest Parent Link Invitation</h2>
+                    <p class="mt-1 text-sm text-gray-500">Showing your most recent invitation transaction.</p>
                 </div>
-                <a href="{{ route('parent.invitations.index') }}"
+                <a href="{{ route('parent.invitations.history') }}"
                    class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100">
-                    Manage Invitations
+                    View Full History
                 </a>
             </div>
 
-            <div class="mt-4 space-y-3">
-                @foreach($outgoingInvitations as $invitation)
-                    @php
-                        $statusValue = $invitation->status instanceof \App\Enums\ParentChildInvitationStatus
-                            ? $invitation->status->value
-                            : (string) $invitation->status;
-                        $statusClass = match ($statusValue) {
-                            'accepted' => 'bg-emerald-100 text-emerald-700',
-                            'rejected' => 'bg-rose-100 text-rose-700',
-                            'cancelled' => 'bg-gray-100 text-gray-700',
-                            'expired' => 'bg-orange-100 text-orange-700',
-                            default => 'bg-amber-100 text-amber-700',
-                        };
-                    @endphp
-                    <div class="rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-3">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="min-w-0">
-                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $invitation->child?->name ?? 'Learner' }}</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    {{ $invitation->child?->email ?? 'No email' }}
-                                    @if($invitation->child?->learnerProfile?->username)
-                                        · {{ $invitation->child->learnerProfile->username }}
-                                    @endif
-                                </p>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusClass }}">
-                                    {{ ucfirst($statusValue) }}
-                                </span>
-                                <a href="{{ route('parent.invitations.show', $invitation) }}"
-                                   class="inline-flex items-center rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50">
-                                    View
-                                </a>
-                            </div>
+            <div class="px-4 py-3 mt-4 border border-gray-100 rounded-xl bg-gray-50/70">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusClass }}">
+                                {{ ucfirst($statusValue) }}
+                            </span>
+                            <p class="text-xs text-gray-600">{{ $statusDescription }}</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                            <span>Invited Parent: <span class="font-semibold text-gray-700">{{ auth()->user()?->name ?? 'Parent' }}</span></span>
+                            <span>Related Child: <span class="font-semibold text-gray-700">{{ $latestInvitation->child?->name ?? 'Learner' }}</span></span>
+                            <span>Sent: <span class="font-semibold text-gray-700">{{ $sentAtText }}</span></span>
+                            <span>Last update: <span class="font-semibold text-gray-700">{{ $latestActivityText }}</span></span>
                         </div>
                     </div>
-                @endforeach
+
+                    <div class="flex items-center gap-2">
+                        <div class="hidden -space-x-2 sm:flex">
+                            @if($parentAvatarUrl)
+                                <img src="{{ $parentAvatarUrl }}" alt="Parent avatar" class="object-cover w-8 h-8 border border-white rounded-full">
+                            @else
+                                <span class="inline-flex items-center justify-center w-8 h-8 text-xs font-bold text-purple-700 bg-purple-100 border border-white rounded-full">
+                                    {{ strtoupper(substr((string) auth()->user()?->name, 0, 1)) }}
+                                </span>
+                            @endif
+                            @if($invitedChildAvatarUrl)
+                                <img src="{{ $invitedChildAvatarUrl }}" alt="Invited child avatar" class="object-cover w-8 h-8 border border-white rounded-full">
+                            @else
+                                <span class="inline-flex items-center justify-center w-8 h-8 text-xs font-bold text-indigo-700 bg-indigo-100 border border-white rounded-full">
+                                    {{ strtoupper(substr((string) ($latestInvitation->child?->name ?? 'L'), 0, 1)) }}
+                                </span>
+                            @endif
+                        </div>
+                        <a href="{{ route('parent.invitations.show', $latestInvitation) }}"
+                           class="inline-flex items-center rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50">
+                            View
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     @endif
@@ -151,15 +192,15 @@
     {{-- Children list --}}
     @if($children->isEmpty())
         {{-- Empty state --}}
-        <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-sm">
-            <div class="w-20 h-20 rounded-full bg-purple-50 flex items-center justify-center mx-auto mb-5">
+        <div class="p-12 text-center bg-white border border-gray-200 shadow-sm rounded-2xl">
+            <div class="flex items-center justify-center w-20 h-20 mx-auto mb-5 rounded-full bg-purple-50">
                 <svg class="w-10 h-10 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                           d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">No children added yet</h3>
-            <p class="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
+            <h3 class="mb-2 text-xl font-semibold text-gray-900">No children added yet</h3>
+            <p class="max-w-sm mx-auto mb-6 text-sm text-gray-500">
                 Create a learning account for your child. You'll be able to monitor their progress and quiz results.
             </p>
             <a href="{{ route('parent.create-child') }}"
@@ -173,7 +214,7 @@
         </div>
     @else
         {{-- Children cards grid --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             @foreach($children as $child)
                 @php
                     $verificationStatus = $child->pivot->verification_status ?? 'pending';
@@ -181,18 +222,31 @@
                     $childAvatarUrl = $child->learnerProfile?->avatar_path
                         ? asset('storage/' . ltrim((string) $child->learnerProfile->avatar_path, '/'))
                         : null;
+                    $canUseChat = auth()->user()?->can('access chat') ?? false;
                 @endphp
-                <div class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden">
+                <div class="relative overflow-hidden transition bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md">
+
+                    @if($isApprovedChild && $canUseChat)
+                        <button type="button"
+                                onclick='window.dispatchEvent(new CustomEvent("open-global-chat", { detail: { target_user_id: {{ (int) $child->id }}, conversation_type: "direct", name: @json($child->full_name ?: $child->name) } }))'
+                                class="absolute z-10 inline-flex items-center justify-center text-purple-700 border border-purple-200 rounded-lg right-4 top-4 h-9 w-9 bg-purple-50 hover:bg-purple-100"
+                                title="Message {{ $child->full_name }}"
+                                aria-label="Message {{ $child->full_name }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8m-8 4h5m-9 6l1.683-3.367A2 2 0 014 15.764V6a2 2 0 012-2h12a2 2 0 012 2v9.764a2 2 0 01-1.683 1.969L20 20l-4.317-2.267a2 2 0 00-.934-.233H6.934A2 2 0 015 18.764V20z"/>
+                            </svg>
+                        </button>
+                    @endif
 
                     {{-- Card top: avatar + info + badge --}}
-                    <div class="p-5 flex items-center gap-4">
+                    <div class="flex items-center gap-4 p-5 pr-14">
                         {{-- Avatar initials --}}
                         @if($childAvatarUrl)
                             <img src="{{ $childAvatarUrl }}"
                                  alt="{{ $child->full_name }} avatar"
-                                 class="flex-shrink-0 w-14 h-14 rounded-full object-cover border border-gray-200 shadow">
+                                 class="flex-shrink-0 object-cover border border-gray-200 rounded-full shadow w-14 h-14">
                         @else
-                            <div class="flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold shadow"
+                            <div class="flex items-center justify-center flex-shrink-0 text-xl font-bold text-white rounded-full shadow w-14 h-14"
                                  style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
                                 {{ strtoupper(substr($child->first_name ?? $child->name, 0, 1)) }}{{ strtoupper(substr($child->last_name ?? '', 0, 1)) }}
                             </div>
@@ -214,15 +268,15 @@
 
                         {{-- Consent + verification badges --}}
                         <div class="flex flex-col items-end gap-1">
-                            @if($child->learnerProfile?->requires_parental_consent)
-                                <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Under 13</span>
-                            @else
+                            @if(!$child->learnerProfile?->requires_parental_consent)
                                 <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Teen</span>
                             @endif
 
-                            <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full {{ $isApprovedChild ? 'bg-emerald-100 text-emerald-700' : ($verificationStatus === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700') }}">
-                                {{ ucfirst($verificationStatus) }}
-                            </span>
+                            @if(!$isApprovedChild)
+                                <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full {{ $verificationStatus === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700' }}">
+                                    {{ ucfirst($verificationStatus) }}
+                                </span>
+                            @endif
                         </div>
                     </div>
 
@@ -242,7 +296,7 @@
                     @endif
 
                     {{-- Stats row --}}
-                    <div class="border-t border-gray-100 grid grid-cols-3 divide-x divide-gray-100 text-center py-3 bg-gray-50/50">
+                    <div class="grid grid-cols-3 py-3 text-center border-t border-gray-100 divide-x divide-gray-100 bg-gray-50/50">
                         <div class="px-2">
                             <p class="text-lg font-bold text-purple-700">{{ $child->moduleEnrollments()->count() }}</p>
                             <p class="text-xs text-gray-500">Modules</p>
@@ -278,7 +332,7 @@
                             $pct = $totalLessons > 0 ? round(($completedLessons / $totalLessons) * 100) : 0;
                         @endphp
                         <div class="px-5 py-3 border-t border-gray-100">
-                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                            <div class="flex justify-between mb-1 text-xs text-gray-500">
                                 <span>Overall Progress</span>
                                 <span class="font-medium text-gray-700">{{ $pct }}%</span>
                             </div>
@@ -291,16 +345,18 @@
                     @endif
 
                     {{-- Actions --}}
-                    <div class="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center justify-between px-5 py-4 border-t border-gray-100">
                         @if($isApprovedChild)
-                            <a href="{{ route('parent.children.show', $child->id) }}"
-                               class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                                </svg>
-                                View Child Dashboard
-                            </a>
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('parent.children.show', $child->id) }}"
+                                   class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                    </svg>
+                                    View Child Dashboard
+                                </a>
+                            </div>
 
                             <span class="text-sm text-gray-400">
                                 {{ $child->quizAttempts()->count() > 0 ? 'Quiz activity available' : 'No quiz data yet' }}

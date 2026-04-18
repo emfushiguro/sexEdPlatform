@@ -1739,10 +1739,11 @@ document.addEventListener('alpine:init', () => {
 
         syncUnreadBadges() {
             const totalUnread = this.totalUnreadCount();
+            const hasUnread = totalUnread > 0;
 
             document.querySelectorAll('[data-chat-unread-badge]').forEach((badge) => {
-                badge.textContent = totalUnread > 99 ? '99+' : String(totalUnread);
-                badge.hidden = totalUnread < 1;
+                badge.textContent = hasUnread ? (totalUnread > 99 ? '99+' : String(totalUnread)) : '';
+                badge.hidden = !hasUnread;
             });
 
             window.dispatchEvent(

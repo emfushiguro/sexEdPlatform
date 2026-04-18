@@ -114,7 +114,9 @@ class LearnerVisibilityTest extends TestCase
         $response = $this->actingAs($instructor)
             ->get(route('instructor.users.show', $learner));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertDontSee('Email Not Verified', false)
+            ->assertSee('open-global-chat', false);
 
         $response->assertViewHas('quizPerformanceSummary', function (array $summary): bool {
             return $summary['attempts'] === 2

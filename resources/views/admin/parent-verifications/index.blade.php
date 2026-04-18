@@ -77,7 +77,8 @@
         },
         setStatus(status) {
             this.activeStatus = status;
-            this.navigate();`r`n        },
+            this.navigate();
+        },
         navigate() {
             const params = new URLSearchParams();
             params.set('type', this.activeType);
@@ -300,6 +301,13 @@
                     </div>
 
                     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" data-testid="admin-table-filter-bar">
+                        <label class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Account Type</span>
+                            <select x-model="activeType" @change="setType($event.target.value)" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                                <option value="children">Child Verifications</option>
+                                <option value="parents">Parent Verifications</option>
+                            </select>
+                        </label>
                         <label class="block xl:col-span-2">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
                             <input type="text" x-model.debounce.300ms="searchQuery" placeholder="Name, email, ID number..." class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
@@ -319,15 +327,16 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" x-show="activeType === 'parents'" x-cloak>
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-brand-50/45">
                         <tr>
-                            <th class="w-[10%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">No. #</th>
-                            <th class="w-[32%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Parent</th>
+                            <th class="w-[8%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">No. #</th>
+                            <th class="w-[24%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Parent</th>
+                            <th class="w-[22%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Child</th>
                             <th class="w-[14%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Status</th>
-                            <th class="w-[22%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>
-                            <th class="w-[22%] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
+                            <th class="w-[18%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>
+                            <th class="w-[14%] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
@@ -358,6 +367,11 @@
                                     (string) ($application->created_at?->format('M d, Y h:i A') ?? ''),
                                     (string) $statusValue,
                                 ]))));
+                                $linkedChild = $application->children->first();
+                                $linkedChildName = $linkedChild?->full_name ?? 'No linked child yet';
+                                $linkedChildSubtext = $linkedChild?->learnerProfile?->username
+                                    ? '@' . $linkedChild->learnerProfile->username
+                                    : ($linkedChild?->email ?? null);
                             @endphp
                                 <tr x-data="{
                                     currentStatus: @js($statusValue),
@@ -539,6 +553,10 @@
                                     <p class="text-xs text-gray-500 break-words">{{ $application->email }}</p>
                                 </td>
                                 <td class="px-4 py-3 align-top">
+                                    <p class="text-sm font-semibold text-gray-900 break-words">{{ $linkedChildName }}</p>
+                                    <p class="text-xs text-gray-500 break-words">{{ $linkedChildSubtext ?: 'Pending child link' }}</p>
+                                </td>
+                                <td class="px-4 py-3 align-top">
                                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold"
                                           :class="currentStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : (currentStatus === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700')">
                                         <span x-text="currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)"></span>
@@ -560,7 +578,8 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                             <svg x-show="currentStatus === 'approved'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                             <svg x-show="currentStatus === 'rejected'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -739,7 +758,7 @@
                                                     </div>
                                                 </section>
                                             </div>
-`r`n                                        </div>
+                                        </div>
                                     </div>
 
                                     @include('admin.parent-verifications.partials.moderation-modal-shell', [
@@ -753,7 +772,7 @@
                         @empty
                         @endforelse
                         <tr x-show="!hasRowsForCurrent()">
-                            <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500">No parent verification records found for this status. Try another status tab or switch account type.</td>
+                            <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">No parent verification records found for this status. Try another status tab or switch account type.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -763,10 +782,12 @@
                 <table class="w-full table-fixed divide-y divide-gray-200">
                     <thead class="bg-brand-50/45">
                         <tr>
-                            <th class="w-[24%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Parent</th>
-                            <th class="w-[26%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Child</th>
+                            <th class="w-[8%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">No. #</th>
+                            <th class="w-[22%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Parent</th>
+                            <th class="w-[24%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Child</th>
                             <th class="w-[14%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Status</th>
-                            <th class="w-[20%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>`r`n                            <th class="w-[170px] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
+                            <th class="w-[18%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>
+                            <th class="w-[14%] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
@@ -1006,7 +1027,8 @@
                                     <p class="text-sm font-semibold text-gray-900 break-words">{{ $application->child?->full_name ?? 'Unknown child' }}</p>
                                     <p class="text-xs text-gray-500 break-words">{{ $application->child?->learnerProfile?->username ?: 'No username' }}</p>
                                     @if(!is_null($childAge))
-                                        <p class="text-xs text-gray-500 break-words">{{ $childAge }} years old</p>`r`n                                    @endif
+                                        <p class="text-xs text-gray-500 break-words">{{ $childAge }} years old</p>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3 align-top">
                                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold"
@@ -1030,7 +1052,8 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                             <svg x-show="currentStatus === 'approved'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                             <svg x-show="currentStatus === 'rejected'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1236,7 +1259,7 @@
                                                 </section>
                                             </div>
 
-`r`n                                        </div>
+                                        </div>
                                     </div>
 
                                     @include('admin.parent-verifications.partials.moderation-modal-shell', [
@@ -1250,7 +1273,8 @@
                         @empty
                         @endforelse
                         <tr x-show="!hasRowsForCurrent()">
-                            <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500">No child verification records found for this status. Try another status tab or switch account type.</td>`r`n                        </tr>
+                            <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">No child verification records found for this status. Try another status tab or switch account type.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>

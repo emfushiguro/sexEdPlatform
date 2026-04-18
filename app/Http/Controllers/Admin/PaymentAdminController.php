@@ -6,6 +6,7 @@ use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Services\AdminActivityLogService;
+use App\Services\PaymentReceiptService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -13,6 +14,11 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentAdminController extends Controller
 {
+    public function __construct(
+        private readonly PaymentReceiptService $paymentReceiptService,
+    ) {
+    }
+
     public function index(Request $request)
     {
         $query = Payment::with([
@@ -90,9 +96,9 @@ class PaymentAdminController extends Controller
 
     public function receipt(Payment $payment)
     {
-        $payment->load(['user', 'subscription.plan']);
+        $receiptData = $this->paymentReceiptService->resolveViewData($payment);
 
-        return view('payments.receipt', compact('payment'));
+        return view('admin.payments.receipt', $receiptData);
     }
 
     /**

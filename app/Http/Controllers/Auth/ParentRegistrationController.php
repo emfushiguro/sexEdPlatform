@@ -606,7 +606,7 @@ class ParentRegistrationController extends Controller
 
         $outgoingInvitations = $invitationService
             ->getOutgoingInvitations($parent)
-            ->take(6)
+            ->take(1)
             ->values();
 
         return view('parent.children.index', compact('children', 'pendingApprovalNotifications', 'outgoingInvitations'));

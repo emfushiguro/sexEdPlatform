@@ -102,8 +102,20 @@ class UserAdminController extends Controller
             'roleTransitions.approvedBy',
         ]);
 
-        $parentRelationships = $user->parentLinks()->with('parent')->latest()->get();
-        $childRelationships = $user->childLinks()->with('child')->latest()->get();
+        $parentRelationships = $user->parentLinks()
+            ->with([
+                'parent:id,name,email,birthdate',
+                'parent.learnerProfile:id,user_id,avatar_path,birthdate',
+            ])
+            ->latest()
+            ->get();
+        $childRelationships = $user->childLinks()
+            ->with([
+                'child:id,name,email,birthdate',
+                'child.learnerProfile:id,user_id,avatar_path,birthdate',
+            ])
+            ->latest()
+            ->get();
 
         $stats = [
             'total_payments' => $user->payments()->sum('amount'),

@@ -1,5 +1,9 @@
 @extends('layouts.instructor-app')
 
+@php
+    $canUseChat = auth()->user()?->can('access chat') ?? false;
+@endphp
+
 @section('content')
     <div class="space-y-6" x-data="{}">
         <div class="rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
@@ -23,11 +27,13 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button type="button"
-                       @click="window.dispatchEvent(new CustomEvent('open-global-chat', { detail: { target_user_id: {{ (int) $user->id }}, conversation_type: 'direct', name: @js($user->full_name ?: $user->name) } }))"
-                       class="inline-flex items-center px-3.5 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors">
-                        Message Learner
-                    </button>
+                    @if($canUseChat)
+                        <button type="button"
+                           @click="window.dispatchEvent(new CustomEvent('open-global-chat', { detail: { target_user_id: {{ (int) $user->id }}, conversation_type: 'direct', name: @js($user->full_name ?: $user->name) } }))"
+                           class="inline-flex items-center px-3.5 py-2 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors">
+                            Message Learner
+                        </button>
+                    @endif
                     <a href="{{ route('instructor.users.index') }}"
                        class="inline-flex items-center px-3.5 py-2 rounded-lg text-sm font-semibold bg-gray-700 text-white hover:bg-gray-800 transition-colors">
                         Back to Learners
@@ -89,11 +95,13 @@
                                         @endif
                                     </div>
                                 </div>
-                                <button type="button"
-                                   @click="window.dispatchEvent(new CustomEvent('open-global-chat', { detail: { target_user_id: {{ (int) $parentUser->id }}, conversation_type: 'direct', name: @js($parentUser->name) } }))"
-                                   class="inline-flex items-center justify-center px-3.5 py-2 rounded-lg text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors">
-                                    Message Parent
-                                </button>
+                                @if($canUseChat)
+                                    <button type="button"
+                                       @click="window.dispatchEvent(new CustomEvent('open-global-chat', { detail: { target_user_id: {{ (int) $parentUser->id }}, conversation_type: 'direct', name: @js($parentUser->name) } }))"
+                                       class="inline-flex items-center justify-center px-3.5 py-2 rounded-lg text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors">
+                                        Message Parent
+                                    </button>
+                                @endif
                             </div>
                         @endif
                     @endforeach

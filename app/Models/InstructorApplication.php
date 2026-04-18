@@ -3,7 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class InstructorApplication extends Model
 {
@@ -48,14 +53,25 @@ class InstructorApplication extends Model
         return $query->where('status', 'rejected');
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function approvedBy()
+    public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(InstructorApplicationReview::class, 'instructor_application_id');
+    }
+
+    public function latestReview(): HasOne
+    {
+        return $this->hasOne(InstructorApplicationReview::class, 'instructor_application_id')
+            ->latestOfMany('reviewed_at');
     }
 
     public function isApproved(): bool
@@ -66,5 +82,28 @@ class InstructorApplication extends Model
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    public function resolveDocumentUrl(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://', '//'])) {
+            return $path;
+        }
+
+        $normalized = ltrim($path, '/');
+
+        if (Str::startsWith($normalized, 'storage/')) {
+            $normalized = substr($normalized, 8);
+        }
+
+        if (!str_contains($normalized, '/')) {
+            $normalized = 'instructor-applications/' . $normalized;
+        }
+
+        return Storage::url($normalized);
     }
 }

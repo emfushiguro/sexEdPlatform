@@ -85,6 +85,12 @@
 
         <span class="hidden" data-chat-unread-badge-role="admin"></span>
 
+        @php
+                $adminNotificationUnreadCount = max(0, (int) ($adminNotifications['unread_count'] ?? 0));
+                $adminSidebarBadgeClasses = 'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white';
+                $adminSidebarBadgeSlotClasses = 'ml-auto flex w-8 items-center justify-end';
+        @endphp
+
     <div class="min-h-screen xl:flex">
 
         {{-- ============================================================
@@ -192,12 +198,14 @@
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                                                                    x-cloak class="flex min-w-0 flex-1 items-center gap-2">
                                         <span class="truncate">Chat</span>
-                                        <span data-chat-unread-badge
-                                              hidden
-                                              class="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                            0
+                                                                                <span class="{{ $adminSidebarBadgeSlotClasses }}">
+                                                                                        <span data-chat-unread-badge
+                                                                                                    hidden
+                                                                                                    class="{{ $adminSidebarBadgeClasses }}">
+                                                                                                0
+                                                                                        </span>
                                         </span>
                                     </span>
                                 </a>
@@ -216,13 +224,15 @@
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                          x-cloak class="flex min-w-0 flex-1 items-center gap-2">
                                         <span class="truncate">Notifications</span>
-                                        @if(($adminNotifications['unread_count'] ?? 0) > 0)
-                                            <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                                {{ ($adminNotifications['unread_count'] ?? 0) > 99 ? '99+' : ($adminNotifications['unread_count'] ?? 0) }}
-                                            </span>
-                                        @endif
+                                        <span class="{{ $adminSidebarBadgeSlotClasses }}">
+                                            @if($adminNotificationUnreadCount > 0)
+                                                <span class="{{ $adminSidebarBadgeClasses }}">
+                                                    {{ $adminNotificationUnreadCount > 99 ? '99+' : $adminNotificationUnreadCount }}
+                                                </span>
+                                            @endif
+                                        </span>
                                     </span>
                                 </a>
                             </li>
@@ -252,15 +262,17 @@
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="truncate">Instructor Applications</span>
-                                    @if(($adminModerationCounts['pending_instructor_applications'] ?? 0) > 0)
-                                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                              x-cloak
-                                              data-testid="admin-nav-badge-instructor-applications"
-                                              class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
-                                            {{ $adminModerationCounts['pending_instructor_applications'] }}
+                                          x-cloak class="flex min-w-0 flex-1 items-center gap-2">
+                                        <span class="truncate">Instructor Applications</span>
+                                        <span class="{{ $adminSidebarBadgeSlotClasses }}">
+                                            @if(($adminModerationCounts['pending_instructor_applications'] ?? 0) > 0)
+                                                <span data-testid="admin-nav-badge-instructor-applications"
+                                                      class="{{ $adminSidebarBadgeClasses }}">
+                                                    {{ ($adminModerationCounts['pending_instructor_applications'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_instructor_applications'] ?? 0) }}
+                                                </span>
+                                            @endif
                                         </span>
-                                    @endif
+                                    </span>
                                 </a>
                             </li>
 
@@ -272,6 +284,9 @@
                                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                                 @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                    @php
+                                        $pendingVerificationTotal = (int) (($adminModerationCounts['pending_parent_verifications'] ?? 0) + ($adminModerationCounts['pending_child_verifications'] ?? 0));
+                                    @endphp
                                  <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.parent-verifications.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -279,18 +294,17 @@
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="truncate">Parent &amp; Child Verifications</span>
-                                    @php
-                                        $pendingVerificationTotal = (int) (($adminModerationCounts['pending_parent_verifications'] ?? 0) + ($adminModerationCounts['pending_child_verifications'] ?? 0));
-                                    @endphp
-                                    @if($pendingVerificationTotal > 0)
-                                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                              x-cloak
-                                              data-testid="admin-nav-badge-parent-child-verifications"
-                                              class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
-                                            {{ $pendingVerificationTotal }}
+                                          x-cloak class="flex min-w-0 flex-1 items-center gap-2">
+                                        <span class="truncate">Parent &amp; Child Verifications</span>
+                                        <span class="{{ $adminSidebarBadgeSlotClasses }}">
+                                            @if($pendingVerificationTotal > 0)
+                                                <span data-testid="admin-nav-badge-parent-child-verifications"
+                                                      class="{{ $adminSidebarBadgeClasses }}">
+                                                    {{ $pendingVerificationTotal > 99 ? '99+' : $pendingVerificationTotal }}
+                                                </span>
+                                            @endif
                                         </span>
-                                    @endif
+                                    </span>
                                 </a>
                             </li>
 
@@ -309,15 +323,17 @@
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="truncate">Module Published Review</span>
-                                    @if(($adminModerationCounts['pending_module_reviews'] ?? 0) > 0)
-                                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                              x-cloak
-                                              data-testid="admin-nav-badge-module-reviews"
-                                              class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-700">
-                                            {{ $adminModerationCounts['pending_module_reviews'] }}
+                                          x-cloak class="flex min-w-0 flex-1 items-center gap-2">
+                                        <span class="truncate">Module Published Review</span>
+                                        <span class="{{ $adminSidebarBadgeSlotClasses }}">
+                                            @if(($adminModerationCounts['pending_module_reviews'] ?? 0) > 0)
+                                                <span data-testid="admin-nav-badge-module-reviews"
+                                                      class="{{ $adminSidebarBadgeClasses }}">
+                                                    {{ ($adminModerationCounts['pending_module_reviews'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_module_reviews'] ?? 0) }}
+                                                </span>
+                                            @endif
                                         </span>
-                                    @endif
+                                    </span>
                                 </a>
                             </li>
 
@@ -336,14 +352,16 @@
                                         </svg>
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="truncate">Learner Reports</span>
-                                    @if(($adminModerationCounts['pending_learner_reports'] ?? 0) > 0)
-                                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                              x-cloak
-                                              class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">
-                                            {{ $adminModerationCounts['pending_learner_reports'] }}
+                                          x-cloak class="flex min-w-0 flex-1 items-center gap-2">
+                                        <span class="truncate">Learner Reports</span>
+                                        <span class="{{ $adminSidebarBadgeSlotClasses }}">
+                                            @if(($adminModerationCounts['pending_learner_reports'] ?? 0) > 0)
+                                                <span class="{{ $adminSidebarBadgeClasses }}">
+                                                    {{ ($adminModerationCounts['pending_learner_reports'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_learner_reports'] ?? 0) }}
+                                                </span>
+                                            @endif
                                         </span>
-                                    @endif
+                                    </span>
                                 </a>
                             </li>
 
@@ -747,9 +765,9 @@
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9a6 6 0 10-12 0v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.562 1.08 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                                 </svg>
-                                @if(($adminNotifications['unread_count'] ?? 0) > 0)
-                                    <span class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                        {{ $adminNotifications['unread_count'] > 9 ? '9+' : $adminNotifications['unread_count'] }}
+                                @if($adminNotificationUnreadCount > 0)
+                                    <span class="absolute -right-1 -top-1 {{ $adminSidebarBadgeClasses }}">
+                                        {{ $adminNotificationUnreadCount > 9 ? '9+' : $adminNotificationUnreadCount }}
                                     </span>
                                 @endif
                             </button>
@@ -770,7 +788,7 @@
                                         <p class="text-sm font-semibold text-gray-900">Notifications</p>
                                         <p class="mt-0.5 text-xs text-gray-500">Admin-side updates and system alerts.</p>
                                     </div>
-                                    @if(($adminNotifications['unread_count'] ?? 0) > 0)
+                                    @if($adminNotificationUnreadCount > 0)
                                         <form method="POST" action="{{ route('admin.notifications.mark-all-read') }}">
                                             @csrf
                                             <button type="submit" class="text-xs font-medium text-brand-700 hover:text-brand-900 transition-colors">

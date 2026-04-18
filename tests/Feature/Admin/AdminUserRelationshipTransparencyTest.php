@@ -15,7 +15,7 @@ class AdminUserRelationshipTransparencyTest extends TestCase
 
     private function createAdminUser(): User
     {
-        $permissions = ['view users', 'manage user relationships'];
+        $permissions = ['view users', 'manage user relationships', 'access chat'];
 
         foreach ($permissions as $permission) {
             Permission::findOrCreate($permission, 'web');
@@ -38,8 +38,16 @@ class AdminUserRelationshipTransparencyTest extends TestCase
         $this->withoutVite();
 
         $admin = $this->createAdminUser();
-        $parent = User::factory()->create(['role' => 'learner', 'status' => 'active']);
-        $child = User::factory()->create(['role' => 'learner', 'status' => 'active']);
+        $parent = User::factory()->create([
+            'role' => 'learner',
+            'status' => 'active',
+            'birthdate' => now()->subYears(35)->toDateString(),
+        ]);
+        $child = User::factory()->create([
+            'role' => 'learner',
+            'status' => 'active',
+            'birthdate' => now()->subYears(10)->toDateString(),
+        ]);
 
         ParentChildAccount::query()->create([
             'parent_user_id' => $parent->id,
@@ -55,6 +63,8 @@ class AdminUserRelationshipTransparencyTest extends TestCase
             ->assertOk()
             ->assertSee('Parent-Child Transparency', false)
             ->assertSee($parent->name, false)
+            ->assertSee('years old', false)
+            ->assertSee('open-global-chat', false)
             ->assertSee('Learner-To-Instructor Lineage', false)
             ->assertSee('Role Transition Timeline', false);
     }

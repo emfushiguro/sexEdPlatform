@@ -26,7 +26,23 @@ class ParentInvitationController extends Controller
             return $redirect;
         }
 
+        $outgoingInvitations = $this->invitationService->getOutgoingInvitations($parent);
+
         return view('parent.invitations.index', [
+            'outgoingInvitations' => $outgoingInvitations->take(5)->values(),
+            'totalOutgoingInvitations' => $outgoingInvitations->count(),
+        ]);
+    }
+
+    public function history(Request $request): View|RedirectResponse
+    {
+        $parent = $request->user();
+
+        if ($redirect = $this->ensureApprovedParent($parent)) {
+            return $redirect;
+        }
+
+        return view('parent.invitations.history', [
             'outgoingInvitations' => $this->invitationService->getOutgoingInvitations($parent),
         ]);
     }

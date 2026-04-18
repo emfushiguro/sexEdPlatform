@@ -134,6 +134,47 @@ class AdminParentChildVerificationUiTest extends TestCase
             ->assertDontSee($rejectedChild->full_name, false);
     }
 
+    public function test_default_verification_view_surfaces_pending_child_requests_without_notification_context(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $linkedParent = User::factory()->create([
+            'first_name' => 'Visible',
+            'last_name' => 'Parent',
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
+            'parent_id_document_path' => 'parent-verifications/approved/visible-parent-id.pdf',
+        ]);
+        $linkedParent->assignRole('learner');
+
+        $pendingChild = User::factory()->create([
+            'first_name' => 'Visible',
+            'last_name' => 'PendingChild',
+        ]);
+        $pendingChild->assignRole('learner');
+
+        ParentChildAccount::create([
+            'parent_user_id' => $linkedParent->id,
+            'child_user_id' => $pendingChild->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'pending',
+            'verification_document_path' => 'child-verifications/temp/visible-pending-doc.pdf',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.index'))
+            ->assertOk()
+            ->assertSee('Child Verifications', false)
+            ->assertSee($pendingChild->full_name, false);
+    }
+
     public function test_verification_preview_details_use_standardized_copy_and_hide_removed_fields(): void
     {
         /** @var User $admin */

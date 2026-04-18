@@ -231,6 +231,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/invitations', [ParentInvitationController::class, 'index'])
             ->name('invitations.index');
+        Route::get('/invitations/history', [ParentInvitationController::class, 'history'])
+            ->name('invitations.history');
         Route::post('/invitations', [ParentInvitationController::class, 'store'])
             ->name('invitations.store');
         Route::get('/invitations/{invitation}', [ParentInvitationController::class, 'show'])

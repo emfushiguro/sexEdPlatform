@@ -13,10 +13,6 @@
             'status' => ucfirst((string) ($user->status ?? 'active')),
             'modules_enrolled' => (int) $user->instructor_modules_enrolled_count,
             'show_url' => route('instructor.users.show', $user),
-            'chat_url' => route('chat.page', [
-                'target_user_id' => $user->id,
-                'conversation_type' => 'direct',
-            ]),
             'archive_url' => route('instructor.users.archive', $user),
             'remove_url' => route('instructor.users.remove', $user),
         ];
@@ -30,6 +26,7 @@
      x-data="{
         rows: @js($learnersTable),
         categoryOptions: @js($categoryOptions),
+          canUseChat: @js(auth()->user()?->can('access chat') ?? false),
         q: '',
         categoryFilter: '',
         statusFilter: '',
@@ -195,13 +192,16 @@
 
                             <td class="px-4 py-3 text-right">
                                 <div class="inline-flex items-center gap-1">
-                                    <a :href="row.chat_url"
-                                       class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-brand-700 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors action-icon-standard"
-                                       title="Message learner">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6m-8 8 3.7-3H19a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                        </svg>
-                                    </a>
+                                    <template x-if="canUseChat">
+                                        <button type="button"
+                                           @click="window.dispatchEvent(new CustomEvent('open-global-chat', { detail: { target_user_id: row.id, conversation_type: 'direct', name: row.name } }))"
+                                           class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-brand-700 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors action-icon-standard"
+                                           title="Message learner">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6m-8 8 3.7-3H19a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                            </svg>
+                                        </button>
+                                    </template>
 
                                     <a :href="row.show_url"
                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors action-icon-standard"

@@ -3,18 +3,27 @@
 @section('title', 'Parent Invitations')
 
 @section('content')
+@php
+    $totalOutgoingInvitations = $totalOutgoingInvitations ?? $outgoingInvitations->count();
+@endphp
 <div class="max-w-5xl mx-auto space-y-6">
     <div class="rounded-2xl p-6 text-white"
          style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-                <h1 class="text-2xl font-bold">Parent Link Invitations</h1>
-                <p class="text-white/80 text-sm mt-1">Invite an existing learner account to connect with your parent account.</p>
+                <h1 class="text-2xl font-bold">Parent Invitation Center</h1>
+                <p class="text-white/80 text-sm mt-1">Send invitations and track recent parent-link activity.</p>
             </div>
-            <a href="{{ route('parent.children.index') }}"
-               class="inline-flex items-center rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/30">
-                Back to My Children
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('parent.invitations.history') }}"
+                   class="inline-flex items-center rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white hover:bg-white/25 border border-white/20">
+                    Full History
+                </a>
+                <a href="{{ route('parent.children.index') }}"
+                   class="inline-flex items-center rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/30">
+                    Back to My Children
+                </a>
+            </div>
         </div>
     </div>
 
@@ -68,7 +77,12 @@
     </div>
 
     <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
-        <h2 class="text-lg font-semibold text-gray-900">Outgoing Invitations</h2>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold text-gray-900">Recent Invitations</h2>
+            <span class="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-700">
+                {{ $totalOutgoingInvitations }} total
+            </span>
+        </div>
 
         @if($outgoingInvitations->isEmpty())
             <p class="text-sm text-gray-500 mt-3">No invitations sent yet.</p>
@@ -86,19 +100,32 @@
                             'expired' => 'bg-orange-100 text-orange-700',
                             default => 'bg-amber-100 text-amber-700',
                         };
+                        $childAvatarPath = $invitation->child?->learnerProfile?->avatar_path;
+                        $childAvatarUrl = $childAvatarPath
+                            ? asset('storage/' . ltrim((string) $childAvatarPath, '/'))
+                            : null;
                     @endphp
 
                     <div class="rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-3">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div class="min-w-0">
-                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $invitation->child?->name ?? 'Learner' }}</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    {{ $invitation->child?->email ?? 'No email' }}
-                                    @if($invitation->child?->learnerProfile?->username)
-                                        · {{ $invitation->child->learnerProfile->username }}
-                                    @endif
-                                </p>
-                                <p class="text-xs text-gray-400 mt-1">Sent {{ $invitation->created_at?->diffForHumans() }}</p>
+                            <div class="min-w-0 flex items-center gap-3">
+                                @if($childAvatarUrl)
+                                    <img src="{{ $childAvatarUrl }}" alt="Invited learner avatar" class="h-10 w-10 rounded-full object-cover border border-gray-200">
+                                @else
+                                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+                                        {{ strtoupper(substr((string) ($invitation->child?->name ?? 'L'), 0, 1)) }}
+                                    </span>
+                                @endif
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-900 truncate">{{ $invitation->child?->name ?? 'Learner' }}</p>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        {{ $invitation->child?->email ?? 'No email' }}
+                                        @if($invitation->child?->learnerProfile?->username)
+                                            · {{ $invitation->child->learnerProfile->username }}
+                                        @endif
+                                    </p>
+                                    <p class="text-xs text-gray-400 mt-1">Sent {{ $invitation->created_at?->diffForHumans() }}</p>
+                                </div>
                             </div>
 
                             <div class="flex items-center gap-2">
@@ -114,6 +141,15 @@
                     </div>
                 @endforeach
             </div>
+
+            @if($totalOutgoingInvitations > $outgoingInvitations->count())
+                <div class="mt-4 flex justify-end">
+                    <a href="{{ route('parent.invitations.history') }}"
+                       class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100">
+                        View Full History
+                    </a>
+                </div>
+            @endif
         @endif
     </div>
 </div>

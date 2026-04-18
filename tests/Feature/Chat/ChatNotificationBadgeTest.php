@@ -18,6 +18,16 @@ class ChatNotificationBadgeTest extends TestCase
         $this->assertStringContainsString('data-chat-unread-badge-role="learner"', $learnerHeader);
     }
 
+    public function test_admin_chat_badge_hides_when_unread_count_is_zero(): void
+    {
+        $adminLayout = File::get(resource_path('views/layouts/admin.blade.php'));
+        $storeContents = File::get(resource_path('js/chat/store.js'));
+
+        $this->assertStringContainsString('data-chat-unread-badge', $adminLayout);
+        $this->assertStringContainsString('badge.hidden = !hasUnread;', $storeContents);
+        $this->assertStringContainsString("badge.textContent = hasUnread ? (totalUnread > 99 ? '99+' : String(totalUnread)) : '';", $storeContents);
+    }
+
     public function test_notification_preference_toggle_contract_is_wired_and_persisted(): void
     {
         $storeContents = File::get(resource_path('js/chat/store.js'));

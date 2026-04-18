@@ -137,4 +137,45 @@ class AdminPaymentsAutomationUiTest extends TestCase
             ->assertSee('Instructor Revenue')
             ->assertSee('Learner Revenue');
     }
+
+    public function test_admin_payment_receipt_uses_dedicated_admin_view_and_admin_links(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->assignRole('admin');
+
+        $learner = User::factory()->create(['role' => 'learner']);
+        $learner->assignRole('learner');
+
+        $subscription = Subscription::query()->create([
+            'user_id' => $learner->id,
+            'plan' => 'premium',
+            'status' => 'active',
+            'start_date' => now()->subWeek(),
+            'end_date' => now()->addWeeks(3),
+            'price_paid' => 299,
+            'auto_renew' => true,
+        ]);
+
+        $payment = Payment::query()->create([
+            'user_id' => $learner->id,
+            'subscription_id' => $subscription->id,
+            'amount' => 299,
+            'method' => 'paymongo',
+            'status' => PaymentStatus::Completed,
+            'transaction_id' => 'ADMIN-RECEIPT-1',
+            'paid_at' => now(),
+            'payment_details' => [
+                'payment_scope' => 'subscription',
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.payments.receipt', $payment))
+            ->assertOk()
+            ->assertViewIs('admin.payments.receipt')
+            ->assertSee('Admin Payment Receipt')
+            ->assertSee(route('admin.payments.show', $payment), false)
+            ->assertDontSee(route('payment.history'), false)
+            ->assertDontSee('Back to Subscriptions');
+    }
 }

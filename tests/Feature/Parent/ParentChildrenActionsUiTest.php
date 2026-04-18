@@ -21,10 +21,13 @@ class ParentChildrenActionsUiTest extends TestCase
 
         $response->assertOk()
             ->assertSee('View Child Dashboard', false)
+            ->assertSee('Message '.$approvedChild->full_name, false)
+            ->assertSee('open-global-chat', false)
             ->assertDontSee('>Manage</a>', false)
             ->assertDontSee('Quiz Results', false)
             ->assertSee('Pending verification', false)
-            ->assertSee('Verification needs correction', false);
+            ->assertSee('Verification needs correction', false)
+            ->assertDontSee('>Approved<', false);
 
         $approvedUrl = route('parent.children.show', $approvedChild->id);
         $this->assertSame(1, substr_count($response->getContent(), $approvedUrl));

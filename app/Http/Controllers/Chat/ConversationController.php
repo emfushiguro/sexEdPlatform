@@ -41,12 +41,14 @@ class ConversationController extends Controller
                     ->orWhere('participant_two_id', $userId);
             })
             ->with([
-                    'participantOne:id,name,role,status,chat_status',
+                'participantOne:id,name,role,status,chat_status',
                 'participantOne.learnerProfile:id,user_id,avatar_path',
                 'participantOne.instructorProfile:id,user_id,profile_photo_path',
-                    'participantTwo:id,name,role,status,chat_status',
+                'participantOne.adminCreatorProfile:id,user_id,affiliation',
+                'participantTwo:id,name,role,status,chat_status',
                 'participantTwo.learnerProfile:id,user_id,avatar_path',
                 'participantTwo.instructorProfile:id,user_id,profile_photo_path',
+                'participantTwo.adminCreatorProfile:id,user_id,affiliation',
                 'module:id,title',
                 'lesson:id,title',
                 'lessonTopic:id,title,lesson_id',
@@ -262,6 +264,7 @@ class ConversationController extends Controller
             ->with([
                 'learnerProfile:id,user_id,avatar_path',
                 'instructorProfile:id,user_id,profile_photo_path',
+                'adminCreatorProfile:id,user_id,affiliation',
             ])
             ->orderBy('id')
             ->first(['id', 'name', 'role', 'status', 'chat_status']);
@@ -451,9 +454,15 @@ class ConversationController extends Controller
         $avatarPath = $user->learnerProfile?->avatar_path
             ?? $user->instructorProfile?->profile_photo_path;
 
+        $displayName = (string) $user->name;
+
+        if ((string) $user->role === 'admin') {
+            $displayName = (string) ($user->adminCreatorProfile?->affiliation ?: $displayName ?: 'Conscious Connections Team');
+        }
+
         return [
             'id' => $user->id,
-            'name' => $user->name,
+            'name' => $displayName,
             'role' => $user->role,
             'status' => $this->normalizeUserStatus($user->chat_status ?? $user->status),
             'avatar_url' => $this->resolveAvatarUrl($avatarPath),

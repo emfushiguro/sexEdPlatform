@@ -130,9 +130,44 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->actingAs($parent)
             ->get(route('parent.children.index'))
             ->assertOk()
-            ->assertSee('Parent Link Invitations')
+            ->assertSee('Latest Parent Link Invitation')
             ->assertSee($child->name)
             ->assertSee('Pending');
+    }
+
+    public function test_parent_can_view_full_invitation_history_page(): void
+    {
+        $this->seedLocationRows();
+
+        $parent = $this->createApprovedParent();
+        $firstChild = $this->createLearner('historychildone', 10);
+        $secondChild = $this->createLearner('historychildtwo', 11);
+
+        ParentChildInvitation::query()->create([
+            'inviter_parent_user_id' => $parent->id,
+            'child_user_id' => $firstChild->id,
+            'invite_token' => (string) \Illuminate\Support\Str::uuid(),
+            'status' => 'pending',
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        ParentChildInvitation::query()->create([
+            'inviter_parent_user_id' => $parent->id,
+            'child_user_id' => $secondChild->id,
+            'invite_token' => (string) \Illuminate\Support\Str::uuid(),
+            'status' => 'rejected',
+            'responded_at' => now()->subDay(),
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        $this->actingAs($parent)
+            ->get(route('parent.invitations.history'))
+            ->assertOk()
+            ->assertSee('Parent Invitation History')
+            ->assertSee($firstChild->name)
+            ->assertSee($secondChild->name)
+            ->assertSee('Pending')
+            ->assertSee('Rejected');
     }
 
     public function test_parent_cannot_invite_learner_outside_5_to_17_age_range(): void
