@@ -229,11 +229,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('parents.approve');
         Route::post('/parents/{user}/reject', [Admin\ParentChildVerificationController::class, 'rejectParent'])
             ->name('parents.reject');
+        Route::post('/parents/{user}/archive', [Admin\ParentChildVerificationController::class, 'archiveParent'])
+            ->name('parents.archive');
+        Route::delete('/parents/{user}', [Admin\ParentChildVerificationController::class, 'destroyParent'])
+            ->name('parents.destroy');
 
         Route::post('/children/{parentChildAccount}/approve', [Admin\ParentChildVerificationController::class, 'approveChild'])
             ->name('children.approve');
         Route::post('/children/{parentChildAccount}/reject', [Admin\ParentChildVerificationController::class, 'rejectChild'])
             ->name('children.reject');
+        Route::post('/children/{parentChildAccount}/archive', [Admin\ParentChildVerificationController::class, 'archiveChild'])
+            ->name('children.archive');
+        Route::delete('/children/{parentChildAccount}', [Admin\ParentChildVerificationController::class, 'destroyChild'])
+            ->name('children.destroy');
     });
 
     Route::post('/subscribers/{subscription}/archive', [Admin\SubscriberAdminController::class, 'archive'])

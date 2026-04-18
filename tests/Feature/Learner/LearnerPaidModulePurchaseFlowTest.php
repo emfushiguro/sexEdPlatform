@@ -93,6 +93,7 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
+            'verification_status' => 'approved',
             'relationship_verified_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),

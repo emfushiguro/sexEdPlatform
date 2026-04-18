@@ -202,7 +202,8 @@ class TopicTranslationController extends Controller
         $signedAudioUrl = URL::temporarySignedRoute(
             'learner.translator.tts.audio',
             now()->addMinutes(10),
-            ['token' => Crypt::encryptString($audioPath)]
+            ['token' => Crypt::encryptString($audioPath)],
+            false
         );
 
         return response()->json([

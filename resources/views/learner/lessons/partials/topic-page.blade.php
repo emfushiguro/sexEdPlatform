@@ -383,7 +383,7 @@
                                     }
 
                                     const playableUrl = await this.resolvePlayableUrl(payload);
-                                    this.audioPlayer.src = playableUrl + (playableUrl.includes('?') ? '&' : '?') + 'v=' + Date.now();
+                                    this.audioPlayer.src = playableUrl;
                                     this.audioPlayer.load();
                                     await this.audioPlayer.play();
                                     this.isReading = true;

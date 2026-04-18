@@ -19,6 +19,7 @@ use App\Http\Controllers\Chat\ConversationController as ChatConversationControll
 use App\Http\Controllers\Chat\MessageController as ChatMessageController;
 use App\Http\Controllers\Chat\MessageRequestController as ChatMessageRequestController;
 use App\Http\Controllers\Chat\StatusController as ChatStatusController;
+use App\Http\Controllers\ParentInvitationController;
 use App\Http\Controllers\Api\LocationController;
 use App\Models\Conversation;
 use Illuminate\Http\Request;
@@ -164,7 +165,7 @@ Route::middleware('auth')->group(function () {
             ->middleware('throttle:20,1')
             ->name('translator.tts');
         Route::get('/translator/tts/audio/{token}', [TopicTranslationController::class, 'streamSynthesizedSpeech'])
-            ->middleware(['signed', 'throttle:60,1'])
+            ->middleware(['signed:relative', 'throttle:60,1'])
             ->name('translator.tts.audio');
 
         // Shields and streak savers
@@ -213,10 +214,25 @@ Route::middleware('auth')->group(function () {
     Route::prefix('parent')->name('parent.')->middleware('verified')->group(function () {
         Route::get('/children/{child}', [\App\Http\Controllers\ParentController::class, 'show'])
             ->name('children.show');
+        Route::get('/children/{child}/quiz-attempts/{attempt}', [\App\Http\Controllers\ParentController::class, 'showQuizAttempt'])
+            ->name('children.quiz-attempts.show');
+        Route::get('/children/{child}/enrollments/{enrollment}', [\App\Http\Controllers\ParentController::class, 'showEnrollment'])
+            ->name('children.enrollments.show');
         Route::post('/children/{child}/enrollments/{enrollment}/approve', [\App\Http\Controllers\ParentController::class, 'approveEnrollment'])
             ->name('children.enrollments.approve');
         Route::post('/children/{child}/enrollments/{enrollment}/reject', [\App\Http\Controllers\ParentController::class, 'rejectEnrollment'])
             ->name('children.enrollments.reject');
+
+        Route::get('/invitations', [ParentInvitationController::class, 'index'])
+            ->name('invitations.index');
+        Route::post('/invitations', [ParentInvitationController::class, 'store'])
+            ->name('invitations.store');
+        Route::get('/invitations/{invitation}', [ParentInvitationController::class, 'show'])
+            ->name('invitations.show');
+        Route::post('/invitations/{invitation}/respond', [ParentInvitationController::class, 'respond'])
+            ->name('invitations.respond');
+        Route::post('/invitations/{invitation}/cancel', [ParentInvitationController::class, 'cancel'])
+            ->name('invitations.cancel');
     });
 
     Route::prefix('chat')

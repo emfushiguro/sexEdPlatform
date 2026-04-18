@@ -4,8 +4,12 @@ namespace Tests\Feature;
 
 use App\Http\Middleware\EnsureProfileCompleted;
 use App\Models\LearnerProfile;
+use App\Models\Lesson;
+use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
+use App\Models\QuizOption;
+use App\Models\QuizQuestion;
 use App\Models\ParentChildAccount;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
@@ -56,6 +60,8 @@ class ParentChildMonitoringTest extends TestCase
             'can_view_progress'     => true,
             'can_view_quiz_answers' => true,
             'can_approve_content'   => true,
+            'verification_status'   => 'approved',
+            'relationship_verified_at' => now(),
         ]);
 
         UserGamification::create([
@@ -78,16 +84,203 @@ class ParentChildMonitoringTest extends TestCase
              ->assertOk();
     }
 
+    public function test_parent_can_view_quiz_attempt_details_for_owned_child(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $quiz = Quiz::factory()->create();
+        $attempt = QuizAttempt::create([
+            'user_id' => $child->id,
+            'quiz_id' => $quiz->id,
+            'score' => 85,
+            'passed' => true,
+            'answers' => [],
+            'started_at' => now()->subMinutes(5),
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.quiz-attempts.show', [$child, $attempt]))
+            ->assertOk()
+            ->assertSee('Quiz Attempt Details');
+    }
+
+    public function test_parent_can_view_pending_enrollment_details_for_owned_child(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $module = Module::factory()->create([
+            'title' => 'Body Safety Basics',
+            'enrollment_mode' => 'auto',
+            'access_type' => 'free',
+        ]);
+
+        $enrollment = ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $lesson = Lesson::factory()->create([
+            'module_id' => $module->id,
+            'title' => 'Lesson Parent Review',
+            'order' => 1,
+            'text_content' => '<p>Lesson overview for parent review.</p>',
+            'is_published' => true,
+        ]);
+
+        LessonTopic::factory()->create([
+            'lesson_id' => $lesson->id,
+            'title' => 'Topic Parent Review',
+            'type' => 'text',
+            'text_content' => '<p>Topic details visible to parent.</p>',
+            'order' => 1,
+        ]);
+
+        $quiz = Quiz::factory()->create([
+            'module_id' => $module->id,
+            'lesson_id' => $lesson->id,
+            'title' => 'Quiz Parent Review',
+            'is_active' => true,
+        ]);
+
+        $question = QuizQuestion::create([
+            'quiz_id' => $quiz->id,
+            'question_text' => 'What is consent? ',
+            'question_type' => 'multiple_choice',
+            'points' => 1,
+            'order' => 1,
+        ]);
+
+        QuizOption::create([
+            'quiz_question_id' => $question->id,
+            'option_text' => 'Consent is clear agreement.',
+            'is_correct' => true,
+            'order' => 1,
+        ]);
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.enrollments.show', [$child, $enrollment]))
+            ->assertOk()
+            ->assertSee('Enrollment Request Details')
+            ->assertSee('Body Safety Basics')
+            ->assertSee('Learning Content Review')
+            ->assertSee('Lesson Parent Review')
+            ->assertSee('Topic Parent Review')
+            ->assertSee('Review Topic')
+            ->assertSee('Lesson Quizzes');
+    }
+
+    public function test_parent_dashboard_shows_pending_parent_approval_label_and_detail_link(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $module = Module::factory()->create(['title' => 'Body Boundaries']);
+        $enrollment = ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $response = $this->actingAs($parent)
+            ->get(route('parent.children.show', $child));
+
+        $response->assertOk()
+            ->assertSee('Pending Parent Approval')
+            ->assertSee(route('parent.children.enrollments.show', [$child, $enrollment]), false);
+    }
+
+    public function test_parent_enrollment_detail_shows_notification_context_when_opened_from_notification(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $module = Module::factory()->create(['title' => 'Consent Basics']);
+        $enrollment = ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.enrollments.show', [$child, $enrollment, 'from' => 'notification']))
+            ->assertOk()
+            ->assertSee('Opened from notification')
+            ->assertSee('Return to notifications');
+    }
+
+    public function test_parent_without_content_approval_cannot_view_pending_enrollment_details(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        ParentChildAccount::query()
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
+            ->update(['can_approve_content' => false]);
+
+        $module = Module::factory()->create();
+        $enrollment = ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.enrollments.show', [$child, $enrollment]))
+            ->assertForbidden();
+    }
+
+    public function test_parent_cannot_view_quiz_attempt_details_when_attempt_belongs_to_another_child(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        $otherChild = User::factory()->create(['email_verified_at' => now()]);
+        $otherChild->assignRole('learner');
+
+        $quiz = Quiz::factory()->create();
+        $attempt = QuizAttempt::create([
+            'user_id' => $otherChild->id,
+            'quiz_id' => $quiz->id,
+            'score' => 70,
+            'passed' => true,
+            'answers' => [],
+            'started_at' => now()->subMinutes(5),
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.quiz-attempts.show', [$child, $attempt]))
+            ->assertNotFound();
+    }
+
     public function test_parent_cannot_view_another_users_child(): void
     {
         [$parent, $child] = $this->createParentWithChild();
 
+        /** @var User $stranger */
         $stranger = User::factory()->create(['email_verified_at' => now()]);
         $stranger->assignRole('learner');
 
         $this->actingAs($stranger)
              ->get(route('parent.children.show', $child))
              ->assertForbidden();
+    }
+
+    public function test_parent_cannot_view_child_when_relationship_is_archived(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        ParentChildAccount::query()
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
+            ->delete();
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.show', $child))
+            ->assertForbidden();
     }
 
     public function test_guest_cannot_access_parent_routes(): void
@@ -215,6 +408,33 @@ class ParentChildMonitoringTest extends TestCase
         ]);
     }
 
+    public function test_parent_without_content_approval_cannot_approve_pending_enrollment(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        ParentChildAccount::query()
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
+            ->update(['can_approve_content' => false]);
+
+        $module = Module::factory()->create(['enrollment_mode' => 'auto']);
+        $enrollment = ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $this->actingAs($parent)
+            ->post(route('parent.children.enrollments.approve', [$child, $enrollment]))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('module_enrollments', [
+            'id' => $enrollment->id,
+            'status' => 'pending_parent_approval',
+        ]);
+    }
+
     public function test_parent_can_reject_pending_enrollment(): void
     {
         [$parent, $child] = $this->createParentWithChild();
@@ -228,12 +448,43 @@ class ParentChildMonitoringTest extends TestCase
         ]);
 
         $this->actingAs($parent)
-             ->post(route('parent.children.enrollments.reject', [$child, $enrollment]))
+             ->post(route('parent.children.enrollments.reject', [$child, $enrollment]), [
+                 'reason_code' => 'not_ready_for_topic',
+             ])
              ->assertRedirect(route('parent.children.show', $child));
 
         $this->assertDatabaseHas('module_enrollments', [
             'id'     => $enrollment->id,
             'status' => 'rejected',
+        ]);
+    }
+
+    public function test_parent_without_content_approval_cannot_reject_pending_enrollment(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+
+        ParentChildAccount::query()
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
+            ->update(['can_approve_content' => false]);
+
+        $module = Module::factory()->create();
+        $enrollment = ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => 'pending_parent_approval',
+            'enrolled_at' => null,
+        ]);
+
+        $this->actingAs($parent)
+            ->post(route('parent.children.enrollments.reject', [$child, $enrollment]), [
+                'reason_code' => 'not_ready_for_topic',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('module_enrollments', [
+            'id' => $enrollment->id,
+            'status' => 'pending_parent_approval',
         ]);
     }
 

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "91cb7235e5bcb58d22b4a5e4d0935f0f",
+    "content-hash": "37a84dbef133f0b46b32a7744b0ea5bd",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -1116,16 +1116,16 @@
         },
         {
             "name": "google/cloud-text-to-speech",
-            "version": "v2.7.0",
+            "version": "v2.8.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/googleapis/google-cloud-php-text-to-speech.git",
-                "reference": "42e11c98a90d4ea1180fe24774edf8860848c37d"
+                "reference": "6d7e5a1366991cf104b4cf30f5fe74efb90bd71d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/googleapis/google-cloud-php-text-to-speech/zipball/42e11c98a90d4ea1180fe24774edf8860848c37d",
-                "reference": "42e11c98a90d4ea1180fe24774edf8860848c37d",
+                "url": "https://api.github.com/repos/googleapis/google-cloud-php-text-to-speech/zipball/6d7e5a1366991cf104b4cf30f5fe74efb90bd71d",
+                "reference": "6d7e5a1366991cf104b4cf30f5fe74efb90bd71d",
                 "shasum": ""
             },
             "require": {
@@ -1161,9 +1161,9 @@
             ],
             "description": "Cloud Text-to-Speech Client for PHP",
             "support": {
-                "source": "https://github.com/googleapis/google-cloud-php-text-to-speech/tree/v2.7.0"
+                "source": "https://github.com/googleapis/google-cloud-php-text-to-speech/tree/v2.8.0"
             },
-            "time": "2026-03-17T23:07:39+00:00"
+            "time": "2026-04-09T21:01:46+00:00"
         },
         {
             "name": "google/common-protos",

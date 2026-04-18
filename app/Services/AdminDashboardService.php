@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\InstructorApplication;
+use App\Models\ContentReport;
 use App\Models\Module;
 use App\Models\ModuleReviewRequest;
+use App\Models\ParentChildAccount;
 use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\User;
@@ -14,7 +16,32 @@ class AdminDashboardService
 {
     public function getCommandCenterPayload(): array
     {
+        $analytics = $this->buildDashboardAnalytics();
+        $learnerDemographics = $this->buildLearnerDemographics();
+
+        $pendingParentVerifications = User::query()
+            ->where('is_parent_registration', true)
+            ->where(function ($query): void {
+                $query->where('parent_verification_status', 'pending')
+                    ->orWhereNull('parent_verification_status');
+            })
+            ->count();
+
+        $pendingChildVerifications = ParentChildAccount::query()
+            ->where(function ($query): void {
+                $query->where('verification_status', 'pending')
+                    ->orWhereNull('verification_status');
+            })
+            ->count();
+
+        $combinedPendingVerifications = $pendingParentVerifications + $pendingChildVerifications;
+
+        $pendingLearnerReports = ContentReport::query()
+            ->whereIn('status', ['submitted', 'under_review'])
+            ->count();
+
         return [
+            'overview_cards' => $this->buildOverviewCards($analytics),
             'snapshot_metrics' => [
                 [
                     'label' => 'Total Users',
@@ -82,8 +109,241 @@ class AdminDashboardService
                     'description' => 'Moderate instructor module submissions before publish.',
                     'accent' => 'sky',
                 ],
+                [
+                    'label' => 'Parent & Child Verifications',
+                    'count' => $combinedPendingVerifications,
+                    'cta_label' => 'Open Queue',
+                    'cta_route' => route('admin.parent-verifications.index', [
+                        'status' => 'pending',
+                    ]),
+                    'description' => 'Review pending guardian and child verification requests.',
+                    'accent' => 'violet',
+                ],
+                [
+                    'label' => 'Learner Reports',
+                    'count' => $pendingLearnerReports,
+                    'cta_label' => 'Open Queue',
+                    'cta_route' => route('admin.learner-reports.index'),
+                    'description' => 'Handle learner-submitted safety and content concerns.',
+                    'accent' => 'rose',
+                ],
             ],
             'recent_activity' => $this->getRecentSystemActivity(),
+            'analytics' => $analytics,
+            'learner_demographics' => $learnerDemographics,
+        ];
+    }
+
+    private function buildOverviewCards(array $analytics): array
+    {
+        $currentMonthStart = now()->copy()->startOfMonth();
+        $currentMonthEnd = now()->copy()->endOfMonth();
+        $previousMonthStart = now()->copy()->subMonth()->startOfMonth();
+        $previousMonthEnd = now()->copy()->subMonth()->endOfMonth();
+
+        $learnerCurrent = User::role('learner')
+            ->whereBetween('created_at', [$currentMonthStart, $currentMonthEnd])
+            ->count();
+        $learnerPrevious = User::role('learner')
+            ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])
+            ->count();
+
+        $instructorCurrent = User::role('instructor')
+            ->whereBetween('created_at', [$currentMonthStart, $currentMonthEnd])
+            ->count();
+        $instructorPrevious = User::role('instructor')
+            ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])
+            ->count();
+
+        $moduleCurrent = Module::query()
+            ->whereBetween('created_at', [$currentMonthStart, $currentMonthEnd])
+            ->count();
+        $modulePrevious = Module::query()
+            ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])
+            ->count();
+
+        $revenueTrend = $analytics['monthly_revenue_previous'] > 0
+            ? (($analytics['monthly_revenue_current'] - $analytics['monthly_revenue_previous']) / $analytics['monthly_revenue_previous']) * 100
+            : ($analytics['monthly_revenue_current'] > 0 ? 100.0 : 0.0);
+
+        return [
+            [
+                'label' => 'Learners',
+                'value' => User::role('learner')->count(),
+                'delta_percent' => round($this->computeTrendPercent($learnerCurrent, $learnerPrevious), 2),
+                'accent' => 'emerald',
+            ],
+            [
+                'label' => 'Instructors',
+                'value' => User::role('instructor')->count(),
+                'delta_percent' => round($this->computeTrendPercent($instructorCurrent, $instructorPrevious), 2),
+                'accent' => 'sky',
+            ],
+            [
+                'label' => 'Total Modules',
+                'value' => Module::query()->count(),
+                'delta_percent' => round($this->computeTrendPercent($moduleCurrent, $modulePrevious), 2),
+                'accent' => 'violet',
+            ],
+            [
+                'label' => 'Total Revenue',
+                'value' => (float) Payment::query()->where('status', 'completed')->sum('amount'),
+                'delta_percent' => round($revenueTrend, 2),
+                'accent' => 'amber',
+                'is_currency' => true,
+            ],
+        ];
+    }
+
+    private function buildLearnerDemographics(): array
+    {
+        $learnerBaseQuery = User::role('learner');
+        $totalLearners = max(1, (clone $learnerBaseQuery)->count());
+
+        $kidsMaxBirthdate = now()->subYears(5)->toDateString();
+        $kidsMinBirthdateExclusive = now()->subYears(13)->toDateString();
+        $teensMaxBirthdate = now()->subYears(13)->toDateString();
+        $teensMinBirthdateExclusive = now()->subYears(18)->toDateString();
+        $adultsMaxBirthdate = now()->subYears(18)->toDateString();
+
+        $rows = [
+            [
+                'label' => 'Kids (5-12)',
+                'count' => (clone $learnerBaseQuery)
+                    ->where(function ($query) use ($kidsMaxBirthdate, $kidsMinBirthdateExclusive): void {
+                        $query->where('age_bracket_cached', 'kids')
+                            ->orWhere(function ($fallback) use ($kidsMaxBirthdate, $kidsMinBirthdateExclusive): void {
+                                $fallback->where(function ($missingCache): void {
+                                    $missingCache->whereNull('age_bracket_cached')
+                                        ->orWhere('age_bracket_cached', '');
+                                })->whereHas('learnerProfile', function ($profileQuery) use ($kidsMaxBirthdate, $kidsMinBirthdateExclusive): void {
+                                    $profileQuery
+                                        ->whereNotNull('birthdate')
+                                        ->whereDate('birthdate', '<=', $kidsMaxBirthdate)
+                                        ->whereDate('birthdate', '>', $kidsMinBirthdateExclusive);
+                                });
+                            });
+                    })
+                    ->count(),
+                'accent' => 'sky',
+            ],
+            [
+                'label' => 'Teens (13-17)',
+                'count' => (clone $learnerBaseQuery)
+                    ->where(function ($query) use ($teensMaxBirthdate, $teensMinBirthdateExclusive): void {
+                        $query->where('age_bracket_cached', 'teens')
+                            ->orWhere(function ($fallback) use ($teensMaxBirthdate, $teensMinBirthdateExclusive): void {
+                                $fallback->where(function ($missingCache): void {
+                                    $missingCache->whereNull('age_bracket_cached')
+                                        ->orWhere('age_bracket_cached', '');
+                                })->whereHas('learnerProfile', function ($profileQuery) use ($teensMaxBirthdate, $teensMinBirthdateExclusive): void {
+                                    $profileQuery
+                                        ->whereNotNull('birthdate')
+                                        ->whereDate('birthdate', '<=', $teensMaxBirthdate)
+                                        ->whereDate('birthdate', '>', $teensMinBirthdateExclusive);
+                                });
+                            });
+                    })
+                    ->count(),
+                'accent' => 'violet',
+            ],
+            [
+                'label' => 'Adults (18+)',
+                'count' => (clone $learnerBaseQuery)
+                    ->where(function ($query) use ($adultsMaxBirthdate): void {
+                        $query->where('age_bracket_cached', 'adults')
+                            ->orWhere(function ($fallback) use ($adultsMaxBirthdate): void {
+                                $fallback->where(function ($missingCache): void {
+                                    $missingCache->whereNull('age_bracket_cached')
+                                        ->orWhere('age_bracket_cached', '');
+                                })->whereHas('learnerProfile', function ($profileQuery) use ($adultsMaxBirthdate): void {
+                                    $profileQuery
+                                        ->whereNotNull('birthdate')
+                                        ->whereDate('birthdate', '<=', $adultsMaxBirthdate);
+                                });
+                            });
+                    })
+                    ->count(),
+                'accent' => 'emerald',
+            ],
+        ];
+
+        return array_map(function (array $row) use ($totalLearners): array {
+            $row['percent'] = round(($row['count'] / $totalLearners) * 100, 2);
+
+            return $row;
+        }, $rows);
+    }
+
+    private function computeTrendPercent(int|float $current, int|float $previous): float
+    {
+        if ($previous > 0) {
+            return (($current - $previous) / $previous) * 100;
+        }
+
+        return $current > 0 ? 100.0 : 0.0;
+    }
+
+    private function buildDashboardAnalytics(): array
+    {
+        $labels = [];
+        $counts = [];
+
+        for ($offset = 11; $offset >= 0; $offset--) {
+            $month = now()->copy()->startOfMonth()->subMonths($offset);
+            $monthStart = $month->copy()->startOfMonth();
+            $monthEnd = $month->copy()->endOfMonth();
+
+            $labels[] = $month->format('M');
+            $counts[] = Subscription::query()
+                ->where('status', 'active')
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->count();
+        }
+
+        $currentMonthStart = now()->copy()->startOfMonth();
+        $currentMonthEnd = now()->copy()->endOfMonth();
+        $previousMonthStart = now()->copy()->subMonth()->startOfMonth();
+        $previousMonthEnd = now()->copy()->subMonth()->endOfMonth();
+
+        $currentMonthSubscribers = Subscription::query()
+            ->where('status', 'active')
+            ->whereBetween('created_at', [$currentMonthStart, $currentMonthEnd])
+            ->count();
+
+        $previousMonthSubscribers = Subscription::query()
+            ->where('status', 'active')
+            ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])
+            ->count();
+
+        $subscriberTrendPercent = $previousMonthSubscribers > 0
+            ? (($currentMonthSubscribers - $previousMonthSubscribers) / $previousMonthSubscribers) * 100
+            : ($currentMonthSubscribers > 0 ? 100.0 : 0.0);
+
+        $monthlyTarget = max(1, (int) config('billing.admin_dashboard_monthly_subscriber_target', 200));
+        $targetPercent = min(100, round(($currentMonthSubscribers / $monthlyTarget) * 100, 2));
+
+        $currentMonthRevenue = (float) Payment::query()
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$currentMonthStart, $currentMonthEnd])
+            ->sum('amount');
+
+        $previousMonthRevenue = (float) Payment::query()
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])
+            ->sum('amount');
+
+        return [
+            'monthly_labels' => $labels,
+            'monthly_subscriber_counts' => $counts,
+            'active_subscribers_total' => Subscription::query()->where('status', 'active')->count(),
+            'monthly_subscribers_current' => $currentMonthSubscribers,
+            'monthly_subscribers_previous' => $previousMonthSubscribers,
+            'monthly_subscriber_trend_percent' => round($subscriberTrendPercent, 2),
+            'monthly_target' => $monthlyTarget,
+            'monthly_target_percent' => $targetPercent,
+            'monthly_revenue_current' => round($currentMonthRevenue, 2),
+            'monthly_revenue_previous' => round($previousMonthRevenue, 2),
         ];
     }
 

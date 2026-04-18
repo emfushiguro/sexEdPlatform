@@ -7,14 +7,14 @@
 @php
     $moderationReasons = \App\Enums\ParentChildModerationReason::cases();
     $parentStatusCounts = [
-        'pending' => $parentApplications->filter(fn ($application) => ($application->parent_verification_status ?? 'pending') === 'pending')->count(),
-        'approved' => $parentApplications->filter(fn ($application) => ($application->parent_verification_status ?? 'pending') === 'approved')->count(),
-        'rejected' => $parentApplications->filter(fn ($application) => ($application->parent_verification_status ?? 'pending') === 'rejected')->count(),
+        'pending' => (int) $pendingParentCount,
+        'approved' => (int) $approvedParentCount,
+        'rejected' => (int) $rejectedParentCount,
     ];
     $childStatusCounts = [
-        'pending' => $childApplications->filter(fn ($application) => ($application->verification_status ?? 'pending') === 'pending')->count(),
-        'approved' => $childApplications->filter(fn ($application) => ($application->verification_status ?? 'pending') === 'approved')->count(),
-        'rejected' => $childApplications->filter(fn ($application) => ($application->verification_status ?? 'pending') === 'rejected')->count(),
+        'pending' => (int) $pendingChildCount,
+        'approved' => (int) $approvedChildCount,
+        'rejected' => (int) $rejectedChildCount,
     ];
     $parentSearchRows = $parentApplications->map(function ($application) {
         $statusValue = $application->parent_verification_status ?: 'pending';
@@ -69,17 +69,17 @@
         previewDetails: {},
         setType(type) {
             this.activeType = type;
-            this.syncUrl();
+            this.navigate();
         },
         setStatus(status) {
             this.activeStatus = status;
-            this.syncUrl();
+            this.navigate();
         },
-        syncUrl() {
-            const params = new URLSearchParams(window.location.search);
+        navigate() {
+            const params = new URLSearchParams();
             params.set('type', this.activeType);
             params.set('status', this.activeStatus);
-            window.history.replaceState({}, '', window.location.pathname + '?' + params.toString());
+            window.location.assign(window.location.pathname + '?' + params.toString());
         },
         normalizedSearchQuery() {
             return String(this.searchQuery || '').trim().toLowerCase();
@@ -375,19 +375,32 @@
                                     rejectionReason: @js($parentRejectionReason),
                                     processingApprove: false,
                                     processingReject: false,
-                                    approveConfirmOpen: false,
+                                    reviewModalOpen: false,
+                                    actionConfirmOpen: false,
+                                    actionType: 'archive',
                                     rejectModalOpen: false,
                                     modalReasonCode: '',
                                     modalCustomReason: '',
-                                    openApproveConfirm() {
-                                        if (this.currentStatus !== 'pending') {
+                                    openReviewModal() {
+                                        this.reviewModalOpen = true;
+                                    },
+                                    closeReviewModal() {
+                                        this.reviewModalOpen = false;
+                                    },
+                                    openActionConfirm(type) {
+                                        this.actionType = type;
+                                        this.actionConfirmOpen = true;
+                                    },
+                                    closeActionConfirm() {
+                                        this.actionConfirmOpen = false;
+                                    },
+                                    submitAction() {
+                                        if (this.actionType === 'delete') {
+                                            this.$refs.deleteForm.submit();
                                             return;
                                         }
 
-                                        this.approveConfirmOpen = true;
-                                    },
-                                    closeApproveConfirm() {
-                                        this.approveConfirmOpen = false;
+                                        this.$refs.archiveForm.submit();
                                     },
                                     openRejectModal() {
                                         if (this.currentStatus !== 'pending') {
@@ -466,6 +479,7 @@
                                             this.rejectionReason = payload.rejection_reason || null;
 
                                             this.closeRejectModal();
+                                            this.closeReviewModal();
 
                                             this.$dispatch('moderation-updated', {
                                                 type: 'parents',
@@ -508,7 +522,7 @@
                                             const previousStatus = this.currentStatus;
                                             this.currentStatus = payload.status || 'approved';
                                             this.rejectionReason = payload.rejection_reason || null;
-                                            this.closeApproveConfirm();
+                                            this.closeReviewModal();
 
                                             this.$dispatch('moderation-updated', {
                                                 type: 'parents',
@@ -543,40 +557,197 @@
                                 </td>
                                 <td class="px-4 py-3 align-top whitespace-nowrap text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        @if($hasParentDocument)
-                                            <button type="button"
-                                                    title="View document"
-                                                    @click="openPreview(@js($parentDocumentUrl), @js('Parent Verification - '.$application->full_name), @js($parentPreviewType), @js($parentPreviewDetails))"
-                                                    class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-200">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                            </button>
-                                        @endif
+                                        <button type="button"
+                                                :title="currentStatus === 'approved' ? 'View Approved Application' : (currentStatus === 'rejected' ? 'View Rejected Application' : 'Review Application')"
+                                                @click="openReviewModal()"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition"
+                                                :class="currentStatus === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : (currentStatus === 'rejected' ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' : 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100')"
+                                                aria-label="Review application">
+                                            <svg x-show="currentStatus === 'pending'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <svg x-show="currentStatus === 'approved'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <svg x-show="currentStatus === 'rejected'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
 
-                                        <div class="flex items-center gap-2" x-show="currentStatus === 'pending'" x-cloak>
-                                            <button type="button"
-                                                    title="Review and confirm approval"
-                                                    data-testid="open-approval-confirm-modal"
-                                                    @click="openApproveConfirm()"
-                                                    :disabled="processingApprove || processingReject || currentStatus !== 'pending'"
-                                                    class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    aria-label="Review and confirm approval">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                                </svg>
-                                            </button>
+                                        <button type="button"
+                                                @click="openActionConfirm('archive')"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
+                                                title="Archive Application"
+                                                aria-label="Archive Application">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M6 8l1 10h10l1-10M9 8V6a1 1 0 011-1h4a1 1 0 011 1v2" />
+                                            </svg>
+                                        </button>
 
-                                            <button type="button"
-                                                    title="Reject"
-                                                    @click="openRejectModal()"
-                                                    :disabled="processingApprove || processingReject || currentStatus !== 'pending'"
-                                                    class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-200 disabled:cursor-not-allowed disabled:opacity-60">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
+                                        <button type="button"
+                                                @click="openActionConfirm('delete')"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                                                title="Delete Application"
+                                                aria-label="Delete Application">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                     <div x-show="actionConfirmOpen"
+                                         x-cloak
+                                         @keydown.escape.window="closeActionConfirm()"
+                                         class="fixed inset-0 z-[60] flex items-center justify-center p-4 text-left sm:p-6 lg:p-8">
+                                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="closeActionConfirm()"></div>
+
+                                        <div class="relative z-10 w-full max-w-md rounded-2xl bg-white text-left shadow-2xl">
+                                            <div class="border-b border-gray-100 px-5 py-4">
+                                                <h3 class="text-sm font-semibold text-gray-900" x-text="actionType === 'delete' ? 'Delete Application?' : 'Archive Application?'"></h3>
+                                            </div>
+                                            <div class="px-5 py-5">
+                                                <p class="text-sm text-gray-700" x-show="actionType === 'archive'" x-cloak>Archive this parent verification application?</p>
+                                                <p class="text-sm text-gray-700" x-show="actionType === 'delete'" x-cloak>Permanently delete this parent verification application?</p>
+                                            </div>
+                                            <div class="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
+                                                <button type="button"
+                                                        @click="closeActionConfirm()"
+                                                        class="inline-flex rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">
+                                                    Cancel
+                                                </button>
+                                                <button type="button"
+                                                        @click="submitAction()"
+                                                        :class="actionType === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'"
+                                                        class="inline-flex rounded-lg px-3 py-1.5 text-xs font-semibold text-white">
+                                                    Confirm
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ route('admin.parent-verifications.parents.archive', $application) }}" x-ref="archiveForm" class="hidden">
+                                        @csrf
+                                    </form>
+
+                                    <form method="POST" action="{{ route('admin.parent-verifications.parents.destroy', $application) }}" x-ref="deleteForm" class="hidden">
+                                        @csrf
+                                        @method('DELETE')
+                                    </form>
+
+                                     <div x-show="reviewModalOpen"
+                                         x-cloak
+                                         @keydown.escape.window="if (reviewModalOpen) closeReviewModal()"
+                                         class="fixed inset-0 z-[100100] flex items-start justify-center overflow-y-auto p-4 pt-14 text-left sm:p-6 sm:pt-16 lg:p-8 lg:pt-20">
+                                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="closeReviewModal()"></div>
+
+                                        <div class="relative z-10 flex w-full max-w-4xl max-h-[calc(100vh-4rem)] flex-col overflow-hidden rounded-2xl bg-white text-left shadow-2xl sm:max-h-[calc(100vh-5rem)] lg:max-h-[calc(100vh-6rem)]">
+                                            <div class="shrink-0 border-b border-gray-100 bg-gray-50/80 px-6 py-4">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Verification Review</p>
+                                                        <h2 class="mt-1 text-lg font-bold text-gray-900">Parent Verification - {{ $application->full_name }}</h2>
+                                                        <p class="text-sm text-gray-500">Submitted {{ $application->created_at->format('M d, Y h:i A') }}</p>
+                                                    </div>
+                                                    <button type="button" @click="closeReviewModal()" class="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
+                                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="min-h-0 flex-1 space-y-5 overflow-y-auto bg-white px-6 py-5">
+                                                <section class="rounded-2xl border border-gray-200 bg-white p-4" x-data="{ open: true }">
+                                                    <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                                                        <h3 class="text-base font-bold text-gray-900">Section 1 - Application Details</h3>
+                                                        <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" x-text="open ? 'Hide' : 'Show'"></button>
+                                                    </div>
+
+                                                    <dl x-show="open" x-cloak class="mt-4 grid gap-3 sm:grid-cols-2">
+                                                        @foreach($parentPreviewDetails as $label => $value)
+                                                            <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                                                                <dt class="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">{{ $label }}</dt>
+                                                                @if($label === 'Status')
+                                                                    <dd class="mt-1">
+                                                                        <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold"
+                                                                              :class="currentStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : (currentStatus === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700')"
+                                                                              x-text="currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)"></span>
+                                                                    </dd>
+                                                                @elseif($label === 'Rejection Reason')
+                                                                    <dd class="mt-1 text-sm font-medium text-gray-900 break-words" x-text="rejectionReason || 'N/A'"></dd>
+                                                                @else
+                                                                    <dd class="mt-1 text-sm font-medium text-gray-900 break-words">{{ $value ?: 'N/A' }}</dd>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                    </dl>
+                                                </section>
+
+                                                <section class="rounded-2xl border border-gray-200 bg-white p-4" x-data="{ open: true }">
+                                                    <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                                                        <h3 class="text-base font-bold text-gray-900">Section 2 - Submitted Document</h3>
+                                                        <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" x-text="open ? 'Hide' : 'Show'"></button>
+                                                    </div>
+
+                                                    <div x-show="open" x-cloak class="mt-4">
+                                                    @if($hasParentDocument)
+                                                        <div class="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                                                            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Parent Government ID</p>
+
+                                                            @if($parentPreviewType === 'image')
+                                                                <img src="{{ $parentDocumentUrl }}" alt="Parent verification document" class="mx-auto max-h-[50vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
+                                                            @elseif($parentPreviewType === 'pdf')
+                                                                <iframe src="{{ $parentDocumentUrl }}#toolbar=0&navpanes=0" class="h-[52vh] w-full rounded-lg border border-gray-200 bg-white" title="Parent verification document"></iframe>
+                                                            @else
+                                                                <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
+                                                                    <p class="text-sm text-gray-600">Inline preview is not available for this file type.</p>
+                                                                </div>
+                                                            @endif
+
+                                                            <div class="mt-3">
+                                                                <a href="{{ $parentDocumentUrl }}" download class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">Download document</a>
+                                                            </div>
+                                                        </div>
+                                                    @else
+                                                        <p class="text-sm text-gray-500">No document uploaded.</p>
+                                                    @endif
+                                                    </div>
+                                                </section>
+
+                                                <section class="rounded-2xl border border-gray-200 bg-white p-4" x-data="{ open: true }">
+                                                    <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                                                        <h3 class="text-base font-bold text-gray-900">Section 3 - Moderation Actions</h3>
+                                                        <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" x-text="open ? 'Hide' : 'Show'"></button>
+                                                    </div>
+
+                                                    <div x-show="open" x-cloak class="mt-4">
+                                                    <div class="flex flex-wrap items-center gap-2" x-show="currentStatus === 'pending'" x-cloak>
+                                                        <button type="button"
+                                                            data-testid="submit-approval-action"
+                                                                @click="submitApprove(@js(route('admin.parent-verifications.parents.approve', $application)))"
+                                                                :disabled="processingApprove || processingReject"
+                                                                class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                                            <span x-text="processingApprove ? 'Approving...' : 'Approve Application'"></span>
+                                                        </button>
+                                                        <button type="button"
+                                                                @click="openRejectModal()"
+                                                                :disabled="processingApprove || processingReject"
+                                                                class="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                                            Reject Application
+                                                        </button>
+                                                    </div>
+
+                                                    <p class="mt-3 text-sm text-emerald-700" x-show="currentStatus === 'approved'" x-cloak>
+                                                        This parent verification has already been approved.
+                                                    </p>
+                                                    <p class="mt-3 text-sm text-rose-700" x-show="currentStatus === 'rejected'" x-cloak>
+                                                        This parent verification has already been rejected.
+                                                    </p>
+                                                    </div>
+                                                </section>
+                                            </div>
+
                                         </div>
                                     </div>
 
@@ -585,37 +756,6 @@
                                         'submitUrl' => route('admin.parent-verifications.parents.reject', $application),
                                         'moderationReasons' => $moderationReasons,
                                     ])
-
-                                    <div x-show="approveConfirmOpen"
-                                         x-cloak
-                                         @keydown.escape.window="closeApproveConfirm()"
-                                         class="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 lg:p-8"
-                                         data-testid="approval-confirm-modal">
-                                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="closeApproveConfirm()"></div>
-
-                                        <div class="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl">
-                                            <div class="border-b border-gray-100 px-5 py-4">
-                                                <h3 class="text-sm font-semibold text-gray-900">Confirm Parent Approval</h3>
-                                            </div>
-                                            <div class="px-5 py-5">
-                                                <p class="text-sm text-gray-700">Are you sure you want to approve this verification?</p>
-                                            </div>
-                                            <div class="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
-                                                <button type="button"
-                                                        @click="closeApproveConfirm()"
-                                                        :disabled="processingApprove"
-                                                        class="inline-flex rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60">
-                                                    Cancel
-                                                </button>
-                                                <button type="button"
-                                                        @click="submitApprove(@js(route('admin.parent-verifications.parents.approve', $application)))"
-                                                        :disabled="processingApprove"
-                                                        class="inline-flex rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
-                                                    <span x-text="processingApprove ? 'Confirming...' : 'Confirm'"></span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
 
                                 </td>
                             </tr>
@@ -632,11 +772,10 @@
                 <table class="w-full table-fixed divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="w-[22%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Parent</th>
-                            <th class="w-[22%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Child</th>
-                            <th class="w-[16%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Verification Document</th>
-                            <th class="w-[12%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Status</th>
-                            <th class="w-[18%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>
+                            <th class="w-[24%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Parent</th>
+                            <th class="w-[26%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Child</th>
+                            <th class="w-[14%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Status</th>
+                            <th class="w-[20%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>
                             <th class="w-[170px] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
                         </tr>
                     </thead>
@@ -670,12 +809,17 @@
                                     ]
                                     : null;
                                 $childRejectionReason = trim((string) preg_replace('/\s+/u', ' ', str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string) ($application->verification_rejection_reason ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'))));
+                                $childAge = $application->child?->age;
+                                if ($childAge === null && $application->child?->birthdate) {
+                                    $childAge = \Carbon\Carbon::parse($application->child->birthdate)->age;
+                                }
                                 $childPreviewDetails = [
                                     'Queue' => 'Child Verification',
                                     'Parent Name' => $application->parent?->full_name ?? 'Unknown parent',
                                     'Parent Email' => $application->parent?->email ?? 'N/A',
                                     'Child Name' => $application->child?->full_name ?? 'Unknown child',
                                     'Child Username' => $application->child?->learnerProfile?->username ?? 'N/A',
+                                    'Child Age' => $childAge !== null ? $childAge . ' years old' : 'N/A',
                                     'Status' => ucfirst($statusValue),
                                     'Submitted At' => $application->created_at?->format('M d, Y h:i A') ?? 'N/A',
                                     'Rejection Reason' => $childRejectionReason !== '' ? $childRejectionReason : 'N/A',
@@ -694,19 +838,32 @@
                                     rejectionReason: @js($childRejectionReason),
                                     processingApprove: false,
                                     processingReject: false,
-                                    approveConfirmOpen: false,
+                                    reviewModalOpen: false,
+                                    actionConfirmOpen: false,
+                                    actionType: 'archive',
                                     rejectModalOpen: false,
                                     modalReasonCode: '',
                                     modalCustomReason: '',
-                                    openApproveConfirm() {
-                                        if (this.currentStatus !== 'pending') {
+                                    openReviewModal() {
+                                        this.reviewModalOpen = true;
+                                    },
+                                    closeReviewModal() {
+                                        this.reviewModalOpen = false;
+                                    },
+                                    openActionConfirm(type) {
+                                        this.actionType = type;
+                                        this.actionConfirmOpen = true;
+                                    },
+                                    closeActionConfirm() {
+                                        this.actionConfirmOpen = false;
+                                    },
+                                    submitAction() {
+                                        if (this.actionType === 'delete') {
+                                            this.$refs.deleteForm.submit();
                                             return;
                                         }
 
-                                        this.approveConfirmOpen = true;
-                                    },
-                                    closeApproveConfirm() {
-                                        this.approveConfirmOpen = false;
+                                        this.$refs.archiveForm.submit();
                                     },
                                     openRejectModal() {
                                         if (this.currentStatus !== 'pending') {
@@ -785,6 +942,7 @@
                                             this.rejectionReason = payload.rejection_reason || null;
 
                                             this.closeRejectModal();
+                                            this.closeReviewModal();
 
                                             this.$dispatch('moderation-updated', {
                                                 type: 'children',
@@ -827,7 +985,7 @@
                                             const previousStatus = this.currentStatus;
                                             this.currentStatus = payload.status || 'approved';
                                             this.rejectionReason = payload.rejection_reason || null;
-                                            this.closeApproveConfirm();
+                                            this.closeReviewModal();
 
                                             this.$dispatch('moderation-updated', {
                                                 type: 'children',
@@ -854,14 +1012,8 @@
                                 <td class="px-4 py-3 align-top">
                                     <p class="text-sm font-semibold text-gray-900 break-words">{{ $application->child?->full_name ?? 'Unknown child' }}</p>
                                     <p class="text-xs text-gray-500 break-words">{{ $application->child?->learnerProfile?->username ?: 'No username' }}</p>
-                                </td>
-                                <td class="px-4 py-3 align-top">
-                                    @if($hasVerificationDocument)
-                                        <span class="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">
-                                            Uploaded
-                                        </span>
-                                    @else
-                                        <span class="text-sm text-gray-500">No document</span>
+                                    @if(!is_null($childAge))
+                                        <p class="text-xs text-gray-500 break-words">{{ $childAge }} years old</p>
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 align-top">
@@ -875,40 +1027,224 @@
                                 </td>
                                 <td class="px-4 py-3 align-top whitespace-nowrap text-right">
                                     <div class="flex flex-nowrap items-center justify-end gap-2">
-                                        @if($hasVerificationDocument)
-                                            <button type="button"
-                                                    title="View document"
-                                                    @click="openPreview(@js($verificationDocumentUrl), @js('Child Verification - '.($application->child?->full_name ?? 'Child')), @js($verificationPreviewType), @js($childPreviewDetails), @js($comparisonPreviewPayload))"
-                                                    class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-200">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                            </button>
-                                        @endif
+                                        <button type="button"
+                                                :title="currentStatus === 'approved' ? 'View Approved Application' : (currentStatus === 'rejected' ? 'View Rejected Application' : 'Review Application')"
+                                                @click="openReviewModal()"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition"
+                                                :class="currentStatus === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : (currentStatus === 'rejected' ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' : 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100')"
+                                                aria-label="Review application">
+                                            <svg x-show="currentStatus === 'pending'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <svg x-show="currentStatus === 'approved'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <svg x-show="currentStatus === 'rejected'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
 
-                                        <div class="flex shrink-0 items-center gap-2" x-show="currentStatus === 'pending'" x-cloak>
-                                            <button type="button"
-                                                    title="Review and confirm approval"
-                                                    data-testid="open-approval-confirm-modal"
-                                                    @click="openApproveConfirm()"
-                                                    :disabled="processingApprove || processingReject || currentStatus !== 'pending'"
-                                                    class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    aria-label="Review and confirm approval">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                                </svg>
-                                            </button>
+                                        <button type="button"
+                                                @click="openActionConfirm('archive')"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
+                                                title="Archive Application"
+                                                aria-label="Archive Application">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M6 8l1 10h10l1-10M9 8V6a1 1 0 011-1h4a1 1 0 011 1v2" />
+                                            </svg>
+                                        </button>
 
-                                            <button type="button"
-                                                    title="Reject"
-                                                    @click="openRejectModal()"
-                                                    :disabled="processingApprove || processingReject || currentStatus !== 'pending'"
-                                                    class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-200 disabled:cursor-not-allowed disabled:opacity-60">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
+                                        <button type="button"
+                                                @click="openActionConfirm('delete')"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                                                title="Delete Application"
+                                                aria-label="Delete Application">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                     <div x-show="actionConfirmOpen"
+                                         x-cloak
+                                         @keydown.escape.window="closeActionConfirm()"
+                                         class="fixed inset-0 z-[60] flex items-center justify-center p-4 text-left sm:p-6 lg:p-8">
+                                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="closeActionConfirm()"></div>
+
+                                        <div class="relative z-10 w-full max-w-md rounded-2xl bg-white text-left shadow-2xl">
+                                            <div class="border-b border-gray-100 px-5 py-4">
+                                                <h3 class="text-sm font-semibold text-gray-900" x-text="actionType === 'delete' ? 'Delete Application?' : 'Archive Application?'"></h3>
+                                            </div>
+                                            <div class="px-5 py-5">
+                                                <p class="text-sm text-gray-700" x-show="actionType === 'archive'" x-cloak>Archive this child verification application?</p>
+                                                <p class="text-sm text-gray-700" x-show="actionType === 'delete'" x-cloak>Permanently delete this child verification application?</p>
+                                            </div>
+                                            <div class="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
+                                                <button type="button"
+                                                        @click="closeActionConfirm()"
+                                                        class="inline-flex rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">
+                                                    Cancel
+                                                </button>
+                                                <button type="button"
+                                                        @click="submitAction()"
+                                                        :class="actionType === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'"
+                                                        class="inline-flex rounded-lg px-3 py-1.5 text-xs font-semibold text-white">
+                                                    Confirm
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ route('admin.parent-verifications.children.archive', $application) }}" x-ref="archiveForm" class="hidden">
+                                        @csrf
+                                    </form>
+
+                                    <form method="POST" action="{{ route('admin.parent-verifications.children.destroy', $application) }}" x-ref="deleteForm" class="hidden">
+                                        @csrf
+                                        @method('DELETE')
+                                    </form>
+
+                                     <div x-show="reviewModalOpen"
+                                         x-cloak
+                                         @keydown.escape.window="if (reviewModalOpen) closeReviewModal()"
+                                         class="fixed inset-0 z-[100100] flex items-start justify-center overflow-y-auto p-4 pt-14 text-left sm:p-6 sm:pt-16 lg:p-8 lg:pt-20">
+                                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="closeReviewModal()"></div>
+
+                                        <div class="relative z-10 flex w-full max-w-5xl max-h-[calc(100vh-4rem)] flex-col overflow-hidden rounded-2xl bg-white text-left shadow-2xl sm:max-h-[calc(100vh-5rem)] lg:max-h-[calc(100vh-6rem)]">
+                                            <div class="shrink-0 border-b border-gray-100 bg-gray-50/80 px-6 py-4">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Verification Review</p>
+                                                        <h2 class="mt-1 text-lg font-bold text-gray-900">Child Verification - {{ $application->child?->full_name ?? 'Unknown child' }}</h2>
+                                                        <p class="text-sm text-gray-500">Submitted {{ $application->created_at?->format('M d, Y h:i A') ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <button type="button" @click="closeReviewModal()" class="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
+                                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="min-h-0 flex-1 space-y-5 overflow-y-auto bg-white px-6 py-5">
+                                                <section class="rounded-2xl border border-gray-200 bg-white p-4" x-data="{ open: true }">
+                                                    <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                                                        <h3 class="text-base font-bold text-gray-900">Section 1 - Application Details</h3>
+                                                        <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" x-text="open ? 'Hide' : 'Show'"></button>
+                                                    </div>
+
+                                                    <dl x-show="open" x-cloak class="mt-4 grid gap-3 sm:grid-cols-2">
+                                                        @foreach($childPreviewDetails as $label => $value)
+                                                            <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                                                                <dt class="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">{{ $label }}</dt>
+                                                                @if($label === 'Status')
+                                                                    <dd class="mt-1">
+                                                                        <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold"
+                                                                              :class="currentStatus === 'approved' ? 'bg-emerald-100 text-emerald-700' : (currentStatus === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700')"
+                                                                              x-text="currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)"></span>
+                                                                    </dd>
+                                                                @elseif($label === 'Rejection Reason')
+                                                                    <dd class="mt-1 text-sm font-medium text-gray-900 break-words" x-text="rejectionReason || 'N/A'"></dd>
+                                                                @else
+                                                                    <dd class="mt-1 text-sm font-medium text-gray-900 break-words">{{ $value ?: 'N/A' }}</dd>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                    </dl>
+                                                </section>
+
+                                                <section class="rounded-2xl border border-gray-200 bg-white p-4" x-data="{ open: true }">
+                                                    <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                                                        <h3 class="text-base font-bold text-gray-900">Section 2 - Submitted Documents</h3>
+                                                        <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" x-text="open ? 'Hide' : 'Show'"></button>
+                                                    </div>
+
+                                                    <div x-show="open" x-cloak class="mt-4 grid gap-4 lg:grid-cols-2">
+                                                        <article class="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                                                            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Child Verification Document</p>
+
+                                                            @if($hasVerificationDocument && $verificationPreviewType === 'image')
+                                                                <img src="{{ $verificationDocumentUrl }}" alt="Child verification document" class="mx-auto max-h-[48vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
+                                                            @elseif($hasVerificationDocument && $verificationPreviewType === 'pdf')
+                                                                <iframe src="{{ $verificationDocumentUrl }}#toolbar=0&navpanes=0" class="h-[50vh] w-full rounded-lg border border-gray-200 bg-white" title="Child verification document"></iframe>
+                                                            @elseif($hasVerificationDocument)
+                                                                <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
+                                                                    <p class="text-sm text-gray-600">Inline preview is not available for this file type.</p>
+                                                                </div>
+                                                            @else
+                                                                <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
+                                                                    <p class="text-sm text-gray-600">No document uploaded.</p>
+                                                                </div>
+                                                            @endif
+
+                                                            @if($hasVerificationDocument)
+                                                                <div class="mt-3">
+                                                                    <a href="{{ $verificationDocumentUrl }}" download class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">Download document</a>
+                                                                </div>
+                                                            @endif
+                                                        </article>
+
+                                                        <article class="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                                                            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Parent Government ID</p>
+
+                                                            @if($hasParentComparisonDocument && $parentComparisonType === 'image')
+                                                                <img src="{{ $parentComparisonUrl }}" alt="Parent comparison document" class="mx-auto max-h-[48vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
+                                                            @elseif($hasParentComparisonDocument && $parentComparisonType === 'pdf')
+                                                                <iframe src="{{ $parentComparisonUrl }}#toolbar=0&navpanes=0" class="h-[50vh] w-full rounded-lg border border-gray-200 bg-white" title="Parent comparison document"></iframe>
+                                                            @elseif($hasParentComparisonDocument)
+                                                                <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
+                                                                    <p class="text-sm text-gray-600">Inline preview is not available for this file type.</p>
+                                                                </div>
+                                                            @else
+                                                                <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
+                                                                    <p class="text-sm text-gray-600">No parent document available for comparison.</p>
+                                                                </div>
+                                                            @endif
+
+                                                            @if($hasParentComparisonDocument)
+                                                                <div class="mt-3">
+                                                                    <a href="{{ $parentComparisonUrl }}" download class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">Download document</a>
+                                                                </div>
+                                                            @endif
+                                                        </article>
+                                                    </div>
+                                                </section>
+
+                                                <section class="rounded-2xl border border-gray-200 bg-white p-4" x-data="{ open: true }">
+                                                    <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                                                        <h3 class="text-base font-bold text-gray-900">Section 3 - Moderation Actions</h3>
+                                                        <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" x-text="open ? 'Hide' : 'Show'"></button>
+                                                    </div>
+
+                                                    <div x-show="open" x-cloak class="mt-4">
+                                                    <div class="flex flex-wrap items-center gap-2" x-show="currentStatus === 'pending'" x-cloak>
+                                                        <button type="button"
+                                                            data-testid="submit-approval-action"
+                                                                @click="submitApprove(@js(route('admin.parent-verifications.children.approve', $application)))"
+                                                                :disabled="processingApprove || processingReject"
+                                                                class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                                            <span x-text="processingApprove ? 'Approving...' : 'Approve Application'"></span>
+                                                        </button>
+                                                        <button type="button"
+                                                                @click="openRejectModal()"
+                                                                :disabled="processingApprove || processingReject"
+                                                                class="inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                                            Reject Application
+                                                        </button>
+                                                    </div>
+
+                                                    <p class="mt-3 text-sm text-emerald-700" x-show="currentStatus === 'approved'" x-cloak>
+                                                        This child verification has already been approved.
+                                                    </p>
+                                                    <p class="mt-3 text-sm text-rose-700" x-show="currentStatus === 'rejected'" x-cloak>
+                                                        This child verification has already been rejected.
+                                                    </p>
+                                                    </div>
+                                                </section>
+                                            </div>
+
+
                                         </div>
                                     </div>
 
@@ -918,43 +1254,12 @@
                                         'moderationReasons' => $moderationReasons,
                                     ])
 
-                                    <div x-show="approveConfirmOpen"
-                                         x-cloak
-                                         @keydown.escape.window="closeApproveConfirm()"
-                                         class="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 lg:p-8"
-                                         data-testid="approval-confirm-modal">
-                                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="closeApproveConfirm()"></div>
-
-                                        <div class="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl">
-                                            <div class="border-b border-gray-100 px-5 py-4">
-                                                <h3 class="text-sm font-semibold text-gray-900">Confirm Child Approval</h3>
-                                            </div>
-                                            <div class="px-5 py-5">
-                                                <p class="text-sm text-gray-700">Are you sure you want to approve this verification?</p>
-                                            </div>
-                                            <div class="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
-                                                <button type="button"
-                                                        @click="closeApproveConfirm()"
-                                                        :disabled="processingApprove"
-                                                        class="inline-flex rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60">
-                                                    Cancel
-                                                </button>
-                                                <button type="button"
-                                                        @click="submitApprove(@js(route('admin.parent-verifications.children.approve', $application)))"
-                                                        :disabled="processingApprove"
-                                                        class="inline-flex rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
-                                                    <span x-text="processingApprove ? 'Confirming...' : 'Confirm'"></span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
                                 </td>
                             </tr>
                         @empty
                         @endforelse
                         <tr x-show="!hasRowsForCurrent()">
-                            <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">No child verification records found for this status. Try another status tab or switch account type.</td>
+                            <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500">No child verification records found for this status. Try another status tab or switch account type.</td>
                         </tr>
                     </tbody>
                 </table>

@@ -12,19 +12,139 @@
             <h1 class="text-2xl font-bold">My Children</h1>
             <p class="text-white/80 text-sm mt-1">Manage your child applications and monitor approved accounts.</p>
         </div>
-        <a href="{{ route('parent.create-child') }}"
-           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-xl transition text-sm backdrop-blur-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-            </svg>
-            Add Child
-        </a>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('parent.invitations.index') }}"
+               class="inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white font-semibold py-2 px-4 rounded-xl transition text-sm backdrop-blur-sm border border-white/20">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-1a4 4 0 00-4-4h-1m-4 5H6a4 4 0 00-4 4v1h5m6-5a4 4 0 10-8 0 4 4 0 008 0zm6-3a3 3 0 10-6 0 3 3 0 006 0z"/>
+                </svg>
+                Invite Existing Learner
+            </a>
+            <a href="{{ route('parent.create-child') }}"
+               class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold py-2 px-4 rounded-xl transition text-sm backdrop-blur-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Add Child
+            </a>
+        </div>
     </div>
 
     {{-- Flash messages --}}
     @if(session('success'))
         <div class="bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm">
             {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm">
+            {{ session('error') }}
+        </div>
+    @endif
+
+    @if($errors->has('verification_document'))
+        <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm">
+            {{ $errors->first('verification_document') }}
+        </div>
+    @endif
+
+    @php
+        $pendingApprovalNotifications = $pendingApprovalNotifications ?? collect();
+        $outgoingInvitations = $outgoingInvitations ?? collect();
+    @endphp
+
+    @if($pendingApprovalNotifications->isNotEmpty())
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Pending Enrollment Approvals</h2>
+                    <p class="text-sm text-gray-500 mt-1">Unread child enrollment requests that need your review.</p>
+                </div>
+                <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                    {{ $pendingApprovalNotifications->count() }} unread
+                </span>
+            </div>
+
+            <div class="mt-4 space-y-3">
+                @foreach($pendingApprovalNotifications as $notification)
+                    @php
+                        $childName = data_get($notification->data, 'child_name', 'Child');
+                        $moduleTitle = data_get($notification->data, 'module_title', 'Module');
+                        $actionUrl = data_get($notification->data, 'action_url');
+                    @endphp
+
+                    <div class="rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-3">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $childName }} requested access to {{ $moduleTitle }}</p>
+                                <p class="text-xs text-gray-500 mt-1">{{ $notification->created_at?->diffForHumans() }}</p>
+                            </div>
+
+                            @if($actionUrl)
+                                <a href="{{ route('learner.notifications.read', $notification->id) }}"
+                                   class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100">
+                                    Review Enrollment Request
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    @if($outgoingInvitations->isNotEmpty())
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Parent Link Invitations</h2>
+                    <p class="text-sm text-gray-500 mt-1">Track invitations sent to existing learner accounts.</p>
+                </div>
+                <a href="{{ route('parent.invitations.index') }}"
+                   class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100">
+                    Manage Invitations
+                </a>
+            </div>
+
+            <div class="mt-4 space-y-3">
+                @foreach($outgoingInvitations as $invitation)
+                    @php
+                        $statusValue = $invitation->status instanceof \App\Enums\ParentChildInvitationStatus
+                            ? $invitation->status->value
+                            : (string) $invitation->status;
+                        $statusClass = match ($statusValue) {
+                            'accepted' => 'bg-emerald-100 text-emerald-700',
+                            'rejected' => 'bg-rose-100 text-rose-700',
+                            'cancelled' => 'bg-gray-100 text-gray-700',
+                            'expired' => 'bg-orange-100 text-orange-700',
+                            default => 'bg-amber-100 text-amber-700',
+                        };
+                    @endphp
+                    <div class="rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-3">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $invitation->child?->name ?? 'Learner' }}</p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    {{ $invitation->child?->email ?? 'No email' }}
+                                    @if($invitation->child?->learnerProfile?->username)
+                                        · {{ $invitation->child->learnerProfile->username }}
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusClass }}">
+                                    {{ ucfirst($statusValue) }}
+                                </span>
+                                <a href="{{ route('parent.invitations.show', $invitation) }}"
+                                   class="inline-flex items-center rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50">
+                                    View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </div>
     @endif
 
@@ -58,16 +178,25 @@
                 @php
                     $verificationStatus = $child->pivot->verification_status ?? 'pending';
                     $isApprovedChild = $verificationStatus === 'approved';
+                    $childAvatarUrl = $child->learnerProfile?->avatar_path
+                        ? asset('storage/' . ltrim((string) $child->learnerProfile->avatar_path, '/'))
+                        : null;
                 @endphp
                 <div class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden">
 
                     {{-- Card top: avatar + info + badge --}}
                     <div class="p-5 flex items-center gap-4">
                         {{-- Avatar initials --}}
-                        <div class="flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold shadow"
-                             style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
-                            {{ strtoupper(substr($child->first_name ?? $child->name, 0, 1)) }}{{ strtoupper(substr($child->last_name ?? '', 0, 1)) }}
-                        </div>
+                        @if($childAvatarUrl)
+                            <img src="{{ $childAvatarUrl }}"
+                                 alt="{{ $child->full_name }} avatar"
+                                 class="flex-shrink-0 w-14 h-14 rounded-full object-cover border border-gray-200 shadow">
+                        @else
+                            <div class="flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold shadow"
+                                 style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                                {{ strtoupper(substr($child->first_name ?? $child->name, 0, 1)) }}{{ strtoupper(substr($child->last_name ?? '', 0, 1)) }}
+                            </div>
+                        @endif
 
                         {{-- Name & age --}}
                         <div class="flex-1 min-w-0">
@@ -131,9 +260,22 @@
                     {{-- Progress bar --}}
                     @if($child->moduleEnrollments()->count() > 0)
                         @php
-                            $total     = $child->moduleEnrollments()->count();
-                            $completed = $child->moduleEnrollments()->where('status', 'completed')->count();
-                            $pct       = $total > 0 ? round(($completed / $total) * 100) : 0;
+                            $enrolledModuleIds = $child->moduleEnrollments()
+                                ->whereIn('status', ['approved', 'completed'])
+                                ->pluck('module_id');
+
+                            $totalLessons = \App\Models\Lesson::query()
+                                ->whereIn('module_id', $enrolledModuleIds)
+                                ->count();
+
+                            $completedLessons = \App\Models\UserProgress::query()
+                                ->where('user_id', $child->id)
+                                ->whereIn('module_id', $enrolledModuleIds)
+                                ->where('completed', true)
+                                ->distinct('lesson_id')
+                                ->count('lesson_id');
+
+                            $pct = $totalLessons > 0 ? round(($completedLessons / $totalLessons) * 100) : 0;
                         @endphp
                         <div class="px-5 py-3 border-t border-gray-100">
                             <div class="flex justify-between text-xs text-gray-500 mb-1">
@@ -164,9 +306,33 @@
                                 {{ $child->quizAttempts()->count() > 0 ? 'Quiz activity available' : 'No quiz data yet' }}
                             </span>
                         @else
-                            <span class="text-sm text-gray-500">
-                                {{ $verificationStatus === 'rejected' ? 'Verification needs correction' : 'Pending verification' }}
-                            </span>
+                            @if($verificationStatus === 'rejected')
+                                <form method="POST"
+                                      action="{{ route('parent.children.verification.resubmit', $child) }}"
+                                      enctype="multipart/form-data"
+                                      class="w-full space-y-2">
+                                    @csrf
+                                    <label for="verification_document_{{ $child->id }}" class="block text-xs font-medium text-gray-700">
+                                        Upload corrected PSA document
+                                    </label>
+                                    <input id="verification_document_{{ $child->id }}"
+                                           name="verification_document"
+                                           type="file"
+                                           required
+                                           accept=".jpg,.jpeg,.png,.pdf"
+                                           class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-2 text-xs text-gray-900 file:mr-2 file:rounded-md file:border-0 file:bg-purple-100 file:px-2 file:py-1 file:text-xs file:font-semibold file:text-purple-700">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-xs text-gray-500">JPG, PNG, or PDF up to 5MB.</span>
+                                        <button type="submit"
+                                                class="inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+                                                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                                            Resubmit Child Verification
+                                        </button>
+                                    </div>
+                                </form>
+                            @else
+                                <span class="text-sm text-gray-500">Pending verification</span>
+                            @endif
                         @endif
                     </div>
                 </div>

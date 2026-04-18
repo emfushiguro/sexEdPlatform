@@ -37,7 +37,7 @@
             </div>
         </div>
         <p class="text-sm text-gray-600 mb-6">
-            Please ask your parent/guardian to submit corrected child verification details.
+            Please ask your parent/guardian to resubmit your verification document from their My Children page.
         </p>
     @else
         <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 mb-4">

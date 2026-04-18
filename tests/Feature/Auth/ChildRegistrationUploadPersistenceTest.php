@@ -87,12 +87,14 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
 
         $path = $uploadResponse->json('upload.path');
 
+        $this->assertSame($path, session('registration_temp_uploads.child.verification_document.path'));
+
         $this->actingAs($parent)
             ->withSession($this->childWizardSession())
             ->get(route('parent.create-child.credentials'))
             ->assertOk()
             ->assertSee('data-testid="child-verification-preview"', false)
-            ->assertSee($path, false);
+            ->assertSee('birth-cert.pdf', false);
     }
 
     public function test_child_temp_remove_and_replace_keep_session_metadata_in_sync(): void

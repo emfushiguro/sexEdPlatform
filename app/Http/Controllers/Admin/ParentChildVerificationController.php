@@ -33,11 +33,14 @@ class ParentChildVerificationController extends Controller
             $status = VerificationStatus::Pending->value;
         }
 
+        $parentApplications = $this->parentApplications($status);
+        $childApplications = $this->childApplications($status);
+
         return view('admin.parent-verifications.index', [
             'type' => $type,
             'status' => $status,
-            'parentApplications' => $this->parentApplications(),
-            'childApplications' => $this->childApplications(),
+            'parentApplications' => $parentApplications,
+            'childApplications' => $childApplications,
             'pendingParentCount' => User::query()
                 ->where('is_parent_registration', true)
                 ->where(function ($query): void {
@@ -154,6 +157,64 @@ class ParentChildVerificationController extends Controller
         );
     }
 
+    public function archiveParent(User $user): RedirectResponse
+    {
+        if (! $user->isParentRegistration()) {
+            return back()->with('error', 'Selected account is not a parent verification application.');
+        }
+
+        if ($user->trashed()) {
+            return back()->with('info', 'Parent verification application is already archived.');
+        }
+
+        $user->delete();
+
+        return back()->with('success', 'Parent verification application archived successfully.');
+    }
+
+    public function destroyParent(User $user): RedirectResponse
+    {
+        if (! $user->isParentRegistration()) {
+            return back()->with('error', 'Selected account is not a parent verification application.');
+        }
+
+        if (! in_array($this->normalizedStatus($user->parent_verification_status), [
+            VerificationStatus::Approved->value,
+            VerificationStatus::Rejected->value,
+        ], true)) {
+            return back()->with('error', 'Only reviewed parent verification applications can be permanently deleted.');
+        }
+
+        $user->forceDelete();
+
+        return back()->with('success', 'Parent verification application permanently deleted.');
+    }
+
+    public function archiveChild(ParentChildAccount $parentChildAccount): RedirectResponse
+    {
+        if ($parentChildAccount->trashed()) {
+            return back()->with('info', 'Child verification application is already archived.');
+        }
+
+        $parentChildAccount->delete();
+
+        return back()->with('success', 'Child verification application archived successfully.');
+    }
+
+    public function destroyChild(ParentChildAccount $parentChildAccount): RedirectResponse
+    {
+        if (! in_array($this->normalizedStatus($parentChildAccount->verification_status), [
+            VerificationStatus::Approved->value,
+            VerificationStatus::Rejected->value,
+        ], true)) {
+            return back()->with('error', 'Only reviewed child verification applications can be permanently deleted.');
+        }
+
+        $parentChildAccount->forceDelete();
+
+        return back()->with('success', 'Child verification application permanently deleted.');
+    }
+
     private function composeRejectionReason(string $reasonCode, ?string $customReason = null): string
     {
         $reason = ParentChildModerationReason::tryFrom($reasonCode);
@@ -186,24 +247,44 @@ class ParentChildVerificationController extends Controller
         return trim($reasonText) !== '';
     }
 
-    private function parentApplications()
+    private function parentApplications(string $status)
     {
-        return User::query()
+        $query = User::query()
             ->where('is_parent_registration', true)
             ->with('learnerProfile')
-            ->latest()
-            ->get();
+            ->latest();
+
+        if ($status === VerificationStatus::Pending->value) {
+            $query->where(function ($pendingQuery): void {
+                $pendingQuery->where('parent_verification_status', VerificationStatus::Pending->value)
+                    ->orWhereNull('parent_verification_status');
+            });
+        } else {
+            $query->where('parent_verification_status', $status);
+        }
+
+        return $query->get();
     }
 
-    private function childApplications()
+    private function childApplications(string $status)
     {
-        return ParentChildAccount::query()
+        $query = ParentChildAccount::query()
             ->with([
                 'parent.learnerProfile',
                 'child.learnerProfile',
             ])
-            ->latest()
-            ->get();
+            ->latest();
+
+        if ($status === VerificationStatus::Pending->value) {
+            $query->where(function ($pendingQuery): void {
+                $pendingQuery->where('verification_status', VerificationStatus::Pending->value)
+                    ->orWhereNull('verification_status');
+            });
+        } else {
+            $query->where('verification_status', $status);
+        }
+
+        return $query->get();
     }
 
     private function isPendingStatus(?string $status): bool

@@ -13,9 +13,11 @@ use App\Models\QuizAttempt;
 use App\Models\LessonTopicProgress;
 use App\Models\ContentReport;
 use App\Models\ModuleFeedback;
+use App\Models\User;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use App\Notifications\Learner\ModulePurchaseResultNotification;
+use App\Notifications\Parent\ChildEnrollmentApprovalRequestedNotification;
 use App\Services\ModulePurchaseService;
 use App\Services\LearnerModuleCompletionService;
 use Illuminate\Http\Request;
@@ -187,6 +189,7 @@ class ModuleController extends Controller
             ->where('child_user_id', $user->id)
             ->where('can_approve_content', true)
             ->where('verification_status', 'approved')
+            ->whereNotNull('relationship_verified_at')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval
@@ -418,15 +421,35 @@ class ModuleController extends Controller
         // Check if parent approval is required
         $needsParentApproval = ParentChildAccount::where('child_user_id', $user->id)
             ->where('can_approve_content', true)
+            ->where('verification_status', 'approved')
+            ->whereNotNull('relationship_verified_at')
             ->exists();
 
         if ($needsParentApproval) {
-            ModuleEnrollment::create([
+            $enrollment = ModuleEnrollment::create([
                 'user_id'     => $user->id,
                 'module_id'   => $module->id,
                 'status'      => EnrollmentStatus::PendingParentApproval,
                 'enrolled_at' => null,
             ]);
+
+            $enrollment->loadMissing('module');
+
+            $parentApproverIds = ParentChildAccount::query()
+                ->where('child_user_id', $user->id)
+                ->where('can_approve_content', true)
+                ->where('verification_status', 'approved')
+                ->whereNotNull('relationship_verified_at')
+                ->pluck('parent_user_id')
+                ->unique()
+                ->values();
+
+            if ($parentApproverIds->isNotEmpty()) {
+                User::query()
+                    ->whereIn('id', $parentApproverIds)
+                    ->get()
+                    ->each(fn (User $parentUser) => $parentUser->notify(new ChildEnrollmentApprovalRequestedNotification($enrollment, $user)));
+            }
 
             return redirect()->route('learner.modules.index')
                 ->with('success', 'Your enrollment request has been submitted. Please wait for parental approval.');
@@ -515,6 +538,7 @@ class ModuleController extends Controller
             ->where('child_user_id', $user->id)
             ->where('can_approve_content', true)
             ->where('verification_status', 'approved')
+            ->whereNotNull('relationship_verified_at')
             ->exists();
 
         if ($needsParentApproval) {
@@ -529,12 +553,30 @@ class ModuleController extends Controller
             }
 
             if (!$existingEnrollment) {
-                ModuleEnrollment::query()->create([
+                $enrollment = ModuleEnrollment::query()->create([
                     'user_id' => $user->id,
                     'module_id' => $module->id,
                     'status' => EnrollmentStatus::PendingParentApproval,
                     'enrolled_at' => null,
                 ]);
+
+                $enrollment->loadMissing('module');
+
+                $parentApproverIds = ParentChildAccount::query()
+                    ->where('child_user_id', $user->id)
+                    ->where('can_approve_content', true)
+                    ->where('verification_status', 'approved')
+                    ->whereNotNull('relationship_verified_at')
+                    ->pluck('parent_user_id')
+                    ->unique()
+                    ->values();
+
+                if ($parentApproverIds->isNotEmpty()) {
+                    User::query()
+                        ->whereIn('id', $parentApproverIds)
+                        ->get()
+                        ->each(fn (User $parentUser) => $parentUser->notify(new ChildEnrollmentApprovalRequestedNotification($enrollment, $user)));
+                }
 
                 return redirect()->route('learner.modules.show', $module)
                     ->with('info', 'Request sent for parent approval. Complete payment after approval.');
@@ -592,6 +634,7 @@ class ModuleController extends Controller
             ->where('child_user_id', $user->id)
             ->where('can_approve_content', true)
             ->where('verification_status', 'approved')
+            ->whereNotNull('relationship_verified_at')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval
@@ -669,6 +712,7 @@ class ModuleController extends Controller
             ->where('child_user_id', $user->id)
             ->where('can_approve_content', true)
             ->where('verification_status', 'approved')
+            ->whereNotNull('relationship_verified_at')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval

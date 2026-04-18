@@ -65,7 +65,7 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
             ]);
     }
 
-    public function test_ui_exposes_review_then_confirm_gate_before_approval_submit(): void
+    public function test_ui_exposes_direct_approval_action_without_confirm_modal(): void
     {
         $admin = $this->createAdmin();
         $this->createParentApplicant('pending');
@@ -74,11 +74,11 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.parent-verifications.index'))
             ->assertOk()
-            ->assertSee('data-testid="open-approval-confirm-modal"', false)
-            ->assertSee('data-testid="approval-confirm-modal"', false)
-            ->assertSee('Are you sure you want to approve this verification?', false)
-            ->assertSee('Confirm', false)
-            ->assertSee('Cancel', false);
+            ->assertSee('data-testid="submit-approval-action"', false)
+            ->assertDontSee('data-testid="approval-confirm-modal"', false)
+            ->assertDontSee('Are you sure you want to approve this verification?', false)
+            ->assertDontSee('Confirm Parent Approval', false)
+            ->assertDontSee('Confirm Child Approval', false);
     }
 
     public function test_reject_parent_with_others_requires_meaningful_custom_reason_content(): void

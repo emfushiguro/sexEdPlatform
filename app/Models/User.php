@@ -510,6 +510,7 @@ class User extends Authenticatable implements MustVerifyEmail
                 'verification_reviewed_at',
                 'verification_approved_at',
             ])
+            ->wherePivotNull('deleted_at')
             ->withTimestamps();
     }
 
@@ -531,6 +532,7 @@ class User extends Authenticatable implements MustVerifyEmail
                 'verification_reviewed_at',
                 'verification_approved_at',
             ])
+            ->wherePivotNull('deleted_at')
             ->withTimestamps()
             ->first();
     }
@@ -611,6 +613,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function parentLinks()
     {
         return $this->hasMany(ParentChildAccount::class, 'child_user_id');
+    }
+
+    public function outgoingParentInvitations()
+    {
+        return $this->hasMany(ParentChildInvitation::class, 'inviter_parent_user_id');
+    }
+
+    public function incomingParentInvitations()
+    {
+        return $this->hasMany(ParentChildInvitation::class, 'child_user_id');
     }
 
     public function deriveAgeBracketCache(): ?string

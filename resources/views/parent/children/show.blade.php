@@ -5,22 +5,41 @@
 
 @section('content')
 <div class="max-w-4xl mx-auto space-y-6">
+    @php
+        $childAvatarUrl = $child->learnerProfile?->avatar_path
+            ? asset('storage/' . ltrim((string) $child->learnerProfile->avatar_path, '/'))
+            : null;
+    @endphp
 
     {{-- Back link + child header --}}
     <div>
-        <a href="{{ route('parent.children.index') }}"
-           class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-            Back to My Children
-        </a>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <a href="{{ route('parent.children.index') }}"
+               class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                Back to My Children
+            </a>
+            <button type="button"
+                    onclick='window.dispatchEvent(new CustomEvent("open-global-chat", { detail: { target_user_id: {{ (int) $child->id }}, conversation_type: "direct", name: @json($child->full_name ?: $child->name) } }))'
+                    class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                Message Child
+            </button>
+        </div>
 
         <div class="flex items-center gap-4 mt-3">
-            <div class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
-                 style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
-                {{ strtoupper(mb_substr($child->name, 0, 2)) }}
-            </div>
+            @if($childAvatarUrl)
+                <img src="{{ $childAvatarUrl }}"
+                     alt="{{ $child->full_name ?: $child->name }} avatar"
+                     class="w-14 h-14 rounded-full object-cover border border-gray-200 flex-shrink-0">
+            @else
+                <div class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
+                     style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                    {{ strtoupper(mb_substr($child->name, 0, 2)) }}
+                </div>
+            @endif
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $child->name }}</h1>
                 @if($child->learnerProfile && $child->learnerProfile->birthdate)
@@ -104,15 +123,35 @@
             @else
                 <div class="space-y-4">
                     @foreach($progress as $enrollment)
+                        @php
+                            $module = $enrollment->module;
+                            $creator = $module?->creator;
+                            $thumbnailUrl = $module?->thumbnail_url;
+                        @endphp
                         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
                             <div class="flex items-start justify-between gap-4">
-                                <div class="flex-1 min-w-0">
-                                    <h3 class="font-semibold text-gray-900 dark:text-white truncate">
-                                        {{ $enrollment->module->title }}
-                                    </h3>
-                                    <p class="text-xs text-gray-400 mt-0.5">
+                                <div class="flex items-start gap-3 flex-1 min-w-0">
+                                    @if($thumbnailUrl)
+                                        <img src="{{ $thumbnailUrl }}"
+                                             alt="{{ $module?->title ?? 'Module' }} thumbnail"
+                                             class="w-14 h-14 rounded-xl object-cover border border-gray-200 dark:border-gray-600 flex-shrink-0">
+                                    @else
+                                        <div class="w-14 h-14 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-xs font-semibold flex items-center justify-center flex-shrink-0">
+                                            MODULE
+                                        </div>
+                                    @endif
+
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="font-semibold text-gray-900 dark:text-white truncate">
+                                            {{ $module?->title ?? 'Module' }}
+                                        </h3>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            Instructor: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $creator?->name ?? 'Unavailable' }}</span>
+                                        </p>
+                                        <p class="text-xs text-gray-400 mt-0.5">
                                         Enrolled {{ $enrollment->enrolled_at?->diffForHumans() ?? 'recently' }}
-                                    </p>
+                                        </p>
+                                    </div>
                                 </div>
                                 <span class="text-lg font-bold flex-shrink-0" style="color: #A30EB2;">
                                     {{ $enrollment->progress_pct }}%
@@ -127,6 +166,38 @@
                                          style="width: {{ $enrollment->progress_pct }}%; background: linear-gradient(90deg, #A30EB2, #3B0CB1);">
                                     </div>
                                 </div>
+                                <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+                                    <p class="text-xs text-gray-500">
+                                        {{ ucfirst((string) ($module?->access_type ?? 'free')) }} access
+                                        · {{ ucfirst((string) ($module?->enrollment_mode ?? 'auto')) }} enrollment
+                                    </p>
+                                </div>
+
+                                <div class="mt-3 flex flex-wrap items-center gap-2">
+                                    <a href="{{ route('parent.children.enrollments.show', [$child, $enrollment]) }}"
+                                       class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100">
+                                        {{ (int) ($enrollment->total_lessons ?? 0) > 0 ? 'View Lesson Details' : 'View Module Details' }}
+                                    </a>
+                                    <button type="button"
+                                            @click="tab = 'quiz'"
+                                            class="inline-flex items-center rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50">
+                                        Open Quiz Results
+                                    </button>
+
+                                    @if($creator)
+                                        <button
+                                            type="button"
+                                            onclick='window.dispatchEvent(new CustomEvent("open-global-chat", { detail: { target_user_id: {{ (int) $creator->id }}, conversation_type: "module_chat", module_id: {{ (int) $module->id }}, name: @json($creator->name) } }))'
+                                            class="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                                        >
+                                            Message Instructor
+                                        </button>
+                                    @else
+                                        <span class="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500">
+                                            Instructor unavailable
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     @endforeach
@@ -136,7 +207,11 @@
 
         {{-- ── Quiz Results Tab ── --}}
         <div x-show="tab === 'quiz'" x-cloak class="pt-6">
-            @if($quizResults->isEmpty())
+            @if(! $canViewQuizAnswers)
+                <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Quiz answer review is disabled for this child account.
+                </div>
+            @elseif($quizResults->isEmpty())
                 <div class="text-center py-12 text-gray-400">
                     <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -153,6 +228,7 @@
                                 <th class="px-5 py-3 text-center">Score</th>
                                 <th class="px-5 py-3 text-center">Result</th>
                                 <th class="px-5 py-3 text-right">Date</th>
+                                <th class="px-5 py-3 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -174,6 +250,12 @@
                                     </td>
                                     <td class="px-5 py-3 text-right text-gray-400">
                                         {{ $attempt->completed_at?->format('M d, Y') ?? '—' }}
+                                    </td>
+                                    <td class="px-5 py-3 text-right">
+                                        <a href="{{ route('parent.children.quiz-attempts.show', [$child, $attempt]) }}"
+                                           class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100">
+                                            View Details
+                                        </a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -254,25 +336,20 @@
                                             Ages {{ $enrollment->module->min_age }}–{{ $enrollment->module->max_age }}
                                             · Requested {{ $enrollment->created_at->diffForHumans() }}
                                         </p>
+                                        <span class="mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                            Pending Parent Approval
+                                        </span>
+                                        <a href="{{ route('parent.children.enrollments.show', [$child, $enrollment]) }}"
+                                           class="mt-2 inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100">
+                                            View Details
+                                        </a>
                                     </div>
                                     <div class="flex gap-2 flex-shrink-0">
-                                        <form method="POST"
-                                              action="{{ route('parent.children.enrollments.approve', [$child, $enrollment]) }}">
-                                            @csrf
-                                            <button type="submit"
-                                                    class="px-4 py-2 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition"
-                                                    style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
-                                                Approve
-                                            </button>
-                                        </form>
-                                        <form method="POST"
-                                              action="{{ route('parent.children.enrollments.reject', [$child, $enrollment]) }}">
-                                            @csrf
-                                            <button type="submit"
-                                                    class="px-4 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
-                                                Reject
-                                            </button>
-                                        </form>
+                                        <a href="{{ route('parent.children.enrollments.show', [$child, $enrollment]) }}"
+                                           class="px-4 py-2 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition"
+                                           style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                                            Review & Decide
+                                        </a>
                                     </div>
                                 </div>
                             </div>

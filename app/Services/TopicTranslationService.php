@@ -192,7 +192,7 @@ class TopicTranslationService
             'user_id' => $userId,
         ]));
 
-        return Cache::remember($cacheKey, now()->addDays(7), function () use ($apiKey, $endpoint, $cleanText, $languageCode, $voiceName, $speakingRate) {
+        return Cache::remember($cacheKey, now()->addDays(7), function () use ($apiKey, $endpoint, $cleanText, $languageCode, $voiceName, $speakingRate, $userId) {
             $voicePayload = [
                 'languageCode' => $languageCode,
             ];

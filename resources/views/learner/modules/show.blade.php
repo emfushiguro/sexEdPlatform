@@ -506,6 +506,23 @@
                         @endif
                     </div>
 
+                @elseif($enrollmentStatus === 'pending_parent_approval')
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">
+                            <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-2.761 0-5 2.239-5 5m5-5c2.761 0 5 2.239 5 5m-5-5v10m0 0l-3-3m3 3l3-3"/>
+                            </svg>
+                            <div>
+                                <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">Awaiting Parent Approval</p>
+                                <p class="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Your request was submitted. You cannot submit another request until your parent approves or rejects this one.</p>
+                            </div>
+                        </div>
+                        <a href="{{ route('learner.notifications.index') }}"
+                           class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300 dark:hover:bg-amber-900/30">
+                            View Request Status
+                        </a>
+                    </div>
+
                 @elseif($enrollmentStatus === 'pending')
                     <div class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">
                         <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

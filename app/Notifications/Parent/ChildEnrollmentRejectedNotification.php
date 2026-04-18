@@ -44,7 +44,7 @@ class ChildEnrollmentRejectedNotification extends Notification
             'module_title' => $module->title,
             'reason' => $reason,
             'status' => 'rejected',
-            'action_url' => route('parent.children.show', $this->child),
+            'action_url' => route('parent.children.enrollments.show', [$this->child, $this->enrollment, 'from' => 'notification']),
             'severity' => 'error',
         ];
     }

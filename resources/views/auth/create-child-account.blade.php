@@ -141,10 +141,10 @@
                                 <input id="birthdate" name="birthdate" type="date" required
                                        x-model="birthdate"
                                        @change="calculateAge()"
-                                       min="{{ now()->subYears(17)->format('Y-m-d') }}"
+                                       min="{{ now()->subYears(13)->format('Y-m-d') }}"
                                        max="{{ now()->subYears(5)->format('Y-m-d') }}"
                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
-                                <p class="mt-1 text-xs text-gray-500">Age 5–17 only.</p>
+                                <p class="mt-1 text-xs text-gray-500">Age 5–13 only.</p>
                                 <div x-show="age !== null" class="mt-2">
                                     <template x-if="age >= 5 && age <= 17">
                                         <p class="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">

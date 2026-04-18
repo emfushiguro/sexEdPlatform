@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\ResubmitChildVerificationRequest;
+use App\Http\Requests\Auth\ResubmitParentVerificationRequest;
 use App\Http\Requests\Auth\RemoveTempUploadRequest;
 use App\Http\Requests\Auth\UploadChildTempDocumentRequest;
 use App\Http\Requests\Auth\UploadParentTempDocumentRequest;
@@ -12,6 +14,8 @@ use App\Notifications\Admin\ParentVerificationRequestSubmittedNotification;
 use App\Models\User;
 use App\Models\ParentChildAccount;
 use App\Services\Auth\RegistrationTempUploadService;
+use App\Services\ParentChildInvitationService;
+use App\Services\ParentChildVerificationService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +28,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Validation\Rules\Password;
 use Carbon\Carbon;
+use InvalidArgumentException;
 use Spatie\Permission\Models\Role;
 
 class ParentRegistrationController extends Controller
@@ -315,16 +320,16 @@ class ParentRegistrationController extends Controller
             'birthdate'     => [
                 'required',
                 'date',
-                'before:today',
-                'after:' . now()->subYears(18)->format('Y-m-d'),
+                'before_or_equal:' . now()->subYears(5)->format('Y-m-d'),
+                'after_or_equal:' . now()->subYears(17)->format('Y-m-d'),
             ],
             'gender'        => ['required', 'in:male,female,prefer_not_to_say'],
         ]);
 
         $birthdate = Carbon::parse($validated['birthdate']);
-        if ($birthdate->age >= 18) {
+        if ($birthdate->age < 5 || $birthdate->age > 17) {
             return back()->withErrors([
-                'birthdate' => 'Child must be under 18 years old.'
+                'birthdate' => 'Child age must be between 5 and 17 years old.'
             ])->withInput();
         }
 
@@ -349,7 +354,7 @@ class ParentRegistrationController extends Controller
         $cities = \Schoolees\Psgc\Models\City::where('province_code', '402100000')
             ->orderBy('name')->get();
 
-        $parentProfile  = auth()->user()->learnerProfile;
+        $parentProfile  = Auth::user()?->learnerProfile;
         $preFilledCity  = $parentProfile?->city_code;
         $preFilledBarangay = $parentProfile?->barangay_code;
 
@@ -371,7 +376,24 @@ class ParentRegistrationController extends Controller
 
         $validated = $request->validate([
             'city_code'     => ['required', 'string', 'exists:cities,code'],
-            'barangay_code' => ['required', 'string', 'exists:barangays,code'],
+            'barangay_code' => [
+                'required',
+                'string',
+                'exists:barangays,code',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    $cityCode = (string) $request->input('city_code');
+                    $barangayCode = (string) $value;
+
+                    $isBarangayInCity = \Schoolees\Psgc\Models\Barangay::query()
+                        ->where('code', $barangayCode)
+                        ->where('city_code', $cityCode)
+                        ->exists();
+
+                    if (! $isBarangayInCity) {
+                        $fail('Selected barangay does not belong to the selected city.');
+                    }
+                },
+            ],
         ]);
 
         session(['child_step2' => $validated]);
@@ -393,7 +415,7 @@ class ParentRegistrationController extends Controller
         }
 
         $step1 = session('child_step1');
-        $parentEmail = auth()->user()->email;
+        $parentEmail = (string) Auth::user()?->email;
         $suggestedEmail = null;
         if (preg_match('/^(.+)@gmail\.com$/i', $parentEmail, $matches)) {
             $childFirstName = strtolower(preg_replace('/[^a-z0-9]/', '', $step1['first_name'] ?? ''));
@@ -450,7 +472,7 @@ class ParentRegistrationController extends Controller
                 ->withInput($request->except(['password', 'password_confirmation']));
         }
 
-        $parent = auth()->user();
+        $parent = Auth::user();
         $parentEmail = $parent->email;
         $childEmail = $validated['username'] . '@child.sexed-platform.local';
 
@@ -458,7 +480,16 @@ class ParentRegistrationController extends Controller
             $childEmail = $matches[1] . '+' . $validated['username'] . '@gmail.com';
         }
 
-        $barangay = \Schoolees\Psgc\Models\Barangay::where('code', $step2['barangay_code'])->first();
+        $barangay = \Schoolees\Psgc\Models\Barangay::query()
+            ->where('code', $step2['barangay_code'])
+            ->where('city_code', $step2['city_code'])
+            ->first();
+
+        if (! $barangay) {
+            return redirect()->route('parent.create-child.location')
+                ->withErrors(['barangay_code' => 'Selected barangay does not belong to the selected city.'])
+                ->withInput();
+        }
         $verificationDocumentPath = $tempUploadService->finalize(
             'child',
             'verification_document',
@@ -543,22 +574,39 @@ class ParentRegistrationController extends Controller
     /**
      * Show parent's children list
      */
-    public function childrenIndex(): View|RedirectResponse
+    public function childrenIndex(ParentChildInvitationService $invitationService): View|RedirectResponse
     {
         if ($redirect = $this->ensureApprovedParent()) {
             return $redirect;
         }
 
-        $children = auth()->user()->children()
+        $parent = Auth::user();
+        if (! $parent instanceof User) {
+            abort(403);
+        }
+
+        $children = $parent->children()
             ->with('learnerProfile')
             ->get();
 
-        return view('parent.children.index', compact('children'));
+        $pendingApprovalNotifications = $parent
+            ->unreadNotifications()
+            ->where('data->type', 'child_enrollment_approval_requested')
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        $outgoingInvitations = $invitationService
+            ->getOutgoingInvitations($parent)
+            ->take(6)
+            ->values();
+
+        return view('parent.children.index', compact('children', 'pendingApprovalNotifications', 'outgoingInvitations'));
     }
 
     public function verificationStatus(): View|RedirectResponse
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         if (!$user->isParentRegistration()) {
             return redirect()->route('learner.dashboard');
@@ -579,10 +627,56 @@ class ParentRegistrationController extends Controller
         ]);
     }
 
+    public function resubmitParentVerification(
+        ResubmitParentVerificationRequest $request,
+        RegistrationTempUploadService $tempUploadService,
+        ParentChildVerificationService $verificationService,
+    ): RedirectResponse {
+        $parent = $request->user();
+
+        if (! $parent->isParentRegistration()) {
+            return redirect()->route('learner.dashboard');
+        }
+
+        if (! $parent->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice')
+                ->with('error', 'Please verify your email first.');
+        }
+
+        if (! $parent->isParentVerificationRejected()) {
+            return redirect()->route('parent.verification.status')
+                ->with('error', 'Only rejected parent verification records can be resubmitted.');
+        }
+
+        $tempUploadService->store('parent', 'government_id', $request->file('government_id'));
+        $finalizedPath = $tempUploadService->finalize(
+            'parent',
+            'government_id',
+            'parent-verifications/' . $parent->id,
+            'government-id'
+        );
+
+        if ($finalizedPath === null) {
+            return back()->withErrors([
+                'government_id' => 'The uploaded government ID could not be processed. Please upload again.',
+            ]);
+        }
+
+        try {
+            $verificationService->resubmitParent($parent, $finalizedPath);
+        } catch (InvalidArgumentException $exception) {
+            return redirect()->route('parent.verification.status')
+                ->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('parent.verification.status')
+            ->with('success', 'Parent verification resubmitted successfully. We will review your updated document.');
+    }
+
     public function childVerificationStatus(): View|RedirectResponse
     {
         $verification = ParentChildAccount::query()
-            ->where('child_user_id', auth()->id())
+            ->where('child_user_id', Auth::id())
             ->with('parent')
             ->first();
 
@@ -597,6 +691,55 @@ class ParentRegistrationController extends Controller
         return view('auth.child-verification-status', [
             'verification' => $verification,
         ]);
+    }
+
+    public function resubmitChildVerification(
+        ResubmitChildVerificationRequest $request,
+        User $child,
+        RegistrationTempUploadService $tempUploadService,
+        ParentChildVerificationService $verificationService,
+    ): RedirectResponse {
+        if ($redirect = $this->ensureApprovedParent()) {
+            return $redirect;
+        }
+
+        $parent = $request->user();
+
+        $verification = ParentChildAccount::query()
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
+            ->first();
+
+        abort_if(! $verification, 403, 'You are not allowed to resubmit this child verification record.');
+
+        if ($verification->verification_status !== VerificationStatus::Rejected->value) {
+            return redirect()->route('parent.children.index')
+                ->with('error', 'Only rejected child verification records can be resubmitted.');
+        }
+
+        $tempUploadService->store('child', 'verification_document', $request->file('verification_document'));
+        $finalizedPath = $tempUploadService->finalize(
+            'child',
+            'verification_document',
+            'child-verifications/' . $parent->id,
+            'verification-document'
+        );
+
+        if ($finalizedPath === null) {
+            return back()->withErrors([
+                'verification_document' => 'The uploaded verification document could not be processed. Please upload again.',
+            ]);
+        }
+
+        try {
+            $verificationService->resubmitChild($verification, $finalizedPath);
+        } catch (InvalidArgumentException $exception) {
+            return redirect()->route('parent.children.index')
+                ->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('parent.children.index')
+            ->with('success', 'Child verification resubmitted successfully. We will review the updated document.');
     }
 
     private function notifyAdminsSafely(Notification $notification): void
@@ -616,7 +759,7 @@ class ParentRegistrationController extends Controller
 
     private function ensureApprovedParent(): ?RedirectResponse
     {
-        $parent = auth()->user();
+        $parent = Auth::user();
 
         if (! $parent->hasVerifiedEmail()) {
             return redirect()->route('verification.notice')
@@ -642,7 +785,7 @@ class ParentRegistrationController extends Controller
 
     private function ensureApprovedParentForJson(): ?JsonResponse
     {
-        $parent = auth()->user();
+        $parent = Auth::user();
 
         if (!$parent->hasVerifiedEmail()) {
             return response()->json([

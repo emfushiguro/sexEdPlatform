@@ -140,6 +140,7 @@
             <table class="min-w-full text-sm table-standard-numbering">
                 <thead>
                     <tr class="bg-gray-50 dark:bg-gray-700/40 border-b border-gray-100 dark:border-gray-700">
+                        <th class="w-14 px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">#</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Learner</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Learner Category</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Account Status</th>
@@ -150,14 +151,16 @@
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                     <template x-if="paginatedRows.length === 0">
                         <tr>
-                            <td colspan="5" class="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                            <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                                 No enrolled learners matched your filters.
                             </td>
                         </tr>
                     </template>
 
-                    <template x-for="row in paginatedRows" :key="row.id">
+                    <template x-for="(row, rowIndex) in paginatedRows" :key="row.id">
                         <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-700/20 transition-colors">
+                            <td class="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400"
+                                x-text="((page - 1) * perPage) + rowIndex + 1"></td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-3">
                                     <template x-if="row.avatar_url">

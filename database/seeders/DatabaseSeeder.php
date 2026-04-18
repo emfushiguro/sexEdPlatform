@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             ModuleLessonQuizSeeder::class,
             AchievementSeeder::class,
             CavitePSGCSeeder::class,
+            ParentMonitoringSeeder::class,
         ]);
     }
 }

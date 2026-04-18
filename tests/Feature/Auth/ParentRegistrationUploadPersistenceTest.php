@@ -75,10 +75,12 @@ class ParentRegistrationUploadPersistenceTest extends TestCase
 
         $path = $uploadResponse->json('upload.path');
 
+        $this->assertSame($path, session('registration_temp_uploads.parent.government_id.path'));
+
         $this->get(route('parent.register'))
             ->assertOk()
             ->assertSee('data-testid="parent-government-id-preview"', false)
-            ->assertSee($path, false);
+            ->assertSee('government-id.pdf', false);
     }
 
     public function test_parent_temp_upload_remove_endpoint_clears_session_and_temp_file(): void
@@ -130,10 +132,12 @@ class ParentRegistrationUploadPersistenceTest extends TestCase
         $this->post(route('parent.register.store'), $this->validParentPayload())
             ->assertRedirect(route('parent.register.account'));
 
+        $this->assertSame($path, session('pending_parent_info.government_id_path'));
+
         $this->get(route('parent.register'))
             ->assertOk()
             ->assertSee('data-testid="parent-government-id-preview"', false)
-            ->assertSee($path, false);
+            ->assertSee('government-id.pdf', false);
     }
 
     private function validParentPayload(): array

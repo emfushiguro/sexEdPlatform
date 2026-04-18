@@ -32,6 +32,8 @@
         $existingGovernmentPath = $tempGovernmentIdUpload['path'] ?? ($parentInfo['government_id_path'] ?? null);
         $existingGovernmentName = $tempGovernmentIdUpload['original_name'] ?? ($existingGovernmentPath ? basename($existingGovernmentPath) : null);
         $existingGovernmentPreviewUrl = $tempGovernmentIdUpload['preview_url'] ?? ($existingGovernmentPath ? asset('storage/' . $existingGovernmentPath) : null);
+        $existingGovernmentExtension = strtolower((string) pathinfo((string) $existingGovernmentName, PATHINFO_EXTENSION));
+        $existingGovernmentIsImage = in_array($existingGovernmentExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
     @endphp
 
     <form method="POST" action="{{ route('parent.register.store') }}" enctype="multipart/form-data"
@@ -40,44 +42,30 @@
               age: null,
               uploadBusy: false,
               uploadError: '',
+              imagePreviewUrl: '',
               upload: {
                   hasStored: @js(!empty($existingGovernmentPath)),
                   path: @js($existingGovernmentPath ?? ''),
                   originalName: @js($existingGovernmentName ?? ''),
                   previewUrl: @js($existingGovernmentPreviewUrl ?? ''),
+                  mimeType: @js($tempGovernmentIdUpload['mime_type'] ?? ''),
               },
-              previewModalOpen: false,
-              previewModalUrl: '',
-              previewModalType: 'file',
-              previewModalTitle: '',
-              resolvePreviewType(name, url) {
-                  const source = ((name || '') + ' ' + (url || '')).toLowerCase();
-
-                  if (/\.(jpg|jpeg|png|gif|webp)(\?|$)/.test(source)) {
-                      return 'image';
+              isImageUpload(name, mimeType = '') {
+                  if ((mimeType || '').toLowerCase().startsWith('image/')) {
+                      return true;
                   }
 
-                  if (/\.pdf(\?|$)/.test(source)) {
-                      return 'pdf';
-                  }
-
-                  return 'file';
+                  return /\.(jpg|jpeg|png|gif|webp)$/i.test(name || '');
               },
-              openUploadPreview(url, name) {
+              openImagePreview(url) {
                   if (!url) {
                       return;
                   }
 
-                  this.previewModalUrl = url;
-                  this.previewModalTitle = name || 'Government ID Preview';
-                  this.previewModalType = this.resolvePreviewType(name, url);
-                  this.previewModalOpen = true;
+                  this.imagePreviewUrl = url;
               },
-              closeUploadPreview() {
-                  this.previewModalOpen = false;
-                  this.previewModalUrl = '';
-                  this.previewModalType = 'file';
-                  this.previewModalTitle = '';
+              closeImagePreview() {
+                  this.imagePreviewUrl = '';
               },
               calculateAge() {
                   if (!this.birthdate) { this.age = null; return; }
@@ -126,6 +114,7 @@
                       this.upload.path = payload?.upload?.path || '';
                       this.upload.originalName = payload?.upload?.original_name || file.name;
                       this.upload.previewUrl = payload?.upload?.preview_url || '';
+                      this.upload.mimeType = payload?.upload?.mime_type || file.type || '';
                   } catch (error) {
                       this.uploadError = error.message || 'Unable to upload government ID.';
                   } finally {
@@ -157,7 +146,7 @@
                       this.upload.path = '';
                       this.upload.originalName = '';
                       this.upload.previewUrl = '';
-                      this.closeUploadPreview();
+                      this.upload.mimeType = '';
 
                       if (this.$refs.governmentIdInput) {
                           this.$refs.governmentIdInput.value = '';
@@ -244,59 +233,75 @@
             <!-- Government ID Upload -->
             <div>
                 <label for="government_id" class="block text-sm font-medium text-gray-700 mb-1">
-                    Government-Issued ID <span class="text-red-500">*</span>
+                   One Valid ID Only <span class="text-red-500">*</span>
                 </label>
-                <input id="government_id" name="government_id" type="file"
-                       accept=".jpg,.jpeg,.png,.pdf"
-                       x-ref="governmentIdInput"
-                       :required="!upload.hasStored"
-                       @change="uploadGovernmentId($event)"
-                       :disabled="uploadBusy"
-                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-purple-700">
-                <p class="mt-1 text-xs text-gray-500">Upload one valid government ID (JPG, PNG, or PDF, max 5MB).</p>
-
-                <p x-show="uploadError" x-cloak class="mt-2 text-xs text-red-600" x-text="uploadError"></p>
-
-                <div x-show="upload.hasStored" x-cloak class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3" data-testid="parent-government-id-preview">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <p class="text-xs font-semibold text-emerald-800">Uploaded file ready for submission</p>
-                            <p class="mt-1 text-xs text-emerald-700 break-all" x-text="upload.originalName || 'Uploaded document'"></p>
-                        </div>
-                        <button type="button"
-                                @click="removeGovernmentIdUpload()"
-                                :disabled="uploadBusy"
-                                class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-300 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-                                aria-label="Remove uploaded government ID">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="mt-2 flex items-center gap-2">
-                        <button type="button"
-                           x-show="upload.previewUrl"
-                           x-cloak
-                           @click="openUploadPreview(upload.previewUrl, upload.originalName)"
-                           class="inline-flex rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
-                            Preview
-                        </button>
+                <p class="mb-2 text-xs text-gray-500">Upload exactly one valid government-issued ID for identity verification.</p>
+                <div class="relative">
+                    <input id="government_id" name="government_id" type="file"
+                           accept=".jpg,.jpeg,.png,.pdf"
+                           x-ref="governmentIdInput"
+                           :required="!upload.hasStored"
+                           @change="uploadGovernmentId($event)"
+                           :disabled="uploadBusy"
+                           class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
+                    <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-1.5" :class="uploadBusy ? 'opacity-60' : ''">
+                        <span class="inline-flex items-center rounded-lg bg-purple-50 px-4 py-2.5 text-sm font-semibold text-purple-700">Choose File</span>
+                        <span class="min-w-0 truncate text-sm text-gray-500" x-text="upload.originalName || 'Upload one valid government ID document'"></span>
                     </div>
                 </div>
 
+                <p x-show="uploadError" x-cloak class="mt-2 text-xs text-red-600" x-text="uploadError"></p>
+
+                <div x-show="upload.hasStored" x-cloak class="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-100 flex items-center gap-3" data-testid="parent-government-id-preview">
+                    <template x-if="upload.previewUrl && isImageUpload(upload.originalName, upload.mimeType)">
+                        <div class="relative group cursor-zoom-in" @click.stop="openImagePreview(upload.previewUrl)">
+                            <img :src="upload.previewUrl" class="h-10 w-10 object-cover rounded-md border border-gray-200 group-hover:opacity-75 transition-opacity" alt="Government ID preview">
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg class="w-4 h-4 text-white drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                </svg>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="!(upload.previewUrl && isImageUpload(upload.originalName, upload.mimeType))">
+                        <div class="h-10 w-10 flex items-center justify-center bg-gray-200 rounded-md border border-gray-300 text-gray-500">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                    </template>
+                    <div class="min-w-0 flex-1">
+                        <span x-text="upload.originalName || 'Uploaded document'" class="block text-xs text-gray-600 font-medium truncate"></span>
+                    </div>
+                    <button type="button"
+                            @click="removeGovernmentIdUpload()"
+                            :disabled="uploadBusy"
+                            class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label="Remove uploaded government ID">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
                 @if(!empty($existingGovernmentPath))
-                    <div class="hidden mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3" data-testid="parent-government-id-preview">
-                        <p class="text-xs font-semibold text-emerald-800">Uploaded file ready for submission</p>
-                        <p class="mt-1 text-xs text-emerald-700">{{ $existingGovernmentName }}</p>
-                        <div class="mt-2 flex items-center gap-2">
-                            @if($existingGovernmentPreviewUrl)
-                                <a href="{{ $existingGovernmentPreviewUrl }}" class="inline-flex rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
-                                    Preview
-                                </a>
-                            @endif
+                    <div class="hidden mt-2 p-2 bg-gray-50 rounded-lg border border-gray-100 flex items-center gap-3" data-testid="parent-government-id-preview">
+                        @if($existingGovernmentIsImage && $existingGovernmentPreviewUrl)
+                            <img src="{{ $existingGovernmentPreviewUrl }}" class="h-10 w-10 object-cover rounded-md border border-gray-200" alt="Government ID preview">
+                        @else
+                            <div class="h-10 w-10 flex items-center justify-center bg-gray-200 rounded-md border border-gray-300 text-gray-500">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                        @endif
+                        <div class="min-w-0">
+                            <p class="text-xs text-gray-600 font-medium truncate">{{ $existingGovernmentName }}</p>
                         </div>
                     </div>
                 @endif
+
+                <p class="mt-1 text-xs text-gray-400">Accepted: JPG, PNG, PDF. Max size: 5MB.</p>
 
                 @error('government_id')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
@@ -314,41 +319,28 @@
                 </div>
             </div>
 
-            <div x-show="previewModalOpen"
-                 x-cloak
-                 @keydown.escape.window="closeUploadPreview()"
-                 class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 px-4 py-6">
-                <div class="absolute inset-0" @click="closeUploadPreview()"></div>
+        </div>
 
-                <div class="relative z-10 w-full max-w-3xl rounded-2xl bg-white shadow-2xl">
-                    <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-                        <h3 class="text-sm font-semibold text-gray-900" x-text="previewModalTitle || 'Government ID Preview'"></h3>
-                        <button type="button" @click="closeUploadPreview()" class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
+        <div x-show="imagePreviewUrl"
+             x-cloak
+             @keydown.escape.window="closeImagePreview()"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 px-4 py-6">
+            <div class="absolute inset-0" @click="closeImagePreview()"></div>
 
-                    <div class="max-h-[75vh] overflow-auto bg-gray-50 p-4">
-                        <template x-if="previewModalType === 'image'">
-                            <img :src="previewModalUrl" alt="Government ID preview" class="mx-auto max-h-[68vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
-                        </template>
+            <div class="relative z-10 w-full max-w-3xl rounded-2xl bg-white shadow-2xl">
+                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                    <h3 class="text-sm font-semibold text-gray-900">Government ID Preview</h3>
+                    <button type="button" @click="closeImagePreview()" class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Close image preview">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
-                        <template x-if="previewModalType === 'pdf'">
-                            <iframe :src="previewModalUrl + '#toolbar=0&navpanes=0'" title="Government ID preview" class="h-[68vh] w-full rounded-lg border border-gray-200 bg-white"></iframe>
-                        </template>
-
-                        <template x-if="previewModalType === 'file'">
-                            <div class="rounded-xl border border-gray-200 bg-white p-6 text-center">
-                                <p class="text-sm text-gray-600">Inline preview is not available for this file type.</p>
-                                <a :href="previewModalUrl" download class="mt-4 inline-flex rounded-lg bg-brand-purple-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90">Download file</a>
-                            </div>
-                        </template>
-                    </div>
+                <div class="max-h-[75vh] overflow-auto bg-gray-50 p-4">
+                    <img :src="imagePreviewUrl" alt="Government ID preview" class="mx-auto max-h-[68vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
                 </div>
             </div>
-
         </div>
     </form>
 

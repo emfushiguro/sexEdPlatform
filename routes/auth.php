@@ -123,6 +123,9 @@ Route::middleware('auth')->group(function () {
     Route::get('parent/verification-status', [ParentRegistrationController::class, 'verificationStatus'])
         ->name('parent.verification.status');
 
+    Route::post('parent/verification-status/resubmit', [ParentRegistrationController::class, 'resubmitParentVerification'])
+        ->name('parent.verification.resubmit');
+
     Route::get('child/verification-status', [ParentRegistrationController::class, 'childVerificationStatus'])
         ->name('child.verification.status');
 
@@ -157,5 +160,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('parent/children', [ParentRegistrationController::class, 'childrenIndex'])
             ->name('parent.children.index');
+
+        Route::post('parent/children/{child}/verification/resubmit', [ParentRegistrationController::class, 'resubmitChildVerification'])
+            ->name('parent.children.verification.resubmit');
     });
 });

@@ -23,8 +23,8 @@
  <div class="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
  <h2 class="text-lg font-semibold text-gray-900">Tier 1 Documents</h2>
  <div class="text-sm space-y-2">
- <p>Government ID: <a class="text-brand-600 hover:text-brand-700" href="{{ asset('storage/' . $application->government_id_path) }}" target="_blank">View</a></p>
- <p>Clearance: <a class="text-brand-600 hover:text-brand-700" href="{{ asset('storage/' . $application->clearance_path) }}" target="_blank">View</a></p>
+ <p>Government ID: <a class="text-brand-600 hover:text-brand-700" href="{{ $application->resolveDocumentUrl($application->government_id_path) }}" target="_blank">View</a></p>
+ <p>Clearance: <a class="text-brand-600 hover:text-brand-700" href="{{ $application->resolveDocumentUrl($application->clearance_path) }}" target="_blank">View</a></p>
  </div>
  </div>
 
@@ -32,13 +32,13 @@
  <h2 class="text-lg font-semibold text-gray-900">Tier 2 Documents</h2>
  <div class="text-sm space-y-2">
  @if($application->teaching_credential_path)
- <p>Teaching Credential: <a class="text-brand-600 hover:text-brand-700" href="{{ asset('storage/' . $application->teaching_credential_path) }}" target="_blank">View</a></p>
+ <p>Teaching Credential: <a class="text-brand-600 hover:text-brand-700" href="{{ $application->resolveDocumentUrl($application->teaching_credential_path) }}" target="_blank">View</a></p>
  @endif
  @if($application->sexed_certificate_path)
- <p>Sex Ed Certificate: <a class="text-brand-600 hover:text-brand-700" href="{{ asset('storage/' . $application->sexed_certificate_path) }}" target="_blank">View</a></p>
+ <p>Sex Ed Certificate: <a class="text-brand-600 hover:text-brand-700" href="{{ $application->resolveDocumentUrl($application->sexed_certificate_path) }}" target="_blank">View</a></p>
  @endif
  @if($application->professional_license_path)
- <p>Professional License: <a class="text-brand-600 hover:text-brand-700" href="{{ asset('storage/' . $application->professional_license_path) }}" target="_blank">View</a></p>
+ <p>Professional License: <a class="text-brand-600 hover:text-brand-700" href="{{ $application->resolveDocumentUrl($application->professional_license_path) }}" target="_blank">View</a></p>
  @endif
  </div>
  </div>
