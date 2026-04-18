@@ -16,7 +16,8 @@
                     </span>
                 </div>
             </div>
-        @endforeach`r`n    </div>
+        @endforeach
+    </div>
 @endif
 
 @if($childRelationships->isNotEmpty())
