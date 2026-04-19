@@ -6,8 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     @php
-        $metaTitle = trim($__env->yieldContent('title', 'Dashboard') . ' | Concious Connections');
-        $metaDescription = trim($__env->yieldContent('meta_description', 'Concious Connections learner dashboard for safe, inclusive, and accessible sexual health education.'));
+        $metaTitle = trim($__env->yieldContent('title', 'Dashboard') . ' | Conscious Connections');
+        $metaDescription = trim($__env->yieldContent('meta_description', 'Conscious Connections learner dashboard for safe, inclusive, and accessible sexual health education.'));
         $metaImage = trim($__env->yieldContent('meta_image', asset('media/Logo.png')));
     @endphp
 
@@ -38,11 +38,20 @@
     {{-- Apply dark mode immediately to prevent flash --}}
     <script>
         (function () {
+            @if(session('force_light_mode_once'))
+            try {
+                localStorage.setItem('theme', 'light');
+            } catch (error) {
+                // Ignore storage access errors and still force class removal.
+            }
+            document.documentElement.classList.remove('dark');
+            @else
             var saved = localStorage.getItem('theme');
             var system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             if ((saved || system) === 'dark') {
                 document.documentElement.classList.add('dark');
             }
+            @endif
         })();
     </script>
 

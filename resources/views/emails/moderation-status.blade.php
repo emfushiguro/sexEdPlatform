@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $title ?? 'Account Update' }} - Concious Connections</title>
+    <title>{{ $title ?? 'Account Update' }} - Conscious Connections</title>
     <style>
         body {
             margin: 0;
@@ -143,7 +143,7 @@
             <div class="logo-card">
                 <span style="font-size: 26px; font-weight: 800; color: #730DB1; line-height: 1;">CC</span>
             </div>
-            <p class="brand-name">Concious Connections</p>
+            <p class="brand-name">Conscious Connections</p>
             <div class="header-divider"></div>
             <h1 class="header-title">{{ $title ?? 'Account Update' }}</h1>
             @if(!empty($subtitle))
@@ -194,7 +194,7 @@
                 <a href="{{ route('privacy') }}">Privacy Policy</a>
                 <a href="{{ route('terms') }}">Terms of Service</a>
             </div>
-            <p class="footer-copy">&copy; {{ date('Y') }} Concious Connections. All rights reserved.</p>
+            <p class="footer-copy">&copy; {{ date('Y') }} Conscious Connections. All rights reserved.</p>
         </div>
     </div>
 </body>

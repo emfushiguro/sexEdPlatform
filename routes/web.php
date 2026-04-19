@@ -24,8 +24,40 @@ use App\Http\Controllers\ParentInvitationController;
 use App\Http\Controllers\Api\LocationController;
 use App\Models\Conversation;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+$resolveLocalApkFile = static function (): ?array {
+    $configuredPath = trim((string) env('APK_LOCAL_FILE', ''));
+
+    if ($configuredPath === '') {
+        return null;
+    }
+
+    $relativePath = ltrim(str_replace('\\', '/', $configuredPath), '/');
+
+    if (str_contains($relativePath, '..')) {
+        return null;
+    }
+
+    $fullPath = storage_path($relativePath);
+
+    if (!is_file($fullPath) || !is_readable($fullPath)) {
+        return null;
+    }
+
+    $downloadFilename = trim((string) env('APK_DOWNLOAD_FILENAME', basename($fullPath)));
+
+    if ($downloadFilename === '') {
+        $downloadFilename = basename($fullPath);
+    }
+
+    return [
+        'path' => $fullPath,
+        'name' => $downloadFilename,
+    ];
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -40,6 +72,27 @@ Route::get('/', function () {
     }
     return view('landing.index');
 })->name('home');
+
+Route::get('/download', function () {
+    return redirect()->route('landing.apk');
+});
+
+Route::get('/download/apk', function () use ($resolveLocalApkFile) {
+    $localApk = $resolveLocalApkFile();
+
+    if ($localApk === null) {
+        abort(Response::HTTP_NOT_FOUND, 'APK file is not available.');
+    }
+
+    return response()->download(
+        $localApk['path'],
+        $localApk['name'],
+        [
+            'Content-Type' => 'application/vnd.android.package-archive',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]
+    );
+})->name('landing.apk');
 
 Route::view('/privacy', 'legal.privacy')->name('privacy');
 Route::view('/terms', 'legal.terms')->name('terms');

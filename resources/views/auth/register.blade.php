@@ -2,7 +2,7 @@
     <x-slot name="panel">
         <div class="h-full flex flex-col items-center justify-center p-12 text-center">
             <div class="mb-6">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Conscious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
             </div>
             <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Start your journey</h2>
             <p class="text-white/80 text-lg max-w-xs">A safe space to grow and learn</p>

@@ -17,8 +17,8 @@
                      x-transition:leave-start="opacity-100"
                      x-transition:leave-end="opacity-0">
                     <div class="mb-6">
-                        <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
-                        <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
+                        <img src="{{ asset('/media/Logo.png') }}" alt="Conscious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
+                        <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Conscious Connections</p>
                     </div>
                     <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Email Verified!</h2>
                     <p class="text-white/80 text-lg max-w-xs">Setting up your profile…</p>
@@ -29,16 +29,16 @@
                      x-transition:enter-start="opacity-0 scale-95"
                      x-transition:enter-end="opacity-100 scale-100">
                     <div class="mb-6">
-                        <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
-                        <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
+                        <img src="{{ asset('/media/Logo.png') }}" alt="Conscious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
+                        <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Conscious Connections</p>
                     </div>
                     <h2 class="text-4xl font-bold text-white mb-4 leading-tight">One last step!</h2>
                     <p class="text-white/80 text-lg max-w-xs">Personalize your learning experience</p>
                 </div>
             @else
                 <div class="mb-6">
-                    <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
-                    <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
+                    <img src="{{ asset('/media/Logo.png') }}" alt="Conscious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
+                    <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Conscious Connections</p>
                 </div>
                 <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Check your inbox</h2>
                 <p class="text-white/80 text-lg max-w-xs">We sent a link to your Gmail address</p>

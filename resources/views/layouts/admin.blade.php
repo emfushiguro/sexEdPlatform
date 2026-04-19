@@ -6,8 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     @php
-        $metaTitle = trim($__env->yieldContent('title', 'Admin') . ' | ' . config('app.name', 'Concious Connections'));
-        $metaDescription = trim($__env->yieldContent('meta_description', 'Concious Connections administration panel for platform moderation and operations.'));
+        $metaTitle = trim($__env->yieldContent('title', 'Admin') . ' | ' . config('app.name', 'Conscious Connections'));
+        $metaDescription = trim($__env->yieldContent('meta_description', 'Conscious Connections administration panel for platform moderation and operations.'));
         $metaImage = trim($__env->yieldContent('meta_image', asset('media/Logo.png')));
     @endphp
 
@@ -504,7 +504,7 @@
                                 </a>
                             </li>
 
-                            <li>
+                            <li class="hidden" aria-hidden="true">
                                 <a href="{{ Route::has('admin.users.relationships.index') ? route('admin.users.relationships.index') : route('admin.users.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
                                     {{ request()->routeIs('admin.users.relationships.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"

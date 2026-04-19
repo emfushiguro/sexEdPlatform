@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Your Email — Concious Connections</title>
+    <title>Verify Your Email — Conscious Connections</title>
     <style>
         body {
             margin: 0;
@@ -155,7 +155,7 @@
     <div class="wrapper">
         {{-- Header --}}
         <div class="header">
-            <p class="brand-name">Concious Connections</p>
+            <p class="brand-name">Conscious Connections</p>
             <div class="header-divider"></div>
             <h1 class="header-title">Verify Your Email</h1>
             <p class="header-subtitle">One quick step to activate your account</p>
@@ -167,7 +167,7 @@
                 Hi, <strong>{{ $user->first_name ?? $user->name }}</strong>!
             </p>
             <p class="message">
-                Thanks for joining Concious Connections! We're excited to have you be part of our
+                Thanks for joining Conscious Connections! We're excited to have you be part of our
                 safe, age-appropriate learning community. Before you can start exploring, please
                 confirm your email address by clicking the button below.
             </p>
@@ -208,7 +208,7 @@
                 <a href="{{ route('terms') }}">Terms of Service</a>
             </div>
             <p class="footer-copy">
-                &copy; {{ date('Y') }} Concious Connections. All rights reserved.
+                &copy; {{ date('Y') }} Conscious Connections. All rights reserved.
             </p>
         </div>
     </div>
