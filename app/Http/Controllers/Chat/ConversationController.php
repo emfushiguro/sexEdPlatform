@@ -12,6 +12,7 @@ use App\Models\ModuleEnrollment;
 use App\Models\User;
 use App\Services\Chat\ChatAuthorizationService;
 use App\Services\Chat\ChatService;
+use App\Services\Chat\SupportAdminResolver;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,7 @@ class ConversationController extends Controller
     public function __construct(
         protected ChatService $chatService,
         protected ChatAuthorizationService $chatAuthorizationService,
+        protected SupportAdminResolver $supportAdminResolver,
     ) {
     }
 
@@ -33,12 +35,17 @@ class ConversationController extends Controller
         /** @var User $user */
         $user = auth()->user();
         $userId = (int) $user->id;
+        $isAdminContext = $this->isAdminContext($user);
         $perPage = min(max((int) $request->integer('per_page', 20), 1), 50);
 
         $conversationPage = Conversation::query()
-            ->where(function ($query) use ($userId) {
+            ->where(function ($query) use ($userId, $isAdminContext) {
                 $query->where('participant_one_id', $userId)
                     ->orWhere('participant_two_id', $userId);
+
+                if ($isAdminContext) {
+                    $query->orWhere('conversation_type', Conversation::TYPE_ADMIN_SUPPORT);
+                }
             })
             ->with([
                 'participantOne:id,name,role,status,chat_status',
@@ -80,9 +87,7 @@ class ConversationController extends Controller
         $conversations = $conversationPage
             ->getCollection()
             ->map(function (Conversation $conversation) use ($user, $userId, $pendingRequestsByConversation) {
-                $otherParticipant = (int) $conversation->participant_one_id === $userId
-                    ? $conversation->participantTwo
-                    : $conversation->participantOne;
+                $otherParticipant = $this->resolveOtherParticipantForViewer($conversation, $user);
 
                 $pendingRequest = $pendingRequestsByConversation->get((int) $conversation->id);
 
@@ -136,8 +141,21 @@ class ConversationController extends Controller
     {
         /** @var User $actor */
         $actor = $request->user();
-        $target = User::query()->findOrFail((int) $request->validated('target_user_id'));
         $conversationType = (string) $request->validated('conversation_type');
+
+        $target = User::query()->findOrFail((int) $request->validated('target_user_id'));
+
+        if ($conversationType === Conversation::TYPE_ADMIN_SUPPORT && !$this->isAdminContext($actor)) {
+            $resolvedSupportAdmin = $this->supportAdminResolver->resolve((int) $actor->id);
+
+            if ($resolvedSupportAdmin === null) {
+                return response()->json([
+                    'message' => 'Platform support is currently unavailable. Please try again later.',
+                ], 409);
+            }
+
+            $target = $resolvedSupportAdmin;
+        }
 
         if ($conversationType === Conversation::TYPE_DIRECT) {
             $directConversation = Conversation::query()
@@ -258,16 +276,7 @@ class ConversationController extends Controller
         $userId = (int) $user->id;
         $search = trim((string) $request->query('q', ''));
 
-        $supportAdmin = User::query()
-            ->where('role', 'admin')
-            ->where('id', '!=', $userId)
-            ->with([
-                'learnerProfile:id,user_id,avatar_path',
-                'instructorProfile:id,user_id,profile_photo_path',
-                'adminCreatorProfile:id,user_id,affiliation',
-            ])
-            ->orderBy('id')
-            ->first(['id', 'name', 'role', 'status', 'chat_status']);
+        $supportAdmin = $this->supportAdminResolver->resolve($userId);
 
         $isAdminContext = $this->isAdminContext($user);
         $isInstructorContext = $this->isInstructorContext($user);
@@ -401,7 +410,11 @@ class ConversationController extends Controller
 
     private function isAdminContext(User $user): bool
     {
-        return $user->can('access admin panel') || $user->can('manage users');
+        return $user->can('access admin panel')
+            || $user->can('manage users')
+            || $user->can('moderate chat')
+            || $user->hasRole('admin')
+            || $user->role === 'admin';
     }
 
     private function isInstructorContext(User $user): bool
@@ -415,6 +428,39 @@ class ConversationController extends Controller
         return !$this->isAdminContext($user)
             && !$this->isInstructorContext($user)
             && ($user->can('access learner platform') || $user->can('take quizzes'));
+    }
+
+    protected function resolveOtherParticipantForViewer(Conversation $conversation, User $viewer): ?User
+    {
+        $viewerId = (int) $viewer->id;
+
+        if ((int) $conversation->participant_one_id === $viewerId) {
+            return $conversation->participantTwo;
+        }
+
+        if ((int) $conversation->participant_two_id === $viewerId) {
+            return $conversation->participantOne;
+        }
+
+        if ((string) $conversation->conversation_type === Conversation::TYPE_ADMIN_SUPPORT && $this->isAdminContext($viewer)) {
+            $participantOne = $conversation->participantOne;
+            $participantTwo = $conversation->participantTwo;
+
+            $participantOneIsAdminContext = $participantOne !== null && $this->isAdminContext($participantOne);
+            $participantTwoIsAdminContext = $participantTwo !== null && $this->isAdminContext($participantTwo);
+
+            if ($participantOneIsAdminContext && !$participantTwoIsAdminContext) {
+                return $participantTwo;
+            }
+
+            if ($participantTwoIsAdminContext && !$participantOneIsAdminContext) {
+                return $participantOne;
+            }
+
+            return $participantOne ?? $participantTwo;
+        }
+
+        return $conversation->participantOne;
     }
 
     protected function buildContextLabel(Conversation $conversation): string

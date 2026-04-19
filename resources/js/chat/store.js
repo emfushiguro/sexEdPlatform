@@ -692,7 +692,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         conversationParticipantName(conversation) {
-            if (conversation.conversation_type === 'admin_support_chat') {
+            if (conversation.conversation_type === 'admin_support_chat' && this.currentUserRole !== 'admin') {
                 return 'Platform Support';
             }
 

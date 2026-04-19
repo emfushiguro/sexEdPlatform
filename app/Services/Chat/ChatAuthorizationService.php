@@ -65,12 +65,13 @@ class ChatAuthorizationService
 
     public function canSubscribeToConversation(User $user, Conversation $conversation): bool
     {
-        return $this->isParticipant($user, $conversation);
+        return $this->isParticipant($user, $conversation)
+            || $this->isAdminSupportSharedConversation($user, $conversation);
     }
 
     public function canSendMessage(User $user, Conversation $conversation): bool
     {
-        if (!$this->isParticipant($user, $conversation)) {
+        if (!$this->canSubscribeToConversation($user, $conversation)) {
             return false;
         }
 
@@ -88,6 +89,12 @@ class ChatAuthorizationService
     public function isParticipant(User $user, Conversation $conversation): bool
     {
         return $user->id === $conversation->participant_one_id || $user->id === $conversation->participant_two_id;
+    }
+
+    protected function isAdminSupportSharedConversation(User $user, Conversation $conversation): bool
+    {
+        return (string) $conversation->conversation_type === Conversation::TYPE_ADMIN_SUPPORT
+            && $this->isAdminContext($user);
     }
 
     public function normalizePairKey(int $firstUserId, int $secondUserId): string
@@ -174,6 +181,7 @@ class ChatAuthorizationService
     {
         return $user->can('access admin panel')
             || $user->can('manage users')
+            || $user->can('moderate chat')
             || $user->hasRole('admin')
             || $user->role === 'admin';
     }

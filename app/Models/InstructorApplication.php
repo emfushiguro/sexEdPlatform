@@ -14,6 +14,15 @@ class InstructorApplication extends Model
 {
     use SoftDeletes;
 
+    public const EDUCATIONAL_BACKGROUND_LABELS = [
+        'high_school' => 'High School Graduate',
+        'college_undergrad' => 'College Undergraduate',
+        'college_graduate' => 'College Graduate',
+        'masters' => "Master's Degree",
+        'doctorate' => 'Doctorate Degree',
+        'other' => 'Other',
+    ];
+
     protected $fillable = [
         'user_id',
         'status',

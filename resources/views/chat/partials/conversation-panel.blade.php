@@ -1,3 +1,5 @@
+@php($moderationEnabled = (bool) config('features.moderation_enabled', false))
+
 <section
     class="flex-1 flex flex-col bg-white"
     data-chat-conversation-panel
@@ -488,17 +490,19 @@
                                     </svg>
                                     Delete Message
                                 </button>
-                                <div class="h-px bg-gray-100 my-1" x-show="canEditOrDelete(message)"></div>
-                                <button
-                                    type="button"
-                                    class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                    @click="reportMessage(message)"
-                                >
-                                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-                                    </svg>
-                                    Report Message
-                                </button>
+                                @if($moderationEnabled)
+                                    <div class="h-px bg-gray-100 my-1" x-show="canEditOrDelete(message)"></div>
+                                    <button
+                                        type="button"
+                                        class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                        @click="reportMessage(message)"
+                                    >
+                                        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                                        </svg>
+                                        Report Message
+                                    </button>
+                                @endif
                             </div>
 
                             <div

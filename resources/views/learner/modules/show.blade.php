@@ -50,6 +50,7 @@
         'harmful_material' => 'Incorrect or harmful educational material',
         'spam_or_promotional_abuse' => 'Spam or promotional abuse',
     ];
+    $moderationEnabled = (bool) config('features.moderation_enabled', false);
     $initialReportTarget = old('target_type', 'module');
     if ($initialReportTarget === 'instructor' && !$creator) {
         $initialReportTarget = 'module';
@@ -122,9 +123,11 @@
         class="grid grid-cols-1 lg:grid-cols-3 gap-6"
         x-data="{
             expandedLesson: null,
-            reviewModalOpen: @js($errors->has('rating') || $errors->has('review_content')),
+            reviewModalOpen: @js($errors->has('rating') || $errors->has('review_content'))@if($moderationEnabled),@endif
+            @if($moderationEnabled)
             reportModalOpen: @js($errors->has('target_type') || $errors->has('target_id') || $errors->has('reason_code') || $errors->has('details')),
             reportTarget: @js($initialReportTarget)
+            @endif
         }"
     >
 
@@ -653,7 +656,9 @@
 
         @include('learner.modules.partials.review-modal')
 
-        @include('learner.modules.partials.report-modal')
+        @if($moderationEnabled)
+            @include('learner.modules.partials.report-modal')
+        @endif
 
     </div>{{-- end grid --}}
 

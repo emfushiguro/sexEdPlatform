@@ -52,6 +52,29 @@ class ChatChannelAuthorizationTest extends TestCase
         $this->assertFalse($this->canAccessRequestsUserChannel($outsider, $instructor->id));
     }
 
+    public function test_admin_support_channel_allows_admin_context_users_even_when_not_participants(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+
+        $learner = User::factory()->create(['role' => 'learner']);
+        $supportAdmin = User::factory()->create(['role' => 'admin']);
+        $observerAdmin = User::factory()->create(['role' => 'admin']);
+        $outsiderLearner = User::factory()->create(['role' => 'learner']);
+
+        $conversation = Conversation::create([
+            'participant_one_id' => $learner->id,
+            'participant_two_id' => $supportAdmin->id,
+            'pair_key' => Conversation::makePairKey($learner->id, $supportAdmin->id),
+            'conversation_type' => Conversation::TYPE_ADMIN_SUPPORT,
+            'status' => Conversation::STATUS_ACTIVE,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_ADMIN_SUPPORT, null),
+        ]);
+
+        $this->assertTrue($service->canSubscribeToConversation($observerAdmin, $conversation));
+        $this->assertTrue($service->canSendMessage($observerAdmin, $conversation));
+        $this->assertFalse($service->canSubscribeToConversation($outsiderLearner, $conversation));
+    }
+
     private function canAccessRequestsUserChannel(User $authUser, int $channelUserId): bool
     {
         return (int) $authUser->id === $channelUserId;
