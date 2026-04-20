@@ -39,11 +39,7 @@
     <script>
         (function () {
             @if(session('force_light_mode_once'))
-            try {
-                localStorage.setItem('theme', 'light');
-            } catch (error) {
-                // Ignore storage access errors and still force class removal.
-            }
+            window.__ccForceLightModeOnce = true;
             document.documentElement.classList.remove('dark');
             @else
             var saved = localStorage.getItem('theme');

@@ -479,7 +479,7 @@
 
                 <div class="lp-mobilepromo-qr">
                     <img
-                        src="{{ 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode(route('landing.apk')) . '&color=000000&bgcolor=ffffff00&format=png' }}"
+                        src="{{ route('landing.apk.qr') }}"
                         alt="QR code to download the Conscious Connections APK"
                         class="lp-mobilepromo-qr-image"
                     >

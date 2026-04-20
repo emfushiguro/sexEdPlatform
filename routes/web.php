@@ -26,35 +26,66 @@ use App\Models\Conversation;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 $resolveLocalApkFile = static function (): ?array {
-    $configuredPath = trim((string) env('APK_LOCAL_FILE', ''));
+    $configuredPath = trim((string) config('apk.local_file', ''));
+    $allowedDirectory = trim((string) config('apk.public_directory', 'app/public/apk'));
 
-    if ($configuredPath === '') {
+    if ($configuredPath === '' || $allowedDirectory === '') {
         return null;
     }
 
-    $relativePath = ltrim(str_replace('\\', '/', $configuredPath), '/');
+    $fullPath = str_starts_with($configuredPath, '/')
+        ? $configuredPath
+        : base_path(ltrim($configuredPath, '/\\'));
 
-    if (str_contains($relativePath, '..')) {
+    $allowedDirectoryPath = str_starts_with($allowedDirectory, '/')
+        ? $allowedDirectory
+        : base_path(ltrim($allowedDirectory, '/\\'));
+    $realPath = realpath($fullPath);
+    $realAllowedDirectory = realpath($allowedDirectoryPath);
+
+    if (
+        $realPath === false
+        || $realAllowedDirectory === false
+        || ! is_file($realPath)
+        || ! is_readable($realPath)
+    ) {
         return null;
     }
 
-    $fullPath = storage_path($relativePath);
+    $realAllowedDirectory = rtrim($realAllowedDirectory, DIRECTORY_SEPARATOR);
 
-    if (!is_file($fullPath) || !is_readable($fullPath)) {
+    if (
+        ! str_starts_with($realPath, $realAllowedDirectory.DIRECTORY_SEPARATOR)
+        || strtolower((string) pathinfo($realPath, PATHINFO_EXTENSION)) !== 'apk'
+    ) {
         return null;
     }
 
-    $downloadFilename = trim((string) env('APK_DOWNLOAD_FILENAME', basename($fullPath)));
+    $downloadFilename = trim((string) config('apk.download_filename', basename($realPath)));
 
     if ($downloadFilename === '') {
-        $downloadFilename = basename($fullPath);
+        $downloadFilename = basename($realPath);
+    }
+
+    $downloadFilename = basename($downloadFilename);
+    $downloadFilename = preg_replace('/[^A-Za-z0-9._-]/', '_', $downloadFilename) ?? '';
+    $downloadFilename = trim($downloadFilename, '._-');
+
+    if ($downloadFilename === '') {
+        $downloadFilename = basename($realPath);
+    }
+
+    if (strtolower((string) pathinfo($downloadFilename, PATHINFO_EXTENSION)) !== 'apk') {
+        $downloadFilename .= '.apk';
     }
 
     return [
-        'path' => $fullPath,
+        'path' => $realPath,
         'name' => $downloadFilename,
     ];
 };
@@ -76,6 +107,44 @@ Route::get('/', function () {
 Route::get('/download', function () {
     return redirect()->route('landing.apk');
 });
+
+Route::get('/download/qr', function () {
+    $downloadUrl = route('landing.apk');
+    $cacheKey = 'landing:apk:qr:'.sha1($downloadUrl);
+
+    $qrPng = Cache::get($cacheKey);
+
+    if (! is_string($qrPng) || $qrPng === '') {
+        $response = Http::timeout(10)->retry(2, 200)->get(
+            'https://api.qrserver.com/v1/create-qr-code/',
+            [
+                'size' => '180x180',
+                'data' => $downloadUrl,
+                'color' => '000000',
+                'bgcolor' => 'ffffff00',
+                'format' => 'png',
+            ]
+        );
+
+        if (! $response->successful()) {
+            abort(Response::HTTP_NOT_FOUND, 'QR code is not available.');
+        }
+
+        $contentType = strtolower((string) $response->header('Content-Type'));
+
+        if (! str_starts_with($contentType, 'image/')) {
+            abort(Response::HTTP_NOT_FOUND, 'QR code is not available.');
+        }
+
+        $qrPng = $response->body();
+        Cache::put($cacheKey, $qrPng, now()->addDay());
+    }
+
+    return response($qrPng, Response::HTTP_OK, [
+        'Content-Type' => 'image/png',
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->name('landing.apk.qr');
 
 Route::get('/download/apk', function () use ($resolveLocalApkFile) {
     $localApk = $resolveLocalApkFile();
