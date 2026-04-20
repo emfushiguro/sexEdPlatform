@@ -126,7 +126,7 @@ Alpine.data('instructorSearch', createInstructorSearch);
 // Theme store — dark / light mode, persisted in localStorage
 Alpine.store('theme', {
     init() {
-        const forceLightOnce = window.__ccForceLightModeOnce === true;
+        const forceLightOnce = window.ccForceLightModeOnce === true;
 
         if (forceLightOnce) {
             this.mode = 'light';

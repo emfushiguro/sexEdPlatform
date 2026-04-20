@@ -39,7 +39,7 @@
     <script>
         (function () {
             @if(session('force_light_mode_once'))
-            window.__ccForceLightModeOnce = true;
+            window.ccForceLightModeOnce = true;
             document.documentElement.classList.remove('dark');
             @else
             var saved = localStorage.getItem('theme');

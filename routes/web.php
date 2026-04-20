@@ -73,7 +73,7 @@ $resolveLocalApkFile = static function (): ?array {
     }
 
     $downloadFilename = basename($downloadFilename);
-    $downloadFilename = preg_replace('/[^A-Za-z0-9._-]/', '_', $downloadFilename) ?? '';
+    $downloadFilename = preg_replace('/[^A-Za-z0-9._-]/', '_', $downloadFilename);
     $downloadFilename = trim($downloadFilename, '._-');
 
     if ($downloadFilename === '') {
@@ -115,7 +115,7 @@ Route::get('/download/qr', function () {
     $qrPng = Cache::get($cacheKey);
 
     if (! is_string($qrPng) || $qrPng === '') {
-        $response = Http::timeout(10)->retry(2, 200)->get(
+        $response = Http::withOptions(['verify' => true])->timeout(10)->retry(2, 1000)->get(
             'https://api.qrserver.com/v1/create-qr-code/',
             [
                 'size' => '180x180',
@@ -127,22 +127,22 @@ Route::get('/download/qr', function () {
         );
 
         if (! $response->successful()) {
-            abort(Response::HTTP_NOT_FOUND, 'QR code is not available.');
+            abort(Response::HTTP_NOT_FOUND, 'QR code generation service is currently unavailable.');
         }
 
         $contentType = strtolower((string) $response->header('Content-Type'));
 
         if (! str_starts_with($contentType, 'image/')) {
-            abort(Response::HTTP_NOT_FOUND, 'QR code is not available.');
+            abort(Response::HTTP_NOT_FOUND, 'QR code generation service is currently unavailable.');
         }
 
         $qrPng = $response->body();
-        Cache::put($cacheKey, $qrPng, now()->addDay());
+        Cache::put($cacheKey, $qrPng, now()->addWeek());
     }
 
     return response($qrPng, Response::HTTP_OK, [
         'Content-Type' => 'image/png',
-        'Cache-Control' => 'public, max-age=86400',
+        'Cache-Control' => 'public, max-age=604800',
     ]);
 })->name('landing.apk.qr');
 
