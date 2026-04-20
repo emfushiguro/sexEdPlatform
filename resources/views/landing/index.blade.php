@@ -1325,19 +1325,19 @@
     border-radius: 9999px;
     min-height: 2.45rem;
     padding: 0.58rem 1.35rem;
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    background: linear-gradient(135deg, var(--lp-purple-1), var(--lp-purple-2));
     color: #ffffff;
     font-size: 0.95rem;
     font-weight: 700;
     line-height: 1;
     text-decoration: none;
-    box-shadow: 0 8px 14px rgba(29, 78, 216, 0.26);
+    box-shadow: 0 8px 14px rgba(115, 13, 177, 0.28);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .lp-mobilepromo-qr-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 10px 18px rgba(29, 78, 216, 0.32);
+    box-shadow: 0 10px 18px rgba(115, 13, 177, 0.34);
 }
 
 .lp-mobilepromo-watch {

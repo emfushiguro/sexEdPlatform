@@ -12,6 +12,7 @@ use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use App\Models\InstructorApplication;
 use App\Models\ParentChildInvitation;
+use App\Models\User;
 use App\Services\Gamification\GamificationPolicyResolver;
 use App\Services\SubscriptionService;
 use App\Support\SubscriptionFeatureKeys;
@@ -28,6 +29,11 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
+
+        if (! $user instanceof User) {
+            abort(403);
+        }
+
         $learnerProfile = $user->learnerProfile;
 
         if (!$learnerProfile) {
@@ -230,6 +236,19 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
+        $approvedParentLinks = $user->parentLinks()
+            ->where('verification_status', 'approved')
+            ->whereNotNull('relationship_verified_at')
+            ->with([
+                'parent:id,name,email,birthdate',
+                'parent.learnerProfile:id,user_id,avatar_path,birthdate',
+            ])
+            ->orderByDesc('relationship_verified_at')
+            ->take(3)
+            ->get()
+            ->filter(fn ($link) => $link->parent)
+            ->values();
+
         return view('learner.dashboard', compact(
             'learnerProfile',
             'enrollmentData',
@@ -264,6 +283,7 @@ class DashboardController extends Controller
             'hasPendingInstructorApplication',
             'canApplyAsInstructor',
             'incomingParentInvitations',
+            'approvedParentLinks',
         ));
     }
 

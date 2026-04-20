@@ -13,6 +13,7 @@ use App\Http\Controllers\Learner\ModuleReviewPageController as LearnerModuleRevi
 use App\Http\Controllers\Learner\ContentReportController as LearnerContentReportController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
 use App\Http\Controllers\Learner\TopicTranslationController;
+use App\Http\Controllers\Learner\ParentVisibilityController;
 use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
 use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
 use App\Http\Controllers\Learner\AdminCreatorProfileController as LearnerAdminCreatorProfileController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Chat\StatusController as ChatStatusController;
 use App\Http\Controllers\ParentInvitationController;
 use App\Http\Controllers\Api\LocationController;
 use App\Models\Conversation;
+use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
@@ -111,33 +113,48 @@ Route::get('/download', function () {
 Route::get('/download/qr', function () {
     $downloadUrl = route('landing.apk');
     $cacheKey = 'landing:apk:qr:'.sha1($downloadUrl);
+    $qrParams = [
+        'size' => '180x180',
+        'data' => $downloadUrl,
+        'color' => '000000',
+        'bgcolor' => 'ffffff00',
+        'format' => 'png',
+    ];
+    $fallbackQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?'.http_build_query($qrParams);
 
     $qrPng = Cache::get($cacheKey);
 
     if (! is_string($qrPng) || $qrPng === '') {
-        $response = Http::withOptions(['verify' => true])->timeout(10)->retry(2, 1000)->get(
-            'https://api.qrserver.com/v1/create-qr-code/',
-            [
-                'size' => '180x180',
-                'data' => $downloadUrl,
-                'color' => '000000',
-                'bgcolor' => 'ffffff00',
-                'format' => 'png',
-            ]
-        );
+        try {
+            $response = Http::withOptions(['verify' => true])
+                ->timeout(6)
+                ->retry(1, 300)
+                ->get('https://api.qrserver.com/v1/create-qr-code/', $qrParams);
 
-        if (! $response->successful()) {
-            abort(Response::HTTP_NOT_FOUND, 'QR code generation service is currently unavailable.');
+            if (! $response instanceof HttpClientResponse) {
+                return redirect()->away($fallbackQrUrl);
+            }
+
+            if (! $response->successful()) {
+                return redirect()->away($fallbackQrUrl);
+            }
+
+            $contentType = strtolower((string) $response->header('Content-Type'));
+
+            if (! str_starts_with($contentType, 'image/')) {
+                return redirect()->away($fallbackQrUrl);
+            }
+
+            $qrPng = $response->body();
+
+            if ($qrPng === '') {
+                return redirect()->away($fallbackQrUrl);
+            }
+
+            Cache::put($cacheKey, $qrPng, now()->addWeek());
+        } catch (\Throwable $exception) {
+            return redirect()->away($fallbackQrUrl);
         }
-
-        $contentType = strtolower((string) $response->header('Content-Type'));
-
-        if (! str_starts_with($contentType, 'image/')) {
-            abort(Response::HTTP_NOT_FOUND, 'QR code generation service is currently unavailable.');
-        }
-
-        $qrPng = $response->body();
-        Cache::put($cacheKey, $qrPng, now()->addWeek());
     }
 
     return response($qrPng, Response::HTTP_OK, [
@@ -249,6 +266,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('learn')->name('learner.')->middleware('profile.completed')->group(function () {
         // Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Learner\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/my-parent', [ParentVisibilityController::class, 'index'])->name('parent.index');
 
         // Live search (AJAX)
         Route::get('/search', [\App\Http\Controllers\Learner\SearchController::class, 'index'])->name('search');
