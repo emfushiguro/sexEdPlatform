@@ -40,13 +40,35 @@ $resolveLocalApkFile = static function (): ?array {
         return null;
     }
 
-    $fullPath = str_starts_with($configuredPath, '/')
-        ? $configuredPath
-        : base_path(ltrim($configuredPath, '/\\'));
+    $resolveConfiguredPath = static function (string $path): string {
+        $path = trim($path);
 
-    $allowedDirectoryPath = str_starts_with($allowedDirectory, '/')
-        ? $allowedDirectory
-        : base_path(ltrim($allowedDirectory, '/\\'));
+        if (
+            preg_match('/^(?:[A-Za-z]:[\\\\\/]|\\\\\\\\)/', $path) === 1
+            || str_starts_with($path, '/')
+        ) {
+            return $path;
+        }
+
+        $relativePath = ltrim($path, '/\\');
+        $relativePathNormalized = str_replace('\\', '/', $relativePath);
+
+        if (str_starts_with($relativePathNormalized, 'app/public/')) {
+            $storageCandidate = storage_path(
+                str_replace('/', DIRECTORY_SEPARATOR, $relativePathNormalized)
+            );
+
+            if (file_exists($storageCandidate)) {
+                return $storageCandidate;
+            }
+        }
+
+        return base_path($relativePath);
+    };
+
+    $fullPath = $resolveConfiguredPath($configuredPath);
+
+    $allowedDirectoryPath = $resolveConfiguredPath($allowedDirectory);
     $realPath = realpath($fullPath);
     $realAllowedDirectory = realpath($allowedDirectoryPath);
 
