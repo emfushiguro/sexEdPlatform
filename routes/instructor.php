@@ -18,6 +18,10 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'permissio
     // Instructor Dashboard
     Route::get('/dashboard', [Instructor\DashboardController::class, 'index'])->name('dashboard');
 
+    // Context switch back to learner view for transitioned accounts.
+    Route::get('/switch-to-learner', [Instructor\ContextSwitchController::class, 'toLearner'])
+        ->name('switch-to-learner');
+
     // Search endpoint
     Route::get('/search', [Instructor\SearchController::class, 'index'])->name('search');
 

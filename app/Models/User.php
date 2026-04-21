@@ -595,6 +595,21 @@ class User extends Authenticatable implements MustVerifyEmail
             || $this->can('access learner platform');
     }
 
+    public function hasLearnerToInstructorTransition(): bool
+    {
+        return $this->roleTransitions()
+            ->where('from_role', 'learner')
+            ->where('to_role', 'instructor')
+            ->exists();
+    }
+
+    public function canSwitchToLearnerView(): bool
+    {
+        return $this->isInstructor()
+            && $this->learnerProfile()->exists()
+            && $this->hasLearnerToInstructorTransition();
+    }
+
     public function instructorApplication()
     {
         return $this->hasOne(InstructorApplication::class)->latestOfMany();

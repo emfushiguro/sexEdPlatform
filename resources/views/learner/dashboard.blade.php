@@ -141,12 +141,10 @@
 
                                         <div class="min-w-0">
                                             <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ $parentUser->name }}</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $parentUser->email }}</p>
                                             <div class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
                                                 @if(!is_null($parentAge))
                                                     <span>{{ $parentAge }} years old</span>
                                                 @endif
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Verified Link</span>
                                             </div>
                                         </div>
                                     </div>

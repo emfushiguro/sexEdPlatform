@@ -7,7 +7,46 @@
 
 <!----Navbar---->
 <nav
-    x-data="{ scrolled: false, mobileOpen: false }"
+    x-data="{
+        scrolled: false,
+        mobileOpen: false,
+        activeSection: 'for-who',
+        sectionIds: ['edu-section', 'for-who', 'features', 'vision', 'download-app'],
+        init() {
+            const sections = this.sectionIds
+                .map(id => document.getElementById(id))
+                .filter(Boolean);
+
+            const setFromHash = () => {
+                const hashId = window.location.hash.replace('#', '');
+                if (this.sectionIds.includes(hashId)) {
+                    this.activeSection = hashId;
+                }
+            };
+
+            setFromHash();
+            window.addEventListener('hashchange', setFromHash);
+
+            if (!sections.length) {
+                return;
+            }
+
+            const sectionObserver = new IntersectionObserver((entries) => {
+                const visibleEntries = entries
+                    .filter(entry => entry.isIntersecting)
+                    .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+
+                if (visibleEntries.length > 0) {
+                    this.activeSection = visibleEntries[0].target.id;
+                }
+            }, {
+                rootMargin: '-35% 0px -50% 0px',
+                threshold: [0.15, 0.35, 0.6],
+            });
+
+            sections.forEach(section => sectionObserver.observe(section));
+        }
+    }"
     @scroll.window="scrolled = window.scrollY > 60"
     :class="scrolled
         ? 'nav-scrolled bg-white/92 backdrop-blur-md shadow-sm border-b border-purple-100/60'
@@ -37,12 +76,23 @@
             {{-- Desktop nav: links + CTA grouped on right (BrightMind layout) --}}
             <div class="hidden lg:flex items-center gap-10">
                 <ul class="flex items-center gap-8">
-                    @foreach ([['#for-who', "Who It's For"], ['#features', 'Features'], ['#vision', 'About']] as [$href, $label])
+                    @foreach ([
+                        ['id' => 'for-who', 'href' => '#for-who', 'label' => "Who It's For"],
+                        ['id' => 'features', 'href' => '#features', 'label' => 'Features'],
+                        ['id' => 'vision', 'href' => '#vision', 'label' => 'About'],
+                        ['id' => 'download-app', 'href' => '#download-app', 'label' => 'Get the App'],
+                    ] as $item)
                     <li>
-                        <a href="{{ $href }}"
-                           :class="scrolled ? 'text-gray-600 hover:text-purple-700' : 'text-white/85 hover:text-white'"
+                        <a href="{{ $item['href'] }}"
+                           @click="activeSection = '{{ $item['id'] }}'"
+                           :class="[
+                               scrolled ? 'text-gray-600 hover:text-purple-700' : 'text-white/85 hover:text-white',
+                               activeSection === '{{ $item['id'] }}' ? (scrolled ? 'text-purple-700' : 'text-white') : ''
+                           ]"
+                           :aria-current="activeSection === '{{ $item['id'] }}' ? 'page' : null"
+                           :data-active="activeSection === '{{ $item['id'] }}'"
                            class="nav-link text-[14px] font-medium transition-colors duration-200">
-                            {{ $label }}
+                            {{ $item['label'] }}
                         </a>
                     </li>
                     @endforeach
@@ -85,23 +135,22 @@
              class="lg:hidden pb-4 border-t mt-1">
             <nav class="flex flex-col gap-1 pt-3">
                 @foreach ([
-                    ['#edu-section', "What You'll Learn"],
-                    ['#vision',      'Who We Are'],
-                    ['#for-who',     "Who It's For"],
-                    ['#features',    'Features'],
-                    ['#vision',      'About'],
-                ] as [$href, $label])
-                <a href="{{ $href }}" @click="mobileOpen = false"
-                   :class="scrolled ? 'text-gray-700 hover:bg-purple-50' : 'text-white hover:bg-white/10'"
+                    ['id' => 'edu-section', 'href' => '#edu-section', 'label' => "What You'll Learn"],
+                    ['id' => 'for-who', 'href' => '#for-who', 'label' => "Who It's For"],
+                    ['id' => 'features', 'href' => '#features', 'label' => 'Features'],
+                    ['id' => 'vision', 'href' => '#vision', 'label' => 'About'],
+                    ['id' => 'download-app', 'href' => '#download-app', 'label' => 'Get the App'],
+                ] as $item)
+                <a href="{{ $item['href'] }}" @click="mobileOpen = false; activeSection = '{{ $item['id'] }}'"
+                   :class="[
+                       scrolled ? 'text-gray-700 hover:bg-purple-50' : 'text-white hover:bg-white/10',
+                       activeSection === '{{ $item['id'] }}' ? (scrolled ? 'bg-purple-50 text-purple-700' : 'bg-white/10 text-white') : ''
+                   ]"
+                   :aria-current="activeSection === '{{ $item['id'] }}' ? 'page' : null"
                    class="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
-                    {{ $label }}
+                    {{ $item['label'] }}
                 </a>
                 @endforeach
-                <a href="{{ route('landing.apk') }}" @click="mobileOpen = false"
-                   :class="scrolled ? 'text-gray-700 hover:bg-purple-50' : 'text-white hover:bg-white/10'"
-                   class="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
-                    Download APK
-                </a>
                 <div class="flex gap-2 px-4 pt-3 mt-1 border-t"
                      :class="scrolled ? 'border-purple-100' : 'border-white/20'">
                     <a href="{{ route('login') }}"
@@ -461,7 +510,7 @@
      - Conversion-focused actions
      - Phone mockup with logo overlay
 ═══════════════════════════════════════════════════ --}}
-<section id="download-app" class="lp-mobilepromo-section py-20 lg:py-24">
+<section id="download-app" class="lp-mobilepromo-section py-24 lg:py-28">
     <div class="max-w-7xl mx-auto px-6 lg:px-8">
         <div class="lp-mobilepromo-layout scroll-reveal">
             <div class="lp-mobilepromo-copy">
@@ -757,6 +806,10 @@
     transition: transform 0.25s ease;
 }
 .nav-link:hover::after {
+    transform: scaleX(1);
+}
+
+.nav-link[data-active='true']::after {
     transform: scaleX(1);
 }
 
@@ -1238,16 +1291,28 @@
    DOWNLOAD APP HERO
 ══════════════════════════════════════════════════ */
 .lp-mobilepromo-section {
+    position: relative;
+    overflow: hidden;
+    background: #F9F7FF;
+}
+
+.lp-mobilepromo-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
     background:
-    radial-gradient(circle at 12% 20%, rgba(163,14,178,0.12) 0%, rgba(163,14,178,0) 38%),
-        linear-gradient(110deg, #f8f3ff 0%, #fdfcff 58%, #eef6ff 100%);
+        radial-gradient(circle at 14% 22%, rgba(163,14,178,0.1), rgba(163,14,178,0) 42%),
+        radial-gradient(circle at 88% 70%, rgba(59,12,177,0.08), rgba(59,12,177,0) 46%);
 }
 
 .lp-mobilepromo-layout {
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: 1.08fr 0.92fr;
     align-items: center;
-    gap: clamp(1.2rem, 3vw, 2.8rem);
+    gap: clamp(1.6rem, 3vw, 3.1rem);
 }
 
 .lp-mobilepromo-tag {
@@ -1264,42 +1329,42 @@
 }
 
 .lp-mobilepromo-title {
-    margin-top: 0.82rem;
-    max-width: 12.5ch;
-    font-size: clamp(2.1rem, 5.8vw, 4.1rem);
-    line-height: 0.92;
-    letter-spacing: -0.035em;
+    margin-top: 0.95rem;
+    max-width: 12.2ch;
+    font-size: clamp(2.05rem, 5.4vw, 3.8rem);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
     font-weight: 900;
-    color: #111827;
-    text-shadow: 0 6px 20px rgba(37, 99, 235, 0.12);
+    color: var(--lp-title-ink);
 }
 
 .lp-mobilepromo-description {
-    margin-top: 1.2rem;
+    margin-top: 1.08rem;
     max-width: 34rem;
-    color: #5f4f8a;
-    font-size: 1.06rem;
-    line-height: 1.55;
+    color: #6B7280;
+    font-size: 1.02rem;
+    line-height: 1.65;
 }
 
 .lp-mobilepromo-qr {
-    margin-top: 1.55rem;
+    margin-top: 1.85rem;
     display: inline-flex;
     align-items: center;
-    gap: 0.82rem;
-    padding: 0;
-    border-radius: 14px;
-    border: none;
-    background: transparent;
-    box-shadow: none;
+    gap: 0.92rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: 16px;
+    border: 1px solid rgba(163,14,178,0.15);
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 10px 28px rgba(115,13,177,0.08);
 }
 
 .lp-mobilepromo-qr-image {
     width: 82px;
     height: 82px;
     border-radius: 10px;
-    background: transparent;
-    padding: 0;
+    background: #fff;
+    padding: 4px;
+    border: 1px solid rgba(17, 24, 39, 0.08);
     object-fit: cover;
 }
 
@@ -1321,17 +1386,17 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-top: 0.08rem;
+    margin-top: 0.1rem;
     border-radius: 9999px;
     min-height: 2.45rem;
     padding: 0.58rem 1.35rem;
-    background: linear-gradient(135deg, var(--lp-purple-1), var(--lp-purple-2));
+    background: var(--lp-gradient-main);
     color: #ffffff;
     font-size: 0.95rem;
     font-weight: 700;
     line-height: 1;
     text-decoration: none;
-    box-shadow: 0 8px 14px rgba(115, 13, 177, 0.28);
+    box-shadow: 0 8px 18px rgba(115, 13, 177, 0.28);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -1363,20 +1428,20 @@
 
 .lp-mobilepromo-visual {
     position: relative;
-    min-height: 500px;
+    min-height: 470px;
 }
 
 .lp-mobilepromo-logo-overlay {
     position: absolute;
     top: 50%;
     right: -2%;
-    width: 540px;
-    height: 540px;
+    width: 510px;
+    height: 510px;
     transform: translateY(-50%);
     background: linear-gradient(135deg, rgba(125, 181, 255, 0.95), rgba(29, 78, 216, 0.95));
     -webkit-mask: url('{{ asset('landing/sign.png') }}') center center / contain no-repeat;
     mask: url('{{ asset('landing/sign.png') }}') center center / contain no-repeat;
-    opacity: 0.2;
+    opacity: 0.16;
     z-index: 1;
     pointer-events: none;
     filter: drop-shadow(0 14px 24px rgba(37, 29, 79, 0.2));
@@ -1384,8 +1449,8 @@
 
 .lp-mobilepromo-phone-wrap {
     position: absolute;
-    right: 62px;
-    top: 20px;
+    right: 48px;
+    top: 16px;
     z-index: 3;
     transform: perspective(1000px) rotateY(-10deg) rotateX(2deg);
     animation: lpMobilePromoFloat 6.5s ease-in-out infinite;
@@ -1498,6 +1563,7 @@
 @media (max-width: 1024px) {
     .lp-mobilepromo-layout {
         grid-template-columns: 1fr;
+        gap: 2.2rem;
     }
 
     .lp-mobilepromo-title {
@@ -1540,6 +1606,7 @@
     .lp-mobilepromo-qr {
         width: 100%;
         justify-content: flex-start;
+        padding: 0.72rem;
     }
 
     .lp-mobilepromo-qr-image {

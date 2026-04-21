@@ -11,10 +11,12 @@ class RbacBladePermissionVisibilityTest extends TestCase
         $appLayout = file_get_contents(resource_path('views/layouts/app.blade.php'));
         $navigationLayout = file_get_contents(resource_path('views/layouts/navigation.blade.php'));
         $learnerHeaderLayout = file_get_contents(resource_path('views/layouts/learner-header.blade.php'));
+        $instructorHeaderLayout = file_get_contents(resource_path('views/layouts/instructor-header.blade.php'));
 
         $this->assertIsString($appLayout);
         $this->assertIsString($navigationLayout);
         $this->assertIsString($learnerHeaderLayout);
+        $this->assertIsString($instructorHeaderLayout);
 
         $this->assertStringNotContainsString('hasRole(', $appLayout);
         $this->assertStringContainsString("@canany(['access learner platform', 'access parent dashboard'])", $appLayout);
@@ -26,5 +28,8 @@ class RbacBladePermissionVisibilityTest extends TestCase
 
         $this->assertStringNotContainsString('hasRole(', $learnerHeaderLayout);
         $this->assertStringContainsString("can('access instructor panel')", $learnerHeaderLayout);
+
+        $this->assertStringContainsString('canSwitchToLearnerView()', $instructorHeaderLayout);
+        $this->assertStringContainsString("route('instructor.switch-to-learner')", $instructorHeaderLayout);
     }
 }
