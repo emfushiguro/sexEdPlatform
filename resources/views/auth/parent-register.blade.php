@@ -2,8 +2,8 @@
     <x-slot name="panel">
         <div class="h-full flex flex-col items-center justify-center p-12 text-center">
             <div class="mb-6">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
-                <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Concious Connections</p>
+                <img src="{{ asset('/media/Logo.png') }}" alt="Conscious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
+                <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Conscious Connections</p>
             </div>
             <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Guide their journey</h2>
             <p class="text-white/80 text-lg max-w-xs">Register as a parent or guardian</p>

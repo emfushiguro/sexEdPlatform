@@ -38,7 +38,7 @@
             <div class="flex items-start justify-between gap-6">
                 <div>
                     <h2 class="text-2xl font-bold leading-tight mt-5">Payment Receipt</h2>
-                    <p class="text-sm mt-1">Concious Connections</p>
+                    <p class="text-sm mt-1">Conscious Connections</p>
                 </div>
                 <div class="text-right text-sm leading-6 mt-5">
                     <p><span class="font-medium">Issued:</span> {{ now()->format('M d, Y h:i A') }}</p>

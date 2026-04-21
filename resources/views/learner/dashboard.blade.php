@@ -8,6 +8,7 @@
     $showParentApprovedDashboardModal = $showParentApprovedDashboardModal
         && Auth::user()?->isParentRegistration()
         && Auth::user()?->isParentVerificationApproved();
+    $canUseChat = Auth::user()?->can('access chat') ?? false;
 @endphp
 
 <div x-data="{ showParentApprovedDashboardModal: {{ $showParentApprovedDashboardModal ? 'true' : 'false' }} }" class="relative">
@@ -95,6 +96,71 @@
                                 </a>
                             </div>
                         </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
+        @if(($approvedParentLinks ?? collect())->isNotEmpty())
+            <section class="p-5 border bg-indigo-50/40 dark:bg-indigo-900/10 rounded-2xl border-indigo-100/60 dark:border-indigo-800/30">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="pl-3 border-l-4 border-indigo-400">
+                        <h2 class="text-base font-semibold text-gray-900 dark:text-white">My Parent</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Linked parent accounts you can contact directly.</p>
+                    </div>
+                    <a href="{{ route('learner.parent.index') }}"
+                       class="group inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white hover:scale-105 hover:shadow-md hover:shadow-indigo-300/40 transition-all duration-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white">
+                        View My Parent
+                    </a>
+                </div>
+
+                <div class="space-y-3">
+                    @foreach($approvedParentLinks as $parentLink)
+                        @php
+                            $parentUser = $parentLink->parent;
+                            $parentAvatar = $parentUser?->learnerProfile?->avatar_path
+                                ? asset('storage/' . ltrim((string) $parentUser->learnerProfile->avatar_path, '/'))
+                                : null;
+                            $parentBirthdate = $parentUser?->birthdate ?? $parentUser?->learnerProfile?->birthdate;
+                            $parentAge = $parentBirthdate
+                                ? \Carbon\Carbon::parse($parentBirthdate)->age
+                                : null;
+                        @endphp
+
+                        @if($parentUser)
+                            <div class="rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        @if($parentAvatar)
+                                            <img src="{{ $parentAvatar }}" alt="{{ $parentUser->name }} avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-gray-600">
+                                        @else
+                                            <div class="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold dark:bg-indigo-900/30 dark:text-indigo-300">
+                                                {{ strtoupper(substr((string) $parentUser->name, 0, 1)) }}
+                                            </div>
+                                        @endif
+
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ $parentUser->name }}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $parentUser->email }}</p>
+                                            <div class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+                                                @if(!is_null($parentAge))
+                                                    <span>{{ $parentAge }} years old</span>
+                                                @endif
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Verified Link</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if($canUseChat)
+                                        <button type="button"
+                                            onclick='window.dispatchEvent(new CustomEvent("open-global-chat", { detail: { target_user_id: {{ (int) $parentUser->id }}, conversation_type: "direct", name: @json($parentUser->name) } }))'
+                                            class="inline-flex items-center justify-center px-3.5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                                            Message Parent
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                     @endforeach
                 </div>
             </section>

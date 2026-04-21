@@ -178,8 +178,14 @@ class ProfileCompletionController extends Controller
                 ->with('success', 'Profile completed successfully! Welcome to the instructor dashboard.');
         }
 
-        return redirect()->route('learner.dashboard')
+        $redirect = redirect()->route('learner.dashboard')
             ->with('success', 'Profile completed successfully! Welcome to the learning platform.');
+
+        if ($learnerProfile->isAdult()) {
+            $redirect->with('force_light_mode_once', true);
+        }
+
+        return $redirect;
     }
 
     /**

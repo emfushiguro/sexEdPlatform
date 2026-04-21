@@ -256,7 +256,20 @@ document.addEventListener('alpine:init', () => {
                 return null;
             }
 
-            const startResult = await this.$store.chat.startConversation(startPayload, false);
+            let startResult = null;
+
+            try {
+                startResult = await this.$store.chat.startConversation(startPayload, false);
+            } catch (error) {
+                const message = error?.response?.data?.message || 'Unable to open this conversation right now.';
+
+                if (window.toast?.error) {
+                    window.toast.error(message);
+                }
+
+                return null;
+            }
+
             return Number(startResult?.conversation?.id || 0) || null;
         },
 

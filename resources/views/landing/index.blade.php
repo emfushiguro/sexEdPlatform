@@ -1,6 +1,6 @@
 @extends('layouts.landing')
 
-@section('title', 'Concious Connections — Safe, Honest Sex Education for Filipino Learners')
+@section('title', 'Conscious Connections — Safe, Honest Sex Education for Filipino Learners')
 @section('meta_description', 'A safe and judgment-free space for Filipino youth to learn about sexual health, relationships, and well-being with confidence.')
 
 @section('content')
@@ -21,7 +21,7 @@
             <a href="{{ route('home') }}" class="flex items-center gap-3.5 flex-shrink-0 group">
                 <div class="nav-logo-mark relative">
                     <img src="{{ asset('landing/sign.png') }}"
-                         alt="Concious Connections"
+                        alt="Conscious Connections"
                          class="h-12 w-auto object-contain relative z-10 transition-transform duration-300 group-hover:scale-110">
                     <div class="nav-logo-glow absolute inset-0 rounded-full blur-md opacity-0 group-hover:opacity-60 transition-opacity duration-300"
                          style="background: radial-gradient(circle, rgba(163,14,178,0.5), transparent 70%);"></div>
@@ -29,7 +29,7 @@
                 <div :class="scrolled ? 'nav-brand-scrolled' : ''" class="nav-brand-text flex flex-col leading-none gap-0.5">
                     <span class="nav-brand-name block text-[20px] font-black tracking-[0.06em] leading-none transition-all duration-300"
                           :class="scrolled ? '' : 'text-white'">
-                       Concious Connections
+                       Conscious Connections
                     </span>
                 </div>
             </a>
@@ -56,8 +56,7 @@
                         <span class="relative z-10">Log In</span>
                     </a>
                     <a href="{{ route('register') }}"
-                       class="nav-cta-btn relative overflow-hidden px-5 py-2.5 rounded-full font-semibold text-[14px] text-white"
-                       style="background: linear-gradient(135deg, #A30EB2, #3B0CB1); box-shadow: 0 4px 14px rgba(115,13,177,0.4);">
+                       class="nav-cta-btn lp-btn-gradient lp-changing-gradient relative overflow-hidden px-5 py-2.5 rounded-full font-semibold text-[14px] text-white">
                         <span class="relative z-10">Get Started</span>
                     </a>
                 </div>
@@ -98,6 +97,11 @@
                     {{ $label }}
                 </a>
                 @endforeach
+                <a href="{{ route('landing.apk') }}" @click="mobileOpen = false"
+                   :class="scrolled ? 'text-gray-700 hover:bg-purple-50' : 'text-white hover:bg-white/10'"
+                   class="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
+                    Download APK
+                </a>
                 <div class="flex gap-2 px-4 pt-3 mt-1 border-t"
                      :class="scrolled ? 'border-purple-100' : 'border-white/20'">
                     <a href="{{ route('login') }}"
@@ -106,8 +110,7 @@
                         Log In
                     </a>
                     <a href="{{ route('register') }}"
-                       class="flex-1 text-center px-4 py-2.5 rounded-full text-sm font-semibold text-white"
-                       style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                       class="lp-btn-gradient lp-changing-gradient flex-1 text-center px-4 py-2.5 rounded-full text-sm font-semibold text-white">
                         Get Started
                     </a>
                 </div>
@@ -124,7 +127,7 @@
      - Mixed solid/outline heading with letter-expand
      - Gradient rule + subtitle
 ═══════════════════════════════════════════════════ --}}
-<header class="lp-header">
+<header class="lp-header lp-changing-gradient">
 
     {{-- 7 Floating orbs --}}
     <div class="lp-orb lp-orb-1"></div>
@@ -140,8 +143,8 @@
         {{-- Ambient glow behind text --}}
         <div class="lp-head-glow"></div>
 
-        <h1 class="lp-hero-title">
-            <span class="lp-title-line1">CONCIOUS</span>
+        <h1 class="lp-hero-title"> 
+            <span class="lp-title-line1">CONSCIOUS</span>
             <span class="lp-title-line1">CONNECTIONS</span>
         </h1>
 
@@ -174,8 +177,7 @@
         {{-- CTA button --}}
         <div style="position: relative; z-index: 2; margin-top: 36px;">
             <a href="{{ route('register') }}"
-               class="lp-start-cta-btn relative overflow-hidden inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full text-white font-semibold text-[15px]"
-               style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1); box-shadow: 0 8px 28px rgba(115,13,177,0.38);">
+               class="lp-start-cta-btn lp-btn-gradient-strong lp-changing-gradient relative overflow-hidden inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full text-white font-semibold text-[15px]">
                 <span>Begin Your Journey</span>
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
@@ -187,7 +189,7 @@
         <div class="lp-sign-wrap">
             <div class="lp-sign-platform"></div>
             <img src="{{ asset('landing/sign.png') }}"
-                 alt="Concious Connections"
+                  alt="Conscious Connections"
                  class="lp-hero-image">
         </div>
 
@@ -207,11 +209,10 @@
     <div class="max-w-7xl mx-auto px-6 lg:px-8">
 
         <div class="text-center mb-14 scroll-reveal">
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4 text-xs font-bold tracking-widest uppercase"
-                 style="background: rgba(163,14,178,0.07); color: #730DB1; border: 1px solid rgba(163,14,178,0.14);">
+            <div class="lp-section-badge inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4 text-xs font-bold tracking-widest uppercase">
                 What You'll Learn
             </div>
-            <h2 class="text-3xl lg:text-4xl font-bold mb-3" style="color: #1A1033;">
+            <h2 class="lp-section-title text-3xl lg:text-4xl font-bold mb-3">
                 Sex Education Learning Platform
             </h2>
             <p class="text-gray-500 text-base max-w-3xl mx-auto leading-relaxed">
@@ -259,7 +260,7 @@
      - White cards with SVG icons + hover lift
      - Scroll reveal
 ═══════════════════════════════════════════════════ --}}
-<section id="vision" class="lp-vision-section">
+<section id="vision" class="lp-vision-section lp-changing-gradient">
 
     {{-- Wave from white (START section) into gradient --}}
     <div class="lp-vision-wave-top" aria-hidden="true">
@@ -273,14 +274,13 @@
 
         {{-- Section header --}}
         <div class="text-center mb-14 scroll-reveal">
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4 text-xs font-bold tracking-widest uppercase"
-                 style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.25);">
+            <div class="lp-section-badge lp-section-badge-light inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4 text-xs font-bold tracking-widest uppercase">
                 Who We Are
             </div>
             <h2 class="text-3xl lg:text-4xl font-bold text-white mb-3">
                 Our Vision &amp; Mission
             </h2>
-            <p class="text-base max-w-xl mx-auto leading-relaxed" style="color: rgba(255,255,255,0.72);">
+            <p class="lp-section-description-light text-base max-w-xl mx-auto leading-relaxed">
                 Guided by a clear purpose — to make sexual health education accessible,
                 accurate, and empowering for every Filipino.
             </p>
@@ -341,15 +341,14 @@
      WHO IS THIS FOR — 3 age bracket cards
      Hover: lift + icon scale + arrow translate
 ═══════════════════════════════════════════════════ --}}
-<section id="for-who" class="py-20 lg:py-28" style="background: #F9F7FF;">
+<section id="for-who" class="lp-soft-bg py-20 lg:py-28">
     <div class="max-w-7xl mx-auto px-6 lg:px-8">
 
         <div class="text-center mb-14 scroll-reveal">
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4 text-xs font-bold tracking-widest uppercase"
-                 style="background: rgba(163,14,178,0.07); color: #730DB1; border: 1px solid rgba(163,14,178,0.14);">
+            <div class="lp-section-badge inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4 text-xs font-bold tracking-widest uppercase">
                 Who Is This For?
             </div>
-            <h2 class="text-3xl lg:text-4xl font-bold mb-3" style="color: #1A1033;">
+            <h2 class="lp-section-title text-3xl lg:text-4xl font-bold mb-3">
                 Age-appropriate learning,<br class="hidden sm:block"> designed for everyone
             </h2>
             <p class="text-gray-500 text-base max-w-xl mx-auto leading-relaxed">
@@ -373,25 +372,21 @@
             @foreach ($brackets as $card)
             <div class="age-card rounded-2xl bg-white border border-gray-100 overflow-hidden scroll-reveal"
                  style="transition-delay: {{ $card['delay'] }};">
-                <div class="age-card-thumb h-44 flex items-center justify-center relative overflow-hidden"
-                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
-                    <div class="absolute w-44 h-44 rounded-full blur-3xl opacity-20 pointer-events-none"
-                         style="background: rgba(255,255,255,0.6);"></div>
+                <div class="age-card-thumb lp-brand-gradient-bg lp-changing-gradient h-44 flex items-center justify-center relative overflow-hidden">
+                    <div class="lp-soft-glow-white absolute w-44 h-44 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
                     <img src="{{ asset('landing/' . $card['icon']) }}"
                          alt="{{ $card['title'] }}"
-                         class="age-card-icon relative w-24 h-24 object-contain"
-                         style="filter: drop-shadow(0 8px 20px rgba(0,0,0,0.3));">
+                         class="age-card-icon age-card-icon-shadow relative w-24 h-24 object-contain">
                 </div>
                 <div class="p-6">
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-3"
-                          style="background: rgba(163,14,178,0.07); color: #730DB1;">
+                    <span class="lp-chip-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-3">
                         {{ $card['age'] }}
                     </span>
-                    <h3 class="text-xl font-bold mb-3" style="color: #1A1033;">{{ $card['title'] }}</h3>
+                    <h3 class="lp-title-ink text-xl font-bold mb-3">{{ $card['title'] }}</h3>
                     <ul class="space-y-2">
                         @foreach ($card['bullets'] as $bullet)
                         <li class="flex items-start gap-2 text-sm text-gray-500">
-                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: #730DB1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="lp-brand-text w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                             </svg>
                             {!! $bullet !!}
@@ -399,8 +394,7 @@
                         @endforeach
                     </ul>
                     <a href="{{ route('register') }}"
-                       class="age-card-link inline-flex items-center gap-1.5 mt-5 text-sm font-semibold"
-                       style="color: #730DB1;">
+                              class="age-card-link lp-brand-text inline-flex items-center gap-1.5 mt-5 text-sm font-semibold">
                         Start exploring
                         <svg class="w-3.5 h-3.5 age-card-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
@@ -422,11 +416,10 @@
     <div class="max-w-7xl mx-auto px-6 lg:px-8">
 
         <div class="text-center mb-14 scroll-reveal">
-            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4 text-xs font-bold tracking-widest uppercase"
-                 style="background: rgba(163,14,178,0.07); color: #730DB1; border: 1px solid rgba(163,14,178,0.14);">
+            <div class="lp-section-badge inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-4 text-xs font-bold tracking-widest uppercase">
                 Platform Features
             </div>
-            <h2 class="text-3xl lg:text-4xl font-bold mb-3" style="color: #1A1033;">
+            <h2 class="lp-section-title text-3xl lg:text-4xl font-bold mb-3">
                 Everything you need to learn confidently
             </h2>
             <p class="text-gray-500 text-base max-w-xl mx-auto leading-relaxed">
@@ -453,7 +446,7 @@
                 <div class="feature-card-icon w-14 h-14 mb-4 flex-shrink-0">
                     <img src="{{ asset('landing/' . $icon) }}" alt="{{ $title }}" class="w-full h-full object-contain">
                 </div>
-                <h3 class="feature-card-title font-bold text-base mb-2" style="color: #1A1033;">{{ $title }}</h3>
+                <h3 class="feature-card-title lp-title-ink font-bold text-base mb-2">{{ $title }}</h3>
                 <p class="text-sm text-gray-500 leading-relaxed">{{ $desc }}</p>
             </div>
             @endforeach
@@ -463,35 +456,89 @@
 
 
 {{-- ═══════════════════════════════════════════════════
+     DOWNLOAD APP HERO
+     - Fresh redesign
+     - Conversion-focused actions
+     - Phone mockup with logo overlay
+═══════════════════════════════════════════════════ --}}
+<section id="download-app" class="lp-mobilepromo-section py-20 lg:py-24">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+        <div class="lp-mobilepromo-layout scroll-reveal">
+            <div class="lp-mobilepromo-copy">
+                <span class="lp-mobilepromo-tag">Mobile Learning App</span>
+
+                <h2 class="lp-mobilepromo-title">
+                    Learn Better With
+                    Conscious Connections
+                </h2>
+
+                <p class="lp-mobilepromo-description">
+                    A focused mobile experience for lessons, activities, and progress tracking.
+                    Built for clarity, safety, and everyday learning consistency.
+                </p>
+
+                <div class="lp-mobilepromo-qr">
+                    <img
+                        src="{{ route('landing.apk.qr') }}"
+                        alt="QR code to download the Conscious Connections APK"
+                        class="lp-mobilepromo-qr-image"
+                    >
+                    <div class="lp-mobilepromo-qr-copy">
+                        <p class="lp-mobilepromo-qr-title">Scan QR to download APK</p>
+                        <a href="{{ route('landing.apk') }}" class="lp-mobilepromo-qr-btn">Download APK</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lp-mobilepromo-visual" aria-hidden="true">
+                <div class="lp-mobilepromo-logo-overlay"></div>
+
+                <div class="lp-mobilepromo-phone-wrap">
+                    <div class="lp-mobilepromo-phone">
+                        <div class="lp-mobilepromo-screen">
+                            <img src="{{ asset('landing/sign.png') }}" alt="Conscious Connections" class="lp-mobilepromo-logo" />
+                            <p class="lp-mobilepromo-brand" aria-label="Conscious Connections">
+                                <span>CONSCIOUS</span>
+                                <span>CONNECTIONS</span>
+                            </p>
+                            <div class="lp-mobilepromo-gesture-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+{{-- ═══════════════════════════════════════════════════
      FOOTER — 4-column full, brand gradient
 ═══════════════════════════════════════════════════ --}}
-<footer style="background: linear-gradient(135deg, #A30EB2 0%, #730DB1 50%, #3B0CB1 100%);">
+<footer class="lp-brand-gradient-bg lp-changing-gradient">
     <div class="max-w-7xl mx-auto px-6 lg:px-8 py-14">
-        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 pb-10 border-b" style="border-color: rgba(255,255,255,0.12);">
+        <div class="lp-footer-divider grid sm:grid-cols-2 lg:grid-cols-4 gap-10 pb-10 border-b">
 
             <div class="sm:col-span-2 lg:col-span-1">
                 <a href="{{ route('home') }}" class="inline-flex items-center gap-2.5 mb-4">
-                    <img src="{{ asset('landing/sign.png') }}" alt="Concious Connections" class="h-9 w-auto object-contain">
+                    <img src="{{ asset('landing/sign.png') }}" alt="Conscious Connections" class="h-9 w-auto object-contain">
                     <div class="flex flex-col leading-none gap-0.5">
-                        <span class="text-[17px] font-black tracking-wide text-white">Concious Connections</span>
+                        <span class="text-[17px] font-black tracking-wide text-white">Conscious Connections</span>
                     </div>
                 </a>
-                <p class="text-sm leading-relaxed max-w-[210px]" style="color: rgba(255,255,255,0.6);">
+                <p class="lp-footer-muted text-sm leading-relaxed max-w-[210px]">
                     Providing quality sexual health education for every Filipino, judgment-free.
                 </p>
                 <div class="flex gap-2.5 mt-5">
                     @foreach ([['Facebook','M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z'],['Twitter','M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z']] as [$name, $path])
                     <a href="#" aria-label="{{ $name }}"
-                       class="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                       style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);">
+                       class="lp-footer-social w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110">
                         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ $path }}"/>
                         </svg>
                     </a>
                     @endforeach
                     <a href="#" aria-label="Instagram"
-                       class="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                       style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);">
+                       class="lp-footer-social w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110">
                         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <rect width="20" height="20" x="2" y="2" rx="5" ry="5" stroke-width="1.75"/>
                             <path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z" stroke-width="1.75"/>
@@ -505,8 +552,9 @@
                 <h4 class="font-bold text-xs text-white tracking-widest uppercase mb-5">Quick Links</h4>
                 <ul class="space-y-3">
                     @foreach ([['#home','Home'],['#for-who',"Who It's For"],['#features','Features'],['#vision','About']] as [$href, $label])
-                    <li><a href="{{ $href }}" class="text-sm hover:text-white transition-colors" style="color: rgba(255,255,255,0.6);">{{ $label }}</a></li>
+                    <li><a href="{{ $href }}" class="lp-footer-link text-sm">{{ $label }}</a></li>
                     @endforeach
+                    <li><a href="{{ route('landing.apk') }}" class="lp-footer-link text-sm">Download APK</a></li>
                 </ul>
             </div>
 
@@ -514,7 +562,7 @@
                 <h4 class="font-bold text-xs text-white tracking-widest uppercase mb-5">Learn</h4>
                 <ul class="space-y-3">
                     @foreach ([['#','Modules'],['#','Quizzes'],['#','Certificates'],['#','Premium']] as [$href, $label])
-                    <li><a href="{{ $href }}" class="text-sm hover:text-white transition-colors" style="color: rgba(255,255,255,0.6);">{{ $label }}</a></li>
+                    <li><a href="{{ $href }}" class="lp-footer-link text-sm">{{ $label }}</a></li>
                     @endforeach
                 </ul>
             </div>
@@ -522,19 +570,19 @@
             <div>
                 <h4 class="font-bold text-xs text-white tracking-widest uppercase mb-5">Contact Us</h4>
                 <ul class="space-y-3.5">
-                    <li class="flex items-start gap-2.5 text-sm" style="color: rgba(255,255,255,0.6);">
+                    <li class="lp-footer-muted flex items-start gap-2.5 text-sm">
                         <svg class="w-4 h-4 mt-0.5 flex-shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>Dasmariñas, Cavite, Philippines
                     </li>
-                    <li class="flex items-center gap-2.5 text-sm" style="color: rgba(255,255,255,0.6);">
+                    <li class="lp-footer-muted flex items-center gap-2.5 text-sm">
                         <svg class="w-4 h-4 flex-shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                         </svg>
                         <a href="mailto:consciousconnections@gmail.com" class="hover:text-white transition-colors">consciousconnections@gmail.com</a>
                     </li>
-                    <li class="flex items-center gap-2.5 text-sm" style="color: rgba(255,255,255,0.6);">
+                    <li class="lp-footer-muted flex items-center gap-2.5 text-sm">
                         <svg class="w-4 h-4 flex-shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.948V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                         </svg>(123) 456-7890
@@ -544,10 +592,10 @@
 
         </div>
         <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-7">
-            <p class="text-xs" style="color: rgba(255,255,255,0.45);">
-                © 2026 Concious Connections — Sex Education Platform. All rights reserved.
+            <p class="lp-footer-faint text-xs">
+                © 2026 Conscious Connections — Sex Education Platform. All rights reserved.
             </p>
-            <div class="flex items-center gap-4 text-xs" style="color: rgba(255,255,255,0.45);">
+            <div class="lp-footer-faint flex items-center gap-4 text-xs">
                 <a href="{{ route('privacy') }}" class="hover:text-white transition-colors">Privacy Policy</a>
                 <span class="w-px h-3 bg-white/20"></span>
                 <a href="{{ route('terms') }}" class="hover:text-white transition-colors">Terms of Service</a>
@@ -560,7 +608,7 @@
      BACK TO TOP BUTTON — fixed bottom-right
      Appears after 400px scroll, smooth scroll on click
 ═══════════════════════════════════════════════════ --}}
-<button id="lp-back-to-top" aria-label="Back to top">
+<button id="lp-back-to-top" class="lp-changing-gradient" aria-label="Back to top">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
     </svg>
@@ -572,6 +620,111 @@
 @push('head')
 <style>
 
+:root {
+    --lp-purple-1: #A30EB2;
+    --lp-purple-2: #730DB1;
+    --lp-purple-3: #3B0CB1;
+    --lp-title-ink: #1A1033;
+    --lp-badge-bg: rgba(163,14,178,0.07);
+    --lp-badge-border: rgba(163,14,178,0.14);
+    --lp-footer-muted: rgba(255,255,255,0.6);
+    --lp-footer-faint: rgba(255,255,255,0.45);
+    --lp-gradient-main: linear-gradient(135deg, var(--lp-purple-1), var(--lp-purple-3));
+    --lp-gradient-brand: linear-gradient(135deg, var(--lp-purple-1), var(--lp-purple-2), var(--lp-purple-3));
+    --lp-gradient-shift-size: 220% 220%;
+}
+
+.lp-btn-gradient {
+    background: var(--lp-gradient-main);
+    box-shadow: 0 4px 14px rgba(115,13,177,0.4);
+}
+
+.lp-btn-gradient-strong {
+    background: var(--lp-gradient-brand);
+    box-shadow: 0 8px 28px rgba(115,13,177,0.38);
+}
+
+.lp-brand-gradient-bg {
+    background: var(--lp-gradient-brand);
+}
+
+.lp-changing-gradient {
+    background-image: var(--lp-gradient-brand);
+    background-size: var(--lp-gradient-shift-size);
+    animation: lpGradientMove 8s ease infinite;
+}
+
+.lp-brand-text {
+    color: var(--lp-purple-2);
+}
+
+.lp-title-ink {
+    color: var(--lp-title-ink);
+}
+
+.lp-soft-bg {
+    background: #F9F7FF;
+}
+
+.lp-soft-glow-white {
+    background: rgba(255,255,255,0.6);
+}
+
+.lp-section-badge {
+    background: var(--lp-badge-bg);
+    color: var(--lp-purple-2);
+    border: 1px solid var(--lp-badge-border);
+}
+
+.lp-section-badge-light {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border-color: rgba(255,255,255,0.25);
+}
+
+.lp-section-title {
+    color: var(--lp-title-ink);
+}
+
+.lp-section-description-light {
+    color: rgba(255,255,255,0.72);
+}
+
+.lp-chip-badge {
+    background: var(--lp-badge-bg);
+    color: var(--lp-purple-2);
+}
+
+.age-card-icon-shadow {
+    filter: drop-shadow(0 8px 20px rgba(0,0,0,0.3));
+}
+
+.lp-footer-divider {
+    border-color: rgba(255,255,255,0.12);
+}
+
+.lp-footer-muted {
+    color: var(--lp-footer-muted);
+}
+
+.lp-footer-faint {
+    color: var(--lp-footer-faint);
+}
+
+.lp-footer-link {
+    color: var(--lp-footer-muted);
+    transition: color 0.2s ease;
+}
+
+.lp-footer-link:hover {
+    color: white;
+}
+
+.lp-footer-social {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
 /* ══════════════════════════════════════════════════
    NAVBAR
 ══════════════════════════════════════════════════ */
@@ -579,7 +732,7 @@
 /* Brand name: gradient text when scrolled */
 .nav-brand-scrolled .nav-brand-label,
 .nav-brand-scrolled .nav-brand-name {
-    background: linear-gradient(135deg, #A30EB2, #3B0CB1);
+    background: var(--lp-gradient-main);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -598,7 +751,7 @@
     width: 100%;
     height: 2px;
     border-radius: 2px;
-    background: linear-gradient(135deg, #A30EB2, #3B0CB1);
+    background: var(--lp-gradient-main);
     transform: scaleX(0);
     transform-origin: center;
     transition: transform 0.25s ease;
@@ -638,7 +791,7 @@
     position: absolute;
     inset: 0;
     border-radius: 9999px;
-    background: linear-gradient(135deg, #A30EB2, #3B0CB1);
+    background: var(--lp-gradient-main);
     opacity: 0;
     transition: opacity 0.25s ease;
     z-index: 0;
@@ -664,9 +817,6 @@
     padding: 180px 40px 200px;
     text-align: center;
     overflow: hidden;
-    background: linear-gradient(45deg, #a40eb2, #370CB1);
-    background-size: 200% 200%;
-    animation: lpGradientMove 8s ease infinite;
     color: #fff;
 }
 @keyframes lpGradientMove {
@@ -900,7 +1050,7 @@
 }
 .lp-learning {
     color: transparent;
-    font-size: clamp(56px, 10vw, 120px);s
+    font-size: clamp(56px, 10vw, 120px);
     font-weight: 700;
     -webkit-text-stroke: 2px #6D0EB2;
     opacity: 0;
@@ -964,7 +1114,6 @@
 ══════════════════════════════════════════════════ */
 .lp-vision-section {
     position: relative;
-    background: linear-gradient(135deg, #A30EB2 0%, #730DB1 50%, #3B0CB1 100%);
     overflow: hidden;
 }
 .lp-vision-wave-top,
@@ -1008,7 +1157,7 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 20px;
-    background: linear-gradient(135deg, #A30EB2, #3B0CB1);
+    background: var(--lp-gradient-main);
     flex-shrink: 0;
     transition: transform 0.35s ease, box-shadow 0.35s ease;
 }
@@ -1020,7 +1169,7 @@
     font-size: 22px;
     font-weight: 700;
     margin-bottom: 12px;
-    background: linear-gradient(135deg, #A30EB2, #3B0CB1);
+    background: var(--lp-gradient-main);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -1079,10 +1228,359 @@
     transition: all 0.2s ease;
 }
 .feature-card:hover .feature-card-title {
-    background: linear-gradient(135deg, #A30EB2, #3B0CB1);
+    background: var(--lp-gradient-main);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+/* ══════════════════════════════════════════════════
+   DOWNLOAD APP HERO
+══════════════════════════════════════════════════ */
+.lp-mobilepromo-section {
+    background:
+    radial-gradient(circle at 12% 20%, rgba(163,14,178,0.12) 0%, rgba(163,14,178,0) 38%),
+        linear-gradient(110deg, #f8f3ff 0%, #fdfcff 58%, #eef6ff 100%);
+}
+
+.lp-mobilepromo-layout {
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    align-items: center;
+    gap: clamp(1.2rem, 3vw, 2.8rem);
+}
+
+.lp-mobilepromo-tag {
+    display: inline-flex;
+    border-radius: 9999px;
+    border: 1px solid var(--lp-badge-border);
+    background: var(--lp-badge-bg);
+    color: var(--lp-purple-2);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.36rem 0.84rem;
+}
+
+.lp-mobilepromo-title {
+    margin-top: 0.82rem;
+    max-width: 12.5ch;
+    font-size: clamp(2.1rem, 5.8vw, 4.1rem);
+    line-height: 0.92;
+    letter-spacing: -0.035em;
+    font-weight: 900;
+    color: #111827;
+    text-shadow: 0 6px 20px rgba(37, 99, 235, 0.12);
+}
+
+.lp-mobilepromo-description {
+    margin-top: 1.2rem;
+    max-width: 34rem;
+    color: #5f4f8a;
+    font-size: 1.06rem;
+    line-height: 1.55;
+}
+
+.lp-mobilepromo-qr {
+    margin-top: 1.55rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.82rem;
+    padding: 0;
+    border-radius: 14px;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+}
+
+.lp-mobilepromo-qr-image {
+    width: 82px;
+    height: 82px;
+    border-radius: 10px;
+    background: transparent;
+    padding: 0;
+    object-fit: cover;
+}
+
+.lp-mobilepromo-qr-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.lp-mobilepromo-qr-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.lp-mobilepromo-qr-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.08rem;
+    border-radius: 9999px;
+    min-height: 2.45rem;
+    padding: 0.58rem 1.35rem;
+    background: linear-gradient(135deg, var(--lp-purple-1), var(--lp-purple-2));
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    box-shadow: 0 8px 14px rgba(115, 13, 177, 0.28);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lp-mobilepromo-qr-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px rgba(115, 13, 177, 0.34);
+}
+
+.lp-mobilepromo-watch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.72rem;
+    color: #222b55;
+    font-size: 0.97rem;
+    font-weight: 700;
+}
+
+.lp-mobilepromo-watch-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.55rem;
+    height: 2.55rem;
+    border-radius: 9999px;
+    background: var(--lp-gradient-brand);
+    color: #fff;
+    box-shadow: 0 7px 16px rgba(115,13,177,0.2);
+}
+
+.lp-mobilepromo-visual {
+    position: relative;
+    min-height: 500px;
+}
+
+.lp-mobilepromo-logo-overlay {
+    position: absolute;
+    top: 50%;
+    right: -2%;
+    width: 540px;
+    height: 540px;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, rgba(125, 181, 255, 0.95), rgba(29, 78, 216, 0.95));
+    -webkit-mask: url('{{ asset('landing/sign.png') }}') center center / contain no-repeat;
+    mask: url('{{ asset('landing/sign.png') }}') center center / contain no-repeat;
+    opacity: 0.2;
+    z-index: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 14px 24px rgba(37, 29, 79, 0.2));
+}
+
+.lp-mobilepromo-phone-wrap {
+    position: absolute;
+    right: 62px;
+    top: 20px;
+    z-index: 3;
+    transform: perspective(1000px) rotateY(-10deg) rotateX(2deg);
+    animation: lpMobilePromoFloat 6.5s ease-in-out infinite;
+}
+
+@keyframes lpMobilePromoFloat {
+    0%, 100% { transform: perspective(1000px) rotateY(-10deg) rotateX(2deg) translateY(0); }
+    50%      { transform: perspective(1000px) rotateY(-9deg) rotateX(2deg) translateY(-9px); }
+}
+
+.lp-mobilepromo-phone {
+    width: 224px;
+    height: 430px;
+    position: relative;
+    border: 2px solid #2563eb;
+    border-radius: 38px;
+    background: linear-gradient(180deg, #173988 0%, #132f76 100%);
+    box-shadow: 0 30px 52px rgba(16, 41, 108, 0.34), 0 0 0 1px rgba(125, 181, 255, 0.26), inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.lp-mobilepromo-phone::before {
+    content: '';
+    position: absolute;
+    top: 9px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 62px;
+    height: 5px;
+    border-radius: 9999px;
+    background: #5a74b3;
+}
+
+.lp-mobilepromo-phone::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 72px;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 35% 35%, #a2ddff 0%, #5f9be8 44%, #132f76 100%);
+    box-shadow: 0 0 0 2px #20459c;
+}
+
+.lp-mobilepromo-screen {
+    position: relative;
+    margin: 1.2rem 0.45rem 0.55rem;
+    height: calc(100% - 1.75rem);
+    border-radius: 31px;
+    border: none;
+    background: linear-gradient(165deg, #f6f8ff 0%, #edf1ff 60%, #e3ebff 100%);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.58rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.lp-mobilepromo-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 22% 18%, rgba(255,255,255,0.7), rgba(255,255,255,0) 46%),
+        radial-gradient(circle at 78% 78%, rgba(114,132,214,0.22), rgba(114,132,214,0) 42%);
+}
+
+.lp-mobilepromo-logo {
+    position: relative;
+    z-index: 2;
+    width: 124px;
+    height: auto;
+    filter: drop-shadow(0 14px 24px rgba(20, 51, 123, 0.28));
+}
+
+.lp-mobilepromo-brand {
+    position: relative;
+    z-index: 2;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    font-size: 0.68rem;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--lp-purple-2);
+    text-align: center;
+}
+
+.lp-mobilepromo-brand span {
+    display: block;
+}
+
+.lp-mobilepromo-gesture-bar {
+    position: absolute;
+    z-index: 2;
+    bottom: 9px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 68px;
+    height: 5px;
+    border-radius: 9999px;
+    background: rgba(33, 48, 90, 0.36);
+}
+
+@media (max-width: 1024px) {
+    .lp-mobilepromo-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .lp-mobilepromo-title {
+        max-width: 16ch;
+    }
+
+    .lp-mobilepromo-visual {
+        min-height: 420px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lp-mobilepromo-logo-overlay {
+        left: 50%;
+        right: auto;
+        width: 440px;
+        height: 440px;
+        opacity: 0.18;
+        transform: translate(-50%, -50%);
+    }
+
+    .lp-mobilepromo-phone-wrap {
+        position: relative;
+        right: auto;
+        top: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .lp-mobilepromo-title {
+        font-size: clamp(1.9rem, 10vw, 2.7rem);
+        max-width: none;
+    }
+
+    .lp-mobilepromo-description {
+        font-size: 0.98rem;
+    }
+
+    .lp-mobilepromo-qr {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .lp-mobilepromo-qr-image {
+        width: 92px;
+        height: 92px;
+    }
+
+    .lp-mobilepromo-watch {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .lp-mobilepromo-visual {
+        min-height: 356px;
+    }
+
+    .lp-mobilepromo-logo-overlay {
+        width: 320px;
+        height: 320px;
+        opacity: 0.15;
+    }
+
+    .lp-mobilepromo-phone-wrap {
+        animation: none;
+        margin: 0 auto;
+        transform: perspective(900px) rotateY(-2deg) rotateX(1deg);
+    }
+
+    .lp-mobilepromo-phone {
+        width: 198px;
+        height: 390px;
+    }
+
+    .lp-mobilepromo-logo {
+        width: 100px;
+    }
+
+    .lp-mobilepromo-brand {
+        font-size: 0.6rem;
+        letter-spacing: 0.09em;
+    }
 }
 
 
@@ -1108,7 +1606,6 @@
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #A30EB2, #3B0CB1);
     color: white;
     border: none;
     cursor: pointer;
@@ -1133,6 +1630,13 @@
 }
 #lp-back-to-top:active {
     transform: translateY(0) scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-changing-gradient {
+        animation: none;
+        background-position: 50% 50%;
+    }
 }
 
 </style>
@@ -1161,5 +1665,6 @@
     bttBtn.addEventListener('click', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
+
 </script>
 @endpush

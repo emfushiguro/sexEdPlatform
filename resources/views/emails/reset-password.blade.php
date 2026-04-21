@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Your Password — Concious Connections</title>
+    <title>Reset Your Password — Conscious Connections</title>
     <style>
         body {
             margin: 0;
@@ -179,7 +179,7 @@
             <div class="logo-card">
                 <span style="font-size: 26px; font-weight: 800; color: #730DB1; line-height: 1;">CC</span>
             </div>
-            <p class="brand-name">Concious Connections</p>
+            <p class="brand-name">Conscious Connections</p>
             <div class="header-divider"></div>
             <h1 class="header-title">Password Reset</h1>
             <p class="header-subtitle">We received a request to reset your password</p>
@@ -191,7 +191,7 @@
                 Hi, <strong>{{ $user->first_name ?? $user->name }}</strong>!
             </p>
             <p class="message">
-                We received a request to reset the password for your Concious Connections account
+                We received a request to reset the password for your Conscious Connections account
                 linked to <strong>{{ $user->email }}</strong>. Click the button below to choose a new password.
             </p>
 
@@ -234,7 +234,7 @@
                 <a href="{{ route('terms') }}">Terms of Service</a>
             </div>
             <p class="footer-copy">
-                &copy; {{ date('Y') }} Concious Connections. All rights reserved.
+                &copy; {{ date('Y') }} Conscious Connections. All rights reserved.
             </p>
         </div>
     </div>

@@ -5,7 +5,7 @@
     <x-slot name="panel">
         <div class="h-full flex flex-col items-center justify-center p-12 text-center text-white">
             <div class="mb-6">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-36 w-auto mx-auto mb-3 drop-shadow-lg">
+                <img src="{{ asset('/media/Logo.png') }}" alt="Conscious Connections" class="h-36 w-auto mx-auto mb-3 drop-shadow-lg">
             </div>
             <h2 class="mt-3 text-4xl font-extrabold tracking-tight">Admin Authentication</h2>
             </p>
@@ -30,7 +30,7 @@
                 required
                 autofocus
                 autocomplete="username"
-                placeholder="name@conciousconnections.com"
+                placeholder="name@consciousconnections.com"
                 class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent"
             />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />

@@ -62,7 +62,7 @@
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">1. Introduction</h3>
-                <p>Welcome to <strong>Concious Connections</strong>. By accessing or using our platform, you agree to be bound by these Terms of Service. This platform is designed to provide age-appropriate sexual education and health information to learners of all ages in the Philippines.</p>
+                <p>Welcome to <strong>Conscious Connections</strong>. By accessing or using our platform, you agree to be bound by these Terms of Service. This platform is designed to provide age-appropriate sexual education and health information to learners of all ages in the Philippines.</p>
             </section>
 
             <section>
@@ -104,7 +104,7 @@
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">6. Content & Intellectual Property</h3>
-                <p>All educational content, modules, quizzes, and materials are the intellectual property of Concious Connections and its content creators. You may not reproduce, distribute, or sell platform content without permission.</p>
+                <p>All educational content, modules, quizzes, and materials are the intellectual property of Conscious Connections and its content creators. You may not reproduce, distribute, or sell platform content without permission.</p>
             </section>
 
             <section>
@@ -114,7 +114,7 @@
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">8. Limitation of Liability</h3>
-                <p>Concious Connections is provided "as is" for educational purposes. We are not liable for any damages arising from your use of the platform, content inaccuracies, or service interruptions.</p>
+                <p>Conscious Connections is provided "as is" for educational purposes. We are not liable for any damages arising from your use of the platform, content inaccuracies, or service interruptions.</p>
             </section>
 
             <section>
@@ -268,7 +268,7 @@
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">8. Contact</h3>
-                <p>For privacy concerns, data requests, or questions, contact us at <strong>privacy@conciousconnections.ph</strong>.</p>
+                <p>For privacy concerns, data requests, or questions, contact us at <strong>privacy@consciousconnections.ph</strong>.</p>
             </section>
 
         </div>
@@ -349,7 +349,7 @@
                 </svg>
                 <div>
                     <p class="text-xs font-semibold text-purple-900">Still need help?</p>
-                    <p class="text-xs text-purple-700">Email us at <strong>support@conciousconnections.ph</strong></p>
+                    <p class="text-xs text-purple-700">Email us at <strong>support@consciousconnections.ph</strong></p>
                 </div>
             </div>
 

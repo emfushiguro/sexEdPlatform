@@ -7,29 +7,28 @@
 <div class="px-4 py-8 mx-auto space-y-6 max-w-7xl">
     <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach($overviewCards as $card)
-                @php
-                $delta = (float) data_get($card, 'delta_percent', 0);
-                $isPositive = $delta >= 0;
+            @php
                 $isCurrency = (bool) data_get($card, 'is_currency', false);
+                $iconPath = match ((string) data_get($card, 'label')) {
+                    'Learners' => 'M17 20h5v-1a4 4 0 0 0-4-4h-1m-4 5H4v-1a4 4 0 0 1 4-4h5m0 5v-1a4 4 0 0 0-4-4H8m5 5h1a4 4 0 0 0 4-4v-1m-5-5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+                    'Instructors' => 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12.083 12.083 0 0 1 18 14.739M12 14l-6.16-3.422A12.083 12.083 0 0 0 6 14.739M12 14v7m-6 0h12',
+                    'Total Modules' => 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+                    'Total Revenue' => 'M2.25 8.25h19.5M3.75 9h16.5a1.5 1.5 0 0 1 1.5 1.5v7.5a1.5 1.5 0 0 1-1.5 1.5H3.75a1.5 1.5 0 0 1-1.5-1.5V10.5A1.5 1.5 0 0 1 3.75 9zM6.75 15h3',
+                    default => 'M4 19h16M7 16V8m5 8V5m5 11v-6',
+                };
             @endphp
             <article class="group relative overflow-hidden rounded-2xl border border-brand-200/80 bg-gradient-to-br from-brand-50 via-white to-brand-100/70 p-6 shadow-soft ring-1 ring-brand-200/40 transition duration-200 hover:-translate-y-0.5 hover:shadow-medium dark:border-slate-700/70 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 dark:ring-slate-700/40 before:pointer-events-none before:absolute before:inset-0 before:content-[''] before:bg-gradient-to-br before:from-brand-100/60 before:via-transparent before:to-transparent before:opacity-70 dark:before:opacity-0">
                 <div class="flex items-start justify-between">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-700/80 dark:text-brand-200/80">{{ $card['label'] }}</p>
-                    <span class="inline-flex items-center justify-center w-10 h-10 text-white rounded-full bg-gradient-to-br from-brand-600 to-brand-500 shadow-glow-purple ring-1 ring-brand-600/40 dark:bg-brand-500/25 dark:text-brand-100 dark:ring-brand-500/30">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 19h16M7 16V8m5 8V5m5 11v-6" />
+                    <span class="inline-flex items-center justify-center h-11 w-11 rounded-2xl bg-gradient-to-br from-[#8A19C8] via-[#730DB1] to-[#4A13C6] text-white shadow-[0_10px_24px_rgba(115,13,177,0.45)] ring-1 ring-[#9e47ce]/55">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="{{ $iconPath }}" />
                         </svg>
                     </span>
                 </div>
                 <p class="mt-4 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
                     {{ $isCurrency ? 'PHP ' . number_format((float) $card['value'], 0) : number_format((int) $card['value']) }}
                 </p>
-                <div class="flex items-center justify-between mt-3">
-                    <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ $isPositive ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' }}">
-                        {{ $isPositive ? '+' : '' }}{{ number_format($delta, 2) }}%
-                    </span>
-                    <p class="text-xs text-slate-400 dark:text-slate-500">vs last month</p>
-                </div>
             </article>
         @endforeach
     </section>

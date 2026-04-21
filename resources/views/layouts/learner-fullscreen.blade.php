@@ -6,8 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     @php
-        $metaTitle = trim($__env->yieldContent('title', 'Lesson') . ' | Concious Connections');
-        $metaDescription = trim($__env->yieldContent('meta_description', 'Concious Connections interactive lesson experience for Filipino learners.'));
+        $metaTitle = trim($__env->yieldContent('title', 'Lesson') . ' | Conscious Connections');
+        $metaDescription = trim($__env->yieldContent('meta_description', 'Conscious Connections interactive lesson experience for Filipino learners.'));
         $metaImage = trim($__env->yieldContent('meta_image', asset('media/Logo.png')));
     @endphp
 

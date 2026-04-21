@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Account Suspension Status | Concious Connections')
+@section('title', 'Account Suspension Status | Conscious Connections')
 @section('meta_description', 'View your suspension details and appeal guidance.')
 
 @section('content')

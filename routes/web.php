@@ -13,6 +13,7 @@ use App\Http\Controllers\Learner\ModuleReviewPageController as LearnerModuleRevi
 use App\Http\Controllers\Learner\ContentReportController as LearnerContentReportController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
 use App\Http\Controllers\Learner\TopicTranslationController;
+use App\Http\Controllers\Learner\ParentVisibilityController;
 use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
 use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
 use App\Http\Controllers\Learner\AdminCreatorProfileController as LearnerAdminCreatorProfileController;
@@ -23,9 +24,95 @@ use App\Http\Controllers\Chat\StatusController as ChatStatusController;
 use App\Http\Controllers\ParentInvitationController;
 use App\Http\Controllers\Api\LocationController;
 use App\Models\Conversation;
+use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+
+$resolveLocalApkFile = static function (): ?array {
+    $configuredPath = trim((string) config('apk.local_file', ''));
+    $allowedDirectory = trim((string) config('apk.public_directory', 'app/public/apk'));
+
+    if ($configuredPath === '' || $allowedDirectory === '') {
+        return null;
+    }
+
+    $resolveConfiguredPath = static function (string $path): string {
+        $path = trim($path);
+
+        if (
+            preg_match('/^(?:[A-Za-z]:[\\\\\/]|\\\\\\\\)/', $path) === 1
+            || str_starts_with($path, '/')
+        ) {
+            return $path;
+        }
+
+        $relativePath = ltrim($path, '/\\');
+        $relativePathNormalized = str_replace('\\', '/', $relativePath);
+
+        if (str_starts_with($relativePathNormalized, 'app/public/')) {
+            $storageCandidate = storage_path(
+                str_replace('/', DIRECTORY_SEPARATOR, $relativePathNormalized)
+            );
+
+            if (file_exists($storageCandidate)) {
+                return $storageCandidate;
+            }
+        }
+
+        return base_path($relativePath);
+    };
+
+    $fullPath = $resolveConfiguredPath($configuredPath);
+
+    $allowedDirectoryPath = $resolveConfiguredPath($allowedDirectory);
+    $realPath = realpath($fullPath);
+    $realAllowedDirectory = realpath($allowedDirectoryPath);
+
+    if (
+        $realPath === false
+        || $realAllowedDirectory === false
+        || ! is_file($realPath)
+        || ! is_readable($realPath)
+    ) {
+        return null;
+    }
+
+    $realAllowedDirectory = rtrim($realAllowedDirectory, DIRECTORY_SEPARATOR);
+
+    if (
+        ! str_starts_with($realPath, $realAllowedDirectory.DIRECTORY_SEPARATOR)
+        || strtolower((string) pathinfo($realPath, PATHINFO_EXTENSION)) !== 'apk'
+    ) {
+        return null;
+    }
+
+    $downloadFilename = trim((string) config('apk.download_filename', basename($realPath)));
+
+    if ($downloadFilename === '') {
+        $downloadFilename = basename($realPath);
+    }
+
+    $downloadFilename = basename($downloadFilename);
+    $downloadFilename = preg_replace('/[^A-Za-z0-9._-]/', '_', $downloadFilename);
+    $downloadFilename = trim($downloadFilename, '._-');
+
+    if ($downloadFilename === '') {
+        $downloadFilename = basename($realPath);
+    }
+
+    if (strtolower((string) pathinfo($downloadFilename, PATHINFO_EXTENSION)) !== 'apk') {
+        $downloadFilename .= '.apk';
+    }
+
+    return [
+        'path' => $realPath,
+        'name' => $downloadFilename,
+    ];
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -40,6 +127,80 @@ Route::get('/', function () {
     }
     return view('landing.index');
 })->name('home');
+
+Route::get('/download', function () {
+    return redirect()->route('landing.apk');
+});
+
+Route::get('/download/qr', function () {
+    $downloadUrl = route('landing.apk');
+    $cacheKey = 'landing:apk:qr:'.sha1($downloadUrl);
+    $qrParams = [
+        'size' => '180x180',
+        'data' => $downloadUrl,
+        'color' => '000000',
+        'bgcolor' => 'ffffff00',
+        'format' => 'png',
+    ];
+    $fallbackQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?'.http_build_query($qrParams);
+
+    $qrPng = Cache::get($cacheKey);
+
+    if (! is_string($qrPng) || $qrPng === '') {
+        try {
+            $response = Http::withOptions(['verify' => true])
+                ->timeout(6)
+                ->retry(1, 300)
+                ->get('https://api.qrserver.com/v1/create-qr-code/', $qrParams);
+
+            if (! $response instanceof HttpClientResponse) {
+                return redirect()->away($fallbackQrUrl);
+            }
+
+            if (! $response->successful()) {
+                return redirect()->away($fallbackQrUrl);
+            }
+
+            $contentType = strtolower((string) $response->header('Content-Type'));
+
+            if (! str_starts_with($contentType, 'image/')) {
+                return redirect()->away($fallbackQrUrl);
+            }
+
+            $qrPng = $response->body();
+
+            if ($qrPng === '') {
+                return redirect()->away($fallbackQrUrl);
+            }
+
+            Cache::put($cacheKey, $qrPng, now()->addWeek());
+        } catch (\Throwable $exception) {
+            return redirect()->away($fallbackQrUrl);
+        }
+    }
+
+    return response($qrPng, Response::HTTP_OK, [
+        'Content-Type' => 'image/png',
+        'Cache-Control' => 'public, max-age=604800',
+    ]);
+})->name('landing.apk.qr');
+
+Route::get('/download/apk', function () use ($resolveLocalApkFile) {
+    $localApk = $resolveLocalApkFile();
+
+    if ($localApk === null) {
+        abort(Response::HTTP_NOT_FOUND, 'APK file is not available.');
+    }
+
+    return response()->download(
+        $localApk['path'],
+        $localApk['name'],
+        [
+            'Content-Type' => 'application/vnd.android.package-archive',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]
+    );
+})->name('landing.apk');
 
 Route::view('/privacy', 'legal.privacy')->name('privacy');
 Route::view('/terms', 'legal.terms')->name('terms');
@@ -127,6 +288,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('learn')->name('learner.')->middleware('profile.completed')->group(function () {
         // Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Learner\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/my-parent', [ParentVisibilityController::class, 'index'])->name('parent.index');
 
         // Live search (AJAX)
         Route::get('/search', [\App\Http\Controllers\Learner\SearchController::class, 'index'])->name('search');

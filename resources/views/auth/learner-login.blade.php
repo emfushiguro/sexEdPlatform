@@ -4,8 +4,8 @@
     <x-slot name="panel">
         <div class="h-full flex flex-col items-center justify-center p-12 text-center">
             <div class="mb-8">
-                <img src="{{ asset('/media/Logo.png') }}" alt="Concious Connections" class="h-40 w-auto mx-auto mb-4 drop-shadow-lg">
-                <p class="text-4xl font-bold text-white mb-4 leading-tight">Concious Connections</p>
+                <img src="{{ asset('/media/Logo.png') }}" alt="Conscious Connections" class="h-40 w-auto mx-auto mb-4 drop-shadow-lg">
+                <p class="text-4xl font-bold text-white mb-4 leading-tight">Conscious Connections</p>
             </div>
         </div>
     </x-slot>

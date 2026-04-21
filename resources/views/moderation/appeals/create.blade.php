@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Submit Suspension Appeal | Concious Connections')
+@section('title', 'Submit Suspension Appeal | Conscious Connections')
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white py-10 px-4 sm:px-6 lg:px-8">

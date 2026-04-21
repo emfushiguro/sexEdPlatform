@@ -8,6 +8,10 @@
     $pendingParentApprovalRequestCount = $authUser->unreadNotifications()
         ->where('data->type', 'child_enrollment_approval_requested')
         ->count();
+    $hasApprovedParentLinks = $authUser->parentLinks()
+        ->where('verification_status', 'approved')
+        ->whereNotNull('relationship_verified_at')
+        ->exists();
 
     $navItems = [
         [
@@ -53,6 +57,15 @@
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M7 2.75A4.25 4.25 0 0 0 2.75 7v10A4.25 4.25 0 0 0 7 21.25h10A4.25 4.25 0 0 0 21.25 17V7A4.25 4.25 0 0 0 17 2.75H7ZM4.25 7A2.75 2.75 0 0 1 7 4.25h10A2.75 2.75 0 0 1 19.25 7v10A2.75 2.75 0 0 1 17 19.25H7A2.75 2.75 0 0 1 4.25 17V7Zm4 2a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 0-1.5h-7.5Zm-.75 4.75a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1-.75-.75Zm.75 3.25a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5Z"/></svg>',
         ],
     ];
+
+    if ($hasApprovedParentLinks) {
+        $navItems[] = [
+            'label'  => 'My Parent',
+            'route'  => 'learner.parent.index',
+            'active' => request()->routeIs('learner.parent.*'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M12 3.25a4.75 4.75 0 1 0 0 9.5 4.75 4.75 0 0 0 0-9.5ZM8.75 8a3.25 3.25 0 1 1 6.5 0 3.25 3.25 0 0 1-6.5 0Zm-5.5 9.5A3.25 3.25 0 0 1 6.5 14.25h11A3.25 3.25 0 0 1 20.75 17.5v1.25a.75.75 0 0 1-1.5 0V17.5A1.75 1.75 0 0 0 17.5 15.75h-11A1.75 1.75 0 0 0 4.75 17.5v1.25a.75.75 0 0 1-1.5 0V17.5Z"/></svg>',
+        ];
+    }
 
     // Add My Children nav item for verified parent accounts (even without existing children yet)
     if ($authUser->isParent() || ($authUser->isParentRegistration() && $authUser->isParentVerificationApproved())) {
