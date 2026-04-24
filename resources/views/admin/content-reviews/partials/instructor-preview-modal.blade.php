@@ -1,5 +1,4 @@
 @php
-    $moderationEnabled = (bool) config('features.moderation_enabled', false);
     $previewUserId = (int) data_get($workspace, 'instructor_preview.profile.user_id', 0);
     $previewFullName = (string) data_get($workspace, 'instructor_preview.profile.full_name', 'Unknown Instructor');
 @endphp
@@ -25,9 +24,7 @@
             <div class="flex flex-wrap gap-2 text-xs font-semibold">
                 <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'profile' ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'profile'">Instructor Basic Profile</button>
                 <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'indicators' ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'indicators'">Credibility Indicators</button>
-                @if($moderationEnabled)
-                    <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'moderation' ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'moderation'">Moderation History</button>
-                @endif
+                <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'moderation' ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'moderation'">Moderation History</button>
                 <button type="button" class="rounded-full px-3 py-1.5" :class="instructorPreviewTab === 'portfolio' ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'" @click="instructorPreviewTab = 'portfolio'">Module Portfolio</button>
             </div>
         </div>
@@ -98,44 +95,42 @@
                 </div>
             </div>
 
-            @if($moderationEnabled)
-                <div x-show="instructorPreviewTab === 'moderation'" style="display:none;" class="space-y-4">
-                    <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-                        <p class="text-gray-500">Warning Count</p>
-                        <p class="font-semibold text-gray-900">{{ data_get($workspace, 'instructor_preview.moderation.warning_count', 0) }}</p>
-                    </div>
-
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-900">Violation History</h4>
-                        <ul class="mt-2 space-y-2">
-                            @forelse((array) data_get($workspace, 'instructor_preview.moderation.violation_history', []) as $violation)
-                                <li class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700">
-                                    <p class="font-semibold text-gray-900">{{ data_get($violation, 'reason_label', 'Unknown') }}</p>
-                                    <p class="mt-1">{{ data_get($violation, 'guidance_note', 'No guidance note provided.') }}</p>
-                                    <p class="mt-1 text-gray-500">{{ data_get($violation, 'created_at') ? \Illuminate\Support\Carbon::parse(data_get($violation, 'created_at'))->toDayDateTimeString() : 'N/A' }}</p>
-                                </li>
-                            @empty
-                                <li class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">No violation history recorded.</li>
-                            @endforelse
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-900">Suspension Records</h4>
-                        <ul class="mt-2 space-y-2">
-                            @forelse((array) data_get($workspace, 'instructor_preview.moderation.suspension_records', []) as $record)
-                                <li class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
-                                    <p class="font-semibold">{{ data_get($record, 'action', 'Suspension Record') }}</p>
-                                    <p class="mt-1">{{ data_get($record, 'reason_label', 'N/A') }}</p>
-                                    <p class="mt-1">{{ data_get($record, 'created_at') ? \Illuminate\Support\Carbon::parse(data_get($record, 'created_at'))->toDayDateTimeString() : 'N/A' }}</p>
-                                </li>
-                            @empty
-                                <li class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">No suspension records.</li>
-                            @endforelse
-                        </ul>
-                    </div>
+            <div x-show="instructorPreviewTab === 'moderation'" style="display:none;" class="space-y-4">
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                    <p class="text-gray-500">Warning Count</p>
+                    <p class="font-semibold text-gray-900">{{ data_get($workspace, 'instructor_preview.moderation.warning_count', 0) }}</p>
                 </div>
-            @endif
+
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-900">Violation History</h4>
+                    <ul class="mt-2 space-y-2">
+                        @forelse((array) data_get($workspace, 'instructor_preview.moderation.violation_history', []) as $violation)
+                            <li class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700">
+                                <p class="font-semibold text-gray-900">{{ data_get($violation, 'reason_label', 'Unknown') }}</p>
+                                <p class="mt-1">{{ data_get($violation, 'guidance_note', 'No guidance note provided.') }}</p>
+                                <p class="mt-1 text-gray-500">{{ data_get($violation, 'created_at') ? \Illuminate\Support\Carbon::parse(data_get($violation, 'created_at'))->toDayDateTimeString() : 'N/A' }}</p>
+                            </li>
+                        @empty
+                            <li class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">No violation history recorded.</li>
+                        @endforelse
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-900">Suspension Records</h4>
+                    <ul class="mt-2 space-y-2">
+                        @forelse((array) data_get($workspace, 'instructor_preview.moderation.suspension_records', []) as $record)
+                            <li class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                                <p class="font-semibold">{{ data_get($record, 'action', 'Suspension Record') }}</p>
+                                <p class="mt-1">{{ data_get($record, 'reason_label', 'N/A') }}</p>
+                                <p class="mt-1">{{ data_get($record, 'created_at') ? \Illuminate\Support\Carbon::parse(data_get($record, 'created_at'))->toDayDateTimeString() : 'N/A' }}</p>
+                            </li>
+                        @empty
+                            <li class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">No suspension records.</li>
+                        @endforelse
+                    </ul>
+                </div>
+            </div>
 
             <div x-show="instructorPreviewTab === 'portfolio'" style="display:none;">
                 <div class="overflow-x-auto rounded-xl border border-gray-200">

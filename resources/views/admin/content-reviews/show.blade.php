@@ -4,7 +4,6 @@
     @php
         $canModerate = $reviewRequest->status === 'in_review';
         $canStartReview = $reviewRequest->status === 'submitted';
-        $moderationEnabled = (bool) config('features.moderation_enabled', false);
     @endphp
 
     <div class="space-y-6" x-data="{
@@ -84,9 +83,7 @@
             </div>
 
             <div class="space-y-6">
-                @if($moderationEnabled)
-                    @include('admin.content-reviews.partials.instructor-credibility', ['workspace' => $workspace])
-                @endif
+                @include('admin.content-reviews.partials.instructor-credibility', ['workspace' => $workspace])
 
                 <div class="bg-white shadow-sm rounded-xl border border-gray-200 p-5 space-y-3">
                     <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Moderation Result</h2>
@@ -158,58 +155,56 @@
             </div>
         </div>
 
-        @if($moderationEnabled)
-            <div class="bg-white shadow-sm rounded-xl border border-gray-200 p-5">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Past Moderation History</h2>
-                <p class="mt-1 text-sm text-gray-500">Complete moderation timeline for this module across submitted revisions.</p>
+        <div class="bg-white shadow-sm rounded-xl border border-gray-200 p-5">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Past Moderation History</h2>
+            <p class="mt-1 text-sm text-gray-500">Complete moderation timeline for this module across submitted revisions.</p>
 
-                <div class="mt-4 overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+            <div class="mt-4 overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">No.</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Submitted</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewed</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Instructor</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Admin</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        @forelse($moderationHistory as $historyItem)
+                            @php
+                                $historyStatusLabel = $historyItem->status === 'approved'
+                                    ? 'Approved / Published'
+                                    : \Illuminate\Support\Str::title(str_replace('_', ' ', (string) $historyItem->status));
+                            @endphp
                             <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">No.</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Submitted</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewed</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Instructor</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Admin</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Notes</th>
+                                <td class="px-4 py-3 text-sm font-semibold text-gray-500">{{ $loop->iteration }}</td>
+                                <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ $historyStatusLabel }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">{{ optional($historyItem->submitted_at)->format('M d, Y h:i A') ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">{{ optional($historyItem->reviewed_at)->format('M d, Y h:i A') ?? 'Pending' }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">{{ $historyItem->submitter?->name ?? 'Unknown' }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">{{ $historyItem->reviewer?->name ?? 'Not assigned' }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600">
+                                    @if($historyItem->feedback)
+                                        <div class="prose prose-sm max-w-none text-gray-600">
+                                            {!! strip_tags((string) $historyItem->feedback, '<p><br><strong><em><ul><ol><li><a><blockquote><code>') !!}
+                                        </div>
+                                    @else
+                                        No notes
+                                    @endif
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 bg-white">
-                            @forelse($moderationHistory as $historyItem)
-                                @php
-                                    $historyStatusLabel = $historyItem->status === 'approved'
-                                        ? 'Approved / Published'
-                                        : \Illuminate\Support\Str::title(str_replace('_', ' ', (string) $historyItem->status));
-                                @endphp
-                                <tr>
-                                    <td class="px-4 py-3 text-sm font-semibold text-gray-500">{{ $loop->iteration }}</td>
-                                    <td class="px-4 py-3 text-sm font-semibold text-gray-900">{{ $historyStatusLabel }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">{{ optional($historyItem->submitted_at)->format('M d, Y h:i A') ?? 'N/A' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">{{ optional($historyItem->reviewed_at)->format('M d, Y h:i A') ?? 'Pending' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">{{ $historyItem->submitter?->name ?? 'Unknown' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">{{ $historyItem->reviewer?->name ?? 'Not assigned' }}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-600">
-                                        @if($historyItem->feedback)
-                                            <div class="prose prose-sm max-w-none text-gray-600">
-                                                {!! strip_tags((string) $historyItem->feedback, '<p><br><strong><em><ul><ol><li><a><blockquote><code>') !!}
-                                            </div>
-                                        @else
-                                            No notes
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No moderation history records found for this module.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No moderation history records found for this module.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
-        @endif
+        </div>
 
         @include('admin.content-reviews.partials.instructor-preview-modal', ['workspace' => $workspace])
     </div>
