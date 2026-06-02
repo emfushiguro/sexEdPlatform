@@ -8,6 +8,7 @@ use App\Http\Controllers\Connector\RegistrationController;
 use App\Http\Controllers\Connector\RoleController;
 use App\Http\Controllers\Connector\SeminarController;
 use App\Http\Controllers\Connector\SeminarLivestreamController;
+use App\Http\Controllers\Connector\SeminarInteractionController;
 use App\Http\Controllers\Connector\SeminarSpeakerController;
 use App\Http\Controllers\Connector\SubscriptionController;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +37,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/connector/{connector}/seminars/{seminar}/speakers/{speaker}', [SeminarSpeakerController::class, 'destroy'])->name('connector.seminars.speakers.destroy');
     Route::get('/connector/{connector}/seminars/{seminar}/livestream', [SeminarLivestreamController::class, 'show'])->name('connector.seminars.livestream');
     Route::post('/connector/{connector}/seminars/{seminar}/agora-token', [SeminarLivestreamController::class, 'token'])->name('connector.seminars.agora-token');
+    Route::post('/connector/{connector}/seminars/{seminar}/comments/{comment}/hide', [SeminarInteractionController::class, 'hideComment'])->name('connector.seminars.comments.hide');
+    Route::post('/connector/{connector}/seminars/{seminar}/questions/{question}/hide', [SeminarInteractionController::class, 'hideQuestion'])->name('connector.seminars.questions.hide');
+    Route::post('/connector/{connector}/seminars/{seminar}/questions/{question}/answer', [SeminarInteractionController::class, 'answerQuestion'])->name('connector.seminars.questions.answer');
 
     Route::get('/connector/{connector}/members', [MemberController::class, 'index'])->name('connector.members.index');
     Route::patch('/connector/{connector}/members/{membership}/role', [MemberController::class, 'updateRole'])->name('connector.members.role');

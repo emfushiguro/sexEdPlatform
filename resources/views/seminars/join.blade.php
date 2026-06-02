@@ -26,9 +26,16 @@
 
             <aside class="rounded-lg border border-gray-200 bg-white p-5">
                 <h2 class="font-bold text-gray-900">Live Chat</h2>
-                <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-500">
-                    Comments and Q&A will appear here.
-                </div>
+                <form method="POST" action="{{ route('seminars.comments.store', $seminar) }}" class="mt-4 space-y-2">
+                    @csrf
+                    <textarea name="body" rows="3" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" placeholder="Add a comment"></textarea>
+                    <button class="rounded-lg bg-purple-700 px-3 py-2 text-sm font-semibold text-white hover:bg-purple-800">Post Comment</button>
+                </form>
+                <form method="POST" action="{{ route('seminars.questions.store', $seminar) }}" class="mt-5 space-y-2 border-t border-gray-100 pt-4">
+                    @csrf
+                    <textarea name="question" rows="3" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500" placeholder="Ask a question"></textarea>
+                    <button class="rounded-lg border border-purple-200 px-3 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50">Ask Question</button>
+                </form>
             </aside>
         </div>
     </div>

@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SeminarBrowseController;
+use App\Http\Controllers\SeminarInteractionController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\Learner\ProfileCompletionController;
 use App\Http\Controllers\Learner\SubscriptionController;
@@ -261,6 +262,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/seminars/{seminar}/cancel-registration', [SeminarBrowseController::class, 'cancelRegistration'])->name('seminars.cancel-registration');
         Route::get('/seminars/{seminar}/join', [SeminarBrowseController::class, 'join'])->name('seminars.join');
         Route::post('/seminars/{seminar}/agora-token', [SeminarBrowseController::class, 'agoraToken'])->name('seminars.agora-token');
+        Route::post('/seminars/{seminar}/comments', [SeminarInteractionController::class, 'storeComment'])->name('seminars.comments.store');
+        Route::post('/seminars/{seminar}/questions', [SeminarInteractionController::class, 'storeQuestion'])->name('seminars.questions.store');
     });
 
     // PayMongo Subscription Routes (Legacy - kept for backward compatibility)

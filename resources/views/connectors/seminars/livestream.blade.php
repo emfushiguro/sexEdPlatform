@@ -35,6 +35,10 @@
                     <dd class="mt-1 break-all text-gray-900">{{ route('connector.seminars.agora-token', [$connector, $seminar]) }}</dd>
                 </div>
             </dl>
+            <div class="mt-6 border-t border-gray-100 pt-4">
+                <h3 class="font-bold text-gray-900">Moderation</h3>
+                <p class="mt-2 text-sm text-gray-500">Comments and questions can be moderated from the seminar detail page.</p>
+            </div>
         </aside>
     </div>
 @endsection

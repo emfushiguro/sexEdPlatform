@@ -35,4 +35,22 @@ class SeminarAccessService
             ->whereNull('cancelled_at')
             ->count();
     }
+
+    public function canViewLiveChannel(User $user, Seminar $seminar): bool
+    {
+        if ($user->role === 'admin' || $user->hasRole('admin')) {
+            return true;
+        }
+
+        if ($seminar->speakers()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
+        if ($seminar->registrants()->active()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
+        return $seminar->connector !== null
+            && $this->canManageConnectorSeminars($user, $seminar->connector);
+    }
 }

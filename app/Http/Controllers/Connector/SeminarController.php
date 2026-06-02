@@ -73,7 +73,7 @@ class SeminarController extends Controller
 
         return view('connectors.seminars.show', [
             'connector' => $connector,
-            'seminar' => $seminar->load(['registrants.user', 'speakers.user']),
+            'seminar' => $seminar->load(['registrants.user', 'speakers.user', 'comments.user', 'questions.user']),
             'activeRegistrantCount' => $this->access->activeRegistrantCount($seminar),
         ]);
     }
