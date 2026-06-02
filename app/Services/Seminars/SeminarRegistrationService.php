@@ -7,6 +7,7 @@ use App\Enums\SeminarStatus;
 use App\Models\Seminar;
 use App\Models\SeminarRegistrant;
 use App\Models\User;
+use App\Notifications\Seminars\SeminarRegistrationConfirmedNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -35,7 +36,7 @@ class SeminarRegistrationService
             throw ValidationException::withMessages(['seminar' => $message]);
         }
 
-        return DB::transaction(function () use ($user, $seminar): SeminarRegistrant {
+        $registrant = DB::transaction(function () use ($user, $seminar): SeminarRegistrant {
             $existing = $seminar->registrants()->where('user_id', $user->id)->lockForUpdate()->first();
 
             if ($existing) {
@@ -62,6 +63,10 @@ class SeminarRegistrationService
                 'registered_at' => now(),
             ]);
         });
+
+        $user->notify(new SeminarRegistrationConfirmedNotification($seminar->loadMissing('connector')));
+
+        return $registrant;
     }
 
     public function cancel(User $user, Seminar $seminar): void

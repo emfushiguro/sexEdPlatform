@@ -8,6 +8,7 @@ use App\Models\Connector;
 use App\Models\Seminar;
 use App\Models\SeminarComment;
 use App\Models\SeminarQuestion;
+use App\Notifications\Seminars\SeminarCancelledNotification;
 use App\Services\Seminars\SeminarInteractionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,6 +65,8 @@ class SeminarModerationController extends Controller
             'admin_moderation_reason' => $validated['reason'],
         ]);
 
+        $this->notifyActiveRegistrantsAboutCancellation($seminar->fresh('connector'), $validated['reason']);
+
         return back()->with('success', 'Seminar cancelled.');
     }
 
@@ -92,5 +95,17 @@ class SeminarModerationController extends Controller
         $this->interactions->markQuestionAnswered($request->user(), $question, $validated['answer']);
 
         return back()->with('success', 'Question answered.');
+    }
+
+    private function notifyActiveRegistrantsAboutCancellation(Seminar $seminar, string $reason): void
+    {
+        $seminar->registrants()
+            ->active()
+            ->with('user')
+            ->chunkById(100, function ($registrants) use ($seminar, $reason): void {
+                foreach ($registrants as $registrant) {
+                    $registrant->user?->notify(new SeminarCancelledNotification($seminar, $reason));
+                }
+            });
     }
 }

@@ -9,6 +9,10 @@ use App\Models\SeminarQuestion;
 use App\Models\SeminarRegistrant;
 use App\Models\SeminarSpeaker;
 use App\Models\User;
+use App\Notifications\Seminars\SeminarCancelledNotification;
+use App\Notifications\Seminars\SeminarSpeakerAssignedNotification;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class ConnectorSeminarManagementTest extends TestCase
@@ -186,6 +190,8 @@ class ConnectorSeminarManagementTest extends TestCase
 
     public function test_connector_can_assign_platform_and_external_speakers(): void
     {
+        Notification::fake();
+
         $owner = User::factory()->create(['role' => 'learner']);
         $owner->assignRole('learner');
         $connector = $this->createVerifiedConnector($owner);
@@ -233,6 +239,89 @@ class ConnectorSeminarManagementTest extends TestCase
             'display_name' => 'External Advocate',
             'user_id' => null,
         ]);
+        Notification::assertSentTo($instructor, SeminarSpeakerAssignedNotification::class);
+        Notification::assertSentTo($learner, SeminarSpeakerAssignedNotification::class);
+    }
+
+    public function test_connector_cancellation_notifies_active_registrants(): void
+    {
+        Notification::fake();
+
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $learner = $this->createCompletedLearner();
+        $cancelledLearner = $this->createCompletedLearner();
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'published',
+        ]);
+
+        $seminar->registrants()->create([
+            'user_id' => $learner->id,
+            'status' => 'registered',
+            'participant_type' => 'learner',
+            'registered_at' => now(),
+        ]);
+        $seminar->registrants()->create([
+            'user_id' => $cancelledLearner->id,
+            'status' => 'cancelled',
+            'participant_type' => 'learner',
+            'registered_at' => now(),
+            'cancelled_at' => now(),
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.cancel', [$connector, $seminar]), [
+                'cancellation_reason' => 'Venue emergency.',
+            ])
+            ->assertRedirect();
+
+        Notification::assertSentTo($learner, SeminarCancelledNotification::class);
+        Notification::assertNotSentTo($cancelledLearner, SeminarCancelledNotification::class);
+    }
+
+    public function test_connector_can_export_owned_registrants_only(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $otherOwner = User::factory()->create(['role' => 'learner']);
+        $otherOwner->assignRole('learner');
+        $otherConnector = $this->createVerifiedConnector($otherOwner);
+        $learner = $this->createCompletedLearner();
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'published',
+        ]);
+        $otherSeminar = Seminar::query()->create([
+            ...$this->seminarPayload(['title' => 'Other Seminar']),
+            'connector_id' => $otherConnector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'published',
+        ]);
+
+        $seminar->registrants()->create([
+            'user_id' => $learner->id,
+            'status' => 'registered',
+            'participant_type' => 'learner',
+            'registered_at' => now(),
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->get(route('connector.seminars.registrants.export', [$connector, $seminar]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
+        $this->assertStringContainsString($learner->email, $this->streamedContent($response));
+
+        $this->actingAs($owner)
+            ->get(route('connector.seminars.registrants.export', [$connector, $otherSeminar]))
+            ->assertNotFound();
     }
 
     public function test_duplicate_platform_speaker_and_other_connector_speaker_edits_are_blocked(): void
@@ -298,5 +387,13 @@ class ConnectorSeminarManagementTest extends TestCase
             'learner_age_categories' => ['kids', 'teen'],
             'location' => null,
         ], $overrides);
+    }
+
+    private function streamedContent(TestResponse $response): string
+    {
+        ob_start();
+        $response->baseResponse->sendContent();
+
+        return (string) ob_get_clean();
     }
 }

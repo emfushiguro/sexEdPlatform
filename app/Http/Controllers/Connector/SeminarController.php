@@ -9,6 +9,7 @@ use App\Http\Requests\Connector\StoreSeminarRequest;
 use App\Http\Requests\Connector\UpdateSeminarRequest;
 use App\Models\Connector;
 use App\Models\Seminar;
+use App\Notifications\Seminars\SeminarCancelledNotification;
 use App\Services\Seminars\SeminarAccessService;
 use App\Services\Seminars\SeminarAttendanceService;
 use Illuminate\Http\RedirectResponse;
@@ -139,6 +140,8 @@ class SeminarController extends Controller
             'cancellation_reason' => $validated['cancellation_reason'],
         ]);
 
+        $this->notifyActiveRegistrantsAboutCancellation($seminar->fresh('connector'), $validated['cancellation_reason']);
+
         return back()->with('success', 'Seminar cancelled.');
     }
 
@@ -180,5 +183,17 @@ class SeminarController extends Controller
             'schedule' => $startsAt,
             'is_premium' => false,
         ];
+    }
+
+    private function notifyActiveRegistrantsAboutCancellation(Seminar $seminar, string $reason): void
+    {
+        $seminar->registrants()
+            ->active()
+            ->with('user')
+            ->chunkById(100, function ($registrants) use ($seminar, $reason): void {
+                foreach ($registrants as $registrant) {
+                    $registrant->user?->notify(new SeminarCancelledNotification($seminar, $reason));
+                }
+            });
     }
 }

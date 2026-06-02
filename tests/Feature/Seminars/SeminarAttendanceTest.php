@@ -5,6 +5,7 @@ namespace Tests\Feature\Seminars;
 use App\Models\Connector;
 use App\Models\Seminar;
 use App\Models\User;
+use Illuminate\Testing\TestResponse;
 use Tests\Feature\Connectors\ConnectorTestHelpers;
 use Tests\TestCase;
 
@@ -73,6 +74,36 @@ class SeminarAttendanceTest extends TestCase
         $this->assertSame('attended', $attendance->fresh()->status);
     }
 
+    public function test_connector_can_export_owned_attendance_only(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $otherConnector = $this->connector();
+        $seminar = $this->seminar($connector);
+        $otherSeminar = $this->seminar($otherConnector, ['title' => 'Other']);
+        $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+
+        $seminar->attendances()->create([
+            'user_id' => $learner->id,
+            'joined_at' => now()->subMinutes(8),
+            'left_at' => now(),
+            'total_seconds' => 480,
+            'status' => 'attended',
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->get(route('connector.seminars.attendance.export', [$connector, $seminar]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
+        $this->assertStringContainsString($learner->email, $this->streamedContent($response));
+
+        $this->actingAs($owner)
+            ->get(route('connector.seminars.attendance.export', [$connector, $otherSeminar]))
+            ->assertNotFound();
+    }
+
     private function connector(): Connector
     {
         $owner = User::factory()->create(['role' => 'learner']);
@@ -109,5 +140,13 @@ class SeminarAttendanceTest extends TestCase
             'learner_age_categories' => ['adult'],
             'livestream_channel' => 'seminar-test-channel-'.str()->random(6),
         ], $overrides));
+    }
+
+    private function streamedContent(TestResponse $response): string
+    {
+        ob_start();
+        $response->baseResponse->sendContent();
+
+        return (string) ob_get_clean();
     }
 }

@@ -6,6 +6,8 @@ use App\Models\Connector;
 use App\Models\LearnerProfile;
 use App\Models\Seminar;
 use App\Models\User;
+use App\Notifications\Seminars\SeminarRegistrationConfirmedNotification;
+use Illuminate\Support\Facades\Notification;
 use Tests\Feature\Connectors\ConnectorTestHelpers;
 use Tests\TestCase;
 
@@ -44,6 +46,8 @@ class SeminarRegistrationTest extends TestCase
 
     public function test_eligible_learner_can_register_and_cancel_before_start(): void
     {
+        Notification::fake();
+
         $connector = $this->connector();
         $learner = $this->learnerWithAge('adults', now()->subYears(21));
         $seminar = $this->seminar($connector, ['learner_age_categories' => ['adult']]);
@@ -58,6 +62,7 @@ class SeminarRegistrationTest extends TestCase
             'status' => 'registered',
             'participant_type' => 'learner',
         ]);
+        Notification::assertSentTo($learner, SeminarRegistrationConfirmedNotification::class);
 
         $this->actingAs($learner)
             ->post(route('seminars.cancel-registration', $seminar))

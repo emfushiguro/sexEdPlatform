@@ -9,7 +9,10 @@
             <h2 class="text-2xl font-bold text-gray-900">{{ $seminar->title }}</h2>
             <p class="mt-1 text-sm text-gray-600">Livestream attendance summary.</p>
         </div>
-        <a href="{{ route('connector.seminars.show', [$connector, $seminar]) }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Back</a>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('connector.seminars.attendance.export', [$connector, $seminar]) }}" class="rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">Export CSV</a>
+            <a href="{{ route('connector.seminars.show', [$connector, $seminar]) }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Back</a>
+        </div>
     </div>
 
     <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">

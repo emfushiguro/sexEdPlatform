@@ -8,10 +8,9 @@ use App\Models\Seminar;
 use App\Services\Seminars\SeminarAccessService;
 use App\Services\Seminars\SeminarExportService;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-class SeminarAttendanceController extends Controller
+class SeminarRegistrantController extends Controller
 {
     public function __construct(
         private readonly SeminarAccessService $access,
@@ -19,23 +18,11 @@ class SeminarAttendanceController extends Controller
     ) {
     }
 
-    public function index(Request $request, Connector $connector, Seminar $seminar): View
-    {
-        $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
-        $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
-
-        return view('connectors.seminars.attendance', [
-            'connector' => $connector,
-            'seminar' => $seminar,
-            'attendances' => $seminar->attendances()->with('user')->latest('updated_at')->paginate(25),
-        ]);
-    }
-
     public function export(Request $request, Connector $connector, Seminar $seminar): StreamedResponse
     {
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
 
-        return $this->exports->attendanceCsv($seminar);
+        return $this->exports->registrantsCsv($seminar);
     }
 }

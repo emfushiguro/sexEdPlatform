@@ -5,6 +5,7 @@ namespace App\Services\Seminars;
 use App\Models\Seminar;
 use App\Models\SeminarSpeaker;
 use App\Models\User;
+use App\Notifications\Seminars\SeminarSpeakerAssignedNotification;
 use Illuminate\Validation\ValidationException;
 
 class SeminarSpeakerService
@@ -15,13 +16,17 @@ class SeminarSpeakerService
             throw ValidationException::withMessages(['user_id' => 'This platform user is already assigned as a speaker.']);
         }
 
-        return $seminar->speakers()->create([
+        $speaker = $seminar->speakers()->create([
             'user_id' => $user->id,
             'display_name' => $attributes['display_name'] ?? $user->name,
             'title' => $attributes['title'] ?? null,
             'bio' => $attributes['bio'] ?? null,
             'role' => $attributes['role'] ?? 'speaker',
         ]);
+
+        $user->notify(new SeminarSpeakerAssignedNotification($speaker->load('seminar.connector')));
+
+        return $speaker;
     }
 
     public function addExternalSpeaker(Seminar $seminar, array $attributes): SeminarSpeaker

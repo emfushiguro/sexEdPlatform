@@ -113,7 +113,10 @@
             </div>
 
             <div class="rounded-lg border border-gray-200 bg-white p-5">
-                <h3 class="font-bold text-gray-900">Registrants</h3>
+                <div class="flex items-center justify-between gap-3">
+                    <h3 class="font-bold text-gray-900">Registrants</h3>
+                    <a href="{{ route('connector.seminars.registrants.export', [$connector, $seminar]) }}" class="text-sm font-semibold text-purple-700 hover:text-purple-900">Export CSV</a>
+                </div>
                 <div class="mt-4 space-y-3">
                     @forelse($seminar->registrants as $registrant)
                         <div class="rounded-lg border border-gray-100 p-3">
