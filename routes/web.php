@@ -259,6 +259,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
         Route::post('/seminars/{seminar}/register', [SeminarBrowseController::class, 'register'])->name('seminars.register');
         Route::post('/seminars/{seminar}/cancel-registration', [SeminarBrowseController::class, 'cancelRegistration'])->name('seminars.cancel-registration');
+        Route::get('/seminars/{seminar}/join', [SeminarBrowseController::class, 'join'])->name('seminars.join');
+        Route::post('/seminars/{seminar}/agora-token', [SeminarBrowseController::class, 'agoraToken'])->name('seminars.agora-token');
     });
 
     // PayMongo Subscription Routes (Legacy - kept for backward compatibility)
