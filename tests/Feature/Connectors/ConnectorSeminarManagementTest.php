@@ -184,6 +184,105 @@ class ConnectorSeminarManagementTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_connector_can_assign_platform_and_external_speakers(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'draft',
+        ]);
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+        $learner = User::factory()->create(['role' => 'learner']);
+        $learner->assignRole('learner');
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
+                'speaker_type' => 'platform',
+                'user_id' => $instructor->id,
+                'title' => 'Instructor Speaker',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
+                'speaker_type' => 'platform',
+                'user_id' => $learner->id,
+                'title' => 'Community Speaker',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
+                'speaker_type' => 'external',
+                'display_name' => 'External Advocate',
+                'title' => 'Guest',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('seminar_speakers', [
+            'seminar_id' => $seminar->id,
+            'user_id' => $instructor->id,
+        ]);
+        $this->assertDatabaseHas('seminar_speakers', [
+            'seminar_id' => $seminar->id,
+            'display_name' => 'External Advocate',
+            'user_id' => null,
+        ]);
+    }
+
+    public function test_duplicate_platform_speaker_and_other_connector_speaker_edits_are_blocked(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $otherOwner = User::factory()->create(['role' => 'learner']);
+        $otherOwner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $otherConnector = $this->createVerifiedConnector($otherOwner);
+        $speakerUser = User::factory()->create(['role' => 'instructor']);
+        $speakerUser->assignRole('instructor');
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'draft',
+        ]);
+        $otherSeminar = Seminar::query()->create([
+            ...$this->seminarPayload(['title' => 'Other Seminar']),
+            'connector_id' => $otherConnector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
+                'speaker_type' => 'platform',
+                'user_id' => $speakerUser->id,
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
+                'speaker_type' => 'platform',
+                'user_id' => $speakerUser->id,
+            ])
+            ->assertSessionHasErrors('user_id');
+
+        $speaker = $otherSeminar->speakers()->create([
+            'user_id' => $speakerUser->id,
+            'display_name' => $speakerUser->name,
+            'role' => 'speaker',
+        ]);
+
+        $this->actingAs($owner)
+            ->delete(route('connector.seminars.speakers.destroy', [$connector, $otherSeminar, $speaker]))
+            ->assertNotFound();
+    }
+
     private function seminarPayload(array $overrides = []): array
     {
         return array_merge([

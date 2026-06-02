@@ -70,14 +70,46 @@
                 <h3 class="font-bold text-gray-900">Speakers</h3>
                 <div class="mt-4 space-y-3">
                     @forelse($seminar->speakers as $speaker)
-                        <div class="rounded-lg border border-gray-100 p-3">
-                            <div class="font-semibold text-gray-900">{{ $speaker->display_name }}</div>
-                            <div class="text-sm text-gray-500">{{ $speaker->title ?? 'Speaker' }}</div>
+                        <div class="flex items-start justify-between gap-3 rounded-lg border border-gray-100 p-3">
+                            <div>
+                                <div class="font-semibold text-gray-900">{{ $speaker->display_name }}</div>
+                                <div class="text-sm text-gray-500">{{ $speaker->title ?? 'Speaker' }}</div>
+                            </div>
+                            <form method="POST" action="{{ route('connector.seminars.speakers.destroy', [$connector, $seminar, $speaker]) }}">
+                                @csrf
+                                @method('DELETE')
+                                <button class="text-sm font-semibold text-red-600 hover:text-red-800">Remove</button>
+                            </form>
                         </div>
                     @empty
                         <p class="text-sm text-gray-500">No speakers assigned.</p>
                     @endforelse
                 </div>
+
+                <form method="POST" action="{{ route('connector.seminars.speakers.store', [$connector, $seminar]) }}" class="mt-5 space-y-3 border-t border-gray-100 pt-4">
+                    @csrf
+                    <input type="hidden" name="speaker_type" value="platform">
+                    <label class="block">
+                        <span class="text-sm font-semibold text-gray-700">Platform User ID</span>
+                        <input type="number" name="user_id" class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                    </label>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <input name="display_name" placeholder="Display name override" class="rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <input name="title" placeholder="Title" class="rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                    </div>
+                    <button class="rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">Add Platform Speaker</button>
+                </form>
+
+                <form method="POST" action="{{ route('connector.seminars.speakers.store', [$connector, $seminar]) }}" class="mt-4 space-y-3 border-t border-gray-100 pt-4">
+                    @csrf
+                    <input type="hidden" name="speaker_type" value="external">
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <input name="display_name" placeholder="External speaker name" class="rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        <input name="title" placeholder="Title" class="rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                    </div>
+                    <textarea name="bio" rows="2" placeholder="Short bio" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+                    <button class="rounded-lg border border-purple-200 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50">Add External Speaker</button>
+                </form>
             </div>
 
             <div class="rounded-lg border border-gray-200 bg-white p-5">
