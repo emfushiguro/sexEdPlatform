@@ -302,9 +302,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     // Seminars
     Route::prefix('seminars')->name('seminars.')->group(function () {
-        Route::get('/', fn() => view('admin.seminars.index'))->name('index');
-        Route::get('/create', fn() => view('admin.seminars.create'))->name('create');
-        Route::get('/{id}', fn($id) => view('admin.seminars.show', ['id' => $id]))->name('show');
+        Route::get('/', [Admin\SeminarModerationController::class, 'index'])->name('index');
+        Route::get('/{seminar}', [Admin\SeminarModerationController::class, 'show'])->name('show');
+        Route::post('/{seminar}/cancel', [Admin\SeminarModerationController::class, 'cancel'])->name('cancel');
+        Route::post('/{seminar}/comments/{comment}/hide', [Admin\SeminarModerationController::class, 'hideComment'])->name('comments.hide');
+        Route::post('/{seminar}/questions/{question}/hide', [Admin\SeminarModerationController::class, 'hideQuestion'])->name('questions.hide');
+        Route::post('/{seminar}/questions/{question}/answer', [Admin\SeminarModerationController::class, 'answerQuestion'])->name('questions.answer');
     });
 
     // Messages
