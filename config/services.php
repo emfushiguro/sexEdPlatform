@@ -58,4 +58,10 @@ return [
         'test_to' => env('MAILTRAP_TEST_TO'),
     ],
 
+    'agora' => [
+        'app_id' => env('AGORA_APP_ID'),
+        'app_certificate' => env('AGORA_APP_CERTIFICATE'),
+        'token_ttl_seconds' => (int) env('AGORA_TOKEN_TTL_SECONDS', 900),
+    ],
+
 ];
