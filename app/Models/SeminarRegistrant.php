@@ -10,8 +10,11 @@ class SeminarRegistrant extends Model
         'seminar_id',
         'user_id',
         'status',
+        'participant_type',
         'registered_at',
         'attended_at',
+        'cancelled_at',
+        'cancellation_reason',
     ];
 
     protected function casts(): array
@@ -19,6 +22,7 @@ class SeminarRegistrant extends Model
         return [
             'registered_at' => 'datetime',
             'attended_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -44,5 +48,10 @@ class SeminarRegistrant extends Model
     public function scopeAttended($query)
     {
         return $query->where('status', 'attended');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'registered')->whereNull('cancelled_at');
     }
 }

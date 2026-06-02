@@ -194,6 +194,26 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Refund::class);
     }
 
+    public function seminarSpeakerAssignments()
+    {
+        return $this->hasMany(SeminarSpeaker::class);
+    }
+
+    public function seminarComments()
+    {
+        return $this->hasMany(SeminarComment::class);
+    }
+
+    public function seminarQuestions()
+    {
+        return $this->hasMany(SeminarQuestion::class);
+    }
+
+    public function seminarAttendances()
+    {
+        return $this->hasMany(SeminarAttendance::class);
+    }
+
     public function invoices()
     {
         return $this->hasMany(Invoice::class);

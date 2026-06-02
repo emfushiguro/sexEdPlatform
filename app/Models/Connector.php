@@ -78,6 +78,11 @@ class Connector extends Model
         return $this->hasMany(Subscription::class);
     }
 
+    public function seminars(): HasMany
+    {
+        return $this->hasMany(Seminar::class);
+    }
+
     public function activeSubscription(): HasOne
     {
         return $this->hasOne(Subscription::class)
