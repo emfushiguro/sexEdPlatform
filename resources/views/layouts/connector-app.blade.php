@@ -30,7 +30,7 @@
             ['Dashboard', 'connector.dashboard', 'M3.75 5.75A2 2 0 0 1 5.75 3.75h3.5a2 2 0 0 1 2 2v3.5a2 2 0 0 1-2 2h-3.5a2 2 0 0 1-2-2v-3.5Zm9 0a2 2 0 0 1 2-2h3.5a2 2 0 0 1 2 2v3.5a2 2 0 0 1-2 2h-3.5a2 2 0 0 1-2-2v-3.5Zm-9 9a2 2 0 0 1 2-2h3.5a2 2 0 0 1 2 2v3.5a2 2 0 0 1-2 2h-3.5a2 2 0 0 1-2-2v-3.5Zm9 0a2 2 0 0 1 2-2h3.5a2 2 0 0 1 2 2v3.5a2 2 0 0 1-2 2h-3.5a2 2 0 0 1-2-2v-3.5Z'],
             ['Members', 'connector.members.index', 'M16 11a4 4 0 1 0-8 0m8 0a4 4 0 1 1-8 0m8 0v1a4 4 0 0 0 4 4m-12-5v1a4 4 0 0 1-4 4m4-4h8m-8 0a4 4 0 0 0-4 4v1m12-5a4 4 0 0 1 4 4v1'],
             ['Roles & Permissions', 'connector.roles.index', 'M12 3.75 5.25 6.5v5.25c0 4.25 2.85 7.9 6.75 8.95 3.9-1.05 6.75-4.7 6.75-8.95V6.5L12 3.75Zm-2.25 8.5 1.75 1.75 3.25-4'],
-            ['Seminars', 'connector.seminars', 'M7 3.75v2.5M17 3.75v2.5M4.75 8.75h14.5M6.25 5.25h11.5a2 2 0 0 1 2 2v10.5a2 2 0 0 1-2 2H6.25a2 2 0 0 1-2-2V7.25a2 2 0 0 1 2-2Z'],
+            ['Seminars', 'connector.seminars.index', 'M7 3.75v2.5M17 3.75v2.5M4.75 8.75h14.5M6.25 5.25h11.5a2 2 0 0 1 2 2v10.5a2 2 0 0 1-2 2H6.25a2 2 0 0 1-2-2V7.25a2 2 0 0 1 2-2Z'],
             ['Modules', 'connector.modules', 'M5 4.75h14v14H5zM8 8.75h8M8 12h8M8 15.25h5'],
             ['Educators', 'connector.educators', 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0'],
             ['Subscription', 'connector.subscription', 'M4.75 6.5h14.5M6 4.75h12A1.25 1.25 0 0 1 19.25 6v12A1.25 1.25 0 0 1 18 19.25H6A1.25 1.25 0 0 1 4.75 18V6A1.25 1.25 0 0 1 6 4.75Zm2 9.25h1m3 0h1'],

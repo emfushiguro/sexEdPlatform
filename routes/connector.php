@@ -6,6 +6,7 @@ use App\Http\Controllers\Connector\InvitationController;
 use App\Http\Controllers\Connector\MemberController;
 use App\Http\Controllers\Connector\RegistrationController;
 use App\Http\Controllers\Connector\RoleController;
+use App\Http\Controllers\Connector\SeminarController;
 use App\Http\Controllers\Connector\SubscriptionController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,9 +18,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/connector/{connector}/withdraw', [RegistrationController::class, 'withdraw'])->name('connector.withdraw');
 
     Route::get('/connector/{connector}/dashboard', [DashboardController::class, 'index'])->name('connector.dashboard');
-    Route::get('/connector/{connector}/seminars', [DashboardController::class, 'seminars'])->name('connector.seminars');
     Route::get('/connector/{connector}/modules', [DashboardController::class, 'modules'])->name('connector.modules');
     Route::get('/connector/{connector}/educators', [DashboardController::class, 'educators'])->name('connector.educators');
+
+    Route::get('/connector/{connector}/seminars', [SeminarController::class, 'index'])->name('connector.seminars.index');
+    Route::get('/connector/{connector}/seminars/create', [SeminarController::class, 'create'])->name('connector.seminars.create');
+    Route::post('/connector/{connector}/seminars', [SeminarController::class, 'store'])->name('connector.seminars.store');
+    Route::get('/connector/{connector}/seminars/{seminar}', [SeminarController::class, 'show'])->name('connector.seminars.show');
+    Route::get('/connector/{connector}/seminars/{seminar}/edit', [SeminarController::class, 'edit'])->name('connector.seminars.edit');
+    Route::put('/connector/{connector}/seminars/{seminar}', [SeminarController::class, 'update'])->name('connector.seminars.update');
+    Route::post('/connector/{connector}/seminars/{seminar}/publish', [SeminarController::class, 'publish'])->name('connector.seminars.publish');
+    Route::post('/connector/{connector}/seminars/{seminar}/cancel', [SeminarController::class, 'cancel'])->name('connector.seminars.cancel');
+    Route::post('/connector/{connector}/seminars/{seminar}/complete', [SeminarController::class, 'complete'])->name('connector.seminars.complete');
 
     Route::get('/connector/{connector}/members', [MemberController::class, 'index'])->name('connector.members.index');
     Route::patch('/connector/{connector}/members/{membership}/role', [MemberController::class, 'updateRole'])->name('connector.members.role');

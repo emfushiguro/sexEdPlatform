@@ -88,4 +88,116 @@ class ConnectorSeminarManagementTest extends TestCase
         $this->assertSame($attendance->id, $seminar->attendances->first()->id);
         $this->assertSame(['kids', 'teen'], $seminar->learner_age_categories);
     }
+
+    public function test_unverified_connector_cannot_open_create_page(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $connector->update(['status' => 'pending']);
+
+        $this->actingAs($owner)
+            ->get(route('connector.seminars.create', $connector))
+            ->assertForbidden();
+    }
+
+    public function test_member_without_manage_seminars_permission_is_denied(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $member = User::factory()->create(['role' => 'learner']);
+        $member->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $role = $this->createCustomRole($connector, ['connector.view_subscription']);
+
+        $connector->memberships()->create([
+            'user_id' => $member->id,
+            'connector_role_id' => $role->id,
+            'status' => 'active',
+            'accepted_at' => now(),
+        ]);
+
+        $this->actingAs($member)
+            ->get(route('connector.seminars.create', $connector))
+            ->assertForbidden();
+    }
+
+    public function test_authorized_connector_member_can_create_and_manage_lifecycle(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+
+        $response = $this->actingAs($owner)
+            ->post(route('connector.seminars.store', $connector), $this->seminarPayload());
+
+        $seminar = Seminar::query()->where('connector_id', $connector->id)->firstOrFail();
+
+        $response->assertRedirect(route('connector.seminars.show', [$connector, $seminar]));
+        $this->assertSame('draft', $seminar->status);
+        $this->assertSame('webinar', $seminar->type);
+        $this->assertNotNull($seminar->livestream_channel);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.publish', [$connector, $seminar]))
+            ->assertRedirect();
+
+        $this->assertSame('published', $seminar->fresh()->status);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.cancel', [$connector, $seminar]), [
+                'cancellation_reason' => 'Severe weather advisory.',
+            ])
+            ->assertRedirect();
+
+        $seminar->refresh();
+        $this->assertSame('cancelled', $seminar->status);
+        $this->assertSame($owner->id, $seminar->cancelled_by);
+
+        $seminar->update(['status' => 'published']);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.complete', [$connector, $seminar]))
+            ->assertRedirect();
+
+        $this->assertSame('completed', $seminar->fresh()->status);
+    }
+
+    public function test_connector_cannot_manage_another_connectors_seminar(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $otherOwner = User::factory()->create(['role' => 'learner']);
+        $otherOwner->assignRole('learner');
+
+        $connector = $this->createVerifiedConnector($owner);
+        $otherConnector = $this->createVerifiedConnector($otherOwner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $otherConnector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('connector.seminars.show', [$connector, $seminar]))
+            ->assertNotFound();
+    }
+
+    private function seminarPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'title' => 'Community Wellness Webinar',
+            'description' => 'A free community session.',
+            'purpose' => 'Support learner wellness.',
+            'type' => 'webinar',
+            'category' => 'health',
+            'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
+            'ends_at' => now()->addDay()->addHour()->format('Y-m-d H:i:s'),
+            'capacity' => 50,
+            'target_participants' => 'learners_and_instructors',
+            'learner_age_categories' => ['kids', 'teen'],
+            'location' => null,
+        ], $overrides);
+    }
 }
