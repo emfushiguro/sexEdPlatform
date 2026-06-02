@@ -18,12 +18,13 @@
         ['label' => 'Active Suspensions', 'value' => (int) ($stats['active'] ?? 0)],
         ['label' => 'Appeals Pending', 'value' => (int) ($stats['appeals_pending'] ?? 0)],
         ['label' => 'Permanent Suspensions', 'value' => (int) ($stats['permanent'] ?? 0)],
+        ['label' => 'Open Report Cases', 'value' => (int) ($stats['report_queue'] ?? 0)],
     ];
 @endphp
 
 @section('content')
     <div class="space-y-8">
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             @foreach($cards as $card)
                 <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-white via-brand-50/50 to-brand-100/40 p-5 shadow-theme-xs min-h-[116px]">
                     <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">{{ $card['label'] }}</p>
@@ -31,6 +32,72 @@
                 </div>
             @endforeach
         </div>
+
+        <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
+            <div class="border-b border-brand-100 bg-white px-6 py-5">
+                <h2 class="text-xl font-bold text-gray-900">Report Review Queue</h2>
+                <p class="mt-1 text-sm text-gray-600">Chat message and learner reports are reviewed here before escalation to violations, enforcement, suspension, or appeal workflow.</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-brand-50/45">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Case</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Source</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Report</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Reporter</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Reported User</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Status</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        @forelse($reportCases as $case)
+                            @php
+                                $sourceLabel = is_object($case->case_source) && method_exists($case->case_source, 'label')
+                                    ? $case->case_source->label()
+                                    : str_replace('_', ' ', ucwords((string) $case->case_source));
+                                $statusValue = is_object($case->status) ? $case->status->value : (string) $case->status;
+                                $summary = (array) ($case->dashboard_report_summary ?? []);
+                            @endphp
+                            <tr class="transition hover:bg-brand-50/55">
+                                <td class="px-6 py-4">
+                                    <p class="text-sm font-semibold text-gray-900">{{ $case->case_reference_code }}</p>
+                                    <p class="text-xs text-gray-500">{{ optional($case->created_at)?->format('M d, Y g:i A') }}</p>
+                                </td>
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-700">{{ $sourceLabel }}</td>
+                                <td class="max-w-md px-6 py-4">
+                                    <p class="text-sm font-semibold text-gray-900">{{ $summary['title'] ?? 'Reported item' }}</p>
+                                    <p class="mt-1 text-xs text-gray-500">{{ str_replace('_', ' ', (string) ($summary['detail'] ?? 'No reason recorded')) }}</p>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <p class="text-sm font-semibold text-gray-900">{{ $case->reporter?->name ?? 'Unknown reporter' }}</p>
+                                    <p class="text-xs text-gray-500">{{ $case->reporter?->email ?? 'No email' }}</p>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <p class="text-sm font-semibold text-gray-900">{{ $case->reportedUser?->name ?? 'Unknown user' }}</p>
+                                    <p class="text-xs text-gray-500">{{ $case->reportedUser?->email ?? 'No email' }}</p>
+                                </td>
+                                <td class="px-6 py-4 text-sm font-semibold text-gray-700">{{ str_replace('_', ' ', ucfirst($statusValue)) }}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <a href="{{ route('admin.moderation-suspensions.reports.show', $case) }}"
+                                       class="inline-flex items-center justify-center rounded-2xl border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">
+                                        Review
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500">No report cases are waiting for review.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            @include('admin.partials.table-pagination-footer', ['paginator' => $reportCases->links()])
+        </section>
 
         <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
             <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.17),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(59,12,177,0.14),_transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">

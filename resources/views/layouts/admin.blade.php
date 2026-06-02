@@ -277,6 +277,25 @@
                             </li>
 
                             <li>
+                                <a href="{{ route('admin.connectors.index') }}"
+                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
+                                    {{ request()->routeIs('admin.connectors.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if(request()->routeIs('admin.connectors.*'))
+                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
+                                @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.connectors.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M3 7h18M5 7v10a2 2 0 002 2h10a2 2 0 002-2V7M9 11h6"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                          x-cloak class="truncate">Connectors</span>
+                                </a>
+                            </li>
+
+                            <li>
                                 <a href="{{ route('admin.parent-verifications.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
                                     {{ request()->routeIs('admin.parent-verifications.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
@@ -330,34 +349,6 @@
                                                 <span data-testid="admin-nav-badge-module-reviews"
                                                       class="{{ $adminSidebarBadgeClasses }}">
                                                     {{ ($adminModerationCounts['pending_module_reviews'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_module_reviews'] ?? 0) }}
-                                                </span>
-                                            @endif
-                                        </span>
-                                    </span>
-                                </a>
-                            </li>
-
-                            <li>
-                                <a href="{{ route('admin.learner-reports.index') }}"
-                                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
-                                    {{ request()->routeIs('admin.learner-reports.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
-                                @if(request()->routeIs('admin.learner-reports.*'))
-                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
-                                @endif
-                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
-                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.learner-reports.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
-                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M7 8h10M7 12h6m-6 4h8M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                        </svg>
-                                    </span>
-                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="flex min-w-0 flex-1 items-center gap-2">
-                                        <span class="truncate">Learner Reports</span>
-                                        <span class="{{ $adminSidebarBadgeSlotClasses }}">
-                                            @if(($adminModerationCounts['pending_learner_reports'] ?? 0) > 0)
-                                                <span class="{{ $adminSidebarBadgeClasses }}">
-                                                    {{ ($adminModerationCounts['pending_learner_reports'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_learner_reports'] ?? 0) }}
                                                 </span>
                                             @endif
                                         </span>

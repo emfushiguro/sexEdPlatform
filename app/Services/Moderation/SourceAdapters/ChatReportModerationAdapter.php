@@ -15,7 +15,14 @@ class ChatReportModerationAdapter
 
     public function syncReport(MessageReport $messageReport): void
     {
-        $messageReport->loadMissing('message:id,sender_id,conversation_id');
+        $messageReport->loadMissing([
+            'message:id,sender_id,conversation_id,message_body',
+            'message.sender:id,name,email,role',
+            'conversation:id,participant_one_id,participant_two_id,conversation_type,context_key',
+            'conversation.participantOne:id,name,email,role',
+            'conversation.participantTwo:id,name,email,role',
+            'reporter:id,name,email,role',
+        ]);
 
         $reportedUserId = (int) ($messageReport->message?->sender_id ?? $messageReport->reporter_id);
 
@@ -33,7 +40,20 @@ class ChatReportModerationAdapter
                     'message_id' => (int) $messageReport->message_id,
                     'conversation_id' => (int) $messageReport->conversation_id,
                     'report_status' => (string) $messageReport->status,
+                    'reason_code' => $messageReport->reason_code,
+                    'custom_reason' => $messageReport->custom_reason,
                     'reason' => $messageReport->reason,
+                    'message_body' => $messageReport->message?->message_body,
+                    'sender_id' => $messageReport->message?->sender_id,
+                    'sender_email' => $messageReport->message?->sender?->email,
+                    'receiver_ids' => array_values(array_filter([
+                        $messageReport->conversation?->participant_one_id,
+                        $messageReport->conversation?->participant_two_id,
+                    ], fn ($id) => (int) $id !== (int) $messageReport->message?->sender_id)),
+                    'action_taken' => $messageReport->action_taken,
+                    'moderation_notes' => $messageReport->moderation_notes,
+                    'reviewed_by_admin_id' => $messageReport->reviewed_by_admin_id,
+                    'reviewed_at' => optional($messageReport->reviewed_at)?->toDateTimeString(),
                     'reported_at' => optional($messageReport->created_at)?->toDateTimeString(),
                     'updated_at' => optional($messageReport->updated_at)?->toDateTimeString(),
                 ],

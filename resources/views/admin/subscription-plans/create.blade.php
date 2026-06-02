@@ -4,142 +4,153 @@
 @section('page-title', 'Create Plan')
 
 @section('content')
- {{-- Back link --}}
- <div class="mb-5">
- <a href="{{ route('admin.subscription-plans.index') }}"
- class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-500 transition-colors">
- <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
- <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
- </svg>
- Back to Plans
- </a>
- </div>
+    {{-- Back link --}}
+    <div class="mb-5">
+        <a href="{{ route('admin.subscription-plans.index') }}"
+            class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-500 transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Plans
+        </a>
+    </div>
 
- <div class="max-w-2xl">
- <div class="rounded-2xl bg-white border border-gray-200 shadow-theme-xs p-6">
- <h2 class="text-lg font-semibold text-gray-900 mb-6">Plan Details</h2>
+    <div class="max-w-2xl">
+        <div class="p-6 bg-white border border-gray-200 rounded-2xl shadow-theme-xs">
+            <h2 class="mb-6 text-lg font-semibold text-gray-900">Plan Details</h2>
 
- <form method="POST" action="{{ route('admin.subscription-plans.store') }}" x-data="planForm()">
- @csrf
+            <form method="POST" action="{{ route('admin.subscription-plans.store') }}" x-data="planForm()">
+                @csrf
 
- @if($errors->any())
- <div class="mb-5 rounded-xl bg-rose-50 border border-rose-200 p-4">
- <p class="text-sm font-medium text-rose-700 mb-1">Please fix the following errors:</p>
- <ul class="list-disc list-inside text-sm text-rose-600 space-y-1">
- @foreach($errors->all() as $error)
- <li>{{ $error }}</li>
- @endforeach
- </ul>
- </div>
- @endif
+                @if ($errors->any())
+                    <div class="p-4 mb-5 border rounded-xl bg-rose-50 border-rose-200">
+                        <p class="mb-1 text-sm font-medium text-rose-700">Please fix the following errors:</p>
+                        <ul class="space-y-1 text-sm list-disc list-inside text-rose-600">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
- {{-- Name --}}
- <div class="mb-5">
- <label class="block text-sm font-medium text-gray-700 mb-1.5">Plan Name <span class="text-rose-500">*</span></label>
- <input type="text" name="name" value="{{ old('name') }}" required
- class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('name') border-rose-400 @enderror"/>
- @error('name')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
- </div>
+                {{-- Name --}}
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Plan Name <span
+                            class="text-rose-500">*</span></label>
+                    <input type="text" name="name" value="{{ old('name') }}" required
+                        class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('name') border-rose-400 @enderror" />
+                    @error('name')
+                        <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                    @enderror
+                </div>
 
- {{-- Description --}}
- <div class="mb-5">
- <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
- <textarea name="description" rows="3"
- class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 resize-none">{{ old('description') }}</textarea>
- </div>
+                {{-- Description --}}
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                    <textarea name="description" rows="3"
+                        class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 resize-none">{{ old('description') }}</textarea>
+                </div>
 
- {{-- Price & Trial --}}
- <div class="grid grid-cols-2 gap-4 mb-5">
- <div>
- <label class="block text-sm font-medium text-gray-700 mb-1.5">Price (₱/month) <span class="text-rose-500">*</span></label>
- <input type="number" name="price" value="{{ old('price', 0) }}" min="0" step="0.01" required
- class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('price') border-rose-400 @enderror"/>
- @error('price')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
- </div>
- <div>
- <label class="block text-sm font-medium text-gray-700 mb-1.5">Trial Days</label>
- <input type="number" name="trial_days" value="{{ old('trial_days', 0) }}" min="0" max="365"
- class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
- </div>
- </div>
+                {{-- Price & Trial --}}
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Price (₱/month) <span
+                                class="text-rose-500">*</span></label>
+                        <input type="number" name="price" value="{{ old('price', 0) }}" min="0" step="0.01"
+                            required
+                            class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 @error('price') border-rose-400 @enderror" />
+                        @error('price')
+                            <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Trial Days</label>
+                        <input type="number" name="trial_days" value="{{ old('trial_days', 0) }}" min="0"
+                            max="365"
+                            class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
+                    </div>
+                </div>
 
- {{-- Sort Order --}}
- <div class="mb-5">
- <label class="block text-sm font-medium text-gray-700 mb-1.5">Sort Order</label>
- <input type="number" name="sort_order" value="{{ old('sort_order', 10) }}" min="0"
- class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
- </div>
+                {{-- Sort Order --}}
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Sort Order</label>
+                    <input type="number" name="sort_order" value="{{ old('sort_order', 10) }}" min="0"
+                        class="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30" />
+                </div>
 
- {{-- Features (grouped checkboxes) --}}
- <div class="mb-5">
- <label class="block text-sm font-medium text-gray-700 mb-2">Features</label>
- @php $oldFeatures = old('feature_keys', []); @endphp
- @foreach(config('subscription_features.groups', []) as $groupKey => $group)
- <p class="text-xs font-bold text-gray-500 uppercase mb-1 {{ $loop->first ? 'mt-2' : 'mt-3' }}">
- {{ $group['label'] }}
- </p>
- <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-2 {{ ($group['dimmed'] ?? false) ? 'opacity-60' : '' }}">
- @foreach($group['features'] as $val => $label)
- <label class="flex items-center gap-2 cursor-pointer">
- <input type="checkbox" name="feature_keys[]" value="{{ $val }}"
- {{ in_array($val, $oldFeatures) ? 'checked' : '' }}
- class="w-4 h-4 rounded border-gray-300 {{ ($group['dimmed'] ?? false) ? 'text-brand-600 focus:ring-brand-500' : 'text-brand-500 focus:ring-brand-500' }}">
- <span class="text-sm {{ ($group['dimmed'] ?? false) ? 'text-gray-500 italic' : 'text-gray-700 ' }}">{{ $label }}</span>
- </label>
- @endforeach
- </div>
- @endforeach
- </div>
+                {{-- Features (grouped checkboxes) --}}
+                <div class="mb-5">
+                    <label class="block mb-2 text-sm font-medium text-gray-700">Features</label>
+                    @php $oldFeatures = old('feature_keys', []); @endphp
+                    @foreach (config('subscription_features.groups', []) as $groupKey => $group)
+                        <p class="text-xs font-bold text-gray-500 uppercase mb-1 {{ $loop->first ? 'mt-2' : 'mt-3' }}">
+                            {{ $group['label'] }}
+                        </p>
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-2 {{ $group['dimmed'] ?? false ? 'opacity-60' : '' }}">
+                            @foreach ($group['features'] as $val => $label)
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="feature_keys[]" value="{{ $val }}"
+                                        {{ in_array($val, $oldFeatures) ? 'checked' : '' }}
+                                        class="w-4 h-4 rounded border-gray-300 {{ $group['dimmed'] ?? false ? 'text-brand-600 focus:ring-brand-500' : 'text-brand-500 focus:ring-brand-500' }}">
+                                    <span
+                                        class="text-sm {{ $group['dimmed'] ?? false ? 'text-gray-500 italic' : 'text-gray-700 ' }}">{{ $label }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    @endforeach
+                </div>
 
- {{-- Active toggle --}}
- <div class="flex items-center gap-3 mb-6">
- <input type="hidden" name="is_active" value="0"/>
- <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }}
- class="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"/>
- <label for="is_active" class="text-sm font-medium text-gray-700 ">Active (visible to learners)</label>
- </div>
+                {{-- Active toggle --}}
+                <div class="flex items-center gap-3 mb-6">
+                    <input type="hidden" name="is_active" value="0" />
+                    <input type="checkbox" name="is_active" id="is_active" value="1"
+                        {{ old('is_active', true) ? 'checked' : '' }}
+                        class="w-4 h-4 border-gray-300 rounded text-brand-500 focus:ring-brand-500" />
+                    <label for="is_active" class="text-sm font-medium text-gray-700 ">Active (visible to learners)</label>
+                </div>
 
- {{-- Actions --}}
- <div class="flex items-center gap-3">
- <button type="submit"
- class="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-theme-xs">
- Create Plan
- </button>
- <a href="{{ route('admin.subscription-plans.index') }}"
- class="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
- Cancel
- </a>
- </div>
- </form>
- </div>
- </div>
+                {{-- Actions --}}
+                <div class="flex items-center gap-3">
+                    <button type="submit"
+                        class="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors shadow-theme-xs">
+                        Create Plan
+                    </button>
+                    <a href="{{ route('admin.subscription-plans.index') }}"
+                        class="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
-<script>
-function planForm() {
- return {
- addRow() {
- const list = this.$refs.featureList;
- const div = document.createElement('div');
- div.className = 'flex gap-2';
- div.innerHTML = `
+    <script>
+        function planForm() {
+            return {
+                addRow() {
+                    const list = this.$refs.featureList;
+                    const div = document.createElement('div');
+                    div.className = 'flex gap-2';
+                    div.innerHTML = `
  <input type="text" name="feature_keys[]" placeholder="e.g. Unlimited quizzes"
- class="flex-1 px-3 py-2 rounded-xl border border-gray-200 bg-transparent text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
+ class="flex-1 px-3 py-2 text-sm text-gray-900 bg-transparent border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
  <button type="button" onclick="this.closest('div').remove()"
- class="p-2 text-gray-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors">
+ class="p-2 text-gray-400 transition-colors rounded-lg hover:text-rose-500 hover:bg-rose-50">
  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
  </svg>
  </button>`;
- list.appendChild(div);
- },
- removeRow(el) {
- if (this.$refs.featureList.children.length > 1) {
- el.remove();
- }
- }
- };
-}
-</script>
+                    list.appendChild(div);
+                },
+                removeRow(el) {
+                    if (this.$refs.featureList.children.length > 1) {
+                        el.remove();
+                    }
+                }
+            };
+        }
+    </script>
 @endpush

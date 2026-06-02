@@ -12,6 +12,16 @@
         ->where('verification_status', 'approved')
         ->whereNotNull('relationship_verified_at')
         ->exists();
+    $switchableConnector = \App\Models\Connector::query()
+        ->where('status', 'verified')
+        ->where(function ($query) use ($authUser) {
+            $query->where('created_by', $authUser->id)
+                ->orWhereHas('memberships', fn ($membershipQuery) => $membershipQuery
+                    ->where('user_id', $authUser->id)
+                    ->where('status', 'active'));
+        })
+        ->latest()
+        ->first();
 
     $navItems = [
         [
@@ -25,6 +35,12 @@
             'route'  => 'subscription.index',
             'active' => request()->routeIs('subscription.*'),
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M4.75 5.5A.75.75 0 0 1 5.5 4.75h13a.75.75 0 0 1 .75.75v1.75H4.75V5.5Zm-1.5 3v10A2.75 2.75 0 0 0 6 21.25h12A2.75 2.75 0 0 0 20.75 18.5V8.5H3.25Zm1.5 1.5h15v9A1.25 1.25 0 0 1 18.5 20H6A1.25 1.25 0 0 1 4.75 18.75V9.5Zm1 5a.75.75 0 0 1 .75-.75H11a.75.75 0 0 1 0 1.5H6.5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z"/></svg>',
+        ],
+        [
+            'label'  => 'Connectors',
+            'route'  => 'connectors.index',
+            'active' => request()->routeIs('connectors.*') || request()->routeIs('connector.*'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M7.25 4A3.25 3.25 0 0 0 4 7.25v9.5A3.25 3.25 0 0 0 7.25 20h9.5A3.25 3.25 0 0 0 20 16.75v-9.5A3.25 3.25 0 0 0 16.75 4h-9.5ZM5.5 7.25A1.75 1.75 0 0 1 7.25 5.5h9.5a1.75 1.75 0 0 1 1.75 1.75v9.5a1.75 1.75 0 0 1-1.75 1.75h-9.5a1.75 1.75 0 0 1-1.75-1.75v-9.5ZM8 8.75A.75.75 0 0 1 8.75 8h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 8 8.75Zm0 3.25a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 8 12Zm.75 2.5a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5Z"/></svg>',
         ],
         [
             'label'  => 'My Modules',
@@ -57,6 +73,16 @@
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M7 2.75A4.25 4.25 0 0 0 2.75 7v10A4.25 4.25 0 0 0 7 21.25h10A4.25 4.25 0 0 0 21.25 17V7A4.25 4.25 0 0 0 17 2.75H7ZM4.25 7A2.75 2.75 0 0 1 7 4.25h10A2.75 2.75 0 0 1 19.25 7v10A2.75 2.75 0 0 1 17 19.25H7A2.75 2.75 0 0 1 4.25 17V7Zm4 2a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 0-1.5h-7.5Zm-.75 4.75a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1-.75-.75Zm.75 3.25a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5Z"/></svg>',
         ],
     ];
+
+    if ($switchableConnector) {
+        $navItems[] = [
+            'label'  => 'Connector Dashboard',
+            'route'  => 'connector.dashboard',
+            'params' => [$switchableConnector],
+            'active' => request()->routeIs('connector.dashboard'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M4.75 5.5A2.75 2.75 0 0 1 7.5 2.75h9A2.75 2.75 0 0 1 19.25 5.5v13a.75.75 0 0 1-1.5 0V5.5c0-.69-.56-1.25-1.25-1.25h-9c-.69 0-1.25.56-1.25 1.25v13a.75.75 0 0 1-1.5 0v-13Zm4 2A.75.75 0 0 1 9.5 6.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Zm0 4A.75.75 0 0 1 9.5 10.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75ZM8 19.25a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1-.75-.75Z"/></svg>',
+        ];
+    }
 
     if ($hasApprovedParentLinks) {
         $navItems[] = [
@@ -131,7 +157,7 @@
     <nav class="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1">
         @foreach($navItems as $item)
             <a
-                href="{{ route($item['route']) }}"
+                href="{{ route($item['route'], $item['params'] ?? []) }}"
                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
                     {{ $item['active']
                         ? 'text-white shadow-sm'

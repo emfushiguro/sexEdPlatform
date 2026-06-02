@@ -71,6 +71,19 @@
             </div>
         </div>
 
+        <section class="p-5 border bg-white dark:bg-gray-800 rounded-2xl border-gray-100 dark:border-gray-700">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="pl-3 border-l-4 border-purple-400">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">Connector Organization</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Register a barangay, school, health group, or advocacy organization for admin review.</p>
+                </div>
+                <a href="{{ route('connectors.register') }}"
+                   class="inline-flex items-center justify-center rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">
+                    Register Connector
+                </a>
+            </div>
+        </section>
+
         @if(($incomingParentInvitations ?? collect())->isNotEmpty())
             <section class="p-5 border bg-amber-50/60 dark:bg-amber-900/10 rounded-2xl border-amber-100/60 dark:border-amber-800/30">
                 <div class="flex items-center justify-between mb-4">

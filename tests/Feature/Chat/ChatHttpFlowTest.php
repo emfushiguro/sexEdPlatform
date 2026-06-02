@@ -413,7 +413,7 @@ class ChatHttpFlowTest extends TestCase
         $this->assertStringStartsWith('chat/voice_notes/', (string) $voiceAttachment->path);
     }
 
-    public function test_message_report_endpoint_creates_and_updates_single_report_per_user(): void
+    public function test_message_report_endpoint_creates_single_structured_report_per_user(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $admin->assignRole('admin');
@@ -437,7 +437,7 @@ class ChatHttpFlowTest extends TestCase
 
         $this->actingAs($admin)
             ->postJson(route('chat.messages.report', ['message' => $message->id]), [
-                'reason' => 'Contains inappropriate content.',
+                'reason_code' => 'offensive_language',
             ])
             ->assertOk()
             ->assertJsonPath('reported', true);
@@ -446,26 +446,105 @@ class ChatHttpFlowTest extends TestCase
             'message_id' => $message->id,
             'reporter_id' => $admin->id,
             'status' => 'open',
-            'reason' => 'Contains inappropriate content.',
+            'reason_code' => 'offensive_language',
         ]);
 
-        $this->actingAs($admin)
-            ->postJson(route('chat.messages.report', ['message' => $message->id]), [
-                'reason' => 'Updated rationale for moderation.',
-            ])
-            ->assertOk()
-            ->assertJsonPath('reported', true);
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_type' => User::class,
+            'notifiable_id' => $admin->id,
+        ]);
 
         $this->assertSame(1, DB::table('message_reports')
             ->where('message_id', $message->id)
             ->where('reporter_id', $admin->id)
             ->count());
+    }
+
+    public function test_message_report_endpoint_requires_structured_reason_and_other_custom_reason(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->assignRole('admin');
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+
+        $conversation = Conversation::create([
+            'participant_one_id' => $admin->id,
+            'participant_two_id' => $instructor->id,
+            'pair_key' => Conversation::makePairKey($admin->id, $instructor->id),
+            'conversation_type' => Conversation::TYPE_DIRECT,
+            'status' => Conversation::STATUS_ACTIVE,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_DIRECT, null),
+        ]);
+
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $instructor->id,
+            'message_body' => 'Please report this for moderation checks.',
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson(route('chat.messages.report', ['message' => $message->id]), [
+                'reason_code' => 'other',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('custom_reason');
+
+        $this->actingAs($admin)
+            ->postJson(route('chat.messages.report', ['message' => $message->id]), [
+                'reason_code' => 'child_safety_concern',
+                'custom_reason' => '',
+            ])
+            ->assertOk()
+            ->assertJsonPath('reported', true);
 
         $this->assertDatabaseHas('message_reports', [
             'message_id' => $message->id,
             'reporter_id' => $admin->id,
-            'reason' => 'Updated rationale for moderation.',
+            'status' => 'open',
+            'reason_code' => 'child_safety_concern',
+            'custom_reason' => null,
         ]);
+    }
+
+    public function test_message_report_endpoint_prevents_duplicate_report_spam_during_cooldown(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->assignRole('admin');
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+
+        $conversation = Conversation::create([
+            'participant_one_id' => $admin->id,
+            'participant_two_id' => $instructor->id,
+            'pair_key' => Conversation::makePairKey($admin->id, $instructor->id),
+            'conversation_type' => Conversation::TYPE_DIRECT,
+            'status' => Conversation::STATUS_ACTIVE,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_DIRECT, null),
+        ]);
+
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $instructor->id,
+            'message_body' => 'Please report this for moderation checks.',
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson(route('chat.messages.report', ['message' => $message->id]), [
+                'reason_code' => 'harassment_abuse',
+            ])
+            ->assertOk();
+
+        $this->actingAs($admin)
+            ->postJson(route('chat.messages.report', ['message' => $message->id]), [
+                'reason_code' => 'spam_repeated_messages',
+            ])
+            ->assertStatus(429)
+            ->assertJsonPath('reported', false);
+
+        $this->assertSame(1, DB::table('message_reports')
+            ->where('message_id', $message->id)
+            ->where('reporter_id', $admin->id)
+            ->count());
     }
 
     public function test_chat_status_endpoint_allows_manual_status_changes(): void

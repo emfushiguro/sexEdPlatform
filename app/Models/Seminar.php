@@ -24,9 +24,9 @@ class Seminar extends Model
 
     // Relationships
 
-    public function organizations()
+    public function connectors()
     {
-        return $this->belongsToMany(Organization::class, 'seminar_organizations');
+        return $this->belongsToMany(Connector::class, 'seminar_organizations', 'seminar_id', 'organization_id');
     }
 
     public function registrants()

@@ -16,6 +16,10 @@
         'currentUserName' => $user?->name,
         'currentUserRole' => $user?->role,
         'messageMutationWindowMinutes' => (int) config('chat.message_mutation_window_minutes', 15),
+        'reportReasons' => collect(\App\Enums\MessageReportReason::cases())
+            ->map(fn ($reason) => ['value' => $reason->value, 'label' => $reason->label()])
+            ->values()
+            ->all(),
         'initialConversationId' => request()->query('conversation_id'),
         'startContext' => $startContext,
     ];

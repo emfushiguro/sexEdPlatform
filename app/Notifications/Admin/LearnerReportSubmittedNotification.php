@@ -3,7 +3,9 @@
 namespace App\Notifications\Admin;
 
 use App\Enums\ContentReportTargetType;
+use App\Enums\ModerationCaseSource;
 use App\Models\ContentReport;
+use App\Models\ModerationCase;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -28,6 +30,11 @@ class LearnerReportSubmittedNotification extends Notification
             : (string) $this->report->target_type;
 
         $targetLabel = $targetTypeValue === ContentReportTargetType::Module->value ? 'module' : 'instructor';
+        $moderationCase = ModerationCase::query()
+            ->where('case_source', ModerationCaseSource::LearnerReport->value)
+            ->where('content_type', 'content_report')
+            ->where('content_id', $this->report->id)
+            ->first();
 
         return [
             'type' => 'learner_report_submitted',
@@ -37,7 +44,9 @@ class LearnerReportSubmittedNotification extends Notification
             'report_id' => $this->report->id,
             'target_type' => $targetTypeValue,
             'target_id' => (int) $this->report->target_id,
-            'action_url' => route('admin.learner-reports.show', $this->report),
+            'action_url' => $moderationCase
+                ? route('admin.moderation-suspensions.reports.show', $moderationCase)
+                : route('admin.moderation-suspensions.index'),
             'severity' => 'warning',
         ];
     }

@@ -7,6 +7,11 @@
         editingMessageId: null,
         editingBody: '',
         activeMenuMessageId: null,
+        reportingMessage: null,
+        reportReasonCode: '',
+        reportCustomReason: '',
+        reportSubmitting: false,
+        reportError: '',
         isRecording: false,
         mediaRecorder: null,
         recordingStream: null,
@@ -98,15 +103,52 @@
         closeMessageMenu() {
             this.activeMenuMessageId = null;
         },
-        async reportMessage(message) {
-            const reason = window.prompt('Optional reason for reporting this message:', '');
-
-            if (reason === null) {
+        openReportModal(message) {
+            this.reportingMessage = message;
+            this.reportReasonCode = '';
+            this.reportCustomReason = '';
+            this.reportError = '';
+            this.activeMenuMessageId = null;
+        },
+        closeReportModal() {
+            if (this.reportSubmitting) {
                 return;
             }
 
-            await $store.chat.reportMessage(message, reason);
-            this.activeMenuMessageId = null;
+            this.reportingMessage = null;
+            this.reportReasonCode = '';
+            this.reportCustomReason = '';
+            this.reportError = '';
+        },
+        async submitReport() {
+            if (!this.reportingMessage || !this.reportReasonCode) {
+                this.reportError = 'Choose a reporting reason.';
+                return;
+            }
+
+            if (this.reportReasonCode === 'other' && !this.reportCustomReason.trim()) {
+                this.reportError = 'Add a short explanation for Other.';
+                return;
+            }
+
+            this.reportSubmitting = true;
+            this.reportError = '';
+
+            try {
+                const response = await $store.chat.reportMessage(this.reportingMessage, {
+                    reason_code: this.reportReasonCode,
+                    custom_reason: this.reportReasonCode === 'other' ? this.reportCustomReason : '',
+                });
+
+                $store.chat.composerError = response?.message || 'Message reported for review.';
+                this.reportingMessage = null;
+                this.reportReasonCode = '';
+                this.reportCustomReason = '';
+            } catch (error) {
+                this.reportError = error?.response?.data?.message || 'Unable to submit this report right now.';
+            } finally {
+                this.reportSubmitting = false;
+            }
         },
         messageMenuAvailable(message) {
             return !message?.is_deleted;
@@ -492,7 +534,7 @@
                                 <button
                                     type="button"
                                     class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                    @click="reportMessage(message)"
+                                    @click.stop.prevent="openReportModal(message)"
                                 >
                                     <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
@@ -610,7 +652,62 @@
                     </div>
                 </template>
             </div>
+
         </template>
+    </div>
+
+    <div
+        class="fixed inset-0 z-[100000] flex items-center justify-center bg-gray-900/40 px-4"
+        x-show="reportingMessage"
+        x-cloak
+        data-chat-report-modal
+        @click.self="closeReportModal()"
+        @keydown.escape.window="closeReportModal()"
+    >
+        <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" @click.stop>
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-base font-bold text-gray-900">Report Message</h3>
+                    <p class="mt-1 text-sm text-gray-500">Choose the reason that best describes the issue.</p>
+                </div>
+                <button type="button" class="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" @click="closeReportModal()">
+                    <span class="sr-only">Close</span>
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                <p class="line-clamp-3 text-sm text-gray-700" x-text="reportingMessage?.message_body || 'Message unavailable.'"></p>
+            </div>
+
+            <div class="mt-4 space-y-2">
+                <template x-for="reason in $store.chat.reportReasons" :key="reason.value">
+                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50" :class="reportReasonCode === reason.value ? 'border-brand-300 bg-brand-50 text-brand-800' : 'text-gray-700'">
+                        <input type="radio" name="chat_report_reason" class="text-brand-600 focus:ring-brand-500" :value="reason.value" x-model="reportReasonCode">
+                        <span x-text="reason.label"></span>
+                    </label>
+                </template>
+            </div>
+
+            <label class="mt-4 block" x-show="reportReasonCode === 'other'">
+                <span class="mb-1 block text-xs font-semibold text-gray-600">Custom explanation</span>
+                <textarea x-model="reportCustomReason" rows="3" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100" placeholder="Briefly explain the issue."></textarea>
+            </label>
+
+            <p class="mt-3 text-sm font-semibold text-rose-600" x-show="reportError" x-text="reportError"></p>
+
+            <div class="mt-5 flex justify-end gap-2">
+                <button type="button" class="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50" @click="closeReportModal()">
+                    Cancel
+                </button>
+                <button type="button" class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60" :disabled="reportSubmitting" @click="submitReport()">
+                    <span x-show="!reportSubmitting">Submit Report</span>
+                    <span x-show="reportSubmitting">Submitting...</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <footer class="border-t border-gray-100 px-5 py-4 space-y-3">
@@ -740,5 +837,3 @@
         </template>
     </footer>
 </section>
-
-

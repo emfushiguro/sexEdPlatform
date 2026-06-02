@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Chat;
 
 use App\Events\Chat\MessageSent;
 use App\Events\Chat\MessageUpdated;
+use App\Enums\MessageReportReason;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\SendMessageRequest;
 use App\Http\Requests\Chat\UpdateMessageRequest;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\MessageReport;
+use App\Models\User;
+use App\Notifications\Admin\MessageReportSubmittedNotification;
 use App\Services\Chat\ChatAuthorizationService;
 use App\Services\Chat\ChatService;
 use App\Services\Moderation\SourceAdapters\ChatReportModerationAdapter;
@@ -17,6 +20,7 @@ use App\Support\Chat\MessagePayloadFormatter;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MessageController extends Controller
 {
@@ -211,8 +215,37 @@ class MessageController extends Controller
         }
 
         $validated = $request->validate([
-            'reason' => ['nullable', 'string', 'max:500'],
+            'reason_code' => ['required_without:reason', Rule::in(MessageReportReason::values())],
+            'custom_reason' => ['nullable', 'string', 'max:1000', 'required_if:reason_code,other'],
+            'reason' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        $reasonCode = (string) ($validated['reason_code'] ?? '');
+        $customReason = trim((string) ($validated['custom_reason'] ?? ''));
+
+        if ($reasonCode === '' && trim((string) ($validated['reason'] ?? '')) !== '') {
+            $reasonCode = MessageReportReason::Other->value;
+            $customReason = trim((string) $validated['reason']);
+        }
+
+        $existingReport = MessageReport::query()
+            ->where('message_id', $message->id)
+            ->where('reporter_id', $user->id)
+            ->whereIn('status', ['open', 'under_review'])
+            ->first();
+
+        if ($existingReport && $existingReport->updated_at?->gt(now()->subMinutes(15))) {
+            return response()->json([
+                'reported' => false,
+                'message' => 'You already reported this message recently. The moderation team has it in review.',
+            ], 429);
+        }
+
+        $reason = MessageReportReason::tryFrom($reasonCode);
+        $reasonText = $reason?->label() ?? str_replace('_', ' ', $reasonCode);
+        if ($reason === MessageReportReason::Other && $customReason !== '') {
+            $reasonText = $customReason;
+        }
 
         $messageReport = MessageReport::query()->updateOrCreate(
             [
@@ -221,12 +254,22 @@ class MessageController extends Controller
             ],
             [
                 'conversation_id' => $message->conversation_id,
-                'reason' => trim((string) ($validated['reason'] ?? '')) ?: null,
+                'reason_code' => $reasonCode,
+                'custom_reason' => $reason === MessageReportReason::Other ? $customReason : null,
+                'reason' => trim($reasonText) ?: null,
                 'status' => 'open',
             ]
         );
 
         $this->chatReportModerationAdapter->syncReport($messageReport);
+
+        if ($messageReport->wasRecentlyCreated) {
+            User::query()
+                ->where('role', 'admin')
+                ->orWhereHas('roles', fn ($query) => $query->where('name', 'admin'))
+                ->get()
+                ->each(fn (User $admin) => $admin->notify(new MessageReportSubmittedNotification($messageReport)));
+        }
 
         return response()->json([
             'reported' => true,

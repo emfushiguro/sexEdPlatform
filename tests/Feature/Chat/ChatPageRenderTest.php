@@ -23,7 +23,9 @@ class ChatPageRenderTest extends TestCase
             ->assertOk()
             ->assertSee('data-chat-root', false)
             ->assertSee('data-chat-conversation-list', false)
-            ->assertSee('data-chat-conversation-panel', false);
+            ->assertSee('data-chat-conversation-panel', false)
+            ->assertSee('data-chat-report-modal', false)
+            ->assertSee('@click.stop.prevent="openReportModal(message)"', false);
 
         $this->actingAs($instructor)
             ->get(route('chat.page'))

@@ -40,14 +40,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::post('/{reviewRequest}/penalty/confirm', [Admin\ContentReviewController::class, 'confirmPenalty'])->name('penalty.confirm');
     });
 
-    Route::prefix('learner-reports')->name('learner-reports.')->group(function () {
-        Route::get('/', [Admin\LearnerReportController::class, 'index'])->name('index');
-        Route::get('/{report}', [Admin\LearnerReportController::class, 'show'])->name('show');
-        Route::put('/{report}', [Admin\LearnerReportController::class, 'update'])->name('update');
-    });
-
     Route::prefix('moderation-suspensions')->name('moderation-suspensions.')->group(function () {
         Route::get('/', [Admin\ModerationSuspensionController::class, 'index'])->name('index');
+        Route::get('/reports/{moderationCase}', [Admin\ModerationSuspensionController::class, 'showReport'])->name('reports.show');
+        Route::put('/reports/{moderationCase}', [Admin\ModerationSuspensionController::class, 'updateReport'])->name('reports.update');
         Route::get('/{userSuspension}', [Admin\ModerationSuspensionController::class, 'show'])->name('show');
     });
 
@@ -265,6 +261,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::delete('/{application}', [Admin\InstructorApplicationController::class, 'destroy'])->name('destroy');
     });
 
+    Route::prefix('connectors')->name('connectors.')->group(function () {
+        Route::get('/', [Admin\ConnectorController::class, 'index'])->name('index');
+        Route::get('/{connector}', [Admin\ConnectorController::class, 'show'])->name('show');
+        Route::post('/{connector}/approve', [Admin\ConnectorController::class, 'approve'])->name('approve');
+        Route::post('/{connector}/reject', [Admin\ConnectorController::class, 'reject'])->name('reject');
+        Route::post('/{connector}/suspend', [Admin\ConnectorController::class, 'suspend'])->name('suspend');
+    });
+
     Route::prefix('parent-verifications')->name('parent-verifications.')->group(function () {
         Route::get('/', [Admin\ParentChildVerificationController::class, 'index'])->name('index');
 
@@ -306,9 +310,4 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Messages
     Route::get('/messages', fn() => view('admin.messages.index'))->name('messages.index');
 
-    // Organizations
-    Route::prefix('organizations')->name('organizations.')->group(function () {
-        Route::get('/', fn() => view('admin.organizations.index'))->name('index');
-        Route::get('/{id}', fn($id) => view('admin.organizations.show', ['id' => $id]))->name('show');
-    });
 });

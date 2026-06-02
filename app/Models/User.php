@@ -221,9 +221,14 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(Clinic::class);
     }
 
-    public function organization()
+    public function connectorMemberships()
     {
-        return $this->hasOne(Organization::class);
+        return $this->hasMany(ConnectorMembership::class);
+    }
+
+    public function ownedConnectors()
+    {
+        return $this->hasMany(Connector::class, 'created_by');
     }
 
     public function moduleEnrollments()
@@ -413,11 +418,6 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isClinic(): bool
     {
         return $this->role === 'clinic';
-    }
-
-    public function isOrganization(): bool
-    {
-        return $this->role === 'organization';
     }
 
     public function isInstructor(): bool

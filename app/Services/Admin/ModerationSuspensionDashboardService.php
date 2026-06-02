@@ -2,15 +2,24 @@
 
 namespace App\Services\Admin;
 
+use App\Enums\ContentReportTargetType;
+use App\Enums\ModerationCaseSource;
+use App\Models\ContentReport;
+use App\Models\Message;
+use App\Models\MessageReport;
+use App\Models\ModerationCase;
+use App\Models\Module;
 use App\Models\SuspensionAppeal;
+use App\Models\User;
 use App\Models\UserSuspension;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ModerationSuspensionDashboardService
 {
     /**
      * @param  array<string, mixed>  $filters
-     * @return array{stats: array<string, int>, suspensions: LengthAwarePaginator}
+     * @return array{stats: array<string, int>, suspensions: LengthAwarePaginator, reportCases: LengthAwarePaginator}
      */
     public function buildIndexPayload(array $filters): array
     {
@@ -60,14 +69,51 @@ class ModerationSuspensionDashboardService
 
         $suspensions = $query->paginate($perPage)->withQueryString();
 
+        $reportCases = ModerationCase::query()
+            ->with([
+                'reporter:id,name,email,role',
+                'reportedUser:id,name,email,role',
+            ])
+            ->whereIn('case_source', [
+                ModerationCaseSource::ChatReport->value,
+                ModerationCaseSource::LearnerReport->value,
+            ])
+            ->when($search !== '', function ($builder) use ($search): void {
+                $builder->where(function ($nested) use ($search): void {
+                    $nested->where('case_reference_code', 'like', '%' . $search . '%')
+                        ->orWhere('content_type', 'like', '%' . $search . '%')
+                        ->orWhereHas('reporter', function ($reporterQuery) use ($search): void {
+                            $reporterQuery->where('name', 'like', '%' . $search . '%')
+                                ->orWhere('email', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('reportedUser', function ($reportedQuery) use ($search): void {
+                            $reportedQuery->where('name', 'like', '%' . $search . '%')
+                                ->orWhere('email', 'like', '%' . $search . '%');
+                        });
+                });
+            })
+            ->latest('id')
+            ->paginate(10, ['*'], 'reports_page')
+            ->withQueryString();
+
+        $this->enrichReportCaseSummaries($reportCases->getCollection());
+
         return [
             'stats' => [
                 'total' => UserSuspension::query()->count(),
                 'active' => UserSuspension::query()->where('status', 'active')->count(),
                 'appeals_pending' => UserSuspension::query()->where('appeal_status', 'appeal_pending')->count(),
                 'permanent' => UserSuspension::query()->where('status', 'active')->whereNull('ends_at')->count(),
+                'report_queue' => ModerationCase::query()
+                    ->whereIn('case_source', [
+                        ModerationCaseSource::ChatReport->value,
+                        ModerationCaseSource::LearnerReport->value,
+                    ])
+                    ->whereIn('status', ['reported', 'triaged', 'investigating'])
+                    ->count(),
             ],
             'suspensions' => $suspensions,
+            'reportCases' => $reportCases,
         ];
     }
 
@@ -97,5 +143,119 @@ class ModerationSuspensionDashboardService
             'suspension' => $suspension,
             'appeals' => $appeals,
         ];
+    }
+
+    /**
+     * @return array{case: ModerationCase, sourceType: string, sourceReport: MessageReport|ContentReport|null, conversationMessages: Collection<int, Message>, targetModel: Module|User|null}
+     */
+    public function buildReportPayload(ModerationCase $moderationCase): array
+    {
+        $moderationCase->loadMissing([
+            'reporter:id,name,email,role',
+            'reportedUser:id,name,email,role',
+            'reviewedByAdmin:id,name,email,role',
+        ]);
+
+        if ($this->caseSourceValue($moderationCase) === ModerationCaseSource::ChatReport->value) {
+            $sourceReport = MessageReport::query()
+                ->with([
+                    'reporter:id,name,email,role',
+                    'reviewedByAdmin:id,name,email,role',
+                    'message.sender:id,name,email,role',
+                    'conversation.participantOne:id,name,email,role',
+                    'conversation.participantTwo:id,name,email,role',
+                ])
+                ->find($moderationCase->content_id);
+
+            $conversationMessages = $sourceReport?->conversation
+                ? $sourceReport->conversation->messages()
+                    ->with('sender:id,name,email,role')
+                    ->oldest('id')
+                    ->get()
+                : new Collection();
+
+            return [
+                'case' => $moderationCase,
+                'sourceType' => 'chat',
+                'sourceReport' => $sourceReport,
+                'conversationMessages' => $conversationMessages,
+                'targetModel' => null,
+            ];
+        }
+
+        $sourceReport = ContentReport::query()
+            ->with([
+                'reporter:id,name,email,role',
+                'assignedAdmin:id,name,email,role',
+                'resolvedBy:id,name,email,role',
+                'activities.actor:id,name,email,role',
+            ])
+            ->find($moderationCase->content_id);
+
+        $targetModel = $sourceReport ? $this->resolveLearnerReportTarget($sourceReport) : null;
+
+        return [
+            'case' => $moderationCase,
+            'sourceType' => 'learner',
+            'sourceReport' => $sourceReport,
+            'conversationMessages' => new Collection(),
+            'targetModel' => $targetModel,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, ModerationCase>  $cases
+     */
+    private function enrichReportCaseSummaries(Collection $cases): void
+    {
+        $cases->each(function (ModerationCase $case): void {
+            if ($this->caseSourceValue($case) === ModerationCaseSource::ChatReport->value) {
+                $report = MessageReport::query()
+                    ->with('message:id,message_body,sender_id')
+                    ->find($case->content_id);
+
+                $case->setAttribute('dashboard_report_summary', [
+                    'title' => $report?->message?->message_body
+                        ? str($report->message->message_body)->limit(90)->toString()
+                        : 'Reported chat message',
+                    'detail' => $report?->reason ?: (string) ($report?->reason_code ?? 'No reason recorded'),
+                    'status' => (string) ($report?->status ?? $case->status->value),
+                ]);
+
+                return;
+            }
+
+            $report = ContentReport::query()->find($case->content_id);
+            $target = $report ? $this->resolveLearnerReportTarget($report) : null;
+            $targetName = $target instanceof Module
+                ? $target->title
+                : ($target instanceof User ? $target->name : 'Reported learner content');
+
+            $case->setAttribute('dashboard_report_summary', [
+                'title' => $targetName,
+                'detail' => (string) ($report?->reason_code ?? 'No reason recorded'),
+                'status' => (string) ($report?->status?->value ?? $case->status->value),
+            ]);
+        });
+    }
+
+    private function resolveLearnerReportTarget(ContentReport $report): Module|User|null
+    {
+        $targetType = $report->target_type instanceof ContentReportTargetType
+            ? $report->target_type
+            : ContentReportTargetType::from((string) $report->target_type);
+
+        if ($targetType === ContentReportTargetType::Module) {
+            return Module::query()->with('creator:id,name,email,role')->find((int) $report->target_id);
+        }
+
+        return User::query()->find((int) $report->target_id);
+    }
+
+    private function caseSourceValue(ModerationCase $case): string
+    {
+        return $case->case_source instanceof ModerationCaseSource
+            ? $case->case_source->value
+            : (string) $case->case_source;
     }
 }

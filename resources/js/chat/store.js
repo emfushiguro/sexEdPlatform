@@ -3,6 +3,7 @@ const defaultState = {
     currentUserName: null,
     currentUserRole: null,
     messageMutationWindowMinutes: 15,
+    reportReasons: [],
     conversations: [],
     messagesByConversation: {},
     messageWindowsByConversation: {},
@@ -254,6 +255,10 @@ document.addEventListener('alpine:init', () => {
 
             if (payload.messageMutationWindowMinutes) {
                 this.messageMutationWindowMinutes = Number(payload.messageMutationWindowMinutes || this.messageMutationWindowMinutes || 15);
+            }
+
+            if (Array.isArray(payload.reportReasons)) {
+                this.reportReasons = payload.reportReasons;
             }
 
             this.adminDiscoveryTab = this.adminDiscoveryTab || 'learners';
@@ -1285,13 +1290,14 @@ document.addEventListener('alpine:init', () => {
             return response.data.message;
         },
 
-        async reportMessage(message, reason = '') {
+        async reportMessage(message, payload = {}) {
             if (!message?.id) {
                 return null;
             }
 
             const response = await window.axios.post(`/chat/messages/${message.id}/report`, {
-                reason: String(reason || '').trim() || undefined,
+                reason_code: payload.reason_code,
+                custom_reason: String(payload.custom_reason || '').trim() || undefined,
             });
 
             return response.data;

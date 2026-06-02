@@ -15,8 +15,21 @@ class MessageReport extends Model
         'conversation_id',
         'reporter_id',
         'status',
+        'reason_code',
+        'custom_reason',
         'reason',
+        'action_taken',
+        'moderation_notes',
+        'reviewed_by_admin_id',
+        'reviewed_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'reviewed_at' => 'datetime',
+        ];
+    }
 
     public function message(): BelongsTo
     {
@@ -31,5 +44,10 @@ class MessageReport extends Model
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reporter_id');
+    }
+
+    public function reviewedByAdmin(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by_admin_id');
     }
 }

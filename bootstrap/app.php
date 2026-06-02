@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/admin.php'));
             Route::middleware('web')
                 ->group(base_path('routes/instructor.php'));
+            Route::middleware('web')
+                ->group(base_path('routes/connector.php'));
             Route::middleware(['web', 'auth'])
                 ->get('/suspension-status', [\App\Http\Controllers\Moderation\SuspensionStatusController::class, 'show'])
                 ->name('moderation.suspension-status');

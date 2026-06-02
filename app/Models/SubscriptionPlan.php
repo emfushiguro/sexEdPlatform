@@ -89,6 +89,11 @@ class SubscriptionPlan extends Model
         return $query->orderBy('sort_order')->orderByDesc('id');
     }
 
+    public function scopeForConnectors($query)
+    {
+        return $query->where('plan_audience', 'connectors');
+    }
+
     public function getPrice(): float
     {
         return (float) ($this->price ?? 0.0);

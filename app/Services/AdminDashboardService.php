@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\InstructorApplication;
 use App\Models\ContentReport;
+use App\Models\MessageReport;
 use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ParentChildAccount;
@@ -38,6 +39,9 @@ class AdminDashboardService
 
         $pendingLearnerReports = ContentReport::query()
             ->whereIn('status', ['submitted', 'under_review'])
+            ->count();
+        $pendingMessageReports = MessageReport::query()
+            ->whereIn('status', ['open', 'under_review'])
             ->count();
 
         return [
@@ -120,11 +124,11 @@ class AdminDashboardService
                     'accent' => 'violet',
                 ],
                 [
-                    'label' => 'Learner Reports',
-                    'count' => $pendingLearnerReports,
+                    'label' => 'Report Review Queue',
+                    'count' => $pendingLearnerReports + $pendingMessageReports,
                     'cta_label' => 'Open Queue',
-                    'cta_route' => route('admin.learner-reports.index'),
-                    'description' => 'Handle learner-submitted safety and content concerns.',
+                    'cta_route' => route('admin.moderation-suspensions.index'),
+                    'description' => 'Review learner and chat safety reports in the centralized moderation dashboard.',
                     'accent' => 'rose',
                 ],
             ],
