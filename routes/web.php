@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\SeminarBrowseController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\Learner\ProfileCompletionController;
 use App\Http\Controllers\Learner\SubscriptionController;
@@ -251,6 +252,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/refund', [SubscriptionController::class, 'requestRefund'])->name('refund');
         Route::post('/renew', [SubscriptionController::class, 'renew'])->name('renew');
         Route::get('/status', [SubscriptionController::class, 'checkStatus'])->name('status');
+    });
+
+    Route::middleware('verified')->group(function () {
+        Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
+        Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
+        Route::post('/seminars/{seminar}/register', [SeminarBrowseController::class, 'register'])->name('seminars.register');
+        Route::post('/seminars/{seminar}/cancel-registration', [SeminarBrowseController::class, 'cancelRegistration'])->name('seminars.cancel-registration');
     });
 
     // PayMongo Subscription Routes (Legacy - kept for backward compatibility)
