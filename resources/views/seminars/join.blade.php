@@ -50,7 +50,11 @@
             const heartbeat = window.setInterval(() => post(@json(route('seminars.attendance.heartbeat', $seminar))), 60000);
             window.addEventListener('beforeunload', () => {
                 window.clearInterval(heartbeat);
-                navigator.sendBeacon?.(@json(route('seminars.attendance.leave', $seminar)), new Blob([], { type: 'application/json' }));
+                fetch(@json(route('seminars.attendance.leave', $seminar)), {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                    keepalive: true,
+                }).catch(() => {});
             });
         })();
     </script>
