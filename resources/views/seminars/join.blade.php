@@ -40,3 +40,18 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        (() => {
+            const token = document.querySelector('meta[name="csrf-token"]')?.content;
+            const post = (url) => fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' } }).catch(() => {});
+            post(@json(route('seminars.attendance.join', $seminar)));
+            const heartbeat = window.setInterval(() => post(@json(route('seminars.attendance.heartbeat', $seminar))), 60000);
+            window.addEventListener('beforeunload', () => {
+                window.clearInterval(heartbeat);
+                navigator.sendBeacon?.(@json(route('seminars.attendance.leave', $seminar)), new Blob([], { type: 'application/json' }));
+            });
+        })();
+    </script>
+@endpush

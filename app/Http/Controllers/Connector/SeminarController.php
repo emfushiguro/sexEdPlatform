@@ -10,6 +10,7 @@ use App\Http\Requests\Connector\UpdateSeminarRequest;
 use App\Models\Connector;
 use App\Models\Seminar;
 use App\Services\Seminars\SeminarAccessService;
+use App\Services\Seminars\SeminarAttendanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -18,8 +19,10 @@ use Illuminate\View\View;
 
 class SeminarController extends Controller
 {
-    public function __construct(private readonly SeminarAccessService $access)
-    {
+    public function __construct(
+        private readonly SeminarAccessService $access,
+        private readonly SeminarAttendanceService $attendance,
+    ) {
     }
 
     public function index(Request $request, Connector $connector): View
@@ -149,6 +152,7 @@ class SeminarController extends Controller
             'completed_at' => now(),
             'completed_by' => $request->user()->id,
         ]);
+        $this->attendance->finalize($seminar);
 
         return back()->with('success', 'Seminar marked completed.');
     }
