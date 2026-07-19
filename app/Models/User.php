@@ -246,6 +246,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ConnectorMembership::class);
     }
 
+    public function connectorMembershipRequests()
+    {
+        return $this->hasMany(ConnectorMembershipRequest::class);
+    }
+
     public function ownedConnectors()
     {
         return $this->hasMany(Connector::class, 'created_by');

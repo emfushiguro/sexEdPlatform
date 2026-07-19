@@ -68,6 +68,11 @@ class Connector extends Model
         return $this->hasMany(ConnectorInvitation::class);
     }
 
+    public function membershipRequests(): HasMany
+    {
+        return $this->hasMany(ConnectorMembershipRequest::class);
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(ConnectorReview::class);

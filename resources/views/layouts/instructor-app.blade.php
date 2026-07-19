@@ -166,6 +166,9 @@
                         'items' => [
                             ['label' => 'Learners',     'route' => 'instructor.users.index',       'active' => request()->routeIs('instructor.users.*'),       'badge' => 0,            'icon' => 'users'],
                             ['label' => 'Modules',     'route' => 'instructor.modules.index',     'active' => request()->routeIs('instructor.modules.*'),     'badge' => 0,            'icon' => 'book'],
+                            ['label' => 'Browse Seminars', 'route' => 'instructor.seminars.index', 'active' => request()->routeIs('instructor.seminars.*') || request()->routeIs('seminars.*'), 'badge' => 0, 'icon' => 'clipboard'],
+                            ['label' => 'Browse Connectors', 'route' => 'instructor.connectors.index', 'active' => request()->routeIs('instructor.connectors.*') || request()->routeIs('connectors.*'), 'badge' => 0, 'icon' => 'grid'],
+                            ['label' => 'Speaker Invitations', 'route' => 'instructor.speaker-invitations.index', 'active' => request()->routeIs('instructor.speaker-invitations.*'), 'badge' => 0, 'icon' => 'users'],
                             ['label' => 'Lessons',     'route' => 'instructor.lessons.index',     'active' => request()->routeIs('instructor.lessons.*'),     'badge' => 0,            'icon' => 'document'],
                             ['label' => 'Quizzes',     'route' => 'instructor.quizzes.index',     'active' => request()->routeIs('instructor.quizzes.*'),     'badge' => 0,            'icon' => 'clipboard'],
                             ['label' => 'Assessment Logs', 'route' => 'instructor.assessments.index', 'active' => request()->routeIs('instructor.assessments.*'), 'badge' => 0,            'icon' => 'chart'],

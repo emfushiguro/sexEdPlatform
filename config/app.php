@@ -65,7 +65,19 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | User-facing Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Dates remain stored and processed in UTC. Seminar forms and displays use
+    | this timezone so Philippine schedules are entered and shown correctly.
+    |
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Manila'),
 
     /*
     |--------------------------------------------------------------------------

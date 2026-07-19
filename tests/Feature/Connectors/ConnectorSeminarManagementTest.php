@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Connectors;
 
+use App\Models\InstructorProfile;
 use App\Models\Seminar;
 use App\Models\SeminarAttendance;
 use App\Models\SeminarComment;
@@ -143,6 +144,14 @@ class ConnectorSeminarManagementTest extends TestCase
         $this->assertNotNull($seminar->livestream_channel);
 
         $this->actingAs($owner)
+            ->post(route('connector.seminars.submit-review', [$connector, $seminar]))
+            ->assertRedirect();
+
+        $this->assertSame('pending_review', $seminar->fresh()->status);
+
+        $seminar->update(['status' => 'approved']);
+
+        $this->actingAs($owner)
             ->post(route('connector.seminars.publish', [$connector, $seminar]))
             ->assertRedirect();
 
@@ -167,6 +176,187 @@ class ConnectorSeminarManagementTest extends TestCase
         $this->assertSame('completed', $seminar->fresh()->status);
     }
 
+    public function test_connector_submits_draft_for_review(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.submit-review', [$connector, $seminar]))
+            ->assertRedirect();
+
+        $seminar->refresh();
+        $this->assertSame('pending_review', $seminar->status);
+        $this->assertSame($owner->id, $seminar->submitted_for_review_by);
+        $this->assertNotNull($seminar->submitted_for_review_at);
+    }
+
+    public function test_connector_cannot_publish_draft_directly(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.publish', [$connector, $seminar]))
+            ->assertStatus(422);
+
+        $this->assertSame('draft', $seminar->fresh()->status);
+    }
+
+    public function test_connector_can_publish_approved_seminar(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'approved',
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.publish', [$connector, $seminar]))
+            ->assertRedirect();
+
+        $seminar->refresh();
+        $this->assertSame('published', $seminar->status);
+        $this->assertSame($owner->id, $seminar->published_by);
+        $this->assertNotNull($seminar->published_at);
+    }
+
+    public function test_connector_can_archive_non_active_seminar(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'rejected',
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.archive', [$connector, $seminar]))
+            ->assertRedirect();
+
+        $seminar->refresh();
+        $this->assertSame('archived', $seminar->status);
+        $this->assertSame($owner->id, $seminar->archived_by);
+        $this->assertNotNull($seminar->archived_at);
+    }
+
+    public function test_connector_detail_groups_lifecycle_actions_and_confirms_completion(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'published',
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('connector.seminars.show', [$connector, $seminar]))
+            ->assertOk()
+            ->assertDontSee('Channel Details')
+            ->assertDontSee($seminar->livestream_channel)
+            ->assertSee('Edit')
+            ->assertSee('Archive')
+            ->assertSee('Complete Seminar')
+            ->assertSee('Cancel Seminar')
+            ->assertSee('Complete seminar?')
+            ->assertSee('This marks the seminar completed and finalizes attendance records.');
+    }
+
+    public function test_connector_can_create_seminar_without_description(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+
+        $response = $this->actingAs($owner)
+            ->post(route('connector.seminars.store', $connector), $this->seminarPayload([
+                'title' => 'Family Learning Webinar',
+                'description' => null,
+                'purpose' => 'Help families understand safe online learning habits.',
+                'category' => 'education',
+                'learner_age_categories' => ['teen'],
+            ]));
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('seminars', [
+            'title' => 'Family Learning Webinar',
+            'purpose' => 'Help families understand safe online learning habits.',
+            'description' => null,
+            'category' => 'education',
+        ]);
+    }
+
+    public function test_seminar_times_are_entered_in_philippine_time_and_stored_in_utc(): void
+    {
+        $this->travelTo('2026-07-19 00:00:00');
+        config(['app.timezone' => 'UTC', 'app.display_timezone' => 'Asia/Manila']);
+
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.store', $connector), $this->seminarPayload([
+                'title' => 'Philippine Time Webinar',
+                'starts_at' => '2026-07-20T16:00',
+                'ends_at' => '2026-07-20T18:00',
+            ]))
+            ->assertRedirect();
+
+        $seminar = Seminar::query()->where('title', 'Philippine Time Webinar')->firstOrFail();
+
+        $this->assertSame('2026-07-20 08:00:00', $seminar->starts_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-07-20 10:00:00', $seminar->ends_at->format('Y-m-d H:i:s'));
+
+        $this->actingAs($owner)
+            ->get(route('connector.seminars.edit', [$connector, $seminar]))
+            ->assertOk()
+            ->assertSee('value="2026-07-20T16:00"', false)
+            ->assertSee('Starts At (Philippine Time)');
+    }
+
+    public function test_other_category_requires_custom_category(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.store', $connector), $this->seminarPayload([
+                'title' => 'Local Skills Session',
+                'purpose' => 'Introduce community learning options.',
+                'type' => 'physical',
+                'category' => 'other',
+                'learner_age_categories' => ['adult'],
+                'location' => 'Community Hall',
+            ]))
+            ->assertSessionHasErrors('custom_category');
+    }
+
     public function test_connector_cannot_manage_another_connectors_seminar(): void
     {
         $owner = User::factory()->create(['role' => 'learner']);
@@ -188,7 +378,46 @@ class ConnectorSeminarManagementTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_connector_can_assign_platform_and_external_speakers(): void
+    public function test_speaker_search_returns_only_active_approved_instructors(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'draft',
+        ]);
+        $instructor = User::factory()->create(['role' => 'instructor', 'name' => 'Ada Instructor', 'status' => 'active']);
+        $instructor->assignRole('instructor');
+        InstructorProfile::create(['user_id' => $instructor->id, 'bio' => 'Instructor bio.']);
+        $availableInstructor = User::factory()->create(['role' => 'instructor', 'name' => 'Grace Instructor', 'status' => 'active']);
+        $availableInstructor->assignRole('instructor');
+        InstructorProfile::create(['user_id' => $availableInstructor->id, 'bio' => 'Instructor bio.']);
+        $inactiveInstructor = User::factory()->create(['role' => 'instructor', 'name' => 'Inactive Instructor', 'status' => 'inactive']);
+        $inactiveInstructor->assignRole('instructor');
+        InstructorProfile::create(['user_id' => $inactiveInstructor->id, 'bio' => 'Instructor bio.']);
+        $learner = User::factory()->create(['role' => 'learner']);
+        $learner->assignRole('learner');
+
+        $seminar->speakers()->create([
+            'user_id' => $instructor->id,
+            'display_name' => $instructor->name,
+            'role' => 'speaker',
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->getJson(route('connector.seminars.speakers.search', [$connector, $seminar, 'search' => 'Instructor']));
+
+        $response->assertOk()
+            ->assertJsonFragment(['id' => $availableInstructor->id])
+            ->assertJsonMissing(['id' => $instructor->id])
+            ->assertJsonMissing(['id' => $inactiveInstructor->id])
+            ->assertJsonMissing(['id' => $learner->id]);
+    }
+
+    public function test_connector_adds_speaker_by_selected_instructor(): void
     {
         Notification::fake();
 
@@ -203,44 +432,82 @@ class ConnectorSeminarManagementTest extends TestCase
         ]);
         $instructor = User::factory()->create(['role' => 'instructor']);
         $instructor->assignRole('instructor');
-        $learner = User::factory()->create(['role' => 'learner']);
-        $learner->assignRole('learner');
+        InstructorProfile::create(['user_id' => $instructor->id, 'bio' => 'Instructor bio.']);
 
         $this->actingAs($owner)
             ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
-                'speaker_type' => 'platform',
                 'user_id' => $instructor->id,
-                'title' => 'Instructor Speaker',
-            ])
-            ->assertRedirect();
-
-        $this->actingAs($owner)
-            ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
-                'speaker_type' => 'platform',
-                'user_id' => $learner->id,
-                'title' => 'Community Speaker',
-            ])
-            ->assertRedirect();
-
-        $this->actingAs($owner)
-            ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
-                'speaker_type' => 'external',
-                'display_name' => 'External Advocate',
-                'title' => 'Guest',
             ])
             ->assertRedirect();
 
         $this->assertDatabaseHas('seminar_speakers', [
             'seminar_id' => $seminar->id,
             'user_id' => $instructor->id,
-        ]);
-        $this->assertDatabaseHas('seminar_speakers', [
-            'seminar_id' => $seminar->id,
-            'display_name' => 'External Advocate',
-            'user_id' => null,
+            'display_name' => $instructor->name,
         ]);
         Notification::assertSentTo($instructor, SeminarSpeakerAssignedNotification::class);
-        Notification::assertSentTo($learner, SeminarSpeakerAssignedNotification::class);
+    }
+
+    public function test_ineligible_user_cannot_be_added_as_speaker(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'draft',
+        ]);
+        $learner = User::factory()->create(['role' => 'learner']);
+        $learner->assignRole('learner');
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
+                'user_id' => $learner->id,
+            ])
+            ->assertSessionHasErrors('user_id');
+    }
+
+    public function test_speaker_invitation_can_be_reviewed_once_and_cancelled_without_deleting_history(): void
+    {
+        Notification::fake();
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $seminar = Seminar::query()->create([
+            ...$this->seminarPayload(),
+            'connector_id' => $connector->id,
+            'schedule' => now()->addDay(),
+            'status' => 'draft',
+        ]);
+        $instructor = User::factory()->create(['role' => 'instructor', 'status' => 'active']);
+        $instructor->assignRole('instructor');
+        InstructorProfile::create(['user_id' => $instructor->id, 'bio' => 'Instructor bio.']);
+
+        $this->actingAs($owner)->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
+            'user_ids' => [$instructor->id],
+            'invitation_message' => 'Please share your practical experience.',
+        ])->assertRedirect();
+
+        $invitation = $seminar->speakers()->where('user_id', $instructor->id)->firstOrFail();
+        $this->assertSame('pending', $invitation->status);
+        $this->assertSame('Please share your practical experience.', $invitation->invitation_message);
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.speaker-invitations.accept', $invitation))
+            ->assertRedirect();
+        $this->assertSame('accepted', $invitation->fresh()->status);
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.speaker-invitations.decline', $invitation))
+            ->assertStatus(422);
+
+        $this->actingAs($owner)
+            ->delete(route('connector.seminars.speakers.destroy', [$connector, $seminar, $invitation]))
+            ->assertRedirect();
+        $this->assertSame('cancelled', $invitation->fresh()->status);
+        $this->assertModelExists($invitation);
     }
 
     public function test_connector_cancellation_notifies_active_registrants(): void
@@ -334,6 +601,7 @@ class ConnectorSeminarManagementTest extends TestCase
         $otherConnector = $this->createVerifiedConnector($otherOwner);
         $speakerUser = User::factory()->create(['role' => 'instructor']);
         $speakerUser->assignRole('instructor');
+        InstructorProfile::create(['user_id' => $speakerUser->id, 'bio' => 'Instructor bio.']);
         $seminar = Seminar::query()->create([
             ...$this->seminarPayload(),
             'connector_id' => $connector->id,
@@ -349,14 +617,12 @@ class ConnectorSeminarManagementTest extends TestCase
 
         $this->actingAs($owner)
             ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
-                'speaker_type' => 'platform',
                 'user_id' => $speakerUser->id,
             ])
             ->assertRedirect();
 
         $this->actingAs($owner)
             ->post(route('connector.seminars.speakers.store', [$connector, $seminar]), [
-                'speaker_type' => 'platform',
                 'user_id' => $speakerUser->id,
             ])
             ->assertSessionHasErrors('user_id');

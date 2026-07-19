@@ -7,6 +7,7 @@ use App\Enums\SeminarType;
 use App\Models\Seminar;
 use App\Models\User;
 use App\Services\Connectors\ConnectorAccessService;
+use App\Support\Agora\RtcTokenBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Validation\ValidationException;
@@ -17,24 +18,24 @@ class AgoraTokenService
         private readonly ConnectorAccessService $connectorAccess,
         private readonly SeminarRegistrationService $registrations,
         private readonly SeminarSpeakerService $speakers,
-    ) {
-    }
+    ) {}
 
     public function tokenFor(User $user, Seminar $seminar, string $role): array
     {
         $role = strtolower($role);
 
         $this->ensureConfigured();
-        $this->abortUnlessJoinWindow($seminar);
-
         if ($role === 'audience') {
-            abort_unless($this->canJoinAsAudience($user, $seminar), 403);
-        } elseif (in_array($role, ['host', 'speaker'], true)) {
-            abort_unless($this->canPublish($user, $seminar), 403);
-            $role = $this->speakers->isSpeaker($user, $seminar) ? 'speaker' : 'host';
+            abort_unless($this->canJoinAsAudience($user, $seminar) && $this->isLive($seminar), 403);
+        } elseif ($role === 'host') {
+            abort_unless($this->canHost($user, $seminar), 403);
+        } elseif ($role === 'speaker') {
+            abort_unless($this->speakers->isSpeaker($user, $seminar) && $this->isLive($seminar), 403);
         } else {
             abort(422, 'Unknown livestream role.');
         }
+
+        $this->abortUnlessJoinWindow($seminar);
 
         $ttl = (int) config('services.agora.token_ttl_seconds', 900);
         $expiresAt = now()->addSeconds($ttl);
@@ -48,6 +49,8 @@ class AgoraTokenService
             'can_publish' => in_array($role, ['host', 'speaker'], true),
             'token' => $this->buildRtcToken($seminar->livestream_channel, $uid, $role, $expiresAt),
             'expires_at' => $expiresAt->toISOString(),
+            'livestream_status' => $seminar->livestream_status ?? 'scheduled',
+            'livestream_started_at' => $seminar->livestream_started_at?->toISOString(),
         ];
     }
 
@@ -64,14 +67,42 @@ class AgoraTokenService
 
     public function canPublish(User $user, Seminar $seminar): bool
     {
-        if ($this->speakers->isSpeaker($user, $seminar)) {
-            return true;
-        }
+        return $this->speakers->isSpeaker($user, $seminar) || $this->canHost($user, $seminar);
+    }
+
+    public function canHost(User $user, Seminar $seminar): bool
+    {
 
         $connector = $seminar->connector;
 
         return $connector !== null
             && $this->connectorAccess->hasPermission($user, $connector, 'connector.manage_seminars');
+    }
+
+    public function roleFor(User $user, Seminar $seminar): ?string
+    {
+        if ($this->canHost($user, $seminar)) {
+            return 'host';
+        }
+
+        if ($this->speakers->isSpeaker($user, $seminar)) {
+            return 'speaker';
+        }
+
+        return $this->canJoinAsAudience($user, $seminar) ? 'audience' : null;
+    }
+
+    public function canJoinLivestream(User $user, Seminar $seminar): bool
+    {
+        $role = $this->roleFor($user, $seminar);
+
+        return $this->isInJoinWindow($seminar)
+            && ($role === 'host' || ($role !== null && $this->isLive($seminar)));
+    }
+
+    public function isLive(Seminar $seminar): bool
+    {
+        return $seminar->livestream_status === 'live';
     }
 
     public function isInJoinWindow(Seminar $seminar): bool
@@ -94,6 +125,20 @@ class AgoraTokenService
 
     protected function buildRtcToken(string $channel, int $uid, string $role, Carbon $expiresAt): string
     {
+        $token = RtcTokenBuilder::build(
+            (string) Config::get('services.agora.app_id'),
+            (string) Config::get('services.agora.app_certificate'),
+            $channel,
+            $uid,
+            in_array($role, ['host', 'speaker'], true),
+            $expiresAt->timestamp,
+        );
+
+        if ($token !== '') {
+            return $token;
+        }
+
+        // ponytail: test/local fallback for non-Agora fake credentials; real 32-char Agora IDs use AccessToken2 above.
         $payload = implode('|', [
             Config::get('services.agora.app_id'),
             $channel,

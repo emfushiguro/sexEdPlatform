@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Services\Seminars\SeminarCategoryService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class Seminar extends Model
 {
@@ -16,15 +18,20 @@ class Seminar extends Model
         'description',
         'purpose',
         'category',
+        'custom_category',
         'status',
         'location',
         'schedule',
         'starts_at',
         'ends_at',
         'capacity',
+        'registration_approval_mode',
         'target_participants',
         'learner_age_categories',
         'livestream_channel',
+        'livestream_status',
+        'livestream_started_at',
+        'livestream_ended_at',
         'is_premium',
         'cancelled_at',
         'cancelled_by',
@@ -33,6 +40,18 @@ class Seminar extends Model
         'completed_by',
         'admin_moderation_status',
         'admin_moderation_reason',
+        'submitted_for_review_at',
+        'submitted_for_review_by',
+        'approved_at',
+        'approved_by',
+        'rejected_at',
+        'rejected_by',
+        'rejection_reason',
+        'moderator_note',
+        'published_at',
+        'published_by',
+        'archived_at',
+        'archived_by',
     ];
 
     protected function casts(): array
@@ -43,8 +62,15 @@ class Seminar extends Model
             'ends_at' => 'datetime',
             'learner_age_categories' => 'array',
             'is_premium' => 'boolean',
+            'livestream_started_at' => 'datetime',
+            'livestream_ended_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'completed_at' => 'datetime',
+            'submitted_for_review_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
+            'published_at' => 'datetime',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -83,6 +109,11 @@ class Seminar extends Model
         return $this->hasMany(SeminarAttendance::class);
     }
 
+    public function moderationReviews(): HasMany
+    {
+        return $this->hasMany(SeminarModerationReview::class);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'seminar_registrants')
@@ -98,6 +129,61 @@ class Seminar extends Model
     public function completedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'completed_by');
+    }
+
+    public function submittedForReviewBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_for_review_by');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejectedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function publishedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'published_by');
+    }
+
+    public function archivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'archived_by');
+    }
+
+    public function categoryDisplayName(): string
+    {
+        return app(SeminarCategoryService::class)->displayName($this);
+    }
+
+    public function localStartsAt(): ?Carbon
+    {
+        return ($this->starts_at ?? $this->schedule)?->copy()->timezone(config('app.display_timezone'));
+    }
+
+    public function localEndsAt(): ?Carbon
+    {
+        return $this->ends_at?->copy()->timezone(config('app.display_timezone'));
+    }
+
+    public function formattedSchedule(): string
+    {
+        $startsAt = $this->localStartsAt();
+
+        if (! $startsAt) {
+            return 'To be announced';
+        }
+
+        $endsAt = $this->localEndsAt();
+
+        return $startsAt->format('M d, Y h:i A')
+            .($endsAt ? ' - '.$endsAt->format('h:i A') : '')
+            .' PHT';
     }
 
     public function scopePublished($query)

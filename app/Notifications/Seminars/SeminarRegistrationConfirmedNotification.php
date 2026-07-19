@@ -11,9 +11,7 @@ class SeminarRegistrationConfirmedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly Seminar $seminar)
-    {
-    }
+    public function __construct(private readonly Seminar $seminar) {}
 
     public function via(object $notifiable): array
     {
@@ -40,7 +38,7 @@ class SeminarRegistrationConfirmedNotification extends Notification
             'seminar_title' => $this->seminar->title,
             'connector_id' => $this->seminar->connector_id,
             'connector_name' => $this->seminar->connector?->name,
-            'starts_at' => optional($this->seminar->starts_at ?? $this->seminar->schedule)?->toDateTimeString(),
+            'starts_at' => optional($this->seminar->starts_at ?? $this->seminar->schedule)?->toISOString(),
             'action_url' => route('seminars.show', $this->seminar),
             'severity' => 'success',
         ];
@@ -48,13 +46,6 @@ class SeminarRegistrationConfirmedNotification extends Notification
 
     private function formattedSchedule(): string
     {
-        $startsAt = $this->seminar->starts_at ?? $this->seminar->schedule;
-        $endsAt = $this->seminar->ends_at;
-
-        if (! $startsAt) {
-            return 'To be announced';
-        }
-
-        return $startsAt->format('M d, Y h:i A').($endsAt ? ' - '.$endsAt->format('h:i A') : '');
+        return $this->seminar->formattedSchedule();
     }
 }

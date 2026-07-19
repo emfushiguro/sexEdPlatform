@@ -10,6 +10,7 @@ class SeminarAttendance extends Model
     protected $fillable = [
         'seminar_id',
         'user_id',
+        'role',
         'joined_at',
         'left_at',
         'total_seconds',

@@ -11,9 +11,7 @@ class SeminarSpeakerAssignedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly SeminarSpeaker $speaker)
-    {
-    }
+    public function __construct(private readonly SeminarSpeaker $speaker) {}
 
     public function via(object $notifiable): array
     {
@@ -25,11 +23,12 @@ class SeminarSpeakerAssignedNotification extends Notification
         $seminar = $this->speaker->seminar;
 
         return (new MailMessage)
-            ->subject('Seminar speaker assignment')
-            ->line('You have been assigned as a speaker for '.$seminar->title.'.')
+            ->subject('Seminar speaker invitation')
+            ->line('You have been invited as a speaker for '.$seminar->title.'.')
             ->line('Hosted by: '.($seminar->connector?->name ?? 'Concious Connections'))
             ->line('Schedule: '.$this->formattedSchedule())
-            ->action('View seminar', route('seminars.show', $seminar));
+            ->when($this->speaker->invitation_message, fn (MailMessage $mail) => $mail->line('Message: '.$this->speaker->invitation_message))
+            ->action('Review invitation', route('instructor.speaker-invitations.show', $this->speaker));
     }
 
     public function toDatabase(object $notifiable): array
@@ -37,30 +36,23 @@ class SeminarSpeakerAssignedNotification extends Notification
         $seminar = $this->speaker->seminar;
 
         return [
-            'type' => 'seminar_speaker_assigned',
-            'title' => 'Seminar speaker assignment',
-            'message' => 'You have been assigned as a speaker for '.$seminar->title.'.',
+            'type' => 'seminar_speaker_invitation',
+            'title' => 'Seminar speaker invitation',
+            'message' => 'You have been invited as a speaker for '.$seminar->title.'.',
             'seminar_id' => $seminar->id,
             'seminar_title' => $seminar->title,
             'seminar_speaker_id' => $this->speaker->id,
             'connector_id' => $seminar->connector_id,
             'connector_name' => $seminar->connector?->name,
-            'starts_at' => optional($seminar->starts_at ?? $seminar->schedule)?->toDateTimeString(),
-            'action_url' => route('seminars.show', $seminar),
+            'starts_at' => optional($seminar->starts_at ?? $seminar->schedule)?->toISOString(),
+            'invitation_message' => $this->speaker->invitation_message,
+            'action_url' => route('instructor.speaker-invitations.show', $this->speaker),
             'severity' => 'info',
         ];
     }
 
     private function formattedSchedule(): string
     {
-        $seminar = $this->speaker->seminar;
-        $startsAt = $seminar->starts_at ?? $seminar->schedule;
-        $endsAt = $seminar->ends_at;
-
-        if (! $startsAt) {
-            return 'To be announced';
-        }
-
-        return $startsAt->format('M d, Y h:i A').($endsAt ? ' - '.$endsAt->format('h:i A') : '');
+        return $this->speaker->seminar->formattedSchedule();
     }
 }

@@ -17,4 +17,16 @@ export default defineConfig({
             ]
         })
     ],
+    build: {
+        chunkSizeWarningLimit: 1600,
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes('agora-rtc-sdk-ng')) {
+                        return 'agora';
+                    }
+                },
+            },
+        },
+    },
 });

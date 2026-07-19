@@ -18,6 +18,11 @@ class SeminarAccessService
         return $this->connectorAccess->hasPermission($user, $connector, 'connector.manage_seminars');
     }
 
+    public function abortUnlessWorkspace(User $user, Connector $connector): void
+    {
+        $this->connectorAccess->abortUnlessWorkspace($user, $connector);
+    }
+
     public function abortUnlessCanManageConnectorSeminars(User $user, Connector $connector): void
     {
         abort_unless($this->canManageConnectorSeminars($user, $connector), 403);
@@ -42,7 +47,7 @@ class SeminarAccessService
             return true;
         }
 
-        if ($seminar->speakers()->where('user_id', $user->id)->exists()) {
+        if ($seminar->speakers()->where('user_id', $user->id)->where('status', 'accepted')->exists()) {
             return true;
         }
 

@@ -26,18 +26,34 @@ class MemberController extends Controller
 
     public function index(Request $request, Connector $connector): View
     {
-        $this->access->abortUnlessPermission($request->user(), $connector, 'connector.manage_members');
+        $this->access->abortUnlessWorkspace($request->user(), $connector);
+        $canManageMembers = $this->access->hasPermission($request->user(), $connector, 'connector.manage_members');
 
         return view('connectors.members.index', [
-            'connector' => $connector->load(['memberships.user.learnerProfile', 'memberships.role', 'invitations.invitedUser.learnerProfile', 'invitations.role', 'roles']),
-            'inviteCandidates' => User::query()
-                ->select(['id', 'name', 'email'])
+            'connector' => $connector->load(['memberships' => fn ($query) => $query->where('status', 'active')->with(['user.learnerProfile', 'user.instructorProfile', 'role']), 'invitations.invitedUser.learnerProfile', 'invitations.invitedUser.instructorProfile', 'invitations.inviter', 'invitations.role', 'membershipRequests.user.learnerProfile', 'membershipRequests.user.instructorProfile', 'roles']),
+            'removedMembersCount' => $connector->memberships()->where('status', 'removed')->count(),
+            'canManageMembers' => $canManageMembers,
+            'inviteCandidates' => $canManageMembers ? User::query()
+                ->select(['id', 'name', 'email', 'role'])
+                ->with(['learnerProfile:id,user_id,avatar_path', 'instructorProfile:id,user_id,profile_photo_path'])
                 ->whereDoesntHave('connectorMemberships', fn ($query) => $query
                     ->where('connector_id', $connector->id)
                     ->whereIn('status', ['pending', 'active']))
+                ->whereDoesntHave('connectorMembershipRequests', fn ($query) => $query
+                    ->where('connector_id', $connector->id)
+                    ->where('status', 'pending'))
                 ->orderBy('name')
                 ->limit(75)
-                ->get(),
+                ->get() : collect(),
+        ]);
+    }
+
+    public function removed(Request $request, Connector $connector): View
+    {
+        $this->access->abortUnlessPermission($request->user(), $connector, 'connector.manage_members');
+
+        return view('connectors.members.removed', [
+            'connector' => $connector->load(['memberships' => fn ($query) => $query->where('status', 'removed')->with(['user.learnerProfile', 'user.instructorProfile', 'role'])->latest('removed_at'), 'roles']),
         ]);
     }
 

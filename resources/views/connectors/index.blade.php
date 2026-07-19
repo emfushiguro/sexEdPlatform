@@ -1,4 +1,4 @@
-@extends('layouts.learner-app')
+@extends(auth()->user()?->isInstructor() ? 'layouts.instructor-app' : 'layouts.learner-app')
 
 @section('title', 'Connectors')
 
@@ -13,7 +13,7 @@
 @endphp
 
 @section('content')
-<div class="mx-auto max-w-6xl space-y-8">
+<div class="mx-auto max-w-6xl space-y-8 px-4 py-6">
     @if($hasConnectorAccess)
         <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -60,6 +60,10 @@
                     <h2 class="text-xl font-bold text-gray-900">Discover Connectors</h2>
                 </div>
             </div>
+            <form method="GET" action="{{ route('connectors.index') }}" class="flex gap-2">
+                <input name="search" value="{{ $search }}" placeholder="Search connectors..." class="w-full rounded-xl border-gray-300 text-sm">
+                <button class="rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white">Search</button>
+            </form>
             @include('connectors.partials.discovery-feed', ['connectors' => $discoveryConnectors, 'categories' => $categories])
         </section>
     @else
@@ -74,6 +78,10 @@
                     <a href="{{ route('connectors.register') }}" class="inline-flex items-center justify-center rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">Register Connector</a>
                 </div>
             </div>
+            <form method="GET" action="{{ route('connectors.index') }}" class="flex gap-2">
+                <input name="search" value="{{ $search }}" placeholder="Search connectors..." class="w-full rounded-xl border-gray-300 text-sm">
+                <button class="rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white">Search</button>
+            </form>
             @include('connectors.partials.discovery-feed', ['connectors' => $discoveryConnectors, 'categories' => $categories])
         </section>
     @endif

@@ -5,6 +5,7 @@ import persist from '@alpinejs/persist';
 import './toast'; // Toast notification system
 import './chat/store';
 import './chat/global-popup';
+import './seminar-livestream';
 
 const emptyInstructorSearchResults = () => ({
     modules: [],

@@ -8,9 +8,7 @@ use App\Models\User;
 
 class SeminarAttendanceService
 {
-    public function __construct(private readonly AgoraTokenService $tokens)
-    {
-    }
+    public function __construct(private readonly AgoraTokenService $tokens) {}
 
     public function recordJoin(User $user, Seminar $seminar): SeminarAttendance
     {
@@ -25,6 +23,7 @@ class SeminarAttendanceService
             'joined_at' => now(),
             'left_at' => null,
             'status' => 'joined',
+            'role' => $this->tokens->roleFor($user, $seminar),
         ]);
 
         return $attendance->fresh();
@@ -40,7 +39,11 @@ class SeminarAttendanceService
         );
 
         $elapsed = $attendance->joined_at ? $attendance->joined_at->diffInSeconds(now()) : 0;
-        $attendance->update(['status' => $this->statusForSeconds((int) $attendance->total_seconds + $elapsed, true)]);
+        $attendance->update([
+            'joined_at' => now(),
+            'total_seconds' => (int) $attendance->total_seconds + $elapsed,
+            'status' => $this->statusForSeconds((int) $attendance->total_seconds + $elapsed, true),
+        ]);
 
         return $attendance->fresh();
     }
@@ -95,10 +98,6 @@ class SeminarAttendanceService
 
     private function authorizeAttendance(User $user, Seminar $seminar): void
     {
-        abort_unless(
-            $this->tokens->isInJoinWindow($seminar)
-                && ($this->tokens->canJoinAsAudience($user, $seminar) || $this->tokens->canPublish($user, $seminar)),
-            403
-        );
+        abort_unless($this->tokens->canJoinLivestream($user, $seminar), 403);
     }
 }

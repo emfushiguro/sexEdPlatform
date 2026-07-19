@@ -34,6 +34,10 @@ class ConnectorInvitationService
             throw ValidationException::withMessages(['email' => 'This user is already a connector member.']);
         }
 
+        if ($connector->invitations()->where('invited_user_id', $target->id)->where('status', 'pending')->exists()) {
+            throw ValidationException::withMessages(['email' => 'This user already has a pending invitation.']);
+        }
+
         $invitation = $connector->invitations()->create([
             'connector_role_id' => $role->id,
             'invited_user_id' => $target->id,
@@ -116,6 +120,24 @@ class ConnectorInvitationService
         $invitation->invitedUser?->notify(new ConnectorInvitationReceivedNotification(
             $invitation->load(['connector', 'inviter'])
         ));
+
+        return $invitation;
+    }
+
+    public function cancel(ConnectorInvitation $invitation, User $actor): ConnectorInvitation
+    {
+        if (! $this->access->hasPermission($actor, $invitation->connector, 'connector.invite_members')) {
+            throw ValidationException::withMessages(['invitation' => 'You are not allowed to cancel connector invitations.']);
+        }
+
+        if ($invitation->status !== 'pending') {
+            throw ValidationException::withMessages(['invitation' => 'Only pending invitations can be cancelled.']);
+        }
+
+        $invitation->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+        ]);
 
         return $invitation;
     }

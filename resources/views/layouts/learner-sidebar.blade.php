@@ -43,6 +43,12 @@
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M7.25 4A3.25 3.25 0 0 0 4 7.25v9.5A3.25 3.25 0 0 0 7.25 20h9.5A3.25 3.25 0 0 0 20 16.75v-9.5A3.25 3.25 0 0 0 16.75 4h-9.5ZM5.5 7.25A1.75 1.75 0 0 1 7.25 5.5h9.5a1.75 1.75 0 0 1 1.75 1.75v9.5a1.75 1.75 0 0 1-1.75 1.75h-9.5a1.75 1.75 0 0 1-1.75-1.75v-9.5ZM8 8.75A.75.75 0 0 1 8.75 8h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 8 8.75Zm0 3.25a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 8 12Zm.75 2.5a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5Z"/></svg>',
         ],
         [
+            'label'  => 'Browse Seminars',
+            'route'  => 'learner.seminars.index',
+            'active' => request()->routeIs('learner.seminars.*') || request()->routeIs('seminars.*'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M7 2.75a.75.75 0 0 1 .75.75v1h8.5v-1a.75.75 0 0 1 1.5 0v1H18A3.25 3.25 0 0 1 21.25 7.75V18A3.25 3.25 0 0 1 18 21.25H6A3.25 3.25 0 0 1 2.75 18V7.75A3.25 3.25 0 0 1 6 4.5h.25v-1A.75.75 0 0 1 7 2.75Zm11 3.25H6A1.75 1.75 0 0 0 4.25 7.75v.5h15.5v-.5A1.75 1.75 0 0 0 18 6ZM4.25 9.75V18A1.75 1.75 0 0 0 6 19.75h12A1.75 1.75 0 0 0 19.75 18V9.75H4.25Z"/></svg>',
+        ],
+        [
             'label'  => 'My Modules',
             'route'  => 'learner.modules.index',
             'active' => request()->routeIs('learner.modules.*'),

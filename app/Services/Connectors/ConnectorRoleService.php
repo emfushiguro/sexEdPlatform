@@ -55,6 +55,18 @@ class ConnectorRoleService
         });
     }
 
+    public function defaultMemberRole(Connector $connector): ConnectorRole
+    {
+        return $connector->roles()->firstOrCreate(
+            ['name' => 'Member'],
+            [
+                'description' => 'View-only connector member.',
+                'is_owner' => false,
+                'is_protected' => true,
+            ]
+        );
+    }
+
     public function createRole(Connector $connector, array $attributes): ConnectorRole
     {
         return DB::transaction(function () use ($connector, $attributes) {

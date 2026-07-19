@@ -15,6 +15,9 @@ class SeminarRegistrant extends Model
         'attended_at',
         'cancelled_at',
         'cancellation_reason',
+        'rejection_reason',
+        'decided_at',
+        'decided_by',
     ];
 
     protected function casts(): array
@@ -23,6 +26,7 @@ class SeminarRegistrant extends Model
             'registered_at' => 'datetime',
             'attended_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'decided_at' => 'datetime',
         ];
     }
 
@@ -53,5 +57,10 @@ class SeminarRegistrant extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'registered')->whereNull('cancelled_at');
+    }
+
+    public function decidedBy()
+    {
+        return $this->belongsTo(User::class, 'decided_by');
     }
 }

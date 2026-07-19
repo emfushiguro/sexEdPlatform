@@ -1,4 +1,9 @@
 {
+  "_agora-C2xI_ZF1.js": {
+    "file": "assets/agora-C2xI_ZF1.js",
+    "name": "agora",
+    "isDynamicEntry": true
+  },
   "node_modules/pdfjs-dist/build/pdf.mjs": {
     "file": "assets/pdf-vkbVaD7t.js",
     "name": "pdf",
@@ -29,7 +34,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-BOJIqEnW.css",
+    "file": "assets/app-DnTMzm1i.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -38,11 +43,15 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DlsW7blF.js",
+    "file": "assets/app-BApVWN0x.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
+    "imports": [
+      "_agora-C2xI_ZF1.js"
+    ],
     "dynamicImports": [
+      "_agora-C2xI_ZF1.js",
       "node_modules/pdfjs-dist/build/pdf.mjs",
       "node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
       "node_modules/plyr/dist/plyr.mjs"

@@ -29,6 +29,96 @@ class SeminarRegistrationTest extends TestCase
             ->assertDontSee($ineligible->title);
     }
 
+    public function test_learner_discovery_only_shows_published_seminars(): void
+    {
+        $connector = $this->connector();
+        $learner = $this->learnerWithAge('adults', now()->subYears(21));
+        $published = $this->seminar($connector, ['title' => 'Published Session', 'status' => 'published']);
+
+        foreach (['draft', 'pending_review', 'approved', 'rejected', 'cancelled', 'archived'] as $status) {
+            $this->seminar($connector, ['title' => 'Hidden '.str_replace('_', ' ', $status), 'status' => $status]);
+        }
+
+        $this->actingAs($learner)
+            ->get(route('seminars.index'))
+            ->assertOk()
+            ->assertSee($published->title)
+            ->assertDontSee('Hidden draft')
+            ->assertDontSee('Hidden pending review')
+            ->assertDontSee('Hidden approved')
+            ->assertDontSee('Hidden rejected')
+            ->assertDontSee('Hidden cancelled')
+            ->assertDontSee('Hidden archived');
+    }
+
+    public function test_learner_discovery_filters_by_type_category_and_upcoming(): void
+    {
+        $connector = $this->connector();
+        $learner = $this->learnerWithAge('adults', now()->subYears(21));
+        $matching = $this->seminar($connector, [
+            'title' => 'Upcoming Health Webinar',
+            'type' => 'webinar',
+            'category' => 'health',
+            'starts_at' => now()->addDays(2),
+            'ends_at' => now()->addDays(2)->addHour(),
+            'schedule' => now()->addDays(2),
+        ]);
+        $this->seminar($connector, ['title' => 'Physical Health Session', 'type' => 'physical', 'category' => 'health', 'location' => 'Hall']);
+        $this->seminar($connector, ['title' => 'Community Webinar', 'type' => 'webinar', 'category' => 'community']);
+        $this->seminar($connector, [
+            'title' => 'Past Health Webinar',
+            'type' => 'webinar',
+            'category' => 'health',
+            'starts_at' => now()->subDays(2),
+            'ends_at' => now()->subDays(2)->addHour(),
+            'schedule' => now()->subDays(2),
+        ]);
+
+        $this->actingAs($learner)
+            ->get(route('seminars.index', ['type' => 'webinar', 'category' => 'health', 'upcoming' => '1']))
+            ->assertOk()
+            ->assertSee($matching->title)
+            ->assertDontSee('Physical Health Session')
+            ->assertDontSee('Community Webinar')
+            ->assertDontSee('Past Health Webinar');
+    }
+
+    public function test_learner_discovery_respects_age_category(): void
+    {
+        $connector = $this->connector();
+        $teen = $this->learnerWithAge('teens', now()->subYears(15));
+        $this->seminar($connector, ['title' => 'Adult Only Seminar', 'learner_age_categories' => ['adult']]);
+        $teenSeminar = $this->seminar($connector, ['title' => 'Teen Only Seminar', 'learner_age_categories' => ['teen']]);
+
+        $this->actingAs($teen)
+            ->get(route('seminars.index'))
+            ->assertOk()
+            ->assertSee($teenSeminar->title)
+            ->assertDontSee('Adult Only Seminar');
+    }
+
+    public function test_custom_category_is_displayed_to_learners(): void
+    {
+        $connector = $this->connector();
+        $learner = $this->learnerWithAge('adults', now()->subYears(21));
+        $seminar = $this->seminar($connector, [
+            'title' => 'Barangay Robotics Session',
+            'category' => 'other',
+            'custom_category' => 'Robotics',
+        ]);
+
+        $this->actingAs($learner)
+            ->get(route('seminars.index'))
+            ->assertOk()
+            ->assertSee($seminar->title)
+            ->assertSee('Robotics');
+
+        $this->actingAs($learner)
+            ->get(route('seminars.show', $seminar))
+            ->assertOk()
+            ->assertSee('Robotics');
+    }
+
     public function test_instructor_sees_instructor_eligible_seminars(): void
     {
         $connector = $this->connector();

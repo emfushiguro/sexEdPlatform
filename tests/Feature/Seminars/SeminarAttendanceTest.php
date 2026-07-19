@@ -139,6 +139,8 @@ class SeminarAttendanceTest extends TestCase
             'target_participants' => 'learners_and_instructors',
             'learner_age_categories' => ['adult'],
             'livestream_channel' => 'seminar-test-channel-'.str()->random(6),
+            'livestream_status' => 'live',
+            'livestream_started_at' => now(),
         ], $overrides));
     }
 

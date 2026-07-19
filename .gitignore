@@ -50,6 +50,9 @@ test*.txt
 fix-index.cjs
 
 # Local agent/tooling folders
+/.agents/
+/.codegraph/
+/.github/
 \!claude-code/
 \!github/
 \!skills/

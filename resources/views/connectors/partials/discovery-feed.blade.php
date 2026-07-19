@@ -21,9 +21,12 @@
                         </div>
                         <p class="mt-3 line-clamp-2 text-sm text-gray-600">{{ $connector->description ?: 'No description provided yet.' }}</p>
                         <p class="mt-3 text-xs text-gray-500">{{ $connector->address_line ?: 'Location available on request' }}</p>
-                        <div class="mt-5 flex flex-wrap gap-2">
-                            <button type="button" disabled class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-400">View Connector</button>
-                            <button type="button" disabled class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-500">Request to Join</button>
+                        <div class="mt-5 flex flex-wrap items-center gap-2">
+                            <a href="{{ route('connectors.show', $connector) }}" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">View Connector</a>
+                            @php
+                                $state = $connector->user_is_member ? 'member' : ($connector->user_has_pending_request ? 'pending' : ($connector->user_has_pending_invitation ? 'invited' : 'request'));
+                            @endphp
+                            @include('connectors.partials.membership-button', ['connector' => $connector, 'state' => $state])
                         </div>
                     </div>
                 </div>

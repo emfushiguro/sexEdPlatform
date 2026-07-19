@@ -14,8 +14,7 @@ class SeminarCancelledNotification extends Notification
     public function __construct(
         private readonly Seminar $seminar,
         private readonly ?string $reason = null,
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -47,7 +46,7 @@ class SeminarCancelledNotification extends Notification
             'seminar_title' => $this->seminar->title,
             'connector_id' => $this->seminar->connector_id,
             'connector_name' => $this->seminar->connector?->name,
-            'starts_at' => optional($this->seminar->starts_at ?? $this->seminar->schedule)?->toDateTimeString(),
+            'starts_at' => optional($this->seminar->starts_at ?? $this->seminar->schedule)?->toISOString(),
             'reason' => $this->reason,
             'action_url' => route('seminars.show', $this->seminar),
             'severity' => 'warning',
@@ -56,13 +55,6 @@ class SeminarCancelledNotification extends Notification
 
     private function formattedSchedule(): string
     {
-        $startsAt = $this->seminar->starts_at ?? $this->seminar->schedule;
-        $endsAt = $this->seminar->ends_at;
-
-        if (! $startsAt) {
-            return 'To be announced';
-        }
-
-        return $startsAt->format('M d, Y h:i A').($endsAt ? ' - '.$endsAt->format('h:i A') : '');
+        return $this->seminar->formattedSchedule();
     }
 }

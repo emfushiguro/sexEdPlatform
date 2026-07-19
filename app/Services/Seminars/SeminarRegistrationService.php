@@ -40,17 +40,20 @@ class SeminarRegistrationService
             $existing = $seminar->registrants()->where('user_id', $user->id)->lockForUpdate()->first();
 
             if ($existing) {
-                if ($existing->status === 'registered' && $existing->cancelled_at === null) {
+                if (in_array($existing->status, ['pending', 'registered'], true) && $existing->cancelled_at === null) {
                     throw ValidationException::withMessages(['seminar' => 'You are already registered for this seminar.']);
                 }
 
                 $existing->update([
-                    'status' => 'registered',
+                    'status' => $this->registrationStatusFor($seminar),
                     'participant_type' => $this->participantTypeFor($user),
                     'registered_at' => now(),
                     'attended_at' => null,
                     'cancelled_at' => null,
                     'cancellation_reason' => null,
+                    'rejection_reason' => null,
+                    'decided_at' => null,
+                    'decided_by' => null,
                 ]);
 
                 return $existing->fresh();
@@ -58,13 +61,15 @@ class SeminarRegistrationService
 
             return $seminar->registrants()->create([
                 'user_id' => $user->id,
-                'status' => 'registered',
+                'status' => $this->registrationStatusFor($seminar),
                 'participant_type' => $this->participantTypeFor($user),
                 'registered_at' => now(),
             ]);
         });
 
-        $user->notify(new SeminarRegistrationConfirmedNotification($seminar->loadMissing('connector')));
+        if ($registrant->status === 'registered') {
+            $user->notify(new SeminarRegistrationConfirmedNotification($seminar->loadMissing('connector')));
+        }
 
         return $registrant;
     }
@@ -178,6 +183,10 @@ class SeminarRegistrationService
             return 'You are already registered for this seminar.';
         }
 
+        if ($seminar->registrants()->where('user_id', $user->id)->where('status', 'pending')->exists()) {
+            return 'Your registration is pending host approval.';
+        }
+
         if ($seminar->capacity !== null && $seminar->registrants()->active()->count() >= (int) $seminar->capacity) {
             return 'This seminar has reached capacity.';
         }
@@ -190,5 +199,10 @@ class SeminarRegistrationService
         $startsAt = $seminar->starts_at ?? $seminar->schedule;
 
         return $startsAt !== null && $startsAt->lte(now());
+    }
+
+    private function registrationStatusFor(Seminar $seminar): string
+    {
+        return $seminar->registration_approval_mode === 'manual' ? 'pending' : 'registered';
     }
 }

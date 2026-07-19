@@ -12,6 +12,8 @@ use App\Models\Seminar;
 use App\Notifications\Seminars\SeminarCancelledNotification;
 use App\Services\Seminars\SeminarAccessService;
 use App\Services\Seminars\SeminarAttendanceService;
+use App\Services\Seminars\SeminarCategoryService;
+use App\Services\Seminars\SeminarLifecycleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -23,18 +25,22 @@ class SeminarController extends Controller
     public function __construct(
         private readonly SeminarAccessService $access,
         private readonly SeminarAttendanceService $attendance,
+        private readonly SeminarCategoryService $categories,
+        private readonly SeminarLifecycleService $lifecycle,
     ) {
     }
 
     public function index(Request $request, Connector $connector): View
     {
-        $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
+        $this->access->abortUnlessWorkspace($request->user(), $connector);
+        $canManageSeminars = $this->access->canManageConnectorSeminars($request->user(), $connector);
 
         $seminars = $connector->seminars()
+            ->when(! $canManageSeminars, fn ($query) => $query->published())
             ->latest('starts_at')
             ->paginate(15);
 
-        return view('connectors.seminars.index', compact('connector', 'seminars'));
+        return view('connectors.seminars.index', compact('connector', 'seminars', 'canManageSeminars'));
     }
 
     public function create(Request $request, Connector $connector): View
@@ -72,12 +78,23 @@ class SeminarController extends Controller
 
     public function show(Request $request, Connector $connector, Seminar $seminar): View
     {
-        $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
+        $this->access->abortUnlessWorkspace($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
+        if (! $this->access->canManageConnectorSeminars($request->user(), $connector)) {
+            abort_unless($seminar->status === SeminarStatus::Published->value, 403);
+
+            return view('seminars.show', [
+                'seminar' => $seminar->load(['connector', 'speakers.user']),
+                'registration' => app(\App\Services\Seminars\SeminarRegistrationService::class)->activeRegistration($request->user(), $seminar),
+                'canRegister' => app(\App\Services\Seminars\SeminarRegistrationService::class)->canRegister($request->user(), $seminar),
+                'registrationError' => app(\App\Services\Seminars\SeminarRegistrationService::class)->registrationError($request->user(), $seminar),
+                'canJoinLivestream' => false,
+            ]);
+        }
 
         return view('connectors.seminars.show', [
             'connector' => $connector,
-            'seminar' => $seminar->load(['registrants.user', 'speakers.user', 'comments.user', 'questions.user']),
+            'seminar' => $seminar->load(['registrants.user.learnerProfile', 'registrants.user.instructorProfile', 'speakers.user.instructorProfile', 'speakers.user.learnerProfile', 'comments.user', 'questions.user']),
             'activeRegistrantCount' => $this->access->activeRegistrantCount($seminar),
         ]);
     }
@@ -110,18 +127,50 @@ class SeminarController extends Controller
             ->with('success', 'Seminar updated.');
     }
 
+    public function submitForReview(Request $request, Connector $connector, Seminar $seminar): RedirectResponse
+    {
+        $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
+        $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
+
+        $this->lifecycle->submitForReview($seminar, $request->user());
+
+        return back()->with('success', 'Seminar submitted for review.');
+    }
+
     public function publish(Request $request, Connector $connector, Seminar $seminar): RedirectResponse
     {
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
 
         abort_unless($connector->status === 'verified', 403);
-        abort_if($seminar->status === SeminarStatus::Cancelled->value, 422, 'Cancelled seminars cannot be published.');
-        abort_if($seminar->status === SeminarStatus::Completed->value, 422, 'Completed seminars cannot be published.');
 
-        $seminar->update(['status' => SeminarStatus::Published->value]);
+        $this->lifecycle->publishApproved($seminar, $request->user());
 
         return back()->with('success', 'Seminar published.');
+    }
+
+    public function archive(Request $request, Connector $connector, Seminar $seminar): RedirectResponse
+    {
+        $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
+        $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
+
+        $this->lifecycle->archive($seminar, $request->user());
+
+        return back()->with('success', 'Seminar archived.');
+    }
+
+    public function destroy(Request $request, Connector $connector, Seminar $seminar): RedirectResponse
+    {
+        $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
+        $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
+
+        abort_if($seminar->published_at !== null || in_array($seminar->status, ['published', 'completed', 'cancelled', 'archived'], true), 422, 'Published seminars cannot be deleted.');
+
+        $seminar->delete();
+
+        return redirect()
+            ->route('connector.seminars.index', $connector)
+            ->with('success', 'Seminar deleted.');
     }
 
     public function cancel(Request $request, Connector $connector, Seminar $seminar): RedirectResponse
@@ -133,12 +182,7 @@ class SeminarController extends Controller
             'cancellation_reason' => ['required', 'string', 'max:1000'],
         ]);
 
-        $seminar->update([
-            'status' => SeminarStatus::Cancelled->value,
-            'cancelled_at' => now(),
-            'cancelled_by' => $request->user()->id,
-            'cancellation_reason' => $validated['cancellation_reason'],
-        ]);
+        $seminar = $this->lifecycle->cancel($seminar, $request->user(), $validated['cancellation_reason']);
 
         $this->notifyActiveRegistrantsAboutCancellation($seminar->fresh('connector'), $validated['cancellation_reason']);
 
@@ -150,11 +194,7 @@ class SeminarController extends Controller
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
 
-        $seminar->update([
-            'status' => SeminarStatus::Completed->value,
-            'completed_at' => now(),
-            'completed_by' => $request->user()->id,
-        ]);
+        $seminar = $this->lifecycle->complete($seminar, $request->user());
         $this->attendance->finalize($seminar);
 
         return back()->with('success', 'Seminar marked completed.');
@@ -168,16 +208,18 @@ class SeminarController extends Controller
         return [
             ...Arr::only($validated, [
                 'title',
-                'description',
                 'purpose',
                 'type',
                 'category',
+                'custom_category',
                 'starts_at',
                 'ends_at',
                 'capacity',
+                'registration_approval_mode',
                 'target_participants',
                 'location',
             ]),
+            'custom_category' => $this->categories->normalizeCustomCategory($validated['category'] ?? null, $validated['custom_category'] ?? null),
             'learner_age_categories' => array_values((array) ($validated['learner_age_categories'] ?? [])),
             'location' => $type === SeminarType::Physical->value ? ($validated['location'] ?? null) : ($validated['location'] ?? null),
             'schedule' => $startsAt,

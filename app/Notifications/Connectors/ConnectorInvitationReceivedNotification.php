@@ -32,7 +32,7 @@ class ConnectorInvitationReceivedNotification extends Notification
             'connector_name' => $connector->name,
             'invitation_id' => $this->invitation->id,
             'status' => 'pending',
-            'action_url' => route('connector.status', $connector),
+            'action_url' => route('connectors.invitations.index'),
             'severity' => 'info',
         ];
     }

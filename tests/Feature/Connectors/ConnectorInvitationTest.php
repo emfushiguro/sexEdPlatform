@@ -37,6 +37,52 @@ class ConnectorInvitationTest extends TestCase
         $this->assertSame('rejected', $rejectInvitation->fresh()->status);
     }
 
+    public function test_removed_member_can_accept_new_invitation_after_prior_acceptance(): void
+    {
+        $this->seedCaviteAddress();
+        $owner = User::factory()->create();
+        $target = User::factory()->create(['email' => 'rejoin-invitee@example.test']);
+        $connector = $this->createVerifiedConnector($owner);
+        $role = $this->createCustomRole($connector, ['connector.view_subscription']);
+
+        ConnectorInvitation::create([
+            'connector_id' => $connector->id,
+            'connector_role_id' => $role->id,
+            'invited_user_id' => $target->id,
+            'invited_by' => $owner->id,
+            'email' => $target->email,
+            'status' => 'accepted',
+            'accepted_at' => now()->subDays(2),
+        ]);
+
+        $connector->memberships()->create([
+            'user_id' => $target->id,
+            'connector_role_id' => $role->id,
+            'status' => 'removed',
+            'accepted_at' => now()->subDays(2),
+            'removed_at' => now()->subDay(),
+        ]);
+
+        $this->actingAs($owner)->post(route('connector.invitations.store', $connector), [
+            'email' => $target->email,
+            'connector_role_id' => $role->id,
+        ])->assertRedirect();
+
+        $this->actingAs($owner)->post(route('connector.invitations.store', $connector), [
+            'email' => $target->email,
+            'connector_role_id' => $role->id,
+        ])->assertSessionHasErrors('email');
+
+        $newInvitation = ConnectorInvitation::where('status', 'pending')->firstOrFail();
+
+        $this->actingAs($target)
+            ->post(route('connector.invitations.accept', [$connector, $newInvitation]))
+            ->assertRedirect(route('connector.dashboard', $connector));
+
+        $this->assertSame('accepted', $newInvitation->fresh()->status);
+        $this->assertTrue($connector->memberships()->where('user_id', $target->id)->where('status', 'active')->exists());
+    }
+
     public function test_member_without_invite_permission_cannot_invite_and_last_owner_removal_is_blocked(): void
     {
         $this->seedCaviteAddress();

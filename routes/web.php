@@ -260,6 +260,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
         Route::post('/seminars/{seminar}/register', [SeminarBrowseController::class, 'register'])->name('seminars.register');
+        Route::post('/seminars/{seminar}/apply-speaker', [SeminarBrowseController::class, 'applyAsSpeaker'])->name('seminars.apply-speaker');
         Route::post('/seminars/{seminar}/cancel-registration', [SeminarBrowseController::class, 'cancelRegistration'])->name('seminars.cancel-registration');
         Route::get('/seminars/{seminar}/join', [SeminarBrowseController::class, 'join'])->name('seminars.join');
         Route::post('/seminars/{seminar}/agora-token', [SeminarBrowseController::class, 'agoraToken'])->name('seminars.agora-token');
@@ -305,6 +306,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('learn')->name('learner.')->middleware('profile.completed')->group(function () {
         // Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Learner\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
+        Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
         Route::get('/my-parent', [ParentVisibilityController::class, 'index'])->name('parent.index');
 
         // Live search (AJAX)

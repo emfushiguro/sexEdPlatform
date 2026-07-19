@@ -54,4 +54,13 @@ class InvitationController extends Controller
 
         return back()->with('success', 'Invitation resent.');
     }
+
+    public function destroy(Request $request, Connector $connector, ConnectorInvitation $invitation): RedirectResponse
+    {
+        abort_unless($invitation->connector_id === $connector->id, 404);
+
+        $this->invitations->cancel($invitation->loadMissing('connector'), $request->user());
+
+        return back()->with('success', 'Invitation cancelled.');
+    }
 }

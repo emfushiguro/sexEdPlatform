@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Instructor;
+use App\Http\Controllers\Connector\HomeController as ConnectorHomeController;
+use App\Http\Controllers\SeminarBrowseController;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +36,19 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'permissio
         ->name('notifications.dropdown-open');
     Route::get('/notifications/{id}/read', [Instructor\NotificationController::class, 'markRead'])
         ->name('notifications.read');
+
+    Route::get('/speaker-invitations', [Instructor\SeminarSpeakerInvitationController::class, 'index'])
+        ->name('speaker-invitations.index');
+    Route::get('/speaker-invitations/{speaker}', [Instructor\SeminarSpeakerInvitationController::class, 'show'])
+        ->name('speaker-invitations.show');
+    Route::post('/speaker-invitations/{speaker}/accept', [Instructor\SeminarSpeakerInvitationController::class, 'accept'])
+        ->name('speaker-invitations.accept');
+    Route::post('/speaker-invitations/{speaker}/decline', [Instructor\SeminarSpeakerInvitationController::class, 'decline'])
+        ->name('speaker-invitations.decline');
+
+    Route::get('/connectors', [ConnectorHomeController::class, 'index'])->name('connectors.index');
+    Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
+    Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
 
     // Assessment Insights
     Route::get('/assessments', [Instructor\AssessmentLogController::class, 'index'])

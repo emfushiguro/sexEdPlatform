@@ -14,7 +14,27 @@ class SeminarSpeaker extends Model
         'title',
         'bio',
         'role',
+        'status',
+        'invitation_message',
+        'application_motivation',
+        'application_expertise',
+        'application_experience',
+        'application_supporting_info',
+        'review_note',
+        'reviewed_by',
+        'invited_at',
+        'responded_at',
+        'expires_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'invited_at' => 'datetime',
+            'responded_at' => 'datetime',
+            'expires_at' => 'datetime',
+        ];
+    }
 
     public function seminar(): BelongsTo
     {
@@ -24,5 +44,10 @@ class SeminarSpeaker extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 }
