@@ -20,7 +20,7 @@ Thumbs.db
 
 # Build/runtime artifacts
 /public/hot
-/public/build/
+# Commit compiled Vite assets because the Hostinger plan cannot run node/npm.
 /public/storage
 /bootstrap/cache/*.php
 /storage/*.key
