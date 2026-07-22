@@ -2,3 +2,13 @@
 !private/
 !public/
 !.gitignore
+!public/admin-creator-avatars/
+!public/admin-creator-avatars/**
+!public/certificate-template/
+!public/certificate-template/**
+!public/lesson-images/
+!public/lesson-images/**
+!public/modules/
+!public/modules/**
+!public/quiz-images/
+!public/quiz-images/**
