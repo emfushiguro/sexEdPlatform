@@ -21,7 +21,7 @@ Matching and Sequencing ship together on one shared foundation. The design prese
 
 1. Matching and Sequencing ship together.
 2. Every Interactive Activity is optional and never gates Lesson progress.
-3. Matching and Sequencing appear directly among the existing Topic type cards.
+3. Interactive Activities appears as one existing-style Topic type card; Matching and Sequencing are selected from the revealed activity-type dropdown.
 4. Both activity types support inside-topic and between-topic placement.
 5. A shared `interactive_activities` entity owns common metadata and typed configuration.
 6. Activity-specific configuration uses validated, versioned JSON with stable item UUIDs.
@@ -248,18 +248,17 @@ Preview uses the authoring validation path and the same presentation components 
 
 ## 7. Instructor and Admin Authoring Entry Point
 
-Matching and Sequencing appear directly among the existing Create Topic type cards:
+The Create Topic page keeps its existing flat card grid and adds one Interactive Activities card:
 
 ```text
 Video
 Text
 Worksheet
 Interactive Checkpoint
-Matching
-Sequencing
+Interactive Activities
 ```
 
-Selecting Matching or Sequencing:
+Selecting Interactive Activities reveals an activity-type dropdown with Matching and Sequencing. Selecting an activity type:
 
 - stores the Topic family as `interactive`;
 - sets the registered activity type;

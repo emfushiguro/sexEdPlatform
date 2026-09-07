@@ -47,21 +47,14 @@
      x-cloak>
     <input type="hidden" name="activity_type" x-model="activityType">
 
-    <fieldset class="mb-6" aria-describedby="activity-type-error">
-        <legend class="mb-3 text-sm font-semibold text-gray-900">Activity type</legend>
-        <div class="grid gap-4 md:grid-cols-2">
-            <label class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-gray-200 p-4 transition-colors"
-                   :class="activityType === 'matching' && 'border-purple-400 bg-purple-50'">
-                <input type="radio" name="activity_type_choice" value="matching" x-model="activityType" class="mt-1 text-purple-600 focus:ring-purple-500">
-                <span><strong class="block text-sm text-gray-900">Matching</strong><span class="text-xs text-gray-500">Connect each item with its related pair.</span></span>
-            </label>
-            <label class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-gray-200 p-4 transition-colors"
-                   :class="activityType === 'sequencing' && 'border-purple-400 bg-purple-50'">
-                <input type="radio" name="activity_type_choice" value="sequencing" x-model="activityType" class="mt-1 text-purple-600 focus:ring-purple-500">
-                <span><strong class="block text-sm text-gray-900">Sequencing</strong><span class="text-xs text-gray-500">Arrange the items in their correct order.</span></span>
-            </label>
-        </div>
-    </fieldset>
+    <div class="mb-6">
+        <label for="activity_type_selector" class="mb-2 block text-sm font-semibold text-gray-900">Activity type</label>
+        <select id="activity_type_selector" x-model="activityType" aria-describedby="activity-type-help activity-type-error" class="w-full rounded-xl border-gray-200 text-sm focus:border-purple-400 focus:ring-purple-300">
+            <option value="matching">Matching</option>
+            <option value="sequencing">Sequencing</option>
+        </select>
+        <p id="activity-type-help" class="mt-2 text-xs text-gray-500">Choose whether learners match related concepts or arrange items in order.</p>
+    </div>
     @error('activity_type') <p id="activity-type-error" class="-mt-4 mb-6 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
 
     <fieldset class="mb-6" aria-describedby="activity-placement-error">

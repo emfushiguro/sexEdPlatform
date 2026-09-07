@@ -19,8 +19,10 @@ class InteractiveCheckpointAuthoringTest extends TestCase
         $module = Module::factory()->create(['created_by' => $instructor->id, 'content_owner_type' => 'instructor']);
         $lesson = Lesson::factory()->create(['module_id' => $module->id]);
 
-        $this->actingAs($instructor)
-            ->get(route('instructor.topics.create', ['lesson' => $lesson->id]))
+        $response = $this->actingAs($instructor)
+            ->get(route('instructor.topics.create', ['lesson' => $lesson->id]));
+
+        $response
             ->assertOk()
             ->assertSee('Interactive Checkpoint')
             ->assertSee('Inside Topic')
@@ -28,7 +30,17 @@ class InteractiveCheckpointAuthoringTest extends TestCase
             ->assertSee('Question Type')
             ->assertSee('Explanation')
             ->assertSee('data-topic-metadata', false)
-            ->assertSee("const showTopicMetadata = !['interactive_checkpoint', 'interactive'].includes(type);", false);
+            ->assertSee('class="grid grid-cols-1 md:grid-cols-3 gap-4"', false)
+            ->assertSee('data-activity-category="interactive"', false)
+            ->assertSee('Interactive Activities')
+            ->assertSee('id="activity_type_selector"', false)
+            ->assertSee('<option value="matching">Matching</option>', false)
+            ->assertSee('<option value="sequencing">Sequencing</option>', false)
+            ->assertDontSee('data-activity-type=', false)
+            ->assertDontSee('name="activity_type_choice"', false)
+            ->assertSeeInOrder(['Interactive Activities', 'Matching', 'Sequencing'], false);
+
+        $this->assertSame(1, substr_count($response->getContent(), 'name="type" value="interactive"'));
     }
 
     public function test_lesson_details_uses_accessible_topic_removal_modal(): void
@@ -57,7 +69,11 @@ class InteractiveCheckpointAuthoringTest extends TestCase
             ->get(route('instructor.topics.create', ['lesson' => $lesson]))
             ->assertOk()
             ->assertSee('id="checkpointQuestionFields" disabled', false)
-            ->assertSee("checkpointQuestionFields.disabled = type !== 'interactive_checkpoint';", false);
+            ->assertSee('id="interactiveActivitySection" disabled', false)
+            ->assertSee('if (checkpointQuestionFields) {', false)
+            ->assertSee("checkpointQuestionFields.disabled = type !== 'interactive_checkpoint';", false)
+            ->assertSee('if (interactiveActivitySection) {', false)
+            ->assertSee("interactiveActivitySection.disabled = type !== 'interactive';", false);
     }
 
     public function test_instructor_can_create_between_topic_checkpoint(): void

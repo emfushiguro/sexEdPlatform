@@ -7,6 +7,8 @@ use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class LessonManagementTest extends TestCase
@@ -84,5 +86,82 @@ class LessonManagementTest extends TestCase
         $this->assertSame('text', $topic->type);
         $this->assertSame(5, $topic->duration);
         $this->assertFalse($topic->is_prerequisite);
+    }
+
+    public function test_instructor_can_create_a_video_topic_from_topic_creation(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.topics.store'), [
+                'lesson_id' => $lesson->id,
+                'title' => 'Video topic',
+                'type' => 'video',
+                'duration' => 5,
+                'video_source' => 'url',
+                'video_url' => 'https://youtu.be/dQw4w9WgXcQ',
+            ])
+            ->assertRedirect(route('instructor.lessons.show', $lesson));
+
+        $this->assertDatabaseHas('lesson_topics', [
+            'lesson_id' => $lesson->id,
+            'title' => 'Video topic',
+            'type' => 'video',
+        ]);
+    }
+
+    public function test_instructor_can_create_a_text_topic_from_topic_creation(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.topics.store'), [
+                'lesson_id' => $lesson->id,
+                'title' => 'Text topic',
+                'type' => 'text',
+                'duration' => 5,
+                'text_content' => '<p>Topic body</p>',
+            ])
+            ->assertRedirect(route('instructor.lessons.show', $lesson));
+
+        $this->assertDatabaseHas('lesson_topics', [
+            'lesson_id' => $lesson->id,
+            'title' => 'Text topic',
+            'type' => 'text',
+        ]);
+    }
+
+    public function test_instructor_can_create_a_worksheet_topic_from_topic_creation(): void
+    {
+        Storage::fake('public');
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.topics.store'), [
+                'lesson_id' => $lesson->id,
+                'title' => 'Worksheet topic',
+                'type' => 'worksheet',
+                'duration' => 5,
+                'worksheet_files' => [UploadedFile::fake()->create('worksheet.pdf', 100, 'application/pdf')],
+                'worksheet_instructions' => 'Complete the worksheet.',
+            ])
+            ->assertRedirect(route('instructor.lessons.show', $lesson));
+
+        $this->assertDatabaseHas('lesson_topics', [
+            'lesson_id' => $lesson->id,
+            'title' => 'Worksheet topic',
+            'type' => 'worksheet',
+        ]);
+    }
+
+    /** @return array{User, Lesson} */
+    private function topicAuthoringFixture(): array
+    {
+        $instructor = User::factory()->createOne();
+        $instructor->assignRole('instructor');
+        $module = Module::factory()->create(['created_by' => $instructor->id]);
+        $lesson = Lesson::factory()->create(['module_id' => $module->id]);
+
+        return [$instructor, $lesson];
     }
 }

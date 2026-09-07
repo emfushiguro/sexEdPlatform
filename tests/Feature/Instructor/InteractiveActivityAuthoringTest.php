@@ -351,7 +351,7 @@ class InteractiveActivityAuthoringTest extends TestCase
             ->assertSee('The activity will be removed; its parent topic will remain.');
     }
 
-    public function test_create_page_exposes_matching_and_sequencing_activity_cards(): void
+    public function test_create_page_exposes_interactive_activity_category_and_subtype_dropdown(): void
     {
         [$instructor, $lesson] = $this->authoringFixture();
         LessonTopic::factory()->create(['lesson_id' => $lesson->id, 'title' => 'Eligible parent']);
@@ -361,9 +361,11 @@ class InteractiveActivityAuthoringTest extends TestCase
             ->assertOk()
             ->assertSee('Matching')
             ->assertSee('Sequencing')
-            ->assertSee('Interactive Activity')
-            ->assertSee('data-activity-type="matching"', false)
-            ->assertSee('data-activity-type="sequencing"', false)
+            ->assertSee('Interactive Activities')
+            ->assertSee('data-activity-category="interactive"', false)
+            ->assertSee('id="activity_type_selector"', false)
+            ->assertDontSee('data-activity-type=', false)
+            ->assertDontSee('name="activity_type_choice"', false)
             ->assertSee('name="activity_type"', false)
             ->assertSee('Eligible parent')
             ->assertSee("!['interactive_checkpoint', 'interactive'].includes(type)", false)

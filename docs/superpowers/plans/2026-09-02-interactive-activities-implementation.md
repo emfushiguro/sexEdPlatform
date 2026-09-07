@@ -1322,3 +1322,58 @@ git commit -m "test: verify interactive activity workflows"
 ```
 
 If verification required no corrections, finish without an empty commit.
+
+---
+
+### Task 14: Restore Topic Card Layout and Nest Activity Types
+
+**Files:**
+- Modify: `resources/views/instructor/topics/create.blade.php`
+- Modify: `resources/views/instructor/topics/partials/interactive-activity-fields.blade.php`
+- Test: `tests/Feature/Instructor/InteractiveActivityAuthoringTest.php`
+- Test: `tests/Feature/Instructor/InteractiveCheckpointAuthoringTest.php`
+
+**Interfaces:**
+- The top-level `type` remains `interactive`, preserving the existing controller and authoring-service contract.
+- The activity subtype remains `activity_type=matching|sequencing`, selected through the existing Alpine `activityType` state.
+- The inactive activity fieldset remains disabled so hidden required builder inputs cannot block ordinary Topic submission.
+
+- [x] **Step 1: Write the failing UI regression assertions**
+
+Assert the Create Topic response contains one `data-activity-category` card, contains a native `activity_type_selector`, and no longer contains top-level `data-activity-type` cards or `activity_type_choice` radio inputs.
+
+- [x] **Step 2: Run the focused test and verify failure**
+
+```powershell
+C:\xampp\php\php.exe vendor/bin/phpunit tests/Feature/Instructor/InteractiveCheckpointAuthoringTest.php --filter topic_create_page --do-not-cache-result
+```
+
+Expected: FAIL because Matching and Sequencing are still rendered as top-level cards and radio controls.
+
+- [x] **Step 3: Implement the minimal UI correction**
+
+Restore the flat responsive Topic type grid with Video, Text, Worksheet, Interactive Checkpoint, and one Interactive Activities radio card. Replace the activity-type radio-card fieldset with:
+
+```blade
+<label for="activity_type_selector" class="mb-2 block text-sm font-semibold text-gray-900">Activity type</label>
+<select id="activity_type_selector" x-model="activityType" class="w-full rounded-xl border-gray-200 text-sm focus:border-purple-400 focus:ring-purple-300">
+    <option value="matching">Matching</option>
+    <option value="sequencing">Sequencing</option>
+</select>
+```
+
+Keep the hidden `activity_type` input, placement controls, builders, preview, and `interactiveActivitySection` disabling logic unchanged.
+
+- [x] **Step 4: Verify focused and authoring regression suites**
+
+```powershell
+C:\xampp\php\php.exe vendor/bin/phpunit tests/Feature/Instructor/InteractiveCheckpointAuthoringTest.php tests/Feature/Instructor/InteractiveActivityAuthoringTest.php tests/Feature/Instructor/LessonManagementTest.php --do-not-cache-result
+C:\xampp\php\php.exe artisan view:cache
+C:\xampp\php\php.exe vendor/bin/pint tests/Feature/Instructor/InteractiveCheckpointAuthoringTest.php tests/Feature/Instructor/LessonManagementTest.php
+```
+
+Expected: all tests, Blade compilation, and formatting checks PASS.
+
+- [x] **Step 5: Commit the correction**
+
+Stage only the two Blade files, three revised tests, and these approved spec/plan updates. Do not stage unrelated working-tree or generated build changes.

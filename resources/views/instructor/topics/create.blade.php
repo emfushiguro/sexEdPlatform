@@ -142,30 +142,17 @@
                         <span class="text-sm font-semibold text-gray-900 text-center">Interactive Checkpoint</span>
                     </label>
 
-                    <!-- Matching Activity Type -->
-                    <label data-activity-type="matching"
-                        class="relative flex flex-col items-center p-6 border-2 border-orange-200 bg-orange-50/40 rounded-xl cursor-pointer hover:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400 focus-within:ring-offset-2 hover:shadow-md transition-all topic-type-card">
+                    <!-- Interactive Activities Type -->
+                    <label data-activity-category="interactive"
+                        class="relative flex flex-col items-center p-6 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-400 focus-within:ring-2 focus-within:ring-purple-400 focus-within:ring-offset-2 hover:shadow-md transition-all topic-type-card">
                         <input type="radio" name="type" value="interactive" class="sr-only topic-type-radio"
-                            {{ old('type') === 'interactive' && old('activity_type', 'matching') === 'matching' ? 'checked' : '' }} required>
+                            {{ old('type') === 'interactive' ? 'checked' : '' }} required>
                         <svg class="w-12 h-12 text-orange-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8m-8 5h5m-5 5h8M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/>
                         </svg>
-                        <span class="text-sm font-semibold text-gray-900">Matching</span>
-                        <span class="mt-1 text-xs text-gray-500">Pair concepts</span>
+                        <span class="text-sm font-semibold text-gray-900">Interactive Activities</span>
+                        <span class="mt-1 text-xs text-gray-500">Matching or sequencing</span>
                     </label>
-
-                    <!-- Sequencing Activity Type -->
-                    <label data-activity-type="sequencing"
-                        class="relative flex flex-col items-center p-6 border-2 border-orange-200 bg-orange-50/40 rounded-xl cursor-pointer hover:border-orange-400 focus-within:ring-2 focus-within:ring-orange-400 focus-within:ring-offset-2 hover:shadow-md transition-all topic-type-card">
-                        <input type="radio" name="type" value="interactive" class="sr-only topic-type-radio"
-                            {{ old('type') === 'interactive' && old('activity_type') === 'sequencing' ? 'checked' : '' }} required>
-                        <svg class="w-12 h-12 text-orange-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10m-10 6h16"/>
-                        </svg>
-                        <span class="text-sm font-semibold text-gray-900">Sequencing</span>
-                        <span class="mt-1 text-xs text-gray-500">Order the steps</span>
-                    </label>
-
                 </div>
             </div>
         </div>
@@ -384,7 +371,10 @@
                     <ul class="mt-1 list-inside list-disc text-xs text-red-700">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
                 </div>
             @endif
-            @include('instructor.topics.partials.interactive-activity-fields')
+            <fieldset id="interactiveActivitySection" @disabled(old('type') !== 'interactive')>
+                <legend class="sr-only">Interactive activity configuration</legend>
+                @include('instructor.topics.partials.interactive-activity-fields')
+            </fieldset>
         </div>
 
         <!-- Form Actions -->
@@ -552,7 +542,6 @@
             typeRadios.forEach(radio => {
                 radio.addEventListener('change', function() {
                     if (this.checked) {
-                        syncActivitySubtype(this);
                         showContentSection(this.value);
                         highlightCard(this);
                     }
@@ -564,21 +553,10 @@
                 card.addEventListener('click', function() {
                     const radio = this.querySelector('input[type="radio"]');
                     radio.checked = true;
-                    syncActivitySubtype(radio);
                     showContentSection(radio.value);
                     highlightCard(radio);
                 });
             });
-
-            function syncActivitySubtype(radio) {
-                const subtype = radio.closest('[data-activity-type]')?.dataset.activityType;
-                const input = document.querySelector('input[name="activity_type"]');
-                if (subtype && input) {
-                    input.value = subtype;
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            }
 
             // Function to highlight selected card
             function highlightCard(radio) {
@@ -597,11 +575,22 @@
             // Function to show content section based on type
             function showContentSection(type) {
                 const checkpointQuestionFields = document.getElementById('checkpointQuestionFields');
+                const interactiveActivitySection = document.getElementById('interactiveActivitySection');
                 const topicMetadata = document.querySelector('[data-topic-metadata]');
                 const showTopicMetadata = !['interactive_checkpoint', 'interactive'].includes(type);
-                checkpointQuestionFields.disabled = type !== 'interactive_checkpoint';
-                topicMetadata.hidden = !showTopicMetadata;
-                topicMetadata.disabled = !showTopicMetadata;
+
+                if (checkpointQuestionFields) {
+                    checkpointQuestionFields.disabled = type !== 'interactive_checkpoint';
+                }
+
+                if (interactiveActivitySection) {
+                    interactiveActivitySection.disabled = type !== 'interactive';
+                }
+
+                if (topicMetadata) {
+                    topicMetadata.hidden = !showTopicMetadata;
+                    topicMetadata.disabled = !showTopicMetadata;
+                }
 
                 contentSections.forEach(section => {
                     section.classList.add('hidden');
@@ -619,16 +608,20 @@
 
         // Toggle video source fields
         function toggleVideoSource() {
-            const videoSource = document.getElementById('video_source').value;
+            const videoSource = document.getElementById('video_source');
             const urlField = document.getElementById('videoUrlField');
             const fileField = document.getElementById('videoFileField');
+
+            if (!videoSource || !urlField || !fileField) {
+                return;
+            }
 
             urlField.classList.add('hidden');
             fileField.classList.add('hidden');
 
-            if (videoSource === 'url') {
+            if (videoSource.value === 'url') {
                 urlField.classList.remove('hidden');
-            } else if (videoSource === 'upload') {
+            } else if (videoSource.value === 'upload') {
                 fileField.classList.remove('hidden');
             }
         }
