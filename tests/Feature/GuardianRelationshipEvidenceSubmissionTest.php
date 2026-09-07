@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\ParentChildAccount;
+use App\Models\GuardianRelationshipVerificationDocument;
 use App\Models\User;
 use App\Services\GuardianRelationshipEvidenceService;
 use App\Support\GuardianRelationshipEvidenceRules;
 use App\Support\GuardianRelationshipTypes;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -85,6 +87,119 @@ class GuardianRelationshipEvidenceSubmissionTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
+    public function test_submitted_rounds_are_immutable_but_a_fresh_round_can_be_stored(): void
+    {
+        Storage::fake('local');
+        [$guardian, $dependent, $relationship] = $this->pendingRelationship('adoptive_parent');
+        $service = app(GuardianRelationshipEvidenceService::class);
+        $firstPaths = [];
+
+        $service->storeUploadedRound($relationship, $guardian, 1, [
+            $this->evidenceItem(UploadedFile::fake()->create('first.pdf', 100, 'application/pdf')),
+        ], $firstPaths);
+
+        $secondPaths = [];
+        try {
+            $service->storeUploadedRound($relationship, $guardian, 1, [
+                $this->evidenceItem(UploadedFile::fake()->create('second.pdf', 100, 'application/pdf')),
+            ], $secondPaths);
+            $this->fail('Expected an occupied evidence round to reject new files.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('documents', $exception->errors());
+        }
+
+        $freshRoundPaths = [];
+        $freshRound = $service->storeUploadedRound($relationship, $guardian, 2, [
+            $this->evidenceItem(UploadedFile::fake()->create('fresh-round.pdf', 100, 'application/pdf')),
+        ], $freshRoundPaths);
+
+        $this->assertSame([], $secondPaths);
+        $this->assertCount(1, $freshRound);
+        $this->assertDatabaseCount('guardian_relationship_verification_documents', 2);
+    }
+
+    public function test_duplicate_content_constraint_race_is_rejected_as_validation(): void
+    {
+        Storage::fake('local');
+        [$guardian, $dependent, $relationship] = $this->pendingRelationship('adoptive_parent');
+        $insertedCompetingDocument = false;
+        GuardianRelationshipVerificationDocument::creating(function (GuardianRelationshipVerificationDocument $document) use (&$insertedCompetingDocument): void {
+            if ($insertedCompetingDocument) {
+                return;
+            }
+
+            $insertedCompetingDocument = true;
+            GuardianRelationshipVerificationDocument::withoutEvents(function () use ($document): void {
+                GuardianRelationshipVerificationDocument::query()->create([
+                    ...$document->getAttributes(),
+                    'path' => 'guardian-relationship-verifications/competing-file.pdf',
+                ]);
+            });
+        });
+
+        $storedPaths = [];
+        try {
+            app(GuardianRelationshipEvidenceService::class)->storeUploadedRound(
+                $relationship,
+                $guardian,
+                1,
+                [$this->evidenceItem(UploadedFile::fake()->create('same.pdf', 100, 'application/pdf'))],
+                $storedPaths,
+            );
+            $this->fail('Expected a duplicate database constraint to be translated to validation.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('documents', $exception->errors());
+        } finally {
+            GuardianRelationshipVerificationDocument::flushEventListeners();
+        }
+
+        $this->assertSame([], $storedPaths);
+        $this->assertDatabaseCount('guardian_relationship_verification_documents', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_evidence_validation_rejects_more_than_ten_files(): void
+    {
+        $validator = Validator::make(['documents' => array_map(
+            fn (int $index): array => $this->evidenceItem(UploadedFile::fake()->create("evidence-{$index}.pdf", 100, 'application/pdf')),
+            range(1, 11),
+        )], GuardianRelationshipEvidenceRules::for(['adoption_order']));
+
+        $this->assertTrue($validator->fails());
+        $this->assertTrue($validator->errors()->has('documents'));
+    }
+
+    public function test_evidence_validation_rejects_files_larger_than_five_megabytes(): void
+    {
+        $validator = Validator::make(['documents' => [
+            $this->evidenceItem(UploadedFile::fake()->create('large.pdf', 5121, 'application/pdf')),
+        ]], GuardianRelationshipEvidenceRules::for(['adoption_order']));
+
+        $this->assertTrue($validator->fails());
+        $this->assertTrue($validator->errors()->has('documents.0.file'));
+    }
+
+    public function test_evidence_validation_accepts_supported_file_types(): void
+    {
+        foreach (['pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'] as $extension => $mimeType) {
+            $validator = Validator::make(['documents' => [
+                $this->evidenceItem(UploadedFile::fake()->create("evidence.{$extension}", 100, $mimeType)),
+            ]], GuardianRelationshipEvidenceRules::for(['adoption_order']));
+
+            $this->assertFalse($validator->fails(), "Expected .{$extension} evidence to be accepted.");
+        }
+    }
+
+    public function test_evidence_validation_rejects_unsupported_file_types(): void
+    {
+        $validator = Validator::make(['documents' => [
+            $this->evidenceItem(UploadedFile::fake()->create('evidence.txt', 100, 'text/plain')),
+        ]], GuardianRelationshipEvidenceRules::for(['adoption_order']));
+
+        $this->assertTrue($validator->fails());
+        $this->assertTrue($validator->errors()->has('documents.0.file'));
+    }
+
     public function test_front_and_back_metadata_requires_one_uuid_pair_with_unique_sides(): void
     {
         $pairingKey = 'f2f07af0-1e32-45fb-9f37-02a6a653a2d9';
@@ -107,6 +222,19 @@ class GuardianRelationshipEvidenceSubmissionTest extends TestCase
             ['document_type' => 'adoption_order', 'document_side' => 'front', 'pairing_key' => $pairingKey],
             ['document_type' => 'other_supporting_document', 'document_side' => 'back', 'pairing_key' => $pairingKey],
         ]));
+        $this->assertArrayHasKey('documents.4.pairing_key', GuardianRelationshipEvidenceRules::metadataErrors([
+            4 => ['document_type' => 'adoption_order', 'document_side' => 'front', 'pairing_key' => null],
+        ]));
+    }
+
+    private function evidenceItem(UploadedFile $file): array
+    {
+        return [
+            'document_type' => 'adoption_order',
+            'document_side' => 'not_applicable',
+            'pairing_key' => null,
+            'file' => $file,
+        ];
     }
 
     private function pendingRelationship(string $type): array

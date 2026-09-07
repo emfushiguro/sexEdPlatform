@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\GuardianRelationshipEvidenceRules;
 use App\Support\GuardianRelationshipTypes;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -50,6 +51,20 @@ class GuardianRelationshipEvidenceService
                 &$storedPaths,
                 &$hashes,
             ): Collection {
+                ParentChildAccount::query()
+                    ->whereKey($relationship->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (GuardianRelationshipVerificationDocument::query()
+                    ->where('parent_child_account_id', $relationship->id)
+                    ->where('submission_round', $round)
+                    ->exists()) {
+                    throw ValidationException::withMessages([
+                        'documents' => 'This evidence round has already been submitted. Upload a fresh round instead.',
+                    ]);
+                }
+
                 return collect($documents)->values()->map(function (array $item, int $index) use (
                     $relationship,
                     $guardian,
@@ -116,6 +131,12 @@ class GuardianRelationshipEvidenceService
             $this->deleteStoredPaths($storedPaths);
             $storedPaths = [];
 
+            if ($this->isDuplicateEvidenceHashConstraint($exception)) {
+                throw ValidationException::withMessages([
+                    'documents' => 'The same evidence file cannot be uploaded twice.',
+                ]);
+            }
+
             throw $exception;
         }
     }
@@ -125,5 +146,11 @@ class GuardianRelationshipEvidenceService
         if ($paths !== []) {
             Storage::disk('local')->delete(array_values(array_unique($paths)));
         }
+    }
+
+    private function isDuplicateEvidenceHashConstraint(Throwable $exception): bool
+    {
+        return $exception instanceof QueryException
+            && str_contains($exception->getMessage(), 'grvd_round_hash_unique');
     }
 }

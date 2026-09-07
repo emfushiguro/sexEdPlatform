@@ -24,7 +24,7 @@ final class GuardianRelationshipEvidenceRules
         $pairTypes = [];
         $pairSides = [];
 
-        foreach (array_values($documents) as $index => $document) {
+        foreach ($documents as $index => $document) {
             $side = (string) ($document['document_side'] ?? '');
             $pairingKey = trim((string) ($document['pairing_key'] ?? ''));
             $documentType = (string) ($document['document_type'] ?? '');
