@@ -10,6 +10,19 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ParentChildAccount extends Model
 {
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_REJECTED = 'rejected';
+    public const STATUS_INACTIVE = 'inactive';
+    public const STATUS_REVOKED = 'revoked';
+
+    public const VERIFICATION_PENDING = 'pending';
+    public const VERIFICATION_UNDER_REVIEW = 'under_review';
+    public const VERIFICATION_RESUBMISSION_REQUIRED = 'resubmission_required';
+    public const VERIFICATION_VERIFIED = 'verified';
+    public const VERIFICATION_REJECTED = 'rejected';
+    public const VERIFICATION_REVOKED = 'revoked';
+
     use SoftDeletes;
 
     protected $fillable = [

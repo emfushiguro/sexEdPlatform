@@ -35,6 +35,14 @@ final class GuardianRelationshipTypes
         return array_keys(self::options());
     }
 
+    public static function selectableValues(): array
+    {
+        return array_values(array_filter(
+            self::values(),
+            static fn (string $type): bool => $type !== self::LEGACY_PARENT,
+        ));
+    }
+
     public static function label(?string $type, ?string $custom = null): string
     {
         if ($type === self::OTHER && filled($custom)) {
@@ -46,20 +54,47 @@ final class GuardianRelationshipTypes
 
     public static function requiresVerification(?string $type): bool
     {
-        return (bool) config("guardian_relationships.types.{$type}.requires_verification", false);
+        return $type !== self::LEGACY_PARENT && array_key_exists((string) $type, config('guardian_relationships.types', []));
+    }
+
+    public static function pathway(?string $type): string
+    {
+        if ($type === self::LEGACY_PARENT) {
+            return 'legacy';
+        }
+
+        return (string) config("guardian_relationships.types.{$type}.pathway", 'custom_care');
+    }
+
+    public static function pathwayLabel(?string $type): string
+    {
+        $pathway = self::pathway($type);
+
+        return (string) config("guardian_relationships.pathways.{$pathway}.label", 'Relationship Evidence Review');
     }
 
     public static function initialVerificationStatus(?string $type): string
     {
-        return self::requiresVerification($type) ? 'pending' : 'not_required';
+        return $type === self::LEGACY_PARENT ? 'reserved' : 'pending';
     }
 
     public static function acceptedDocumentTypes(?string $type): array
     {
-        $keys = (array) config("guardian_relationships.types.{$type}.document_types", []);
+        $pathway = self::pathway($type);
+        $keys = (array) config("guardian_relationships.pathways.{$pathway}.document_types", []);
         $labels = (array) config('guardian_relationships.document_types', []);
 
         return array_values(array_filter($keys, static fn (string $key): bool => array_key_exists($key, $labels)));
+    }
+
+    public static function requiredDocumentTypes(?string $type): array
+    {
+        return (array) config('guardian_relationships.pathways.'.self::pathway($type).'.required_any_of', []);
+    }
+
+    public static function requiresCircumstances(?string $type): bool
+    {
+        return (bool) config('guardian_relationships.pathways.'.self::pathway($type).'.requires_circumstances', false);
     }
 
     public static function documentTypeOptions(?string $type): array
