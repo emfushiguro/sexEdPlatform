@@ -1,7 +1,7 @@
 # Guardian–Dependent Relationship Verification and Multiple Guardians Design
 
 **Date:** 2026-09-07
-**Status:** Pending written-spec review
+**Status:** Approved
 **Phase:** 1 of 3
 
 ## Goal
