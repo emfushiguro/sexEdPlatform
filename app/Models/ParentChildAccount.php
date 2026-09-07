@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Support\GuardianRelationshipTypes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use InvalidArgumentException;
 
 class ParentChildAccount extends Model
 {
@@ -30,14 +32,17 @@ class ParentChildAccount extends Model
         'child_user_id',
         'relationship_type',
         'relationship_custom',
+        'verification_pathway',
         'relationship_status',
         'relationship_verified_status',
+        'current_evidence_round',
         'relationship_verification_submitted_at',
         'relationship_verification_reviewed_by',
         'relationship_verification_reviewed_at',
         'relationship_verification_rejection_reason',
         'relationship_verification_rejection_note',
         'relationship_verification_revoked_at',
+        'relationship_deactivated_at',
         'relationship_notes',
         'is_legacy_relationship',
         'can_view_progress',
@@ -63,6 +68,8 @@ class ParentChildAccount extends Model
         'relationship_verification_submitted_at' => 'datetime',
         'relationship_verification_reviewed_at' => 'datetime',
         'relationship_verification_revoked_at' => 'datetime',
+        'relationship_deactivated_at' => 'datetime',
+        'current_evidence_round' => 'integer',
     ];
 
     /**
@@ -98,8 +105,7 @@ class ParentChildAccount extends Model
 
     public function hasVerifiedRelationshipRequirement(): bool
     {
-        return ! $this->requiresRelationshipVerification()
-            || in_array($this->relationship_verified_status, ['verified', 'reserved'], true);
+        return $this->relationship_verified_status === self::VERIFICATION_VERIFIED;
     }
 
     public function verificationDocuments(): HasMany
@@ -125,7 +131,47 @@ class ParentChildAccount extends Model
      */
     public function isVerified(): bool
     {
-        return $this->verification_status === 'approved' && $this->relationship_verified_at !== null;
+        return $this->isVerifiedActive();
+    }
+
+    public function scopeVerifiedActive(Builder $query): Builder
+    {
+        return $query
+            ->where('relationship_status', self::STATUS_ACTIVE)
+            ->where('relationship_verified_status', self::VERIFICATION_VERIFIED)
+            ->whereNotNull('relationship_verified_at');
+    }
+
+    public function scopeAccessEligible(Builder $query): Builder
+    {
+        return $query
+            ->verifiedActive()
+            ->whereHas('parent', fn (Builder $parent) => $parent
+                ->where('status', User::STATUS_ACTIVE)
+                ->where('parent_verification_status', 'approved'))
+            ->whereHas('child', fn (Builder $child) => $child->where('status', User::STATUS_ACTIVE))
+            ->where(function (Builder $childVerification): void {
+                $childVerification
+                    ->whereNull('verification_document_path')
+                    ->orWhere('verification_status', 'approved');
+            });
+    }
+
+    public function scopeWithPermission(Builder $query, string $permission): Builder
+    {
+        $allowed = ['can_view_progress', 'can_view_quiz_answers', 'can_approve_content'];
+        if (! in_array($permission, $allowed, true)) {
+            throw new InvalidArgumentException('Unknown guardian relationship permission.');
+        }
+
+        return $query->where($permission, true);
+    }
+
+    public function isVerifiedActive(): bool
+    {
+        return $this->relationship_status === self::STATUS_ACTIVE
+            && $this->relationship_verified_status === self::VERIFICATION_VERIFIED
+            && $this->relationship_verified_at !== null;
     }
 
     public function isPending(): bool

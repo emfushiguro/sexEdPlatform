@@ -13,8 +13,13 @@ class GuardianRelationshipVerificationAudit extends Model
         'action',
         'previous_status',
         'new_status',
+        'submission_round',
         'reason_code',
         'notes',
+    ];
+
+    protected $casts = [
+        'submission_round' => 'integer',
     ];
 
     public function relationship(): BelongsTo
