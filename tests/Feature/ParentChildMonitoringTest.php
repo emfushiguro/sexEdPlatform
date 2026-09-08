@@ -27,9 +27,14 @@ class ParentChildMonitoringTest extends TestCase
     {
         $parent = User::factory()->create(['email_verified_at' => now()]);
         $parent->assignRole('learner');
+        $parent->forceFill([
+            'status' => User::STATUS_ACTIVE,
+            'parent_verification_status' => 'approved',
+        ])->save();
 
         $child = User::factory()->create(['email_verified_at' => now()]);
         $child->assignRole('learner');
+        $child->forceFill(['status' => User::STATUS_ACTIVE])->save();
 
         $module = Module::factory()->create();
 
@@ -50,9 +55,14 @@ class ParentChildMonitoringTest extends TestCase
     {
         $parent = User::factory()->create(['email_verified_at' => now()]);
         $parent->assignRole('learner');
+        $parent->forceFill([
+            'status' => User::STATUS_ACTIVE,
+            'parent_verification_status' => 'approved',
+        ])->save();
 
         $child = User::factory()->create(['email_verified_at' => now()]);
         $child->assignRole('learner');
+        $child->forceFill(['status' => User::STATUS_ACTIVE])->save();
 
         ParentChildAccount::create([
             'parent_user_id'        => $parent->id,
@@ -60,6 +70,9 @@ class ParentChildMonitoringTest extends TestCase
             'can_view_progress'     => true,
             'can_view_quiz_answers' => true,
             'can_approve_content'   => true,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'current_evidence_round' => 1,
             'verification_status'   => 'approved',
             'relationship_verified_at' => now(),
         ]);
@@ -82,6 +95,87 @@ class ParentChildMonitoringTest extends TestCase
         $this->actingAs($parent)
              ->get(route('parent.children.show', $child))
              ->assertOk();
+    }
+
+    public function test_pending_rejected_inactive_and_revoked_relationships_cannot_view_progress(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+        $relationship = ParentChildAccount::query()
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
+            ->firstOrFail();
+
+        foreach ([
+            [ParentChildAccount::STATUS_PENDING, ParentChildAccount::VERIFICATION_UNDER_REVIEW],
+            [ParentChildAccount::STATUS_REJECTED, ParentChildAccount::VERIFICATION_REJECTED],
+            [ParentChildAccount::STATUS_INACTIVE, ParentChildAccount::VERIFICATION_VERIFIED],
+            [ParentChildAccount::STATUS_REVOKED, ParentChildAccount::VERIFICATION_REVOKED],
+        ] as [$relationshipStatus, $verificationStatus]) {
+            $relationship->update([
+                'relationship_status' => $relationshipStatus,
+                'relationship_verified_status' => $verificationStatus,
+            ]);
+
+            $this->actingAs($parent)
+                ->get(route('parent.children.show', $child))
+                ->assertForbidden();
+        }
+    }
+
+    public function test_verified_relationship_without_quiz_permission_cannot_open_an_attempt(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+        ParentChildAccount::query()
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
+            ->update(['can_view_quiz_answers' => false]);
+
+        $quiz = Quiz::factory()->create();
+        $attempt = QuizAttempt::create([
+            'user_id' => $child->id,
+            'quiz_id' => $quiz->id,
+            'score' => 85,
+            'passed' => true,
+            'answers' => [],
+            'started_at' => now()->subMinutes(5),
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.quiz-attempts.show', [$child, $attempt]))
+            ->assertForbidden();
+    }
+
+    public function test_suspended_guardian_loses_access_without_mutating_other_relationships(): void
+    {
+        [$parent, $child] = $this->createParentWithChild();
+        $otherChild = User::factory()->create([
+            'email_verified_at' => now(),
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $otherChild->assignRole('learner');
+        $otherRelationship = ParentChildAccount::create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $otherChild->id,
+            'can_view_progress' => true,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'current_evidence_round' => 1,
+            'verification_status' => 'approved',
+            'relationship_verified_at' => now(),
+        ]);
+
+        $parent->update(['status' => User::STATUS_SUSPENDED]);
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.show', $child))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('parent_child_accounts', [
+            'id' => $otherRelationship->id,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+        ]);
     }
 
     public function test_parent_can_view_quiz_attempt_details_for_owned_child(): void

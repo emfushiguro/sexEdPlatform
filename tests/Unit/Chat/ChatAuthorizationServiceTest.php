@@ -86,8 +86,12 @@ class ChatAuthorizationServiceTest extends TestCase
     {
         $service = app(ChatAuthorizationService::class);
 
-        $parent = User::factory()->create(['role' => 'learner']);
-        $child = User::factory()->create(['role' => 'learner']);
+        $parent = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+            'parent_verification_status' => 'approved',
+        ]);
+        $child = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
 
         ParentChildAccount::create([
             'parent_user_id' => $parent->id,
@@ -95,6 +99,9 @@ class ChatAuthorizationServiceTest extends TestCase
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'current_evidence_round' => 1,
             'verification_status' => 'approved',
             'relationship_verified_at' => now(),
         ]);
@@ -112,9 +119,13 @@ class ChatAuthorizationServiceTest extends TestCase
     {
         $service = app(ChatAuthorizationService::class);
 
-        $parent = User::factory()->create(['role' => 'learner']);
-        $child = User::factory()->create(['role' => 'learner']);
-        $instructor = User::factory()->create(['role' => 'instructor']);
+        $parent = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+            'parent_verification_status' => 'approved',
+        ]);
+        $child = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
+        $instructor = User::factory()->create(['role' => 'instructor', 'status' => User::STATUS_ACTIVE]);
 
         ParentChildAccount::create([
             'parent_user_id' => $parent->id,
@@ -122,6 +133,9 @@ class ChatAuthorizationServiceTest extends TestCase
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'current_evidence_round' => 1,
             'verification_status' => 'approved',
             'relationship_verified_at' => now(),
         ]);
@@ -146,6 +160,66 @@ class ChatAuthorizationServiceTest extends TestCase
         $this->assertFalse($parentToInstructor['requires_request']);
         $this->assertTrue($instructorToParent['allowed']);
         $this->assertFalse($instructorToParent['requires_request']);
+    }
+
+    public function test_only_access_eligible_guardian_links_qualify_for_child_and_instructor_chat(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+
+        $parent = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
+        $child = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
+        $instructor = User::factory()->create(['role' => 'instructor', 'status' => User::STATUS_ACTIVE]);
+        $parent->forceFill(['parent_verification_status' => 'approved'])->save();
+
+        $relationship = ParentChildAccount::create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'relationship_status' => ParentChildAccount::STATUS_PENDING,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_UNDER_REVIEW,
+            'verification_status' => 'approved',
+            'relationship_verified_at' => now(),
+        ]);
+
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'is_published' => true,
+            'content_owner_type' => 'instructor',
+        ]);
+        ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => EnrollmentStatus::Approved,
+            'enrolled_at' => now(),
+        ]);
+
+        $this->assertFalse($service->evaluateStart($parent, $child)['allowed']);
+        $pendingParentToInstructor = $service->evaluateStart($parent, $instructor);
+        $this->assertTrue($pendingParentToInstructor['allowed']);
+        $this->assertTrue($pendingParentToInstructor['requires_request']);
+
+        $relationship->update([
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'verification_status' => 'approved',
+            'current_evidence_round' => 1,
+            'relationship_verified_at' => now(),
+        ]);
+
+        $this->assertTrue($service->evaluateStart($parent, $child)['allowed']);
+        $this->assertTrue($service->evaluateStart($parent, $instructor)['allowed']);
+
+        $relationship->update([
+            'relationship_status' => ParentChildAccount::STATUS_REVOKED,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_REVOKED,
+        ]);
+
+        $this->assertFalse($service->evaluateStart($parent, $child)['allowed']);
+        $revokedParentToInstructor = $service->evaluateStart($parent, $instructor);
+        $this->assertTrue($revokedParentToInstructor['allowed']);
+        $this->assertTrue($revokedParentToInstructor['requires_request']);
     }
 
     public function test_send_and_subscribe_require_participation_and_active_state(): void

@@ -3,6 +3,9 @@
 namespace Tests\Feature\Instructor;
 
 use App\Models\User;
+use App\Models\ParentChildAccount;
+use App\Models\Module;
+use App\Models\ModuleEnrollment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -66,5 +69,46 @@ class DashboardTest extends TestCase
         $this->actingAs($learner)
              ->get(route('instructor.dashboard'))
              ->assertStatus(403);
+    }
+
+    public function test_guardian_classifications_exclude_pending_and_revoked_links(): void
+    {
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+        $guardian = User::factory()->create([
+            'name' => 'Pending Guardian',
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $dependent = User::factory()->create([
+            'name' => 'Visible Dependent',
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'content_owner_type' => 'instructor',
+        ]);
+        ModuleEnrollment::query()->create([
+            'user_id' => $dependent->id,
+            'module_id' => $module->id,
+            'status' => 'approved',
+            'enrolled_at' => now(),
+        ]);
+
+        ParentChildAccount::query()->create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $dependent->id,
+            'relationship_status' => ParentChildAccount::STATUS_PENDING,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_UNDER_REVIEW,
+            'verification_status' => 'approved',
+            'relationship_verified_at' => now(),
+        ]);
+
+        $this->actingAs($instructor)
+            ->get(route('instructor.users.show', $dependent))
+            ->assertOk()
+            ->assertDontSeeText($guardian->name)
+            ->assertSeeText($dependent->name);
     }
 }

@@ -122,9 +122,8 @@ class ChatAuthorizationService
         }
 
         $linkedChildIds = ParentChildAccount::query()
+            ->accessEligible()
             ->where('parent_user_id', $learnerId)
-            ->where('verification_status', 'approved')
-            ->whereNull('deleted_at')
             ->pluck('child_user_id');
 
         if ($linkedChildIds->isEmpty()) {
@@ -143,9 +142,7 @@ class ChatAuthorizationService
     protected function hasApprovedParentChildRelation(int $firstUserId, int $secondUserId): bool
     {
         return ParentChildAccount::query()
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
-            ->whereNull('deleted_at')
+            ->accessEligible()
             ->where(function ($query) use ($firstUserId, $secondUserId) {
                 $query->where(function ($innerQuery) use ($firstUserId, $secondUserId) {
                     $innerQuery->where('parent_user_id', $firstUserId)

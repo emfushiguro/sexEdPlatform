@@ -5,6 +5,7 @@ namespace Tests\Feature\Moderation;
 use App\Enums\EnforcementActionType;
 use App\Enums\ViolationSeverity;
 use App\Models\EnforcementAction;
+use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Models\UserSuspension;
 use App\Services\Moderation\SuspensionAppealService;
@@ -51,6 +52,46 @@ class SuspensionAppealSubmissionTest extends DatabaseTestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $service->submitAppeal($permanentSuspension, $user, 'Please review permanent suspension.');
+    }
+
+    public function test_inactive_and_revoked_guardians_cannot_post_as_the_dependent_guardian(): void
+    {
+        $service = app(SuspensionAppealService::class);
+        $dependent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $guardian = User::factory()->create([
+            'status' => User::STATUS_ACTIVE,
+            'parent_verification_status' => 'approved',
+        ]);
+        $relationship = ParentChildAccount::query()->create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $dependent->id,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'relationship_verified_at' => now(),
+            'current_evidence_round' => 1,
+            'verification_status' => 'approved',
+        ]);
+        $suspension = $this->makeSuspension($dependent, EnforcementActionType::TemporarySuspension, now()->addDays(2));
+        $appeal = $service->submitAppeal($suspension, $dependent, 'Please review this case.');
+
+        $service->postThreadMessage($appeal, $guardian, 'Active guardian follow-up.');
+
+        foreach ([
+            [ParentChildAccount::STATUS_INACTIVE, ParentChildAccount::VERIFICATION_VERIFIED],
+            [ParentChildAccount::STATUS_REVOKED, ParentChildAccount::VERIFICATION_REVOKED],
+        ] as [$relationshipStatus, $verificationStatus]) {
+            $relationship->update([
+                'relationship_status' => $relationshipStatus,
+                'relationship_verified_status' => $verificationStatus,
+            ]);
+
+            try {
+                $service->postThreadMessage($appeal, $guardian, 'Unauthorized guardian follow-up.');
+                $this->fail('Inactive and revoked guardians must not post in the appeal thread.');
+            } catch (\InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
     }
 
     private function makeSuspension(User $user, EnforcementActionType $type, $endsAt): UserSuspension

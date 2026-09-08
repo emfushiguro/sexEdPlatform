@@ -236,9 +236,7 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        $approvedParentLinks = $user->parentLinks()
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+        $approvedParentLinks = $user->accessibleGuardianLinks()
             ->with([
                 'parent:id,name,email,birthdate',
                 'parent.learnerProfile:id,user_id,avatar_path,birthdate',

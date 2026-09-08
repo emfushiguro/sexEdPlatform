@@ -204,10 +204,9 @@ class ModuleController extends Controller
             && $approvedEnrollmentsCount >= $effectiveEnrollmentLimit;
 
         $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
             ->where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+            ->withPermission('can_approve_content')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval
@@ -490,10 +489,10 @@ class ModuleController extends Controller
         }
 
         // Check if parent approval is required
-        $needsParentApproval = ParentChildAccount::where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+        $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
+            ->where('child_user_id', $user->id)
+            ->withPermission('can_approve_content')
             ->exists();
 
         if ($needsParentApproval) {
@@ -507,10 +506,9 @@ class ModuleController extends Controller
             $enrollment->loadMissing('module');
 
             $parentApproverIds = ParentChildAccount::query()
+                ->accessEligible()
                 ->where('child_user_id', $user->id)
-                ->where('can_approve_content', true)
-                ->where('verification_status', 'approved')
-                ->whereNotNull('relationship_verified_at')
+                ->withPermission('can_approve_content')
                 ->pluck('parent_user_id')
                 ->unique()
                 ->values();
@@ -617,10 +615,9 @@ class ModuleController extends Controller
             ->first();
 
         $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
             ->where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+            ->withPermission('can_approve_content')
             ->exists();
 
         if ($needsParentApproval) {
@@ -645,10 +642,9 @@ class ModuleController extends Controller
                 $enrollment->loadMissing('module');
 
                 $parentApproverIds = ParentChildAccount::query()
+                    ->accessEligible()
                     ->where('child_user_id', $user->id)
-                    ->where('can_approve_content', true)
-                    ->where('verification_status', 'approved')
-                    ->whereNotNull('relationship_verified_at')
+                    ->withPermission('can_approve_content')
                     ->pluck('parent_user_id')
                     ->unique()
                     ->values();
@@ -724,10 +720,9 @@ class ModuleController extends Controller
             ->first();
 
         $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
             ->where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+            ->withPermission('can_approve_content')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval
@@ -826,10 +821,9 @@ class ModuleController extends Controller
             ->first();
 
         $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
             ->where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+            ->withPermission('can_approve_content')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval

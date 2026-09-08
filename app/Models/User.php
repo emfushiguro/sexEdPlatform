@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -555,7 +557,38 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function isParent(): bool
     {
-        return $this->children()->exists();
+        return $this->accessibleChildLinks()->exists();
+    }
+
+    public function guardians(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'parent_child_accounts', 'child_user_id', 'parent_user_id')
+            ->withPivot([
+                'id',
+                'relationship_type',
+                'relationship_custom',
+                'verification_pathway',
+                'relationship_status',
+                'relationship_verified_status',
+                'current_evidence_round',
+                'can_view_progress',
+                'can_view_quiz_answers',
+                'can_approve_content',
+                'relationship_verified_at',
+                'deleted_at',
+            ])
+            ->wherePivotNull('deleted_at')
+            ->withTimestamps();
+    }
+
+    public function accessibleChildLinks(): HasMany
+    {
+        return $this->hasMany(ParentChildAccount::class, 'parent_user_id')->accessEligible();
+    }
+
+    public function accessibleGuardianLinks(): HasMany
+    {
+        return $this->hasMany(ParentChildAccount::class, 'child_user_id')->accessEligible();
     }
 
     /**
@@ -722,12 +755,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(RoleTransition::class);
     }
 
-    public function childLinks()
+    public function childLinks(): HasMany
     {
         return $this->hasMany(ParentChildAccount::class, 'parent_user_id');
     }
 
-    public function parentLinks()
+    public function parentLinks(): HasMany
     {
         return $this->hasMany(ParentChildAccount::class, 'child_user_id');
     }

@@ -230,13 +230,17 @@ class ChatHttpFlowTest extends TestCase
 
     public function test_parent_can_start_chat_with_linked_child_and_child_instructor(): void
     {
-        $parent = User::factory()->create(['role' => 'learner']);
+        $parent = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+            'parent_verification_status' => 'approved',
+        ]);
         $parent->assignRole('learner');
 
-        $child = User::factory()->create(['role' => 'learner']);
+        $child = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
         $child->assignRole('learner');
 
-        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor = User::factory()->create(['role' => 'instructor', 'status' => User::STATUS_ACTIVE]);
         $instructor->assignRole('instructor');
 
         ParentChildAccount::create([
@@ -245,6 +249,9 @@ class ChatHttpFlowTest extends TestCase
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'current_evidence_round' => 1,
             'verification_status' => 'approved',
             'relationship_verified_at' => now(),
         ]);

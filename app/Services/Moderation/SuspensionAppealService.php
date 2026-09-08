@@ -165,10 +165,9 @@ class SuspensionAppealService
         }
 
         $isLinkedVerifiedParent = ParentChildAccount::query()
+            ->accessEligible()
             ->where('parent_user_id', $sender->id)
             ->where('child_user_id', $appeal->user_id)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
             ->exists();
 
         if ($isLinkedVerifiedParent) {

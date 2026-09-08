@@ -34,9 +34,7 @@ class ParentVisibilityController extends Controller
             $profileSelectColumns[] = 'about';
         }
 
-        $parentLinks = $user->parentLinks()
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+        $parentLinks = $user->accessibleGuardianLinks()
             ->with([
                 'parent:id,name,email,birthdate,created_at',
                 'parent.learnerProfile:' . implode(',', $profileSelectColumns),
