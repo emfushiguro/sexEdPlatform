@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Throwable;
 
 class GuardianRelationshipEvidenceService
@@ -217,7 +218,7 @@ class GuardianRelationshipEvidenceService
                         throw new InvalidArgumentException('A staged verification document is missing.');
                     }
 
-                    $recomputedHash = hash_file('sha256', $disk->path($source));
+                    $recomputedHash = hash('sha256', $disk->get($source));
                     if (! is_string($recomputedHash)
                         || ! hash_equals((string) $document['content_sha256'], $recomputedHash)) {
                         throw ValidationException::withMessages([

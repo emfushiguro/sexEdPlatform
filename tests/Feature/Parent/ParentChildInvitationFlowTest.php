@@ -233,7 +233,10 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->seedLocationRows();
         Storage::fake('local');
 
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => User::STATUS_ACTIVE,
+        ]);
         $admin->assignRole('admin');
         $parent = $this->createApprovedParent();
         $child = $this->createLearner('pendingaccesschild', 12);
@@ -339,7 +342,10 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->seedLocationRows();
         Storage::fake('local');
 
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => User::STATUS_ACTIVE,
+        ]);
         $admin->assignRole('admin');
         $parent = $this->createApprovedParent();
         $child = $this->createLearner('rejectedrelationshipchild', 12);
@@ -679,6 +685,7 @@ class ParentChildInvitationFlowTest extends TestCase
             ->with(\Mockery::on(static fn (string $path): bool => $path !== $source))
             ->once()
             ->andReturn(true);
+        $disk->shouldReceive('get')->with($source)->once()->andReturn('court order');
         $disk->shouldReceive('move')->with($source, \Mockery::type('string'))->once()->andReturn(true);
         $disk->shouldReceive('move')->with(\Mockery::type('string'), $source)->once()->andReturn(false);
         Storage::shouldReceive('disk')->with('local')->andReturn($disk);
