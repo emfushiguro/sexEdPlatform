@@ -25,6 +25,12 @@ final class GuardianRelationshipEvidenceRules
         $pairSides = [];
 
         foreach ($documents as $index => $document) {
+            if (! is_array($document)) {
+                $errors["documents.{$index}"] = 'Each evidence item must be an object with document metadata.';
+
+                continue;
+            }
+
             $side = (string) ($document['document_side'] ?? '');
             $pairingKey = trim((string) ($document['pairing_key'] ?? ''));
             $documentType = (string) ($document['document_type'] ?? '');
