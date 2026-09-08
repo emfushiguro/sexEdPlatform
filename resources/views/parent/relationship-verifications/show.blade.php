@@ -11,7 +11,8 @@
         'resubmission_required' => 'bg-orange-100 text-orange-700',
         default => 'bg-amber-100 text-amber-700',
     };
-    $canSubmit = $requiresVerification && in_array($status, ['pending', 'rejected', 'resubmission_required'], true);
+    $canSubmit = $requiresVerification && in_array($status, ['pending', 'resubmission_required'], true);
+    $submittedRounds = $relationship->verificationDocuments->groupBy('submission_round');
 @endphp
 
 <div class="max-w-4xl mx-auto space-y-6">
@@ -29,6 +30,12 @@
 
     @if(session('success'))
         <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
+    @endif
+
+    @if($errors->any())
+        <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">
+            Please correct the highlighted evidence details before submitting.
+        </div>
     @endif
 
     <div class="grid gap-4 md:grid-cols-2">
@@ -64,53 +71,109 @@
     @if($requiresVerification)
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-3">
-                <h2 class="text-lg font-semibold text-gray-900">Submitted Documents</h2>
+                <h2 class="text-lg font-semibold text-gray-900">Submitted Evidence</h2>
                 <span class="text-xs text-gray-500">{{ $relationship->verificationDocuments->count() }} file(s)</span>
             </div>
-            <div class="mt-3 space-y-2">
-                @forelse($relationship->verificationDocuments as $document)
-                    <a href="{{ route('parent.relationship-verifications.documents.show', [$relationship, $document]) }}" class="block rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-semibold text-purple-700 hover:bg-purple-50">
-                        {{ $document->original_name }} · {{ config('guardian_relationships.document_types.' . $document->document_type, $document->document_type) }}
-                    </a>
+            <div class="mt-3 space-y-4">
+                @forelse($submittedRounds as $round => $documents)
+                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                        <p class="text-sm font-semibold text-gray-900">Submission round {{ $round }}</p>
+                        <div class="mt-2 space-y-2">
+                            @foreach($documents as $document)
+                                <a href="{{ route('parent.relationship-verifications.documents.show', [$relationship, $document]) }}" class="block rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50">
+                                    {{ $document->original_name }} · {{ config('guardian_relationships.document_types.' . $document->document_type, $document->document_type) }} · {{ ucfirst(str_replace('_', ' ', $document->document_side)) }}
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
                 @empty
-                    <p class="text-sm text-gray-500">No documents submitted yet.</p>
+                    <p class="text-sm text-gray-500">No evidence submitted yet.</p>
                 @endforelse
             </div>
         </div>
 
         @if($canSubmit)
-            <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                <h2 class="text-lg font-semibold text-gray-900">Submit Supporting Documentation</h2>
-                <p class="mt-1 text-sm text-gray-500">This relationship requires additional verification before full relationship-sensitive features unlock.</p>
+            <div
+                class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+                x-data="guardianEvidenceForm({
+                    documentTypes: @js($documentTypes),
+                    requiredDocumentTypes: @js($requiredDocumentTypes),
+                    maxRows: 10,
+                })"
+                x-init="init()"
+                x-on:beforeunload.window="destroy()"
+            >
+                <h2 class="text-lg font-semibold text-gray-900">Administrative verification</h2>
+                <p class="mt-1 text-sm text-gray-500">{{ $pathwayLabel }}. Upload the documents that support this specific Guardian-Dependent relationship. A reviewer will assess the submission.</p>
+
+                <div class="mt-4 rounded-xl border border-purple-100 bg-purple-50 p-4 text-sm text-purple-900">
+                    <p class="font-semibold">Evidence guidance</p>
+                    <p class="mt-1">Required core document: <span x-text="requiredDocumentTypes.map(type => documentTypes[type] || type).join(', ')"></span>.</p>
+                    <p class="mt-1">You may add up to 10 PDF, JPEG, PNG, or WebP files. Additional context is {{ $requiresCircumstances ? 'required' : 'optional' }} for this pathway.</p>
+                </div>
 
                 <form method="POST" action="{{ route('parent.relationship-verifications.store', $relationship) }}" enctype="multipart/form-data" class="mt-4 space-y-4">
                     @csrf
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
-                        <select name="document_type" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-                            <option value="">Select document type</option>
-                            @foreach($documentTypes as $value => $label)
-                                <option value="{{ $value }}" @selected(old('document_type') === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        @error('document_type')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+
+                    <div class="space-y-4">
+                        <template x-for="(row, index) in rows" :key="row.id">
+                            <div class="rounded-xl border border-gray-200 p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <p class="text-sm font-semibold text-gray-900">Document <span x-text="index + 1"></span></p>
+                                    <button type="button" class="text-xs font-semibold text-rose-600 disabled:cursor-not-allowed disabled:text-gray-400" :disabled="rows.length === 1" @click="removeRow(index)">Remove</button>
+                                </div>
+
+                                <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1" :for="`document-type-${row.id}`">Document type</label>
+                                        <select :id="`document-type-${row.id}`" :name="`documents[${index}][document_type]`" x-model="row.documentType" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                                            <option value="">Select document type</option>
+                                            <template x-for="(label, value) in documentTypes" :key="value">
+                                                <option :value="value" x-text="label"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1" :for="`document-side-${row.id}`">Document side</label>
+                                        <select :id="`document-side-${row.id}`" :name="`documents[${index}][document_side]`" x-model="row.side" @change="sideChanged(index)" required class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                                            <option value="not_applicable">Not applicable</option>
+                                            <option value="front">Front</option>
+                                            <option value="back">Back</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <input :name="`documents[${index}][pairing_key]`" type="hidden" :value="row.pairingKey">
+                                <div class="mt-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1" :for="`document-file-${row.id}`">File</label>
+                                    <input :id="`document-file-${row.id}`" :name="`documents[${index}][file]`" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required @change="fileChanged(index, $event)" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                                    <p class="mt-1 text-xs text-gray-500" x-text="row.fileName || 'PDF, JPEG, PNG, or WebP · maximum 5 MB'"></p>
+                                    <template x-if="row.previewUrl && row.previewKind === 'image'">
+                                        <img :src="row.previewUrl" alt="Selected evidence preview" class="mt-3 max-h-48 rounded-lg border border-gray-200 object-contain">
+                                    </template>
+                                    <template x-if="row.previewUrl && row.previewKind === 'pdf'">
+                                        <iframe :src="row.previewUrl" title="Selected PDF evidence preview" class="mt-3 h-48 w-full rounded-lg border border-gray-200"></iframe>
+                                    </template>
+                                </div>
+
+                                <button type="button" class="mt-3 text-sm font-semibold text-purple-700 disabled:cursor-not-allowed disabled:text-gray-400" :disabled="!row.documentType || row.pairingKey || rows.length >= maxRows" @click="addBackSide(index)">Add back side</button>
+                            </div>
+                        </template>
                     </div>
 
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Primary Document</label>
-                            <input type="file" name="document" required accept=".pdf,.jpg,.jpeg,.png,.webp" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-                            @error('document')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Supporting Document</label>
-                            <input type="file" name="supporting_document" accept=".pdf,.jpg,.jpeg,.png,.webp" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-                            @error('supporting_document')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
+                    <button type="button" class="rounded-xl border border-purple-200 px-4 py-2 text-sm font-semibold text-purple-700 disabled:cursor-not-allowed disabled:opacity-50" :disabled="rows.length >= maxRows" @click="addRow()">Add another document</button>
+
+                    <div>
+                        <label for="relationship_notes" class="block text-sm font-medium text-gray-700 mb-1">Context {{ $requiresCircumstances ? '(required)' : '(optional)' }}</label>
+                        <textarea id="relationship_notes" name="relationship_notes" rows="4" maxlength="1000" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="Share any context that helps the reviewer understand the relationship.">{{ old('relationship_notes') }}</textarea>
+                        @error('relationship_notes')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                     </div>
+
+                    @error('documents')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
 
                     <label class="flex gap-2 text-sm text-gray-700">
-                        <input type="checkbox" name="confirm_submission" value="1" required class="mt-1 rounded border-gray-300">
+                        <input type="checkbox" name="confirm_submission" value="1" required class="mt-1 rounded border-gray-300" @checked(old('confirm_submission'))>
                         I confirm these documents support this specific Guardian-Dependent relationship.
                     </label>
                     @error('confirm_submission')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
@@ -123,4 +186,89 @@
         @endif
     @endif
 </div>
+
+@push('scripts')
+<script>
+    function guardianEvidenceForm(config) {
+        return {
+            documentTypes: config.documentTypes,
+            requiredDocumentTypes: config.requiredDocumentTypes,
+            maxRows: config.maxRows,
+            rows: [],
+
+            init() {
+                this.addRow();
+            },
+
+            addRow() {
+                if (this.rows.length >= this.maxRows) return;
+                this.rows.push({
+                    id: crypto.randomUUID(),
+                    documentType: '',
+                    side: 'not_applicable',
+                    pairingKey: null,
+                    previewUrl: null,
+                    previewKind: null,
+                    fileName: null,
+                });
+            },
+
+            addBackSide(index) {
+                const row = this.rows[index];
+                if (!row || row.pairingKey || !row.documentType || this.rows.length >= this.maxRows) return;
+
+                const pairingKey = crypto.randomUUID();
+                row.side = 'front';
+                row.pairingKey = pairingKey;
+                this.rows.splice(index + 1, 0, {
+                    id: crypto.randomUUID(),
+                    documentType: row.documentType,
+                    side: 'back',
+                    pairingKey,
+                    previewUrl: null,
+                    previewKind: null,
+                    fileName: null,
+                });
+            },
+
+            sideChanged(index) {
+                const row = this.rows[index];
+                if (!row || row.side === 'not_applicable') {
+                    if (row) row.pairingKey = null;
+                    return;
+                }
+
+                const duplicate = this.rows.some((other, otherIndex) => otherIndex !== index && other.pairingKey === row.pairingKey && other.side === row.side);
+                if (row.pairingKey && duplicate) row.side = 'not_applicable';
+            },
+
+            fileChanged(index, event) {
+                const row = this.rows[index];
+                const file = event.target.files?.[0];
+                if (!row || !file) return;
+
+                this.revoke(row);
+                row.previewUrl = URL.createObjectURL(file);
+                row.previewKind = file.type === 'application/pdf' ? 'pdf' : 'image';
+                row.fileName = file.name;
+            },
+
+            removeRow(index) {
+                if (this.rows.length === 1) return;
+                const [row] = this.rows.splice(index, 1);
+                this.revoke(row);
+            },
+
+            revoke(row) {
+                if (row?.previewUrl) URL.revokeObjectURL(row.previewUrl);
+                if (row) row.previewUrl = null;
+            },
+
+            destroy() {
+                this.rows.forEach(row => this.revoke(row));
+            },
+        };
+    }
+</script>
+@endpush
 @endsection

@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Services\GuardianRelationshipEvidenceService;
 use App\Support\GuardianRelationshipEvidenceRules;
 use App\Support\GuardianRelationshipTypes;
+use App\Http\Middleware\EnsureGuardianVerified;
+use App\Http\Middleware\EnsureProfileCompleted;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -16,6 +18,89 @@ use Tests\TestCase;
 
 class GuardianRelationshipEvidenceSubmissionTest extends TestCase
 {
+    public function test_guardian_submits_multiple_categorized_documents(): void
+    {
+        $this->withoutMiddleware([EnsureGuardianVerified::class, EnsureProfileCompleted::class]);
+        Storage::fake('local');
+        [$guardian, $dependent, $relationship] = $this->pendingRelationship('adoptive_parent');
+
+        $this->actingAs($guardian)
+            ->get(route('parent.relationship-verifications.show', $relationship))
+            ->assertOk()
+            ->assertSee('documents[', false)
+            ->assertSee('Add another document', false)
+            ->assertSee('Administrative verification', false)
+            ->assertSee('Adoptive Parent Evidence Review', false);
+
+        $this->actingAs($guardian)->post(route('parent.relationship-verifications.store', $relationship), [
+            'documents' => [
+                ['document_type' => 'adoption_order', 'document_side' => 'not_applicable', 'pairing_key' => null, 'file' => UploadedFile::fake()->createWithContent('front.jpg', 'front-evidence')->mimeType('image/jpeg')],
+                ['document_type' => 'other_supporting_document', 'document_side' => 'not_applicable', 'pairing_key' => null, 'file' => UploadedFile::fake()->create('support.pdf', 100, 'application/pdf')],
+            ],
+            'confirm_submission' => '1',
+        ])->assertRedirect(route('parent.relationship-verifications.show', $relationship));
+
+        $this->assertDatabaseCount('guardian_relationship_verification_documents', 2);
+        $this->assertDatabaseHas('parent_child_accounts', [
+            'id' => $relationship->id,
+            'relationship_status' => 'pending',
+            'relationship_verified_status' => 'under_review',
+            'current_evidence_round' => 1,
+        ]);
+    }
+
+    public function test_non_owner_cannot_view_submit_or_download_relationship_evidence(): void
+    {
+        $this->withoutMiddleware([EnsureGuardianVerified::class, EnsureProfileCompleted::class]);
+        [$guardian, $dependent, $relationship] = $this->pendingRelationship('adoptive_parent');
+        $other = User::factory()->create();
+
+        $this->actingAs($other)->get(route('parent.relationship-verifications.show', $relationship))->assertForbidden();
+        $this->actingAs($other)->post(route('parent.relationship-verifications.store', $relationship), [])->assertForbidden();
+    }
+
+    public function test_evidence_download_is_limited_to_submitting_guardian_and_authorized_admin(): void
+    {
+        $this->withoutMiddleware([EnsureGuardianVerified::class, EnsureProfileCompleted::class]);
+        Storage::fake('local');
+        [$guardian, $dependent, $relationship] = $this->pendingRelationship('adoptive_parent');
+        $document = $this->storeEvidenceFor($relationship, $guardian);
+        $otherGuardian = $this->approvedGuardian();
+        $instructor = User::factory()->create(['role' => 'instructor', 'status' => User::STATUS_ACTIVE]);
+        $instructor->assignRole('instructor');
+        $admin = $this->adminWithRelationshipReviewPermission();
+
+        foreach ([$dependent, $otherGuardian, $instructor] as $unauthorized) {
+            $this->actingAs($unauthorized)
+                ->get(route('parent.relationship-verifications.documents.show', [$relationship, $document]))
+                ->assertForbidden();
+        }
+
+        $this->actingAs($guardian)
+            ->get(route('parent.relationship-verifications.documents.show', [$relationship, $document]))
+            ->assertOk();
+        $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.relationships.documents.show', [$relationship, $document]))
+            ->assertOk();
+    }
+
+    public function test_submission_requires_a_core_pathway_document_and_context_when_configured(): void
+    {
+        $this->withoutMiddleware([EnsureGuardianVerified::class, EnsureProfileCompleted::class]);
+        [$guardian, $dependent, $relationship] = $this->pendingRelationship('aunt');
+
+        $this->actingAs($guardian)->post(route('parent.relationship-verifications.store', $relationship), [
+            'documents' => [[
+                'document_type' => 'other_supporting_document',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->create('letter.pdf', 100, 'application/pdf'),
+            ]],
+            'relationship_notes' => '',
+            'confirm_submission' => '1',
+        ])->assertSessionHasErrors(['documents', 'relationship_notes']);
+    }
+
     public function test_multiple_documents_are_stored_privately_in_one_round(): void
     {
         Storage::fake('local');
@@ -31,13 +116,13 @@ class GuardianRelationshipEvidenceSubmissionTest extends TestCase
                     'document_type' => 'adoption_order',
                     'document_side' => 'front',
                     'pairing_key' => 'f2f07af0-1e32-45fb-9f37-02a6a653a2d9',
-                    'file' => UploadedFile::fake()->image('order-front.jpg'),
+                    'file' => UploadedFile::fake()->createWithContent('order-front.jpg', 'front-evidence')->mimeType('image/jpeg'),
                 ],
                 [
                     'document_type' => 'adoption_order',
                     'document_side' => 'back',
                     'pairing_key' => 'f2f07af0-1e32-45fb-9f37-02a6a653a2d9',
-                    'file' => UploadedFile::fake()->image('order-back.jpg'),
+                    'file' => UploadedFile::fake()->createWithContent('order-back.jpg', 'back-evidence')->mimeType('image/jpeg'),
                 ],
             ],
             $storedPaths,
@@ -59,13 +144,7 @@ class GuardianRelationshipEvidenceSubmissionTest extends TestCase
         [$guardian, $dependent, $relationship] = $this->pendingRelationship('adoptive_parent');
         $storedPaths = [];
         $first = UploadedFile::fake()->create('same.pdf', 100, 'application/pdf');
-        $second = new UploadedFile(
-            $first->getPathname(),
-            'renamed.pdf',
-            'application/pdf',
-            null,
-            true,
-        );
+        $second = UploadedFile::fake()->create('renamed.pdf', 100, 'application/pdf');
 
         try {
             app(GuardianRelationshipEvidenceService::class)->storeUploadedRound(
@@ -235,6 +314,50 @@ class GuardianRelationshipEvidenceSubmissionTest extends TestCase
             'pairing_key' => null,
             'file' => $file,
         ];
+    }
+
+    private function approvedGuardian(): User
+    {
+        $guardian = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
+        ]);
+        $guardian->assignRole('learner');
+
+        return $guardian;
+    }
+
+    private function adminWithRelationshipReviewPermission(): User
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $admin->assignRole('admin');
+
+        return $admin;
+    }
+
+    private function storeEvidenceFor(
+        ParentChildAccount $relationship,
+        User $guardian,
+    ): GuardianRelationshipVerificationDocument {
+        $storedPaths = [];
+
+        return app(GuardianRelationshipEvidenceService::class)->storeUploadedRound(
+            $relationship,
+            $guardian,
+            1,
+            [[
+                'document_type' => 'adoption_order',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->create('order.pdf', 100, 'application/pdf'),
+            ]],
+            $storedPaths,
+        )->sole();
     }
 
     private function pendingRelationship(string $type): array
