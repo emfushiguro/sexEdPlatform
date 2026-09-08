@@ -9,6 +9,7 @@ use App\Models\LearnerProfile;
 use App\Models\Module;
 use App\Models\ModuleRevision;
 use App\Models\ModuleEnrollment;
+use App\Models\ParentChildAccount;
 use App\Models\Payment;
 use App\Models\PlanFeatureEntitlement;
 use App\Models\SubscriptionPlan;
@@ -95,6 +96,9 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
         $learner = $this->createLearner();
         $parent = User::factory()->create([
             'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
             'birthdate' => now()->subYears(35)->toDateString(),
         ]);
         $parent->assignRole('learner');
@@ -108,11 +112,15 @@ class LearnerPaidModulePurchaseFlowTest extends TestCase
         DB::table('parent_child_accounts')->insert([
             'parent_user_id' => $parent->id,
             'child_user_id' => $learner->id,
+            'relationship_type' => 'parent',
+            'verification_pathway' => 'legacy',
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'is_legacy_relationship' => true,
             'verification_status' => 'approved',
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
-            'verification_status' => 'approved',
             'relationship_verified_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
