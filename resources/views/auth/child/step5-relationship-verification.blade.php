@@ -109,7 +109,6 @@
     </form>
 </x-auth-split-layout>
 
-@push('scripts')
 <script>
     function guardianEvidenceForm(config) {
         return {
@@ -150,4 +149,3 @@
         };
     }
 </script>
-@endpush

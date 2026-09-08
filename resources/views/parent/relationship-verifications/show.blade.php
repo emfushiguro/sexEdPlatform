@@ -13,6 +13,11 @@
     };
     $canSubmit = $requiresVerification && in_array($status, ['pending', 'resubmission_required'], true);
     $submittedRounds = $relationship->verificationDocuments->groupBy('submission_round');
+    $oldDocuments = collect(old('documents', []))->filter('is_array')->map(static fn (array $document): array => [
+        'documentType' => $document['document_type'] ?? '',
+        'side' => $document['document_side'] ?? 'not_applicable',
+        'pairingKey' => $document['pairing_key'] ?? null,
+    ])->values()->all();
 @endphp
 
 <div class="max-w-4xl mx-auto space-y-6">
@@ -98,6 +103,7 @@
                 x-data="guardianEvidenceForm({
                     documentTypes: @js($documentTypes),
                     requiredDocumentTypes: @js($requiredDocumentTypes),
+                    initialRows: @js($oldDocuments),
                     maxRows: 10,
                 })"
                 x-init="init()"
@@ -171,6 +177,13 @@
                     </div>
 
                     @error('documents')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+                    @foreach($errors->getMessages() as $field => $messages)
+                        @if(str_starts_with($field, 'documents.') && is_array($messages))
+                            @foreach($messages as $message)
+                                <p class="text-xs text-red-600">{{ str($field)->replace('.', ' · ')->toString() }}: {{ $message }}</p>
+                            @endforeach
+                        @endif
+                    @endforeach
 
                     <label class="flex gap-2 text-sm text-gray-700">
                         <input type="checkbox" name="confirm_submission" value="1" required class="mt-1 rounded border-gray-300" @checked(old('confirm_submission'))>
@@ -193,11 +206,24 @@
         return {
             documentTypes: config.documentTypes,
             requiredDocumentTypes: config.requiredDocumentTypes,
+            initialRows: config.initialRows || [],
             maxRows: config.maxRows,
             rows: [],
 
             init() {
-                this.addRow();
+                if (this.initialRows.length > 0) {
+                    this.rows = this.initialRows.map(row => ({
+                        id: crypto.randomUUID(),
+                        documentType: row.documentType || '',
+                        side: row.side || 'not_applicable',
+                        pairingKey: row.pairingKey || null,
+                        previewUrl: null,
+                        previewKind: null,
+                        fileName: null,
+                    }));
+                } else {
+                    this.addRow();
+                }
             },
 
             addRow() {
