@@ -96,11 +96,6 @@
                 </select>
             </label>
 
-            <label class="inline-flex items-center gap-2 text-sm text-gray-600 md:col-span-2">
-                <input type="checkbox" name="is_verified" value="1" class="rounded border-gray-300" @checked(old('is_verified'))>
-                Mark relationship as verified on creation
-            </label>
-
             <div class="md:col-span-2">
                 <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors">Attach Relationship</button>
             </div>
@@ -157,14 +152,22 @@
                                 </td>
                                 <td class="px-4 py-3">
                                     <div class="flex justify-end gap-2">
-                                        <form method="POST" action="{{ route('admin.users.relationships.verification') }}">
-                                            @csrf
-                                            @method('PATCH')
-                                            <input type="hidden" name="parent_user_id" value="{{ $relationship->parent_user_id }}">
-                                            <input type="hidden" name="child_user_id" value="{{ $relationship->child_user_id }}">
-                                            <input type="hidden" name="is_verified" value="{{ $relationship->relationship_verified_at ? 0 : 1 }}">
-                                            <button type="submit" class="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Toggle Verification</button>
-                                        </form>
+                                        <a href="{{ route('admin.parent-verifications.relationships.show', $relationship) }}" class="px-2.5 py-1.5 rounded-lg border border-purple-200 bg-purple-50 text-xs font-semibold text-purple-700 hover:bg-purple-100 transition-colors">Review Relationship</a>
+                                        @if($relationship->isVerifiedActive())
+                                            <details class="relative">
+                                                <summary class="cursor-pointer list-none px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Permissions</summary>
+                                                <form method="POST" action="{{ route('admin.users.relationships.permissions') }}" class="absolute right-0 z-10 mt-2 w-64 space-y-2 rounded-lg border border-gray-200 bg-white p-3 text-left shadow-lg">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="parent_user_id" value="{{ $relationship->parent_user_id }}">
+                                                    <input type="hidden" name="child_user_id" value="{{ $relationship->child_user_id }}">
+                                                    <label class="flex items-center gap-2 text-xs text-gray-700"><input type="hidden" name="can_view_progress" value="0"><input type="checkbox" name="can_view_progress" value="1" @checked($relationship->can_view_progress) class="rounded border-gray-300"> View progress</label>
+                                                    <label class="flex items-center gap-2 text-xs text-gray-700"><input type="hidden" name="can_view_quiz_answers" value="0"><input type="checkbox" name="can_view_quiz_answers" value="1" @checked($relationship->can_view_quiz_answers) class="rounded border-gray-300"> View quiz answers</label>
+                                                    <label class="flex items-center gap-2 text-xs text-gray-700"><input type="hidden" name="can_approve_content" value="0"><input type="checkbox" name="can_approve_content" value="1" @checked($relationship->can_approve_content) class="rounded border-gray-300"> Approve content</label>
+                                                    <button type="submit" class="w-full px-2.5 py-1.5 rounded-lg bg-brand-500 text-xs font-semibold text-white hover:bg-brand-600">Save permissions</button>
+                                                </form>
+                                            </details>
+                                        @endif
                                         <form method="POST" action="{{ route('admin.users.relationships.detach') }}" onsubmit="return confirm('Detach this guardian-dependent relationship?')">
                                             @csrf
                                             @method('DELETE')

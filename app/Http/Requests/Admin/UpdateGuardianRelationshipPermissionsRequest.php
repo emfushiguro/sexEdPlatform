@@ -4,11 +4,11 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ToggleParentChildVerificationRequest extends FormRequest
+class UpdateGuardianRelationshipPermissionsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->can('manage user relationships');
+        return (bool) ($this->user()?->hasRole('admin') || $this->user()?->can('manage user relationships'));
     }
 
     public function rules(): array
@@ -16,7 +16,9 @@ class ToggleParentChildVerificationRequest extends FormRequest
         return [
             'parent_user_id' => ['required', 'integer', 'exists:users,id'],
             'child_user_id' => ['required', 'integer', 'exists:users,id', 'different:parent_user_id'],
-            'is_verified' => ['required', 'boolean'],
+            'can_view_progress' => ['required', 'boolean'],
+            'can_view_quiz_answers' => ['required', 'boolean'],
+            'can_approve_content' => ['required', 'boolean'],
         ];
     }
 }

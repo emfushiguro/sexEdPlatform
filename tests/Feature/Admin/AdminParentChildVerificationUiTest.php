@@ -336,6 +336,7 @@ class AdminParentChildVerificationUiTest extends TestCase
             'relationship_type' => 'adoptive_parent',
             'relationship_status' => 'pending',
             'relationship_verified_status' => 'under_review',
+            'current_evidence_round' => 1,
             'relationship_verification_submitted_at' => now(),
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
@@ -347,6 +348,9 @@ class AdminParentChildVerificationUiTest extends TestCase
             'parent_child_account_id' => $relationship->id,
             'uploaded_by_user_id' => $guardian->id,
             'document_type' => 'adoption_order',
+            'submission_round' => 1,
+            'document_side' => 'front',
+            'display_order' => 0,
             'disk' => 'local',
             'path' => 'guardian-relationship-verifications/'.$relationship->id.'/internal-test-image.jpg',
             'original_name' => 'internal-test-image.jpg',
@@ -370,7 +374,10 @@ class AdminParentChildVerificationUiTest extends TestCase
             ->assertSee('Dependent validation', false)
             ->assertSee('Relationship verification', false)
             ->assertSee('Overall relationship', false)
-            ->assertSee('Adoption Order', false)
+            ->assertSee('Administrative verification of submitted identity and relationship evidence', false)
+            ->assertSee('Evidence round 1', false)
+            ->assertSee('Current round', false)
+            ->assertSee('Adoption-Related Order or Record', false)
             ->assertSee('Submitted by', false)
             ->assertSee('Front', false)
             ->assertSee('Preview', false)
@@ -381,6 +388,8 @@ class AdminParentChildVerificationUiTest extends TestCase
             ->assertSee('Fit to screen', false)
             ->assertSee('Request Resubmission', false)
             ->assertDontSee('internal-test-image.jpg', false)
+            ->assertDontSee('guardian-relationship-verifications/'.$relationship->id.'/internal-test-image.jpg', false)
+            ->assertDontSee('content_sha256', false)
             ->assertDontSee('Approve Relationship', false)
             ->assertDontSee('Approve Guardian', false);
     }

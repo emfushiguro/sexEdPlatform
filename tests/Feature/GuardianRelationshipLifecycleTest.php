@@ -138,6 +138,31 @@ class GuardianRelationshipLifecycleTest extends TestCase
         $this->assertSame(ParentChildAccount::VERIFICATION_UNDER_REVIEW, $reactivating->relationship_verified_status);
     }
 
+    public function test_relationship_parties_can_request_deactivation_and_only_parties_can_request_reactivation(): void
+    {
+        [$admin, $guardian, $dependent, $relationship] = $this->actorsAndVerifiedRelationship();
+        $guardian->forceFill(['email_verified_at' => now()])->save();
+        $dependent->forceFill(['email_verified_at' => now()])->save();
+        $unrelated = User::factory()->create([
+            'status' => User::STATUS_ACTIVE,
+            'email_verified_at' => now(),
+        ]);
+
+        $this->actingAs($dependent)
+            ->post(route('guardian-relationships.deactivate', $relationship), ['note' => 'No longer needed.'])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('parent_child_accounts', [
+            'id' => $relationship->id,
+            'relationship_status' => ParentChildAccount::STATUS_INACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+        ]);
+
+        $this->actingAs($unrelated)
+            ->post(route('guardian-relationships.reactivate', $relationship))
+            ->assertForbidden();
+    }
+
     /** @return array{0: User, 1: User, 2: User, 3: ParentChildAccount} */
     private function actorsAndPendingRelationship(): array
     {

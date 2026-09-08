@@ -88,6 +88,9 @@
         parentSearchRows: @js($parentSearchRows),
         childSearchRows: @js($childSearchRows),
         relationshipSearchRows: @js($relationshipSearchRows),
+        relationshipPathway: @js($relationshipFilters['verification_pathway'] ?? 'all'),
+        relationshipStatus: @js($relationshipFilters['relationship_status'] ?? 'all'),
+        relationshipVerificationStatus: @js($relationshipFilters['relationship_verified_status'] ?? 'all'),
         searchQuery: '',
         page: 1,
         perPage: 10,
@@ -113,7 +116,16 @@
             const params = new URLSearchParams();
             params.set('type', this.activeType);
             params.set('status', this.activeStatus);
+            if (this.activeType === 'relationships') {
+                params.set('verification_pathway', this.relationshipPathway);
+                params.set('relationship_status', this.relationshipStatus);
+                params.set('relationship_verified_status', this.relationshipVerificationStatus);
+            }
             window.location.assign(window.location.pathname + '?' + params.toString());
+        },
+        setRelationshipFilter() {
+            this.page = 1;
+            this.navigate();
         },
         normalizedSearchQuery() {
             return String(this.searchQuery || '').trim().toLowerCase();
@@ -345,6 +357,33 @@
                                 <option value="children">Dependent Verifications</option>
                                 <option value="parents">Guardian Verifications</option>
                                 <option value="relationships">Relationship Verifications</option>
+                            </select>
+                        </label>
+                        <label x-show="activeType === 'relationships'" x-cloak class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Pathway</span>
+                            <select x-model="relationshipPathway" @change="setRelationshipFilter()" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                                <option value="all">All pathways</option>
+                                @foreach($relationshipPathways as $pathway => $label)
+                                    <option value="{{ $pathway }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label x-show="activeType === 'relationships'" x-cloak class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Relationship state</span>
+                            <select x-model="relationshipStatus" @change="setRelationshipFilter()" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                                <option value="all">All states</option>
+                                @foreach($relationshipStatuses as $state => $label)
+                                    <option value="{{ $state }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label x-show="activeType === 'relationships'" x-cloak class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Verification state</span>
+                            <select x-model="relationshipVerificationStatus" @change="setRelationshipFilter()" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                                <option value="all">All verification states</option>
+                                @foreach($relationshipVerificationStatuses as $state => $label)
+                                    <option value="{{ $state }}">{{ $label }}</option>
+                                @endforeach
                             </select>
                         </label>
                         <label class="block xl:col-span-2">

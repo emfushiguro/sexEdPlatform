@@ -9,9 +9,9 @@
     $relationshipStatus = (string) ($relationship->relationship_status ?: 'pending');
     $dependentStatus = (string) ($relationship->verification_status ?: 'pending');
     $guardianStatus = (string) ($relationship->parent?->parent_verification_status ?: 'unknown');
-    $canApprove = in_array($status, ['pending', 'under_review', 'resubmission_required'], true);
+    $canApprove = $status === 'under_review';
     $canRevoke = $status === 'verified';
-    $canReject = in_array($status, ['pending', 'under_review', 'resubmission_required'], true);
+    $canReject = $status === 'under_review';
 
     $badge = function (?string $value): string {
         return match ((string) $value) {
@@ -24,7 +24,9 @@
 
     $humanStatus = fn (?string $value): string => str((string) ($value ?: 'unknown'))->replace('_', ' ')->title()->toString();
     $initial = fn ($user, string $fallback): string => strtoupper(substr((string) ($user?->name ?: $fallback), 0, 1));
-    $documentLabels = [];
+    $evidenceRounds = $relationship->verificationDocuments
+        ->groupBy('submission_round')
+        ->sortKeysDesc();
     $guardianIdentityDocuments = collect([
         'front' => [
             'label' => 'Front of guardian ID',
@@ -125,6 +127,11 @@
                 </p>
             </div>
         </div>
+        <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span class="font-semibold">Administrative verification of submitted identity and relationship evidence.</span>
+            <br>
+            This is an administrative verification of submitted identity and relationship evidence. It is not a legal determination of parenthood, adoption, custody, or guardianship.
+        </p>
     </section>
 
     <section class="p-5 bg-white border border-gray-200 shadow-sm rounded-xl">
@@ -230,15 +237,26 @@
             <span class="text-sm font-semibold text-gray-500">{{ $relationship->verificationDocuments->count() }} submitted</span>
         </div>
 
-        <div class="grid gap-3 mt-4 xl:grid-cols-2">
-            @forelse($relationship->verificationDocuments as $document)
-                @php
-                    $documentTypeLabel = (string) config('guardian_relationships.document_types.' . $document->document_type, $humanStatus($document->document_type));
-                    $documentLabels[$document->document_type] = ($documentLabels[$document->document_type] ?? 0) + 1;
-                    $sideLabel = $documentLabels[$document->document_type] === 1 ? 'Front' : 'Back';
-                    $documentUrl = route('admin.parent-verifications.relationships.documents.show', [$relationship, $document]);
-                    $isImage = str_starts_with((string) $document->mime_type, 'image/');
-                @endphp
+        @forelse($evidenceRounds as $round => $roundDocuments)
+            <div class="mt-5" data-testid="evidence-round-{{ $round }}">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <h3 class="text-sm font-semibold text-gray-900">Evidence round {{ $round }}</h3>
+                    @if((int) $round === (int) $relationship->current_evidence_round)
+                        <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Current round</span>
+                    @else
+                        <span class="rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">Previous round · read-only</span>
+                    @endif
+                </div>
+                <div class="grid gap-3 xl:grid-cols-2">
+                    @foreach($roundDocuments as $document)
+                        @php
+                            $documentTypeLabel = (string) config('guardian_relationships.document_types.' . $document->document_type, $humanStatus($document->document_type));
+                            $sideLabel = $document->document_side === 'not_applicable'
+                                ? 'Not applicable'
+                                : (filled($document->document_side) ? $humanStatus($document->document_side) : 'Front');
+                            $documentUrl = route('admin.parent-verifications.relationships.documents.show', [$relationship, $document]);
+                            $isImage = str_starts_with((string) $document->mime_type, 'image/');
+                        @endphp
                 <article class="p-4 border border-gray-200 rounded-xl bg-gray-50" data-testid="relationship-document-card">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0">
@@ -251,6 +269,10 @@
                                 <div>
                                     <dt class="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Submitted by</dt>
                                     <dd class="mt-1 font-medium text-gray-800">{{ $document->uploadedBy?->name ?? $relationship->parent?->name ?? 'Guardian' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Submitted</dt>
+                                    <dd class="mt-1 font-medium text-gray-800">{{ $document->submitted_at?->format('M d, Y h:i A') ?? $document->created_at?->format('M d, Y h:i A') }}</dd>
                                 </div>
                             </dl>
                         </div>
@@ -273,10 +295,12 @@
                         </div>
                     </div>
                 </article>
-            @empty
-                <p class="px-4 py-8 text-sm text-center text-gray-500 border border-gray-200 border-dashed rounded-xl bg-gray-50">No documents submitted.</p>
-            @endforelse
-        </div>
+                    @endforeach
+                </div>
+            </div>
+        @empty
+            <p class="px-4 py-8 mt-4 text-sm text-center text-gray-500 border border-gray-200 border-dashed rounded-xl bg-gray-50">No documents submitted.</p>
+        @endforelse
     </section>
 
     <div class="grid gap-5 lg:grid-cols-3">

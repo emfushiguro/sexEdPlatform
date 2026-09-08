@@ -450,6 +450,11 @@ Route::middleware('auth')->group(function () {
             ->name('invitations.cancel');
     });
 
+    Route::post('/guardian-relationships/{parentChildAccount}/deactivate', [\App\Http\Controllers\GuardianRelationshipLifecycleController::class, 'deactivate'])
+        ->name('guardian-relationships.deactivate');
+    Route::post('/guardian-relationships/{parentChildAccount}/reactivate', [\App\Http\Controllers\GuardianRelationshipLifecycleController::class, 'reactivate'])
+        ->name('guardian-relationships.reactivate');
+
     Route::prefix('chat')
         ->name('chat.')
         ->middleware(['permission:access chat', 'guardian.verified'])

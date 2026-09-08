@@ -10,7 +10,7 @@ class ReviewGuardianRelationshipVerificationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin') ?? false;
+        return (bool) ($this->user()?->hasRole('admin') || $this->user()?->can('manage user relationships'));
     }
 
     public function rules(): array

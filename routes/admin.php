@@ -185,8 +185,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('relationships.attach');
         Route::delete('/relationships/detach', [Admin\UserRelationshipAdminController::class, 'detach'])
             ->name('relationships.detach');
-        Route::patch('/relationships/verification', [Admin\UserRelationshipAdminController::class, 'toggleVerification'])
-            ->name('relationships.verification');
+        Route::patch('/relationships/permissions', [Admin\UserRelationshipAdminController::class, 'updatePermissions'])
+            ->name('relationships.permissions');
 
         Route::get('/create', [Admin\UserAdminController::class, 'create'])->name('create');
         Route::post('/', [Admin\UserAdminController::class, 'store'])->name('store');
