@@ -187,8 +187,8 @@ class ParentChildVerificationController extends Controller
 
     public function approveRelationship(Request $request, ParentChildAccount $parentChildAccount): RedirectResponse|JsonResponse
     {
-        if (! in_array((string) $parentChildAccount->relationship_verified_status, ['pending', 'under_review', 'resubmission_required'], true)) {
-            return $this->respondError($request, 'Decision already finalized. Only pending relationship records can be approved.', 409);
+        if ($parentChildAccount->relationship_verified_status !== ParentChildAccount::VERIFICATION_UNDER_REVIEW) {
+            return $this->respondError($request, 'Only relationship submissions under review can be approved.', 409);
         }
 
         $this->relationshipVerificationService->approve($parentChildAccount, $request->user());
