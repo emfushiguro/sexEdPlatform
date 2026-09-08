@@ -12,7 +12,6 @@ use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Throwable;
 
@@ -84,15 +83,92 @@ class GuardianRelationshipVerificationService
         }
     }
 
-    // Legacy invitation callers must adopt the round-based upload contract.
     public function submitStaged(ParentChildAccount $relationship, User $guardian, array $documents, ?Closure $onSubmitted = null, ?array &$movedDocuments = null): ParentChildAccount
     {
-        throw new InvalidArgumentException('Submit relationship evidence through the current evidence-round workflow.');
+        $movedDocuments = [];
+
+        try {
+            return DB::transaction(function () use ($relationship, $guardian, $documents, $onSubmitted, &$movedDocuments): ParentChildAccount {
+                $locked = ParentChildAccount::query()->lockForUpdate()->findOrFail($relationship->id);
+                $this->assertGuardianOwns($locked, $guardian);
+                $this->assertState($locked, [
+                    ParentChildAccount::VERIFICATION_PENDING,
+                    ParentChildAccount::VERIFICATION_RESUBMISSION_REQUIRED,
+                ]);
+
+                if (! $locked->verificationAudits()->where('action', 'claim_created')->exists()) {
+                    $this->audit($locked, $guardian, 'claim_created', null, ParentChildAccount::VERIFICATION_PENDING);
+                }
+
+                $round = ((int) $locked->current_evidence_round) + 1;
+                if ($locked->current_evidence_round > 0) {
+                    $locked->verificationDocuments()
+                        ->where('submission_round', $locked->current_evidence_round)
+                        ->whereNull('superseded_at')
+                        ->update(['superseded_at' => now()]);
+                }
+
+                $this->evidence->storeStagedRound($locked, $guardian, $round, $documents, $movedDocuments);
+
+                $previous = (string) $locked->relationship_verified_status;
+                $locked->update([
+                    'verification_pathway' => $locked->verification_pathway ?: GuardianRelationshipTypes::pathway($locked->relationship_type),
+                    'relationship_status' => ParentChildAccount::STATUS_PENDING,
+                    'relationship_verified_status' => ParentChildAccount::VERIFICATION_UNDER_REVIEW,
+                    'current_evidence_round' => $round,
+                    'relationship_verification_submitted_at' => now(),
+                    'relationship_verification_reviewed_by' => null,
+                    'relationship_verification_reviewed_at' => null,
+                    'relationship_verification_rejection_reason' => null,
+                    'relationship_verification_rejection_note' => null,
+                    'relationship_verification_revoked_at' => null,
+                    'relationship_deactivated_at' => null,
+                    'relationship_verified_at' => null,
+                ]);
+
+                $action = $previous === ParentChildAccount::VERIFICATION_RESUBMISSION_REQUIRED ? 'resubmitted' : 'submitted';
+                $this->audit($locked, $guardian, $action, $previous, ParentChildAccount::VERIFICATION_UNDER_REVIEW, $round);
+                $onSubmitted?->__invoke($locked);
+                $this->notifyAfterCommit($locked->id, $action, true);
+
+                return $locked->fresh(['parent', 'child', 'verificationDocuments']);
+            });
+        } catch (Throwable $exception) {
+            $this->evidence->restoreStagedDocuments($movedDocuments);
+
+            throw $exception;
+        }
     }
 
     public function submitDeclaration(ParentChildAccount $relationship, User $guardian, ?Closure $onSubmitted = null): ParentChildAccount
     {
-        throw new InvalidArgumentException('Relationship evidence is required before submission.');
+        if ($relationship->requiresRelationshipVerification()) {
+            throw new InvalidArgumentException('Relationship evidence is required before submission.');
+        }
+
+        return DB::transaction(function () use ($relationship, $guardian, $onSubmitted): ParentChildAccount {
+            $locked = ParentChildAccount::query()->lockForUpdate()->findOrFail($relationship->id);
+            $this->assertGuardianOwns($locked, $guardian);
+
+            $previous = (string) ($locked->relationship_verified_status ?: ParentChildAccount::VERIFICATION_PENDING);
+            $locked->update([
+                'verification_pathway' => GuardianRelationshipTypes::pathway($locked->relationship_type),
+                'relationship_status' => ParentChildAccount::STATUS_PENDING,
+                'relationship_verified_status' => ParentChildAccount::VERIFICATION_UNDER_REVIEW,
+                'relationship_verification_submitted_at' => now(),
+                'relationship_verification_reviewed_by' => null,
+                'relationship_verification_reviewed_at' => null,
+                'relationship_verification_rejection_reason' => null,
+                'relationship_verification_rejection_note' => null,
+                'relationship_verification_revoked_at' => null,
+                'relationship_verified_at' => null,
+            ]);
+            $this->audit($locked, $guardian, 'submitted', $previous, ParentChildAccount::VERIFICATION_UNDER_REVIEW, 0);
+            $onSubmitted?->__invoke($locked);
+            $this->notifyAfterCommit($locked->id, 'submitted', true);
+
+            return $locked->fresh(['parent', 'child']);
+        });
     }
 
     public function approve(ParentChildAccount $relationship, User $admin): ParentChildAccount
@@ -341,39 +417,4 @@ class GuardianRelationshipVerificationService
         });
     }
 
-    public function restoreStagedDocuments(array &$movedDocuments): void
-    {
-        $disk = Storage::disk('local');
-
-        foreach (array_reverse($movedDocuments) as $document) {
-            try {
-                if (! $disk->exists($document['destination'])) {
-                    continue;
-                }
-
-                if ($disk->exists($document['source'])) {
-                    $disk->delete($document['destination']);
-
-                    continue;
-                }
-
-                if ($disk->move($document['destination'], $document['source'])) {
-                    continue;
-                }
-
-                Log::error('Unable to restore staged verification document after submission failure.', [
-                    'source' => $document['source'],
-                    'destination' => $document['destination'],
-                ]);
-            } catch (Throwable $exception) {
-                Log::error('Unable to restore staged verification document after submission failure.', [
-                    'source' => $document['source'],
-                    'destination' => $document['destination'],
-                    'exception' => $exception,
-                ]);
-            }
-        }
-
-        $movedDocuments = [];
-    }
 }

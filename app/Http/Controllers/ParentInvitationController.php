@@ -62,11 +62,22 @@ class ParentInvitationController extends Controller
                 (string) $request->string('relationship_type'),
                 $request->filled('relationship_custom') ? (string) $request->string('relationship_custom') : null,
                 $request->filled('message') ? (string) $request->string('message') : null,
-                $request->hasFile('relationship_document') ? [
-                    'document_type' => (string) $request->string('relationship_document_type'),
-                    'document' => $request->file('relationship_document'),
-                    'supporting_document' => $request->file('relationship_supporting_document'),
-                ] : null,
+                [
+                    'documents' => array_values(array_filter([
+                        [
+                            'document_type' => (string) $request->string('relationship_document_type'),
+                            'document_side' => 'not_applicable',
+                            'pairing_key' => null,
+                            'file' => $request->file('relationship_document'),
+                        ],
+                        $request->hasFile('relationship_supporting_document') ? [
+                            'document_type' => 'other_supporting_document',
+                            'document_side' => 'not_applicable',
+                            'pairing_key' => null,
+                            'file' => $request->file('relationship_supporting_document'),
+                        ] : null,
+                    ])),
+                ],
             );
         } catch (InvalidArgumentException $exception) {
             return back()->withErrors(['identifier' => $exception->getMessage()])->withInput();
