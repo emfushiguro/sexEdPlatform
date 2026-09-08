@@ -120,8 +120,6 @@ class ParentChildVerificationService
                 'verification_reviewed_by' => Auth::id(),
                 'verification_reviewed_at' => now(),
                 'verification_approved_at' => now(),
-                'relationship_status' => 'active',
-                'relationship_verified_at' => now(),
             ]);
 
             $this->notifySafely($verification->parent, new ChildVerificationApprovedNotification($verification->child));
@@ -141,7 +139,6 @@ class ParentChildVerificationService
                 'verification_reviewed_by' => Auth::id(),
                 'verification_reviewed_at' => now(),
                 'verification_approved_at' => null,
-                'relationship_verified_at' => null,
             ]);
 
             $this->notifySafely($verification->parent, new ChildVerificationRejectedNotification($verification->child, trim($reason)));
@@ -166,7 +163,6 @@ class ParentChildVerificationService
                 'verification_reviewed_by' => null,
                 'verification_reviewed_at' => null,
                 'verification_approved_at' => null,
-                'relationship_verified_at' => null,
             ]);
 
             if (! empty($oldPath) && $oldPath !== $newDocumentPath) {

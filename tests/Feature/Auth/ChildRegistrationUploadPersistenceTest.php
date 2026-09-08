@@ -4,6 +4,9 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use App\Notifications\Admin\ChildVerificationRequestSubmittedNotification;
+use App\Models\ParentChildAccount;
+use App\Services\ParentChildVerificationService;
+use App\Support\GuardianRelationshipTypes;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -16,6 +19,7 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
     public function test_child_credentials_submit_notifies_admins_about_new_child_verification_request(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
         Notification::fake();
 
@@ -40,7 +44,9 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
 
         $this->actingAs($parent)
             ->post(route('parent.create-child.validation.store'))
-            ->assertRedirect(route('parent.create-child.done'));
+            ->assertRedirect(route('parent.create-child.relationship-verification'));
+
+        $this->submitRelationshipEvidence($parent, 'childnotifyrelationship');
 
         Notification::assertSentTo(
             [$admin],
@@ -154,6 +160,7 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
     public function test_child_credentials_submit_finalizes_temp_upload_and_clears_session(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
 
         $parent = $this->createApprovedParent();
@@ -174,7 +181,9 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
 
         $this->actingAs($parent)
             ->post(route('parent.create-child.validation.store'))
-            ->assertRedirect(route('parent.create-child.done'));
+            ->assertRedirect(route('parent.create-child.relationship-verification'));
+
+        $this->submitRelationshipEvidence($parent, 'childwithrelationship');
 
         $link = DB::table('parent_child_accounts')
             ->where('parent_user_id', $parent->id)
@@ -186,6 +195,90 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
         $this->assertStringStartsWith('child-verifications/'.$parent->id.'/', $link->verification_document_path);
         Storage::disk('public')->assertExists($link->verification_document_path);
         $this->assertNull(session('registration_temp_uploads.child.verification_document'));
+    }
+
+    public function test_adoptive_registration_stores_multiple_relationship_documents_in_one_round(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
+
+        $parent = $this->createApprovedParent();
+        $this->completeChildWizardUntilRelationshipReview($parent, 'adoptive_parent', 'adoptivechild');
+
+        $this->actingAs($parent)
+            ->post(route('parent.create-child.relationship-verification.store'), [
+                'documents' => [
+                    ['document_type' => 'adoption_order', 'document_side' => 'not_applicable', 'pairing_key' => null, 'file' => UploadedFile::fake()->createWithContent('adoption-order.pdf', 'adoption-order')->mimeType('application/pdf')],
+                    ['document_type' => 'other_supporting_document', 'document_side' => 'not_applicable', 'pairing_key' => null, 'file' => UploadedFile::fake()->createWithContent('support.pdf', 'supporting-evidence')->mimeType('application/pdf')],
+                ],
+                'confirm_submission' => '1',
+            ])->assertRedirect(route('parent.create-child.done'));
+
+        $relationship = ParentChildAccount::query()->latest('id')->firstOrFail();
+        $this->assertSame(2, $relationship->verificationDocuments()->count());
+        $this->assertSame(1, $relationship->verificationDocuments()->pluck('submission_round')->unique()->sole());
+    }
+
+    public function test_non_parental_registration_requires_context_before_relationship_submission(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
+
+        $parent = $this->createApprovedParent();
+        $this->completeChildWizardUntilRelationshipReview($parent, 'aunt', 'auntchild');
+
+        $payload = [
+            'documents' => [[
+                'document_type' => 'care_arrangement',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->create('care-arrangement.pdf', 100, 'application/pdf'),
+            ]],
+            'confirm_submission' => '1',
+        ];
+
+        $this->actingAs($parent)
+            ->post(route('parent.create-child.relationship-verification.store'), $payload)
+            ->assertSessionHasErrors('relationship_notes');
+
+        $payload['relationship_notes'] = 'The guardian provides ongoing care for this dependent.';
+        $this->actingAs($parent)
+            ->post(route('parent.create-child.relationship-verification.store'), $payload)
+            ->assertRedirect(route('parent.create-child.done'));
+    }
+
+    public function test_child_account_approval_does_not_verify_the_relationship(): void
+    {
+        $parent = $this->createApprovedParent();
+        $child = User::factory()->create(['email_verified_at' => now()]);
+        $child->assignRole('learner');
+        $relationship = ParentChildAccount::query()->create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'relationship_type' => 'biological_mother',
+            'verification_pathway' => GuardianRelationshipTypes::pathway('biological_mother'),
+            'relationship_status' => ParentChildAccount::STATUS_PENDING,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_PENDING,
+            'current_evidence_round' => 1,
+            'verification_status' => 'pending',
+            'verification_document_path' => 'child-verifications/test.pdf',
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => false,
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin', 'status' => User::STATUS_ACTIVE]);
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin);
+        app(ParentChildVerificationService::class)->approveChild($relationship);
+
+        $relationship->refresh();
+        $this->assertSame(ParentChildAccount::STATUS_PENDING, $relationship->relationship_status);
+        $this->assertSame(ParentChildAccount::VERIFICATION_PENDING, $relationship->relationship_verified_status);
+        $this->assertNull($relationship->relationship_verified_at);
     }
 
     public function test_guardian_can_start_dependent_account_creation_for_older_dependent(): void
@@ -218,6 +311,7 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
             'last_name' => 'Parent',
             'birthdate' => now()->subYears(30)->toDateString(),
             'email_verified_at' => now(),
+            'status' => User::STATUS_ACTIVE,
             'is_parent_registration' => true,
             'parent_verification_status' => 'approved',
         ]);
@@ -287,5 +381,41 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
                 'barangay_code' => '402101001',
             ],
         ];
+    }
+
+    private function completeChildWizardUntilRelationshipReview(User $parent, string $relationshipType, string $username): void
+    {
+        $session = $this->childWizardSession();
+        $session['child_step1']['relationship_type'] = $relationshipType;
+
+        $this->actingAs($parent)
+            ->postJson(route('parent.create-child.credentials.temp-upload'), [
+                'verification_document' => UploadedFile::fake()->create('birth-cert.pdf', 120, 'application/pdf'),
+            ])->assertOk();
+
+        $this->actingAs($parent)->withSession($session)
+            ->post(route('parent.create-child.credentials.store'), [
+                'username' => $username,
+                'password' => 'Password123!',
+                'password_confirmation' => 'Password123!',
+            ])->assertRedirect(route('parent.create-child.validation'));
+
+        $this->actingAs($parent)
+            ->post(route('parent.create-child.validation.store'))
+            ->assertRedirect(route('parent.create-child.relationship-verification'));
+    }
+
+    private function submitRelationshipEvidence(User $parent, string $username): void
+    {
+        $this->actingAs($parent)
+            ->post(route('parent.create-child.relationship-verification.store'), [
+                'documents' => [[
+                    'document_type' => 'civil_registry_record',
+                    'document_side' => 'not_applicable',
+                    'pairing_key' => null,
+                    'file' => UploadedFile::fake()->create($username.'.pdf', 100, 'application/pdf'),
+                ]],
+                'confirm_submission' => '1',
+            ])->assertRedirect(route('parent.create-child.done'));
     }
 }

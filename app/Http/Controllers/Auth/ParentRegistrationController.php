@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\StoreChildRelationshipVerificationRequest;
 use App\Http\Requests\Auth\ResubmitChildVerificationRequest;
 use App\Http\Requests\Auth\RemoveTempUploadRequest;
 use App\Http\Requests\Auth\UploadChildTempDocumentRequest;
@@ -13,6 +14,7 @@ use App\Notifications\Admin\ParentVerificationRequestSubmittedNotification;
 use App\Models\User;
 use App\Models\ParentChildAccount;
 use App\Services\Auth\RegistrationTempUploadService;
+use App\Services\GuardianRelationshipEvidenceService;
 use App\Services\GuardianRelationshipVerificationService;
 use App\Services\ParentChildInvitationService;
 use App\Services\ParentChildVerificationService;
@@ -23,6 +25,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +35,7 @@ use Illuminate\Validation\Rules\Password;
 use Carbon\Carbon;
 use InvalidArgumentException;
 use Spatie\Permission\Models\Role;
+use Throwable;
 
 class ParentRegistrationController extends Controller
 {
@@ -468,11 +472,13 @@ class ParentRegistrationController extends Controller
                 ->withInput();
         }
 
-        if (GuardianRelationshipTypes::requiresVerification($step1['relationship_type'] ?? null)) {
-            return redirect()->route('parent.create-child.relationship-verification');
+        $relationshipType = (string) ($step1['relationship_type'] ?? '');
+        if (! in_array($relationshipType, GuardianRelationshipTypes::selectableValues(), true)) {
+            return redirect()->route('parent.create-child')
+                ->withErrors(['relationship_type' => 'Select a supported guardian relationship.']);
         }
 
-        return $this->createChildAccountFromSession($request, $tempUploadService);
+        return redirect()->route('parent.create-child.relationship-verification');
     }
 
     public function childRelationshipVerificationForm(): View|RedirectResponse
@@ -486,17 +492,21 @@ class ParentRegistrationController extends Controller
             return redirect()->route('parent.create-child');
         }
 
-        if (! GuardianRelationshipTypes::requiresVerification($step1['relationship_type'] ?? null)) {
-            return redirect()->route('parent.create-child.validation');
+        if (! in_array((string) ($step1['relationship_type'] ?? ''), GuardianRelationshipTypes::selectableValues(), true)) {
+            return redirect()->route('parent.create-child')
+                ->withErrors(['relationship_type' => 'Select a supported guardian relationship.']);
         }
 
         return view('auth.child.step5-relationship-verification', [
             'step1' => $step1,
             'relationshipDocumentTypes' => GuardianRelationshipTypes::documentTypeOptions($step1['relationship_type'] ?? null),
+            'pathwayLabel' => GuardianRelationshipTypes::pathwayLabel($step1['relationship_type'] ?? null),
+            'requiredDocumentTypes' => GuardianRelationshipTypes::requiredDocumentTypes($step1['relationship_type'] ?? null),
+            'requiresCircumstances' => GuardianRelationshipTypes::requiresCircumstances($step1['relationship_type'] ?? null),
         ]);
     }
 
-    public function storeChildRelationshipVerification(Request $request): RedirectResponse
+    public function storeChildRelationshipVerification(StoreChildRelationshipVerificationRequest $request): RedirectResponse
     {
         if ($redirect = $this->ensureApprovedParent()) {
             return $redirect;
@@ -507,19 +517,11 @@ class ParentRegistrationController extends Controller
             return redirect()->route('parent.create-child');
         }
 
-        abort_unless(GuardianRelationshipTypes::requiresVerification($step1['relationship_type'] ?? null), 404);
-
-        $validated = $request->validate([
-            'relationship_document_type' => ['required', Rule::in(GuardianRelationshipTypes::acceptedDocumentTypes($step1['relationship_type'] ?? null))],
-            'relationship_document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'],
-            'relationship_supporting_document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'],
-            'confirm_relationship_verification' => ['accepted'],
-        ]);
+        abort_unless(in_array((string) ($step1['relationship_type'] ?? ''), GuardianRelationshipTypes::selectableValues(), true), 404);
 
         return $this->createChildAccountFromSession($request, app(RegistrationTempUploadService::class), [
-            'document_type' => (string) $validated['relationship_document_type'],
-            'document' => $request->file('relationship_document'),
-            'supporting_document' => $request->file('relationship_supporting_document'),
+            'documents' => $request->validated('documents'),
+            'relationship_notes' => $request->validated('relationship_notes'),
         ]);
     }
 
@@ -536,7 +538,8 @@ class ParentRegistrationController extends Controller
             return redirect()->route('parent.create-child');
         }
 
-        $requiresRelationshipVerification = GuardianRelationshipTypes::requiresVerification($step1['relationship_type'] ?? null);
+        $relationshipType = (string) ($step1['relationship_type'] ?? '');
+        $requiresRelationshipVerification = in_array($relationshipType, GuardianRelationshipTypes::selectableValues(), true);
 
         $parent = Auth::user();
         $parentEmail = $parent->email;
@@ -569,7 +572,23 @@ class ParentRegistrationController extends Controller
                 ->withInput($request->except(['password', 'password_confirmation']));
         }
 
-        $child = User::create([
+        $relationshipEvidencePaths = [];
+
+        try {
+            [$child, $verification] = DB::transaction(function () use (
+                $parent,
+                $step1,
+                $step2,
+                $step3,
+                $childEmail,
+                $barangay,
+                $verificationDocumentPath,
+                $relationshipVerificationPayload,
+                $relationshipType,
+                $requiresRelationshipVerification,
+                &$relationshipEvidencePaths,
+            ): array {
+                $child = User::query()->create([
             'name'           => trim($step1['first_name'] . ' ' . $step1['last_name']),
             'first_name'     => $step1['first_name'],
             'middle_initial' => $step1['middle_initial'] ?? null,
@@ -582,42 +601,58 @@ class ParentRegistrationController extends Controller
             'email_verified_at' => now(),
         ]);
 
-        Role::findOrCreate('learner', 'web');
-        $child->assignRole('learner');
+                Role::findOrCreate('learner', 'web');
+                $child->assignRole('learner');
 
-        $child->learnerProfile()->create([
-            'username'                 => $step3['username'],
-            'birthdate'                => $child->birthdate,
-            'gender'                   => $step1['gender'],
-            'city_code'                => $step2['city_code'],
-            'barangay_code'            => $step2['barangay_code'],
-            'barangay'                 => $barangay?->name,
-            'province_code'            => '402100000',
-            'requires_parental_consent'=> true,
-        ]);
+                $child->learnerProfile()->create([
+                    'username' => $step3['username'],
+                    'birthdate' => $child->birthdate,
+                    'gender' => $step1['gender'],
+                    'city_code' => $step2['city_code'],
+                    'barangay_code' => $step2['barangay_code'],
+                    'barangay' => $barangay->name,
+                    'province_code' => '402100000',
+                    'requires_parental_consent' => true,
+                ]);
 
-        $verification = ParentChildAccount::create([
-            'parent_user_id'          => $parent->id,
-            'child_user_id'           => $child->id,
-            'can_view_progress'       => true,
-            'can_view_quiz_answers'   => true,
-            'can_approve_content'     => true,
-            'relationship_type'        => $step1['relationship_type'],
-            'relationship_custom'      => ($step1['relationship_type'] ?? null) === GuardianRelationshipTypes::OTHER ? ($step1['relationship_custom'] ?? null) : null,
-            'relationship_status'      => $requiresRelationshipVerification ? 'pending' : 'active',
-            'relationship_verified_status' => app(GuardianRelationshipVerificationService::class)->initialStatus($step1['relationship_type']),
-            'is_legacy_relationship'   => false,
-            'verification_status'     => VerificationStatus::Pending->value,
-            'verification_document_path' => $verificationDocumentPath,
-            'relationship_verified_at'=> null,
-        ]);
+                $verification = ParentChildAccount::query()->create([
+                    'parent_user_id' => $parent->id,
+                    'child_user_id' => $child->id,
+                    'can_view_progress' => true,
+                    'can_view_quiz_answers' => true,
+                    'can_approve_content' => false,
+                    'relationship_type' => $relationshipType,
+                    'relationship_custom' => $relationshipType === GuardianRelationshipTypes::OTHER
+                        ? ($step1['relationship_custom'] ?? null)
+                        : null,
+                    'verification_pathway' => GuardianRelationshipTypes::pathway($relationshipType),
+                    'relationship_status' => ParentChildAccount::STATUS_PENDING,
+                    'relationship_verified_status' => ParentChildAccount::VERIFICATION_PENDING,
+                    'current_evidence_round' => 0,
+                    'relationship_notes' => $relationshipVerificationPayload['relationship_notes'] ?? null,
+                    'is_legacy_relationship' => false,
+                    'verification_status' => VerificationStatus::Pending->value,
+                    'verification_document_path' => $verificationDocumentPath,
+                    'relationship_verified_at' => null,
+                ]);
 
-        if ($requiresRelationshipVerification) {
-            app(GuardianRelationshipVerificationService::class)->submit($verification, $parent, [
-                'document_type' => (string) $relationshipVerificationPayload['document_type'],
-                'document' => $relationshipVerificationPayload['document'],
-                'supporting_document' => $relationshipVerificationPayload['supporting_document'] ?? null,
-            ]);
+                if ($requiresRelationshipVerification) {
+                    app(GuardianRelationshipVerificationService::class)->submit(
+                        $verification,
+                        $parent,
+                        $relationshipVerificationPayload['documents'],
+                        $relationshipVerificationPayload['relationship_notes'] ?? null,
+                        $relationshipEvidencePaths,
+                    );
+                }
+
+                return [$child, $verification->fresh()];
+            });
+        } catch (Throwable $exception) {
+            Storage::disk('public')->delete($verificationDocumentPath);
+            app(GuardianRelationshipEvidenceService::class)->deleteStoredPaths($relationshipEvidencePaths);
+
+            throw $exception;
         }
 
         $this->notifyAdminsSafely(new ChildVerificationRequestSubmittedNotification($parent, $child, $verification));
