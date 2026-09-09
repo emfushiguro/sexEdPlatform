@@ -196,6 +196,23 @@ class InteractiveActivityRenderingTest extends TestCase
         ]);
     }
 
+    public function test_child_activity_window_listeners_are_scoped_to_their_activity_id(): void
+    {
+        $renderedActivities = [
+            view('learner.lessons.partials.interactive-activities.matching', [
+                'activity' => ['id' => 'matching-42', 'payload' => ['left_items' => [], 'right_items' => []]],
+            ])->render(),
+            view('learner.lessons.partials.interactive-activities.sequencing', [
+                'activity' => ['id' => 'sequencing-42', 'payload' => ['items' => []]],
+            ])->render(),
+        ];
+
+        foreach ($renderedActivities as $html) {
+            $this->assertStringContainsString('@interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"', $html);
+            $this->assertStringContainsString('@interactive-activity-practice.window="if ($event.detail.activityId === activityId) resetPractice()"', $html);
+        }
+    }
+
     /** @return array{User, Lesson, LessonTopic} */
     private function lessonFixture(): array
     {

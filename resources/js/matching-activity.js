@@ -101,7 +101,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
                     if (!correct) this.feedback = 'Not quite—try another match';
                     this.leftId = null;
                     this.rightId = null;
-                    this.$dispatch?.('interactive-activity-state', { status: this.status, data });
+                    this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
                     queueMicrotask(() => this.refreshConnectors());
                     return data;
                 }
@@ -124,7 +124,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
                 if (!data.is_correct) this.feedback = 'Not quite—try another match';
                 this.leftId = null;
                 this.rightId = null;
-                this.$dispatch?.('interactive-activity-state', { status: this.status, data });
+                this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
                 queueMicrotask(() => this.refreshConnectors());
                 return data;
             } catch (error) {

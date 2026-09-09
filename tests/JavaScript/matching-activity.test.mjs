@@ -47,6 +47,31 @@ test('request errors preserve previously completed pairs', async () => {
     assert.equal(activity.error, 'Offline');
 });
 
+test('successful matching responses dispatch state for the configured activity', async () => {
+    const events = [];
+    const activity = createMatchingActivity({
+        activityId: 'matching-42',
+        matchUrl: '/match',
+    }, async () => response({
+        status: 'completed',
+        is_correct: true,
+        is_complete: true,
+    }));
+    activity.$dispatch = (name, detail) => events.push({ name, detail });
+
+    activity.selectLeft('left-1').selectRight('right-1');
+    await activity.submitMatch();
+
+    assert.deepEqual(events, [{
+        name: 'interactive-activity-state',
+        detail: {
+            activityId: 'matching-42',
+            status: 'completed',
+            data: { status: 'completed', is_correct: true, is_complete: true },
+        },
+    }]);
+});
+
 test('connector geometry is derived from item centers relative to the container', () => {
     assert.deepEqual(calculateConnectorLines(
         [{ left: 20, top: 30, width: 100, height: 20 }],

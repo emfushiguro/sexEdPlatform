@@ -116,7 +116,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                     const data = { is_correct: correct, status: correct ? 'completed' : this.status };
                     this.status = data.status;
                     if (!correct) this.feedback = 'Not quite—try again';
-                    this.$dispatch?.('interactive-activity-state', { status: this.status, data });
+                    this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
                     return data;
                 }
                 if (typeof request !== 'function' || !config.checkUrl) return null;
@@ -130,7 +130,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                 const data = await readResponse(response);
                 this.status = data.status ?? this.status;
                 if (!data.is_correct) this.feedback = 'Not quite—try again';
-                this.$dispatch?.('interactive-activity-state', { status: this.status, data });
+                this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
                 return data;
             } catch (error) {
                 this.error = error.message || 'Unable to check the sequence.';

@@ -73,3 +73,28 @@ test('correct state locks controls and practice resets local status', async () =
     assert.equal(activity.status, 'practice');
     assert.deepEqual(activity.order, ['one', 'two', 'three']);
 });
+
+test('successful sequencing responses dispatch state for the configured activity', async () => {
+    const events = [];
+    const activity = createSequencingActivity({
+        activityId: 'sequencing-42',
+        initialOrder: ['one', 'two', 'three'],
+        checkUrl: '/check',
+    }, async () => response({
+        status: 'completed',
+        is_correct: true,
+        is_complete: true,
+    }));
+    activity.$dispatch = (name, detail) => events.push({ name, detail });
+
+    await activity.checkAnswer();
+
+    assert.deepEqual(events, [{
+        name: 'interactive-activity-state',
+        detail: {
+            activityId: 'sequencing-42',
+            status: 'completed',
+            data: { status: 'completed', is_correct: true, is_complete: true },
+        },
+    }]);
+});
