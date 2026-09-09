@@ -8,6 +8,7 @@ use App\Models\ParentChildInvitation;
 use App\Models\User;
 use App\Notifications\Learner\ParentChildInvitationReceivedNotification;
 use App\Notifications\Parent\ParentChildInvitationRespondedNotification;
+use App\Services\Chat\GuardianInvitationConversationService;
 use App\Support\GuardianRelationshipTypes;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -21,6 +22,7 @@ class ParentChildInvitationService
     public function __construct(
         private readonly GuardianRelationshipVerificationService $relationshipVerificationService,
         private readonly GuardianRelationshipEvidenceService $evidence,
+        private readonly GuardianInvitationConversationService $invitationConversations,
     ) {}
 
     public function sendInvitation(
@@ -80,6 +82,7 @@ class ParentChildInvitationService
                 if ($existingPending !== null) {
                     if ($existingPending->isExpired()) {
                         $existingPending->update(['status' => ParentChildInvitationStatus::Expired->value]);
+                        DB::afterCommit(fn () => $this->invitationConversations->syncForInvitation((int) $existingPending->id));
                     } else {
                         throw new InvalidArgumentException('An invitation is already pending for this learner.');
                     }
@@ -283,8 +286,11 @@ class ParentChildInvitationService
         }
 
         if ($wasExpired) {
+            DB::afterCommit(fn () => $this->invitationConversations->syncForInvitation((int) $updatedInvitation->id));
             throw new InvalidArgumentException('This invitation has already expired.');
         }
+
+        DB::afterCommit(fn () => $this->invitationConversations->syncForInvitation((int) $updatedInvitation->id));
 
         $updatedInvitation->inviterParent?->notify(new ParentChildInvitationRespondedNotification($updatedInvitation));
 
@@ -297,7 +303,7 @@ class ParentChildInvitationService
             throw new InvalidArgumentException('You are not allowed to cancel this invitation.');
         }
 
-        return DB::transaction(function () use ($parent, $invitation): ParentChildInvitation {
+        $updatedInvitation = DB::transaction(function () use ($parent, $invitation): ParentChildInvitation {
             $locked = ParentChildInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
             if (($locked->status instanceof ParentChildInvitationStatus ? $locked->status->value : (string) $locked->status) !== ParentChildInvitationStatus::Pending->value) {
                 throw new InvalidArgumentException('Only pending invitations can be cancelled.');
@@ -313,6 +319,10 @@ class ParentChildInvitationService
 
             return $locked->fresh();
         });
+
+        DB::afterCommit(fn () => $this->invitationConversations->syncForInvitation((int) $updatedInvitation->id));
+
+        return $updatedInvitation;
     }
 
     public function getOutgoingInvitations(User $parent): Collection
@@ -418,6 +428,8 @@ class ParentChildInvitationService
                     ]);
                     $this->scheduleStagedDocumentCleanup($stagedDocuments, (int) $locked->id);
                 });
+
+                DB::afterCommit(fn () => $this->invitationConversations->syncForInvitation((int) $invitation->id));
 
                 $invitation->status = ParentChildInvitationStatus::Expired;
             });

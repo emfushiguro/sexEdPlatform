@@ -5,8 +5,10 @@ namespace Tests\Feature\Parent;
 use App\Models\ParentChildInvitation;
 use App\Models\Conversation;
 use App\Models\User;
+use App\Services\ParentChildInvitationService;
 use App\Notifications\Learner\ParentChildInvitationReceivedNotification;
 use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Tests\TestCase;
 
 class GuardianInvitationMessagingTest extends TestCase
@@ -105,6 +107,53 @@ class GuardianInvitationMessagingTest extends TestCase
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('conversation_type');
+    }
+
+    public function test_invitation_rejection_cancellation_and_expiry_close_conversations_after_commit(): void
+    {
+        NotificationFacade::fake();
+        [$guardian, $child, $invitation] = $this->createInvitation();
+        $invitationService = app(ParentChildInvitationService::class);
+
+        $this->actingAs($child)
+            ->post(route('parent.invitations.conversation', $invitation));
+        $conversation = Conversation::query()->where('parent_child_invitation_id', $invitation->id)->firstOrFail();
+
+        $invitationService->respondToInvitation($child, $invitation, 'reject');
+        $this->assertSame(Conversation::STATUS_CLOSED, $conversation->fresh()->status);
+
+        $cancelledInvitation = ParentChildInvitation::query()->create([
+            'inviter_parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'relationship_type' => 'grandmother',
+            'invite_token' => (string) \Illuminate\Support\Str::uuid(),
+            'status' => 'pending',
+            'expires_at' => now()->addDays(14),
+        ]);
+        $this->actingAs($child)
+            ->post(route('parent.invitations.conversation', $cancelledInvitation));
+        $cancelledConversation = Conversation::query()->where('parent_child_invitation_id', $cancelledInvitation->id)->firstOrFail();
+
+        $invitationService->cancelInvitation($guardian, $cancelledInvitation);
+        $this->assertSame(Conversation::STATUS_CLOSED, $cancelledConversation->fresh()->status);
+
+        $expiredInvitation = ParentChildInvitation::query()->create([
+            'inviter_parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'relationship_type' => 'grandmother',
+            'invite_token' => (string) \Illuminate\Support\Str::uuid(),
+            'status' => 'pending',
+            'expires_at' => now()->addDays(14),
+        ]);
+        $this->actingAs($child)
+            ->post(route('parent.invitations.conversation', $expiredInvitation));
+        $expiredConversation = Conversation::query()->where('parent_child_invitation_id', $expiredInvitation->id)->firstOrFail();
+
+        $expiredInvitation->update(['expires_at' => now()->subMinute()]);
+        $invitationService->getOutgoingInvitations($guardian);
+
+        $this->assertSame(Conversation::STATUS_CLOSED, $expiredConversation->fresh()->status);
+        $this->assertSame('expired', $expiredInvitation->fresh()->status->value);
     }
 
     private function createInvitation(): array

@@ -66,4 +66,31 @@ class GuardianInvitationConversationService
             );
         });
     }
+
+    public function syncForInvitation(int $invitationId): void
+    {
+        $invitation = ParentChildInvitation::query()
+            ->with(['parentChildAccount', 'conversation'])
+            ->find($invitationId);
+
+        if (! $invitation?->conversation) {
+            return;
+        }
+
+        $status = $this->authorization->invitationAllowsLiveMessaging($invitation)
+            ? Conversation::STATUS_ACTIVE
+            : Conversation::STATUS_CLOSED;
+
+        if ((string) $invitation->conversation->status !== $status) {
+            $invitation->conversation->forceFill(['status' => $status])->save();
+        }
+    }
+
+    public function syncForRelationship(int $relationshipId): void
+    {
+        ParentChildInvitation::query()
+            ->where('parent_child_account_id', $relationshipId)
+            ->pluck('id')
+            ->each(fn (int $invitationId) => $this->syncForInvitation($invitationId));
+    }
 }

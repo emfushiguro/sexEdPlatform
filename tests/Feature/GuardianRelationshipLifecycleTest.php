@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\ParentChildAccount;
+use App\Models\ParentChildInvitation;
+use App\Models\Conversation;
 use App\Models\User;
 use App\Services\GuardianRelationshipVerificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -127,15 +129,35 @@ class GuardianRelationshipLifecycleTest extends TestCase
     {
         [$admin, $guardian, $dependent, $relationship] = $this->actorsAndVerifiedRelationship();
         $service = app(GuardianRelationshipVerificationService::class);
+        $invitation = ParentChildInvitation::query()->create([
+            'inviter_parent_user_id' => $guardian->id,
+            'child_user_id' => $dependent->id,
+            'parent_child_account_id' => $relationship->id,
+            'relationship_type' => $relationship->relationship_type,
+            'invite_token' => (string) \Illuminate\Support\Str::uuid(),
+            'status' => 'accepted',
+            'expires_at' => now()->addDays(14),
+        ]);
+        $conversation = Conversation::query()->create([
+            'participant_one_id' => min($guardian->id, $dependent->id),
+            'participant_two_id' => max($guardian->id, $dependent->id),
+            'pair_key' => Conversation::makePairKey($guardian->id, $dependent->id),
+            'conversation_type' => Conversation::TYPE_GUARDIAN_INVITATION,
+            'status' => Conversation::STATUS_ACTIVE,
+            'parent_child_invitation_id' => $invitation->id,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_GUARDIAN_INVITATION, $invitation->id),
+        ]);
 
         $deactivated = $service->deactivate($relationship, $guardian, 'No longer needed.');
         $this->assertSame(ParentChildAccount::STATUS_INACTIVE, $deactivated->relationship_status);
         $this->assertSame(ParentChildAccount::VERIFICATION_VERIFIED, $deactivated->relationship_verified_status);
         $this->assertFalse(ParentChildAccount::accessEligible()->whereKey($relationship->id)->exists());
+        $this->assertSame(Conversation::STATUS_CLOSED, $conversation->fresh()->status);
 
         $reactivating = $service->requestReactivation($deactivated, $dependent);
         $this->assertSame(ParentChildAccount::STATUS_PENDING, $reactivating->relationship_status);
         $this->assertSame(ParentChildAccount::VERIFICATION_UNDER_REVIEW, $reactivating->relationship_verified_status);
+        $this->assertSame(Conversation::STATUS_ACTIVE, $conversation->fresh()->status);
     }
 
     public function test_relationship_parties_can_request_deactivation_and_only_parties_can_request_reactivation(): void

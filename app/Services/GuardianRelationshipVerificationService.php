@@ -7,6 +7,7 @@ use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Notifications\Admin\RelationshipVerificationSubmittedNotification;
 use App\Notifications\RelationshipVerificationStatusNotification;
+use App\Services\Chat\GuardianInvitationConversationService;
 use App\Support\GuardianRelationshipTypes;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -17,7 +18,10 @@ use Throwable;
 
 class GuardianRelationshipVerificationService
 {
-    public function __construct(private readonly GuardianRelationshipEvidenceService $evidence) {}
+    public function __construct(
+        private readonly GuardianRelationshipEvidenceService $evidence,
+        private readonly GuardianInvitationConversationService $invitationConversations,
+    ) {}
 
     public function initialStatus(string $relationshipType): string
     {
@@ -34,7 +38,7 @@ class GuardianRelationshipVerificationService
         $storedPaths = [];
 
         try {
-            return DB::transaction(function () use ($relationship, $guardian, $documents, $circumstances, &$storedPaths): ParentChildAccount {
+            $submitted = DB::transaction(function () use ($relationship, $guardian, $documents, $circumstances, &$storedPaths): ParentChildAccount {
                 $locked = ParentChildAccount::query()->lockForUpdate()->findOrFail($relationship->id);
                 $this->assertGuardianOwns($locked, $guardian);
                 $this->assertState($locked, [
@@ -77,6 +81,9 @@ class GuardianRelationshipVerificationService
 
                 return $locked->fresh(['parent', 'child', 'verificationDocuments']);
             });
+            $this->syncInvitationConversationsAfterCommit((int) $submitted->id);
+
+            return $submitted;
         } catch (Throwable $exception) {
             $this->evidence->deleteStoredPaths($storedPaths);
             throw $exception;
@@ -88,7 +95,7 @@ class GuardianRelationshipVerificationService
         $movedDocuments = [];
 
         try {
-            return DB::transaction(function () use ($relationship, $guardian, $documents, $onSubmitted, &$movedDocuments): ParentChildAccount {
+            $submitted = DB::transaction(function () use ($relationship, $guardian, $documents, $onSubmitted, &$movedDocuments): ParentChildAccount {
                 $locked = ParentChildAccount::query()->lockForUpdate()->findOrFail($relationship->id);
                 $this->assertGuardianOwns($locked, $guardian);
                 $this->assertState($locked, [
@@ -133,6 +140,9 @@ class GuardianRelationshipVerificationService
 
                 return $locked->fresh(['parent', 'child', 'verificationDocuments']);
             });
+            $this->syncInvitationConversationsAfterCommit((int) $submitted->id);
+
+            return $submitted;
         } catch (Throwable $exception) {
             $this->evidence->restoreStagedDocuments($movedDocuments);
 
@@ -146,7 +156,7 @@ class GuardianRelationshipVerificationService
             throw new InvalidArgumentException('Relationship evidence is required before submission.');
         }
 
-        return DB::transaction(function () use ($relationship, $guardian, $onSubmitted): ParentChildAccount {
+        $submitted = DB::transaction(function () use ($relationship, $guardian, $onSubmitted): ParentChildAccount {
             $locked = ParentChildAccount::query()->lockForUpdate()->findOrFail($relationship->id);
             $this->assertGuardianOwns($locked, $guardian);
 
@@ -169,6 +179,9 @@ class GuardianRelationshipVerificationService
 
             return $locked->fresh(['parent', 'child']);
         });
+        $this->syncInvitationConversationsAfterCommit((int) $submitted->id);
+
+        return $submitted;
     }
 
     public function approve(ParentChildAccount $relationship, User $admin): ParentChildAccount
@@ -250,7 +263,7 @@ class GuardianRelationshipVerificationService
 
     private function decide(ParentChildAccount $relationship, User $actor, string $action, array $states, Closure $updates, ?string $reasonCode = null, ?string $note = null): ParentChildAccount
     {
-        return DB::transaction(function () use ($relationship, $actor, $action, $states, $updates, $reasonCode, $note): ParentChildAccount {
+        $updated = DB::transaction(function () use ($relationship, $actor, $action, $states, $updates, $reasonCode, $note): ParentChildAccount {
             $locked = ParentChildAccount::query()->lockForUpdate()->findOrFail($relationship->id);
             $this->assertState($locked, $states);
             $previous = (string) $locked->relationship_verified_status;
@@ -260,11 +273,14 @@ class GuardianRelationshipVerificationService
 
             return $locked->fresh(['parent', 'child', 'verificationDocuments']);
         });
+        $this->syncInvitationConversationsAfterCommit((int) $updated->id);
+
+        return $updated;
     }
 
     public function deactivate(ParentChildAccount $relationship, User $actor, ?string $note): ParentChildAccount
     {
-        return DB::transaction(function () use ($relationship, $actor, $note): ParentChildAccount {
+        $updated = DB::transaction(function () use ($relationship, $actor, $note): ParentChildAccount {
             $locked = ParentChildAccount::query()->lockForUpdate()->findOrFail($relationship->id);
             $this->assertPartyOrAdmin($locked, $actor);
 
@@ -281,11 +297,14 @@ class GuardianRelationshipVerificationService
 
             return $locked->fresh(['parent', 'child']);
         });
+        $this->syncInvitationConversationsAfterCommit((int) $updated->id);
+
+        return $updated;
     }
 
     public function requestReactivation(ParentChildAccount $relationship, User $actor): ParentChildAccount
     {
-        return DB::transaction(function () use ($relationship, $actor): ParentChildAccount {
+        $updated = DB::transaction(function () use ($relationship, $actor): ParentChildAccount {
             $locked = ParentChildAccount::query()->lockForUpdate()->findOrFail($relationship->id);
             $this->assertPartyOrAdmin($locked, $actor);
 
@@ -311,6 +330,14 @@ class GuardianRelationshipVerificationService
 
             return $locked->fresh(['parent', 'child']);
         });
+        $this->syncInvitationConversationsAfterCommit((int) $updated->id);
+
+        return $updated;
+    }
+
+    private function syncInvitationConversationsAfterCommit(int $relationshipId): void
+    {
+        DB::afterCommit(fn () => $this->invitationConversations->syncForRelationship($relationshipId));
     }
 
     private function assertAdministrator(User $actor): void
