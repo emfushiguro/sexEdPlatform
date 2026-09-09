@@ -94,8 +94,13 @@ class ChatAuthorizationService
 
     public function canInitiateGuardianInvitationConversation(User $actor, ParentChildInvitation $invitation): bool
     {
+        $guardianStatus = User::query()
+            ->whereKey($invitation->inviter_parent_user_id)
+            ->value('status');
+
         if (
             $actor->status !== User::STATUS_ACTIVE
+            || $guardianStatus !== User::STATUS_ACTIVE
             || (int) $actor->id !== (int) $invitation->child_user_id
         ) {
             return false;

@@ -446,6 +446,16 @@ class ChatAuthorizationServiceTest extends TestCase
         $this->assertFalse($service->canSendMessage($child->fresh(), $mismatchedConversation));
     }
 
+    public function test_guardian_invitation_cannot_be_initiated_when_guardian_is_inactive(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+        [$guardian, $child, $invitation] = $this->createInvitationConversation(false);
+
+        $guardian->update(['status' => User::STATUS_SUSPENDED]);
+
+        $this->assertFalse($service->canInitiateGuardianInvitationConversation($child, $invitation->fresh()));
+    }
+
     private function createInvitationConversation(bool $withConversation = true): array
     {
         $guardian = User::factory()->create([
