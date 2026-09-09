@@ -140,11 +140,20 @@
 			</div>
 		</div>
 
-		@if($isChildViewer)
+		@if($invitation->conversation)
 			<div class="mt-4">
-				<button type="button" disabled class="inline-flex cursor-not-allowed items-center rounded-xl bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-500" title="Messaging will be available after the invitation conversation is created.">
-					Message Guardian
-				</button>
+				<a href="{{ route('chat.conversation.open', $invitation->conversation) }}" class="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+					Open Conversation
+				</a>
+			</div>
+		@elseif($isChildViewer && $statusValue === 'pending' && ! $invitation->isExpired())
+			<div class="mt-4">
+				<form method="POST" action="{{ route('parent.invitations.conversation', $invitation) }}">
+					@csrf
+					<button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+						Message Guardian
+					</button>
+				</form>
 			</div>
 		@endif
 

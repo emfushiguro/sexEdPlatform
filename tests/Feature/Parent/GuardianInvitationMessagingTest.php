@@ -3,6 +3,7 @@
 namespace Tests\Feature\Parent;
 
 use App\Models\ParentChildInvitation;
+use App\Models\Conversation;
 use App\Models\User;
 use App\Notifications\Learner\ParentChildInvitationReceivedNotification;
 use Illuminate\Notifications\AnonymousNotifiable;
@@ -57,6 +58,55 @@ class GuardianInvitationMessagingTest extends TestCase
         $this->assertSame($child->id, $invitation->child_user_id);
     }
 
+    public function test_invited_learner_can_create_and_reuse_guardian_invitation_conversation(): void
+    {
+        [$guardian, $child, $invitation] = $this->createInvitation();
+
+        $response = $this->actingAs($child)
+            ->post(route('parent.invitations.conversation', $invitation));
+
+        $conversation = Conversation::query()->sole();
+
+        $response->assertRedirect(route('chat.conversation.open', $conversation));
+        $this->assertSame(Conversation::TYPE_GUARDIAN_INVITATION, $conversation->conversation_type);
+        $this->assertSame($invitation->id, $conversation->parent_child_invitation_id);
+        $this->assertSame('guardian_invitation:'.$invitation->id, $conversation->context_key);
+        $this->assertSame(
+            Conversation::makePairKey($guardian->id, $child->id),
+            $conversation->pair_key,
+        );
+
+        $this->actingAs($child)
+            ->post(route('parent.invitations.conversation', $invitation))
+            ->assertRedirect(route('chat.conversation.open', $conversation));
+
+        $this->assertSame(1, Conversation::query()->count());
+    }
+
+    public function test_guardian_cannot_create_invitation_conversation_before_learner_initiation(): void
+    {
+        [$guardian, , $invitation] = $this->createInvitation();
+
+        $this->actingAs($guardian)
+            ->post(route('parent.invitations.conversation', $invitation))
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('conversations', 0);
+    }
+
+    public function test_generic_conversation_start_rejects_guardian_invitation_type(): void
+    {
+        [$guardian, $child] = $this->createInvitation();
+
+        $this->actingAs($child)
+            ->postJson(route('chat.conversations.start'), [
+                'target_user_id' => $guardian->id,
+                'conversation_type' => Conversation::TYPE_GUARDIAN_INVITATION,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('conversation_type');
+    }
+
     private function createInvitation(): array
     {
         $this->seedLocationRows();
@@ -66,6 +116,7 @@ class GuardianInvitationMessagingTest extends TestCase
             'email' => 'guardian-private@example.test',
             'birthdate' => '1988-04-05',
             'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
             'parent_verification_status' => 'approved',
             'is_parent_registration' => true,
         ]);
@@ -81,12 +132,14 @@ class GuardianInvitationMessagingTest extends TestCase
             'is_parent_account' => true,
             'requires_parental_consent' => false,
         ]);
+        $guardian->assignRole('learner');
 
         $child = User::factory()->create([
             'name' => 'Existing Learner',
             'email' => 'learner-private@example.test',
             'birthdate' => '2012-06-07',
             'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
         ]);
         $child->learnerProfile()->create([
             'username' => 'existinglearner'.$child->id,
@@ -99,6 +152,7 @@ class GuardianInvitationMessagingTest extends TestCase
             'is_parent_account' => false,
             'requires_parental_consent' => true,
         ]);
+        $child->assignRole('learner');
 
         $invitation = ParentChildInvitation::query()->create([
             'inviter_parent_user_id' => $guardian->id,

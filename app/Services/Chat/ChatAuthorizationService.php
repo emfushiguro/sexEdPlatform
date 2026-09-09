@@ -6,8 +6,10 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Conversation;
 use App\Models\MessageRequest;
 use App\Models\ModuleEnrollment;
+use App\Models\ParentChildInvitation;
 use App\Models\ParentChildAccount;
 use App\Models\User;
+use App\Enums\ParentChildInvitationStatus;
 
 class ChatAuthorizationService
 {
@@ -82,6 +84,19 @@ class ChatAuthorizationService
                 Conversation::STATUS_ACTIVE,
                 Conversation::STATUS_ACCEPTED,
             ], true);
+    }
+
+    public function canInitiateGuardianInvitationConversation(User $actor, ParentChildInvitation $invitation): bool
+    {
+        if (
+            $actor->status !== User::STATUS_ACTIVE
+            || (int) $actor->id !== (int) $invitation->child_user_id
+            || $invitation->isExpired()
+        ) {
+            return false;
+        }
+
+        return $invitation->status === ParentChildInvitationStatus::Pending;
     }
 
     public function canViewConversation(User $user, Conversation $conversation): bool

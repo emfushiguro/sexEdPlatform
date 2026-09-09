@@ -7,6 +7,8 @@ use App\Http\Requests\Parent\SendParentChildInvitationRequest;
 use App\Models\ParentChildInvitation;
 use App\Models\User;
 use App\Services\ParentChildInvitationService;
+use App\Services\Chat\GuardianInvitationConversationService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -14,7 +16,10 @@ use InvalidArgumentException;
 
 class ParentInvitationController extends Controller
 {
-    public function __construct(private readonly ParentChildInvitationService $invitationService)
+    public function __construct(
+        private readonly ParentChildInvitationService $invitationService,
+        private readonly GuardianInvitationConversationService $conversationService,
+    )
     {
     }
 
@@ -32,6 +37,19 @@ class ParentInvitationController extends Controller
             'outgoingInvitations' => $outgoingInvitations->take(5)->values(),
             'totalOutgoingInvitations' => $outgoingInvitations->count(),
         ]);
+    }
+
+    public function conversation(Request $request, ParentChildInvitation $invitation): RedirectResponse
+    {
+        try {
+            $conversation = $this->conversationService->createOrGet($request->user(), $invitation);
+        } catch (AuthorizationException $exception) {
+            abort(403, $exception->getMessage());
+        } catch (InvalidArgumentException $exception) {
+            return back()->withErrors(['conversation' => $exception->getMessage()]);
+        }
+
+        return redirect()->route('chat.conversation.open', $conversation);
     }
 
     public function history(Request $request): View|RedirectResponse

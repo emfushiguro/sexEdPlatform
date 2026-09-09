@@ -443,6 +443,8 @@ Route::middleware('auth')->group(function () {
             ->name('invitations.history');
         Route::post('/invitations', [ParentInvitationController::class, 'store'])
             ->name('invitations.store');
+        Route::post('/invitations/{invitation}/conversation', [ParentInvitationController::class, 'conversation'])
+            ->name('invitations.conversation');
         Route::get('/invitations/{invitation}', [ParentInvitationController::class, 'show'])
             ->name('invitations.show');
         Route::post('/invitations/{invitation}/respond', [ParentInvitationController::class, 'respond'])
