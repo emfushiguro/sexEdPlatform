@@ -14,7 +14,8 @@
 ]))"
     x-init="setupConnectors($el)"
     @interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"
-    @interactive-activity-practice.window="if ($event.detail.activityId === activityId) resetPractice()">
+    @interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status)"
+    @interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status) : resetPractice())">
     <svg aria-hidden="true" class="pointer-events-none absolute inset-0 z-0 hidden h-full w-full overflow-visible lg:block">
         <template x-for="(line, index) in connectorLines" :key="`connector-${index}`">
             <line :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2" stroke="currentColor" stroke-width="2" class="text-purple-300"></line>

@@ -98,3 +98,31 @@ test('successful sequencing responses dispatch state for the configured activity
         },
     }]);
 });
+
+test('loadPayload replaces sequencing state from a practice payload', () => {
+    const activity = createSequencingActivity({
+        items: [{ id: 'stale', value: 'Stale item' }],
+        initialOrder: ['stale'],
+    });
+    const payload = {
+        items: [
+            { id: 'item-2', value: 'Second item' },
+            { id: 'item-1', value: 'First item' },
+        ],
+    };
+    activity.feedback = 'Stale feedback';
+    activity.error = 'Stale error';
+    activity.dragIndex = 0;
+    activity.dragOverIndex = 0;
+
+    activity.loadPayload(payload, 'practice');
+
+    assert.deepEqual(activity.items, payload.items);
+    assert.deepEqual(activity.order, ['item-2', 'item-1']);
+    assert.deepEqual(activity.initialOrder, ['item-2', 'item-1']);
+    assert.equal(activity.status, 'practice');
+    assert.equal(activity.feedback, '');
+    assert.equal(activity.error, '');
+    assert.equal(activity.dragIndex, null);
+    assert.equal(activity.dragOverIndex, null);
+});

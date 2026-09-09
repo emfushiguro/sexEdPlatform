@@ -13,7 +13,8 @@
     'initialOrder' => collect($activity['payload']['items'] ?? [])->pluck('id')->values()->all(),
 ]))"
      @interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"
-     @interactive-activity-practice.window="if ($event.detail.activityId === activityId) resetPractice()"
+     @interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status)"
+     @interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status) : resetPractice())"
      @pointerup.window="dropItem(dragOverIndex)"
      @pointercancel.window="cancelItemDrag()">
     <ol class="space-y-2" aria-label="Sequence items">

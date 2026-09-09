@@ -135,6 +135,21 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             }
         },
 
+        loadPayload(payload = {}, status = this.status) {
+            this.leftItems = Array.isArray(payload.left_items) ? payload.left_items : [];
+            this.rightItems = Array.isArray(payload.right_items) ? payload.right_items : [];
+            this.matchedPairs = Array.isArray(payload.completed_matches)
+                ? JSON.parse(JSON.stringify(payload.completed_matches))
+                : [];
+            this.status = status;
+            this.leftId = null;
+            this.rightId = null;
+            this.feedback = '';
+            this.error = '';
+            queueMicrotask(() => this.refreshConnectors());
+            return this;
+        },
+
         resetPractice() {
             this.matchedPairs = [];
             this.leftId = null;

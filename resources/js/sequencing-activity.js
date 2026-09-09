@@ -140,6 +140,18 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             }
         },
 
+        loadPayload(payload = {}, status = this.status) {
+            this.items = Array.isArray(payload.items) ? [...payload.items] : [];
+            this.order = this.items.map((item) => item.id);
+            this.initialOrder = [...this.order];
+            this.status = status;
+            this.feedback = '';
+            this.error = '';
+            this.dragIndex = null;
+            this.dragOverIndex = null;
+            return this;
+        },
+
         resetPractice() {
             this.order = [...this.initialOrder];
             this.status = 'practice';

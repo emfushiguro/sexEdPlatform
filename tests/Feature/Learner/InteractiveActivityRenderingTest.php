@@ -209,7 +209,8 @@ class InteractiveActivityRenderingTest extends TestCase
 
         foreach ($renderedActivities as $html) {
             $this->assertStringContainsString('@interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"', $html);
-            $this->assertStringContainsString('@interactive-activity-practice.window="if ($event.detail.activityId === activityId) resetPractice()"', $html);
+            $this->assertStringContainsString('@interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status)"', $html);
+            $this->assertStringContainsString('@interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status) : resetPractice())"', $html);
         }
     }
 

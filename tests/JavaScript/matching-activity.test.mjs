@@ -72,6 +72,42 @@ test('successful matching responses dispatch state for the configured activity',
     }]);
 });
 
+test('loadPayload replaces matching state from a practice payload', async () => {
+    const activity = createMatchingActivity({
+        initialMatchedPairs: [{ left_id: 'stale-left', right_id: 'stale-right' }],
+        leftItems: [{ id: 'stale-left', value: 'Stale left' }],
+        rightItems: [{ id: 'stale-right', value: 'Stale right' }],
+    });
+    const payload = {
+        left_items: [{ id: 'left-1', value: 'Left one' }],
+        right_items: [{ id: 'right-1', value: 'Right one' }],
+        completed_matches: [{ left_id: 'left-1', right_id: 'right-1' }],
+    };
+    let refreshes = 0;
+    activity.leftId = 'stale-left';
+    activity.rightId = 'stale-right';
+    activity.feedback = 'Stale feedback';
+    activity.error = 'Stale error';
+    activity.refreshConnectors = () => {
+        refreshes += 1;
+        return activity;
+    };
+
+    activity.loadPayload(payload, 'practice');
+    await new Promise((resolve) => queueMicrotask(resolve));
+
+    assert.deepEqual(activity.leftItems, payload.left_items);
+    assert.deepEqual(activity.rightItems, payload.right_items);
+    assert.deepEqual(activity.matchedPairs, payload.completed_matches);
+    assert.notEqual(activity.matchedPairs, payload.completed_matches);
+    assert.equal(activity.status, 'practice');
+    assert.equal(activity.leftId, null);
+    assert.equal(activity.rightId, null);
+    assert.equal(activity.feedback, '');
+    assert.equal(activity.error, '');
+    assert.equal(refreshes, 1);
+});
+
 test('connector geometry is derived from item centers relative to the container', () => {
     assert.deepEqual(calculateConnectorLines(
         [{ left: 20, top: 30, width: 100, height: 20 }],
