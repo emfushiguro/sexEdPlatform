@@ -119,6 +119,7 @@ function normalizeConversation(conversation) {
             }
             : null,
         can_send: conversation.can_send !== false,
+        allows_attachments: conversation.allows_attachments !== false,
         unread_count: Number(conversation.unread_count || 0),
         support_availability: conversation.support_availability || null,
     };
@@ -783,7 +784,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
 
-                if (conversation.conversation_type === 'direct') {
+                if (['direct', 'guardian_invitation'].includes(conversation.conversation_type)) {
                     groups.direct.push(conversation);
                     return;
                 }
@@ -1366,8 +1367,14 @@ document.addEventListener('alpine:init', () => {
             const body = String(messageBody || '').trim();
             const files = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
             const id = Number(conversationId || 0);
+            const conversation = this.findConversationById(id);
 
             if ((!body && files.length < 1) || !id) {
+                return null;
+            }
+
+            if (conversation?.allows_attachments === false && files.length > 0) {
+                this.composerError = 'Guardian invitation conversations support text messages only.';
                 return null;
             }
 

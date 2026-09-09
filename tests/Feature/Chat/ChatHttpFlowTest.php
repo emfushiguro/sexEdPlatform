@@ -462,6 +462,68 @@ class ChatHttpFlowTest extends TestCase
         $this->assertStringStartsWith('chat/voice_notes/', (string) $voiceAttachment->path);
     }
 
+    public function test_guardian_invitation_messages_are_text_only_and_advertise_capability(): void
+    {
+        Storage::fake('public');
+
+        $guardian = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $guardian->assignRole('learner');
+        $child = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $child->assignRole('learner');
+
+        $invitation = ParentChildInvitation::query()->create([
+            'inviter_parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'invite_token' => (string) \Illuminate\Support\Str::uuid(),
+            'relationship_type' => 'legal_guardian',
+            'status' => 'pending',
+            'expires_at' => now()->addDays(3),
+        ]);
+        $conversation = Conversation::query()->create([
+            'participant_one_id' => min($guardian->id, $child->id),
+            'participant_two_id' => max($guardian->id, $child->id),
+            'pair_key' => Conversation::makePairKey($guardian->id, $child->id),
+            'conversation_type' => Conversation::TYPE_GUARDIAN_INVITATION,
+            'status' => Conversation::STATUS_ACTIVE,
+            'parent_child_invitation_id' => $invitation->id,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_GUARDIAN_INVITATION, $invitation->id),
+        ]);
+
+        $this->actingAs($child)
+            ->postJson(route('chat.messages.store', $conversation), [
+                'message_body' => 'I have a question about this invitation.',
+            ])
+            ->assertCreated();
+
+        $this->actingAs($child)
+            ->post(route('chat.messages.store', $conversation), [
+                'attachments' => [UploadedFile::fake()->create('evidence.pdf', 20, 'application/pdf')],
+            ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['message_body', 'attachments']);
+
+        $this->actingAs($child)
+            ->post(route('chat.messages.store', $conversation), [
+                'message_body' => 'Mixed content is also disallowed.',
+                'attachments' => [UploadedFile::fake()->create('notes.txt', 2, 'text/plain')],
+            ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('attachments');
+
+        $this->actingAs($child)
+            ->getJson(route('chat.conversations.index'))
+            ->assertOk()
+            ->assertJsonPath('conversations.0.context_label', 'Guardian Invitation')
+            ->assertJsonPath('conversations.0.allows_attachments', false)
+            ->assertJsonPath('conversations.0.can_send', true);
+    }
+
     public function test_message_report_endpoint_creates_single_structured_report_per_user(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

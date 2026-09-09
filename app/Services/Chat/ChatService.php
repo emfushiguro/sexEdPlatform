@@ -209,6 +209,10 @@ class ChatService
         $trimmedBody = trim((string) $messageBody);
         $uploadedFiles = array_values(array_filter($attachments, fn ($attachment) => $attachment instanceof UploadedFile));
 
+        if ($conversation->conversation_type === Conversation::TYPE_GUARDIAN_INVITATION && $uploadedFiles !== []) {
+            throw new InvalidArgumentException('Guardian invitation conversations support text messages only.');
+        }
+
         if ($trimmedBody === '' && count($uploadedFiles) < 1) {
             throw new InvalidArgumentException('Message body or attachments are required.');
         }
