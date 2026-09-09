@@ -41,6 +41,7 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
 
         handleActivityResult(detail = {}) {
             if (detail.activityId !== config.activityId) return this;
+            this.error = '';
             this.status = detail.data?.status ?? this.status;
             this.explanation = detail.data?.explanation ?? null;
             this.feedback = feedbackForEvaluation(detail.type, detail.data, detail.meta);

@@ -89,6 +89,20 @@ test('common activity reports only its child request errors through shared feedb
     assert.deepEqual(activity.feedback, { kind: 'error', message: 'Offline', icon: 'warning' });
 });
 
+test('common activity clears a shared error after its child result succeeds', () => {
+    const activity = createInteractiveActivity({ activityId: 41 });
+
+    activity.handleActivityError({ activityId: 41, message: 'Offline' });
+    activity.handleActivityResult({
+        activityId: 41,
+        type: 'matching',
+        data: { status: 'completed', is_correct: true, is_complete: true },
+    });
+
+    assert.equal(activity.error, '');
+    assert.deepEqual(activity.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
+});
+
 test('practice publishes the returned payload only to its activity instance', async () => {
     const events = [];
     const activity = createInteractiveActivity({
