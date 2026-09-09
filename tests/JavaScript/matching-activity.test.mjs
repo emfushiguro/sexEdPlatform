@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateConnectorLines, createMatchingActivity } from '../../resources/js/matching-activity.js';
+import { createInteractiveActivity } from '../../resources/js/interactive-activity.js';
 
 const response = (data, ok = true) => ({ ok, json: async () => data });
 
@@ -82,6 +83,40 @@ test('successful matching responses dispatch state and a scoped result for the c
             },
         },
     ]);
+});
+
+test('correct preview matching result completes shared feedback', async () => {
+    const events = [];
+    const child = createMatchingActivity({
+        activityId: 'matching-preview',
+        preview: true,
+        answerKey: { 'left-1': 'right-1' },
+        leftItems: [{ id: 'left-1', value: 'Left one' }],
+    });
+    const parent = createInteractiveActivity({ activityId: 'matching-preview' });
+    child.$dispatch = (name, detail) => events.push({ name, detail });
+
+    child.selectLeft('left-1').selectRight('right-1');
+    await child.submitMatch();
+
+    const result = events.find(({ name }) => name === 'interactive-activity-result').detail;
+    assert.equal(result.data.is_complete, true);
+    parent.handleActivityResult(result);
+    assert.deepEqual(parent.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
+});
+
+test('failed matching request dispatches a scoped error', async () => {
+    const events = [];
+    const activity = createMatchingActivity({ activityId: 'matching-42', matchUrl: '/match' }, async () => response({ message: 'Offline' }, false));
+    activity.$dispatch = (name, detail) => events.push({ name, detail });
+
+    activity.selectLeft('left-1').selectRight('right-1');
+    await activity.submitMatch();
+
+    assert.deepEqual(events, [{
+        name: 'interactive-activity-error',
+        detail: { activityId: 'matching-42', message: 'Offline' },
+    }]);
 });
 
 test('loadPayload replaces matching state from a practice payload', async () => {

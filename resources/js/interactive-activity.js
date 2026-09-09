@@ -47,6 +47,13 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
             return this;
         },
 
+        handleActivityError(detail = {}) {
+            if (detail.activityId !== config.activityId) return this;
+            this.error = detail.message || 'Unable to save the activity.';
+            this.feedback = { kind: 'error', message: this.error, icon: 'warning' };
+            return this;
+        },
+
         applyResponse(data) {
             this.status = data.status ?? this.status;
             this.payload = data.payload ?? this.payload;

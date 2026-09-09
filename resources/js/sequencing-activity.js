@@ -106,6 +106,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                 body: JSON.stringify(body),
             }).then(readResponse).catch((error) => {
                 this.error = error.message || 'Unable to save the sequence.';
+                this.$dispatch?.('interactive-activity-error', { activityId: config.activityId, message: this.error });
                 return null;
             });
             const result = await this.pendingSave;
@@ -122,7 +123,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             try {
                 if (config.preview) {
                     const correct = JSON.stringify(this.order) === JSON.stringify(config.answerKey ?? []);
-                    const data = { is_correct: correct, status: correct ? 'completed' : this.status };
+                    const data = { is_correct: correct, is_complete: correct, status: correct ? 'completed' : this.status };
                     this.status = data.status;
                     if (!correct) this.feedback = 'Not quite—try again';
                     this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
@@ -145,6 +146,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                 return data;
             } catch (error) {
                 this.error = error.message || 'Unable to check the sequence.';
+                this.$dispatch?.('interactive-activity-error', { activityId: config.activityId, message: this.error });
                 return null;
             } finally {
                 this.submitting = false;

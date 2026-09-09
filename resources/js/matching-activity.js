@@ -105,7 +105,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
                     const correct = config.answerKey?.[proposal.left_id] === proposal.right_id;
                     if (correct && !this.matchedPairs.some((pair) => pair.left_id === proposal.left_id)) this.matchedPairs.push(proposal);
                     const complete = correct && this.matchedPairs.length === Object.keys(config.answerKey ?? {}).length;
-                    const data = { is_correct: correct, status: complete ? 'completed' : this.status };
+                    const data = { is_correct: correct, is_complete: complete, status: complete ? 'completed' : this.status };
                     this.status = data.status;
                     if (!correct) this.feedback = 'Not quite—try another match';
                     this.leftId = null;
@@ -140,6 +140,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
                 return data;
             } catch (error) {
                 this.error = error.message || 'Unable to check the match.';
+                this.$dispatch?.('interactive-activity-error', { activityId: config.activityId, message: this.error });
                 return null;
             } finally {
                 this.submitting = false;

@@ -78,6 +78,17 @@ test('common activity applies only its child result details', () => {
     assert.deepEqual(activity.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
 });
 
+test('common activity reports only its child request errors through shared feedback', () => {
+    const activity = createInteractiveActivity({ activityId: 41 });
+
+    activity.handleActivityError({ activityId: 42, message: 'Ignore me' });
+    assert.equal(activity.error, '');
+
+    activity.handleActivityError({ activityId: 41, message: 'Offline' });
+    assert.equal(activity.error, 'Offline');
+    assert.deepEqual(activity.feedback, { kind: 'error', message: 'Offline', icon: 'warning' });
+});
+
 test('practice publishes the returned payload only to its activity instance', async () => {
     const events = [];
     const activity = createInteractiveActivity({

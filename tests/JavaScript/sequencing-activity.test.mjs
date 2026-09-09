@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSequencingActivity, moveItem } from '../../resources/js/sequencing-activity.js';
+import { createInteractiveActivity } from '../../resources/js/interactive-activity.js';
 
 const response = (data, ok = true) => ({ ok, json: async () => data });
 
@@ -108,6 +109,59 @@ test('successful sequencing responses dispatch state and a scoped result for the
             },
         },
     ]);
+});
+
+test('correct preview sequencing result completes shared feedback', async () => {
+    const events = [];
+    const child = createSequencingActivity({
+        activityId: 'sequencing-preview',
+        preview: true,
+        initialOrder: ['one', 'two'],
+        answerKey: ['one', 'two'],
+    });
+    const parent = createInteractiveActivity({ activityId: 'sequencing-preview' });
+    child.$dispatch = (name, detail) => events.push({ name, detail });
+
+    await child.checkAnswer();
+
+    const result = events.find(({ name }) => name === 'interactive-activity-result').detail;
+    assert.equal(result.data.is_complete, true);
+    parent.handleActivityResult(result);
+    assert.deepEqual(parent.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
+});
+
+test('failed sequencing request dispatches a scoped error', async () => {
+    const events = [];
+    const activity = createSequencingActivity({
+        activityId: 'sequencing-42',
+        initialOrder: ['one'],
+        checkUrl: '/check',
+    }, async () => response({ message: 'Offline' }, false));
+    activity.$dispatch = (name, detail) => events.push({ name, detail });
+
+    await activity.checkAnswer();
+
+    assert.deepEqual(events, [{
+        name: 'interactive-activity-error',
+        detail: { activityId: 'sequencing-42', message: 'Offline' },
+    }]);
+});
+
+test('failed sequencing state save dispatches a scoped error', async () => {
+    const events = [];
+    const activity = createSequencingActivity({
+        activityId: 'sequencing-42',
+        initialOrder: ['one'],
+        stateUrl: '/state',
+    }, async () => response({ message: 'Offline' }, false));
+    activity.$dispatch = (name, detail) => events.push({ name, detail });
+
+    await activity.persistState();
+
+    assert.deepEqual(events, [{
+        name: 'interactive-activity-error',
+        detail: { activityId: 'sequencing-42', message: 'Offline' },
+    }]);
 });
 
 test('loadPayload replaces sequencing state from a practice payload', () => {
