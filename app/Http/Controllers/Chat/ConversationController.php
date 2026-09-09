@@ -119,6 +119,7 @@ class ConversationController extends Controller
                     'other_participant' => $this->buildUserSnapshot($otherParticipant),
                     'pending_request' => $pendingRequestPayload,
                     'can_send' => $this->chatAuthorizationService->canSendMessage($user, $conversation),
+                    'allows_attachments' => $conversation->conversation_type !== Conversation::TYPE_GUARDIAN_INVITATION,
                     'unread_count' => $this->chatService->unreadCountForConversation($user, $conversation),
                     'support_availability' => $conversation->conversation_type === Conversation::TYPE_ADMIN_SUPPORT
                         ? $this->buildSupportAvailability($this->resolveSupportParticipant($conversation))
@@ -483,6 +484,7 @@ class ConversationController extends Controller
             Conversation::TYPE_LESSON_TOPIC_CHAT => 'Lesson Topic Discussion - '.($conversation->lessonTopic?->title ?? 'Topic'),
             Conversation::TYPE_QUIZ_HELP => 'Quiz Help - '.($conversation->quiz?->title ?? 'Quiz'),
             Conversation::TYPE_ADMIN_SUPPORT => 'Platform Support',
+            Conversation::TYPE_GUARDIAN_INVITATION => 'Guardian Invitation',
             default => 'Direct Conversation',
         };
     }

@@ -71,6 +71,12 @@ class ChatAuthorizationService
             return false;
         }
 
+        if ((string) $conversation->conversation_type === Conversation::TYPE_GUARDIAN_INVITATION) {
+            $invitation = $this->guardianInvitationForConversation($conversation);
+
+            return $invitation !== null && $this->invitationAllowsLiveMessaging($invitation);
+        }
+
         $relationship = $this->directParentChildRelationship($conversation);
 
         return $relationship === null
@@ -91,18 +97,62 @@ class ChatAuthorizationService
         if (
             $actor->status !== User::STATUS_ACTIVE
             || (int) $actor->id !== (int) $invitation->child_user_id
-            || $invitation->isExpired()
         ) {
             return false;
         }
 
-        return $invitation->status === ParentChildInvitationStatus::Pending;
+        return $this->invitationAllowsLiveMessaging($invitation);
+    }
+
+    public function invitationRelationshipAllowsMessaging(ParentChildInvitation $invitation): bool
+    {
+        $invitation->loadMissing('parentChildAccount');
+        $relationship = $invitation->parentChildAccount;
+
+        if (
+            ! $relationship instanceof ParentChildAccount
+            || $relationship->trashed()
+            || (int) $relationship->parent_user_id !== (int) $invitation->inviter_parent_user_id
+            || (int) $relationship->child_user_id !== (int) $invitation->child_user_id
+        ) {
+            return false;
+        }
+
+        if ($relationship->isVerifiedActive()) {
+            return true;
+        }
+
+        return $relationship->relationship_status === ParentChildAccount::STATUS_PENDING
+            && in_array($relationship->relationship_verified_status, [
+                ParentChildAccount::VERIFICATION_PENDING,
+                ParentChildAccount::VERIFICATION_UNDER_REVIEW,
+                ParentChildAccount::VERIFICATION_RESUBMISSION_REQUIRED,
+            ], true);
+    }
+
+    public function invitationAllowsLiveMessaging(ParentChildInvitation $invitation): bool
+    {
+        if ($invitation->isExpired()) {
+            return false;
+        }
+
+        if ($invitation->status === ParentChildInvitationStatus::Pending) {
+            return true;
+        }
+
+        return $invitation->status === ParentChildInvitationStatus::Accepted
+            && $this->invitationRelationshipAllowsMessaging($invitation);
     }
 
     public function canViewConversation(User $user, Conversation $conversation): bool
     {
         if ((string) User::query()->whereKey($user->id)->value('status') !== User::STATUS_ACTIVE) {
             return false;
+        }
+
+        if ((string) $conversation->conversation_type === Conversation::TYPE_GUARDIAN_INVITATION) {
+            return $this->isParticipant($user, $conversation)
+                && $this->guardianInvitationForConversation($conversation) !== null;
         }
 
         return $this->isParticipant($user, $conversation)
@@ -144,6 +194,27 @@ class ChatAuthorizationService
                 });
             })
             ->first();
+    }
+
+    private function guardianInvitationForConversation(Conversation $conversation): ?ParentChildInvitation
+    {
+        if ((string) $conversation->conversation_type !== Conversation::TYPE_GUARDIAN_INVITATION) {
+            return null;
+        }
+
+        $conversation->loadMissing('parentChildInvitation');
+        $invitation = $conversation->parentChildInvitation;
+
+        if (! $invitation instanceof ParentChildInvitation) {
+            return null;
+        }
+
+        return $conversation->pair_key === Conversation::makePairKey(
+            (int) $invitation->inviter_parent_user_id,
+            (int) $invitation->child_user_id,
+        )
+            ? $invitation
+            : null;
     }
 
     protected function isAdminSupportSharedConversation(User $user, Conversation $conversation): bool
