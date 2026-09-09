@@ -303,7 +303,7 @@ class ParentChildInvitationService
             throw new InvalidArgumentException('You are not allowed to cancel this invitation.');
         }
 
-        $updatedInvitation = DB::transaction(function () use ($parent, $invitation): ParentChildInvitation {
+        $updatedInvitation = DB::transaction(function () use ($invitation): ParentChildInvitation {
             $locked = ParentChildInvitation::query()->lockForUpdate()->findOrFail($invitation->id);
             if (($locked->status instanceof ParentChildInvitationStatus ? $locked->status->value : (string) $locked->status) !== ParentChildInvitationStatus::Pending->value) {
                 throw new InvalidArgumentException('Only pending invitations can be cancelled.');
@@ -383,8 +383,7 @@ class ParentChildInvitationService
         string $documentSide = 'not_applicable',
         ?string $pairingKey = null,
         int $displayOrder = 0,
-    ): array
-    {
+    ): array {
         if (! $file instanceof UploadedFile) {
             throw new InvalidArgumentException('Every relationship invitation requires a valid evidence file.');
         }

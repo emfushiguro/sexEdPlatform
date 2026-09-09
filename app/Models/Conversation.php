@@ -13,17 +13,27 @@ class Conversation extends Model
     use HasFactory;
 
     public const TYPE_DIRECT = 'direct';
+
     public const TYPE_ADMIN_SUPPORT = 'admin_support_chat';
+
     public const TYPE_MODULE_CHAT = 'module_chat';
+
     public const TYPE_LESSON_CHAT = 'lesson_chat';
+
     public const TYPE_LESSON_TOPIC_CHAT = 'lesson_topic_chat';
+
     public const TYPE_QUIZ_HELP = 'quiz_help';
+
     public const TYPE_GUARDIAN_INVITATION = 'guardian_invitation';
 
     public const STATUS_PENDING_REQUEST = 'pending_request';
+
     public const STATUS_ACCEPTED = 'accepted';
+
     public const STATUS_DECLINED = 'declined';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_CLOSED = 'closed';
 
     protected $fillable = [

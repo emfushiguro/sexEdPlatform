@@ -3,13 +3,13 @@
 namespace App\Services\Chat;
 
 use App\Enums\EnrollmentStatus;
+use App\Enums\ParentChildInvitationStatus;
 use App\Models\Conversation;
 use App\Models\MessageRequest;
 use App\Models\ModuleEnrollment;
-use App\Models\ParentChildInvitation;
 use App\Models\ParentChildAccount;
+use App\Models\ParentChildInvitation;
 use App\Models\User;
-use App\Enums\ParentChildInvitationStatus;
 
 class ChatAuthorizationService
 {
@@ -43,13 +43,13 @@ class ChatAuthorizationService
         if ($initiatorIsLearner && $targetIsInstructor) {
             $hasEnrollment = $this->hasLearnerInstructorEnrollmentRelation($initiator->id, $target->id);
 
-            return $this->allow(!$hasEnrollment);
+            return $this->allow(! $hasEnrollment);
         }
 
         if ($initiatorIsInstructor && $targetIsLearner) {
             $hasEnrollment = $this->hasLearnerInstructorEnrollmentRelation($target->id, $initiator->id);
 
-            if (!$hasEnrollment) {
+            if (! $hasEnrollment) {
                 return $this->deny('no-enrollment-relation');
             }
 
@@ -288,8 +288,7 @@ class ChatAuthorizationService
         bool $secondIsInstructor,
         bool $firstIsLearner,
         bool $secondIsLearner,
-    ): bool
-    {
+    ): bool {
         if ($firstIsAdmin && ($secondIsInstructor || $secondIsLearner)) {
             return true;
         }

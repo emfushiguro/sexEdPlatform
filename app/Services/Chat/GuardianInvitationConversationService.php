@@ -9,9 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class GuardianInvitationConversationService
 {
-    public function __construct(private readonly ChatAuthorizationService $authorization)
-    {
-    }
+    public function __construct(private readonly ChatAuthorizationService $authorization) {}
 
     public function createOrGet(\App\Models\User $actor, ParentChildInvitation $invitation): Conversation
     {

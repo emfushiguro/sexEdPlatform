@@ -6,8 +6,8 @@ use App\Http\Requests\Parent\RespondParentChildInvitationRequest;
 use App\Http\Requests\Parent\SendParentChildInvitationRequest;
 use App\Models\ParentChildInvitation;
 use App\Models\User;
-use App\Services\ParentChildInvitationService;
 use App\Services\Chat\GuardianInvitationConversationService;
+use App\Services\ParentChildInvitationService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,9 +19,7 @@ class ParentInvitationController extends Controller
     public function __construct(
         private readonly ParentChildInvitationService $invitationService,
         private readonly GuardianInvitationConversationService $conversationService,
-    )
-    {
-    }
+    ) {}
 
     public function index(Request $request): View|RedirectResponse
     {

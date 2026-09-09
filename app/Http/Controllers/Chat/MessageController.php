@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Chat;
 
+use App\Enums\MessageReportReason;
 use App\Events\Chat\MessageSent;
 use App\Events\Chat\MessageUpdated;
-use App\Enums\MessageReportReason;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\SendMessageRequest;
 use App\Http\Requests\Chat\UpdateMessageRequest;
@@ -29,8 +29,7 @@ class MessageController extends Controller
         protected ChatAuthorizationService $chatAuthorizationService,
         protected MessagePayloadFormatter $messagePayloadFormatter,
         protected ChatReportModerationAdapter $chatReportModerationAdapter,
-    ) {
-    }
+    ) {}
 
     public function store(SendMessageRequest $request, Conversation $conversation): JsonResponse
     {
@@ -113,7 +112,7 @@ class MessageController extends Controller
 
     public function since(Request $request, Conversation $conversation, int $lastMessageId): JsonResponse
     {
-        if (!$this->chatAuthorizationService->canSubscribeToConversation($request->user(), $conversation)) {
+        if (! $this->chatAuthorizationService->canSubscribeToConversation($request->user(), $conversation)) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -143,7 +142,7 @@ class MessageController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        if (!$this->canMutateMessage($user, $message)) {
+        if (! $this->canMutateMessage($user, $message)) {
             return response()->json([
                 'message' => 'Message edit window has expired.',
             ], 403);
@@ -177,7 +176,7 @@ class MessageController extends Controller
             ]);
         }
 
-        if (!$this->canMutateMessage($user, $message)) {
+        if (! $this->canMutateMessage($user, $message)) {
             return response()->json([
                 'message' => 'Message delete window has expired.',
             ], 403);

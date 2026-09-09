@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Chat;
 
+use App\Enums\EnrollmentStatus;
+use App\Events\Chat\MessageRequestCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StartConversationRequest;
-use App\Events\Chat\MessageRequestCreated;
-use App\Enums\EnrollmentStatus;
 use App\Models\Conversation;
 use App\Models\MessageRequest;
 use App\Models\ModuleEnrollment;
@@ -27,8 +27,7 @@ class ConversationController extends Controller
         protected ChatService $chatService,
         protected ChatAuthorizationService $chatAuthorizationService,
         protected SupportAdminResolver $supportAdminResolver,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -86,7 +85,7 @@ class ConversationController extends Controller
 
         $conversations = $conversationPage
             ->getCollection()
-            ->map(function (Conversation $conversation) use ($user, $userId, $pendingRequestsByConversation) {
+            ->map(function (Conversation $conversation) use ($user, $pendingRequestsByConversation) {
                 $otherParticipant = $this->resolveOtherParticipantForViewer($conversation, $user);
 
                 $pendingRequest = $pendingRequestsByConversation->get((int) $conversation->id);
@@ -149,7 +148,7 @@ class ConversationController extends Controller
 
         $target = User::query()->findOrFail((int) $request->validated('target_user_id'));
 
-        if ($conversationType === Conversation::TYPE_ADMIN_SUPPORT && !$this->isAdminContext($actor)) {
+        if ($conversationType === Conversation::TYPE_ADMIN_SUPPORT && ! $this->isAdminContext($actor)) {
             $resolvedSupportAdmin = $this->supportAdminResolver->resolve((int) $actor->id);
 
             if ($resolvedSupportAdmin === null) {
@@ -432,14 +431,14 @@ class ConversationController extends Controller
 
     private function isInstructorContext(User $user): bool
     {
-        return !$this->isAdminContext($user)
+        return ! $this->isAdminContext($user)
             && ($user->can('access instructor panel') || $user->can('view learners'));
     }
 
     private function isLearnerContext(User $user): bool
     {
-        return !$this->isAdminContext($user)
-            && !$this->isInstructorContext($user)
+        return ! $this->isAdminContext($user)
+            && ! $this->isInstructorContext($user)
             && ($user->can('access learner platform') || $user->can('take quizzes'));
     }
 
@@ -462,11 +461,11 @@ class ConversationController extends Controller
             $participantOneIsAdminContext = $participantOne !== null && $this->isAdminContext($participantOne);
             $participantTwoIsAdminContext = $participantTwo !== null && $this->isAdminContext($participantTwo);
 
-            if ($participantOneIsAdminContext && !$participantTwoIsAdminContext) {
+            if ($participantOneIsAdminContext && ! $participantTwoIsAdminContext) {
                 return $participantTwo;
             }
 
-            if ($participantTwoIsAdminContext && !$participantOneIsAdminContext) {
+            if ($participantTwoIsAdminContext && ! $participantOneIsAdminContext) {
                 return $participantOne;
             }
 
@@ -599,11 +598,11 @@ class ConversationController extends Controller
             $normalized = substr($normalized, 8);
         }
 
-        if (!str_contains($normalized, '/')) {
+        if (! str_contains($normalized, '/')) {
             $normalized = 'avatars/'.$normalized;
         }
 
-        if (!Storage::disk('public')->exists($normalized)) {
+        if (! Storage::disk('public')->exists($normalized)) {
             return null;
         }
 

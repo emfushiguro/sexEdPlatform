@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Parent;
 
-use App\Models\ParentChildInvitation;
 use App\Models\Conversation;
+use App\Models\ParentChildInvitation;
 use App\Models\User;
-use App\Services\ParentChildInvitationService;
 use App\Notifications\Learner\ParentChildInvitationReceivedNotification;
+use App\Services\ParentChildInvitationService;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Tests\TestCase;
@@ -48,7 +48,7 @@ class GuardianInvitationMessagingTest extends TestCase
         [$guardian, $child, $invitation] = $this->createInvitation();
         $notification = new ParentChildInvitationReceivedNotification($invitation->load('inviterParent'));
 
-        $payload = $notification->toDatabase(new AnonymousNotifiable());
+        $payload = $notification->toDatabase(new AnonymousNotifiable);
 
         $this->assertSame($guardian->name, $payload['parent_name']);
         $this->assertSame('Grandmother', $payload['relationship']);
@@ -218,14 +218,14 @@ class GuardianInvitationMessagingTest extends TestCase
 
     private function seedLocationRows(): void
     {
-        \Illuminate\Support\Facades\DB::table('provinces')->insert([
+        \Illuminate\Support\Facades\DB::table('provinces')->insertOrIgnore([
             'code' => '402100000',
             'name' => 'Sample Province',
             'region_code' => '040000000',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        \Illuminate\Support\Facades\DB::table('cities')->insert([
+        \Illuminate\Support\Facades\DB::table('cities')->insertOrIgnore([
             'code' => '402101000',
             'name' => 'Sample City',
             'region_code' => '040000000',
@@ -235,7 +235,7 @@ class GuardianInvitationMessagingTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        \Illuminate\Support\Facades\DB::table('barangays')->insert([
+        \Illuminate\Support\Facades\DB::table('barangays')->insertOrIgnore([
             'code' => '402101001',
             'name' => 'Sample Barangay',
             'city_code' => '402101000',

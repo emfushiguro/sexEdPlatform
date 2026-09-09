@@ -18,8 +18,7 @@ class ChatService
     public function __construct(
         protected ChatAuthorizationService $chatAuthorizationService,
         protected ChatContextResolver $chatContextResolver,
-    ) {
-    }
+    ) {}
 
     public function createOrGetConversation(
         User $initiator,
@@ -34,7 +33,7 @@ class ChatService
 
         $decision = $this->chatAuthorizationService->evaluateStart($initiator, $target);
 
-        if (!$decision['allowed']) {
+        if (! $decision['allowed']) {
             throw new AuthorizationException((string) ($decision['reason'] ?? 'Conversation start denied.'));
         }
 
@@ -72,11 +71,11 @@ class ChatService
     {
         $decision = $this->chatAuthorizationService->evaluateStart($requester, $instructor);
 
-        if (!$decision['allowed']) {
+        if (! $decision['allowed']) {
             throw new AuthorizationException((string) ($decision['reason'] ?? 'Message request denied.'));
         }
 
-        if (!$decision['requires_request']) {
+        if (! $decision['requires_request']) {
             throw new DomainException('Message request is not required for this pair.');
         }
 
@@ -95,11 +94,11 @@ class ChatService
     {
         $decision = $this->chatAuthorizationService->evaluateStart($requester, $instructor);
 
-        if (!$decision['allowed']) {
+        if (! $decision['allowed']) {
             throw new AuthorizationException((string) ($decision['reason'] ?? 'Message request denied.'));
         }
 
-        if (!$decision['requires_request']) {
+        if (! $decision['requires_request']) {
             throw new DomainException('Message request is not required for this pair.');
         }
 
@@ -202,7 +201,7 @@ class ChatService
 
     public function sendMessage(User $sender, Conversation $conversation, ?string $messageBody, array $attachments = []): Message
     {
-        if (!$this->chatAuthorizationService->canSendMessage($sender, $conversation)) {
+        if (! $this->chatAuthorizationService->canSendMessage($sender, $conversation)) {
             throw new AuthorizationException('User is not allowed to send to this conversation.');
         }
 
@@ -328,7 +327,7 @@ class ChatService
             || $target->hasRole('admin')
             || $target->role === 'admin';
 
-        if (!$initiatorIsAdmin && !$targetIsAdmin) {
+        if (! $initiatorIsAdmin && ! $targetIsAdmin) {
             throw new AuthorizationException('Admin support chat requires an admin participant.');
         }
     }
