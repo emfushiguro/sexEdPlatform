@@ -25,6 +25,7 @@ class ChatSchemaCoreTest extends TestCase
             'pair_key',
             'conversation_type',
             'status',
+            'parent_child_invitation_id',
             'module_id',
             'lesson_id',
             'lesson_topic_id',
@@ -34,6 +35,13 @@ class ChatSchemaCoreTest extends TestCase
             'created_at',
             'updated_at',
         ]));
+
+        $this->assertTrue(Schema::hasColumn('parent_child_invitations', 'parent_child_account_id'));
+        $this->assertTrue(Conversation::isSupportedConversationType(Conversation::TYPE_GUARDIAN_INVITATION));
+        $this->assertSame(
+            'guardian_invitation:42',
+            Conversation::makeContextKey(Conversation::TYPE_GUARDIAN_INVITATION, 42),
+        );
 
         $this->assertTrue(Schema::hasColumns('messages', [
             'conversation_id',

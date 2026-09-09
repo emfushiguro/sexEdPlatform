@@ -229,8 +229,9 @@ class ParentChildInvitationService
                             $relationship,
                             $invitation->inviterParent()->firstOrFail(),
                             $documents,
-                            function () use ($invitation, $decisionNote): void {
+                            function (ParentChildAccount $submittedRelationship) use ($invitation, $decisionNote): void {
                                 $invitation->update([
+                                    'parent_child_account_id' => $submittedRelationship->id,
                                     'status' => ParentChildInvitationStatus::Accepted->value,
                                     'decision_note' => $decisionNote,
                                     'responded_at' => now(),
@@ -243,8 +244,9 @@ class ParentChildInvitationService
                         $this->relationshipVerificationService->submitDeclaration(
                             $relationship,
                             $invitation->inviterParent()->firstOrFail(),
-                            function () use ($invitation, $decisionNote): void {
+                            function (ParentChildAccount $submittedRelationship) use ($invitation, $decisionNote): void {
                                 $invitation->update([
+                                    'parent_child_account_id' => $submittedRelationship->id,
                                     'status' => ParentChildInvitationStatus::Accepted->value,
                                     'decision_note' => $decisionNote,
                                     'responded_at' => now(),

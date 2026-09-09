@@ -314,6 +314,9 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->assertSame('pending', $relationship->verification_status);
         $this->assertSame('guardianship', $relationship->verification_pathway);
         $this->assertSame(1, $relationship->current_evidence_round);
+        $invitation = $invitation->fresh();
+        $this->assertSame($relationship->id, $invitation->parent_child_account_id);
+        $this->assertTrue($invitation->parentChildAccount->is($relationship));
         $this->assertFalse((bool) $relationship->can_approve_content);
         $this->assertNull($relationship->relationship_verified_at);
         $verificationDocument = $relationship->verificationDocuments()->sole();

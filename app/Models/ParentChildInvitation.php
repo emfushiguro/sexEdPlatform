@@ -6,12 +6,14 @@ use App\Enums\ParentChildInvitationStatus;
 use App\Support\GuardianRelationshipTypes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ParentChildInvitation extends Model
 {
     protected $fillable = [
         'inviter_parent_user_id',
         'child_user_id',
+        'parent_child_account_id',
         'relationship_type',
         'relationship_custom',
         'relationship_verification_documents',
@@ -41,6 +43,16 @@ class ParentChildInvitation extends Model
     public function child(): BelongsTo
     {
         return $this->belongsTo(User::class, 'child_user_id');
+    }
+
+    public function parentChildAccount(): BelongsTo
+    {
+        return $this->belongsTo(ParentChildAccount::class);
+    }
+
+    public function conversation(): HasOne
+    {
+        return $this->hasOne(Conversation::class);
     }
 
     public function relationshipLabel(): string
