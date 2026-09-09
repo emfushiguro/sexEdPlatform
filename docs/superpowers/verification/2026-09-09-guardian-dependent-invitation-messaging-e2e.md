@@ -1,7 +1,7 @@
 # Guardian/Dependent Invitation Messaging — E2E Verification
 
 Date: 2026-09-09  
-Code revision tested: `ee978529fd3569051185b17aad4b26da7b7e6c9d` (`main`)  
+Code revision tested: `ee978529fd3569051185b17aad4b26da7b7e6c9d` (`main`)
 Execution mode: shared `main` checkout; no separate worktree
 
 ## Environment
