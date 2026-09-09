@@ -1,7 +1,7 @@
 # Guardian/Dependent Invitation Messaging — E2E Verification
 
 Date: 2026-09-09  
-Code revision tested: `aa002115f989b13a8b13d6abce17d43c33f506a4` (`main`)  
+Code revision tested: `ee978529fd3569051185b17aad4b26da7b7e6c9d` (`main`)  
 Execution mode: shared `main` checkout; no separate worktree
 
 ## Environment
@@ -20,13 +20,15 @@ Execution mode: shared `main` checkout; no separate worktree
 
 | Command | Exit | Result |
 |---|---:|---|
-| `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Parent/GuardianInvitationMessagingTest.php tests/Feature/Parent/ParentChildInvitationFlowTest.php tests/Feature/Parent/ParentChildrenActionsUiTest.php tests/Feature/GuardianRelationshipEvidenceSubmissionTest.php tests/Feature/GuardianRelationshipLifecycleTest.php tests/Feature/Chat/ChatSchemaCoreTest.php tests/Unit/Chat/ChatAuthorizationServiceTest.php tests/Unit/Chat/ChatServiceTest.php tests/Feature/Chat/ChatHttpFlowTest.php tests/Feature/Chat/ChatChannelAuthorizationTest.php tests/Feature/Chat/ChatPageRenderTest.php tests/Feature/Chat/ChatRealtimeUiContractTest.php tests/Feature/Chat/ChatReconnectBackfillTest.php tests/Feature/Chat/ChatUnreadAndReadStateTest.php tests/Feature/Chat/ChatInAppMessageNotificationTest.php --testdox` | 0 | 105 tests, 643 assertions |
+| `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Parent/GuardianInvitationMessagingTest.php tests/Feature/Parent/ParentChildInvitationFlowTest.php tests/Feature/Parent/ParentChildrenActionsUiTest.php tests/Feature/GuardianRelationshipEvidenceSubmissionTest.php tests/Feature/GuardianRelationshipLifecycleTest.php tests/Feature/Chat/ChatSchemaCoreTest.php tests/Unit/Chat/ChatAuthorizationServiceTest.php tests/Unit/Chat/ChatServiceTest.php tests/Feature/Chat/ChatHttpFlowTest.php tests/Feature/Chat/ChatChannelAuthorizationTest.php tests/Feature/Chat/ChatPageRenderTest.php tests/Feature/Chat/ChatRealtimeUiContractTest.php tests/Feature/Chat/ChatReconnectBackfillTest.php tests/Feature/Chat/ChatUnreadAndReadStateTest.php tests/Feature/Chat/ChatInAppMessageNotificationTest.php --testdox` | 0 | 106 tests, 644 assertions |
 | Relationship/moderation regression matrix from the plan | 0 | 59 tests, 251 assertions |
 | `vendor\\bin\\pint --test` on the 15 scoped implementation/test files | 0 | All files pass |
 | `pnpm.cmd build` | 0 | Vite 7.3.0 build passed; 87 modules |
-| `php vendor/bin/phpunit --do-not-cache-result` | 2 | 1,285 tests, 6,214 assertions, 13 errors, 4 failures |
+| `php vendor/bin/phpunit --do-not-cache-result` | 2 | 1,286 tests, 6,215 assertions, 13 errors, 4 failures |
 
 The Phase 1 report recorded 13 errors and 5 failures. The Phase 2 full suite keeps the same error count and has no additional failures in the focused Phase 2 matrix. The full-suite failures below are outside that matrix or are existing environment/order-sensitive regressions.
+
+The final review also added an active-status check for the inviting guardian before learner-side conversation initiation. Its regression test is included in the focused matrix.
 
 ## Full-suite failures and errors
 
@@ -74,4 +76,3 @@ The requested browser walkthrough was not executed because browser discovery ret
 - Existing chat, notifications, unread/read state, realtime authorization, reports, moderation, suspension, and Phase 1 relationship regressions: focused regression matrix passed.
 - No Health & Support Information fields were added.
 - Messages do not influence relationship approval; approval remains owned by the existing relationship verification workflow.
-
