@@ -74,7 +74,7 @@ test('correct state locks controls and practice resets local status', async () =
     assert.deepEqual(activity.order, ['one', 'two', 'three']);
 });
 
-test('successful sequencing responses dispatch state for the configured activity', async () => {
+test('successful sequencing responses dispatch state and a scoped result for the configured activity', async () => {
     const events = [];
     const activity = createSequencingActivity({
         activityId: 'sequencing-42',
@@ -89,14 +89,25 @@ test('successful sequencing responses dispatch state for the configured activity
 
     await activity.checkAnswer();
 
-    assert.deepEqual(events, [{
-        name: 'interactive-activity-state',
-        detail: {
-            activityId: 'sequencing-42',
-            status: 'completed',
-            data: { status: 'completed', is_correct: true, is_complete: true },
+    assert.deepEqual(events, [
+        {
+            name: 'interactive-activity-state',
+            detail: {
+                activityId: 'sequencing-42',
+                status: 'completed',
+                data: { status: 'completed', is_correct: true, is_complete: true },
+            },
         },
-    }]);
+        {
+            name: 'interactive-activity-result',
+            detail: {
+                activityId: 'sequencing-42',
+                type: 'sequencing',
+                data: { status: 'completed', is_correct: true, is_complete: true },
+                meta: {},
+            },
+        },
+    ]);
 });
 
 test('loadPayload replaces sequencing state from a practice payload', () => {

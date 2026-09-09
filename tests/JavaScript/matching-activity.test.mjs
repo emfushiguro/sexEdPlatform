@@ -47,11 +47,12 @@ test('request errors preserve previously completed pairs', async () => {
     assert.equal(activity.error, 'Offline');
 });
 
-test('successful matching responses dispatch state for the configured activity', async () => {
+test('successful matching responses dispatch state and a scoped result for the configured activity', async () => {
     const events = [];
     const activity = createMatchingActivity({
         activityId: 'matching-42',
         matchUrl: '/match',
+        leftItems: [{ id: 'left-1', value: 'Left one' }],
     }, async () => response({
         status: 'completed',
         is_correct: true,
@@ -62,14 +63,25 @@ test('successful matching responses dispatch state for the configured activity',
     activity.selectLeft('left-1').selectRight('right-1');
     await activity.submitMatch();
 
-    assert.deepEqual(events, [{
-        name: 'interactive-activity-state',
-        detail: {
-            activityId: 'matching-42',
-            status: 'completed',
-            data: { status: 'completed', is_correct: true, is_complete: true },
+    assert.deepEqual(events, [
+        {
+            name: 'interactive-activity-state',
+            detail: {
+                activityId: 'matching-42',
+                status: 'completed',
+                data: { status: 'completed', is_correct: true, is_complete: true },
+            },
         },
-    }]);
+        {
+            name: 'interactive-activity-result',
+            detail: {
+                activityId: 'matching-42',
+                type: 'matching',
+                data: { status: 'completed', is_correct: true, is_complete: true },
+                meta: { completed: 1, total: 1 },
+            },
+        },
+    ]);
 });
 
 test('loadPayload replaces matching state from a practice payload', async () => {

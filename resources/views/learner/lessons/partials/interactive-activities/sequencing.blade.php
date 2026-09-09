@@ -31,6 +31,4 @@
         </template>
     </ol>
     <button type="button" @click="checkAnswer()" :disabled="isLocked()" class="mt-4 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Check answer</button>
-    <p x-show="feedback" x-text="feedback" role="status" aria-live="polite" class="mt-3 text-sm text-amber-700"></p>
-    <p x-show="error" x-text="error" role="alert" class="mt-3 text-sm text-red-600"></p>
 </div>

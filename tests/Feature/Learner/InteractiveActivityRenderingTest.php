@@ -230,6 +230,33 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringContainsString('\\u0022initialMatchedPairs\\u0022:[{\\u0022left_id\\u0022:\\u0022left-1\\u0022,\\u0022right_id\\u0022:\\u0022right-1\\u0022}]', $html);
     }
 
+    public function test_activity_shell_centralizes_accessible_feedback_and_completed_explanation(): void
+    {
+        foreach (['matching', 'sequencing'] as $type) {
+            $html = view('learner.lessons.partials.interactive-activities.shell', [
+                'activity' => [
+                    'id' => "{$type}-42",
+                    'available' => true,
+                    'type' => $type,
+                    'status' => 'completed',
+                    'instructions' => '<p>Choose a <strong>pair</strong>.</p>',
+                    'explanation' => '<p>Pairs belong together.</p>',
+                    'payload' => ['left_items' => [], 'right_items' => [], 'items' => []],
+                ],
+            ])->render();
+
+            $this->assertSame(1, substr_count($html, 'x-show="feedback.message" aria-live="polite" role="status"'));
+            $this->assertStringContainsString('@interactive-activity-result.window="if ($event.detail.activityId === activityId) handleActivityResult($event.detail)"', $html);
+            $this->assertStringContainsString('x-show="feedback.message"', $html);
+            $this->assertStringContainsString('role="status"', $html);
+            $this->assertStringContainsString('x-text="feedback.message"', $html);
+            $this->assertStringContainsString('x-show="error" role="alert"', $html);
+            $this->assertStringContainsString("x-show=\"['completed', 'practice_completed'].includes(status) && explanation\"", $html);
+            $this->assertStringContainsString('x-html="explanation"', $html);
+            $this->assertStringContainsString('<p>Choose a <strong>pair</strong>.</p>', $html);
+        }
+    }
+
     /** @return array{User, Lesson, LessonTopic} */
     private function lessonFixture(): array
     {

@@ -40,6 +40,15 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             return this.items.find((item) => item.id === id) ?? { id, value: id };
         },
 
+        publishResult(data) {
+            this.$dispatch?.('interactive-activity-result', {
+                activityId: config.activityId,
+                type: 'sequencing',
+                data,
+                meta: {},
+            });
+        },
+
         move(index, delta) {
             if (!this.isLocked()) this.order = moveItem(this.order, index, delta);
             this.scheduleSave();
@@ -117,6 +126,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                     this.status = data.status;
                     if (!correct) this.feedback = 'Not quite—try again';
                     this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
+                    this.publishResult(data);
                     return data;
                 }
                 if (typeof request !== 'function' || !config.checkUrl) return null;
@@ -131,6 +141,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                 this.status = data.status ?? this.status;
                 if (!data.is_correct) this.feedback = 'Not quite—try again';
                 this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
+                this.publishResult(data);
                 return data;
             } catch (error) {
                 this.error = error.message || 'Unable to check the sequence.';

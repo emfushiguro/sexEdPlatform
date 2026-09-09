@@ -21,6 +21,9 @@ test('common activity state sends revisioned skip and exposes lifecycle controls
     assert.equal(activity.status, 'skipped');
     assert.equal(activity.showResume(), true);
     assert.equal(activity.showContinue(), true);
+    assert.deepEqual(activity.feedback, {
+        kind: 'skipped', message: 'Activity skipped. You can resume when ready.', icon: 'skip',
+    });
     assert.deepEqual(JSON.parse(calls[0].options.body), { revision: 4 });
     assert.equal(calls[0].options.headers['X-CSRF-TOKEN'], 'token');
 });
@@ -31,8 +34,48 @@ test('common activity retains state and reports request errors', async () => {
     await activity.skip();
 
     assert.equal(activity.error, 'Offline');
+    assert.deepEqual(activity.feedback, { kind: 'error', message: 'Offline', icon: 'warning' });
     assert.equal(activity.status, 'in_progress');
     assert.equal(activity.submitting, false);
+});
+
+test('resume and practice clear activity feedback', async () => {
+    const activity = createInteractiveActivity({
+        initialStatus: 'skipped',
+        resumeUrl: '/resume',
+        practiceUrl: '/practice',
+    }, async (url) => response(url === '/resume'
+        ? { status: 'in_progress' }
+        : { status: 'practice', payload: { items: [] } }));
+
+    activity.feedback = { kind: 'skipped', message: 'Activity skipped. You can resume when ready.', icon: 'skip' };
+    await activity.resume();
+    assert.deepEqual(activity.feedback, { kind: 'idle', message: '', icon: null });
+
+    activity.feedback = { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' };
+    await activity.practice();
+    assert.deepEqual(activity.feedback, { kind: 'idle', message: '', icon: null });
+});
+
+test('common activity applies only its child result details', () => {
+    const activity = createInteractiveActivity({ activityId: 41 });
+
+    activity.handleActivityResult({
+        activityId: 42,
+        type: 'matching',
+        data: { status: 'completed', explanation: '<p>Ignore me</p>', is_correct: true, is_complete: true },
+    });
+    assert.equal(activity.status, 'in_progress');
+
+    activity.handleActivityResult({
+        activityId: 41,
+        type: 'matching',
+        data: { status: 'completed', explanation: '<p>Well done</p>', is_correct: true, is_complete: true },
+        meta: { completed: 4, total: 4 },
+    });
+    assert.equal(activity.status, 'completed');
+    assert.equal(activity.explanation, '<p>Well done</p>');
+    assert.deepEqual(activity.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
 });
 
 test('practice publishes the returned payload only to its activity instance', async () => {

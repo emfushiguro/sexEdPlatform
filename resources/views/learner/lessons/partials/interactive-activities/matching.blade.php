@@ -49,5 +49,4 @@
         </template>
     </div>
     <button type="button" @click="submitMatch()" :disabled="submitting || leftId === null || rightId === null || status === 'completed'" class="mt-4 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Check match</button>
-    <p x-show="feedback" x-text="feedback" role="status" aria-live="polite" class="mt-3 text-sm text-amber-700"></p>
 </div>

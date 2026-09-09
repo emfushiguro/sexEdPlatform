@@ -62,6 +62,15 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             return items.find((item) => item.id === id)?.value ?? id;
         },
 
+        publishResult(data) {
+            this.$dispatch?.('interactive-activity-result', {
+                activityId: config.activityId,
+                type: 'matching',
+                data,
+                meta: { completed: this.matchedPairs.length, total: this.leftItems.length },
+            });
+        },
+
         setupConnectors(container) {
             this.connectorContainer = container;
             const refresh = () => this.refreshConnectors();
@@ -102,6 +111,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
                     this.leftId = null;
                     this.rightId = null;
                     this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
+                    this.publishResult(data);
                     queueMicrotask(() => this.refreshConnectors());
                     return data;
                 }
@@ -125,6 +135,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
                 this.leftId = null;
                 this.rightId = null;
                 this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
+                this.publishResult(data);
                 queueMicrotask(() => this.refreshConnectors());
                 return data;
             } catch (error) {

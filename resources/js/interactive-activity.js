@@ -1,3 +1,5 @@
+import { emptyActivityFeedback, feedbackForEvaluation, feedbackForLifecycle } from './activity-feedback.js';
+
 async function readResponse(response) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Unable to save the activity.');
@@ -12,6 +14,7 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
         payload: config.payload ?? null,
         explanation: config.initialExplanation ?? null,
         error: '',
+        feedback: emptyActivityFeedback(),
         submitting: false,
         practiceMode: false,
 
@@ -24,7 +27,24 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
         },
 
         showContinue() {
-            return ['completed', 'skipped'].includes(this.status);
+            return ['completed', 'practice_completed', 'skipped'].includes(this.status);
+        },
+
+        showPracticeAgain() {
+            return ['completed', 'practice_completed'].includes(this.status);
+        },
+
+        clearFeedback() {
+            this.feedback = emptyActivityFeedback();
+            return this;
+        },
+
+        handleActivityResult(detail = {}) {
+            if (detail.activityId !== config.activityId) return this;
+            this.status = detail.data?.status ?? this.status;
+            this.explanation = detail.data?.explanation ?? null;
+            this.feedback = feedbackForEvaluation(detail.type, detail.data, detail.meta);
+            return this;
         },
 
         applyResponse(data) {
@@ -62,6 +82,7 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
                 return this.applyResponse(await readResponse(response));
             } catch (error) {
                 this.error = error.message || 'Unable to save the activity.';
+                this.feedback = { kind: 'error', message: this.error, icon: 'warning' };
                 return null;
             } finally {
                 this.submitting = false;
@@ -71,13 +92,17 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
         async skip() {
             if (config.preview) {
                 this.status = 'skipped';
+                this.feedback = feedbackForLifecycle(this.status);
                 this.$dispatch?.('interactive-activity-state', { activityId: this.activityId, status: this.status, data: { status: this.status } });
                 return { status: this.status };
             }
-            return this.send(config.skipUrl, 'POST', { revision: this.revision });
+            const data = await this.send(config.skipUrl, 'POST', { revision: this.revision });
+            if (data) this.feedback = feedbackForLifecycle(this.status);
+            return data;
         },
 
         async resume() {
+            this.clearFeedback();
             if (config.preview) {
                 this.status = 'in_progress';
                 this.$dispatch?.('interactive-activity-state', { activityId: this.activityId, status: this.status, data: { status: this.status } });
@@ -87,6 +112,7 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
         },
 
         async practice() {
+            this.clearFeedback();
             if (config.preview) {
                 this.status = 'practice';
                 this.$dispatch?.('interactive-activity-state', { activityId: this.activityId, status: this.status, data: { status: this.status } });
