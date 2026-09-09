@@ -33,8 +33,12 @@ class ParentChildInvitationFlowTest extends TestCase
             ->post(route('parent.invitations.store'), [
                 'identifier' => $child->learnerProfile->username,
                 'relationship_type' => 'grandmother',
-                'relationship_document_type' => 'court_order',
-                'relationship_document' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                'documents' => [[
+                    'document_type' => 'court_order',
+                    'document_side' => 'not_applicable',
+                    'pairing_key' => null,
+                    'file' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                ]],
                 'confirm_relationship_verification' => '1',
                 'message' => 'Please accept this invitation so I can guide your learning progress.',
             ])
@@ -54,6 +58,96 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->assertSame('parent_child_invitation_received', data_get($childNotification->data, 'type'));
     }
 
+    public function test_invitation_accepts_one_and_ten_unique_evidence_documents(): void
+    {
+        $this->seedLocationRows();
+        Storage::fake('local');
+
+        $parent = $this->createApprovedParent();
+        $oneFileChild = $this->createLearner('onefilechild', 12);
+        $tenFileChild = $this->createLearner('tenfilechild', 12);
+
+        $this->postInvitation($parent, $oneFileChild, $this->invitationDocuments(1))
+            ->assertRedirect(route('parent.invitations.index'))
+            ->assertSessionHasNoErrors();
+
+        $oneFileInvitation = ParentChildInvitation::query()->latest('id')->firstOrFail();
+        $this->assertCount(1, $oneFileInvitation->relationship_verification_documents);
+
+        $this->postInvitation($parent, $tenFileChild, $this->invitationDocuments(10))
+            ->assertRedirect(route('parent.invitations.index'))
+            ->assertSessionHasNoErrors();
+
+        $tenFileInvitation = ParentChildInvitation::query()->latest('id')->firstOrFail();
+        $this->assertCount(10, $tenFileInvitation->relationship_verification_documents);
+    }
+
+    public function test_invalid_invitation_evidence_never_creates_an_invitation_or_leaves_staged_files(): void
+    {
+        $this->seedLocationRows();
+        Storage::fake('local');
+
+        $parent = $this->createApprovedParent();
+        $cases = [
+            'zero' => [],
+            'eleven' => $this->invitationDocuments(11),
+            'unsupported category' => [[
+                'document_type' => 'unsupported_category',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->create('unsupported.pdf', 64, 'application/pdf'),
+            ]],
+            'invalid side' => [[
+                'document_type' => 'court_order',
+                'document_side' => 'sideways',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->create('invalid-side.pdf', 64, 'application/pdf'),
+            ]],
+            'incomplete pair' => [[
+                'document_type' => 'court_order',
+                'document_side' => 'front',
+                'pairing_key' => 'f2f07af0-1e32-45fb-9f37-02a6a653a2d9',
+                'file' => UploadedFile::fake()->create('front-only.pdf', 64, 'application/pdf'),
+            ]],
+        ];
+
+        foreach ($cases as $label => $documents) {
+            $child = $this->createLearner('invalid'.substr(md5($label), 0, 8), 12);
+
+            $this->postInvitation($parent, $child, $documents)
+                ->assertRedirect(route('parent.invitations.index'))
+                ->assertSessionHasErrors();
+
+            $this->assertDatabaseCount('parent_child_invitations', 0);
+            $this->assertSame([], Storage::disk('local')->allFiles(), $label);
+        }
+
+        $duplicateChild = $this->createLearner('duplicatecontent', 12);
+        $duplicateDocuments = [
+            [
+                'document_type' => 'court_order',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->createWithContent('duplicate-one.pdf', 'same-content')
+                    ->mimeType('application/pdf'),
+            ],
+            [
+                'document_type' => 'court_order',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->createWithContent('duplicate-two.pdf', 'same-content')
+                    ->mimeType('application/pdf'),
+            ],
+        ];
+
+        $this->postInvitation($parent, $duplicateChild, $duplicateDocuments)
+            ->assertRedirect(route('parent.invitations.index'))
+            ->assertSessionHasErrors('identifier');
+
+        $this->assertDatabaseCount('parent_child_invitations', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
     public function test_verification_required_invitation_requires_supporting_document(): void
     {
         $this->seedLocationRows();
@@ -66,11 +160,11 @@ class ParentChildInvitationFlowTest extends TestCase
             ->post(route('parent.invitations.store'), [
                 'identifier' => $child->learnerProfile->username,
                 'relationship_type' => 'legal_guardian',
-                'relationship_document_type' => 'court_order',
+                'documents' => [],
                 'confirm_relationship_verification' => '1',
             ])
             ->assertRedirect(route('parent.invitations.index'))
-            ->assertSessionHasErrors(['relationship_document']);
+            ->assertSessionHasErrors(['documents']);
 
         $this->assertDatabaseCount('parent_child_invitations', 0);
         $this->assertDatabaseCount('parent_child_accounts', 0);
@@ -89,8 +183,12 @@ class ParentChildInvitationFlowTest extends TestCase
             ->post(route('parent.invitations.store'), [
                 'identifier' => $child->learnerProfile->username,
                 'relationship_type' => 'legal_guardian',
-                'relationship_document_type' => 'court_order',
-                'relationship_document' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                'documents' => [[
+                    'document_type' => 'court_order',
+                    'document_side' => 'not_applicable',
+                    'pairing_key' => null,
+                    'file' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                ]],
                 'confirm_relationship_verification' => '1',
             ])
             ->assertRedirect(route('parent.invitations.index'))
@@ -149,8 +247,12 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->actingAs($parent)->post(route('parent.invitations.store'), [
             'identifier' => $child->learnerProfile->username,
             'relationship_type' => 'legal_guardian',
-            'relationship_document_type' => 'court_order',
-            'relationship_document' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+            'documents' => [[
+                'document_type' => 'court_order',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+            ]],
             'confirm_relationship_verification' => '1',
         ])->assertRedirect(route('parent.invitations.index'));
 
@@ -180,8 +282,12 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->actingAs($parent)->post(route('parent.invitations.store'), [
             'identifier' => $child->learnerProfile->username,
             'relationship_type' => 'legal_guardian',
-            'relationship_document_type' => 'court_order',
-            'relationship_document' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+            'documents' => [[
+                'document_type' => 'court_order',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+            ]],
             'confirm_relationship_verification' => '1',
         ])->assertRedirect(route('parent.invitations.index'));
 
@@ -209,8 +315,12 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->actingAs($parent)->post(route('parent.invitations.store'), [
             'identifier' => $child->learnerProfile->username,
             'relationship_type' => 'legal_guardian',
-            'relationship_document_type' => 'court_order',
-            'relationship_document' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+            'documents' => [[
+                'document_type' => 'court_order',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+            ]],
             'confirm_relationship_verification' => '1',
         ])->assertRedirect(route('parent.invitations.index'));
 
@@ -245,8 +355,12 @@ class ParentChildInvitationFlowTest extends TestCase
             ->post(route('parent.invitations.store'), [
                 'identifier' => $child->learnerProfile->username,
                 'relationship_type' => 'legal_guardian',
-                'relationship_document_type' => 'court_order',
-                'relationship_document' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                'documents' => [[
+                    'document_type' => 'court_order',
+                    'document_side' => 'not_applicable',
+                    'pairing_key' => null,
+                    'file' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                ]],
                 'confirm_relationship_verification' => '1',
             ])
             ->assertRedirect(route('parent.invitations.index'));
@@ -291,8 +405,12 @@ class ParentChildInvitationFlowTest extends TestCase
             ->post(route('parent.invitations.store'), [
                 'identifier' => $child->learnerProfile->username,
                 'relationship_type' => 'legal_guardian',
-                'relationship_document_type' => 'court_order',
-                'relationship_document' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                'documents' => [[
+                    'document_type' => 'court_order',
+                    'document_side' => 'not_applicable',
+                    'pairing_key' => null,
+                    'file' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                ]],
                 'confirm_relationship_verification' => '1',
             ])
             ->assertRedirect(route('parent.invitations.index'));
@@ -852,8 +970,12 @@ class ParentChildInvitationFlowTest extends TestCase
             ->post(route('parent.invitations.store'), [
                 'identifier' => $child->learnerProfile->username,
                 'relationship_type' => 'grandmother',
-                'relationship_document_type' => 'court_order',
-                'relationship_document' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                'documents' => [[
+                    'document_type' => 'court_order',
+                    'document_side' => 'not_applicable',
+                    'pairing_key' => null,
+                    'file' => UploadedFile::fake()->create('court-order.pdf', 64, 'application/pdf'),
+                ]],
                 'confirm_relationship_verification' => '1',
             ])
             ->assertRedirect(route('parent.invitations.index'))
@@ -937,8 +1059,12 @@ class ParentChildInvitationFlowTest extends TestCase
             ->post(route('parent.invitations.store'), [
                 'identifier' => $adultLearner->email,
                 'relationship_type' => 'biological_mother',
-                'relationship_document_type' => 'civil_registry_record',
-                'relationship_document' => UploadedFile::fake()->create('birth-record.pdf', 64, 'application/pdf'),
+                'documents' => [[
+                    'document_type' => 'civil_registry_record',
+                    'document_side' => 'not_applicable',
+                    'pairing_key' => null,
+                    'file' => UploadedFile::fake()->create('birth-record.pdf', 64, 'application/pdf'),
+                ]],
                 'confirm_relationship_verification' => '1',
             ])
             ->assertRedirect(route('parent.invitations.index'))
@@ -995,6 +1121,34 @@ class ParentChildInvitationFlowTest extends TestCase
             'mime_type' => 'application/pdf',
             'size_bytes' => strlen($content),
         ];
+    }
+
+    private function invitationDocuments(int $count): array
+    {
+        return array_map(
+            static fn (int $index): array => [
+                'document_type' => 'court_order',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->createWithContent(
+                    "court-order-{$index}.pdf",
+                    "unique-evidence-{$index}",
+                )->mimeType('application/pdf'),
+            ],
+            range(1, $count),
+        );
+    }
+
+    private function postInvitation(User $parent, User $child, array $documents)
+    {
+        return $this->actingAs($parent)
+            ->from(route('parent.invitations.index'))
+            ->post(route('parent.invitations.store'), [
+                'identifier' => $child->learnerProfile->username,
+                'relationship_type' => 'legal_guardian',
+                'documents' => $documents,
+                'confirm_relationship_verification' => '1',
+            ]);
     }
 
     private function createLearner(string $username, int $age): User

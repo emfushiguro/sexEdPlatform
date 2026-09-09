@@ -301,6 +301,9 @@ class GuardianRelationshipEvidenceSubmissionTest extends TestCase
             ['document_type' => 'adoption_order', 'document_side' => 'front', 'pairing_key' => $pairingKey],
             ['document_type' => 'other_supporting_document', 'document_side' => 'back', 'pairing_key' => $pairingKey],
         ]));
+        $this->assertArrayHasKey('documents', GuardianRelationshipEvidenceRules::metadataErrors([
+            ['document_type' => 'adoption_order', 'document_side' => 'front', 'pairing_key' => $pairingKey],
+        ]));
         $this->assertArrayHasKey('documents.4.pairing_key', GuardianRelationshipEvidenceRules::metadataErrors([
             4 => ['document_type' => 'adoption_order', 'document_side' => 'front', 'pairing_key' => null],
         ]));

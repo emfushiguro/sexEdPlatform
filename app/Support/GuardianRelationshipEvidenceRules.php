@@ -61,6 +61,13 @@ final class GuardianRelationshipEvidenceRules
             $pairSides[$pairingKey][$side] = true;
         }
 
+        foreach ($pairSides as $pairingKey => $sides) {
+            if (! isset($sides['front'], $sides['back'])) {
+                $errors['documents'] = 'Every front/back document pair must include both sides.';
+                break;
+            }
+        }
+
         return $errors;
     }
 }

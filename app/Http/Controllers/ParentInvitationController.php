@@ -56,6 +56,19 @@ class ParentInvitationController extends Controller
         }
 
         try {
+            $documents = collect($request->validated('documents'))
+                ->values()
+                ->map(static fn (array $document, int $index): array => [
+                    'document_type' => (string) $document['document_type'],
+                    'document_side' => (string) $document['document_side'],
+                    'pairing_key' => filled($document['pairing_key'] ?? null)
+                        ? (string) $document['pairing_key']
+                        : null,
+                    'display_order' => $index,
+                    'file' => $document['file'],
+                ])
+                ->all();
+
             $this->invitationService->sendInvitation(
                 $parent,
                 (string) $request->string('identifier'),
@@ -63,20 +76,7 @@ class ParentInvitationController extends Controller
                 $request->filled('relationship_custom') ? (string) $request->string('relationship_custom') : null,
                 $request->filled('message') ? (string) $request->string('message') : null,
                 [
-                    'documents' => array_values(array_filter([
-                        [
-                            'document_type' => (string) $request->string('relationship_document_type'),
-                            'document_side' => 'not_applicable',
-                            'pairing_key' => null,
-                            'file' => $request->file('relationship_document'),
-                        ],
-                        $request->hasFile('relationship_supporting_document') ? [
-                            'document_type' => 'other_supporting_document',
-                            'document_side' => 'not_applicable',
-                            'pairing_key' => null,
-                            'file' => $request->file('relationship_supporting_document'),
-                        ] : null,
-                    ])),
+                    'documents' => $documents,
                 ],
             );
         } catch (InvalidArgumentException $exception) {

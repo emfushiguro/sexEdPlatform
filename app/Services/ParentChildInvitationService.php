@@ -48,9 +48,10 @@ class ParentChildInvitationService
         }
 
         $stagedPaths = [];
+        $seenHashes = [];
 
         try {
-            $invitation = DB::transaction(function () use ($parent, $child, $relationshipType, $relationshipCustom, $message, $requiresVerification, $documents, &$stagedPaths): ParentChildInvitation {
+            $invitation = DB::transaction(function () use ($parent, $child, $relationshipType, $relationshipCustom, $message, $requiresVerification, $documents, &$stagedPaths, &$seenHashes): ParentChildInvitation {
                 User::query()
                     ->lockForUpdate()
                     ->findOrFail($child->id);
@@ -96,7 +97,7 @@ class ParentChildInvitationService
                 ]);
 
                 if ($requiresVerification) {
-                    $stagedDocuments = collect($documents)->values()->map(function (array $document, int $index) use ($invitation, &$stagedPaths): array {
+                    $stagedDocuments = collect($documents)->values()->map(function (array $document, int $index) use ($invitation, &$stagedPaths, &$seenHashes): array {
                         $staged = $this->stagedDocument(
                             (string) $document['document_type'],
                             $document['file'],
@@ -106,6 +107,12 @@ class ParentChildInvitationService
                             (int) ($document['display_order'] ?? $index),
                         );
                         $stagedPaths[] = $staged['path'];
+
+                        if (isset($seenHashes[$staged['content_sha256']])) {
+                            throw new InvalidArgumentException('Duplicate evidence files are not allowed.');
+                        }
+
+                        $seenHashes[$staged['content_sha256']] = true;
 
                         return $staged;
                     })->all();
