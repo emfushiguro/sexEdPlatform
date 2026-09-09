@@ -26,7 +26,7 @@
             <h4 class="mb-2 text-sm font-semibold text-gray-700">Match each item</h4>
             <div class="space-y-2">
                 @foreach(($activity['payload']['left_items'] ?? []) as $item)
-                    <button type="button" data-match-left="{{ $item['id'] }}" @click="selectLeft(@js($item['id']))" :aria-pressed="ariaPressed('left', @js($item['id']))" :disabled="isLeftMatched(@js($item['id'])) || submitting" class="relative z-10 block w-full rounded-xl border border-gray-200 px-3 py-2 text-left text-sm hover:border-purple-400 disabled:cursor-not-allowed disabled:opacity-50">{{ $item['value'] }}</button>
+                    <button type="button" data-match-left="{{ $item['id'] }}" @click="selectLeft(@js($item['id']))" :aria-pressed="ariaPressed('left', @js($item['id']))" :disabled="isLeftMatched(@js($item['id'])) || submitting" class="relative z-10 block min-h-11 w-full rounded-xl border border-gray-200 px-3 py-2 text-left text-sm hover:border-purple-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:cursor-not-allowed disabled:opacity-50">{{ $item['value'] }}</button>
                 @endforeach
             </div>
         </div>
@@ -34,7 +34,7 @@
             <h4 class="mb-2 text-sm font-semibold text-gray-700">Related item</h4>
             <div class="space-y-2">
                 @foreach(($activity['payload']['right_items'] ?? []) as $item)
-                    <button type="button" data-match-right="{{ $item['id'] }}" @click="selectRight(@js($item['id']))" :aria-pressed="ariaPressed('right', @js($item['id']))" :disabled="isRightMatched(@js($item['id'])) || submitting" class="relative z-10 block w-full rounded-xl border border-gray-200 px-3 py-2 text-left text-sm hover:border-purple-400 disabled:cursor-not-allowed disabled:opacity-50">{{ $item['value'] }}</button>
+                    <button type="button" data-match-right="{{ $item['id'] }}" @click="selectRight(@js($item['id']))" :aria-pressed="ariaPressed('right', @js($item['id']))" :disabled="isRightMatched(@js($item['id'])) || submitting" class="relative z-10 block min-h-11 w-full rounded-xl border border-gray-200 px-3 py-2 text-left text-sm hover:border-purple-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:cursor-not-allowed disabled:opacity-50">{{ $item['value'] }}</button>
                 @endforeach
             </div>
         </div>
@@ -48,5 +48,5 @@
             </div>
         </template>
     </div>
-    <button type="button" @click="submitMatch()" :disabled="submitting || leftId === null || rightId === null || status === 'completed'" class="mt-4 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Check match</button>
+    <button type="button" @click="submitMatch()" :disabled="submitting || leftId === null || rightId === null || status === 'completed'" class="mt-4 min-h-11 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:cursor-not-allowed disabled:opacity-50">Check match</button>
 </div>

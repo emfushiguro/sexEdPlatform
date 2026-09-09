@@ -230,6 +230,45 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringContainsString('\\u0022initialMatchedPairs\\u0022:[{\\u0022left_id\\u0022:\\u0022left-1\\u0022,\\u0022right_id\\u0022:\\u0022right-1\\u0022}]', $html);
     }
 
+    public function test_activity_controls_have_minimum_hit_targets_and_visible_focus_styles(): void
+    {
+        $renderedControls = [
+            [
+                view('learner.lessons.partials.interactive-activities.matching', [
+                    'activity' => ['id' => 'matching-42', 'payload' => [
+                        'left_items' => [['id' => 'left-1', 'value' => 'One']],
+                        'right_items' => [['id' => 'right-1', 'value' => 'First']],
+                    ]],
+                ])->render(),
+                3,
+            ],
+            [
+                view('learner.lessons.partials.interactive-activities.sequencing', [
+                    'activity' => ['id' => 'sequencing-42', 'payload' => [
+                        'items' => [['id' => 'item-1', 'value' => 'First']],
+                    ]],
+                ])->render(),
+                3,
+            ],
+            [
+                view('learner.lessons.partials.interactive-activities.shell', [
+                    'activity' => [
+                        'id' => 'matching-42',
+                        'available' => true,
+                        'type' => 'matching',
+                        'payload' => ['left_items' => [], 'right_items' => []],
+                    ],
+                ])->render(),
+                5,
+            ],
+        ];
+
+        foreach ($renderedControls as [$html, $buttonCount]) {
+            $this->assertSame($buttonCount, substr_count($html, 'min-h-11'));
+            $this->assertSame($buttonCount, substr_count($html, 'focus-visible:outline-purple-700'));
+        }
+    }
+
     public function test_activity_shell_centralizes_accessible_feedback_and_completed_explanation(): void
     {
         foreach (['matching', 'sequencing'] as $type) {

@@ -35,10 +35,10 @@
     <div x-show="['completed', 'practice_completed'].includes(status) && explanation" x-html="explanation" class="mt-4 prose prose-sm max-w-none text-gray-600"></div>
 
     <div class="mt-5 flex flex-wrap gap-3">
-        <button type="button" x-show="showSkip()" @click="skip()" :disabled="submitting" class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50">Skip</button>
-        <button type="button" x-show="showResume()" @click="resume()" :disabled="submitting" class="rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 disabled:opacity-50">Resume</button>
-        <button type="button" x-show="showContinue()" @click="continueLearning()" class="rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white">Continue</button>
-        <button type="button" x-show="showPracticeAgain()" @click="practice()" :disabled="submitting" class="rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 disabled:opacity-50">Practice Again</button>
+        <button type="button" x-show="showSkip()" @click="skip()" :disabled="submitting" class="min-h-11 rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Skip</button>
+        <button type="button" x-show="showResume()" @click="resume()" :disabled="submitting" class="min-h-11 rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Resume</button>
+        <button type="button" x-show="showContinue()" @click="continueLearning()" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">Continue</button>
+        <button type="button" x-show="showPracticeAgain()" @click="practice()" :disabled="submitting" class="min-h-11 rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Practice Again</button>
     </div>
     <div x-show="error" role="alert" class="mt-3 text-sm text-red-700" x-text="error"></div>
 </section>
