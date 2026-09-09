@@ -294,7 +294,6 @@
                                 <div>
                                     <p class="text-sm font-semibold text-gray-900 truncate">{{ $invitation->child?->name ?? 'Learner' }}</p>
                                     <p class="text-xs text-gray-500 mt-1">
-                                        {{ $invitation->child?->email ?? 'No email' }}
                                         @if($invitation->child?->learnerProfile?->username)
                                             · {{ $invitation->child->learnerProfile->username }}
                                         @endif

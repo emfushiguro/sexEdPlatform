@@ -96,15 +96,33 @@ class ParentInvitationController extends Controller
         abort_if(! $isParentViewer && ! $isChildViewer, 403);
 
         $invitation->load([
-            'inviterParent:id,name,email',
-            'child:id,name,email,first_name,last_name,birthdate',
-            'child.learnerProfile:id,user_id,username,birthdate',
+            'inviterParent:id,name,status,parent_verification_status,created_at',
+            'inviterParent.learnerProfile:id,user_id,avatar_path',
+            'child:id,name,status',
+            'child.learnerProfile:id,user_id,username,avatar_path',
+            'parentChildAccount:id,parent_user_id,child_user_id,relationship_status,relationship_verified_status',
+            'conversation:id,parent_child_invitation_id,status',
         ]);
+
+        $guardianSummary = [
+            'name' => (string) ($invitation->inviterParent?->name ?: 'Guardian'),
+            'avatar_path' => $invitation->inviterParent?->learnerProfile?->avatar_path,
+            'identity_verified' => $invitation->inviterParent?->parent_verification_status === 'approved',
+            'member_since' => $invitation->inviterParent?->created_at?->format('F Y'),
+        ];
+
+        $learnerSummary = [
+            'name' => (string) ($invitation->child?->name ?: 'Learner'),
+            'avatar_path' => $invitation->child?->learnerProfile?->avatar_path,
+            'username' => $invitation->child?->learnerProfile?->username,
+        ];
 
         return view('parent.invitations.show', [
             'invitation' => $invitation,
             'isParentViewer' => $isParentViewer,
             'isChildViewer' => $isChildViewer,
+            'guardianSummary' => $guardianSummary,
+            'learnerSummary' => $learnerSummary,
         ]);
     }
 

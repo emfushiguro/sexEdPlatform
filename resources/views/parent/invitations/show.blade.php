@@ -14,13 +14,17 @@
 		'expired' => 'bg-orange-100 text-orange-700',
 		default => 'bg-amber-100 text-amber-700',
 	};
-	$childBirthdate = $invitation->child?->birthdate ?? $invitation->child?->learnerProfile?->birthdate;
-	$childAge = $childBirthdate
-		? \Carbon\Carbon::parse($childBirthdate)->age
+	$guardianAvatarPath = $guardianSummary['avatar_path'] ?? null;
+	$guardianAvatarUrl = $guardianAvatarPath
+		? asset('storage/' . ltrim((string) $guardianAvatarPath, '/'))
+		: null;
+	$learnerAvatarPath = $learnerSummary['avatar_path'] ?? null;
+	$learnerAvatarUrl = $learnerAvatarPath
+		? asset('storage/' . ltrim((string) $learnerAvatarPath, '/'))
 		: null;
 @endphp
 
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="max-w-4xl mx-auto space-y-6" x-data="guardianInvitationDisclosure()" @keydown.escape.window="close()">
 	<div class="rounded-2xl p-6 text-white"
 		 style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -66,22 +70,38 @@
 
 		<div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
 			<div class="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
-				<p class="text-xs text-gray-500">Guardian</p>
-				<p class="font-semibold text-gray-900 mt-1">{{ $invitation->inviterParent?->name ?? 'Guardian' }}</p>
-				<p class="text-xs text-gray-500 mt-1">{{ $invitation->inviterParent?->email }}</p>
+				<div class="flex items-center gap-3">
+					@if($guardianAvatarUrl)
+						<img src="{{ $guardianAvatarUrl }}" alt="Guardian avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover">
+					@else
+						<span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-bold text-purple-700" aria-hidden="true">{{ strtoupper(substr($guardianSummary['name'], 0, 1)) }}</span>
+					@endif
+					<div class="min-w-0">
+						<p class="text-xs text-gray-500">Guardian</p>
+						<p class="font-semibold text-gray-900 mt-1">{{ $guardianSummary['name'] }}</p>
+					</div>
+				</div>
+				@if($guardianSummary['identity_verified'])
+					<p class="mt-1 text-xs font-semibold text-emerald-700">Guardian identity administratively verified</p>
+				@endif
 			</div>
 			<div class="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
-				<p class="text-xs text-gray-500">Learner</p>
-				<p class="font-semibold text-gray-900 mt-1">{{ $invitation->child?->name ?? 'Learner' }}</p>
+				<div class="flex items-center gap-3">
+					@if($learnerAvatarUrl)
+						<img src="{{ $learnerAvatarUrl }}" alt="Learner avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover">
+					@else
+						<span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700" aria-hidden="true">{{ strtoupper(substr($learnerSummary['name'], 0, 1)) }}</span>
+					@endif
+					<div class="min-w-0">
+						<p class="text-xs text-gray-500">Learner</p>
+						<p class="font-semibold text-gray-900 mt-1">{{ $learnerSummary['name'] }}</p>
+					</div>
+				</div>
 				<p class="text-xs text-gray-500 mt-1">
-					{{ $invitation->child?->email }}
-					@if($invitation->child?->learnerProfile?->username)
+					@if($learnerSummary['username'])
 						· {{ $invitation->child->learnerProfile->username }}
 					@endif
 				</p>
-				@if(!is_null($childAge))
-					<p class="text-xs text-gray-500 mt-1">{{ $childAge }} years old</p>
-				@endif
 			</div>
 		</div>
 
@@ -93,9 +113,40 @@
 		@endif
 
 		<div class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-			<p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Guardian Relationship</p>
+			<p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Claimed relationship</p>
 			<p class="mt-1 text-sm font-semibold text-indigo-900">{{ $invitation->relationshipLabel() }}</p>
+			<p class="mt-2 text-sm leading-6 text-indigo-900">This information is shown so you can understand who requested the connection. Accepting sends the relationship evidence for administrative review and does not grant guardian access immediately.</p>
 		</div>
+
+		<div class="mt-4" x-data="guardianInvitationDisclosure()" @keydown.escape.window="close()">
+			<button
+				type="button"
+				class="inline-flex items-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+				:aria-expanded="open.toString()"
+				aria-controls="guardian-information-panel"
+				@click="toggle($event)"
+			>
+				View Guardian Information
+			</button>
+			<div id="guardian-information-panel" x-cloak x-show="open" x-transition class="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm" tabindex="-1">
+				<p class="font-semibold text-gray-900">{{ $guardianSummary['name'] }}</p>
+				@if($guardianSummary['identity_verified'])
+					<p class="mt-1 text-xs text-emerald-700">Identity administratively verified</p>
+				@endif
+				@if($guardianSummary['member_since'])
+					<p class="mt-1 text-xs text-gray-500">Member since {{ $guardianSummary['member_since'] }}</p>
+				@endif
+				<p class="mt-2 text-xs leading-5 text-gray-600">Only limited identity context is shown here. Contact details and evidence files remain private.</p>
+			</div>
+		</div>
+
+		@if($isChildViewer)
+			<div class="mt-4">
+				<button type="button" disabled class="inline-flex cursor-not-allowed items-center rounded-xl bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-500" title="Messaging will be available after the invitation conversation is created.">
+					Message Guardian
+				</button>
+			</div>
+		@endif
 
 		@if($invitation->decision_note)
 			<div class="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
@@ -157,3 +208,24 @@
 	@endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    window.guardianInvitationDisclosure = () => ({
+        open: false,
+        trigger: null,
+        toggle(event) {
+            this.trigger = event.currentTarget;
+            this.open = !this.open;
+            if (this.open) {
+                this.$nextTick(() => document.getElementById('guardian-information-panel')?.focus());
+            }
+        },
+        close() {
+            if (!this.open) return;
+            this.open = false;
+            this.$nextTick(() => this.trigger?.focus());
+        },
+    });
+</script>
+@endpush
