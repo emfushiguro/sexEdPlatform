@@ -8,7 +8,7 @@
     'answerKey' => $preview ? ($activity['preview_answer_key'] ?? []) : null,
     'csrf' => csrf_token(),
     'initialStatus' => $activity['status'] ?? 'in_progress',
-    'initialMatchedPairs' => $activity['matched_pairs'] ?? [],
+    'initialMatchedPairs' => $activity['payload']['completed_matches'] ?? [],
     'leftItems' => $activity['payload']['left_items'] ?? [],
     'rightItems' => $activity['payload']['right_items'] ?? [],
 ]))"

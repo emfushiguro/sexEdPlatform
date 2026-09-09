@@ -213,6 +213,22 @@ class InteractiveActivityRenderingTest extends TestCase
         }
     }
 
+    public function test_matching_activity_rehydrates_completed_matches_from_payload(): void
+    {
+        $html = view('learner.lessons.partials.interactive-activities.matching', [
+            'activity' => [
+                'id' => 'matching-42',
+                'payload' => [
+                    'completed_matches' => [['left_id' => 'left-1', 'right_id' => 'right-1']],
+                    'left_items' => [],
+                    'right_items' => [],
+                ],
+            ],
+        ])->render();
+
+        $this->assertStringContainsString('\\u0022initialMatchedPairs\\u0022:[{\\u0022left_id\\u0022:\\u0022left-1\\u0022,\\u0022right_id\\u0022:\\u0022right-1\\u0022}]', $html);
+    }
+
     /** @return array{User, Lesson, LessonTopic} */
     private function lessonFixture(): array
     {
