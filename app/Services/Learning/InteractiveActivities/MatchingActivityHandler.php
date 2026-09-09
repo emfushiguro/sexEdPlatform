@@ -92,6 +92,7 @@ class MatchingActivityHandler implements InteractiveActivityHandler
             'right_items' => array_values(array_filter(array_map(static fn (string $id): ?array => $rightById[$id] ?? null, $workingState['right_order'] ?? []))),
             'completed_left_item_ids' => $this->completedItemIds($matches, 'left_id'),
             'completed_right_item_ids' => $this->completedItemIds($matches, 'right_id'),
+            'completed_matches' => $this->completedMatches($matches),
         ];
     }
 
@@ -166,6 +167,19 @@ class MatchingActivityHandler implements InteractiveActivityHandler
         sort($ids, SORT_STRING);
 
         return $ids;
+    }
+
+    /** @return list<array{left_id: string, right_id: string}> */
+    private function completedMatches(array $matches): array
+    {
+        return array_values(array_filter(array_map(
+            static fn ($match): ?array => is_array($match)
+                && is_string($match['left_id'] ?? null)
+                && is_string($match['right_id'] ?? null)
+                    ? ['left_id' => $match['left_id'], 'right_id' => $match['right_id']]
+                    : null,
+            $matches,
+        )));
     }
 
     private function result(bool $accepted, bool $correct, bool $complete, array $workingState, ?string $rejectionReason = null): array

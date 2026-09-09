@@ -34,3 +34,23 @@ test('common activity retains state and reports request errors', async () => {
     assert.equal(activity.status, 'in_progress');
     assert.equal(activity.submitting, false);
 });
+
+test('practice publishes the returned payload only to its activity instance', async () => {
+    const events = [];
+    const activity = createInteractiveActivity({
+        activityId: 41,
+        practiceUrl: '/practice',
+    }, async () => response({
+        status: 'practice',
+        payload: { items: [{ id: 'fresh' }] },
+    }));
+    activity.$dispatch = (name, detail) => events.push([name, detail]);
+
+    await activity.practice();
+
+    assert.deepEqual(events.find(([name]) => name === 'interactive-activity-payload')[1], {
+        activityId: 41,
+        status: 'practice',
+        payload: { items: [{ id: 'fresh' }] },
+    });
+});

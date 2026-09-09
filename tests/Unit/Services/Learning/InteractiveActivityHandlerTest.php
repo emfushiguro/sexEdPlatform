@@ -167,8 +167,12 @@ class InteractiveActivityHandlerTest extends UnitTestCase
         $this->assertArrayNotHasKey('matched', $payload);
         $this->assertSame([$leftIds[0]], $payload['completed_left_item_ids']);
         $this->assertSame([$rightIds[0]], $payload['completed_right_item_ids']);
-        $this->assertStringNotContainsString('"left_id"', $encoded);
-        $this->assertStringNotContainsString('"right_id"', $encoded);
+        $this->assertSame([[
+            'left_id' => $leftIds[0],
+            'right_id' => $rightIds[0],
+        ]], $payload['completed_matches']);
+        $this->assertArrayNotHasKey('pairs', $payload);
+        $this->assertArrayNotHasKey('correct_position', $payload);
 
         $sequencing = new SequencingActivityHandler;
         $configuration = $sequencing->normalize(['items' => [

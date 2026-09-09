@@ -70,6 +70,16 @@ class MatchingActivityFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('is_correct', true)
             ->assertJsonPath('attempt_count', 2);
+
+        $this->actingAs($learner)
+            ->getJson(route('learner.interactive-activities.show', $activity))
+            ->assertOk()
+            ->assertJsonPath('payload.completed_matches', [[
+                'left_id' => 'left-1',
+                'right_id' => 'right-1',
+            ]])
+            ->assertJsonMissingPath('payload.pairs')
+            ->assertJsonMissingPath('configuration');
     }
 
     public function test_unknown_matching_ids_are_rejected_without_incrementing(): void
