@@ -271,7 +271,7 @@ class ChatService
 
     public function markConversationRead(User $user, Conversation $conversation, ?Message $message = null): ConversationRead
     {
-        if (!$this->chatAuthorizationService->canSubscribeToConversation($user, $conversation)) {
+        if (! $this->chatAuthorizationService->canViewConversation($user, $conversation)) {
             throw new AuthorizationException('User is not allowed to read this conversation.');
         }
 

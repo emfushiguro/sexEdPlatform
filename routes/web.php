@@ -27,6 +27,7 @@ use App\Http\Controllers\SeminarAttendanceController;
 use App\Http\Controllers\SeminarBrowseController;
 use App\Http\Controllers\SeminarInteractionController;
 use App\Models\Conversation;
+use App\Services\Chat\ChatAuthorizationService;
 use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -461,13 +462,10 @@ Route::middleware('auth')->group(function () {
         ->group(function () {
             Route::get('/', fn () => view('chat.page'))->name('page');
             Route::get('/conversation/{conversation}', function (Request $request, Conversation $conversation) {
-                $userId = (int) $request->user()->id;
-                $isParticipant = in_array($userId, [
-                    (int) $conversation->participant_one_id,
-                    (int) $conversation->participant_two_id,
-                ], true);
-
-                abort_unless($isParticipant, 403);
+                abort_unless(
+                    app(ChatAuthorizationService::class)->canViewConversation($request->user(), $conversation),
+                    403,
+                );
 
                 return redirect()->route('chat.page', [
                     'conversation_id' => $conversation->id,

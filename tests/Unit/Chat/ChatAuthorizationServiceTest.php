@@ -255,4 +255,88 @@ class ChatAuthorizationServiceTest extends TestCase
         $this->assertFalse($service->canSendMessage($userA, $pendingConversation));
         $this->assertFalse($service->canSendMessage($userC, $activeConversation));
     }
+
+    public function test_existing_guardian_chat_keeps_transcript_access_after_revocation_but_loses_live_access(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+
+        $guardian = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $child = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $relationship = ParentChildAccount::create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'relationship_verified_at' => now(),
+        ]);
+
+        $conversation = Conversation::create([
+            'participant_one_id' => $guardian->id,
+            'participant_two_id' => $child->id,
+            'pair_key' => Conversation::makePairKey($guardian->id, $child->id),
+            'conversation_type' => Conversation::TYPE_DIRECT,
+            'status' => Conversation::STATUS_ACTIVE,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_DIRECT, null),
+        ]);
+
+        $this->assertTrue($service->canViewConversation($guardian, $conversation));
+        $this->assertTrue($service->canSubscribeToConversation($guardian, $conversation));
+        $this->assertTrue($service->canSendMessage($guardian, $conversation));
+
+        $relationship->update([
+            'relationship_status' => ParentChildAccount::STATUS_REVOKED,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_REVOKED,
+        ]);
+
+        $revokedConversation = $conversation->fresh();
+
+        $this->assertTrue($service->canViewConversation($guardian, $revokedConversation));
+        $this->assertFalse($service->canSubscribeToConversation($guardian, $revokedConversation));
+        $this->assertFalse($service->canSendMessage($guardian, $revokedConversation));
+    }
+
+    public function test_suspended_participant_loses_transcript_live_and_send_access(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+
+        $guardian = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $child = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        ParentChildAccount::create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'relationship_verified_at' => now(),
+        ]);
+
+        $conversation = Conversation::create([
+            'participant_one_id' => $guardian->id,
+            'participant_two_id' => $child->id,
+            'pair_key' => Conversation::makePairKey($guardian->id, $child->id),
+            'conversation_type' => Conversation::TYPE_DIRECT,
+            'status' => Conversation::STATUS_ACTIVE,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_DIRECT, null),
+        ]);
+
+        $guardian->update(['status' => User::STATUS_SUSPENDED]);
+        $suspendedGuardian = $guardian->fresh();
+
+        $this->assertFalse($service->canViewConversation($suspendedGuardian, $conversation));
+        $this->assertFalse($service->canSubscribeToConversation($suspendedGuardian, $conversation));
+        $this->assertFalse($service->canSendMessage($suspendedGuardian, $conversation));
+    }
 }

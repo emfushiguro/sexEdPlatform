@@ -80,13 +80,18 @@ class ChatChannelAuthorizationTest extends TestCase
     {
         $service = app(ChatAuthorizationService::class);
 
-        $parent = User::factory()->create(['role' => 'learner']);
+        $parent = User::factory()->create([
+            'role' => 'learner',
+            'parent_verification_status' => 'approved',
+        ]);
         $child = User::factory()->create(['role' => 'learner']);
 
         $relationship = ParentChildAccount::create([
             'parent_user_id' => $parent->id,
             'child_user_id' => $child->id,
             'verification_status' => 'pending',
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
         ]);
 
         $this->assertFalse($service->evaluateStart($parent, $child)['allowed']);

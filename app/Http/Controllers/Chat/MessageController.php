@@ -69,7 +69,7 @@ class MessageController extends Controller
 
     public function index(Request $request, Conversation $conversation): JsonResponse
     {
-        if (!$this->chatAuthorizationService->canSubscribeToConversation($request->user(), $conversation)) {
+        if (! $this->chatAuthorizationService->canViewConversation($request->user(), $conversation)) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -139,7 +139,7 @@ class MessageController extends Controller
     {
         $user = $request->user();
 
-        if (!$this->chatAuthorizationService->canSubscribeToConversation($user, $message->conversation)) {
+        if (! $this->chatAuthorizationService->canSendMessage($user, $message->conversation)) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -167,7 +167,7 @@ class MessageController extends Controller
     {
         $user = $request->user();
 
-        if (!$this->chatAuthorizationService->canSubscribeToConversation($user, $message->conversation)) {
+        if (! $this->chatAuthorizationService->canSendMessage($user, $message->conversation)) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -204,7 +204,7 @@ class MessageController extends Controller
     {
         $user = $request->user();
 
-        if (!$this->chatAuthorizationService->canSubscribeToConversation($user, $message->conversation)) {
+        if (! $this->chatAuthorizationService->canViewConversation($user, $message->conversation)) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 

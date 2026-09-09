@@ -65,20 +65,33 @@ class ChatAuthorizationService
 
     public function canSubscribeToConversation(User $user, Conversation $conversation): bool
     {
-        return $this->isParticipant($user, $conversation)
-            || $this->isAdminSupportSharedConversation($user, $conversation);
+        if (! $this->canViewConversation($user, $conversation) || ! $this->participantsAreActive($conversation)) {
+            return false;
+        }
+
+        $relationship = $this->directParentChildRelationship($conversation);
+
+        return $relationship === null
+            || (! $relationship->trashed() && $relationship->isVerifiedActive());
     }
 
     public function canSendMessage(User $user, Conversation $conversation): bool
     {
-        if (!$this->canSubscribeToConversation($user, $conversation)) {
+        return $this->canSubscribeToConversation($user, $conversation)
+            && in_array((string) $conversation->status, [
+                Conversation::STATUS_ACTIVE,
+                Conversation::STATUS_ACCEPTED,
+            ], true);
+    }
+
+    public function canViewConversation(User $user, Conversation $conversation): bool
+    {
+        if ((string) User::query()->whereKey($user->id)->value('status') !== User::STATUS_ACTIVE) {
             return false;
         }
 
-        return in_array((string) $conversation->status, [
-            Conversation::STATUS_ACTIVE,
-            Conversation::STATUS_ACCEPTED,
-        ], true);
+        return $this->isParticipant($user, $conversation)
+            || $this->isAdminSupportSharedConversation($user, $conversation);
     }
 
     public function canViewMessageRequest(User $user, MessageRequest $messageRequest): bool
@@ -89,6 +102,33 @@ class ChatAuthorizationService
     public function isParticipant(User $user, Conversation $conversation): bool
     {
         return $user->id === $conversation->participant_one_id || $user->id === $conversation->participant_two_id;
+    }
+
+    private function participantsAreActive(Conversation $conversation): bool
+    {
+        $conversation->loadMissing(['participantOne:id,status', 'participantTwo:id,status']);
+
+        return $conversation->participantOne?->status === User::STATUS_ACTIVE
+            && $conversation->participantTwo?->status === User::STATUS_ACTIVE;
+    }
+
+    private function directParentChildRelationship(Conversation $conversation): ?ParentChildAccount
+    {
+        if ((string) $conversation->conversation_type !== Conversation::TYPE_DIRECT) {
+            return null;
+        }
+
+        return ParentChildAccount::withTrashed()
+            ->where(function ($query) use ($conversation): void {
+                $query->where(function ($pairQuery) use ($conversation): void {
+                    $pairQuery->where('parent_user_id', $conversation->participant_one_id)
+                        ->where('child_user_id', $conversation->participant_two_id);
+                })->orWhere(function ($pairQuery) use ($conversation): void {
+                    $pairQuery->where('parent_user_id', $conversation->participant_two_id)
+                        ->where('child_user_id', $conversation->participant_one_id);
+                });
+            })
+            ->first();
     }
 
     protected function isAdminSupportSharedConversation(User $user, Conversation $conversation): bool
