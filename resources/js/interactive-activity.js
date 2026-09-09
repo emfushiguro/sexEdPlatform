@@ -55,6 +55,13 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
             return this;
         },
 
+        handleActivityRecovered(detail = {}) {
+            if (detail.activityId !== config.activityId) return this;
+            this.error = '';
+            if (this.feedback.kind === 'error') this.clearFeedback();
+            return this;
+        },
+
         applyResponse(data) {
             this.status = data.status ?? this.status;
             this.payload = data.payload ?? this.payload;

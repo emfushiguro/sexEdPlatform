@@ -287,6 +287,7 @@ class InteractiveActivityRenderingTest extends TestCase
             $this->assertSame(1, substr_count($html, 'x-show="feedback.message" aria-live="polite" role="status"'));
             $this->assertStringContainsString('@interactive-activity-result.window="if ($event.detail.activityId === activityId) handleActivityResult($event.detail)"', $html);
             $this->assertStringContainsString('@interactive-activity-error.window="if ($event.detail.activityId === activityId) handleActivityError($event.detail)"', $html);
+            $this->assertStringContainsString('@interactive-activity-recovered.window="if ($event.detail.activityId === activityId) handleActivityRecovered($event.detail)"', $html);
             $this->assertStringContainsString('x-show="feedback.message"', $html);
             $this->assertStringContainsString('role="status"', $html);
             $this->assertStringContainsString('x-text="feedback.message"', $html);

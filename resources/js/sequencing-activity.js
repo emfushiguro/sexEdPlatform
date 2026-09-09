@@ -104,7 +104,11 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.csrf, Accept: 'application/json' },
                 body: JSON.stringify(body),
-            }).then(readResponse).catch((error) => {
+            }).then(readResponse).then((data) => {
+                this.error = '';
+                this.$dispatch?.('interactive-activity-recovered', { activityId: config.activityId });
+                return data;
+            }).catch((error) => {
                 this.error = error.message || 'Unable to save the sequence.';
                 this.$dispatch?.('interactive-activity-error', { activityId: config.activityId, message: this.error });
                 return null;

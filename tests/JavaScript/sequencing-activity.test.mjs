@@ -164,6 +164,32 @@ test('failed sequencing state save dispatches a scoped error', async () => {
     }]);
 });
 
+test('a recovered sequencing state save clears its error and dispatches a scoped recovery', async () => {
+    const events = [];
+    const responses = [response({ message: 'Offline' }, false), response({ status: 'in_progress' })];
+    const activity = createSequencingActivity({
+        activityId: 'sequencing-42',
+        initialOrder: ['one'],
+        stateUrl: '/state',
+    }, async () => responses.shift());
+    activity.$dispatch = (name, detail) => events.push({ name, detail });
+
+    await activity.persistState();
+    await activity.persistState();
+
+    assert.equal(activity.error, '');
+    assert.deepEqual(events, [
+        {
+            name: 'interactive-activity-error',
+            detail: { activityId: 'sequencing-42', message: 'Offline' },
+        },
+        {
+            name: 'interactive-activity-recovered',
+            detail: { activityId: 'sequencing-42' },
+        },
+    ]);
+});
+
 test('loadPayload replaces sequencing state from a practice payload', () => {
     const activity = createSequencingActivity({
         items: [{ id: 'stale', value: 'Stale item' }],

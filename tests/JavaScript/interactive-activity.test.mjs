@@ -103,6 +103,18 @@ test('common activity clears a shared error after its child result succeeds', ()
     assert.deepEqual(activity.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
 });
 
+test('common activity clears only its recovered child save error', () => {
+    const activity = createInteractiveActivity({ activityId: 41 });
+
+    activity.handleActivityError({ activityId: 41, message: 'Offline' });
+    activity.handleActivityRecovered({ activityId: 42 });
+    assert.equal(activity.error, 'Offline');
+
+    activity.handleActivityRecovered({ activityId: 41 });
+    assert.equal(activity.error, '');
+    assert.deepEqual(activity.feedback, { kind: 'idle', message: '', icon: null });
+});
+
 test('practice publishes the returned payload only to its activity instance', async () => {
     const events = [];
     const activity = createInteractiveActivity({

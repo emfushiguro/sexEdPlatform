@@ -13,7 +13,7 @@
     'practiceUrl' => $activity['practice_url'] ?? null,
     'preview' => $preview,
     'csrf' => csrf_token(),
-]))" x-init="$dispatch('optional-interaction-active', { token: @js($activityToken), initial: true })" @focusin="$dispatch('optional-interaction-active', { token: @js($activityToken) })" @interactive-activity-result.window="if ($event.detail.activityId === activityId) handleActivityResult($event.detail)" @interactive-activity-error.window="if ($event.detail.activityId === activityId) handleActivityError($event.detail)">
+]))" x-init="$dispatch('optional-interaction-active', { token: @js($activityToken), initial: true })" @focusin="$dispatch('optional-interaction-active', { token: @js($activityToken) })" @interactive-activity-result.window="if ($event.detail.activityId === activityId) handleActivityResult($event.detail)" @interactive-activity-error.window="if ($event.detail.activityId === activityId) handleActivityError($event.detail)" @interactive-activity-recovered.window="if ($event.detail.activityId === activityId) handleActivityRecovered($event.detail)">
     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-purple-600">INTERACTIVE ACTIVITY · Optional</p>
     <h3 class="mt-2 text-lg font-semibold text-gray-900">{{ $activity['title'] ?? 'Interactive Activity' }}</h3>
     @if(!empty($activity['instructions']))
