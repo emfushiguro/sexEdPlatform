@@ -43,7 +43,7 @@
         <p class="text-sm text-gray-500 mt-1">Enter the learner's username or email address and define your guardian relationship.</p>
 
         <form method="POST" action="{{ route('parent.invitations.store') }}" enctype="multipart/form-data" class="mt-4 space-y-3"
-              x-data="{ relationshipType: @js(old('relationship_type', '')), verificationRequiredTypes: @js($verificationRequiredTypes), documentTypeMap: @js($relationshipDocumentTypeMap), relationshipDocumentName: 'No file selected', supportingDocumentName: 'No file selected' }">
+              x-data="guardianInvitationEvidence({ oldRows: @js(old('documents', [])), documentTypeMap: @js($relationshipDocumentTypeMap), maxFiles: 10, verificationRequiredTypes: @js($verificationRequiredTypes) })">
             @csrf
             <div>
                 <label for="identifier" class="block text-sm font-medium text-gray-700 mb-1">Learner Username or Email</label>
@@ -100,72 +100,131 @@
                 <div class="border-b border-amber-100 bg-gradient-to-r from-amber-50 to-purple-50 px-4 py-3">
                     <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Required verification</p>
                     <h3 class="mt-1 text-base font-semibold text-purple-950">Relationship documents</h3>
-                    <p class="mt-1 text-xs text-gray-600">Upload proof for legal, adoption, foster, or court-appointed relationships. Admins will review it before approval.</p>
+                    <p class="mt-1 text-xs text-gray-600">Upload one to ten files. Admins review these private documents before approval.</p>
                 </div>
 
-                <div class="grid gap-3 p-4 sm:grid-cols-2">
-                    <label class="block text-sm font-medium text-gray-700">
-                        Document Type
-                        <select name="relationship_document_type"
-                                :required="verificationRequiredTypes.includes(relationshipType)"
-                                class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100">
-                            <option value="">Select document</option>
-                            <template x-for="(label, value) in (documentTypeMap[relationshipType] || {})" :key="value">
-                                <option :value="value" x-text="label" :selected="value === @js(old('relationship_document_type'))"></option>
-                            </template>
-                        </select>
-                        @error('relationship_document_type')
-                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
+                <div class="space-y-4 p-4">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p class="text-xs text-gray-600">Use a front/back pair when one document has two sides. Maximum 10 files.</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button"
+                                    @click="addDocument"
+                                    :disabled="rows.length >= maxFiles"
+                                    class="inline-flex min-h-10 items-center rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-800 hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50">
+                                Add document
+                            </button>
+                            <button type="button"
+                                    @click="addPair"
+                                    :disabled="rows.length > maxFiles - 2"
+                                    class="inline-flex min-h-10 items-center rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50">
+                                Add front/back pair
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3" aria-live="polite">
+                        <template x-for="(row, index) in rows" :key="row.key">
+                            <fieldset class="rounded-xl border border-gray-200 bg-gray-50/70 p-3">
+                                <legend class="sr-only">Evidence document <span x-text="index + 1"></span></legend>
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-sm font-semibold text-gray-900">
+                                        Document <span x-text="index + 1"></span>
+                                        <span class="text-xs font-normal text-gray-500" x-text="row.document_side === 'not_applicable' ? '· single-sided' : '${row.document_side}'"></span>
+                                    </p>
+                                    <button type="button"
+                                            @click="removeDocument(index)"
+                                            class="inline-flex min-h-10 items-center rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                                            :aria-label="`Remove document ${index + 1}`">
+                                        Remove document
+                                    </button>
+                                </div>
+
+                                <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                    <label class="block text-xs font-semibold text-gray-700" :for="`document-type-${row.key}`">
+                                        Document category
+                                        <select :id="`document-type-${row.key}`"
+                                                :name="`documents[${index}][document_type]`"
+                                                x-model="row.document_type"
+                                                required
+                                                class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-normal text-gray-900 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100">
+                                            <option value="">Select document</option>
+                                            <template x-for="(label, value) in (documentTypeMap[relationshipType] || {})" :key="value">
+                                                <option :value="value" x-text="label"></option>
+                                            </template>
+                                        </select>
+                                    </label>
+
+                                    <label class="block text-xs font-semibold text-gray-700" :for="`document-side-${row.key}`">
+                                        Document side
+                                        <select :id="`document-side-${row.key}`"
+                                                :name="`documents[${index}][document_side]`"
+                                                x-model="row.document_side"
+                                                required
+                                                class="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-normal text-gray-900 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100">
+                                            <option value="not_applicable">Not applicable</option>
+                                            <option value="front">Front</option>
+                                            <option value="back">Back</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <input type="hidden"
+                                       :name="`documents[${index}][pairing_key]`"
+                                       :value="row.pairing_key">
+
+                                <div class="mt-3">
+                                    <label class="block text-xs font-semibold text-gray-700" :for="`document-file-${row.key}`">
+                                        Evidence file
+                                        <span class="font-normal text-gray-500">(PDF, JPG, JPEG, PNG, or WebP; max 5 MB)</span>
+                                    </label>
+                                    <label :for="`document-file-${row.key}`"
+                                           class="mt-1 flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-purple-200 bg-purple-50/50 px-3 py-2 transition hover:border-purple-400 hover:bg-purple-50 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100">
+                                        <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-purple-700 ring-1 ring-purple-100" aria-hidden="true">↥</span>
+                                        <span class="min-w-0 flex-1 truncate text-sm font-semibold text-purple-950">Replace file</span>
+                                        <span class="max-w-[45%] truncate text-xs font-medium text-gray-600" x-text="row.fileName"></span>
+                                    </label>
+                                    <input :id="`document-file-${row.key}`"
+                                           :name="`documents[${index}][file]`"
+                                           type="file"
+                                           accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                           required
+                                           class="sr-only"
+                                           @change="chooseFile(index, $event)">
+                                    <p class="mt-1 text-xs text-gray-600" role="status" x-text="row.fileName"></p>
+                                    <p class="mt-1 text-xs text-amber-800" role="status" aria-live="polite" x-show="duplicateWarning(index)" x-text="duplicateWarning(index)"></p>
+
+                                    <template x-if="row.previewKind === 'image' && row.previewUrl">
+                                        <img :src="row.previewUrl" :alt="`Preview of document ${index + 1}`" class="mt-2 max-h-40 rounded-lg border border-gray-200 object-contain">
+                                    </template>
+                                    <template x-if="row.previewKind === 'pdf' && row.previewUrl">
+                                        <iframe :src="row.previewUrl" :title="`PDF preview of document ${index + 1}`" class="mt-2 h-48 w-full rounded-lg border border-gray-200"></iframe>
+                                    </template>
+                                </div>
+                            </fieldset>
+                        </template>
+                    </div>
+
+                    @foreach($errors->messages() as $field => $messages)
+                        @if(str_starts_with($field, 'documents'))
+                            @foreach($messages as $message)
+                                <p class="text-xs text-red-600" role="alert">{{ $message }}</p>
+                            @endforeach
+                        @endif
+                    @endforeach
+
+                    @if($errors->has('documents') || $errors->has('documents.*'))
+                        <p class="text-xs text-amber-800" role="status">
+                            Your document categories were restored. For your security, please reselect the files before submitting again.
+                        </p>
+                    @endif
+
+                    <label class="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                        <input type="checkbox" name="confirm_relationship_verification" value="1" required class="mt-0.5 rounded border-amber-300 text-purple-700 focus:ring-purple-500" @checked(old('confirm_relationship_verification'))>
+                        <span>I confirm these documents support the requested relationship and should be submitted for administrative review.</span>
                     </label>
-
-                    <div class="block text-sm font-medium text-gray-700">
-                        Required Document
-                        <label class="mt-1 flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-purple-200 bg-purple-50/50 px-3 transition hover:border-purple-400 hover:bg-purple-50 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100">
-                            <input name="relationship_document"
-                                   type="file"
-                                   accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                   :required="verificationRequiredTypes.includes(relationshipType)"
-                                   class="sr-only"
-                                   @change="relationshipDocumentName = $event.target.files[0]?.name || 'No file selected'">
-                            <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-purple-700 ring-1 ring-purple-100">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 16V4m0 0 4 4m-4-4-4 4M5 16.5v1.75A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25V16.5" />
-                                </svg>
-                            </span>
-                            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-purple-950">Choose file</span>
-                            <span class="max-w-[45%] truncate text-xs font-medium text-gray-600" x-text="relationshipDocumentName"></span>
-                        </label>
-                        @error('relationship_document')
-                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <div class="block text-sm font-medium text-gray-700 sm:col-span-2">
-                        Optional Supporting Document
-                        <label class="mt-1 flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 transition hover:border-purple-300 hover:bg-purple-50/60 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100">
-                            <input name="relationship_supporting_document" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" class="sr-only" @change="supportingDocumentName = $event.target.files[0]?.name || 'No file selected'">
-                            <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-gray-600 ring-1 ring-gray-100">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 16V4m0 0 4 4m-4-4-4 4M5 16.5v1.75A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25V16.5" />
-                                </svg>
-                            </span>
-                            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">Choose file</span>
-                            <span class="max-w-[45%] truncate text-xs font-medium text-gray-600" x-text="supportingDocumentName"></span>
-                        </label>
-                        @error('relationship_supporting_document')
-                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="sm:col-span-2">
-                        <label class="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                            <input type="checkbox" name="confirm_relationship_verification" value="1" :required="verificationRequiredTypes.includes(relationshipType)" class="mt-0.5 rounded border-amber-300 text-purple-700 focus:ring-purple-500" @checked(old('confirm_relationship_verification'))>
-                            <span>I confirm these documents support the requested relationship and should be submitted for administrative review.</span>
-                        </label>
-                        @error('confirm_relationship_verification')
-                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    @error('confirm_relationship_verification')
+                        <p class="text-xs text-red-600" role="alert">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
@@ -273,3 +332,84 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    window.guardianInvitationEvidence = ({ oldRows, documentTypeMap, maxFiles, verificationRequiredTypes }) => ({
+        relationshipType: @js(old('relationship_type', '')),
+        documentTypeMap,
+        maxFiles,
+        verificationRequiredTypes,
+        rows: [],
+        init() {
+            const restored = Array.isArray(oldRows) ? oldRows : [];
+            this.rows = restored.length > 0
+                ? restored.map((row) => this.makeRow(row))
+                : [this.makeRow()];
+        },
+        makeRow(row = {}) {
+            return {
+                key: crypto.randomUUID(),
+                document_type: String(row.document_type || ''),
+                document_side: String(row.document_side || 'not_applicable'),
+                pairing_key: row.pairing_key ? String(row.pairing_key) : '',
+                file: null,
+                fileName: 'No file selected',
+                previewUrl: null,
+                previewKind: null,
+            };
+        },
+        addDocument() {
+            if (this.rows.length < this.maxFiles) {
+                this.rows.push(this.makeRow());
+            }
+        },
+        addPair() {
+            if (this.rows.length <= this.maxFiles - 2) {
+                const pairingKey = crypto.randomUUID();
+                this.rows.push(this.makeRow({ document_side: 'front', pairing_key: pairingKey }));
+                this.rows.push(this.makeRow({ document_side: 'back', pairing_key: pairingKey }));
+            }
+        },
+        chooseFile(index, event) {
+            const file = event.target.files?.[0] || null;
+            this.revokePreview(this.rows[index]);
+            this.rows[index].file = file;
+            this.rows[index].fileName = file?.name || 'No file selected';
+            this.rows[index].previewKind = file?.type === 'application/pdf'
+                ? 'pdf'
+                : (file?.type || '').startsWith('image/') ? 'image' : null;
+            this.rows[index].previewUrl = file ? URL.createObjectURL(file) : null;
+        },
+        removeDocument(index) {
+            this.revokePreview(this.rows[index]);
+            this.rows.splice(index, 1);
+            if (this.rows.length === 0) {
+                this.rows.push(this.makeRow());
+            }
+        },
+        revokePreview(row) {
+            if (row?.previewUrl) {
+                URL.revokeObjectURL(row.previewUrl);
+            }
+        },
+        duplicateWarning(index) {
+            const row = this.rows[index];
+            if (!row?.file) {
+                return '';
+            }
+
+            return this.rows.some((candidate, candidateIndex) => candidateIndex !== index
+                && candidate.file
+                && candidate.file.name === row.file.name
+                && candidate.file.size === row.file.size
+                && candidate.file.lastModified === row.file.lastModified)
+                ? 'This appears to duplicate another selected file.'
+                : '';
+        },
+        destroy() {
+            this.rows.forEach((row) => this.revokePreview(row));
+        },
+    });
+</script>
+@endpush

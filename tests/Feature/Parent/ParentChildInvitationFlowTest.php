@@ -82,6 +82,24 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->assertCount(10, $tenFileInvitation->relationship_verification_documents);
     }
 
+    public function test_invitation_center_renders_the_multi_document_uploader_contract(): void
+    {
+        $this->seedLocationRows();
+        $parent = $this->createApprovedParent();
+
+        $this->actingAs($parent)
+            ->get(route('parent.invitations.index'))
+            ->assertOk()
+            ->assertSee('Add document')
+            ->assertSee('Add front/back pair')
+            ->assertSee('documents[', false)
+            ->assertSee('Remove document')
+            ->assertSee('Replace file')
+            ->assertSee('Maximum 10 files')
+            ->assertDontSee('relationship_document_type', false)
+            ->assertDontSee('relationship_supporting_document', false);
+    }
+
     public function test_invalid_invitation_evidence_never_creates_an_invitation_or_leaves_staged_files(): void
     {
         $this->seedLocationRows();
