@@ -4,30 +4,47 @@ async function readResponse(response) {
     return data;
 }
 
+function copy(value) {
+    return JSON.parse(JSON.stringify(value));
+}
+
+export function normalizeProposal(source, target) {
+    if (!source || !target || source.side === target.side) return null;
+    return source.side === 'left'
+        ? { left_id: source.id, right_id: target.id }
+        : { left_id: target.id, right_id: source.id };
+}
+
+export function connectorPoint(rect, containerRect) {
+    return {
+        x: rect.left + rect.width / 2 - containerRect.left,
+        y: rect.top + rect.height / 2 - containerRect.top,
+    };
+}
+
 export function calculateConnectorLines(leftRects, rightRects, containerRect) {
     return leftRects.flatMap((left, index) => {
         const right = rightRects[index];
         if (!left || !right) return [];
-
-        return [{
-            x1: left.left + left.width / 2 - containerRect.left,
-            y1: left.top + left.height / 2 - containerRect.top,
-            x2: right.left + right.width / 2 - containerRect.left,
-            y2: right.top + right.height / 2 - containerRect.top,
-        }];
+        const source = connectorPoint(left, containerRect);
+        const target = connectorPoint(right, containerRect);
+        return [{ x1: source.x, y1: source.y, x2: target.x, y2: target.y }];
     });
 }
 
 export function createMatchingActivity(config = {}, request = globalThis.fetch?.bind(globalThis)) {
     const activity = {
-        leftId: null,
-        rightId: null,
-        matchedPairs: Array.isArray(config.initialMatchedPairs)
-            ? JSON.parse(JSON.stringify(config.initialMatchedPairs))
-            : [],
+        activityId: config.activityId,
+        activeEndpoint: null,
+        hoveredEndpoint: null,
+        pointerPosition: null,
+        pendingConnection: null,
+        rejectedConnection: null,
+        matchedPairs: Array.isArray(config.initialMatchedPairs) ? copy(config.initialMatchedPairs) : [],
         status: config.initialStatus || 'in_progress',
         feedback: '',
         error: '',
+        requestState: 'idle',
         submitting: false,
         revision: config.revision ?? 1,
         leftItems: config.leftItems ?? [],
@@ -35,6 +52,8 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
         connectorLines: [],
         connectorContainer: null,
         connectorObserver: null,
+        connectorFrame: null,
+        connectorRefreshHandler: null,
 
         isLeftMatched(id) {
             return this.matchedPairs.some((pair) => pair.left_id === id);
@@ -44,22 +63,176 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             return this.matchedPairs.some((pair) => pair.right_id === id);
         },
 
-        selectLeft(id) {
-            if (!this.submitting && this.status !== 'completed' && !this.isLeftMatched(id)) this.leftId = id;
-            return this;
+        isEndpointAvailable(side, id) {
+            if (this.submitting || this.status === 'completed') return false;
+            return side === 'left' ? !this.isLeftMatched(id) : !this.isRightMatched(id);
         },
 
-        selectRight(id) {
-            if (!this.submitting && this.status !== 'completed' && !this.isRightMatched(id)) this.rightId = id;
-            return this;
+        isValidTarget(side, id) {
+            return Boolean(this.activeEndpoint
+                && this.activeEndpoint.side !== side
+                && this.isEndpointAvailable(this.activeEndpoint.side, this.activeEndpoint.id)
+                && this.isEndpointAvailable(side, id));
         },
 
         ariaPressed(side, id) {
-            return String(this[side === 'left' ? 'leftId' : 'rightId'] === id);
+            return String(this.activeEndpoint?.side === side && this.activeEndpoint.id === id);
+        },
+
+        endpointState(side, id) {
+            if (!this.isEndpointAvailable(side, id)) return 'correct';
+            if (this.rejectedConnection && (this.rejectedConnection.left_id === id || this.rejectedConnection.right_id === id)) return 'incorrect';
+            if (this.pendingConnection && (this.pendingConnection.left_id === id || this.pendingConnection.right_id === id)) return 'pending';
+            if (this.activeEndpoint?.side === side && this.activeEndpoint.id === id) return 'selected';
+            if (this.hoveredEndpoint?.side === side && this.hoveredEndpoint.id === id) return 'selected';
+            return 'idle';
+        },
+
+        endpointLabel(side, id, value) {
+            const state = this.endpointState(side, id);
+            return `${value} — ${state === 'correct' ? 'connected' : state === 'selected' ? 'selected' : state}`;
         },
 
         labelFor(items, id) {
             return items.find((item) => item.id === id)?.value ?? id;
+        },
+
+        scheduleConnectorRefresh() {
+            if (this.connectorFrame !== null) return this;
+            const refresh = () => {
+                this.connectorFrame = null;
+                this.refreshConnectors();
+            };
+            this.connectorFrame = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(refresh) : setTimeout(refresh, 0);
+            return this;
+        },
+
+        findEndpoint(side, id) {
+            return Array.from(this.connectorContainer?.querySelectorAll('[data-match-dot-side][data-match-id]') ?? [])
+                .find((endpoint) => endpoint.dataset.matchDotSide === side && endpoint.dataset.matchId === id);
+        },
+
+        connectionLine(pair, state) {
+            if (!pair || !this.connectorContainer) return null;
+            const left = this.findEndpoint('left', pair.left_id);
+            const right = this.findEndpoint('right', pair.right_id);
+            if (!left || !right) return null;
+            const containerRect = this.connectorContainer.getBoundingClientRect();
+            const source = connectorPoint(left.getBoundingClientRect(), containerRect);
+            const target = connectorPoint(right.getBoundingClientRect(), containerRect);
+            return { x1: source.x, y1: source.y, x2: target.x, y2: target.y, state, key: `${state}-${pair.left_id}-${pair.right_id}` };
+        },
+
+        refreshConnectors() {
+            if (!this.connectorContainer) return this;
+            const lines = this.matchedPairs.map((pair) => this.connectionLine(pair, 'correct')).filter(Boolean);
+            const pending = this.connectionLine(this.pendingConnection, 'pending');
+            const rejected = this.connectionLine(this.rejectedConnection, 'incorrect');
+            if (pending) lines.push(pending);
+            if (rejected) lines.push(rejected);
+            if (this.activeEndpoint && this.pointerPosition) {
+                const source = this.findEndpoint(this.activeEndpoint.side, this.activeEndpoint.id);
+                if (source) {
+                    const point = connectorPoint(source.getBoundingClientRect(), this.connectorContainer.getBoundingClientRect());
+                    lines.push({ x1: point.x, y1: point.y, x2: this.pointerPosition.x, y2: this.pointerPosition.y, state: 'pending', key: 'active-connection' });
+                }
+            }
+            this.connectorLines = lines;
+            return this;
+        },
+
+        setupConnectors(container) {
+            this.teardownConnectors();
+            this.connectorContainer = container;
+            this.connectorRefreshHandler = () => this.scheduleConnectorRefresh();
+            this.scheduleConnectorRefresh();
+            if (typeof ResizeObserver === 'function') {
+                this.connectorObserver = new ResizeObserver(this.connectorRefreshHandler);
+                this.connectorObserver.observe(container);
+            }
+            window.addEventListener('resize', this.connectorRefreshHandler);
+            window.addEventListener('scroll', this.connectorRefreshHandler, true);
+            window.addEventListener('orientationchange', this.connectorRefreshHandler);
+            if (typeof document !== 'undefined') document.fonts?.ready?.then(this.connectorRefreshHandler);
+            return this;
+        },
+
+        teardownConnectors() {
+            this.connectorObserver?.disconnect();
+            if (this.connectorRefreshHandler) {
+                window.removeEventListener('resize', this.connectorRefreshHandler);
+                window.removeEventListener('scroll', this.connectorRefreshHandler, true);
+                window.removeEventListener('orientationchange', this.connectorRefreshHandler);
+            }
+            if (this.connectorFrame !== null) {
+                if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.connectorFrame);
+                else clearTimeout(this.connectorFrame);
+            }
+            this.connectorObserver = null;
+            this.connectorRefreshHandler = null;
+            this.connectorFrame = null;
+            return this;
+        },
+
+        startConnection(side, id, event) {
+            if (!this.isEndpointAvailable(side, id)) return this;
+            this.rejectedConnection = null;
+            if (this.requestState === 'error') this.pendingConnection = null;
+            this.requestState = 'idle';
+            this.feedback = '';
+            this.error = '';
+            this.activeEndpoint = { side, id };
+            this.hoveredEndpoint = null;
+            this.moveConnection(event);
+            this.scheduleConnectorRefresh();
+            return this;
+        },
+
+        moveConnection(event) {
+            if (!this.activeEndpoint || !this.connectorContainer) return this;
+            const pointer = () => {
+                const rect = this.connectorContainer.getBoundingClientRect();
+                if (!Number.isFinite(event?.clientX) || !Number.isFinite(event?.clientY)) {
+                    this.pointerPosition = null;
+                    this.hoveredEndpoint = null;
+                    return;
+                }
+                this.pointerPosition = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+                const pointTarget = typeof document !== 'undefined' && typeof document.elementFromPoint === 'function'
+                    ? document.elementFromPoint(event.clientX, event.clientY)
+                    : event?.target;
+                const endpoint = pointTarget?.closest?.('[data-match-dot-side][data-match-id]');
+                this.hoveredEndpoint = endpoint && this.isValidTarget(endpoint.dataset.matchDotSide, endpoint.dataset.matchId)
+                    ? { side: endpoint.dataset.matchDotSide, id: endpoint.dataset.matchId }
+                    : null;
+                this.scheduleConnectorRefresh();
+            };
+            if (this.connectorFrame !== null) return this;
+            this.connectorFrame = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(pointer) : setTimeout(pointer, 0);
+            return this;
+        },
+
+        cancelConnection() {
+            this.activeEndpoint = null;
+            this.hoveredEndpoint = null;
+            this.pointerPosition = null;
+            this.scheduleConnectorRefresh();
+            return this;
+        },
+
+        async activateEndpoint(side, id, event) {
+            if (![' ', 'Enter', 'Escape'].includes(event?.key)) return this;
+            event.preventDefault();
+            if (event.key === 'Escape') return this.cancelConnection();
+            if (!this.activeEndpoint || this.activeEndpoint.side === side && this.activeEndpoint.id === id) return this.startConnection(side, id, event);
+            return this.finishConnection(side, id);
+        },
+
+        removeRejectedConnection() {
+            this.rejectedConnection = null;
+            this.feedback = '';
+            this.scheduleConnectorRefresh();
+            return this;
         },
 
         publishResult(data) {
@@ -71,76 +244,53 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             });
         },
 
-        setupConnectors(container) {
-            this.connectorContainer = container;
-            const refresh = () => this.refreshConnectors();
-            refresh();
-            if (typeof ResizeObserver === 'function') {
-                this.connectorObserver = new ResizeObserver(refresh);
-                this.connectorObserver.observe(container);
-            }
-            window.addEventListener('resize', refresh);
-            window.addEventListener('scroll', refresh, true);
-            return this;
-        },
-
-        refreshConnectors() {
-            if (!this.connectorContainer) return this;
-            const containerRect = this.connectorContainer.getBoundingClientRect();
-            const leftRects = this.matchedPairs.map((pair) => this.connectorContainer.querySelector(`[data-match-left="${pair.left_id}"]`)?.getBoundingClientRect());
-            const rightRects = this.matchedPairs.map((pair) => this.connectorContainer.querySelector(`[data-match-right="${pair.right_id}"]`)?.getBoundingClientRect());
-            this.connectorLines = calculateConnectorLines(leftRects, rightRects, containerRect);
-            return this;
-        },
-
-        async submitMatch() {
-            if (this.submitting || this.status === 'completed' || this.leftId === null || this.rightId === null) return null;
-
-            const proposal = { left_id: this.leftId, right_id: this.rightId };
+        async finishConnection(side, id) {
+            if (this.activeEndpoint?.side === side && this.activeEndpoint.id === id) return this;
+            if (!this.isValidTarget(side, id)) return this.cancelConnection();
+            const proposal = normalizeProposal(this.activeEndpoint, { side, id });
+            this.cancelConnection();
+            this.pendingConnection = proposal;
+            this.requestState = 'pending';
             this.submitting = true;
             this.feedback = '';
             this.error = '';
+            this.scheduleConnectorRefresh();
             try {
-                if (config.preview) {
-                    const correct = config.answerKey?.[proposal.left_id] === proposal.right_id;
-                    if (correct && !this.matchedPairs.some((pair) => pair.left_id === proposal.left_id)) this.matchedPairs.push(proposal);
-                    const complete = correct && this.matchedPairs.length === Object.keys(config.answerKey ?? {}).length;
-                    const data = { is_correct: correct, is_complete: complete, status: complete ? 'completed' : this.status };
-                    this.status = data.status;
-                    if (!correct) this.feedback = 'Not quite—try another match';
-                    this.leftId = null;
-                    this.rightId = null;
-                    this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
-                    this.publishResult(data);
-                    queueMicrotask(() => this.refreshConnectors());
-                    return data;
+                let data;
+                if (typeof request === 'function' && config.matchUrl) {
+                    const response = await request(config.matchUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.csrf, Accept: 'application/json' },
+                        body: JSON.stringify({ revision: this.revision, ...proposal, practice: config.practice === true, working_state: { matched: this.matchedPairs } }),
+                    });
+                    data = await readResponse(response);
+                } else if (config.preview && config.answerKey) {
+                    const correct = config.answerKey[proposal.left_id] === proposal.right_id;
+                    const complete = correct && this.matchedPairs.length + 1 === Object.keys(config.answerKey).length;
+                    data = { is_correct: correct, is_complete: complete, status: complete ? 'completed' : this.status };
+                } else {
+                    throw new Error('Unable to check the match.');
                 }
-                if (typeof request !== 'function') return null;
-                const response = await request(config.matchUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.csrf, Accept: 'application/json' },
-                    body: JSON.stringify({
-                        revision: this.revision,
-                        ...proposal,
-                        practice: config.practice === true,
-                        working_state: { matched: this.matchedPairs },
-                    }),
-                });
-                const data = await readResponse(response);
-                if (data.is_correct && !this.matchedPairs.some((pair) => pair.left_id === proposal.left_id)) {
-                    this.matchedPairs.push(proposal);
-                }
+
                 this.status = data.status ?? this.status;
-                if (!data.is_correct) this.feedback = 'Not quite—try another match';
-                this.leftId = null;
-                this.rightId = null;
+                this.pendingConnection = null;
+                this.requestState = 'idle';
+                if (data.is_correct) {
+                    if (!this.matchedPairs.some((pair) => pair.left_id === proposal.left_id || pair.right_id === proposal.right_id)) this.matchedPairs.push(proposal);
+                    this.rejectedConnection = null;
+                } else {
+                    this.rejectedConnection = proposal;
+                    this.feedback = 'Not quite—try another match';
+                }
                 this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
                 this.publishResult(data);
-                queueMicrotask(() => this.refreshConnectors());
+                this.scheduleConnectorRefresh();
                 return data;
             } catch (error) {
                 this.error = error.message || 'Unable to check the match.';
+                this.requestState = 'error';
                 this.$dispatch?.('interactive-activity-error', { activityId: config.activityId, message: this.error });
+                this.scheduleConnectorRefresh();
                 return null;
             } finally {
                 this.submitting = false;
@@ -150,12 +300,14 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
         loadPayload(payload = {}, status = this.status) {
             this.leftItems = Array.isArray(payload.left_items) ? payload.left_items : [];
             this.rightItems = Array.isArray(payload.right_items) ? payload.right_items : [];
-            this.matchedPairs = Array.isArray(payload.completed_matches)
-                ? JSON.parse(JSON.stringify(payload.completed_matches))
-                : [];
+            this.matchedPairs = Array.isArray(payload.completed_matches) ? copy(payload.completed_matches) : [];
             this.status = status;
-            this.leftId = null;
-            this.rightId = null;
+            this.activeEndpoint = null;
+            this.hoveredEndpoint = null;
+            this.pointerPosition = null;
+            this.pendingConnection = null;
+            this.rejectedConnection = null;
+            this.requestState = 'idle';
             this.feedback = '';
             this.error = '';
             queueMicrotask(() => this.refreshConnectors());
@@ -164,9 +316,13 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
 
         resetPractice() {
             this.matchedPairs = [];
-            this.leftId = null;
-            this.rightId = null;
             this.status = 'practice';
+            this.activeEndpoint = null;
+            this.hoveredEndpoint = null;
+            this.pointerPosition = null;
+            this.pendingConnection = null;
+            this.rejectedConnection = null;
+            this.requestState = 'idle';
             this.feedback = '';
             this.error = '';
             this.connectorLines = [];

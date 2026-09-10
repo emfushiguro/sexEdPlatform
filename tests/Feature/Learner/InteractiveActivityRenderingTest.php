@@ -230,6 +230,32 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringContainsString('\\u0022initialMatchedPairs\\u0022:[{\\u0022left_id\\u0022:\\u0022left-1\\u0022,\\u0022right_id\\u0022:\\u0022right-1\\u0022}]', $html);
     }
 
+    public function test_matching_activity_renders_direct_manipulation_endpoints_and_connection_statuses(): void
+    {
+        $html = view('learner.lessons.partials.interactive-activities.matching', [
+            'activity' => ['id' => 'matching-42', 'payload' => [
+                'left_items' => [['id' => 'left-1', 'value' => 'One']],
+                'right_items' => [['id' => 'right-1', 'value' => 'First']],
+            ]],
+        ])->render();
+
+        $this->assertStringContainsString('data-match-dot-side="left"', $html);
+        $this->assertStringContainsString('data-match-dot-side="right"', $html);
+        $this->assertStringContainsString('data-match-id="left-1"', $html);
+        $this->assertStringContainsString('data-match-id="right-1"', $html);
+        $this->assertStringContainsString('interactive-match-line interactive-match-line--${line.state}', $html);
+        $this->assertStringContainsString('interactive-match-arrow-correct', $html);
+        $this->assertStringContainsString('interactive-match-arrow-incorrect', $html);
+        $this->assertStringContainsString('interactive-match-arrow-pending', $html);
+        $this->assertStringContainsString('marker-end', $html);
+        $this->assertStringContainsString('aria-label', $html);
+        $this->assertStringContainsString('Remove incorrect connection', $html);
+        $this->assertStringNotContainsString('Check match', $html);
+        $this->assertStringNotContainsString('data-match-left=', $html);
+        $this->assertStringNotContainsString('data-match-right=', $html);
+        $this->assertStringNotContainsString('lg:hidden', $html);
+    }
+
     public function test_activity_controls_have_minimum_hit_targets_and_visible_focus_styles(): void
     {
         $renderedControls = [

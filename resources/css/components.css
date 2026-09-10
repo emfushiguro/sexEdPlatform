@@ -22,6 +22,60 @@
     }
 }
 
+/* Interactive matching connections */
+@layer components {
+    .interactive-activity-container { container-type: inline-size; }
+
+    .interactive-match-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) clamp(2rem, 9cqi, 5rem) minmax(0, 1fr);
+    }
+
+    .interactive-match-card {
+        @apply flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-2 py-2 shadow-sm transition-colors;
+    }
+
+    .interactive-match-card--selected,
+    .interactive-match-card--pending { @apply border-violet-400 bg-violet-50; }
+    .interactive-match-card--correct { @apply border-emerald-400 bg-emerald-50; }
+    .interactive-match-card--incorrect { @apply border-rose-400 bg-rose-50; }
+
+    .interactive-match-dot {
+        @apply inline-flex shrink-0 items-center justify-center rounded-full border-2 border-violet-600 bg-white text-violet-700 shadow-sm transition-colors;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        touch-action: none;
+    }
+
+    .interactive-match-dot:hover { @apply border-violet-800 bg-violet-100; }
+    .interactive-match-dot:disabled { @apply cursor-not-allowed border-emerald-600 bg-emerald-100 text-emerald-700; }
+    .interactive-match-dot > span { @apply h-3 w-3 rounded-full bg-current; }
+
+    .interactive-match-badge {
+        @apply inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm font-bold;
+    }
+
+    .interactive-match-badge--correct { @apply bg-emerald-600 text-white; }
+    .interactive-match-badge--incorrect { @apply bg-rose-600 text-white; }
+
+    .interactive-match-line { fill: none; pointer-events: none; }
+    .interactive-match-line--correct { @apply stroke-emerald-500; stroke-width: 3; stroke-linecap: round; }
+    .interactive-match-line--incorrect { @apply stroke-rose-500; stroke-width: 3; stroke-dasharray: 8 6; }
+    .interactive-match-line--pending { @apply stroke-violet-500; stroke-width: 3; stroke-dasharray: 3 5; }
+
+    @container (max-width: 28rem) {
+        .interactive-match-card { @apply gap-1 px-1 py-1; }
+        .interactive-match-dot { min-width: 2.75rem; min-height: 2.75rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .interactive-match-card,
+        .interactive-match-dot { transition: none; }
+        .interactive-match-line--pending,
+        .interactive-match-line--incorrect { stroke-dasharray: none; }
+    }
+}
+
 /* Button Variants */
 @layer components {
     .btn {
