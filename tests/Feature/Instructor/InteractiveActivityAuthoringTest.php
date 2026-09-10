@@ -261,7 +261,8 @@ class InteractiveActivityAuthoringTest extends TestCase
         $html = $preview['html'];
 
         $this->assertStringContainsString('previewToken', $html);
-        $this->assertStringContainsString('preview-evaluate', $html);
+        $this->assertStringContainsString('previewEvaluateUrl', $html);
+        $this->assertStringContainsString('/preview/evaluate', $html);
         $this->assertStringNotContainsString('preview_answer_key', $html);
 
         preg_match('/previewToken.{0,20}?([A-Za-z0-9+\\/=]{100,})/', $html, $matches);
