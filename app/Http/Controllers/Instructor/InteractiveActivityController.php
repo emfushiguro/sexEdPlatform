@@ -10,7 +10,9 @@ use App\Models\Lesson;
 use App\Services\Content\ContentOwnershipGuard;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityAuthoringService;
 use App\Support\ContentPanelContext;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class InteractiveActivityController extends Controller
 {
@@ -38,7 +40,8 @@ class InteractiveActivityController extends Controller
         $this->authorize('update', $lesson);
         $this->ensureAdminCanMutateLesson($lesson);
         $data = $this->authoring->validate($request, $lesson);
-        $activity = $this->authoring->preview($lesson, $data);
+        $activity = $this->authoring->preview($lesson, $data, $request->user());
+        $activity['preview_evaluate_url'] = route($this->routeName('interactive-activities.preview-evaluate'));
 
         return response()->json([
             'html' => view('learner.lessons.partials.interactive-activities.shell', [
@@ -48,6 +51,39 @@ class InteractiveActivityController extends Controller
                 'preview' => true,
             ])->render(),
         ]);
+    }
+
+    public function evaluatePreview(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'preview_token' => ['required', 'string'],
+            'action' => ['required', 'in:match,check_sequence,practice'],
+        ]);
+        $context = $this->authoring->decodePreviewToken($validated['preview_token'], $request->user());
+        $lesson = Lesson::query()->findOrFail((int) $context['lesson_id']);
+        $this->authorize('update', $lesson);
+        $this->ensureAdminCanMutateLesson($lesson);
+
+        $answer = ['action' => $validated['action']];
+        if ($validated['action'] === 'match') {
+            if ($context['activity_type'] !== 'matching') {
+                throw ValidationException::withMessages(['action' => 'The Preview action does not match the activity type.']);
+            }
+            $answer += $request->validate([
+                'left_id' => ['required', 'string'],
+                'right_id' => ['required', 'string'],
+            ]);
+        } elseif ($validated['action'] === 'check_sequence') {
+            if ($context['activity_type'] !== 'sequencing') {
+                throw ValidationException::withMessages(['action' => 'The Preview action does not match the activity type.']);
+            }
+            $answer += $request->validate([
+                'item_order' => ['required', 'array'],
+                'item_order.*' => ['string'],
+            ]);
+        }
+
+        return response()->json($this->authoring->evaluatePreview($context, $answer));
     }
 
     public function update(Request $request, InteractiveActivity $interactiveActivity)

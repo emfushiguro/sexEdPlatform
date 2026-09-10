@@ -209,8 +209,8 @@ class InteractiveActivityRenderingTest extends TestCase
 
         foreach ($renderedActivities as $html) {
             $this->assertStringContainsString('@interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"', $html);
-            $this->assertStringContainsString('@interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status)"', $html);
-            $this->assertStringContainsString('@interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status) : resetPractice())"', $html);
+            $this->assertStringContainsString('@interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status, $event.detail.previewToken)"', $html);
+            $this->assertStringContainsString('@interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status, $event.detail.previewToken) : resetPractice())"', $html);
         }
     }
 
@@ -249,6 +249,10 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringContainsString('interactive-match-arrow-pending', $html);
         $this->assertStringContainsString('marker-end', $html);
         $this->assertStringContainsString('aria-label', $html);
+        $this->assertStringContainsString('Connect an item to its related item using the dots.', $html);
+        $this->assertStringContainsString('>Correct</span>', $html);
+        $this->assertStringContainsString('>Incorrect</span>', $html);
+        $this->assertStringContainsString(':aria-disabled="String(!isEndpointAvailable(', $html);
         $this->assertStringContainsString('Remove incorrect connection', $html);
         $this->assertStringNotContainsString('Check match', $html);
         $this->assertStringNotContainsString('data-match-left=', $html);
@@ -268,6 +272,8 @@ class InteractiveActivityRenderingTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('sequencing-drag-instructions', $html);
+        $this->assertStringContainsString('class="mb-3 text-sm text-gray-600"', $html);
+        $this->assertStringContainsString('Use Space or Enter to pick up an item.', $html);
         $this->assertStringContainsString('aria-describedby="sequencing-drag-instructions"', $html);
         $this->assertStringContainsString('@pointerdown.prevent.stop="beginPointerDrag(index, $event)"', $html);
         $this->assertStringContainsString('aria-pressed="isDragging() && draggedId === itemId"', $html);
@@ -297,7 +303,7 @@ class InteractiveActivityRenderingTest extends TestCase
                         'items' => [['id' => 'item-1', 'value' => 'First']],
                     ]],
                 ])->render(),
-                3,
+                2,
             ],
             [
                 view('learner.lessons.partials.interactive-activities.shell', [
@@ -333,7 +339,8 @@ class InteractiveActivityRenderingTest extends TestCase
                 ],
             ])->render();
 
-            $this->assertSame(1, substr_count($html, 'x-show="feedback.message" aria-live="polite" role="status"'));
+            $this->assertSame(1, substr_count($html, 'x-show="feedback.message" aria-label="Activity feedback" aria-live="polite" role="status"'));
+            $this->assertStringContainsString('interactive-activity-container', $html);
             $this->assertStringContainsString('@interactive-activity-result.window="if ($event.detail.activityId === activityId) handleActivityResult($event.detail)"', $html);
             $this->assertStringContainsString('@interactive-activity-error.window="if ($event.detail.activityId === activityId) handleActivityError($event.detail)"', $html);
             $this->assertStringContainsString('@interactive-activity-recovered.window="if ($event.detail.activityId === activityId) handleActivityRecovered($event.detail)"', $html);

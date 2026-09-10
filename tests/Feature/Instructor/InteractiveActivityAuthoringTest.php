@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\User;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -80,6 +81,11 @@ class InteractiveActivityAuthoringTest extends TestCase
             ->assertSee(':data-pairs-handle', false)
             ->assertSee(':data-items-handle', false)
             ->assertSee('interactive-authoring-relationship', false)
+            ->assertSee('aria-describedby="matching-drag-instructions"', false)
+            ->assertSee('aria-describedby="sequencing-authoring-drag-instructions"', false)
+            ->assertSee('interactive-preview-title', false)
+            ->assertSee('aria-modal="true"', false)
+            ->assertSee('@keydown.escape.window="if (isOpen) closePreview()"', false)
             ->assertSee('Correct position', false)
             ->assertDontSee('Move pair 1 up')
             ->assertDontSee('Move item 1 up');
@@ -241,6 +247,87 @@ class InteractiveActivityAuthoringTest extends TestCase
         $this->assertDatabaseCount('interactive_activities', 0);
         $this->assertDatabaseCount('interactive_activity_progress', 0);
         $this->assertSame($topicCount, LessonTopic::query()->count());
+    }
+
+    public function test_preview_uses_an_encrypted_token_and_canonical_matching_evaluation(): void
+    {
+        [$instructor, $lesson] = $this->authoringFixture();
+
+        $preview = $this->actingAs($instructor)
+            ->postJson(route('instructor.interactive-activities.preview'), $this->previewPayload($lesson, null))
+            ->assertOk()
+            ->assertJsonMissingPath('preview_answer_key')
+            ->json();
+        $html = $preview['html'];
+
+        $this->assertStringContainsString('previewToken', $html);
+        $this->assertStringContainsString('preview-evaluate', $html);
+        $this->assertStringNotContainsString('preview_answer_key', $html);
+
+        preg_match('/previewToken.{0,20}?([A-Za-z0-9+\\/=]{100,})/', $html, $matches);
+        $this->assertNotEmpty($matches[1] ?? null);
+        $token = $matches[1];
+
+        $context = json_decode(Crypt::decryptString($token), true, 512, JSON_THROW_ON_ERROR);
+        $firstPair = $context['configuration']['pairs'][0];
+        $secondPair = $context['configuration']['pairs'][1];
+
+        $result = $this->actingAs($instructor)
+            ->postJson(route('instructor.interactive-activities.preview-evaluate'), [
+                'preview_token' => $token,
+                'action' => 'match',
+                'left_id' => $firstPair['left']['id'],
+                'right_id' => $secondPair['right']['id'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('status', 'practice')
+            ->assertJsonPath('is_correct', false);
+
+        $rotatedToken = $result->json('preview_token');
+        $this->assertNotSame($token, $rotatedToken);
+
+        $this->actingAs($instructor)
+            ->postJson(route('instructor.interactive-activities.preview-evaluate'), [
+                'preview_token' => $rotatedToken,
+                'action' => 'match',
+                'left_id' => $firstPair['left']['id'],
+                'right_id' => $firstPair['right']['id'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('is_correct', true);
+
+        $this->assertDatabaseCount('interactive_activity_progress', 0);
+    }
+
+    public function test_preview_evaluation_rejects_action_type_mismatch_and_tampered_tokens(): void
+    {
+        [$instructor, $lesson] = $this->authoringFixture();
+        $preview = $this->actingAs($instructor)
+            ->postJson(route('instructor.interactive-activities.preview'), $this->previewPayload($lesson, null))
+            ->assertOk()
+            ->json();
+        preg_match('/previewToken.{0,20}?([A-Za-z0-9+\\/=]{100,})/', $preview['html'], $matches);
+        $this->assertNotEmpty($matches[1] ?? null);
+        $token = $matches[1];
+
+        $this->actingAs($instructor)
+            ->postJson(route('instructor.interactive-activities.preview-evaluate'), [
+                'preview_token' => $token,
+                'action' => 'check_sequence',
+                'item_order' => ['not-a-matching-item'],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('action');
+
+        $this->actingAs($instructor)
+            ->postJson(route('instructor.interactive-activities.preview-evaluate'), [
+                'preview_token' => $token.'tampered',
+                'action' => 'match',
+                'left_id' => 'left',
+                'right_id' => 'right',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('preview_token');
     }
 
     public function test_preview_rejects_cross_lesson_parent_and_invalid_matching_or_sequencing_configuration(): void

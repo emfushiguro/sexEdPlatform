@@ -1,6 +1,6 @@
 async function readResponse(response) {
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Unable to check the match.');
+    if (!response.ok) throw new Error(data.errors?.preview_token?.[0] || data.message || 'Unable to check the match.');
     return data;
 }
 
@@ -49,6 +49,8 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
         revision: config.revision ?? 1,
         leftItems: config.leftItems ?? [],
         rightItems: config.rightItems ?? [],
+        previewToken: config.previewToken ?? null,
+        previewEvaluateUrl: config.previewEvaluateUrl ?? null,
         connectorLines: [],
         connectorContainer: null,
         connectorObserver: null,
@@ -257,21 +259,21 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             this.scheduleConnectorRefresh();
             try {
                 let data;
-                if (typeof request === 'function' && config.matchUrl) {
-                    const response = await request(config.matchUrl, {
+                if (typeof request === 'function' && (config.matchUrl || (config.preview && config.previewEvaluateUrl && this.previewToken))) {
+                    const preview = config.preview === true;
+                    const response = await request(preview ? config.previewEvaluateUrl : config.matchUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.csrf, Accept: 'application/json' },
-                        body: JSON.stringify({ revision: this.revision, ...proposal, practice: config.practice === true, working_state: { matched: this.matchedPairs } }),
+                        body: JSON.stringify(preview
+                            ? { preview_token: this.previewToken, action: 'match', ...proposal }
+                            : { revision: this.revision, ...proposal, practice: config.practice === true, working_state: { matched: this.matchedPairs } }),
                     });
                     data = await readResponse(response);
-                } else if (config.preview && config.answerKey) {
-                    const correct = config.answerKey[proposal.left_id] === proposal.right_id;
-                    const complete = correct && this.matchedPairs.length + 1 === Object.keys(config.answerKey).length;
-                    data = { is_correct: correct, is_complete: complete, status: complete ? 'completed' : this.status };
                 } else {
                     throw new Error('Unable to check the match.');
                 }
 
+                if (data.preview_token !== undefined) this.previewToken = data.preview_token;
                 this.status = data.status ?? this.status;
                 this.pendingConnection = null;
                 this.requestState = 'idle';
@@ -297,11 +299,12 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             }
         },
 
-        loadPayload(payload = {}, status = this.status) {
+        loadPayload(payload = {}, status = this.status, previewToken = undefined) {
             this.leftItems = Array.isArray(payload.left_items) ? payload.left_items : [];
             this.rightItems = Array.isArray(payload.right_items) ? payload.right_items : [];
             this.matchedPairs = Array.isArray(payload.completed_matches) ? copy(payload.completed_matches) : [];
             this.status = status;
+            if (previewToken !== undefined) this.previewToken = previewToken;
             this.activeEndpoint = null;
             this.hoveredEndpoint = null;
             this.pointerPosition = null;

@@ -13,14 +13,14 @@
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-purple-600">Interactive Preview</p>
                 <h2 id="interactive-preview-title" class="mt-1 text-lg font-semibold text-gray-900">Learner view</h2>
             </div>
-            <button type="button" data-preview-close @click="closePreview()" class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Close</button>
+            <button type="button" data-preview-close @click="closePreview()" class="min-h-11 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">Close</button>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-5 py-3">
             <span class="mr-2 text-xs font-semibold text-gray-600">Viewport</span>
-            <button type="button" @click="selectViewport('mobile')" :class="previewViewport === 'mobile' ? 'bg-purple-700 text-white' : 'border border-gray-300 text-gray-700'" class="rounded-lg px-3 py-1.5 text-xs font-semibold">Mobile · 375</button>
-            <button type="button" @click="selectViewport('tablet')" :class="previewViewport === 'tablet' ? 'bg-purple-700 text-white' : 'border border-gray-300 text-gray-700'" class="rounded-lg px-3 py-1.5 text-xs font-semibold">Tablet · 768</button>
-            <button type="button" @click="selectViewport('desktop')" :class="previewViewport === 'desktop' ? 'bg-purple-700 text-white' : 'border border-gray-300 text-gray-700'" class="rounded-lg px-3 py-1.5 text-xs font-semibold">Desktop · 1440</button>
+            <button type="button" @click="selectViewport('mobile')" :aria-pressed="previewViewport === 'mobile'" :class="previewViewport === 'mobile' ? 'bg-purple-700 text-white' : 'border border-gray-300 text-gray-700'" class="min-h-11 rounded-lg px-3 py-1.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">Mobile · 375</button>
+            <button type="button" @click="selectViewport('tablet')" :aria-pressed="previewViewport === 'tablet'" :class="previewViewport === 'tablet' ? 'bg-purple-700 text-white' : 'border border-gray-300 text-gray-700'" class="min-h-11 rounded-lg px-3 py-1.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">Tablet · 768</button>
+            <button type="button" @click="selectViewport('desktop')" :aria-pressed="previewViewport === 'desktop'" :class="previewViewport === 'desktop' ? 'bg-purple-700 text-white' : 'border border-gray-300 text-gray-700'" class="min-h-11 rounded-lg px-3 py-1.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">Desktop · 1440</button>
             <span class="ml-auto text-xs text-gray-500">Preview only — no learner progress is saved.</span>
         </div>
 

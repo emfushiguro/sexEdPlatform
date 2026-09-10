@@ -116,8 +116,15 @@ test('correct preview sequencing result completes shared feedback', async () => 
     const child = createSequencingActivity({
         activityId: 'sequencing-preview',
         preview: true,
+        previewToken: 'token-1',
+        previewEvaluateUrl: '/preview/evaluate',
         initialOrder: ['one', 'two'],
-        answerKey: ['one', 'two'],
+    }, async (url, options) => {
+        assert.equal(url, '/preview/evaluate');
+        assert.deepEqual(JSON.parse(options.body), {
+            preview_token: 'token-1', action: 'check_sequence', item_order: ['one', 'two'],
+        });
+        return response({ status: 'practice_completed', is_correct: true, is_complete: true, preview_token: 'token-2' });
     });
     const parent = createInteractiveActivity({ activityId: 'sequencing-preview' });
     child.$dispatch = (name, detail) => events.push({ name, detail });
@@ -126,6 +133,7 @@ test('correct preview sequencing result completes shared feedback', async () => 
 
     const result = events.find(({ name }) => name === 'interactive-activity-result').detail;
     assert.equal(result.data.is_complete, true);
+    assert.equal(child.previewToken, 'token-2');
     parent.handleActivityResult(result);
     assert.deepEqual(parent.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
 });

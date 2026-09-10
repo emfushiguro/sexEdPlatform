@@ -6,7 +6,7 @@ export function moveItem(order, index, delta) {
 
 async function readResponse(response) {
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Unable to save the sequence.');
+    if (!response.ok) throw new Error(data.errors?.preview_token?.[0] || data.message || 'Unable to save the sequence.');
     return data;
 }
 
@@ -18,6 +18,8 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         candidateOrder: [...initialOrder],
         items: Array.isArray(config.items) ? [...config.items] : [],
         activityId: config.activityId,
+        previewToken: config.previewToken ?? null,
+        previewEvaluateUrl: config.previewEvaluateUrl ?? null,
         status: config.initialStatus || 'in_progress',
         revision: config.revision ?? 1,
         error: '',
@@ -67,7 +69,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
 
         keyboardMove(index, delta, event = null) {
             if (event?.key && !['ArrowUp', 'ArrowDown'].includes(event.key)) return this;
-            if (event?.preventDefault) event.preventDefault();
+            event?.preventDefault?.();
             return this.move(index, delta);
         },
 
@@ -92,7 +94,6 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
 
         beginPointerDrag(index, event = null) {
             if (this.isLocked() || !Number.isInteger(index) || index < 0 || index >= this.order.length) return this;
-
             this.feedback = '';
             this.error = '';
             this.reorder.cancel().begin(index);
@@ -148,7 +149,6 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             const eventTarget = event && typeof event === 'object' ? this.resolveDragIndex(event) : null;
             if (event && typeof event === 'object' && eventTarget === null) return this.cancelDrag();
             if (eventTarget !== null) this.setDragTarget(eventTarget);
-
             const to = this.reorder.to ?? this.reorder.from;
             const label = this.itemFor(this.draggedId)?.value ?? 'Item';
             const next = this.reorder.commit(this.order);
@@ -188,7 +188,6 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             const key = event?.key;
             if (![' ', 'Enter', 'Escape', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)) return this;
             event?.preventDefault?.();
-
             if (key === 'Escape') return this.cancelDrag();
             if (key === ' ' || key === 'Enter') {
                 if (this.isDragging()) return this.dropPointerDrag();
@@ -279,15 +278,21 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             this.feedback = '';
             this.error = '';
             try {
-                if (config.preview) {
-                    const correct = JSON.stringify(this.order) === JSON.stringify(config.answerKey ?? []);
-                    const data = { is_correct: correct, is_complete: correct, status: correct ? 'completed' : this.status };
-                    this.status = data.status;
-                    if (!correct) this.feedback = 'Not quite—try again';
+                if (config.preview && this.previewEvaluateUrl && this.previewToken) {
+                    const response = await request(this.previewEvaluateUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.csrf, Accept: 'application/json' },
+                        body: JSON.stringify({ preview_token: this.previewToken, action: 'check_sequence', item_order: [...this.order] }),
+                    });
+                    const data = await readResponse(response);
+                    if (data.preview_token !== undefined) this.previewToken = data.preview_token;
+                    this.status = data.status ?? this.status;
+                    if (!data.is_correct) this.feedback = 'Not quite, try again';
                     this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
                     this.publishResult(data);
                     return data;
                 }
+                if (config.preview) throw new Error('Generate a new preview before checking this activity.');
                 if (typeof request !== 'function' || !config.checkUrl) return null;
                 if (this.pendingSave) await this.pendingSave;
                 else if (config.stateUrl) await this.persistState(true);
@@ -298,7 +303,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                 });
                 const data = await readResponse(response);
                 this.status = data.status ?? this.status;
-                if (!data.is_correct) this.feedback = 'Not quite—try again';
+                if (!data.is_correct) this.feedback = 'Not quite, try again';
                 this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
                 this.publishResult(data);
                 return data;
@@ -311,12 +316,13 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             }
         },
 
-        loadPayload(payload = {}, status = this.status) {
+        loadPayload(payload = {}, status = this.status, previewToken = undefined) {
             this.items = Array.isArray(payload.items) ? [...payload.items] : [];
             this.order = this.items.map((item) => item.id);
             this.initialOrder = [...this.order];
             this.candidateOrder = [...this.order];
             this.status = status ?? this.status;
+            if (previewToken !== undefined) this.previewToken = previewToken;
             this.feedback = '';
             this.error = '';
             this.reorder.cancel();
@@ -344,6 +350,8 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             this.dragRect = null;
             this.dragAnnouncement = '';
             this.lastPointerY = null;
+            this.dragIndex = null;
+            this.dragOverIndex = null;
             return this;
         },
     };

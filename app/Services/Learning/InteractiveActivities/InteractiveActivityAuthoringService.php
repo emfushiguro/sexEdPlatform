@@ -8,6 +8,10 @@ use App\Enums\InteractiveActivityType;
 use App\Models\InteractiveActivity;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
+use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -19,6 +23,8 @@ use Random\Randomizer;
 class InteractiveActivityAuthoringService
 {
     private const ALLOWED_HTML = '<p><br><strong><b><em><i><u><ul><ol><li><a><blockquote><code>';
+
+    private const PREVIEW_TTL_SECONDS = 900;
 
     public function __construct(private readonly InteractiveActivityRegistry $registry) {}
 
@@ -234,7 +240,7 @@ class InteractiveActivityAuthoringService
         });
     }
 
-    public function preview(Lesson $lesson, array $data): array
+    public function preview(Lesson $lesson, array $data, User $author): array
     {
         if ($data['placement'] === 'inside_topic') {
             $parent = $lesson->topics()
@@ -255,6 +261,16 @@ class InteractiveActivityAuthoringService
             $this->addDefaultTextKinds($data['configuration'], $data['activity_type']),
         );
         $workingState = $handler->initialWorkingState($configuration, new Randomizer(new Mt19937(1234)));
+        $previewContext = [
+            'version' => 1,
+            'author_id' => $author->id,
+            'lesson_id' => $lesson->id,
+            'activity_type' => $data['activity_type'],
+            'configuration' => $configuration,
+            'working_state' => $workingState,
+            'explanation' => $data['explanation'] ?? null,
+            'expires_at' => now()->addSeconds(self::PREVIEW_TTL_SECONDS)->timestamp,
+        ];
 
         return [
             'id' => 'preview-'.Str::uuid(),
@@ -263,13 +279,107 @@ class InteractiveActivityAuthoringService
             'activity_type' => $data['activity_type'],
             'title' => $data['title'],
             'instructions' => $data['instructions'],
-            'explanation' => $data['explanation'],
-            'status' => 'in_progress',
+            'explanation' => $data['explanation'] ?? null,
+            'status' => 'practice',
             'available' => true,
             'preview' => true,
             'payload' => $handler->previewPayload($configuration, $workingState),
-            'preview_answer_key' => $this->previewAnswerKey($data['activity_type'], $configuration),
+            'preview_token' => $this->issuePreviewToken($previewContext),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public function decodePreviewToken(string $token, User $author): array
+    {
+        try {
+            $context = json_decode(Crypt::decryptString($token), true, 512, JSON_THROW_ON_ERROR);
+        } catch (DecryptException|\JsonException) {
+            $this->throwInvalidPreviewToken();
+        }
+
+        if (! is_array($context)
+            || ($context['version'] ?? null) !== 1
+            || (int) ($context['author_id'] ?? 0) !== (int) $author->id
+            || ! is_int($context['lesson_id'] ?? null)
+            || ! is_string($context['activity_type'] ?? null)
+            || ! is_array($context['configuration'] ?? null)
+            || ! is_array($context['working_state'] ?? null)
+            || ! (is_string($context['explanation'] ?? null) || $context['explanation'] === null)
+            || ! is_int($context['expires_at'] ?? null)
+            || $context['expires_at'] < now()->timestamp
+        ) {
+            if (is_array($context) && (int) ($context['author_id'] ?? 0) !== (int) $author->id) {
+                throw new AuthorizationException('You may not use this activity preview.');
+            }
+
+            $this->throwInvalidPreviewToken();
+        }
+
+        $type = InteractiveActivityType::tryFrom($context['activity_type']);
+        if ($type === null) {
+            $this->throwInvalidPreviewToken();
+        }
+
+        try {
+            $handler = $this->registry->for($type);
+            $context['configuration'] = $handler->normalize($context['configuration'], $context['configuration']);
+        } catch (\Throwable) {
+            $this->throwInvalidPreviewToken();
+        }
+
+        return $context;
+    }
+
+    /** @param array<string, mixed> $context @param array<string, mixed> $answer @return array<string, mixed> */
+    public function evaluatePreview(array $context, array $answer): array
+    {
+        $type = InteractiveActivityType::from($context['activity_type']);
+        $handler = $this->registry->for($type);
+        $configuration = $context['configuration'];
+        $action = $answer['action'] ?? null;
+
+        if ($action === 'practice') {
+            $workingState = $handler->initialWorkingState($configuration, new Randomizer(new Mt19937(random_int(1, 2147483647))));
+            $result = [
+                'accepted' => true,
+                'is_correct' => null,
+                'is_complete' => false,
+                'working_state' => $workingState,
+            ];
+        } else {
+            $expectedAction = $type === InteractiveActivityType::MATCHING ? 'match' : 'check_sequence';
+            if ($action !== $expectedAction) {
+                throw ValidationException::withMessages(['action' => 'The Preview action does not match the activity type.']);
+            }
+
+            $result = $handler->evaluate($configuration, $answer, $context['working_state']);
+            $workingState = $result['working_state'];
+        }
+
+        return [
+            ...$result,
+            'status' => $result['is_complete'] === true ? 'practice_completed' : 'practice',
+            'payload' => $handler->learnerPayload($configuration, $workingState),
+            'explanation' => $result['is_complete'] === true ? ($context['explanation'] ?? null) : null,
+            'preview_token' => $this->issuePreviewToken([
+                ...$context,
+                'working_state' => $workingState,
+                'expires_at' => now()->addSeconds(self::PREVIEW_TTL_SECONDS)->timestamp,
+            ]),
+        ];
+    }
+
+    /** @param array<string, mixed> $context */
+    private function issuePreviewToken(array $context): string
+    {
+        return Crypt::encryptString(json_encode($context, JSON_THROW_ON_ERROR));
+    }
+
+    private function throwInvalidPreviewToken(): never
+    {
+        throw ValidationException::withMessages([
+            'preview_token' => 'The activity preview expired or is invalid. Generate a new preview.',
+        ]);
     }
 
     private function createActivity(LessonTopic $topic, array $data, string $placement, ?string $blockUuid): InteractiveActivity
@@ -408,17 +518,5 @@ class InteractiveActivityAuthoringService
 
             return '<a href="'.htmlspecialchars($href, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'">';
         }, $allowed) ?? '';
-    }
-
-    /** @return array<string, string>|list<string> */
-    private function previewAnswerKey(string $activityType, array $configuration): array
-    {
-        if ($activityType === InteractiveActivityType::MATCHING->value) {
-            return collect($configuration['pairs'] ?? [])
-                ->mapWithKeys(fn (array $pair): array => [$pair['left']['id'] => $pair['right']['id']])
-                ->all();
-        }
-
-        return array_column($configuration['items'] ?? [], 'id');
     }
 }

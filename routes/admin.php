@@ -124,6 +124,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     Route::post('interactive-activities/preview', [Instructor\InteractiveActivityController::class, 'preview'])
         ->name('interactive-activities.preview');
+    Route::post('interactive-activities/preview/evaluate', [Instructor\InteractiveActivityController::class, 'evaluatePreview'])
+        ->name('interactive-activities.preview-evaluate');
     Route::get('interactive-activities/{interactiveActivity}/edit', [Instructor\InteractiveActivityController::class, 'edit'])
         ->name('interactive-activities.edit');
     Route::put('interactive-activities/{interactiveActivity}', [Instructor\InteractiveActivityController::class, 'update'])

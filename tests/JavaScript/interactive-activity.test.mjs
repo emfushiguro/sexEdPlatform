@@ -103,6 +103,30 @@ test('common activity clears a shared error after its child result succeeds', ()
     assert.deepEqual(activity.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
 });
 
+test('preview practice posts the current token and publishes the rotated payload token', async () => {
+    const events = [];
+    const activity = createInteractiveActivity({
+        activityId: 41,
+        preview: true,
+        previewToken: 'token-1',
+        previewEvaluateUrl: '/preview/evaluate',
+    }, async (url, options) => {
+        assert.equal(url, '/preview/evaluate');
+        assert.deepEqual(JSON.parse(options.body), { preview_token: 'token-1', action: 'practice' });
+        return response({ status: 'practice', payload: { items: [{ id: 'fresh' }] }, preview_token: 'token-2' });
+    });
+    activity.$dispatch = (name, detail) => events.push([name, detail]);
+
+    await activity.practice();
+
+    assert.equal(activity.previewToken, 'token-2');
+    assert.deepEqual(events.find(([name]) => name === 'interactive-activity-practice')[1], {
+        activityId: 41,
+        payload: { items: [{ id: 'fresh' }] },
+        previewToken: 'token-2',
+    });
+});
+
 test('common activity clears only its recovered child save error', () => {
     const activity = createInteractiveActivity({ activityId: 41 });
 

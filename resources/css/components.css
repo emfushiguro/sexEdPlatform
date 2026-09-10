@@ -68,7 +68,21 @@
         .interactive-match-dot { min-width: 2.75rem; min-height: 2.75rem; }
     }
 
+    @container (max-width: 30rem) {
+        .interactive-match-card { padding-inline: .625rem; }
+        .interactive-match-grid { grid-template-columns: minmax(0, 1fr) 2rem minmax(0, 1fr); }
+    }
+
     @media (prefers-reduced-motion: reduce) {
+        .interactive-activity-container *,
+        .interactive-activity-container *::before,
+        .interactive-activity-container *::after {
+            scroll-behavior: auto !important;
+            animation-duration: .01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: .01ms !important;
+        }
+
         .interactive-match-card,
         .interactive-match-dot { transition: none; }
         .interactive-match-line--pending,

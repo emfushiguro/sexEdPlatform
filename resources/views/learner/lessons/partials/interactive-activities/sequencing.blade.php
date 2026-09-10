@@ -5,8 +5,9 @@
     'revision' => $activity['revision'] ?? 1,
     'checkUrl' => $activity['check_sequence_url'] ?? null,
     'stateUrl' => $activity['state_url'] ?? null,
+    'previewToken' => $activity['preview_token'] ?? null,
+    'previewEvaluateUrl' => $activity['preview_evaluate_url'] ?? null,
     'preview' => $preview,
-    'answerKey' => $preview ? ($activity['preview_answer_key'] ?? []) : null,
     'csrf' => csrf_token(),
     'initialStatus' => $activity['status'] ?? 'in_progress',
     'items' => $activity['payload']['items'] ?? [],
@@ -14,13 +15,13 @@
 ]))"
     x-init="return () => teardown()"
     @interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"
-    @interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status)"
-    @interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status) : resetPractice())"
+    @interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status, $event.detail.previewToken)"
+    @interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status, $event.detail.previewToken) : resetPractice())"
     @pointermove.window="movePointerDrag($event)"
     @pointerup.window="dropPointerDrag($event)"
     @pointercancel.window="cancelDrag()"
     @keydown.escape.window="if (isDragging()) cancelDrag()">
-    <p id="sequencing-drag-instructions" class="sr-only">Use Space or Enter to pick up an item. Use the arrow keys, Home, or End to choose a position, then Space or Enter to drop it. Press Escape to cancel.</p>
+    <p id="sequencing-drag-instructions" class="mb-3 text-sm text-gray-600">Use Space or Enter to pick up an item. Use the arrow keys, Home, or End to choose a position, then Space or Enter to drop it. Press Escape to cancel.</p>
 
     <ol class="interactive-sequence-list space-y-2" aria-label="Sequence items">
         <template x-for="(itemId, index) in order" :key="itemId">

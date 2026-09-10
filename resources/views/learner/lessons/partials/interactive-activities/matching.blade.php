@@ -4,8 +4,9 @@
     'activityId' => $activity['id'] ?? null,
     'revision' => $activity['revision'] ?? 1,
     'matchUrl' => $activity['match_url'] ?? null,
+    'previewToken' => $activity['preview_token'] ?? null,
+    'previewEvaluateUrl' => $activity['preview_evaluate_url'] ?? null,
     'preview' => $preview,
-    'answerKey' => $preview ? ($activity['preview_answer_key'] ?? []) : null,
     'csrf' => csrf_token(),
     'initialStatus' => $activity['status'] ?? 'in_progress',
     'initialMatchedPairs' => $activity['payload']['completed_matches'] ?? [],
@@ -16,8 +17,8 @@
     @pointermove="moveConnection($event)"
     @keydown.escape.window="cancelConnection()"
     @interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"
-    @interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status)"
-    @interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status) : resetPractice())">
+    @interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status, $event.detail.previewToken)"
+    @interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status, $event.detail.previewToken) : resetPractice())">
     <svg aria-hidden="true" class="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible">
         <defs>
             <marker id="interactive-match-arrow-correct" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" class="fill-emerald-500" /></marker>
@@ -32,10 +33,13 @@
     <div class="interactive-match-grid relative z-10 gap-y-3">
         <div class="space-y-2">
             <h4 class="text-sm font-semibold text-gray-700">Match each item</h4>
+            <p class="text-xs text-gray-500">Connect an item to its related item using the dots. Select either dot first, then select the matching dot.</p>
             <div class="space-y-2">
                 @foreach(($activity['payload']['left_items'] ?? []) as $item)
                     <div class="interactive-match-card" :class="`interactive-match-card--${endpointState('left', @js($item['id']))}`">
                         <span class="min-w-0 flex-1 text-sm text-gray-900">{{ $item['value'] }}</span>
+                        <span class="text-xs font-semibold text-emerald-700" x-show="endpointState('left', @js($item['id'])) === 'correct'">Correct</span>
+                        <span class="text-xs font-semibold text-rose-700" x-show="endpointState('left', @js($item['id'])) === 'incorrect'">Incorrect</span>
                         <span class="interactive-match-badge interactive-match-badge--correct" x-show="endpointState('left', @js($item['id'])) === 'correct'" aria-hidden="true">✓</span>
                         <span class="interactive-match-badge interactive-match-badge--incorrect" x-show="endpointState('left', @js($item['id'])) === 'incorrect'" aria-hidden="true">×</span>
                         <button type="button" data-match-dot-side="left" data-match-id="{{ $item['id'] }}"
@@ -44,7 +48,8 @@
                             @keydown="activateEndpoint('left', @js($item['id']), $event)"
                             :aria-pressed="ariaPressed('left', @js($item['id']))"
                             :aria-label="endpointLabel('left', @js($item['id']), @js($item['value']))"
-                            :disabled="!isEndpointAvailable('left', @js($item['id']))"
+                            :aria-disabled="String(!isEndpointAvailable('left', @js($item['id'])))"
+                            :disabled="submitting"
                             class="interactive-match-dot interactive-match-dot--left min-h-11 min-w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
                             <span aria-hidden="true"></span>
                         </button>
@@ -66,11 +71,14 @@
                             @keydown="activateEndpoint('right', @js($item['id']), $event)"
                             :aria-pressed="ariaPressed('right', @js($item['id']))"
                             :aria-label="endpointLabel('right', @js($item['id']), @js($item['value']))"
-                            :disabled="!isEndpointAvailable('right', @js($item['id']))"
+                            :aria-disabled="String(!isEndpointAvailable('right', @js($item['id'])))"
+                            :disabled="submitting"
                             class="interactive-match-dot interactive-match-dot--right min-h-11 min-w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
                             <span aria-hidden="true"></span>
                         </button>
                         <span class="min-w-0 flex-1 text-sm text-gray-900">{{ $item['value'] }}</span>
+                        <span class="text-xs font-semibold text-emerald-700" x-show="endpointState('right', @js($item['id'])) === 'correct'">Correct</span>
+                        <span class="text-xs font-semibold text-rose-700" x-show="endpointState('right', @js($item['id'])) === 'incorrect'">Incorrect</span>
                         <span class="interactive-match-badge interactive-match-badge--correct" x-show="endpointState('right', @js($item['id'])) === 'correct'" aria-hidden="true">✓</span>
                         <span class="interactive-match-badge interactive-match-badge--incorrect" x-show="endpointState('right', @js($item['id'])) === 'incorrect'" aria-hidden="true">×</span>
                     </div>

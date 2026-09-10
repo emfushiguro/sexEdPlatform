@@ -169,25 +169,27 @@ test('preview exposes 422 errors without opening the modal', async () => {
 test('preview local adapters evaluate matching and sequencing without network navigation', async () => {
     const matching = createMatchingActivity({
         preview: true,
-        answerKey: { left: 'right' },
+        previewToken: 'token-1',
+        previewEvaluateUrl: '/preview/evaluate',
         leftItems: [{ id: 'left', value: 'Left' }],
         rightItems: [{ id: 'right', value: 'Right' }],
-    }, () => { throw new Error('network disabled'); });
+    }, async () => ({ ok: true, json: async () => ({ status: 'practice_completed', is_correct: true, is_complete: true, preview_token: 'token-2' }) }));
     matching.startConnection('left', 'left');
     const matchingResult = await matching.finishConnection('right', 'right');
     assert.equal(matchingResult.is_correct, true);
-    assert.equal(matching.status, 'completed');
+    assert.equal(matching.status, 'practice_completed');
 
     const sequencing = createSequencingActivity({
         preview: true,
-        answerKey: ['one', 'two', 'three'],
+        previewToken: 'token-1',
+        previewEvaluateUrl: '/preview/evaluate',
         initialOrder: ['three', 'two', 'one'],
         items: [{ id: 'one', value: 'One' }, { id: 'two', value: 'Two' }, { id: 'three', value: 'Three' }],
-    }, () => { throw new Error('network disabled'); });
+    }, async () => ({ ok: true, json: async () => ({ status: 'practice_completed', is_correct: true, is_complete: true, preview_token: 'token-2' }) }));
     sequencing.order = ['one', 'two', 'three'];
     const sequencingResult = await sequencing.checkAnswer();
     assert.equal(sequencingResult.is_correct, true);
-    assert.equal(sequencing.status, 'completed');
+    assert.equal(sequencing.status, 'practice_completed');
 });
 
 test('preview common lifecycle uses local state and never follows real navigation', async () => {

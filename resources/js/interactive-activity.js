@@ -2,7 +2,7 @@ import { emptyActivityFeedback, feedbackForEvaluation, feedbackForLifecycle } fr
 
 async function readResponse(response) {
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Unable to save the activity.');
+    if (!response.ok) throw new Error(data.errors?.preview_token?.[0] || data.message || 'Unable to save the activity.');
     return data;
 }
 
@@ -17,6 +17,8 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
         feedback: emptyActivityFeedback(),
         submitting: false,
         practiceMode: false,
+        previewToken: config.previewToken ?? null,
+        previewEvaluateUrl: config.previewEvaluateUrl ?? null,
 
         showSkip() {
             return !['completed', 'skipped'].includes(this.status);
@@ -44,6 +46,7 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
             this.error = '';
             this.status = detail.data?.status ?? this.status;
             this.explanation = detail.data?.explanation ?? null;
+            if (detail.data?.preview_token !== undefined) this.previewToken = detail.data.preview_token;
             this.feedback = feedbackForEvaluation(detail.type, detail.data, detail.meta);
             return this;
         },
@@ -66,6 +69,7 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
             this.status = data.status ?? this.status;
             this.payload = data.payload ?? this.payload;
             this.explanation = data.explanation ?? null;
+            if (data.preview_token !== undefined) this.previewToken = data.preview_token;
             this.practiceMode = this.status.startsWith('practice');
             this.error = '';
             this.$dispatch?.('interactive-activity-state', { activityId: this.activityId, status: this.status, data });
@@ -74,7 +78,7 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
                     activityId: this.activityId,
                     status: this.status,
                     payload: data.payload,
-                    ...(data.previewToken === undefined ? {} : { previewToken: data.previewToken }),
+                    ...(data.preview_token === undefined ? {} : { previewToken: data.preview_token }),
                 });
             }
             return data;
@@ -128,6 +132,21 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
 
         async practice() {
             this.clearFeedback();
+            if (config.preview && this.previewEvaluateUrl && this.previewToken) {
+                const data = await this.send(this.previewEvaluateUrl, 'POST', {
+                    preview_token: this.previewToken,
+                    action: 'practice',
+                });
+                if (data) {
+                    this.practiceMode = true;
+                    this.$dispatch?.('interactive-activity-practice', {
+                        activityId: this.activityId,
+                        payload: data.payload,
+                        previewToken: data.preview_token,
+                    });
+                }
+                return data;
+            }
             if (config.preview) {
                 this.status = 'practice';
                 this.$dispatch?.('interactive-activity-state', { activityId: this.activityId, status: this.status, data: { status: this.status } });

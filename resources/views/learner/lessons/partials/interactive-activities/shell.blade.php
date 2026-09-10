@@ -2,11 +2,13 @@
 
 @php($activityToken = 'activity:'.($activity['id'] ?? 'unknown'))
 
-<section data-optional-interaction="{{ $activityToken }}" data-preview="{{ $preview ? 'true' : 'false' }}" class="rounded-2xl border border-purple-100 bg-white p-5 shadow-sm" x-data="interactiveActivity(@js([
+<section data-optional-interaction="{{ $activityToken }}" data-preview="{{ $preview ? 'true' : 'false' }}" class="interactive-activity-container rounded-2xl border border-purple-100 bg-white p-5 shadow-sm" x-data="interactiveActivity(@js([
     'activityId' => $activity['id'] ?? null,
     'revision' => $activity['revision'] ?? 1,
     'initialStatus' => $activity['status'] ?? 'in_progress',
     'initialExplanation' => $activity['explanation'] ?? null,
+    'previewToken' => $activity['preview_token'] ?? null,
+    'previewEvaluateUrl' => $activity['preview_evaluate_url'] ?? null,
     'continueUrl' => $continueUrl,
     'skipUrl' => $activity['skip_url'] ?? null,
     'resumeUrl' => $activity['resume_url'] ?? null,
@@ -28,7 +30,7 @@
         @include('learner.lessons.partials.interactive-activities.unavailable', ['activity' => $activity, 'continueUrl' => $continueUrl])
     @endif
 
-    <div x-show="feedback.message" aria-live="polite" role="status" class="mt-4 rounded-xl border px-4 py-3">
+    <div x-show="feedback.message" aria-label="Activity feedback" aria-live="polite" role="status" class="mt-4 rounded-xl border px-4 py-3">
         <span aria-hidden="true" x-text="feedback.icon === 'check' ? '✓' : feedback.icon === 'x' ? '×' : '•'"></span>
         <span x-text="feedback.message"></span>
     </div>

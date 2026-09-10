@@ -187,12 +187,18 @@ test('connector geometry uses dot-centered line coordinates', () => {
     ), [{ x1: 60, y1: 20, x2: 330, y2: 50 }]);
 });
 
-test('legacy Preview answer-key fallback remains compatible when no request evaluator exists', async () => {
+test('Preview matching posts to the evaluator and rotates its token', async () => {
     const events = [];
     const child = createMatchingActivity({
-        activityId: 'matching-preview', preview: true, answerKey: { 'left-1': 'right-1' },
+        activityId: 'matching-preview', preview: true, previewToken: 'token-1', previewEvaluateUrl: '/preview/evaluate',
         leftItems: [{ id: 'left-1', value: 'Left one' }],
-    }, undefined);
+    }, async (url, options) => {
+        assert.equal(url, '/preview/evaluate');
+        assert.deepEqual(JSON.parse(options.body), {
+            preview_token: 'token-1', action: 'match', left_id: 'left-1', right_id: 'right-1',
+        });
+        return response({ status: 'practice_completed', is_correct: true, is_complete: true, preview_token: 'token-2' });
+    });
     const parent = createInteractiveActivity({ activityId: 'matching-preview' });
     child.$dispatch = (name, detail) => events.push({ name, detail });
 
@@ -201,6 +207,7 @@ test('legacy Preview answer-key fallback remains compatible when no request eval
 
     const result = events.find(({ name }) => name === 'interactive-activity-result').detail;
     assert.equal(result.data.is_complete, true);
+    assert.equal(child.previewToken, 'token-2');
     parent.handleActivityResult(result);
     assert.deepEqual(parent.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
 });
