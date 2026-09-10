@@ -203,6 +203,7 @@ class ParentChildInvitationService
                         'can_view_progress' => true,
                         'can_view_quiz_answers' => true,
                         'can_approve_content' => false,
+                        'can_manage_support_information' => false,
                         'relationship_type' => $relationshipType,
                         'relationship_custom' => $invitation->relationship_custom,
                         'verification_pathway' => GuardianRelationshipTypes::pathway($relationshipType),

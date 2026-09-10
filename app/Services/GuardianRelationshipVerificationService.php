@@ -21,6 +21,7 @@ class GuardianRelationshipVerificationService
     public function __construct(
         private readonly GuardianRelationshipEvidenceService $evidence,
         private readonly GuardianInvitationConversationService $invitationConversations,
+        private readonly DependentSupportInformationService $supportInformation,
     ) {}
 
     public function initialStatus(string $relationshipType): string
@@ -214,30 +215,38 @@ class GuardianRelationshipVerificationService
     {
         $this->assertAdministrator($admin);
 
-        return $this->decide($relationship, $admin, $allowResubmission ? 'resubmission_required' : 'rejected', [ParentChildAccount::VERIFICATION_UNDER_REVIEW], fn (): array => [
-            'relationship_status' => $allowResubmission ? ParentChildAccount::STATUS_PENDING : ParentChildAccount::STATUS_REJECTED,
-            'relationship_verified_status' => $allowResubmission ? ParentChildAccount::VERIFICATION_RESUBMISSION_REQUIRED : ParentChildAccount::VERIFICATION_REJECTED,
-            'relationship_verification_reviewed_by' => $admin->id,
-            'relationship_verification_reviewed_at' => now(),
-            'relationship_verification_rejection_reason' => $reasonCode,
-            'relationship_verification_rejection_note' => $note,
-            'relationship_verified_at' => null,
-        ], $reasonCode, $note);
+        return $this->decide($relationship, $admin, $allowResubmission ? 'resubmission_required' : 'rejected', [ParentChildAccount::VERIFICATION_UNDER_REVIEW], function (ParentChildAccount $locked) use ($admin, $reasonCode, $note, $allowResubmission): array {
+            $this->supportInformation->resetGuardianAccessForLifecycle($locked, $admin);
+
+            return [
+                'relationship_status' => $allowResubmission ? ParentChildAccount::STATUS_PENDING : ParentChildAccount::STATUS_REJECTED,
+                'relationship_verified_status' => $allowResubmission ? ParentChildAccount::VERIFICATION_RESUBMISSION_REQUIRED : ParentChildAccount::VERIFICATION_REJECTED,
+                'relationship_verification_reviewed_by' => $admin->id,
+                'relationship_verification_reviewed_at' => now(),
+                'relationship_verification_rejection_reason' => $reasonCode,
+                'relationship_verification_rejection_note' => $note,
+                'relationship_verified_at' => null,
+            ];
+        }, $reasonCode, $note);
     }
 
     public function closePendingClaim(ParentChildAccount $relationship, User $admin, ?string $note): ParentChildAccount
     {
         $this->assertAdministrator($admin);
 
-        return $this->decide($relationship, $admin, 'claim_closed', [ParentChildAccount::VERIFICATION_PENDING, ParentChildAccount::VERIFICATION_RESUBMISSION_REQUIRED], fn (): array => [
-            'relationship_status' => ParentChildAccount::STATUS_REJECTED,
-            'relationship_verified_status' => ParentChildAccount::VERIFICATION_REJECTED,
-            'relationship_verification_reviewed_by' => $admin->id,
-            'relationship_verification_reviewed_at' => now(),
-            'relationship_verification_rejection_reason' => 'claim_closed',
-            'relationship_verification_rejection_note' => $note,
-            'relationship_verified_at' => null,
-        ], 'claim_closed', $note);
+        return $this->decide($relationship, $admin, 'claim_closed', [ParentChildAccount::VERIFICATION_PENDING, ParentChildAccount::VERIFICATION_RESUBMISSION_REQUIRED], function (ParentChildAccount $locked) use ($admin, $note): array {
+            $this->supportInformation->resetGuardianAccessForLifecycle($locked, $admin);
+
+            return [
+                'relationship_status' => ParentChildAccount::STATUS_REJECTED,
+                'relationship_verified_status' => ParentChildAccount::VERIFICATION_REJECTED,
+                'relationship_verification_reviewed_by' => $admin->id,
+                'relationship_verification_reviewed_at' => now(),
+                'relationship_verification_rejection_reason' => 'claim_closed',
+                'relationship_verification_rejection_note' => $note,
+                'relationship_verified_at' => null,
+            ];
+        }, 'claim_closed', $note);
     }
 
     public function revoke(ParentChildAccount $relationship, User $admin, string $reasonCode, ?string $note): ParentChildAccount
@@ -248,6 +257,8 @@ class GuardianRelationshipVerificationService
             if (! $locked->isVerifiedActive()) {
                 throw new InvalidArgumentException('Only an active verified relationship can be revoked.');
             }
+
+            $this->supportInformation->resetGuardianAccessForLifecycle($locked, $admin);
 
             return [
                 'relationship_status' => ParentChildAccount::STATUS_REVOKED,
@@ -288,6 +299,8 @@ class GuardianRelationshipVerificationService
                 throw new InvalidArgumentException('Only an active verified relationship can be deactivated.');
             }
 
+            $this->supportInformation->resetGuardianAccessForLifecycle($locked, $actor);
+
             $locked->update([
                 'relationship_status' => ParentChildAccount::STATUS_INACTIVE,
                 'relationship_deactivated_at' => now(),
@@ -324,6 +337,7 @@ class GuardianRelationshipVerificationService
                 'relationship_verification_revoked_at' => null,
                 'relationship_deactivated_at' => null,
                 'relationship_verified_at' => null,
+                'can_manage_support_information' => false,
             ]);
             $this->audit($locked, $actor, 'reactivation_requested', ParentChildAccount::VERIFICATION_VERIFIED, ParentChildAccount::VERIFICATION_UNDER_REVIEW, (int) $locked->current_evidence_round);
             $this->notifyAfterCommit($locked->id, 'reactivation_requested', true);

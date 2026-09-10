@@ -7,8 +7,8 @@ use App\Models\LearnerProfile;
 use App\Models\ParentChildAccount;
 use App\Models\ParentChildInvitation;
 use App\Models\User;
-use App\Services\ParentChildInvitationService;
 use App\Services\Chat\ChatAuthorizationService;
+use App\Services\ParentChildInvitationService;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -738,6 +738,7 @@ class ParentChildInvitationFlowTest extends TestCase
             'child_user_id' => $child->id,
             'verification_status' => 'rejected',
             'verification_document_path' => 'child-verifications/legacy-child.pdf',
+            'can_manage_support_information' => true,
         ]);
         $link->delete();
         $invitation = ParentChildInvitation::query()->create([
@@ -752,6 +753,7 @@ class ParentChildInvitationFlowTest extends TestCase
         app(ParentChildInvitationService::class)->respondToInvitation($child, $invitation, 'accept');
 
         $this->assertNull($link->fresh()->verification_document_path);
+        $this->assertFalse($link->fresh()->can_manage_support_information);
         $this->actingAs($child)->get(route('learner.dashboard'))->assertOk();
     }
 
@@ -897,6 +899,7 @@ class ParentChildInvitationFlowTest extends TestCase
 
         $this->assertNull($link?->relationship_verified_at);
         $this->assertFalse((bool) $link?->can_approve_content);
+        $this->assertFalse((bool) $link?->can_manage_support_information);
         $this->assertSame('grandmother', $link?->relationship_type);
         $this->assertSame('pending', $link?->relationship_status);
         $this->assertSame('under_review', $link?->relationship_verified_status);

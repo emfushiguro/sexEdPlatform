@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Conversation;
 use App\Models\ParentChildAccount;
 use App\Models\ParentChildInvitation;
-use App\Models\Conversation;
 use App\Models\User;
 use App\Services\GuardianRelationshipVerificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;

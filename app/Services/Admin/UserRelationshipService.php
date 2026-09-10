@@ -20,8 +20,7 @@ class UserRelationshipService
     public function __construct(
         private readonly AdminActivityLogService $activityLogService,
         private readonly GuardianRelationshipVerificationService $relationshipVerificationService,
-    ) {
-    }
+    ) {}
 
     public function attachParentChild(array $payload, int $actorId, ?Request $request = null): ParentChildAccount
     {
@@ -63,6 +62,7 @@ class UserRelationshipService
                 'can_view_progress' => (bool) ($payload['can_view_progress'] ?? true),
                 'can_view_quiz_answers' => (bool) ($payload['can_view_quiz_answers'] ?? true),
                 'can_approve_content' => false,
+                'can_manage_support_information' => false,
                 'relationship_verified_at' => null,
                 'is_legacy_relationship' => false,
             ];
