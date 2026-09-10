@@ -6,11 +6,15 @@ use App\Models\DependentSupportInformationAudit;
 use App\Models\DependentSupportProfile;
 use App\Models\ParentChildAccount;
 use App\Models\User;
+use App\Notifications\DependentSupportInformationChangedNotification;
+use App\Notifications\GuardianSupportAccessChangedNotification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class DependentSupportInformationService
 {
@@ -67,6 +71,7 @@ class DependentSupportInformationService
             }
 
             $this->audit($dependent->id, $actor->id, null, $action, $changedFields);
+            $this->notifyDependentAfterCommit($dependent->id, $actor->id, $action);
 
             return $profile->fresh();
         };
@@ -131,6 +136,7 @@ class DependentSupportInformationService
                 DependentSupportInformationAudit::ACTION_CREATED,
                 array_keys(array_filter($values, fn (?string $value): bool => $value !== null)),
             );
+            $this->notifyDependentAfterCommit($locked->child_user_id, $guardian->id, DependentSupportInformationAudit::ACTION_CREATED);
 
             return $profile->fresh();
         };
@@ -169,6 +175,7 @@ class DependentSupportInformationService
                 DependentSupportInformationAudit::ACTION_REMOVED,
                 null,
             );
+            $this->notifyDependentAfterCommit($dependentId, $actor->id, DependentSupportInformationAudit::ACTION_REMOVED);
         });
     }
 
@@ -203,6 +210,7 @@ class DependentSupportInformationService
                     : DependentSupportInformationAudit::ACTION_PERMISSION_REVOKED,
                 null,
             );
+            $this->notifyGuardianAccessAfterCommit($locked->parent_user_id, $dependent->id, $enabled);
 
             return $locked->fresh();
         });
@@ -312,5 +320,51 @@ class DependentSupportInformationService
             'changed_fields' => $changedFields,
             'occurred_at' => now(),
         ]);
+    }
+
+    private function notifyDependentAfterCommit(int $dependentId, int $actorId, string $action): void
+    {
+        if ($dependentId === $actorId) {
+            return;
+        }
+
+        DB::afterCommit(function () use ($dependentId, $actorId, $action): void {
+            try {
+                $dependent = User::query()->find($dependentId);
+                $actor = User::query()->find($actorId);
+
+                if ($dependent && $actor) {
+                    $dependent->notify(new DependentSupportInformationChangedNotification($actor, $action));
+                }
+            } catch (Throwable $exception) {
+                Log::warning('Failed to send dependent support-information notification.', [
+                    'dependent_user_id' => $dependentId,
+                    'actor_user_id' => $actorId,
+                    'action' => $action,
+                    'exception' => $exception::class,
+                ]);
+            }
+        });
+    }
+
+    private function notifyGuardianAccessAfterCommit(int $guardianId, int $dependentId, bool $enabled): void
+    {
+        DB::afterCommit(function () use ($guardianId, $dependentId, $enabled): void {
+            try {
+                $guardian = User::query()->find($guardianId);
+                $dependent = User::query()->find($dependentId);
+
+                if ($guardian && $dependent) {
+                    $guardian->notify(new GuardianSupportAccessChangedNotification($dependent, $enabled));
+                }
+            } catch (Throwable $exception) {
+                Log::warning('Failed to send guardian support-access notification.', [
+                    'guardian_user_id' => $guardianId,
+                    'dependent_user_id' => $dependentId,
+                    'enabled' => $enabled,
+                    'exception' => $exception::class,
+                ]);
+            }
+        });
     }
 }
