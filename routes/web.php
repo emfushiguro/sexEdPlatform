@@ -8,6 +8,7 @@ use App\Http\Controllers\Chat\StatusController as ChatStatusController;
 use App\Http\Controllers\GuardianRelationshipVerificationController;
 use App\Http\Controllers\Learner\AdminCreatorProfileController as LearnerAdminCreatorProfileController;
 use App\Http\Controllers\Learner\ContentReportController as LearnerContentReportController;
+use App\Http\Controllers\Learner\DependentSupportInformationController as LearnerDependentSupportInformationController;
 use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
 use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
 use App\Http\Controllers\Learner\InteractiveActivityController as LearnerInteractiveActivityController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Learner\ProfileCompletionController;
 use App\Http\Controllers\Learner\QuizController;
 use App\Http\Controllers\Learner\SubscriptionController;
 use App\Http\Controllers\Learner\TopicTranslationController;
+use App\Http\Controllers\Parent\DependentSupportInformationController as ParentDependentSupportInformationController;
 use App\Http\Controllers\ParentInvitationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
@@ -311,6 +313,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
         Route::get('/my-parent', [ParentVisibilityController::class, 'index'])->name('parent.index');
+        Route::patch('/my-parent/{parentChildAccount}/support-information-access', [ParentVisibilityController::class, 'updateSupportInformationAccess'])
+            ->name('parent.support-information-access.update');
+        Route::get('/my-support-information', [LearnerDependentSupportInformationController::class, 'edit'])
+            ->name('support-information.edit');
+        Route::put('/my-support-information', [LearnerDependentSupportInformationController::class, 'save'])
+            ->name('support-information.save');
+        Route::delete('/my-support-information', [LearnerDependentSupportInformationController::class, 'destroy'])
+            ->name('support-information.destroy');
 
         // Live search (AJAX)
         Route::get('/search', [\App\Http\Controllers\Learner\SearchController::class, 'index'])->name('search');
@@ -430,6 +440,12 @@ Route::middleware('auth')->group(function () {
             ->name('children.enrollments.approve');
         Route::post('/children/{child}/enrollments/{enrollment}/reject', [\App\Http\Controllers\ParentController::class, 'rejectEnrollment'])
             ->name('children.enrollments.reject');
+        Route::get('/children/{child}/support-information', [ParentDependentSupportInformationController::class, 'edit'])
+            ->name('children.support-information.edit');
+        Route::put('/children/{child}/support-information', [ParentDependentSupportInformationController::class, 'save'])
+            ->name('children.support-information.save');
+        Route::delete('/children/{child}/support-information', [ParentDependentSupportInformationController::class, 'destroy'])
+            ->name('children.support-information.destroy');
         Route::get('/relationship-verifications/{parentChildAccount}', [GuardianRelationshipVerificationController::class, 'show'])
             ->name('relationship-verifications.show');
         Route::post('/relationship-verifications/{parentChildAccount}', [GuardianRelationshipVerificationController::class, 'store'])

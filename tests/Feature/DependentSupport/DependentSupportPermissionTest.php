@@ -9,6 +9,7 @@ use App\Services\Admin\UserRelationshipService;
 use App\Services\GuardianRelationshipVerificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -16,6 +17,36 @@ use Tests\TestCase;
 class DependentSupportPermissionTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        DB::table('provinces')->insertOrIgnore([
+            'code' => '402100000',
+            'name' => 'Test Province',
+            'region_code' => '040000000',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('cities')->insertOrIgnore([
+            'code' => '402101000',
+            'name' => 'Test City',
+            'region_code' => '040000000',
+            'province_code' => '402100000',
+            'is_city' => true,
+            'city_class' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('barangays')->insertOrIgnore([
+            'code' => '402101001',
+            'name' => 'Test Barangay',
+            'city_code' => '402101000',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
 
     public function test_revocation_clears_only_the_affected_guardian_access_and_audits_it(): void
     {
@@ -142,6 +173,60 @@ class DependentSupportPermissionTest extends TestCase
         $this->assertFalse($restored->fresh()->can_manage_support_information);
     }
 
+    public function test_dependent_can_grant_and_revoke_one_guardian_without_changing_another(): void
+    {
+        [, $guardianA, $dependent] = $this->actors();
+        $guardianB = $this->guardian();
+        $relationshipA = $this->relationship($guardianA, $dependent, ['can_manage_support_information' => false]);
+        $relationshipB = $this->relationship($guardianB, $dependent, ['can_manage_support_information' => false]);
+
+        $this->actingAs($dependent)
+            ->patch(route('learner.parent.support-information-access.update', $relationshipA), ['enabled' => '1'])
+            ->assertRedirect(route('learner.parent.index'));
+
+        $this->assertTrue($relationshipA->fresh()->can_manage_support_information);
+        $this->assertFalse($relationshipB->fresh()->can_manage_support_information);
+
+        $this->actingAs($dependent)
+            ->patch(route('learner.parent.support-information-access.update', $relationshipA), ['enabled' => '0'])
+            ->assertRedirect(route('learner.parent.index'));
+
+        $this->assertFalse($relationshipA->fresh()->can_manage_support_information);
+        $this->assertFalse($relationshipB->fresh()->can_manage_support_information);
+    }
+
+    public function test_permission_endpoint_requires_exact_relationship_owner_and_valid_boolean(): void
+    {
+        [, $guardian, $dependent] = $this->actors();
+        $otherDependent = $this->dependent();
+        $relationship = $this->relationship($guardian, $dependent, ['can_manage_support_information' => false]);
+
+        $this->actingAs($otherDependent)
+            ->patch(route('learner.parent.support-information-access.update', $relationship), ['enabled' => '1'])
+            ->assertForbidden();
+
+        $this->actingAs($dependent)
+            ->patch(route('learner.parent.support-information-access.update', $relationship), ['enabled' => 'maybe'])
+            ->assertSessionHasErrors('enabled');
+    }
+
+    public function test_guardian_list_explains_permission_without_content_or_presence_state(): void
+    {
+        [, $guardian, $dependent] = $this->actors();
+        $relationship = $this->relationship($guardian, $dependent, ['can_manage_support_information' => false]);
+        $marker = 'PRIVATE_PERMISSION_PAGE_MARKER';
+
+        $this->actingAs($dependent)
+            ->get(route('learner.parent.index'))
+            ->assertOk()
+            ->assertSee('Health &amp; Support Information access', false)
+            ->assertSee('view, edit, and remove', false)
+            ->assertDontSee($marker, false)
+            ->assertDontSee('information available', false);
+
+        $this->assertFalse($relationship->fresh()->can_manage_support_information);
+    }
+
     /** @return array{0: User, 1: User, 2: User} */
     private function actors(): array
     {
@@ -171,6 +256,13 @@ class DependentSupportPermissionTest extends TestCase
             'status' => User::STATUS_ACTIVE,
         ]);
         $dependent->assignRole('learner');
+        $dependent->learnerProfile()->create([
+            'username' => 'dependent'.$dependent->id,
+            'birthdate' => now()->subYears(15)->toDateString(),
+            'gender' => 'prefer_not_to_say',
+            'city_code' => '402101000',
+            'barangay_code' => '402101001',
+        ]);
 
         return $dependent;
     }

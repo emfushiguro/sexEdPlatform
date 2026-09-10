@@ -317,6 +317,20 @@
                         </div>
                     @endif
 
+                    @if(
+                        $child->pivot?->relationship_status === \App\Models\ParentChildAccount::STATUS_ACTIVE
+                        && $child->pivot?->relationship_verified_status === \App\Models\ParentChildAccount::VERIFICATION_VERIFIED
+                        && $child->pivot?->relationship_verified_at
+                        && $child->pivot?->can_manage_support_information
+                    )
+                        <div class="px-5 py-3 border-t border-gray-100">
+                            <a href="{{ route('parent.children.support-information.edit', $child) }}"
+                               class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
+                                Health &amp; Support Information
+                            </a>
+                        </div>
+                    @endif
+
                     {{-- Stats row --}}
                     <div class="grid grid-cols-3 py-3 text-center border-t border-gray-100 divide-x divide-gray-100 bg-gray-50/50">
                         <div class="px-2">

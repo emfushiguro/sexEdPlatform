@@ -164,6 +164,21 @@
                             <span x-text="showDetails ? 'Hide Details' : 'View Details'"></span>
                         </button>
                     </div>
+
+                    <form method="POST" action="{{ route('learner.parent.support-information-access.update', $parentLink) }}" class="mt-4 rounded-xl border border-purple-100 bg-purple-50 p-4">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="enabled" value="0">
+                        <label class="flex items-start justify-between gap-4">
+                            <span>
+                                <span class="block text-sm font-semibold text-purple-950">Health &amp; Support Information access</span>
+                                <span class="mt-1 block text-xs text-gray-600">Allows this guardian to view, edit, and remove your optional support information.</span>
+                            </span>
+                            <input type="checkbox" name="enabled" value="1" class="mt-1 rounded border-purple-300"
+                                   @checked($parentLink->can_manage_support_information)
+                                   onchange="this.form.submit()">
+                        </label>
+                    </form>
                 </article>
             @endif
         @endforeach

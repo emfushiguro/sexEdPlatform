@@ -4,6 +4,7 @@ namespace App\Http\Requests\DependentSupport;
 
 use App\Models\DependentSupportProfile;
 use App\Models\User;
+use DateTimeImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -38,9 +39,29 @@ class StoreDependentSupportInformationRequest extends FormRequest
             'purpose_acknowledged' => $this->boolean('has_relevant_support_information')
                 ? ['required', 'accepted']
                 : ['nullable'],
-            'expected_updated_at' => ['nullable', 'date_format:Y-m-d H:i:s'],
+            'expected_updated_at' => self::expectedUpdatedAtRules(),
             'medical_document' => ['prohibited'],
             'documents' => ['prohibited'],
+        ];
+    }
+
+    /** @return array<int, string|\Closure> */
+    public static function expectedUpdatedAtRules(bool $required = false): array
+    {
+        return [
+            $required ? 'required' : 'nullable',
+            function (string $attribute, mixed $value, \Closure $fail): void {
+                foreach (['!Y-m-d H:i:s.u', '!Y-m-d H:i:s'] as $format) {
+                    $parsed = DateTimeImmutable::createFromFormat($format, (string) $value);
+                    $errors = DateTimeImmutable::getLastErrors();
+
+                    if ($parsed !== false && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
+                        return;
+                    }
+                }
+
+                $fail('The expected updated at field must match the format Y-m-d H:i:s[.u].');
+            },
         ];
     }
 

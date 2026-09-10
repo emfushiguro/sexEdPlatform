@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DependentSupport\UpdateGuardianSupportAccessRequest;
+use App\Models\ParentChildAccount;
+use App\Models\User;
+use App\Services\DependentSupportInformationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -37,7 +41,7 @@ class ParentVisibilityController extends Controller
         $parentLinks = $user->accessibleGuardianLinks()
             ->with([
                 'parent:id,name,email,birthdate,created_at',
-                'parent.learnerProfile:' . implode(',', $profileSelectColumns),
+                'parent.learnerProfile:'.implode(',', $profileSelectColumns),
                 'parent.learnerProfile.city:code,name',
                 'parent.learnerProfile.barangay:code,name',
             ])
@@ -54,5 +58,27 @@ class ParentVisibilityController extends Controller
         return view('learner.parent.index', [
             'parentLinks' => $parentLinks,
         ]);
+    }
+
+    public function updateSupportInformationAccess(
+        UpdateGuardianSupportAccessRequest $request,
+        ParentChildAccount $parentChildAccount,
+        DependentSupportInformationService $supportInformation,
+    ): RedirectResponse {
+        $dependent = $request->user();
+        abort_unless($dependent instanceof User, 403);
+
+        $supportInformation->setGuardianAccess(
+            $parentChildAccount,
+            $dependent,
+            $request->enabled(),
+        );
+
+        return redirect()->route('learner.parent.index')->with(
+            'success',
+            $request->enabled()
+                ? 'Guardian support-information access enabled.'
+                : 'Guardian support-information access disabled.',
+        );
     }
 }

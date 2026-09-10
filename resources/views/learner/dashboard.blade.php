@@ -84,6 +84,16 @@
             </div>
         </section>
 
+        <section class="flex flex-col items-start justify-between gap-3 rounded-2xl border border-purple-100 bg-purple-50/60 p-5 dark:border-purple-800/40 dark:bg-purple-900/10 sm:flex-row sm:items-center">
+            <div>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-white">Health &amp; Support Information</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Manage optional information relevant to your learning and participation.</p>
+            </div>
+            <a href="{{ route('learner.support-information.edit') }}" class="inline-flex items-center rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">
+                Manage information
+            </a>
+        </section>
+
         @if(($incomingParentInvitations ?? collect())->isNotEmpty())
             <section class="p-5 border bg-amber-50/60 dark:bg-amber-900/10 rounded-2xl border-amber-100/60 dark:border-amber-800/30">
                 <div class="flex items-center justify-between mb-4">
