@@ -221,6 +221,50 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
         $this->assertSame(1, $relationship->verificationDocuments()->pluck('submission_round')->unique()->sole());
     }
 
+    /**
+     * @dataProvider manuallySelectedPairRelationshipTypes
+     */
+    public function test_registration_pairs_manually_selected_front_and_back_documents(
+        string $relationshipType,
+        string $documentType,
+        ?string $relationshipNotes,
+    ): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
+
+        $parent = $this->createApprovedParent();
+        $this->completeChildWizardUntilRelationshipReview($parent, $relationshipType, 'manualpairchild'.$relationshipType);
+
+        $this->actingAs($parent)
+            ->post(route('parent.create-child.relationship-verification.store'), [
+                'documents' => [
+                    ['document_type' => $documentType, 'document_side' => 'front', 'pairing_key' => null, 'file' => UploadedFile::fake()->createWithContent('evidence-front.pdf', 'front')->mimeType('application/pdf')],
+                    ['document_type' => $documentType, 'document_side' => 'back', 'pairing_key' => null, 'file' => UploadedFile::fake()->createWithContent('evidence-back.pdf', 'back')->mimeType('application/pdf')],
+                ],
+                'relationship_notes' => $relationshipNotes,
+                'confirm_submission' => '1',
+            ])->assertRedirect(route('parent.create-child.support-information'));
+
+        $documents = ParentChildAccount::query()->latest('id')->firstOrFail()
+            ->verificationDocuments()
+            ->orderBy('display_order')
+            ->get();
+
+        $this->assertCount(2, $documents);
+        $this->assertNotNull($documents[0]->pairing_key);
+        $this->assertSame($documents[0]->pairing_key, $documents[1]->pairing_key);
+    }
+
+    public static function manuallySelectedPairRelationshipTypes(): array
+    {
+        return [
+            'adoptive parent' => ['adoptive_parent', 'adoption_order', null],
+            'non-parent' => ['aunt', 'care_arrangement', 'The guardian provides ongoing care for this dependent.'],
+        ];
+    }
+
     public function test_non_parental_registration_requires_context_before_relationship_submission(): void
     {
         Storage::fake('public');

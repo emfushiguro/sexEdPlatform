@@ -70,4 +70,41 @@ final class GuardianRelationshipEvidenceRules
 
         return $errors;
     }
+
+    public static function normalizePairingKeys(array $documents): array
+    {
+        $unpaired = [
+            'front' => [],
+            'back' => [],
+        ];
+
+        foreach ($documents as $index => $document) {
+            if (! is_array($document)) {
+                continue;
+            }
+
+            $side = (string) ($document['document_side'] ?? '');
+            $documentType = (string) ($document['document_type'] ?? '');
+            $pairingKey = trim((string) ($document['pairing_key'] ?? ''));
+
+            if ($documentType !== '' && in_array($side, ['front', 'back'], true) && $pairingKey === '') {
+                $unpaired[$side][$documentType][] = $index;
+            }
+        }
+
+        foreach ($unpaired['front'] as $documentType => $frontIndexes) {
+            $backIndexes = $unpaired['back'][$documentType] ?? [];
+            $pairCount = min(count($frontIndexes), count($backIndexes));
+
+            for ($pairIndex = 0; $pairIndex < $pairCount; $pairIndex++) {
+                $frontIndex = $frontIndexes[$pairIndex];
+                $backIndex = $backIndexes[$pairIndex];
+                $pairingKey = (string) Str::uuid();
+                $documents[$frontIndex]['pairing_key'] = $pairingKey;
+                $documents[$backIndex]['pairing_key'] = $pairingKey;
+            }
+        }
+
+        return $documents;
+    }
 }

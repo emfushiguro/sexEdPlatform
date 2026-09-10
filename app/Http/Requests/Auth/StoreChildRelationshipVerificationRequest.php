@@ -11,6 +11,15 @@ use Illuminate\Validation\Validator;
 
 class StoreChildRelationshipVerificationRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'documents' => GuardianRelationshipEvidenceRules::normalizePairingKeys(
+                (array) $this->input('documents', []),
+            ),
+        ]);
+    }
+
     public function authorize(): bool
     {
         $guardian = $this->user();

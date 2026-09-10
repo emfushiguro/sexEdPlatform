@@ -10,6 +10,15 @@ use Illuminate\Validation\Validator;
 
 class SendParentChildInvitationRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'documents' => GuardianRelationshipEvidenceRules::normalizePairingKeys(
+                (array) $this->input('documents', []),
+            ),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return true;
