@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Notifications\Admin\ChildVerificationRequestSubmittedNotification;
-use App\Models\ParentChildAccount;
 use App\Services\ParentChildVerificationService;
 use App\Support\GuardianRelationshipTypes;
 use Illuminate\Http\UploadedFile;
@@ -213,9 +213,10 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
                     ['document_type' => 'other_supporting_document', 'document_side' => 'not_applicable', 'pairing_key' => null, 'file' => UploadedFile::fake()->createWithContent('support.pdf', 'supporting-evidence')->mimeType('application/pdf')],
                 ],
                 'confirm_submission' => '1',
-            ])->assertRedirect(route('parent.create-child.done'));
+            ])->assertRedirect(route('parent.create-child.support-information'));
 
         $relationship = ParentChildAccount::query()->latest('id')->firstOrFail();
+        $this->assertTrue($relationship->can_manage_support_information);
         $this->assertSame(2, $relationship->verificationDocuments()->count());
         $this->assertSame(1, $relationship->verificationDocuments()->pluck('submission_round')->unique()->sole());
     }
@@ -246,7 +247,9 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
         $payload['relationship_notes'] = 'The guardian provides ongoing care for this dependent.';
         $this->actingAs($parent)
             ->post(route('parent.create-child.relationship-verification.store'), $payload)
-            ->assertRedirect(route('parent.create-child.done'));
+            ->assertRedirect(route('parent.create-child.support-information'));
+
+        $this->assertTrue(ParentChildAccount::query()->latest('id')->firstOrFail()->can_manage_support_information);
     }
 
     public function test_child_account_approval_does_not_verify_the_relationship(): void
@@ -416,6 +419,8 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
                     'file' => UploadedFile::fake()->create($username.'.pdf', 100, 'application/pdf'),
                 ]],
                 'confirm_submission' => '1',
-            ])->assertRedirect(route('parent.create-child.done'));
+            ])->assertRedirect(route('parent.create-child.support-information'));
+
+        $this->assertTrue(ParentChildAccount::query()->latest('id')->firstOrFail()->can_manage_support_information);
     }
 }

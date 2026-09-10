@@ -2,6 +2,7 @@
     @php
         $resultStatus = $registrationResult['status'] ?? 'pending';
         $isApproved = $resultStatus === 'approved';
+        $supportInformationResult = $supportInformationResult ?? null;
     @endphp
 
     <x-slot name="panel">
@@ -22,11 +23,20 @@
     </x-slot>
 
     <x-wizard-stepper :steps="[
-        ['label' => 'Set Up Info',    'active' => false, 'done' => true],
-        ['label' => 'Where Are You?', 'active' => false, 'done' => true],
-        ['label' => 'Login Details',  'active' => false, 'done' => true],
+        ['label' => 'Dependent Info', 'active' => false, 'done' => true],
+        ['label' => 'Location',       'active' => false, 'done' => true],
+        ['label' => 'Credentials',    'active' => false, 'done' => true],
+        ['label' => 'Validation',     'active' => false, 'done' => true],
+        ['label' => 'Relationship',   'active' => false, 'done' => true],
+        ['label' => 'Support',        'active' => false, 'done' => true],
         ['label' => 'All Set!',       'active' => true,  'done' => false],
     ]" />
+
+    @if ($supportInformationResult === 'saved')
+        <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">Support information was saved securely. You can update it later.</div>
+    @elseif ($supportInformationResult === 'skipped')
+        <div class="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">Support information was skipped. You can add it later if needed.</div>
+    @endif
 
     {{-- Success header --}}
     <div class="text-center mb-8">

@@ -1,18 +1,19 @@
 <?php
 
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\AdminAuthController;
-use App\Http\Controllers\Auth\InstructorAuthController;
-use App\Http\Controllers\Auth\ParentRegistrationController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\DependentSupportRegistrationController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
-use App\Http\Controllers\Auth\NewPasswordController;
-use App\Http\Controllers\Auth\PasswordController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\GuardianIdentityVerificationController;
 use App\Http\Controllers\Auth\GuardianOnboardingController;
+use App\Http\Controllers\Auth\InstructorAuthController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\ParentApprovalLinkController;
+use App\Http\Controllers\Auth\ParentRegistrationController;
+use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Http\Request;
@@ -33,10 +34,10 @@ Route::middleware('guest')->group(function () {
     // Parent registration routes
     Route::get('parent-registration-required', [ParentRegistrationController::class, 'requiredPage'])
         ->name('parent.registration.required');
-    
+
     Route::get('parent/register', [ParentRegistrationController::class, 'create'])
         ->name('parent.register');
-    
+
     Route::post('parent/register', [ParentRegistrationController::class, 'storePersonal'])
         ->name('parent.register.store');
 
@@ -71,7 +72,7 @@ Route::middleware('guest')->group(function () {
     // Secure admin login (hidden route with hash for security)
     Route::get('secure-panel-access', [AdminAuthController::class, 'showLoginForm'])
         ->name('admin.login');
-    
+
     Route::post('secure-panel-access', [AdminAuthController::class, 'login'])
         ->name('admin.login.submit');
 
@@ -120,11 +121,11 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
-    
+
     // Instructor logout
     Route::post('instructor/logout', [InstructorAuthController::class, 'logout'])
         ->name('instructor.logout');
-    
+
     // Admin logout
     Route::post('admin/logout', [AdminAuthController::class, 'logout'])
         ->name('admin.logout');
@@ -190,6 +191,15 @@ Route::middleware('auth')->group(function () {
 
         Route::post('parent/create-child/relationship-verification', [ParentRegistrationController::class, 'storeChildRelationshipVerification'])
             ->name('parent.create-child.relationship-verification.store');
+
+        Route::get('parent/create-child/support-information', [DependentSupportRegistrationController::class, 'show'])
+            ->name('parent.create-child.support-information');
+
+        Route::post('parent/create-child/support-information', [DependentSupportRegistrationController::class, 'store'])
+            ->name('parent.create-child.support-information.store');
+
+        Route::post('parent/create-child/support-information/skip', [DependentSupportRegistrationController::class, 'skip'])
+            ->name('parent.create-child.support-information.skip');
 
         Route::get('parent/create-child/done', [ParentRegistrationController::class, 'childDone'])
             ->name('parent.create-child.done');
