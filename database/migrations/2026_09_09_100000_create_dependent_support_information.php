@@ -37,7 +37,7 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('users', indexName: 'dsp_profiles_updated_by_fk')
                 ->nullOnDelete();
-            $table->timestamps();
+            $table->timestamps(6);
         });
 
         Schema::create('dependent_support_information_audits', function (Blueprint $table): void {

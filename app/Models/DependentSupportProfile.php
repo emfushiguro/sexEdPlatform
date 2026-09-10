@@ -9,6 +9,8 @@ class DependentSupportProfile extends Model
 {
     public const NOTICE_VERSION = '2026-09-09-v1';
 
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
     public const CONTENT_FIELDS = [
         'relevant_health_considerations',
         'accessibility_support_needs',
