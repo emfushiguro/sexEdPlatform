@@ -21,9 +21,13 @@ class DependentSupportAuthorizationTest extends TestCase
 
         $relationship->update(['can_manage_support_information' => true]);
         $this->assertTrue(Gate::forUser($guardian)->allows('view', $profile));
+        $this->assertTrue(Gate::forUser($guardian)->allows('update', $profile));
+        $this->assertTrue(Gate::forUser($guardian)->allows('delete', $profile));
 
         $relationship->update(['can_manage_support_information' => false]);
         $this->assertFalse(Gate::forUser($guardian)->allows('view', $profile));
+        $this->assertFalse(Gate::forUser($guardian)->allows('update', $profile));
+        $this->assertFalse(Gate::forUser($guardian)->allows('delete', $profile));
 
         $relationship->update([
             'relationship_status' => ParentChildAccount::STATUS_PENDING,
@@ -32,6 +36,15 @@ class DependentSupportAuthorizationTest extends TestCase
             'can_manage_support_information' => true,
         ]);
         $this->assertFalse(Gate::forUser($guardian)->allows('view', $profile));
+    }
+
+    public function test_unresolved_dependent_denies_without_throwing(): void
+    {
+        $actor = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $profile = new DependentSupportProfile;
+        $profile->setRelation('dependent', null);
+
+        $this->assertFalse(Gate::forUser($actor)->allows('view', $profile));
     }
 
     public function test_instructor_unrelated_and_suspended_guardians_are_denied(): void

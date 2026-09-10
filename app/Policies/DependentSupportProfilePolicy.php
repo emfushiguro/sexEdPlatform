@@ -15,7 +15,9 @@ class DependentSupportProfilePolicy
 
     public function view(User $actor, DependentSupportProfile $profile): bool
     {
-        return $this->canManage($actor, $profile->dependent);
+        $dependent = $profile->dependent;
+
+        return $dependent !== null && $this->canManage($actor, $dependent);
     }
 
     public function update(User $actor, DependentSupportProfile $profile): bool
