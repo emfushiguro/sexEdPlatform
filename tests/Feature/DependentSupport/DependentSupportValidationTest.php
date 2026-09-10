@@ -6,6 +6,7 @@ use App\Http\Requests\DependentSupport\StoreDependentSupportInformationRequest;
 use App\Http\Requests\DependentSupport\UpdateGuardianSupportAccessRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -34,6 +35,7 @@ class DependentSupportValidationTest extends TestCase
             'accessibility_support_needs' => '',
             'additional_relevant_information' => 'Synthetic additional context',
             'purpose_acknowledged' => '1',
+            'expected_updated_at' => '2026-09-10 10:20:30',
             'unexpected' => 'ignored',
         ]);
 
@@ -85,12 +87,13 @@ class DependentSupportValidationTest extends TestCase
         $dependent = User::factory()->create();
         $response = $this->actingAs($dependent)->from('/support-test')->post('/support-test', [
             'has_relevant_support_information' => '1',
-            'relevant_health_considerations' => ['not' => 'text'],
+            'relevant_health_considerations' => ['not' => ['text' => 'object-shaped']],
             'accessibility_support_needs' => 'Synthetic support text',
             'additional_relevant_information' => 'Synthetic private marker',
             'purpose_acknowledged' => '1',
             'medical_document' => 'file.pdf',
-            'documents' => ['file.pdf'],
+            'documents' => UploadedFile::fake()->create('support.pdf', 10, 'application/pdf'),
+            'expected_updated_at' => 'not-a-timestamp',
             'unexpected' => str_repeat('x', 1001),
         ]);
 
@@ -99,6 +102,7 @@ class DependentSupportValidationTest extends TestCase
                 'relevant_health_considerations',
                 'medical_document',
                 'documents',
+                'expected_updated_at',
             ]);
         $response->assertSessionMissing('_old_input.relevant_health_considerations');
         $response->assertSessionMissing('_old_input.accessibility_support_needs');
