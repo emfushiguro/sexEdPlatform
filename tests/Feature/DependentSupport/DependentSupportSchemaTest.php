@@ -41,7 +41,7 @@ class DependentSupportSchemaTest extends TestCase
             'dependent_user_id' => $dependent->id,
             'relevant_health_considerations' => 'Synthetic participation consideration',
             'accessibility_support_needs' => 'Synthetic reading support',
-            'additional_relevant_information' => null,
+            'additional_relevant_information' => 'Synthetic additional support context',
             'privacy_notice_version' => DependentSupportProfile::NOTICE_VERSION,
             'purpose_acknowledged_at' => now(),
             'purpose_acknowledged_by_user_id' => $actor->id,
@@ -53,7 +53,9 @@ class DependentSupportSchemaTest extends TestCase
 
         $this->assertNotSame('Synthetic participation consideration', $raw->relevant_health_considerations);
         $this->assertNotSame('Synthetic reading support', $raw->accessibility_support_needs);
+        $this->assertNotSame('Synthetic additional support context', $raw->additional_relevant_information);
         $this->assertSame('Synthetic participation consideration', $profile->fresh()->relevant_health_considerations);
+        $this->assertSame('Synthetic additional support context', $profile->fresh()->additional_relevant_information);
         $this->assertSame($profile->id, $dependent->dependentSupportProfile()->firstOrFail()->id);
 
         $this->expectException(\Illuminate\Database\QueryException::class);
