@@ -1,3 +1,5 @@
+import { createReorderSession, keyboardDestination, moveAt } from './pointer-reorder.js';
+
 const copy = (value) => JSON.parse(JSON.stringify(value));
 
 const defaultPair = () => ({ left: { value: '' }, right: { value: '' } });
@@ -92,6 +94,9 @@ export function createInteractiveActivityAuthoring(options = {}) {
             : [defaultItem(), defaultItem(), defaultItem()],
         dragIndex: null,
         dragOverIndex: null,
+        authoringReorder: createReorderSession(),
+        authoringCollection: null,
+        authoringDragAnnouncement: '',
 
         setActivityType(type) {
             this.activityType = type === 'sequencing' ? 'sequencing' : 'matching';
@@ -109,14 +114,15 @@ export function createInteractiveActivityAuthoring(options = {}) {
         },
 
         removePair(index) {
-            if (this.pairs.length > 2) this.pairs.splice(index, 1);
+            if (this.pairs.length > 2) {
+                this.pairs.splice(index, 1);
+                this.focusAfterRemoval('pairs', index);
+            }
             return this;
         },
 
         movePair(index, offset) {
-            const target = index + offset;
-            if (target < 0 || target >= this.pairs.length) return this;
-            [this.pairs[index], this.pairs[target]] = [this.pairs[target], this.pairs[index]];
+            this.pairs = moveAt(this.pairs, index, index + offset);
             return this;
         },
 
@@ -126,40 +132,118 @@ export function createInteractiveActivityAuthoring(options = {}) {
         },
 
         removeItem(index) {
-            if (this.items.length > 3) this.items.splice(index, 1);
+            if (this.items.length > 3) {
+                this.items.splice(index, 1);
+                this.focusAfterRemoval('items', index);
+            }
             return this;
         },
 
         moveItem(index, offset) {
-            const target = index + offset;
-            if (target < 0 || target >= this.items.length) return this;
-            [this.items[index], this.items[target]] = [this.items[target], this.items[index]];
+            this.items = moveAt(this.items, index, index + offset);
             return this;
+        },
+
+        authoringItems(kind) {
+            return kind === 'pairs' ? this.pairs : this.items;
+        },
+
+        authoringLabel(kind, index) {
+            const value = this.authoringItems(kind)[index];
+            return kind === 'pairs'
+                ? `${value?.left?.value || 'Pair'} / ${value?.right?.value || 'pair'}`
+                : value?.value || 'Item';
+        },
+
+        authoringAnnouncement(action, kind, index) {
+            return `${action} ${this.authoringLabel(kind, index)}, position ${index + 1} of ${this.authoringItems(kind).length}.`;
+        },
+
+        beginAuthoringDrag(kind, index) {
+            const collection = this.authoringItems(kind);
+            if (!['pairs', 'items'].includes(kind) || !Number.isInteger(index) || index < 0 || index >= collection.length) return this;
+            this.authoringReorder.cancel().begin(index);
+            this.authoringCollection = kind;
+            this.dragIndex = index;
+            this.dragOverIndex = index;
+            this.authoringDragAnnouncement = this.authoringAnnouncement('Picked up', kind, index);
+            return this;
+        },
+
+        targetAuthoringDrag(index) {
+            if (!this.authoringReorder.active() || !Number.isInteger(index)) return this;
+            const collection = this.authoringItems(this.authoringCollection);
+            const target = Math.min(collection.length - 1, Math.max(0, index));
+            this.authoringReorder.target(target);
+            this.dragOverIndex = target;
+            this.authoringDragAnnouncement = this.authoringAnnouncement('Moved', this.authoringCollection, target);
+            return this;
+        },
+
+        dropAuthoringDrag() {
+            if (!this.authoringReorder.active()) return this;
+            const kind = this.authoringCollection;
+            const collection = this.authoringItems(kind);
+            const target = this.authoringReorder.to ?? this.authoringReorder.from;
+            const next = this.authoringReorder.commit(collection);
+            if (kind === 'pairs') this.pairs = next;
+            else this.items = next;
+            this.authoringDragAnnouncement = this.authoringAnnouncement('Dropped', kind, target);
+            this.authoringCollection = null;
+            this.dragIndex = null;
+            this.dragOverIndex = null;
+            return this;
+        },
+
+        cancelAuthoringDrag() {
+            if (this.authoringReorder.active()) {
+                const kind = this.authoringCollection;
+                const index = this.authoringReorder.from;
+                this.authoringReorder.cancel();
+                this.authoringDragAnnouncement = this.authoringAnnouncement('Cancelled', kind, index);
+            }
+            this.authoringCollection = null;
+            this.dragIndex = null;
+            this.dragOverIndex = null;
+            return this;
+        },
+
+        handleAuthoringDragKey(kind, index, event = null) {
+            const key = event?.key;
+            if (![' ', 'Enter', 'Escape', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)) return this;
+            event?.preventDefault?.();
+            if (key === 'Escape') return this.cancelAuthoringDrag();
+            if (key === ' ' || key === 'Enter') {
+                if (this.authoringReorder.active()) return this.dropAuthoringDrag();
+                return this.beginAuthoringDrag(kind, index);
+            }
+            if (this.authoringCollection !== kind || !this.authoringReorder.active()) return this;
+            return this.targetAuthoringDrag(keyboardDestination(key, this.authoringReorder.to ?? index, this.authoringItems(kind).length));
+        },
+
+        focusTargetAfterRemoval(kind, removedIndex) {
+            const collection = this.authoringItems(kind);
+            if (collection.length === 0) return `[data-add-${kind}]`;
+            return `[data-${kind}-handle="${Math.min(removedIndex, collection.length - 1)}"]`;
+        },
+
+        focusAfterRemoval(kind, removedIndex) {
+            const selector = this.focusTargetAfterRemoval(kind, removedIndex);
+            this.$nextTick?.(() => this.$root?.querySelector?.(selector)?.focus?.());
+            return selector;
         },
 
         startItemDrag(index, event = null) {
-            this.dragIndex = index;
-            this.dragOverIndex = index;
-            if (event?.currentTarget?.hasPointerCapture?.(event.pointerId)) {
-                event.currentTarget.releasePointerCapture(event.pointerId);
-            }
-            return this;
+            return this.beginAuthoringDrag('items', index, event);
         },
 
         dropItem(index) {
-            if (this.dragIndex !== null && Number.isInteger(index) && this.dragIndex !== index) {
-                const [item] = this.items.splice(this.dragIndex, 1);
-                this.items.splice(index, 0, item);
-            }
-            this.dragIndex = null;
-            this.dragOverIndex = null;
-            return this;
+            if (Number.isInteger(index)) this.targetAuthoringDrag(index);
+            return this.dropAuthoringDrag();
         },
 
         cancelItemDrag() {
-            this.dragIndex = null;
-            this.dragOverIndex = null;
-            return this;
+            return this.cancelAuthoringDrag();
         },
 
         configuration() {

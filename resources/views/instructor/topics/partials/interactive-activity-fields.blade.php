@@ -42,8 +42,9 @@
          pairs: @js(old('configuration.pairs', $fieldActivity?->activity_type?->value === 'matching' ? ($fieldActivity->configuration['pairs'] ?? []) : [])),
          items: @js(old('configuration.items', $fieldActivity?->activity_type?->value === 'sequencing' ? ($fieldActivity->configuration['items'] ?? []) : [])),
      })"
-     @pointerup.window="dropItem(dragOverIndex)"
-     @pointercancel.window="cancelItemDrag()"
+     @pointerup.window="dropAuthoringDrag()"
+     @pointercancel.window="cancelAuthoringDrag()"
+     @keydown.escape.window="if (authoringReorder.active()) cancelAuthoringDrag()"
      x-cloak>
     <input type="hidden" name="activity_type" x-model="activityType">
 

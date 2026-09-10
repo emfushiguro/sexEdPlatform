@@ -70,6 +70,34 @@ class InteractiveActivityAuthoringTest extends TestCase
         $this->assertSame([1, 2, 3], array_column($activity->configuration['items'], 'correct_position'));
     }
 
+    public function test_create_and_edit_forms_render_handle_based_activity_builders(): void
+    {
+        [$instructor, $lesson] = $this->authoringFixture();
+
+        $this->actingAs($instructor)
+            ->get(route('instructor.topics.create', ['lesson' => $lesson]))
+            ->assertOk()
+            ->assertSee(':data-pairs-handle', false)
+            ->assertSee(':data-items-handle', false)
+            ->assertSee('interactive-authoring-relationship', false)
+            ->assertSee('Correct position', false)
+            ->assertDontSee('Move pair 1 up')
+            ->assertDontSee('Move item 1 up');
+
+        [$parent, $activity] = $this->insideActivity($lesson);
+
+        $this->actingAs($instructor)
+            ->get(route('instructor.interactive-activities.edit', $activity))
+            ->assertOk()
+            ->assertSee(':data-pairs-handle', false)
+            ->assertSee(':data-items-handle', false)
+            ->assertSee('interactive-authoring-relationship', false)
+            ->assertDontSee('Move pair 1 up')
+            ->assertDontSee('Move item 1 up');
+
+        $this->assertNotNull($parent);
+    }
+
     public function test_inside_topic_activity_uses_a_server_block_reference_and_same_lesson_parent(): void
     {
         [$instructor, $lesson] = $this->authoringFixture();

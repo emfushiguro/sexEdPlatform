@@ -99,6 +99,34 @@
         .interactive-sequence-row,
         .interactive-sequence-overlay { transition: none; transform: none; }
     }
+
+    .interactive-authoring-pair,
+    .interactive-authoring-sequence-row {
+        transition: opacity 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+    }
+
+    .interactive-authoring-row--dragged {
+        @apply border-purple-400 bg-purple-50 shadow-lg outline outline-2 outline-purple-300;
+        opacity: 0.55;
+    }
+
+    .interactive-authoring-handle { touch-action: none; }
+    .interactive-authoring-insertion-bar {
+        @apply h-1 rounded-full bg-purple-600;
+        box-shadow: 0 0 0 3px rgb(124 58 237 / 0.15);
+    }
+
+    .interactive-authoring-relationship {
+        @apply inline-flex min-w-16 items-center justify-center gap-1;
+    }
+
+    .interactive-authoring-dot { @apply h-3 w-3 rounded-full bg-purple-600; }
+    .interactive-authoring-line { @apply h-0.5 flex-1 bg-purple-300; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .interactive-authoring-pair,
+        .interactive-authoring-sequence-row { transition: none; }
+    }
 }
 
 /* Button Variants */

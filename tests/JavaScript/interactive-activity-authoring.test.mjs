@@ -35,6 +35,36 @@ test('sequencing serializes order and preserves stored ids', () => {
     assert.match(authoring.serializedConfiguration(), /"schema_version":1/);
 });
 
+test('matching and sequencing use the shared authoring reorder session', () => {
+    const pair = (id) => ({ id, left: { id: `left-${id}`, value: id }, right: { id: `right-${id}`, value: id } });
+    const item = (id) => ({ id, value: id });
+    const authoring = createInteractiveActivityAuthoring({
+        pairs: [pair('one'), pair('two')],
+        items: [item('one'), item('two'), item('three')],
+    });
+
+    authoring.beginAuthoringDrag('pairs', 0).targetAuthoringDrag(1).dropAuthoringDrag();
+    assert.deepEqual(authoring.pairs.map(({ id }) => id), ['two', 'one']);
+
+    authoring.setActivityType('sequencing');
+    authoring.beginAuthoringDrag('items', 2).targetAuthoringDrag(0).dropAuthoringDrag();
+    assert.deepEqual(authoring.configuration().items.map(({ id }) => id), ['three', 'one', 'two']);
+    assert.deepEqual(authoring.configuration().items.map(({ correct_position }) => correct_position), [1, 2, 3]);
+});
+
+test('authoring drag cancellation preserves order and removal returns a focus selector', () => {
+    const authoring = createInteractiveActivityAuthoring({
+        pairs: [{ id: 'one' }, { id: 'two' }, { id: 'three' }],
+        items: [{ id: 'one' }, { id: 'two' }, { id: 'three' }, { id: 'four' }],
+    });
+
+    authoring.beginAuthoringDrag('pairs', 0).targetAuthoringDrag(2).cancelAuthoringDrag();
+    assert.deepEqual(authoring.pairs.map(({ id }) => id), ['one', 'two', 'three']);
+    authoring.removePair(2);
+    assert.equal(authoring.focusTargetAfterRemoval('pairs', 2), '[data-pairs-handle="1"]');
+    assert.equal(authoring.focusTargetAfterRemoval('pairs', 0), '[data-pairs-handle="0"]');
+});
+
 test('sequencing supports pointer reordering alongside buttons', () => {
     const authoring = createInteractiveActivityAuthoring({
         activityType: 'sequencing',
@@ -143,8 +173,8 @@ test('preview local adapters evaluate matching and sequencing without network na
         leftItems: [{ id: 'left', value: 'Left' }],
         rightItems: [{ id: 'right', value: 'Right' }],
     }, () => { throw new Error('network disabled'); });
-    matching.selectLeft('left').selectRight('right');
-    const matchingResult = await matching.submitMatch();
+    matching.startConnection('left', 'left');
+    const matchingResult = await matching.finishConnection('right', 'right');
     assert.equal(matchingResult.is_correct, true);
     assert.equal(matching.status, 'completed');
 
