@@ -13,16 +13,25 @@ use InvalidArgumentException;
 class ParentChildAccount extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_REJECTED = 'rejected';
+
     public const STATUS_INACTIVE = 'inactive';
+
     public const STATUS_REVOKED = 'revoked';
 
     public const VERIFICATION_PENDING = 'pending';
+
     public const VERIFICATION_UNDER_REVIEW = 'under_review';
+
     public const VERIFICATION_RESUBMISSION_REQUIRED = 'resubmission_required';
+
     public const VERIFICATION_VERIFIED = 'verified';
+
     public const VERIFICATION_REJECTED = 'rejected';
+
     public const VERIFICATION_REVOKED = 'revoked';
 
     use SoftDeletes;
@@ -48,6 +57,7 @@ class ParentChildAccount extends Model
         'can_view_progress',
         'can_view_quiz_answers',
         'can_approve_content',
+        'can_manage_support_information',
         'verification_status',
         'verification_document_path',
         'verification_rejection_reason',
@@ -61,6 +71,7 @@ class ParentChildAccount extends Model
         'can_view_progress' => 'boolean',
         'can_view_quiz_answers' => 'boolean',
         'can_approve_content' => 'boolean',
+        'can_manage_support_information' => 'boolean',
         'is_legacy_relationship' => 'boolean',
         'verification_reviewed_at' => 'datetime',
         'verification_approved_at' => 'datetime',
@@ -159,7 +170,12 @@ class ParentChildAccount extends Model
 
     public function scopeWithPermission(Builder $query, string $permission): Builder
     {
-        $allowed = ['can_view_progress', 'can_view_quiz_answers', 'can_approve_content'];
+        $allowed = [
+            'can_view_progress',
+            'can_view_quiz_answers',
+            'can_approve_content',
+            'can_manage_support_information',
+        ];
         if (! in_array($permission, $allowed, true)) {
             throw new InvalidArgumentException('Unknown guardian relationship permission.');
         }
