@@ -59,12 +59,20 @@ class GuardianRelationshipLifecycleTest extends TestCase
         [$admin, $firstGuardian, $dependent, $first] = $this->actorsAndVerifiedRelationship();
         $secondGuardian = $this->approvedGuardian();
         $second = $this->verifiedRelationship($secondGuardian, $dependent);
+        $first->update(['can_manage_support_information' => true]);
+        $second->update(['can_manage_support_information' => true]);
 
         app(GuardianRelationshipVerificationService::class)->revoke($first, $admin, 'cannot_verify', null);
 
         $this->assertSame('revoked', $first->fresh()->relationship_status);
         $this->assertSame('active', $second->fresh()->relationship_status);
         $this->assertSame('verified', $second->fresh()->relationship_verified_status);
+        $this->assertFalse($first->fresh()->can_manage_support_information);
+        $this->assertTrue($second->fresh()->can_manage_support_information);
+        $this->assertDatabaseHas('dependent_support_information_audits', [
+            'parent_child_account_id' => $first->id,
+            'action' => 'permission_revoked',
+        ]);
     }
 
     public function test_admin_cannot_approve_without_current_round_evidence(): void

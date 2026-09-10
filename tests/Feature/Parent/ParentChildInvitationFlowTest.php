@@ -8,6 +8,7 @@ use App\Models\ParentChildAccount;
 use App\Models\ParentChildInvitation;
 use App\Models\User;
 use App\Services\Chat\ChatAuthorizationService;
+use App\Services\GuardianRelationshipVerificationService;
 use App\Services\ParentChildInvitationService;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -864,6 +865,8 @@ class ParentChildInvitationFlowTest extends TestCase
 
         $parent = $this->createApprovedParent();
         $child = $this->createLearner('acceptchild', 11);
+        $admin = User::factory()->create(['role' => 'admin', 'status' => User::STATUS_ACTIVE]);
+        $admin->assignRole('admin');
         $stagedPath = 'guardian-relationship-invitations/legacy-accept/court-order.pdf';
         Storage::disk('local')->put($stagedPath, 'court order');
 
@@ -905,6 +908,9 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->assertSame('under_review', $link?->relationship_verified_status);
         $this->assertSame(1, $link?->current_evidence_round);
         $this->assertNotNull($link?->relationship_verification_submitted_at);
+
+        $approved = app(GuardianRelationshipVerificationService::class)->approve($link, $admin);
+        $this->assertFalse($approved->fresh()->can_manage_support_information);
     }
 
     public function test_accepted_existing_learner_invitation_appears_in_admin_relationship_review(): void
