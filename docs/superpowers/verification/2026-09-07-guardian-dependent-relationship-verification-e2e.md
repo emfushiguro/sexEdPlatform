@@ -35,6 +35,18 @@ The implementation plan's ten tasks were executed on `main`. The feature now use
 
 Environment: PHP 8.2.12, PHPUnit 11.5.46, MySQL test database `cc_db_test` as configured by `phpunit.xml`.
 
+## Follow-up: manually selected front/back documents
+
+On 2026-09-10, dependent registration was reproduced with an adoptive-parent and a non-parent relationship using the same document category for manually selected `front` and `back` files. Both requests previously failed with duplicate pairing-key errors because the browser form left both hidden keys empty.
+
+Commit `c8c3c51` normalizes matching unkeyed front/back rows before validation in dependent registration, relationship resubmission, and invitation requests. Explicit pairing keys and incomplete or mismatched pairs retain the existing validation behavior.
+
+The regression test was first run red with both reported errors, then green after the fix:
+
+- Child registration plus evidence suites: 25 tests, 151 assertions passed.
+- Invitation suite: 27 tests, 218 assertions passed.
+- Full relationship matrix: 153 tests, 859 assertions, with one unrelated pre-existing dirty admin-copy assertion failure; all pairing and relationship evidence cases passed.
+
 ## Acceptance checklist
 
 - Every selectable relationship type resolves to an evidence pathway and starts pending: verified by policy and lifecycle tests.
