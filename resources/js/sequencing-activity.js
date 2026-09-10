@@ -1,9 +1,7 @@
+import { moveAt } from './pointer-reorder.js';
+
 export function moveItem(order, index, delta) {
-    const target = index + delta;
-    if (index < 0 || index >= order.length || target < 0 || target >= order.length) return [...order];
-    const next = [...order];
-    [next[index], next[target]] = [next[target], next[index]];
-    return next;
+    return moveAt(order, index, index + delta);
 }
 
 async function readResponse(response) {
