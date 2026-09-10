@@ -2,32 +2,34 @@
 
 namespace App\Providers;
 
-use App\Events\PaymentSuccessful;
 use App\Events\Chat\MessageSent as ChatMessageSent;
+use App\Events\PaymentSuccessful;
 use App\Events\SubscriptionCreated;
 use App\Events\SubscriptionExpired;
-use App\Listeners\HandlePaymentSuccessful;
 use App\Listeners\Chat\SendInAppChatMessageNotification;
+use App\Listeners\HandlePaymentSuccessful;
 use App\Listeners\HandleSubscriptionCreated;
 use App\Listeners\HandleSubscriptionExpired;
-use App\Models\Payment;
-use App\Models\Subscription;
-use App\Models\SubscriptionPlan;
-use App\Models\InstructorProfile;
-use App\Models\InstructorApplication;
+use App\Models\AdminCreatorProfile;
 use App\Models\ContentReport;
+use App\Models\DependentSupportProfile;
+use App\Models\InstructorApplication;
+use App\Models\InstructorProfile;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ParentChildAccount;
+use App\Models\Payment;
 use App\Models\Quiz;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
 use App\Models\User;
-use App\Models\AdminCreatorProfile;
 use App\Observers\PaymentObserver;
 use App\Policies\AdminCreatorProfilePolicy;
-use App\Policies\LessonPolicy;
+use App\Policies\DependentSupportProfilePolicy;
 use App\Policies\InstructorProfilePolicy;
+use App\Policies\LessonPolicy;
 use App\Policies\ModulePolicy;
 use App\Policies\ParentChildPolicy;
 use App\Policies\QuizPolicy;
@@ -55,7 +57,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Gate::before(function (?User $user, string $ability) {
+        Gate::before(function (?User $user, string $ability, array $arguments = []) {
+            $subject = $arguments[0] ?? null;
+
+            if ($subject instanceof DependentSupportProfile || $subject === DependentSupportProfile::class) {
+                return null;
+            }
+
             if ($user?->hasRole('admin')) {
                 return true;
             }
@@ -83,6 +91,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(User::class, ParentChildPolicy::class);
+        Gate::policy(DependentSupportProfile::class, DependentSupportProfilePolicy::class);
         Gate::policy(AdminCreatorProfile::class, AdminCreatorProfilePolicy::class);
         Gate::policy(InstructorProfile::class, InstructorProfilePolicy::class);
         Gate::policy(Module::class, ModulePolicy::class);
