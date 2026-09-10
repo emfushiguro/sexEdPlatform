@@ -217,3 +217,53 @@ test('loadPayload replaces sequencing state from a practice payload', () => {
     assert.equal(activity.dragIndex, null);
     assert.equal(activity.dragOverIndex, null);
 });
+
+test('pointer drag keeps the committed order stable until drop', () => {
+    const activity = createSequencingActivity({ initialOrder: ['one', 'two', 'three'] });
+
+    activity.beginPointerDrag(0, { clientX: 20, clientY: 40 });
+    activity.setDragTarget(2);
+
+    assert.deepEqual(activity.order, ['one', 'two', 'three']);
+    assert.deepEqual(activity.candidateOrder, ['two', 'three', 'one']);
+    activity.dropPointerDrag();
+    assert.deepEqual(activity.order, ['two', 'three', 'one']);
+});
+
+test('keyboard drag supports pickup, movement, drop, and cancellation', () => {
+    const activity = createSequencingActivity({ initialOrder: ['one', 'two', 'three'] });
+    const event = (key) => ({ key, preventDefault() {} });
+
+    activity.handleDragKey(1, event(' '));
+    activity.handleDragKey(1, event('Home'));
+    activity.handleDragKey(1, event('Enter'));
+    assert.deepEqual(activity.order, ['two', 'one', 'three']);
+    assert.match(activity.dragAnnouncement, /Dropped/);
+
+    activity.handleDragKey(1, event('Enter'));
+    activity.handleDragKey(1, event('Escape'));
+    assert.deepEqual(activity.order, ['two', 'one', 'three']);
+    assert.match(activity.dragAnnouncement, /Cancelled/);
+});
+
+test('pointer cancellation restores the committed order and does not save', async () => {
+    let calls = 0;
+    const activity = createSequencingActivity({
+        initialOrder: ['one', 'two', 'three'],
+        stateUrl: '/state',
+        saveDebounceMs: 1,
+    }, async () => {
+        calls += 1;
+        return response({ status: 'in_progress' });
+    });
+
+    activity.beginPointerDrag(0, { clientX: 20, clientY: 40 });
+    activity.setDragTarget(2);
+    activity.cancelDrag();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    assert.deepEqual(activity.order, ['one', 'two', 'three']);
+    assert.deepEqual(activity.candidateOrder, ['one', 'two', 'three']);
+    assert.equal(calls, 0);
+    assert.match(activity.dragAnnouncement, /Cancelled/);
+});

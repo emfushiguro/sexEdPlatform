@@ -1,4 +1,4 @@
-import { moveAt } from './pointer-reorder.js';
+import { createReorderSession, edgeScrollDelta, keyboardDestination, moveAt } from './pointer-reorder.js';
 
 export function moveItem(order, index, delta) {
     return moveAt(order, index, index + delta);
@@ -14,8 +14,10 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
     const initialOrder = Array.isArray(config.initialOrder) ? [...config.initialOrder] : [];
     const activity = {
         order: initialOrder,
-        initialOrder,
+        initialOrder: [...initialOrder],
+        candidateOrder: [...initialOrder],
         items: Array.isArray(config.items) ? [...config.items] : [],
+        activityId: config.activityId,
         status: config.initialStatus || 'in_progress',
         revision: config.revision ?? 1,
         error: '',
@@ -25,6 +27,13 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         pendingSave: null,
         dragIndex: null,
         dragOverIndex: null,
+        reorder: createReorderSession(),
+        draggedId: null,
+        dragPoint: null,
+        dragRect: null,
+        dragAnnouncement: '',
+        autoScrollFrame: null,
+        lastPointerY: null,
 
         isLocked() {
             return this.status === 'completed' || this.submitting;
@@ -48,7 +57,10 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         },
 
         move(index, delta) {
-            if (!this.isLocked()) this.order = moveItem(this.order, index, delta);
+            if (!this.isLocked()) {
+                this.order = moveItem(this.order, index, delta);
+                this.candidateOrder = [...this.order];
+            }
             this.scheduleSave();
             return this;
         },
@@ -59,33 +71,176 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             return this.move(index, delta);
         },
 
-        startItemDrag(index, event = null) {
-            if (this.isLocked()) return this;
+        isDragging() {
+            return this.reorder.active();
+        },
+
+        announcement(action, index) {
+            const label = this.itemFor(this.draggedId)?.value ?? 'Item';
+            return `${action} ${label}, position ${index + 1} of ${this.order.length}.`;
+        },
+
+        dragOverlayStyle() {
+            if (!this.dragPoint) return {};
+            return {
+                left: `${this.dragPoint.x + 12}px`,
+                top: `${this.dragPoint.y + 12}px`,
+                width: this.dragRect?.width ? `${this.dragRect.width}px` : 'auto',
+                minHeight: this.dragRect?.height ? `${this.dragRect.height}px` : '2.75rem',
+            };
+        },
+
+        beginPointerDrag(index, event = null) {
+            if (this.isLocked() || !Number.isInteger(index) || index < 0 || index >= this.order.length) return this;
+
+            this.feedback = '';
+            this.error = '';
+            this.reorder.cancel().begin(index);
+            this.draggedId = this.order[index];
+            this.dragPoint = Number.isFinite(event?.clientX) && Number.isFinite(event?.clientY)
+                ? { x: event.clientX, y: event.clientY }
+                : null;
+            const row = event?.currentTarget?.closest?.('[data-sequence-index]') ?? event?.currentTarget;
+            this.dragRect = row?.getBoundingClientRect?.() ?? null;
+            this.lastPointerY = Number.isFinite(event?.clientY) ? event.clientY : null;
+            this.candidateOrder = [...this.order];
             this.dragIndex = index;
             this.dragOverIndex = index;
-            if (event?.currentTarget?.hasPointerCapture?.(event.pointerId)) {
-                event.currentTarget.releasePointerCapture(event.pointerId);
-            }
+            this.dragAnnouncement = this.announcement('Picked up', index);
+            this.startAutoScroll();
             return this;
+        },
+
+        setDragTarget(index) {
+            if (!this.isDragging() || !Number.isInteger(index) || this.order.length === 0) return this;
+            const target = Math.min(this.order.length - 1, Math.max(0, index));
+            this.reorder.target(target);
+            this.candidateOrder = moveAt(this.order, this.reorder.from, target);
+            this.dragOverIndex = target;
+            this.dragAnnouncement = this.announcement('Moved', target);
+            return this;
+        },
+
+        resolveDragIndex(event) {
+            const pointTarget = typeof document !== 'undefined' && typeof document.elementFromPoint === 'function'
+                && Number.isFinite(event?.clientX) && Number.isFinite(event?.clientY)
+                ? document.elementFromPoint(event.clientX, event.clientY)
+                : event?.target;
+            const row = pointTarget?.closest?.('[data-sequence-index]');
+            const index = Number(row?.dataset?.sequenceIndex);
+            return Number.isInteger(index) ? index : null;
+        },
+
+        movePointerDrag(event) {
+            if (!this.isDragging()) return this;
+            if (Number.isFinite(event?.clientX) && Number.isFinite(event?.clientY)) {
+                this.dragPoint = { x: event.clientX, y: event.clientY };
+                this.lastPointerY = event.clientY;
+            }
+            const target = this.resolveDragIndex(event);
+            if (target !== null) this.setDragTarget(target);
+            this.startAutoScroll();
+            return this;
+        },
+
+        dropPointerDrag(event = null) {
+            if (!this.isDragging()) return this;
+            const eventTarget = event && typeof event === 'object' ? this.resolveDragIndex(event) : null;
+            if (event && typeof event === 'object' && eventTarget === null) return this.cancelDrag();
+            if (eventTarget !== null) this.setDragTarget(eventTarget);
+
+            const to = this.reorder.to ?? this.reorder.from;
+            const label = this.itemFor(this.draggedId)?.value ?? 'Item';
+            const next = this.reorder.commit(this.order);
+            const changed = JSON.stringify(next) !== JSON.stringify(this.order);
+            this.order = next;
+            this.candidateOrder = [...next];
+            this.stopAutoScroll();
+            this.draggedId = null;
+            this.dragPoint = null;
+            this.dragRect = null;
+            this.dragIndex = null;
+            this.dragOverIndex = null;
+            this.lastPointerY = null;
+            this.dragAnnouncement = `Dropped ${label}, position ${to + 1} of ${this.order.length}.`;
+            if (changed) this.scheduleSave();
+            return this;
+        },
+
+        cancelDrag() {
+            if (!this.isDragging()) return this;
+            const index = this.reorder.from ?? this.dragIndex ?? 0;
+            const label = this.itemFor(this.draggedId)?.value ?? 'Item';
+            this.reorder.cancel();
+            this.candidateOrder = [...this.order];
+            this.stopAutoScroll();
+            this.draggedId = null;
+            this.dragPoint = null;
+            this.dragRect = null;
+            this.dragIndex = null;
+            this.dragOverIndex = null;
+            this.lastPointerY = null;
+            this.dragAnnouncement = `Cancelled ${label}, position ${index + 1} of ${this.order.length}.`;
+            return this;
+        },
+
+        handleDragKey(index, event = null) {
+            const key = event?.key;
+            if (![' ', 'Enter', 'Escape', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)) return this;
+            event?.preventDefault?.();
+
+            if (key === 'Escape') return this.cancelDrag();
+            if (key === ' ' || key === 'Enter') {
+                if (this.isDragging()) return this.dropPointerDrag();
+                return this.beginPointerDrag(index, event);
+            }
+            if (!this.isDragging()) return this;
+            return this.setDragTarget(keyboardDestination(key, this.reorder.to ?? index, this.order.length));
+        },
+
+        startAutoScroll() {
+            if (!this.isDragging() || this.autoScrollFrame !== null || typeof window === 'undefined') return this;
+            const requestFrame = window.requestAnimationFrame?.bind(window);
+            if (!requestFrame) return this;
+            const tick = () => {
+                this.autoScrollFrame = null;
+                if (!this.isDragging()) return;
+                const delta = Number.isFinite(this.lastPointerY)
+                    ? edgeScrollDelta(this.lastPointerY, window.innerHeight)
+                    : 0;
+                if (delta && typeof window.scrollBy === 'function') window.scrollBy({ top: delta, left: 0, behavior: 'auto' });
+                this.autoScrollFrame = requestFrame(tick);
+            };
+            this.autoScrollFrame = requestFrame(tick);
+            return this;
+        },
+
+        stopAutoScroll() {
+            if (this.autoScrollFrame !== null) {
+                if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.autoScrollFrame);
+                else clearTimeout(this.autoScrollFrame);
+            }
+            this.autoScrollFrame = null;
+            return this;
+        },
+
+        teardown() {
+            if (this.isDragging()) this.cancelDrag();
+            else this.stopAutoScroll();
+            return this;
+        },
+
+        startItemDrag(index, event = null) {
+            return this.beginPointerDrag(index, event);
         },
 
         dropItem(index) {
-            if (!this.isLocked() && this.dragIndex !== null && Number.isInteger(index) && this.dragIndex !== index) {
-                const next = [...this.order];
-                const [item] = next.splice(this.dragIndex, 1);
-                next.splice(index, 0, item);
-                this.order = next;
-                this.scheduleSave();
-            }
-            this.dragIndex = null;
-            this.dragOverIndex = null;
-            return this;
+            if (Number.isInteger(index)) this.setDragTarget(index);
+            return this.dropPointerDrag();
         },
 
         cancelItemDrag() {
-            this.dragIndex = null;
-            this.dragOverIndex = null;
-            return this;
+            return this.cancelDrag();
         },
 
         scheduleSave() {
@@ -118,6 +273,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
 
         async checkAnswer() {
             if (this.isLocked()) return null;
+            if (this.isDragging()) this.dropPointerDrag();
             clearTimeout(this.saveTimer);
             this.submitting = true;
             this.feedback = '';
@@ -159,9 +315,17 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             this.items = Array.isArray(payload.items) ? [...payload.items] : [];
             this.order = this.items.map((item) => item.id);
             this.initialOrder = [...this.order];
-            this.status = status;
+            this.candidateOrder = [...this.order];
+            this.status = status ?? this.status;
             this.feedback = '';
             this.error = '';
+            this.reorder.cancel();
+            this.stopAutoScroll();
+            this.draggedId = null;
+            this.dragPoint = null;
+            this.dragRect = null;
+            this.dragAnnouncement = '';
+            this.lastPointerY = null;
             this.dragIndex = null;
             this.dragOverIndex = null;
             return this;
@@ -169,9 +333,17 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
 
         resetPractice() {
             this.order = [...this.initialOrder];
+            this.candidateOrder = [...this.order];
             this.status = 'practice';
             this.feedback = '';
             this.error = '';
+            this.reorder.cancel();
+            this.stopAutoScroll();
+            this.draggedId = null;
+            this.dragPoint = null;
+            this.dragRect = null;
+            this.dragAnnouncement = '';
+            this.lastPointerY = null;
             return this;
         },
     };

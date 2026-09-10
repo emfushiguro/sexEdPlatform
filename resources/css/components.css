@@ -74,6 +74,31 @@
         .interactive-match-line--pending,
         .interactive-match-line--incorrect { stroke-dasharray: none; }
     }
+
+    .interactive-sequence-row {
+        transition: opacity 120ms ease, box-shadow 120ms ease, transform 120ms ease, min-height 120ms ease;
+    }
+
+    .interactive-sequence-row--dragged {
+        @apply border-purple-400 bg-purple-50 shadow-lg outline outline-2 outline-purple-300;
+        opacity: 0.45;
+    }
+
+    .interactive-sequence-source { opacity: 0.7; }
+    .interactive-sequence-handle { touch-action: none; }
+    .interactive-sequence-insertion-bar {
+        @apply h-1 rounded-full bg-purple-600;
+        box-shadow: 0 0 0 3px rgb(124 58 237 / 0.15);
+    }
+
+    .interactive-sequence-overlay {
+        transform: rotate(1deg) scale(1.02);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .interactive-sequence-row,
+        .interactive-sequence-overlay { transition: none; transform: none; }
+    }
 }
 
 /* Button Variants */

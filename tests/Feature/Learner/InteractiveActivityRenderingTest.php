@@ -256,6 +256,29 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringNotContainsString('lg:hidden', $html);
     }
 
+    public function test_sequencing_activity_renders_handle_dragging_without_visible_move_buttons(): void
+    {
+        $html = view('learner.lessons.partials.interactive-activities.sequencing', [
+            'activity' => ['id' => 'sequencing-42', 'payload' => [
+                'items' => [
+                    ['id' => 'item-1', 'value' => 'First'],
+                    ['id' => 'item-2', 'value' => 'Second'],
+                ],
+            ]],
+        ])->render();
+
+        $this->assertStringContainsString('sequencing-drag-instructions', $html);
+        $this->assertStringContainsString('aria-describedby="sequencing-drag-instructions"', $html);
+        $this->assertStringContainsString('@pointerdown.prevent.stop="beginPointerDrag(index, $event)"', $html);
+        $this->assertStringContainsString('aria-pressed="isDragging() && draggedId === itemId"', $html);
+        $this->assertStringContainsString('x-show="isDragging()"', $html);
+        $this->assertStringContainsString('x-text="dragAnnouncement"', $html);
+        $this->assertStringNotContainsString('Move First up', $html);
+        $this->assertStringNotContainsString('Move First down', $html);
+        $this->assertStringNotContainsString('>â†‘<', $html);
+        $this->assertStringNotContainsString('>â†“<', $html);
+    }
+
     public function test_activity_controls_have_minimum_hit_targets_and_visible_focus_styles(): void
     {
         $renderedControls = [
