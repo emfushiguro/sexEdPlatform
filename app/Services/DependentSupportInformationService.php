@@ -91,9 +91,12 @@ class DependentSupportInformationService
     ): DependentSupportProfile {
         $dependentId = (int) $relationship->child_user_id;
         $operation = function () use ($relationship, $guardian, $payload): DependentSupportProfile {
-            $locked = ParentChildAccount::query()->lockForUpdate()->findOrFail($relationship->id);
+            $locked = ParentChildAccount::withTrashed()
+                ->lockForUpdate()
+                ->find($relationship->id);
 
-            if ((int) $locked->parent_user_id !== (int) $guardian->id
+            if (! $locked
+                || (int) $locked->parent_user_id !== (int) $guardian->id
                 || $locked->trashed()
                 || in_array($locked->relationship_status, [
                     ParentChildAccount::STATUS_REJECTED,
@@ -209,18 +212,24 @@ class DependentSupportInformationService
         ParentChildAccount $relationship,
         User $actor,
     ): void {
-        if (! $relationship->can_manage_support_information) {
-            return;
-        }
+        DB::transaction(function () use ($relationship, $actor): void {
+            $locked = ParentChildAccount::withTrashed()
+                ->lockForUpdate()
+                ->find($relationship->id);
 
-        $relationship->update(['can_manage_support_information' => false]);
-        $this->audit(
-            $relationship->child_user_id,
-            $actor->id,
-            $relationship->id,
-            DependentSupportInformationAudit::ACTION_PERMISSION_REVOKED,
-            null,
-        );
+            if (! $locked || ! $locked->can_manage_support_information) {
+                return;
+            }
+
+            $locked->update(['can_manage_support_information' => false]);
+            $this->audit(
+                $locked->child_user_id,
+                $actor->id,
+                $locked->id,
+                DependentSupportInformationAudit::ACTION_PERMISSION_REVOKED,
+                null,
+            );
+        });
     }
 
     private function assertFresh(DependentSupportProfile $profile, ?string $expected): void

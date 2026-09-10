@@ -234,6 +234,22 @@ class DependentSupportServiceTest extends TestCase
         $service->remove($profile, $unrelated, $profile->getRawOriginal('updated_at'));
     }
 
+    public function test_registration_rejects_trashed_relationship_with_authorization_exception(): void
+    {
+        $guardian = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $dependent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $relationship = $this->relationship($guardian, $dependent);
+        $relationship->delete();
+
+        $this->expectException(AuthorizationException::class);
+
+        app(DependentSupportInformationService::class)->saveDuringRegistration(
+            $relationship,
+            $guardian,
+            ['relevant_health_considerations' => 'Private detail'],
+        );
+    }
+
     /** @param array<string, mixed> $overrides */
     private function relationship(User $guardian, User $dependent, array $overrides = []): ParentChildAccount
     {
