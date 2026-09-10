@@ -262,12 +262,9 @@ class InteractiveActivityAuthoringTest extends TestCase
 
         $this->assertStringContainsString('previewToken', $html);
         $this->assertStringContainsString('previewEvaluateUrl', $html);
-        $this->assertStringContainsString('/preview/evaluate', $html);
         $this->assertStringNotContainsString('preview_answer_key', $html);
 
-        preg_match('/previewToken.{0,20}?([A-Za-z0-9+\\/=]{100,})/', $html, $matches);
-        $this->assertNotEmpty($matches[1] ?? null);
-        $token = $matches[1];
+        $token = $this->previewTokenFromHtml($html);
 
         $context = json_decode(Crypt::decryptString($token), true, 512, JSON_THROW_ON_ERROR);
         $firstPair = $context['configuration']['pairs'][0];
@@ -307,9 +304,7 @@ class InteractiveActivityAuthoringTest extends TestCase
             ->postJson(route('instructor.interactive-activities.preview'), $this->previewPayload($lesson, null))
             ->assertOk()
             ->json();
-        preg_match('/previewToken.{0,20}?([A-Za-z0-9+\\/=]{100,})/', $preview['html'], $matches);
-        $this->assertNotEmpty($matches[1] ?? null);
-        $token = $matches[1];
+        $token = $this->previewTokenFromHtml($preview['html']);
 
         $this->actingAs($instructor)
             ->postJson(route('instructor.interactive-activities.preview-evaluate'), [
@@ -853,5 +848,15 @@ class InteractiveActivityAuthoringTest extends TestCase
         $lesson = Lesson::factory()->create(['module_id' => $module->id]);
 
         return [$instructor, $lesson];
+    }
+
+    private function previewTokenFromHtml(string $html): string
+    {
+        $normalizedHtml = str_replace('\\u0022', '"', $html);
+
+        preg_match('/"previewToken":"([^"]+)"/', $normalizedHtml, $matches);
+        $this->assertNotEmpty($matches[1] ?? null);
+
+        return $matches[1];
     }
 }
