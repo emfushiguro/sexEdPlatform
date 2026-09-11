@@ -10,12 +10,7 @@
         </div>
     </x-slot>
 
-    <x-wizard-stepper :steps="[
-        ['label' => 'Set Up Info',    'active' => false, 'done' => true],
-        ['label' => 'Where Are You?', 'active' => true,  'done' => false],
-        ['label' => 'Login Details',  'active' => false, 'done' => false],
-        ['label' => 'All Set!',       'active' => false, 'done' => false],
-    ]" />
+    <x-wizard-stepper flow="dependent" />
 
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-purple-900">Child's Location</h1>

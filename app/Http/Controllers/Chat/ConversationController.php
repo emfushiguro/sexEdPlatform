@@ -439,7 +439,10 @@ class ConversationController extends Controller
     {
         return ! $this->isAdminContext($user)
             && ! $this->isInstructorContext($user)
-            && ($user->can('access learner platform') || $user->can('take quizzes'));
+            && ($user->can('access learner platform')
+                || $user->can('take quizzes')
+                || $user->hasRole('learner')
+                || $user->role === 'learner');
     }
 
     protected function resolveOtherParticipantForViewer(Conversation $conversation, User $viewer): ?User

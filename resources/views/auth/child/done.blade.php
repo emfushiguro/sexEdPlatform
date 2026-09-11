@@ -22,15 +22,7 @@
         </div>
     </x-slot>
 
-    <x-wizard-stepper :steps="[
-        ['label' => 'Dependent Info', 'active' => false, 'done' => true],
-        ['label' => 'Location',       'active' => false, 'done' => true],
-        ['label' => 'Credentials',    'active' => false, 'done' => true],
-        ['label' => 'Validation',     'active' => false, 'done' => true],
-        ['label' => 'Relationship',   'active' => false, 'done' => true],
-        ['label' => 'Support',        'active' => false, 'done' => true],
-        ['label' => 'All Set!',       'active' => true,  'done' => false],
-    ]" />
+    <x-wizard-stepper flow="dependent" />
 
     @if ($supportInformationResult === 'saved')
         <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">Support information was saved securely. You can update it later.</div>

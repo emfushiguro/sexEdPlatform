@@ -18,6 +18,9 @@
 	$guardianAvatarUrl = $guardianAvatarPath
 		? asset('storage/' . ltrim((string) $guardianAvatarPath, '/'))
 		: null;
+	$guardianProfileAvatarUrl = !empty($guardianProfile['avatar_path'] ?? null)
+		? asset('storage/' . ltrim((string) $guardianProfile['avatar_path'], '/'))
+		: null;
 	$learnerAvatarPath = $learnerSummary['avatar_path'] ?? null;
 	$learnerAvatarUrl = $learnerAvatarPath
 		? asset('storage/' . ltrim((string) $learnerAvatarPath, '/'))
@@ -104,6 +107,92 @@
 				</p>
 			</div>
 		</div>
+
+		@if($guardianProfile)
+			<article x-data="{ showDetails: true }" class="relative mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+				<div class="flex items-center gap-4 p-5 pr-14">
+					@if($guardianProfileAvatarUrl)
+						<img src="{{ $guardianProfileAvatarUrl }}"
+							 alt="{{ $guardianProfile['name'] }} avatar"
+							 class="h-14 w-14 flex-shrink-0 rounded-full border border-gray-200 object-cover shadow">
+					@else
+						<div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-xl font-bold text-white shadow"
+							 style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+							{{ strtoupper(substr($guardianProfile['name'], 0, 1)) }}
+						</div>
+					@endif
+
+					<div class="min-w-0 flex-1">
+						<div class="flex items-center gap-2">
+							<h2 class="truncate font-semibold text-gray-900">{{ $guardianProfile['name'] }}</h2>
+							<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $statusClass }}">{{ ucfirst($statusValue) }}</span>
+						</div>
+						<p class="mt-0.5 text-xs text-gray-500">
+							@if(!is_null($guardianProfile['age'])){{ $guardianProfile['age'] }} years old.@endif
+							Sent {{ $invitation->created_at?->diffForHumans() }}
+						</p>
+						@if($guardianProfile['username'])
+							<p class="mt-0.5 text-xs text-purple-600">{{ '@'.$guardianProfile['username'] }}</p>
+						@endif
+					</div>
+				</div>
+
+				<div class="grid grid-cols-3 divide-x divide-gray-100 border-b border-t border-gray-100 bg-gray-50/60 py-3 text-center">
+					<div class="px-2">
+						<p class="text-lg font-bold text-purple-700">{{ !is_null($guardianProfile['age']) ? $guardianProfile['age'] : '-' }}</p>
+						<p class="text-xs text-gray-500">Age</p>
+					</div>
+					<div class="px-2">
+						<p class="text-sm font-semibold text-gray-900">{{ $guardianProfile['gender'] ?: '-' }}</p>
+						<p class="text-xs text-gray-500">Gender</p>
+					</div>
+					<div class="min-w-0 px-2">
+						<p class="truncate text-sm font-semibold text-gray-900">{{ $guardianProfile['location_short'] ?: 'N/A' }}</p>
+						<p class="text-xs text-gray-500">Location</p>
+					</div>
+				</div>
+
+				<div id="guardian-profile-details" x-cloak x-show="showDetails" x-transition.opacity.duration.200ms class="space-y-2 border-b border-gray-100 px-5 py-4 text-sm">
+					<div class="flex items-center justify-between gap-2">
+						<span class="text-gray-500">Email</span>
+						<span class="truncate font-medium text-gray-900">{{ $guardianProfile['email'] ?: 'N/A' }}</span>
+					</div>
+					<div class="flex items-center justify-between gap-2">
+						<span class="text-gray-500">Username</span>
+						<span class="font-medium text-gray-900">{{ $guardianProfile['username'] ? '@'.$guardianProfile['username'] : 'N/A' }}</span>
+					</div>
+					<div class="flex items-center justify-between gap-2">
+						<span class="text-gray-500">Birthdate</span>
+						<span class="font-medium text-gray-900">{{ $guardianProfile['birthdate'] ? \Carbon\Carbon::parse($guardianProfile['birthdate'])->format('M d, Y') : 'N/A' }}</span>
+					</div>
+					<div class="flex items-center justify-between gap-2">
+						<span class="text-gray-500">Gender</span>
+						<span class="font-medium text-gray-900">{{ $guardianProfile['gender'] ?: 'N/A' }}</span>
+					</div>
+					<div class="flex items-center justify-between gap-2">
+						<span class="text-gray-500">Location</span>
+						<span class="text-right font-medium text-gray-900">{{ $guardianProfile['location'] ?: 'N/A' }}</span>
+					</div>
+					@if($guardianProfile['about'])
+						<p class="pt-1 text-xs text-gray-500">{{ $guardianProfile['about'] }}</p>
+					@endif
+				</div>
+
+				<div class="bg-gray-50/60 px-5 py-3">
+					<button type="button"
+							@click="showDetails = !showDetails"
+							:aria-expanded="showDetails.toString()"
+							aria-controls="guardian-profile-details"
+							class="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.99]"
+							style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+						<svg class="h-4 w-4 transition-transform duration-200" :class="showDetails ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
+						<span x-text="showDetails ? 'Hide Details' : 'View Details'"></span>
+					</button>
+				</div>
+			</article>
+		@endif
 
 		@if($invitation->message)
 			<div class="mt-4 rounded-xl border border-purple-100 bg-purple-50 px-4 py-3">

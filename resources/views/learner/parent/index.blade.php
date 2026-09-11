@@ -41,11 +41,14 @@
                     ? \Carbon\Carbon::parse($parentBirthdate)->age
                     : null;
                 $parentGender = $profile?->gender
-                    ? ucfirst(str_replace('_', ' ', (string) $profile->gender))
+                    ? \Illuminate\Support\Str::of((string) $profile->gender)
+                        ->replace('_', ' ')
+                        ->title()
+                        ->toString()
                     : null;
                 $parentUsername = $profile?->username;
                 $cityName = $profile?->city?->name;
-                $barangayName = $profile?->barangay?->name;
+                $barangayName = $profile?->barangayLocation?->name ?: $profile?->getAttribute('barangay');
                 $locationLabel = $barangayName && $cityName
                     ? $barangayName . ', ' . $cityName
                     : ($cityName ?: $barangayName);
@@ -58,7 +61,7 @@
                 $fullName = $parentUser?->full_name ?: $parentUser?->name;
                 $initials = strtoupper(substr((string) $parentUser?->name, 0, 1));
                 $linkedAgo = $parentLink->relationship_verified_at?->diffForHumans();
-                $canUseChat = auth()->user()?->can('access chat') ?? false;
+                $canUseChat = auth()->user()?->canAccessChat() ?? false;
                 $statusClass = strtolower((string) $verificationLabel) === 'approved'
                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                     : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';

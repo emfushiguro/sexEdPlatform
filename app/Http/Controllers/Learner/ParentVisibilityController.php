@@ -43,7 +43,7 @@ class ParentVisibilityController extends Controller
                 'parent:id,name,email,birthdate,created_at',
                 'parent.learnerProfile:'.implode(',', $profileSelectColumns),
                 'parent.learnerProfile.city:code,name',
-                'parent.learnerProfile.barangay:code,name',
+                'parent.learnerProfile.barangayLocation:code,name',
             ])
             ->orderByDesc('relationship_verified_at')
             ->get()

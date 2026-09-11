@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'profile.completed' => \App\Http\Middleware\EnsureProfileCompleted::class,
             'guardian.verified' => \App\Http\Middleware\EnsureGuardianVerified::class,
+            'chat.access' => \App\Http\Middleware\EnsureChatAccess::class,
             'suspension.guard' => \App\Http\Middleware\CheckUserSuspensionStatus::class,
             // PayMongo webhook HMAC signature verification
             'paymongo.webhook' => \App\Http\Middleware\VerifyPayMongoWebhook::class,

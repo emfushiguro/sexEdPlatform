@@ -7,13 +7,7 @@
         </div>
     </x-slot>
 
-    <x-wizard-stepper :steps="[
-        ['label' => 'Dependent Info', 'active' => false, 'done' => true],
-        ['label' => 'Location', 'active' => false, 'done' => true],
-        ['label' => 'Credentials', 'active' => false, 'done' => true],
-        ['label' => 'Validation', 'active' => false, 'done' => true],
-        ['label' => 'Relationship', 'active' => true, 'done' => false],
-    ]" />
+    <x-wizard-stepper flow="dependent" />
 
     <div class="p-5 mb-6 border border-purple-100 rounded-2xl bg-purple-50/60">
         <p class="text-xs font-semibold tracking-wide text-purple-600 uppercase">Dependent setup</p>

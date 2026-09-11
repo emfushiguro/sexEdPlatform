@@ -73,4 +73,19 @@ class ChatPageRenderTest extends TestCase
             ->get(route('chat.page'))
             ->assertOk();
     }
+
+    public function test_legacy_learner_without_a_spatie_role_can_open_chat_page(): void
+    {
+        $learner = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $this->assertFalse($learner->roles()->exists());
+
+        $this->actingAs($learner)
+            ->get(route('chat.page'))
+            ->assertOk()
+            ->assertSee('data-chat-root', false);
+    }
 }

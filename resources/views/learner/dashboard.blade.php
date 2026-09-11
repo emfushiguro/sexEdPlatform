@@ -8,7 +8,7 @@
     $showParentApprovedDashboardModal = $showParentApprovedDashboardModal
         && Auth::user()?->isParentRegistration()
         && Auth::user()?->isParentVerificationApproved();
-    $canUseChat = Auth::user()?->can('access chat') ?? false;
+    $canUseChat = Auth::user()?->canAccessChat() ?? false;
 @endphp
 
 <div x-data="{ showParentApprovedDashboardModal: {{ $showParentApprovedDashboardModal ? 'true' : 'false' }} }" class="relative">

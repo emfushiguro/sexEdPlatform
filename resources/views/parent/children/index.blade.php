@@ -218,14 +218,17 @@
             @foreach($children as $child)
                 @php
                     $verificationStatus = $child->pivot->verification_status ?? 'pending';
-                    $isApprovedChild = $verificationStatus === 'approved';
                     $childAvatarUrl = $child->learnerProfile?->avatar_path
                         ? asset('storage/' . ltrim((string) $child->learnerProfile->avatar_path, '/'))
                         : null;
-                    $canUseChat = auth()->user()?->can('access chat') ?? false;
+                    $canUseChat = auth()->user()?->canAccessChat() ?? false;
                     $relationshipLabel = \App\Support\GuardianRelationshipTypes::label($child->pivot->relationship_type ?? null, $child->pivot->relationship_custom ?? null);
                     $relationshipStatus = $child->pivot->relationship_status ?? 'active';
                     $relationshipVerificationStatus = $child->pivot->relationship_verified_status ?? 'not_required';
+                    $relationshipIsApproved = $relationshipStatus === \App\Models\ParentChildAccount::STATUS_ACTIVE
+                        && $relationshipVerificationStatus === \App\Models\ParentChildAccount::VERIFICATION_VERIFIED
+                        && $child->pivot->relationship_verified_at;
+                    $isApprovedChild = $verificationStatus === 'approved' || (bool) $relationshipIsApproved;
                     $relationshipVerificationLabel = \App\Support\GuardianRelationshipTypes::statusLabel($relationshipVerificationStatus);
                     $relationshipVerificationNeedsAction = in_array($relationshipVerificationStatus, ['pending', 'rejected', 'resubmission_required'], true);
                     $relationshipVerificationClass = match ($relationshipVerificationStatus) {

@@ -476,7 +476,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('chat')
         ->name('chat.')
-        ->middleware(['permission:access chat', 'guardian.verified'])
+        ->middleware(['chat.access', 'guardian.verified'])
         ->group(function () {
             Route::get('/', fn () => view('chat.page'))->name('page');
             Route::get('/conversation/{conversation}', function (Request $request, Conversation $conversation) {

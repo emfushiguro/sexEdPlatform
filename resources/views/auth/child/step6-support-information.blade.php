@@ -7,14 +7,7 @@
         </div>
     </x-slot>
 
-    <x-wizard-stepper :steps="[
-        ['label' => 'Dependent Info', 'active' => false, 'done' => true],
-        ['label' => 'Location', 'active' => false, 'done' => true],
-        ['label' => 'Credentials', 'active' => false, 'done' => true],
-        ['label' => 'Validation', 'active' => false, 'done' => true],
-        ['label' => 'Relationship', 'active' => false, 'done' => true],
-        ['label' => 'Support', 'active' => true, 'done' => false],
-    ]" />
+    <x-wizard-stepper flow="dependent" />
 
     <section x-data="{ hasInformation: false }" class="space-y-5">
         <div class="rounded-2xl border border-purple-100 bg-purple-50 p-5">

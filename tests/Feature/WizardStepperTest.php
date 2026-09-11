@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\View\Components\WizardStepper;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class WizardStepperTest extends TestCase
 {
@@ -137,6 +137,32 @@ class WizardStepperTest extends TestCase
         // child wizard pages supply their own :steps, so auto-detection returns null
         $component = new WizardStepper('parent.create-child', true);
         $this->assertNull($component->steps);
+    }
+
+    public function test_dependent_flow_uses_the_current_six_step_process(): void
+    {
+        $component = new WizardStepper('parent.create-child.credentials', false, null, 'dependent');
+
+        $this->assertSame([
+            'Dependent Info',
+            'Location',
+            'Credentials',
+            'Validation',
+            'Relationship',
+            'All Set',
+        ], array_column($component->steps, 'label'));
+        $this->assertTrue($component->steps[2]['isActive']);
+        $this->assertTrue($component->steps[0]['isCompleted']);
+        $this->assertFalse($component->steps[3]['isCompleted']);
+    }
+
+    public function test_dependent_support_route_keeps_all_set_as_the_final_stage(): void
+    {
+        $component = new WizardStepper('parent.create-child.support-information', false, null, 'dependent');
+
+        $this->assertCount(6, $component->steps);
+        $this->assertTrue($component->steps[5]['isActive']);
+        $this->assertSame('All Set', $component->steps[5]['label']);
     }
 
     // ─── Disambiguation (shared routes) ─────────────────────────────────────

@@ -913,6 +913,61 @@ class ParentChildInvitationFlowTest extends TestCase
         $this->assertFalse($approved->fresh()->can_manage_support_information);
     }
 
+    public function test_approved_existing_learner_invitation_is_approved_on_both_dashboards(): void
+    {
+        $this->seedLocationRows();
+        Storage::fake('local');
+
+        $admin = User::factory()->create(['role' => 'admin', 'status' => User::STATUS_ACTIVE]);
+        $admin->assignRole('admin');
+        $parent = $this->createApprovedParent();
+        $child = $this->createLearner('approvedexisting', 14);
+        $stagedPath = 'guardian-relationship-invitations/approved-existing/court-order.pdf';
+        Storage::disk('local')->put($stagedPath, 'court order');
+
+        $invitation = ParentChildInvitation::query()->create([
+            'inviter_parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'invite_token' => (string) \Illuminate\Support\Str::uuid(),
+            'relationship_type' => 'grandmother',
+            'relationship_verification_documents' => [$this->stagedDocument($stagedPath)],
+            'status' => 'pending',
+            'expires_at' => now()->addDays(3),
+        ]);
+
+        $this->actingAs($child)
+            ->post(route('parent.invitations.respond', $invitation), ['decision' => 'accept'])
+            ->assertRedirect(route('parent.invitations.show', $invitation));
+
+        $relationship = ParentChildAccount::query()
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
+            ->sole();
+
+        app(GuardianRelationshipVerificationService::class)->approve($relationship, $admin);
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.index'))
+            ->assertOk()
+            ->assertSee('View Dependent Dashboard', false)
+            ->assertDontSee('Pending verification', false)
+            ->assertDontSee('>pending<', false);
+
+        $this->actingAs($parent)
+            ->get(route('parent.children.show', $child))
+            ->assertOk();
+
+        $this->actingAs($child)
+            ->get(route('learner.dashboard'))
+            ->assertOk();
+
+        $this->actingAs($child)
+            ->get(route('learner.parent.index'))
+            ->assertOk()
+            ->assertSee('Female', false)
+            ->assertSee('Sample Barangay, Sample City', false);
+    }
+
     public function test_accepted_existing_learner_invitation_appears_in_admin_relationship_review(): void
     {
         $this->seedLocationRows();

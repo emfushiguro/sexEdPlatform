@@ -13,7 +13,7 @@ use Tests\TestCase;
 
 class GuardianInvitationMessagingTest extends TestCase
 {
-    public function test_invitation_detail_exposes_only_privacy_safe_context(): void
+    public function test_invitation_detail_exposes_the_guardians_full_profile_to_the_dependent(): void
     {
         [$guardian, $child, $invitation] = $this->createInvitation();
 
@@ -26,11 +26,33 @@ class GuardianInvitationMessagingTest extends TestCase
             ->assertSee('Claimed relationship')
             ->assertSee('View Guardian Information')
             ->assertSee('Message Guardian')
-            ->assertDontSee($guardian->email)
-            ->assertDontSee((string) $guardian->birthdate)
+            ->assertSee($guardian->email, false)
+            ->assertSee('Apr 05, 1988', false)
+            ->assertSee('@verifiedguardian'.$guardian->id, false)
+            ->assertSee('Female', false)
+            ->assertSee('Sample Barangay, Sample City', false)
             ->assertDontSee('relationship_verification_documents')
             ->assertDontSee($child->email)
             ->assertDontSee((string) $child->birthdate);
+    }
+
+    public function test_guardian_invitation_owner_can_view_the_guardians_full_profile(): void
+    {
+        [$guardian, , $invitation] = $this->createInvitation();
+        $guardian->learnerProfile()->update([
+            'bio' => 'A trusted guardian profile description.',
+            'gender' => 'prefer_not_to_say',
+        ]);
+
+        $this->actingAs($guardian)
+            ->get(route('parent.invitations.show', $invitation))
+            ->assertOk()
+            ->assertSee($guardian->email, false)
+            ->assertSee('Apr 05, 1988', false)
+            ->assertSee('@verifiedguardian'.$guardian->id, false)
+            ->assertSee('Prefer Not To Say', false)
+            ->assertSee('Sample Barangay, Sample City', false)
+            ->assertSee('A trusted guardian profile description.', false);
     }
 
     public function test_unrelated_account_cannot_view_an_invitation(): void

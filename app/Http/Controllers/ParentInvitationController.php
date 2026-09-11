@@ -8,9 +8,12 @@ use App\Models\ParentChildInvitation;
 use App\Models\User;
 use App\Services\Chat\GuardianInvitationConversationService;
 use App\Services\ParentChildInvitationService;
+use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use InvalidArgumentException;
 
@@ -111,13 +114,25 @@ class ParentInvitationController extends Controller
 
         abort_if(! $isParentViewer && ! $isChildViewer, 403);
 
+        $inviterParentColumns = 'id,name,email,birthdate,status,parent_verification_status,created_at';
+        $inviterProfileColumns = 'id,user_id,avatar_path';
+        $inviterProfileColumns .= ',username,birthdate,gender,city_code,barangay_code,bio';
+        if (Schema::hasColumn('learner_profiles', 'about')) {
+            $inviterProfileColumns .= ',about';
+        }
+
         $invitation->load([
-            'inviterParent:id,name,status,parent_verification_status,created_at',
-            'inviterParent.learnerProfile:id,user_id,avatar_path',
+            "inviterParent:{$inviterParentColumns}",
+            "inviterParent.learnerProfile:{$inviterProfileColumns}",
             'child:id,name,status',
             'child.learnerProfile:id,user_id,username,avatar_path',
             'parentChildAccount:id,parent_user_id,child_user_id,relationship_status,relationship_verified_status',
             'conversation:id,parent_child_invitation_id,status',
+        ]);
+
+        $invitation->load([
+            'inviterParent.learnerProfile.city:code,name',
+            'inviterParent.learnerProfile.barangayLocation:code,name',
         ]);
 
         $guardianSummary = [
@@ -133,11 +148,42 @@ class ParentInvitationController extends Controller
             'username' => $invitation->child?->learnerProfile?->username,
         ];
 
+        $guardianProfile = null;
+        if ($invitation->inviterParent) {
+            $guardian = $invitation->inviterParent;
+            $profile = $guardian->learnerProfile;
+            $birthdate = $guardian->birthdate ?? $profile?->birthdate;
+            $genderValue = strtolower(trim((string) ($profile?->gender ?? '')));
+            $gender = $genderValue !== ''
+                ? Str::of($genderValue)->replace('_', ' ')->title()->toString()
+                : null;
+            $barangayName = $profile?->barangayLocation?->name ?: $profile?->getAttribute('barangay');
+            $location = collect([
+                $barangayName,
+                $profile?->city?->name,
+            ])->filter()->implode(', ');
+            $about = trim((string) ($profile?->about ?: $profile?->bio ?: ''));
+
+            $guardianProfile = [
+                'name' => (string) ($guardian->full_name ?: $guardian->name ?: 'Guardian'),
+                'avatar_path' => $profile?->avatar_path,
+                'age' => $birthdate ? Carbon::parse($birthdate)->age : null,
+                'email' => (string) ($guardian->email ?: ''),
+                'username' => $profile?->username,
+                'birthdate' => $birthdate,
+                'gender' => $gender,
+                'location' => $location,
+                'location_short' => $profile?->city?->name ?: ($barangayName ?: null),
+                'about' => $about !== '' ? Str::limit($about, 140) : null,
+            ];
+        }
+
         return view('parent.invitations.show', [
             'invitation' => $invitation,
             'isParentViewer' => $isParentViewer,
             'isChildViewer' => $isChildViewer,
             'guardianSummary' => $guardianSummary,
+            'guardianProfile' => $guardianProfile,
             'learnerSummary' => $learnerSummary,
         ]);
     }
