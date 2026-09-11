@@ -49,6 +49,37 @@ class GuardianRelationshipEvidenceSubmissionTest extends TestCase
         ]);
     }
 
+    public function test_submitted_image_evidence_renders_an_inline_preview_and_download_link(): void
+    {
+        $this->withoutMiddleware([EnsureGuardianVerified::class, EnsureProfileCompleted::class]);
+        Storage::fake('local');
+        [$guardian, $dependent, $relationship] = $this->pendingRelationship('adoptive_parent');
+        $storedPaths = [];
+
+        $document = app(GuardianRelationshipEvidenceService::class)->storeUploadedRound(
+            $relationship,
+            $guardian,
+            1,
+            [[
+                'document_type' => 'adoption_order',
+                'document_side' => 'not_applicable',
+                'pairing_key' => null,
+                'file' => UploadedFile::fake()->createWithContent('adoption-order.jpg', 'image-data')->mimeType('image/jpeg'),
+            ]],
+            $storedPaths,
+        )->sole();
+
+        $documentUrl = route('parent.relationship-verifications.documents.show', [$relationship, $document]);
+
+        $this->actingAs($guardian)
+            ->get(route('parent.relationship-verifications.show', $relationship))
+            ->assertOk()
+            ->assertSee($documentUrl.'?inline=1', false)
+            ->assertSee('data-testid="submitted-evidence-preview"', false)
+            ->assertSee('alt="Adoption-Related Order or Record Not applicable evidence preview"', false)
+            ->assertSee('Download', false);
+    }
+
     public function test_non_owner_cannot_view_submit_or_download_relationship_evidence(): void
     {
         $this->withoutMiddleware([EnsureGuardianVerified::class, EnsureProfileCompleted::class]);

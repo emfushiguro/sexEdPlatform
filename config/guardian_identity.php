@@ -2,8 +2,8 @@
 
 return [
     'id_types' => [
-        'national_id' => ['label' => 'National ID (PhilSys)', 'requires_back' => false],
-        'passport' => ['label' => 'Passport', 'requires_back' => false],
+        'national_id' => ['label' => 'National ID (PhilSys)', 'requires_back' => true],
+        'passport' => ['label' => 'Passport', 'requires_back' => true],
         'drivers_license' => ['label' => "Driver's License", 'requires_back' => true],
         'umid' => ['label' => 'UMID', 'requires_back' => true],
         'philhealth' => ['label' => 'PhilHealth ID', 'requires_back' => false],

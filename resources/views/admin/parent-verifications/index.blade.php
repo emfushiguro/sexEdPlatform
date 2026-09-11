@@ -762,7 +762,7 @@
                         <tr>
                             <th class="w-[8%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">No. #</th>
                             <th class="w-[22%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Guardian</th>
-                            <th class="w-[24%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Child</th>
+                            <th class="w-[24%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Dependent</th>
                             <th class="w-[14%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Status</th>
                             <th class="w-[18%] px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Submitted</th>
                             <th class="w-[14%] px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-gray-500 whitespace-nowrap">Actions</th>
@@ -781,34 +781,33 @@
                                         ? 'image'
                                         : ($verificationDocumentExtension === 'pdf' ? 'pdf' : 'file'))
                                     : 'file';
-                                $parentComparisonPath = (string) ($application->parent?->parent_id_document_path ?? '');
-                                $hasParentComparisonDocument = $parentComparisonPath !== '';
-                                $parentComparisonUrl = $hasParentComparisonDocument ? asset('storage/' . $parentComparisonPath) : null;
-                                $parentComparisonExtension = $hasParentComparisonDocument ? strtolower(pathinfo($parentComparisonPath, PATHINFO_EXTENSION)) : null;
-                                $parentComparisonType = $hasParentComparisonDocument
-                                    ? (in_array($parentComparisonExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
-                                        ? 'image'
-                                        : ($parentComparisonExtension === 'pdf' ? 'pdf' : 'file'))
-                                    : 'file';
-                                $comparisonPreviewPayload = $hasParentComparisonDocument
-                                    ? [
-                                        'url' => $parentComparisonUrl,
-                                        'type' => $parentComparisonType,
-                                        'title' => 'Guardian Government ID - ' . ($application->parent?->full_name ?? 'Guardian'),
-                                    ]
-                                    : null;
+                                  $guardianIdentityDocuments = collect([
+                                      'front' => (string) ($application->parent?->parent_id_document_path ?? ''),
+                                      'back' => (string) ($application->parent?->parent_id_document_back_path ?? ''),
+                                  ])->map(function (string $path, string $side) use ($application): array {
+                                      $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+                                      return [
+                                          'label' => 'Guardian Government ID - '.ucfirst($side),
+                                          'url' => $path !== '' && $application->parent
+                                              ? route('admin.parent-verifications.parents.document', [$application->parent, $side])
+                                              : null,
+                                          'is_image' => in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true),
+                                          'is_pdf' => $extension === 'pdf',
+                                      ];
+                                  });
                                 $childRejectionReason = trim((string) preg_replace('/\s+/u', ' ', str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string) ($application->verification_rejection_reason ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'))));
                                 $childAge = $application->child?->age;
                                 if ($childAge === null && $application->child?->birthdate) {
                                     $childAge = \Carbon\Carbon::parse($application->child->birthdate)->age;
                                 }
                                 $childPreviewDetails = [
-                                    'Queue' => 'Child Verification',
+                                      'Queue' => 'Dependent Account Verification',
                                     'Guardian Name' => $application->parent?->full_name ?? 'Unknown guardian',
                                     'Guardian Email' => $application->parent?->email ?? 'N/A',
-                                    'Child Name' => $application->child?->full_name ?? 'Unknown child',
-                                    'Child Username' => $application->child?->learnerProfile?->username ?? 'N/A',
-                                    'Child Age' => $childAge !== null ? $childAge . ' years old' : 'N/A',
+                                      'Dependent Name' => $application->child?->full_name ?? 'Unknown dependent',
+                                      'Dependent Username' => $application->child?->learnerProfile?->username ?? 'N/A',
+                                      'Dependent Age' => $childAge !== null ? $childAge . ' years old' : 'N/A',
                                     'Status' => ucfirst($statusValue),
                                     'Submitted At' => $application->created_at?->format('M d, Y h:i A') ?? 'N/A',
                                     'Rejection Reason' => $childRejectionReason !== '' ? $childRejectionReason : 'N/A',
@@ -848,9 +847,7 @@
                                     processingApprove: false,
                                     processingReject: false,
                                     reviewModalOpen: false,
-                                    actionConfirmOpen: false,
-                                    actionType: 'archive',
-                                    rejectModalOpen: false,
+                                      rejectModalOpen: false,
                                     modalReasonCode: '',
                                     modalCustomReason: '',
                                     openReviewModal() {
@@ -858,21 +855,6 @@
                                     },
                                     closeReviewModal() {
                                         this.reviewModalOpen = false;
-                                    },
-                                    openActionConfirm(type) {
-                                        this.actionType = type;
-                                        this.actionConfirmOpen = true;
-                                    },
-                                    closeActionConfirm() {
-                                        this.actionConfirmOpen = false;
-                                    },
-                                    submitAction() {
-                                        if (this.actionType === 'delete') {
-                                            this.$refs.deleteForm.submit();
-                                            return;
-                                        }
-
-                                        this.$refs.archiveForm.submit();
                                     },
                                     openRejectModal() {
                                         if (this.currentStatus !== 'pending') {
@@ -1058,11 +1040,11 @@
                                 <td class="px-4 py-3 align-top whitespace-nowrap text-right">
                                     <div class="flex flex-nowrap items-center justify-end gap-2">
                                         <button type="button"
-                                                :title="currentStatus === 'approved' ? 'View Approved Application' : (currentStatus === 'rejected' ? 'View Rejected Application' : 'Review Application')"
+                                                :title="currentStatus === 'approved' ? 'View Approved Dependent Verification' : (currentStatus === 'rejected' ? 'View Rejected Dependent Verification' : 'View Dependent Verification')"
                                                 @click="openReviewModal()"
                                                 class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition"
                                                 :class="currentStatus === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : (currentStatus === 'rejected' ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' : 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100')"
-                                                aria-label="Review application">
+                                                aria-label="View dependent account verification">
                                             <svg x-show="currentStatus === 'pending'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -1074,69 +1056,11 @@
                                             <svg x-show="currentStatus === 'rejected'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
-                                        </button>
+                                          </button>
 
-                                        <button type="button"
-                                                @click="openActionConfirm('archive')"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
-                                                title="Archive Application"
-                                                aria-label="Archive Application">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M6 8l1 10h10l1-10M9 8V6a1 1 0 011-1h4a1 1 0 011 1v2" />
-                                            </svg>
-                                        </button>
-
-                                        <button type="button"
-                                                @click="openActionConfirm('delete')"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
-                                                title="Delete Application"
-                                                aria-label="Delete Application">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
                                     </div>
 
-                                     <div x-show="actionConfirmOpen"
-                                         x-cloak
-                                         @keydown.escape.window="closeActionConfirm()"
-                                         class="fixed inset-0 z-[60] flex items-center justify-center p-4 text-left sm:p-6 lg:p-8">
-                                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="closeActionConfirm()"></div>
-
-                                        <div class="relative z-10 w-full max-w-md rounded-2xl bg-white text-left shadow-2xl">
-                                            <div class="border-b border-gray-100 px-5 py-4">
-                                                <h3 class="text-sm font-semibold text-gray-900" x-text="actionType === 'delete' ? 'Delete Application?' : 'Archive Application?'"></h3>
-                                            </div>
-                                            <div class="px-5 py-5">
-                                                <p class="text-sm text-gray-700" x-show="actionType === 'archive'" x-cloak>Archive this child verification application?</p>
-                                                <p class="text-sm text-gray-700" x-show="actionType === 'delete'" x-cloak>Permanently delete this child verification application?</p>
-                                            </div>
-                                            <div class="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
-                                                <button type="button"
-                                                        @click="closeActionConfirm()"
-                                                        class="inline-flex rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">
-                                                    Cancel
-                                                </button>
-                                                <button type="button"
-                                                        @click="submitAction()"
-                                                        :class="actionType === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'"
-                                                        class="inline-flex rounded-lg px-3 py-1.5 text-xs font-semibold text-white">
-                                                    Confirm
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <form method="POST" action="{{ route('admin.parent-verifications.children.archive', $application) }}" x-ref="archiveForm" class="hidden">
-                                        @csrf
-                                    </form>
-
-                                    <form method="POST" action="{{ route('admin.parent-verifications.children.destroy', $application) }}" x-ref="deleteForm" class="hidden">
-                                        @csrf
-                                        @method('DELETE')
-                                    </form>
-
-                                     <div x-show="reviewModalOpen"
+                                       <div x-show="reviewModalOpen"
                                          x-cloak
                                          @keydown.escape.window="if (reviewModalOpen) closeReviewModal()"
                                          class="fixed inset-0 z-[100100] flex items-start justify-center overflow-y-auto p-4 pt-14 text-left sm:p-6 sm:pt-16 lg:p-8 lg:pt-20">
@@ -1147,7 +1071,7 @@
                                                 <div class="flex items-center justify-between">
                                                     <div>
                                                         <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-600">Verification Review</p>
-                                                        <h2 class="mt-1 text-lg font-bold text-gray-900">Child Verification - {{ $application->child?->full_name ?? 'Unknown child' }}</h2>
+                                                          <h2 class="mt-1 text-lg font-bold text-gray-900">Dependent Account Verification - {{ $application->child?->full_name ?? 'Unknown dependent' }}</h2>
                                                         <p class="text-sm text-gray-500">Submitted {{ $application->created_at?->format('M d, Y h:i A') ?? 'N/A' }}</p>
                                                     </div>
                                                     <button type="button" @click="closeReviewModal()" class="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
@@ -1193,12 +1117,12 @@
 
                                                     <div x-show="open" x-cloak class="mt-4 grid gap-4 lg:grid-cols-2">
                                                         <article class="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                                                            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Child Verification Document</p>
+                                                              <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Dependent Verification Document</p>
 
                                                             @if($hasVerificationDocument && $verificationPreviewType === 'image')
-                                                                <img src="{{ $verificationDocumentUrl }}" alt="Child verification document" class="mx-auto max-h-[48vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
+                                                                  <img src="{{ $verificationDocumentUrl }}" alt="Dependent verification document" class="mx-auto max-h-[48vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
                                                             @elseif($hasVerificationDocument && $verificationPreviewType === 'pdf')
-                                                                <iframe src="{{ $verificationDocumentUrl }}#toolbar=0&navpanes=0" class="h-[50vh] w-full rounded-lg border border-gray-200 bg-white" title="Child verification document"></iframe>
+                                                                  <iframe src="{{ $verificationDocumentUrl }}#toolbar=0&navpanes=0" class="h-[50vh] w-full rounded-lg border border-gray-200 bg-white" title="Dependent verification document"></iframe>
                                                             @elseif($hasVerificationDocument)
                                                                 <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
                                                                     <p class="text-sm text-gray-600">Inline preview is not available for this file type.</p>
@@ -1216,29 +1140,31 @@
                                                             @endif
                                                         </article>
 
-                                                        <article class="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                                                            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Guardian Government ID</p>
+                                                          @foreach($guardianIdentityDocuments as $document)
+                                                              <article class="rounded-xl border border-gray-200 bg-gray-50 p-3" data-testid="guardian-identity-document-card">
+                                                                  <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">{{ $document['label'] }}</p>
 
-                                                            @if($hasParentComparisonDocument && $parentComparisonType === 'image')
-                                                                <img src="{{ $parentComparisonUrl }}" alt="Guardian comparison document" class="mx-auto max-h-[48vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
-                                                            @elseif($hasParentComparisonDocument && $parentComparisonType === 'pdf')
-                                                                <iframe src="{{ $parentComparisonUrl }}#toolbar=0&navpanes=0" class="h-[50vh] w-full rounded-lg border border-gray-200 bg-white" title="Guardian comparison document"></iframe>
-                                                            @elseif($hasParentComparisonDocument)
-                                                                <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
-                                                                    <p class="text-sm text-gray-600">Inline preview is not available for this file type.</p>
-                                                                </div>
-                                                            @else
-                                                                <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
-                                                                    <p class="text-sm text-gray-600">No guardian document available for comparison.</p>
-                                                                </div>
-                                                            @endif
+                                                                  @if($document['url'] && $document['is_image'])
+                                                                      <img src="{{ $document['url'] }}" alt="{{ $document['label'] }}" class="mx-auto max-h-[48vh] w-auto max-w-full rounded-lg border border-gray-200 bg-white object-contain">
+                                                                  @elseif($document['url'] && $document['is_pdf'])
+                                                                      <iframe src="{{ $document['url'] }}#toolbar=0&amp;navpanes=0" class="h-[50vh] w-full rounded-lg border border-gray-200 bg-white" title="{{ $document['label'] }}"></iframe>
+                                                                  @elseif($document['url'])
+                                                                      <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
+                                                                          <p class="text-sm text-gray-600">Inline preview is not available for this file type.</p>
+                                                                      </div>
+                                                                  @else
+                                                                      <div class="rounded-xl border border-gray-200 bg-white p-5 text-center">
+                                                                          <p class="text-sm text-gray-600">Not submitted.</p>
+                                                                      </div>
+                                                                  @endif
 
-                                                            @if($hasParentComparisonDocument)
-                                                                <div class="mt-3">
-                                                                    <a href="{{ $parentComparisonUrl }}" download class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">Download document</a>
-                                                                </div>
-                                                            @endif
-                                                        </article>
+                                                                  @if($document['url'])
+                                                                      <div class="mt-3">
+                                                                          <a href="{{ $document['url'] }}" download class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">Download document</a>
+                                                                      </div>
+                                                                  @endif
+                                                              </article>
+                                                          @endforeach
                                                     </div>
                                                 </section>
 
@@ -1266,10 +1192,10 @@
                                                     </div>
 
                                                     <p class="mt-3 text-sm text-emerald-700" x-show="currentStatus === 'approved'" x-cloak>
-                                                        This child verification has already been approved.
+                                                          This dependent account verification has already been approved.
                                                     </p>
                                                     <p class="mt-3 text-sm text-rose-700" x-show="currentStatus === 'rejected'" x-cloak>
-                                                        This child verification has already been rejected.
+                                                          This dependent account verification has already been rejected.
                                                     </p>
                                                     </div>
                                                 </section>
@@ -1279,7 +1205,7 @@
                                     </div>
 
                                     @include('admin.parent-verifications.partials.moderation-modal-shell', [
-                                        'title' => 'Reject Child Verification',
+                                          'title' => 'Reject Dependent Account Verification',
                                         'submitUrl' => route('admin.parent-verifications.children.reject', $application),
                                         'moderationReasons' => $moderationReasons,
                                     ])

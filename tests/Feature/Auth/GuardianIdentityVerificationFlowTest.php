@@ -82,6 +82,37 @@ class GuardianIdentityVerificationFlowTest extends TestCase
         Notification::assertSentTo($admin, ParentVerificationRequestSubmittedNotification::class);
     }
 
+    /** @dataProvider twoSidedGuardianIdTypes */
+    public function test_national_id_and_passport_require_a_back_image(string $idType): void
+    {
+        Storage::fake('local');
+        Notification::fake();
+
+        $guardian = User::factory()->create([
+            'role' => 'learner',
+            'is_parent_registration' => true,
+            'email_verified_at' => now(),
+            'parent_verification_status' => null,
+        ]);
+        $guardian->assignRole('learner');
+
+        $this->actingAs($guardian)
+            ->post(route('guardian.verification.store'), [
+                'government_id_type' => $idType,
+                'government_id_front' => UploadedFile::fake()->create('front.jpg', 100, 'image/jpeg'),
+                'confirm_submission' => '1',
+            ])
+            ->assertSessionHasErrors('government_id_back');
+    }
+
+    public static function twoSidedGuardianIdTypes(): array
+    {
+        return [
+            'National ID' => ['national_id'],
+            'Passport' => ['passport'],
+        ];
+    }
+
     public function test_pending_guardian_cannot_open_guardian_features(): void
     {
         $guardian = User::factory()->create([

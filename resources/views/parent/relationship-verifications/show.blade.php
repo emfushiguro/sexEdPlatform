@@ -85,9 +85,38 @@
                         <p class="text-sm font-semibold text-gray-900">Submission round {{ $round }}</p>
                         <div class="mt-2 space-y-2">
                             @foreach($documents as $document)
-                                <a href="{{ route('parent.relationship-verifications.documents.show', [$relationship, $document]) }}" class="block rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50">
-                                    {{ $document->original_name }} · {{ config('guardian_relationships.document_types.' . $document->document_type, $document->document_type) }} · {{ ucfirst(str_replace('_', ' ', $document->document_side)) }}
-                                </a>
+                                @php
+                                    $documentUrl = route('parent.relationship-verifications.documents.show', [$relationship, $document]);
+                                    $inlineDocumentUrl = $documentUrl.'?inline=1';
+                                    $documentTypeLabel = (string) config('guardian_relationships.document_types.' . $document->document_type, $document->document_type);
+                                    $documentSideLabel = $document->document_side === 'not_applicable'
+                                        ? 'Not applicable'
+                                        : ucfirst(str_replace('_', ' ', (string) $document->document_side));
+                                    $isImage = str_starts_with((string) $document->mime_type, 'image/');
+                                    $isPdf = (string) $document->mime_type === 'application/pdf';
+                                @endphp
+                                <article class="overflow-hidden rounded-xl border border-gray-200 bg-white" data-testid="submitted-evidence-card">
+                                    <div class="flex flex-col gap-2 border-b border-gray-100 px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div class="min-w-0">
+                                            <p class="truncate text-sm font-semibold text-gray-900">{{ $document->original_name }}</p>
+                                            <p class="mt-1 text-xs text-gray-500">{{ $documentTypeLabel }} · {{ $documentSideLabel }}</p>
+                                        </div>
+                                        <a href="{{ $documentUrl }}" download class="shrink-0 text-xs font-semibold text-purple-700 hover:text-purple-900">Download</a>
+                                    </div>
+                                    <div class="bg-gray-50 p-3">
+                                        @if($isImage)
+                                            <a href="{{ $inlineDocumentUrl }}" target="_blank" rel="noopener" class="block" aria-label="Preview {{ $documentTypeLabel }} {{ $documentSideLabel }}">
+                                                <img src="{{ $inlineDocumentUrl }}" alt="{{ $documentTypeLabel }} {{ $documentSideLabel }} evidence preview" data-testid="submitted-evidence-preview" class="h-56 w-full rounded-lg border border-gray-200 bg-white object-contain">
+                                            </a>
+                                        @elseif($isPdf)
+                                            <iframe src="{{ $inlineDocumentUrl }}#toolbar=0&amp;navpanes=0" title="{{ $documentTypeLabel }} {{ $documentSideLabel }} evidence preview" data-testid="submitted-evidence-preview" class="h-56 w-full rounded-lg border border-gray-200 bg-white"></iframe>
+                                        @else
+                                            <div class="rounded-lg border border-dashed border-gray-300 bg-white px-3 py-8 text-center text-sm text-gray-500">
+                                                Inline preview is not available for this file type.
+                                            </div>
+                                        @endif
+                                    </div>
+                                </article>
                             @endforeach
                         </div>
                     </div>
