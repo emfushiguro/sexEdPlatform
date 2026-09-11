@@ -135,7 +135,6 @@
                     initialRows: @js($oldDocuments),
                     maxRows: 10,
                 })"
-                x-init="init()"
                 x-on:beforeunload.window="destroy()"
             >
                 <h2 class="text-lg font-semibold text-gray-900">Administrative verification</h2>

@@ -24,13 +24,20 @@ class GuardianRelationshipEvidenceSubmissionTest extends TestCase
         Storage::fake('local');
         [$guardian, $dependent, $relationship] = $this->pendingRelationship('adoptive_parent');
 
-        $this->actingAs($guardian)
+        $response = $this->actingAs($guardian)
             ->get(route('parent.relationship-verifications.show', $relationship))
             ->assertOk()
             ->assertSee('documents[', false)
             ->assertSee('Add another document', false)
             ->assertSee('Administrative verification', false)
             ->assertSee('Adoptive Parent Evidence Review', false);
+
+        $evidenceFormMarkup = str($response->getContent())
+            ->after('x-data="guardianEvidenceForm({')
+            ->before('x-on:beforeunload.window="destroy()"')
+            ->toString();
+
+        self::assertStringNotContainsString('x-init="init()"', $evidenceFormMarkup);
 
         $this->actingAs($guardian)->post(route('parent.relationship-verifications.store', $relationship), [
             'documents' => [

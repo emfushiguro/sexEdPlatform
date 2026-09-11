@@ -35,7 +35,7 @@
               documentTypes: @js($relationshipDocumentTypes),
               requiredDocumentTypes: @js($requiredDocumentTypes),
               maxRows: 10,
-          })" x-init="init()" x-on:beforeunload.window="destroy()">
+          })" x-on:beforeunload.window="destroy()">
         @csrf
 
         <div class="p-5 overflow-hidden bg-white border border-purple-200 shadow-sm rounded-2xl">

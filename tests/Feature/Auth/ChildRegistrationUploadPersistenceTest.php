@@ -16,6 +16,21 @@ use Tests\TestCase;
 
 class ChildRegistrationUploadPersistenceTest extends TestCase
 {
+    public function test_child_relationship_verification_page_uses_one_initial_evidence_form_setup(): void
+    {
+        $parent = $this->createApprovedParent();
+        $session = $this->childWizardSession();
+        $session['child_step3'] = ['username' => 'single-row'];
+
+        $this->actingAs($parent)
+            ->withSession($session)
+            ->get(route('parent.create-child.relationship-verification'))
+            ->assertOk()
+            ->assertSee('x-data="guardianEvidenceForm', false)
+            ->assertSee('Add back side', false)
+            ->assertDontSee('x-init="init()"', false);
+    }
+
     public function test_child_credentials_submit_notifies_admins_about_new_child_verification_request(): void
     {
         Storage::fake('public');
