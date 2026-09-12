@@ -243,11 +243,13 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringContainsString('data-match-dot-side="right"', $html);
         $this->assertStringContainsString('data-match-id="left-1"', $html);
         $this->assertStringContainsString('data-match-id="right-1"', $html);
-        $this->assertStringContainsString('class="interactive-match-line"', $html);
+        $this->assertStringContainsString('class="interactive-match-line interactive-match-line--correct"', $html);
         $this->assertStringContainsString('interactive-match-arrow-correct', $html);
         $this->assertStringContainsString('interactive-match-arrow-incorrect', $html);
         $this->assertStringContainsString('interactive-match-arrow-pending', $html);
         $this->assertStringContainsString('marker-end', $html);
+        $this->assertStringContainsString(':d="linePath(\'pending\')"', $html);
+        $this->assertStringNotContainsString('<template x-for="line in connectorLines"', $html);
         $this->assertStringContainsString('aria-label', $html);
         foreach (['selected', 'pending', 'unanswered', 'correct', 'incorrect'] as $state) {
             $this->assertStringContainsString("interactive-match-card--{$state}", $html);
@@ -292,7 +294,9 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringContainsString('aria-pressed="isDragging() && draggedId === itemId"', $html);
         $this->assertStringContainsString('x-show="isDragging()"', $html);
         $this->assertStringContainsString('x-text="dragAnnouncement"', $html);
-        $this->assertStringContainsString('x-text="itemState(itemId, index)"', $html);
+        $this->assertStringContainsString('x-show="itemState(itemId, index) === \'correct\'"', $html);
+        $this->assertStringContainsString('interactive-match-badge--correct', $html);
+        $this->assertStringContainsString('interactive-match-badge--incorrect', $html);
         $this->assertStringContainsString('positionLabel(index)', $html);
         $this->assertStringNotContainsString('Move First up', $html);
         $this->assertStringNotContainsString('Move First down', $html);

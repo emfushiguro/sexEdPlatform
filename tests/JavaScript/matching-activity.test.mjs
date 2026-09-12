@@ -349,6 +349,38 @@ test('matching keeps connections local until Check answer and validates each pai
     const arrangement = JSON.parse(JSON.stringify(activity.matchedPairs));
     activity.retryAnswer();
     assert.deepEqual(activity.matchedPairs, arrangement);
+    assert.equal(activity.answerChecked, false);
+    assert.equal(activity.endpointState('left', 'left-1'), 'correct');
+    assert.equal(activity.endpointState('left', 'left-2'), 'pending');
+    assert.equal(activity.hasIncorrectResults(), false);
+});
+
+test('retry clears incorrect feedback without removing the learner connections', () => {
+    const activity = createMatchingActivity({
+        initialMatchedPairs: [
+            { left_id: 'left-1', right_id: 'right-1' },
+            { left_id: 'left-2', right_id: 'right-3' },
+        ],
+    });
+    activity.answerChecked = true;
+    activity.pairResults = [
+        { left_id: 'left-1', right_id: 'right-1', is_correct: true, state: 'correct' },
+        { left_id: 'left-2', right_id: 'right-3', is_correct: false, state: 'incorrect' },
+        { left_id: 'left-3', right_id: null, is_correct: null, state: 'unanswered' },
+    ];
+
+    activity.retryAnswer();
+
+    assert.deepEqual(activity.matchedPairs, [
+        { left_id: 'left-1', right_id: 'right-1' },
+        { left_id: 'left-2', right_id: 'right-3' },
+    ]);
+    assert.equal(activity.answerChecked, false);
+    assert.deepEqual(activity.pairResults, [
+        { left_id: 'left-1', right_id: 'right-1', is_correct: true, state: 'correct' },
+    ]);
+    assert.equal(activity.endpointState('left', 'left-2'), 'pending');
+    assert.equal(activity.endpointState('left', 'left-3'), 'idle');
 });
 
 test('matching reconnects an incorrect pair while preserving correct connections', async () => {
@@ -430,4 +462,16 @@ test('matching connector lines follow local pair state', () => {
     assert.deepEqual(activity.connectorLines[0], {
         x1: 20, y1: 30, x2: 120, y2: 50, state: 'pending', key: 'pending-left-1-right-1',
     });
+});
+
+test('matching exposes drawable SVG paths for each connector state', () => {
+    const activity = createMatchingActivity();
+    activity.connectorLines = [
+        { x1: 20, y1: 30, x2: 100, y2: 30, state: 'pending' },
+        { x1: 40, y1: 50, x2: 120, y2: 50, state: 'incorrect' },
+    ];
+
+    assert.equal(activity.linePath('pending'), 'M 20 30 L 100 30');
+    assert.equal(activity.linePath('correct'), '');
+    assert.equal(activity.linePath('incorrect'), 'M 40 50 L 120 50');
 });

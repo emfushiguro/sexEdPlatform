@@ -42,15 +42,15 @@
     .interactive-match-card--incorrect { @apply border-rose-400 bg-rose-50; }
 
     .interactive-match-dot {
-        @apply inline-flex shrink-0 items-center justify-center rounded-full border-2 border-violet-600 bg-white text-violet-700 shadow-sm transition-colors;
+        @apply inline-flex shrink-0 items-center justify-center rounded-full bg-transparent text-purple-600 transition-colors;
         min-width: 2.75rem;
         min-height: 2.75rem;
         touch-action: none;
     }
 
-    .interactive-match-dot:hover { @apply border-violet-800 bg-violet-100; }
+    .interactive-match-dot:hover { @apply text-purple-800; }
     .interactive-match-dot:disabled { @apply cursor-not-allowed; }
-    .interactive-match-card--correct .interactive-match-dot { @apply border-emerald-600 bg-emerald-100 text-emerald-700; }
+    .interactive-match-card--correct .interactive-match-dot { @apply text-emerald-600; }
     .interactive-match-dot > span { @apply h-3 w-3 rounded-full bg-current; }
 
     .interactive-match-badge {

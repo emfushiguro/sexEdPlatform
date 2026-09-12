@@ -26,15 +26,9 @@
             <marker id="interactive-match-arrow-incorrect" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" class="fill-rose-500" /></marker>
             <marker id="interactive-match-arrow-pending" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" class="fill-violet-500" /></marker>
         </defs>
-        <template x-for="line in connectorLines" :key="line.key">
-            <line :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2" vector-effect="non-scaling-stroke" class="interactive-match-line"
-                :class="{
-                    'interactive-match-line--correct': line.state === 'correct',
-                    'interactive-match-line--incorrect': line.state === 'incorrect',
-                    'interactive-match-line--pending': line.state === 'pending'
-                }"
-                :marker-end="`url(#interactive-match-arrow-${line.state})`"></line>
-        </template>
+        <path x-show="linePath('correct')" :d="linePath('correct')" vector-effect="non-scaling-stroke" class="interactive-match-line interactive-match-line--correct" marker-end="url(#interactive-match-arrow-correct)"></path>
+        <path x-show="linePath('incorrect')" :d="linePath('incorrect')" vector-effect="non-scaling-stroke" class="interactive-match-line interactive-match-line--incorrect" marker-end="url(#interactive-match-arrow-incorrect)"></path>
+        <path x-show="linePath('pending')" :d="linePath('pending')" vector-effect="non-scaling-stroke" class="interactive-match-line interactive-match-line--pending" marker-end="url(#interactive-match-arrow-pending)"></path>
     </svg>
 
     <p id="matching-dot-instructions-{{ $activity['id'] ?? 'unknown' }}" class="sr-only" aria-live="polite" x-text="activeEndpoint ? 'Connection started. Select a dot on the opposite side.' : ''">Select a connection dot on either side, then select the related dot.</p>

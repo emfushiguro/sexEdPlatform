@@ -120,6 +120,13 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             return this.pairResults.some((result) => (result.state ?? (result.is_correct ? 'correct' : 'incorrect')) === 'incorrect');
         },
 
+        linePath(state) {
+            return this.connectorLines
+                .filter((line) => line.state === state)
+                .map((line) => `M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`)
+                .join(' ');
+        },
+
         isEndpointAvailable(side, id) {
             if (this.isLocked()) return false;
             const pair = this.connectionForEndpoint(side, id);
@@ -445,6 +452,9 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
 
         retryAnswer() {
             if (this.isLocked()) return this;
+            this.pairResults = this.pairResults.filter((result) => (result.state ?? (result.is_correct ? 'correct' : 'incorrect')) === 'correct');
+            this.answerChecked = false;
+            this.rejectedConnection = null;
             this.feedback = '';
             this.error = '';
             this.requestState = 'idle';

@@ -37,10 +37,10 @@
                 <div x-show="isDragging() && dragOverIndex === index && draggedId !== itemId" class="interactive-sequence-insertion-bar absolute -top-2 left-2 right-2" aria-hidden="true"></div>
                 <span class="interactive-sequence-position min-w-8 text-xs font-semibold text-gray-500" x-text="positionLabel(index)"></span>
                 <span class="flex-1 text-sm text-gray-800" :class="isDragging() && draggedId === itemId ? 'interactive-sequence-source' : ''" x-text="itemFor(itemId).value"></span>
-                <span x-cloak x-show="itemState(itemId, index) !== 'idle'" class="interactive-sequence-state inline-flex items-center gap-1 text-xs font-semibold" :class="itemState(itemId, index) === 'correct' ? 'text-emerald-700' : 'text-rose-700'">
-                    <span x-text="itemState(itemId, index)"></span>
-                    <span aria-hidden="true" x-text="itemState(itemId, index) === 'correct' ? '✓' : '×'"></span>
-                </span>
+                <span x-cloak x-show="itemState(itemId, index) === 'correct'" class="text-xs font-semibold text-emerald-700">Correct</span>
+                <span x-cloak x-show="itemState(itemId, index) === 'incorrect'" class="text-xs font-semibold text-rose-700">Incorrect</span>
+                <span class="interactive-match-badge interactive-match-badge--correct" x-cloak x-show="itemState(itemId, index) === 'correct'" aria-hidden="true">✓</span>
+                <span class="interactive-match-badge interactive-match-badge--incorrect" x-cloak x-show="itemState(itemId, index) === 'incorrect'" aria-hidden="true">×</span>
                 <button type="button"
                     :aria-label="`Drag ${itemFor(itemId).value}. Position ${index + 1} of ${order.length}.`"
                     aria-describedby="sequencing-drag-instructions"
