@@ -10,7 +10,6 @@
     $dependentStatus = (string) ($relationship->verification_status ?: 'pending');
     $guardianStatus = (string) ($relationship->parent?->parent_verification_status ?: 'unknown');
     $canApprove = $status === 'under_review';
-    $canRevoke = $status === 'verified';
     $canReject = $status === 'under_review';
 
     $badge = function (?string $value): string {
@@ -97,11 +96,6 @@
             @if($canReject)
                 <button type="button" @click="decisionModal = 'reject'" class="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700">
                     Reject / Request Resubmission
-                </button>
-            @endif
-            @if($canRevoke)
-                <button type="button" @click="decisionModal = 'revoke'" class="px-4 py-2 text-sm font-semibold text-gray-800 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                    Revoke
                 </button>
             @endif
             </div>
@@ -294,6 +288,17 @@
                             </a>
                         </div>
                     </div>
+                    @if($isImage)
+                        <div class="mt-4 overflow-hidden border border-gray-200 rounded-xl bg-white" data-testid="relationship-document-image-preview">
+                            <div class="flex items-center justify-between gap-3 px-3 py-2 border-b border-gray-200">
+                                <span class="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Image preview</span>
+                                <span class="text-xs font-medium text-gray-400">{{ $sideLabel }}</span>
+                            </div>
+                            <div class="p-3 bg-gray-100">
+                                <img src="{{ $documentUrl }}" alt="{{ $documentTypeLabel }} - {{ $sideLabel }}" class="object-contain w-full h-64 bg-white border border-gray-200 rounded-lg">
+                            </div>
+                        </div>
+                    @endif
                 </article>
                     @endforeach
                 </div>
@@ -420,34 +425,5 @@
         </form>
     </div>
 
-    <div x-show="decisionModal === 'revoke'" x-cloak @keydown.escape.window="decisionModal = null" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="fixed inset-0 bg-gray-900/50" @click="decisionModal = null"></div>
-        <form method="POST" action="{{ route('admin.parent-verifications.relationships.revoke', $relationship) }}" class="relative z-10 w-full max-w-lg overflow-hidden bg-white shadow-2xl rounded-xl">
-            @csrf
-            <div class="px-6 py-5 border-b border-gray-100">
-                <h3 class="text-lg font-semibold text-gray-900">Revoke verification</h3>
-                <p class="mt-2 text-sm text-gray-600">This removes the verified relationship status. A structured reason is required for the audit trail.</p>
-            </div>
-            <div class="px-6 py-5 space-y-4">
-                <div>
-                    <label for="relationship-revoke-reason" class="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">Structured reason</label>
-                    <select id="relationship-revoke-reason" name="reason_code" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100">
-                        <option value="">Select reason</option>
-                        @foreach($rejectionReasons as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label for="relationship-revoke-note" class="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">Revocation reason</label>
-                    <textarea id="relationship-revoke-note" name="note" rows="4" maxlength="1000" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" placeholder="Explain why this verified relationship must be revoked."></textarea>
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
-                <button type="button" @click="decisionModal = null" class="px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800">Revoke</button>
-            </div>
-        </form>
-    </div>
 </div>
 @endsection

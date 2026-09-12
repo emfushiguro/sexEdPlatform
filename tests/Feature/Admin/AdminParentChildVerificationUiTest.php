@@ -398,7 +398,7 @@ class AdminParentChildVerificationUiTest extends TestCase
             'verification_status' => 'pending',
         ]);
 
-        GuardianRelationshipVerificationDocument::query()->create([
+        $document = GuardianRelationshipVerificationDocument::query()->create([
             'parent_child_account_id' => $relationship->id,
             'uploaded_by_user_id' => $guardian->id,
             'document_type' => 'adoption_order',
@@ -411,6 +411,8 @@ class AdminParentChildVerificationUiTest extends TestCase
             'mime_type' => 'image/jpeg',
             'size_bytes' => 4096,
         ]);
+
+        $documentUrl = route('admin.parent-verifications.relationships.documents.show', [$relationship, $document]);
 
         $response = $this->actingAs($admin)
             ->get(route('admin.parent-verifications.relationships.show', $relationship));
@@ -435,6 +437,9 @@ class AdminParentChildVerificationUiTest extends TestCase
             ->assertSee('Submitted by', false)
             ->assertSee('Front', false)
             ->assertSee('Preview', false)
+            ->assertSee('data-testid="relationship-document-image-preview"', false)
+            ->assertSee('alt="Adoption-Related Order or Record - Front"', false)
+            ->assertSee('src="'.$documentUrl.'"', false)
             ->assertSee('Download', false)
             ->assertSee('Zoom in', false)
             ->assertSee('Zoom out', false)
@@ -446,6 +451,50 @@ class AdminParentChildVerificationUiTest extends TestCase
             ->assertDontSee('content_sha256', false)
             ->assertDontSee('Approve Relationship', false)
             ->assertDontSee('Approve Guardian', false);
+    }
+
+    public function test_relationship_review_page_hides_revocation_controls(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $guardian = User::factory()->create([
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
+        ]);
+        $guardian->assignRole('learner');
+
+        $dependent = User::factory()->create();
+        $dependent->assignRole('learner');
+
+        $relationship = ParentChildAccount::create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $dependent->id,
+            'relationship_type' => 'adoptive_parent',
+            'relationship_status' => 'active',
+            'relationship_verified_status' => 'verified',
+            'relationship_verified_at' => now(),
+            'current_evidence_round' => 1,
+            'relationship_verification_submitted_at' => now(),
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'approved',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.relationships.show', $relationship));
+
+        $response->assertOk()
+            ->assertDontSee('Revoke verification', false)
+            ->assertDontSee('relationship-revoke-note', false)
+            ->assertDontSee("decisionModal = 'revoke'", false)
+            ->assertDontSee('>Revoke<', false)
+            ->assertDontSee(route('admin.parent-verifications.relationships.revoke', $relationship), false);
     }
 
     public function test_review_tables_show_profile_avatars_and_relationship_view_compares_guardian_ids(): void
