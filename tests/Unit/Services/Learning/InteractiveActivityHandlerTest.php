@@ -233,10 +233,68 @@ class InteractiveActivityHandlerTest extends UnitTestCase
             'is_correct' => true,
             'is_complete' => true,
             'working_state' => ['item_order' => $itemIds],
+            'position_results' => [
+                ['item_id' => $itemIds[0], 'position' => 1, 'is_correct' => true],
+                ['item_id' => $itemIds[1], 'position' => 2, 'is_correct' => true],
+                ['item_id' => $itemIds[2], 'position' => 3, 'is_correct' => true],
+            ],
         ], $sequencing->evaluate($configuration, ['item_order' => $itemIds], ['item_order' => [$itemIds[1], $itemIds[0], $itemIds[2]]]));
         $this->assertFalse($sequencing->evaluate($configuration, ['item_order' => [$itemIds[0], $itemIds[1]]], ['item_order' => [$itemIds[1], $itemIds[0], $itemIds[2]]])['accepted']);
         $this->assertFalse($sequencing->evaluate($configuration, ['item_order' => [$itemIds[0], $itemIds[0], $itemIds[2]]], ['item_order' => [$itemIds[1], $itemIds[0], $itemIds[2]]])['accepted']);
         $this->assertFalse($sequencing->evaluate($configuration, ['item_order' => [$itemIds[0], $itemIds[1], 'unknown']], ['item_order' => [$itemIds[1], $itemIds[0], $itemIds[2]]])['accepted']);
+    }
+
+    public function test_matching_batch_evaluation_returns_independent_pair_results_and_keeps_only_correct_pairs(): void
+    {
+        $matching = new MatchingActivityHandler;
+        $configuration = $matching->normalize(['pairs' => [
+            $this->pair('p1', 'l1', 'r1', 'One', 'First'),
+            $this->pair('p2', 'l2', 'r2', 'Two', 'Second'),
+            $this->pair('p3', 'l3', 'r3', 'Three', 'Third'),
+        ]]);
+        $leftIds = array_column(array_column($configuration['pairs'], 'left'), 'id');
+        $rightIds = array_column(array_column($configuration['pairs'], 'right'), 'id');
+
+        $result = $matching->evaluate($configuration, [
+            'connections' => [
+                ['left_id' => $leftIds[0], 'right_id' => $rightIds[0]],
+                ['left_id' => $leftIds[1], 'right_id' => $rightIds[2]],
+                ['left_id' => $leftIds[2], 'right_id' => $rightIds[1]],
+            ],
+        ], ['right_order' => $rightIds, 'matched' => []]);
+
+        $this->assertTrue($result['accepted']);
+        $this->assertFalse($result['is_correct']);
+        $this->assertFalse($result['is_complete']);
+        $this->assertSame([
+            ['left_id' => $leftIds[0], 'right_id' => $rightIds[0], 'is_correct' => true, 'state' => 'correct'],
+            ['left_id' => $leftIds[1], 'right_id' => $rightIds[2], 'is_correct' => false, 'state' => 'incorrect'],
+            ['left_id' => $leftIds[2], 'right_id' => $rightIds[1], 'is_correct' => false, 'state' => 'incorrect'],
+        ], $result['pair_results']);
+        $this->assertSame([['left_id' => $leftIds[0], 'right_id' => $rightIds[0]]], $result['working_state']['matched']);
+    }
+
+    public function test_partial_matching_batch_reports_unanswered_pairs_and_is_not_overall_correct(): void
+    {
+        $matching = new MatchingActivityHandler;
+        $configuration = $matching->normalize(['pairs' => [
+            $this->pair('p1', 'l1', 'r1', 'One', 'First'),
+            $this->pair('p2', 'l2', 'r2', 'Two', 'Second'),
+            $this->pair('p3', 'l3', 'r3', 'Three', 'Third'),
+        ]]);
+        $leftIds = array_column(array_column($configuration['pairs'], 'left'), 'id');
+        $rightIds = array_column(array_column($configuration['pairs'], 'right'), 'id');
+
+        $result = $matching->evaluate($configuration, [
+            'connections' => [['left_id' => $leftIds[0], 'right_id' => $rightIds[0]]],
+        ], ['right_order' => $rightIds, 'matched' => []]);
+
+        $this->assertTrue($result['accepted']);
+        $this->assertFalse($result['is_correct']);
+        $this->assertFalse($result['is_complete']);
+        $this->assertSame(['correct', 'unanswered', 'unanswered'], array_column($result['pair_results'], 'state'));
+        $this->assertNull($result['pair_results'][1]['right_id']);
+        $this->assertNull($result['pair_results'][1]['is_correct']);
     }
 
     public function test_fingerprints_ignore_display_metadata_but_detect_answer_changes(): void

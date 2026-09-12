@@ -98,6 +98,10 @@ class MatchingActivityHandler implements InteractiveActivityHandler
 
     public function evaluate(array $configuration, array $answer, array $workingState): array
     {
+        if (array_key_exists('connections', $answer)) {
+            return $this->evaluateConnections($configuration, $answer['connections'], $workingState);
+        }
+
         $leftId = $answer['left_id'] ?? null;
         $rightId = $answer['right_id'] ?? null;
         $pairs = $workingState['matched'] ?? [];
@@ -118,6 +122,91 @@ class MatchingActivityHandler implements InteractiveActivityHandler
         }
 
         return $this->result(true, $correct, $correct && count($pairs) === count($mapping), $workingState);
+    }
+
+    private function evaluateConnections(array $configuration, mixed $connections, array $workingState): array
+    {
+        if (! is_array($connections) || $connections !== array_values($connections)) {
+            return $this->result(false, false, false, $workingState, 'invalid_answer');
+        }
+
+        $mapping = [];
+        foreach ($configuration['pairs'] as $pair) {
+            $mapping[$pair['left']['id']] = $pair['right']['id'];
+        }
+
+        $seenLeft = [];
+        $seenRight = [];
+        $connectionsByLeft = [];
+        foreach ($connections as $connection) {
+            $leftId = is_array($connection) ? ($connection['left_id'] ?? null) : null;
+            $rightId = is_array($connection) ? ($connection['right_id'] ?? null) : null;
+
+            if (! is_string($leftId)
+                || ! is_string($rightId)
+                || ! isset($mapping[$leftId])
+                || ! in_array($rightId, $mapping, true)
+                || isset($seenLeft[$leftId])
+                || isset($seenRight[$rightId])) {
+                return $this->result(false, false, false, $workingState, 'invalid_answer');
+            }
+
+            $seenLeft[$leftId] = true;
+            $seenRight[$rightId] = true;
+            $connectionsByLeft[$leftId] = $rightId;
+        }
+
+        $pairResults = array_map(static function (array $pair) use ($connectionsByLeft, $mapping): array {
+            $leftId = $pair['left']['id'];
+            $rightId = $connectionsByLeft[$leftId] ?? null;
+            if ($rightId === null) {
+                return ['left_id' => $leftId, 'right_id' => null, 'is_correct' => null, 'state' => 'unanswered'];
+            }
+
+            $correct = $mapping[$leftId] === $rightId;
+
+            return [
+                'left_id' => $leftId,
+                'right_id' => $rightId,
+                'is_correct' => $correct,
+                'state' => $correct ? 'correct' : 'incorrect',
+            ];
+        }, $configuration['pairs']);
+
+        $matched = [];
+        $matchedLeft = [];
+        $matchedRight = [];
+        foreach ($this->completedMatches($workingState['matched'] ?? []) as $match) {
+            if (($mapping[$match['left_id']] ?? null) !== $match['right_id']
+                || isset($matchedLeft[$match['left_id']])
+                || isset($matchedRight[$match['right_id']])) {
+                continue;
+            }
+
+            $matched[] = $match;
+            $matchedLeft[$match['left_id']] = true;
+            $matchedRight[$match['right_id']] = true;
+        }
+
+        foreach ($pairResults as $result) {
+            if (! $result['is_correct'] || isset($matchedLeft[$result['left_id']]) || isset($matchedRight[$result['right_id']])) {
+                continue;
+            }
+
+            $matched[] = [
+                'left_id' => $result['left_id'],
+                'right_id' => $result['right_id'],
+            ];
+            $matchedLeft[$result['left_id']] = true;
+            $matchedRight[$result['right_id']] = true;
+        }
+
+        $workingState['matched'] = $matched;
+        $complete = count($matched) === count($mapping);
+        $correct = $complete
+            && count(array_filter($pairResults, static fn (array $result): bool => $result['state'] !== 'correct')) === 0;
+
+        return $this->result(true, $correct, $complete, $workingState, null, ['pair_results' => $pairResults]);
     }
 
     public function answerFingerprint(array $configuration): string
@@ -182,7 +271,7 @@ class MatchingActivityHandler implements InteractiveActivityHandler
         )));
     }
 
-    private function result(bool $accepted, bool $correct, bool $complete, array $workingState, ?string $rejectionReason = null): array
+    private function result(bool $accepted, bool $correct, bool $complete, array $workingState, ?string $rejectionReason = null, array $details = []): array
     {
         $result = ['accepted' => $accepted, 'is_correct' => $correct, 'is_complete' => $complete, 'working_state' => $workingState];
 
@@ -190,6 +279,6 @@ class MatchingActivityHandler implements InteractiveActivityHandler
             $result['rejection_reason'] = $rejectionReason;
         }
 
-        return $result;
+        return [...$result, ...$details];
     }
 }

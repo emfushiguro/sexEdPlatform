@@ -152,8 +152,55 @@ class MatchingActivityFlowTest extends TestCase
         $this->assertSame('completed', $progress->status);
     }
 
+    public function test_batch_matching_check_returns_independent_pair_results_and_preserves_correct_progress(): void
+    {
+        [$learner, $activity] = $this->fixture(InteractiveActivityType::MATCHING, 3);
+
+        $this->actingAs($learner)
+            ->postJson(route('learner.interactive-activities.match', $activity), [
+                'revision' => 1,
+                'connections' => [
+                    ['left_id' => 'left-1', 'right_id' => 'right-1'],
+                    ['left_id' => 'left-2', 'right_id' => 'right-3'],
+                    ['left_id' => 'left-3', 'right_id' => 'right-2'],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('is_correct', false)
+            ->assertJsonPath('is_complete', false)
+            ->assertJsonPath('pair_results.0.is_correct', true)
+            ->assertJsonPath('pair_results.1.is_correct', false)
+            ->assertJsonPath('pair_results.2.is_correct', false)
+            ->assertJsonPath('payload.completed_matches', [['left_id' => 'left-1', 'right_id' => 'right-1']]);
+
+        $this->assertSame(1, InteractiveActivityProgress::query()
+            ->where('user_id', $learner->id)
+            ->where('interactive_activity_id', $activity->id)
+            ->value('attempt_count'));
+    }
+
+    public function test_partial_matching_check_marks_remaining_pairs_unanswered_and_not_correct(): void
+    {
+        [$learner, $activity] = $this->fixture(InteractiveActivityType::MATCHING, 3);
+
+        $this->actingAs($learner)
+            ->postJson(route('learner.interactive-activities.match', $activity), [
+                'revision' => 1,
+                'connections' => [
+                    ['left_id' => 'left-1', 'right_id' => 'right-1'],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('is_correct', false)
+            ->assertJsonPath('is_complete', false)
+            ->assertJsonPath('pair_results.0.state', 'correct')
+            ->assertJsonPath('pair_results.1.state', 'unanswered')
+            ->assertJsonPath('pair_results.1.right_id', null)
+            ->assertJsonPath('pair_results.2.state', 'unanswered');
+    }
+
     /** @return array{User, InteractiveActivity} */
-    private function fixture(InteractiveActivityType $type = InteractiveActivityType::MATCHING): array
+    private function fixture(InteractiveActivityType $type = InteractiveActivityType::MATCHING, int $pairCount = 2): array
     {
         $learner = User::factory()->create(['role' => 'learner']);
         $learner->assignRole('learner');
@@ -163,10 +210,11 @@ class MatchingActivityFlowTest extends TestCase
         $configuration = $type === InteractiveActivityType::MATCHING
             ? [
                 'schema_version' => 1,
-                'pairs' => [
-                    ['id' => 'pair-1', 'left' => ['id' => 'left-1', 'kind' => 'text', 'value' => 'One'], 'right' => ['id' => 'right-1', 'kind' => 'text', 'value' => 'First']],
-                    ['id' => 'pair-2', 'left' => ['id' => 'left-2', 'kind' => 'text', 'value' => 'Two'], 'right' => ['id' => 'right-2', 'kind' => 'text', 'value' => 'Second']],
-                ],
+                'pairs' => array_map(static fn (int $index): array => [
+                    'id' => "pair-{$index}",
+                    'left' => ['id' => "left-{$index}", 'kind' => 'text', 'value' => "Item {$index}"],
+                    'right' => ['id' => "right-{$index}", 'kind' => 'text', 'value' => "Related {$index}"],
+                ], range(1, $pairCount)),
             ]
             : [
                 'schema_version' => 1,
