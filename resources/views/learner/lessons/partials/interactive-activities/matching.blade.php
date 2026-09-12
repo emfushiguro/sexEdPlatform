@@ -27,7 +27,13 @@
             <marker id="interactive-match-arrow-pending" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" class="fill-violet-500" /></marker>
         </defs>
         <template x-for="line in connectorLines" :key="line.key">
-            <line :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2" vector-effect="non-scaling-stroke" :class="`interactive-match-line interactive-match-line--${line.state}`" :marker-end="`url(#interactive-match-arrow-${line.state})`"></line>
+            <line :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2" vector-effect="non-scaling-stroke" class="interactive-match-line"
+                :class="{
+                    'interactive-match-line--correct': line.state === 'correct',
+                    'interactive-match-line--incorrect': line.state === 'incorrect',
+                    'interactive-match-line--pending': line.state === 'pending'
+                }"
+                :marker-end="`url(#interactive-match-arrow-${line.state})`"></line>
         </template>
     </svg>
 
@@ -38,7 +44,13 @@
             <h4 class="text-sm font-semibold text-gray-700">Match each item</h4>
             <div class="space-y-2">
                 @foreach(($activity['payload']['left_items'] ?? []) as $item)
-                    <div class="interactive-match-card" :class="`interactive-match-card--${endpointState('left', @js($item['id']))}`">
+                    <div class="interactive-match-card" :class="{
+                        'interactive-match-card--selected': endpointState('left', @js($item['id'])) === 'selected',
+                        'interactive-match-card--pending': endpointState('left', @js($item['id'])) === 'pending',
+                        'interactive-match-card--unanswered': endpointState('left', @js($item['id'])) === 'unanswered',
+                        'interactive-match-card--correct': endpointState('left', @js($item['id'])) === 'correct',
+                        'interactive-match-card--incorrect': endpointState('left', @js($item['id'])) === 'incorrect'
+                    }">
                         <span class="min-w-0 flex-1 text-sm text-gray-900">{{ $item['value'] }}</span>
                         <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'selected'" class="text-xs font-semibold text-violet-700">Selected</span>
                         <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'pending'" class="text-xs font-semibold text-violet-700">Connected</span>
@@ -69,7 +81,13 @@
             <h4 class="text-sm font-semibold text-gray-700">Related item</h4>
             <div class="space-y-2">
                 @foreach(($activity['payload']['right_items'] ?? []) as $item)
-                    <div class="interactive-match-card" :class="`interactive-match-card--${endpointState('right', @js($item['id']))}`">
+                    <div class="interactive-match-card" :class="{
+                        'interactive-match-card--selected': endpointState('right', @js($item['id'])) === 'selected',
+                        'interactive-match-card--pending': endpointState('right', @js($item['id'])) === 'pending',
+                        'interactive-match-card--unanswered': endpointState('right', @js($item['id'])) === 'unanswered',
+                        'interactive-match-card--correct': endpointState('right', @js($item['id'])) === 'correct',
+                        'interactive-match-card--incorrect': endpointState('right', @js($item['id'])) === 'incorrect'
+                    }">
                         <button type="button" data-match-dot-side="right" data-match-id="{{ $item['id'] }}"
                             @click.stop="activateEndpoint('right', @js($item['id']), $event)"
                             @keydown.escape.stop.prevent="cancelConnection()"

@@ -243,12 +243,18 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringContainsString('data-match-dot-side="right"', $html);
         $this->assertStringContainsString('data-match-id="left-1"', $html);
         $this->assertStringContainsString('data-match-id="right-1"', $html);
-        $this->assertStringContainsString('interactive-match-line interactive-match-line--${line.state}', $html);
+        $this->assertStringContainsString('class="interactive-match-line"', $html);
         $this->assertStringContainsString('interactive-match-arrow-correct', $html);
         $this->assertStringContainsString('interactive-match-arrow-incorrect', $html);
         $this->assertStringContainsString('interactive-match-arrow-pending', $html);
         $this->assertStringContainsString('marker-end', $html);
         $this->assertStringContainsString('aria-label', $html);
+        foreach (['selected', 'pending', 'unanswered', 'correct', 'incorrect'] as $state) {
+            $this->assertStringContainsString("interactive-match-card--{$state}", $html);
+        }
+        foreach (['pending', 'correct', 'incorrect'] as $state) {
+            $this->assertStringContainsString("interactive-match-line--{$state}", $html);
+        }
         $this->assertStringContainsString('Check answer', $html);
         $this->assertStringContainsString('Retry', $html);
         $this->assertStringContainsString('endpointState(', $html);
