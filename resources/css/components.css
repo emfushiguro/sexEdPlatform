@@ -32,11 +32,12 @@
     }
 
     .interactive-match-card {
-        @apply flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-2 py-2 shadow-sm transition-colors;
+        @apply flex min-h-11 items-center gap-2 rounded-xl border border-gray-200 bg-white px-2 py-2 shadow-sm transition-colors duration-150;
     }
 
     .interactive-match-card--selected,
     .interactive-match-card--pending { @apply border-violet-400 bg-violet-50; }
+    .interactive-match-card--unanswered { @apply border-gray-300 bg-gray-50; }
     .interactive-match-card--correct { @apply border-emerald-400 bg-emerald-50; }
     .interactive-match-card--incorrect { @apply border-rose-400 bg-rose-50; }
 
@@ -48,7 +49,8 @@
     }
 
     .interactive-match-dot:hover { @apply border-violet-800 bg-violet-100; }
-    .interactive-match-dot:disabled { @apply cursor-not-allowed border-emerald-600 bg-emerald-100 text-emerald-700; }
+    .interactive-match-dot:disabled { @apply cursor-not-allowed; }
+    .interactive-match-card--correct .interactive-match-dot { @apply border-emerald-600 bg-emerald-100 text-emerald-700; }
     .interactive-match-dot > span { @apply h-3 w-3 rounded-full bg-current; }
 
     .interactive-match-badge {
@@ -58,7 +60,8 @@
     .interactive-match-badge--correct { @apply bg-emerald-600 text-white; }
     .interactive-match-badge--incorrect { @apply bg-rose-600 text-white; }
 
-    .interactive-match-line { fill: none; pointer-events: none; }
+    .interactive-match-svg { z-index: 1; overflow: visible; }
+    .interactive-match-line { fill: none; pointer-events: none; vector-effect: non-scaling-stroke; }
     .interactive-match-line--correct { @apply stroke-emerald-500; stroke-width: 3; stroke-linecap: round; }
     .interactive-match-line--incorrect { @apply stroke-rose-500; stroke-width: 3; stroke-dasharray: 8 6; }
     .interactive-match-line--pending { @apply stroke-violet-500; stroke-width: 3; stroke-dasharray: 3 5; }
@@ -97,6 +100,9 @@
         @apply border-purple-400 bg-purple-50 shadow-lg outline outline-2 outline-purple-300;
         opacity: 0.45;
     }
+
+    .interactive-sequence-row--correct { @apply border-emerald-400 bg-emerald-50; }
+    .interactive-sequence-row--incorrect { @apply border-rose-400 bg-rose-50; }
 
     .interactive-sequence-source { opacity: 0.7; }
     .interactive-sequence-handle { touch-action: none; }

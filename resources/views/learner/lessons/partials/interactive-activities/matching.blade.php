@@ -1,6 +1,6 @@
 @props(['activity', 'preview' => false])
 
-<div class="interactive-activity-container relative mt-6" x-data="matchingActivity(@js([
+<div class="interactive-match-container relative mt-6" x-data="matchingActivity(@js([
     'activityId' => $activity['id'] ?? null,
     'revision' => $activity['revision'] ?? 1,
     'matchUrl' => $activity['match_url'] ?? null,
@@ -13,43 +13,48 @@
     'leftItems' => $activity['payload']['left_items'] ?? [],
     'rightItems' => $activity['payload']['right_items'] ?? [],
 ]))"
-    x-init="setupConnectors($el); return () => teardownConnectors()"
-    @pointermove="moveConnection($event)"
+    x-init="$nextTick(() => setupConnectors($el)); return () => teardownConnectors()"
+    @pointermove.window="moveConnection($event)"
+    @pointercancel.window="cancelConnection()"
     @keydown.escape.window="cancelConnection()"
     @interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"
     @interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status, $event.detail.previewToken)"
     @interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status, $event.detail.previewToken) : resetPractice())">
-    <svg aria-hidden="true" class="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible">
+    <svg aria-hidden="true" class="interactive-match-svg pointer-events-none absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none">
         <defs>
             <marker id="interactive-match-arrow-correct" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" class="fill-emerald-500" /></marker>
             <marker id="interactive-match-arrow-incorrect" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" class="fill-rose-500" /></marker>
             <marker id="interactive-match-arrow-pending" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" class="fill-violet-500" /></marker>
         </defs>
         <template x-for="line in connectorLines" :key="line.key">
-            <line :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2" :class="`interactive-match-line interactive-match-line--${line.state}`" :marker-end="`url(#interactive-match-arrow-${line.state})`"></line>
+            <line :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2" vector-effect="non-scaling-stroke" :class="`interactive-match-line interactive-match-line--${line.state}`" :marker-end="`url(#interactive-match-arrow-${line.state})`"></line>
         </template>
     </svg>
+
+    <p id="matching-dot-instructions-{{ $activity['id'] ?? 'unknown' }}" class="sr-only" aria-live="polite" x-text="activeEndpoint ? 'Connection started. Select a dot on the opposite side.' : ''">Select a connection dot on either side, then select the related dot.</p>
 
     <div class="interactive-match-grid relative z-10 gap-y-3">
         <div class="space-y-2">
             <h4 class="text-sm font-semibold text-gray-700">Match each item</h4>
-            <p class="text-xs text-gray-500">Connect an item to its related item using the dots. Select either dot first, then select the matching dot.</p>
             <div class="space-y-2">
                 @foreach(($activity['payload']['left_items'] ?? []) as $item)
                     <div class="interactive-match-card" :class="`interactive-match-card--${endpointState('left', @js($item['id']))}`">
                         <span class="min-w-0 flex-1 text-sm text-gray-900">{{ $item['value'] }}</span>
-                        <span class="text-xs font-semibold text-emerald-700" x-show="endpointState('left', @js($item['id'])) === 'correct'">Correct</span>
-                        <span class="text-xs font-semibold text-rose-700" x-show="endpointState('left', @js($item['id'])) === 'incorrect'">Incorrect</span>
-                        <span class="interactive-match-badge interactive-match-badge--correct" x-show="endpointState('left', @js($item['id'])) === 'correct'" aria-hidden="true">✓</span>
-                        <span class="interactive-match-badge interactive-match-badge--incorrect" x-show="endpointState('left', @js($item['id'])) === 'incorrect'" aria-hidden="true">×</span>
+                        <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'selected'" class="text-xs font-semibold text-violet-700">Selected</span>
+                        <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'pending'" class="text-xs font-semibold text-violet-700">Connected</span>
+                        <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'unanswered'" class="text-xs font-semibold text-gray-600">Unanswered</span>
+                        <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'correct'" class="text-xs font-semibold text-emerald-700">Correct</span>
+                        <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'incorrect'" class="text-xs font-semibold text-rose-700">Incorrect</span>
+                        <span class="interactive-match-badge interactive-match-badge--correct" x-cloak x-show="endpointState('left', @js($item['id'])) === 'correct'" aria-hidden="true">✓</span>
+                        <span class="interactive-match-badge interactive-match-badge--incorrect" x-cloak x-show="endpointState('left', @js($item['id'])) === 'incorrect'" aria-hidden="true">×</span>
                         <button type="button" data-match-dot-side="left" data-match-id="{{ $item['id'] }}"
-                            @pointerdown.prevent="startConnection('left', @js($item['id']), $event)"
-                            @pointerup.prevent="finishConnection('left', @js($item['id']))"
-                            @keydown="activateEndpoint('left', @js($item['id']), $event)"
+                            @click.stop="activateEndpoint('left', @js($item['id']), $event)"
+                            @keydown.escape.stop.prevent="cancelConnection()"
                             :aria-pressed="ariaPressed('left', @js($item['id']))"
                             :aria-label="endpointLabel('left', @js($item['id']), @js($item['value']))"
+                            :aria-describedby="'matching-dot-instructions-{{ $activity['id'] ?? 'unknown' }}'"
                             :aria-disabled="String(!isEndpointAvailable('left', @js($item['id'])))"
-                            :disabled="submitting"
+                            :disabled="isLocked() || endpointState('left', @js($item['id'])) === 'correct'"
                             class="interactive-match-dot interactive-match-dot--left min-h-11 min-w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
                             <span aria-hidden="true"></span>
                         </button>
@@ -66,26 +71,33 @@
                 @foreach(($activity['payload']['right_items'] ?? []) as $item)
                     <div class="interactive-match-card" :class="`interactive-match-card--${endpointState('right', @js($item['id']))}`">
                         <button type="button" data-match-dot-side="right" data-match-id="{{ $item['id'] }}"
-                            @pointerdown.prevent="startConnection('right', @js($item['id']), $event)"
-                            @pointerup.prevent="finishConnection('right', @js($item['id']))"
-                            @keydown="activateEndpoint('right', @js($item['id']), $event)"
+                            @click.stop="activateEndpoint('right', @js($item['id']), $event)"
+                            @keydown.escape.stop.prevent="cancelConnection()"
                             :aria-pressed="ariaPressed('right', @js($item['id']))"
                             :aria-label="endpointLabel('right', @js($item['id']), @js($item['value']))"
+                            :aria-describedby="'matching-dot-instructions-{{ $activity['id'] ?? 'unknown' }}'"
                             :aria-disabled="String(!isEndpointAvailable('right', @js($item['id'])))"
-                            :disabled="submitting"
+                            :disabled="isLocked() || endpointState('right', @js($item['id'])) === 'correct'"
                             class="interactive-match-dot interactive-match-dot--right min-h-11 min-w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
                             <span aria-hidden="true"></span>
                         </button>
                         <span class="min-w-0 flex-1 text-sm text-gray-900">{{ $item['value'] }}</span>
-                        <span class="text-xs font-semibold text-emerald-700" x-show="endpointState('right', @js($item['id'])) === 'correct'">Correct</span>
-                        <span class="text-xs font-semibold text-rose-700" x-show="endpointState('right', @js($item['id'])) === 'incorrect'">Incorrect</span>
-                        <span class="interactive-match-badge interactive-match-badge--correct" x-show="endpointState('right', @js($item['id'])) === 'correct'" aria-hidden="true">✓</span>
-                        <span class="interactive-match-badge interactive-match-badge--incorrect" x-show="endpointState('right', @js($item['id'])) === 'incorrect'" aria-hidden="true">×</span>
+                        <span x-cloak x-show="endpointState('right', @js($item['id'])) === 'selected'" class="text-xs font-semibold text-violet-700">Selected</span>
+                        <span x-cloak x-show="endpointState('right', @js($item['id'])) === 'pending'" class="text-xs font-semibold text-violet-700">Connected</span>
+                        <span x-cloak x-show="endpointState('right', @js($item['id'])) === 'unanswered'" class="text-xs font-semibold text-gray-600">Unanswered</span>
+                        <span x-cloak x-show="endpointState('right', @js($item['id'])) === 'correct'" class="text-xs font-semibold text-emerald-700">Correct</span>
+                        <span x-cloak x-show="endpointState('right', @js($item['id'])) === 'incorrect'" class="text-xs font-semibold text-rose-700">Incorrect</span>
+                        <span class="interactive-match-badge interactive-match-badge--correct" x-cloak x-show="endpointState('right', @js($item['id'])) === 'correct'" aria-hidden="true">✓</span>
+                        <span class="interactive-match-badge interactive-match-badge--incorrect" x-cloak x-show="endpointState('right', @js($item['id'])) === 'incorrect'" aria-hidden="true">×</span>
                     </div>
                 @endforeach
             </div>
         </div>
     </div>
 
-    <button type="button" x-cloak x-show="rejectedConnection" @click="removeRejectedConnection()" class="mt-4 min-h-11 rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">Remove incorrect connection</button>
+    <div class="mt-4 flex flex-wrap gap-3">
+        <button type="button" x-show="!isLocked()" @click="checkAnswer()" :disabled="isLocked()" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Check answer</button>
+        <button type="button" x-cloak x-show="hasIncorrectResults() && !isLocked()" @click="retryAnswer()" :disabled="isLocked()" class="min-h-11 rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Retry</button>
+    </div>
+    <p x-cloak x-show="requestState === 'pending'" class="mt-3 text-sm text-gray-600" role="status" aria-live="polite">Checking your connections...</p>
 </div>

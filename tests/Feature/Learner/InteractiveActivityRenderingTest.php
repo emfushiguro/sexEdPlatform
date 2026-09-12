@@ -249,11 +249,18 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringContainsString('interactive-match-arrow-pending', $html);
         $this->assertStringContainsString('marker-end', $html);
         $this->assertStringContainsString('aria-label', $html);
-        $this->assertStringContainsString('Connect an item to its related item using the dots.', $html);
+        $this->assertStringContainsString('Check answer', $html);
+        $this->assertStringContainsString('Retry', $html);
+        $this->assertStringContainsString('endpointState(', $html);
+        $this->assertStringContainsString('@click.stop="activateEndpoint(', $html);
+        $this->assertStringContainsString('@keydown.escape.stop.prevent="cancelConnection()"', $html);
+        $this->assertStringNotContainsString('handleEndpointPointerDown', $html);
+        $this->assertStringNotContainsString('@pointerup.prevent.stop="finishConnection(', $html);
+        $this->assertStringNotContainsString('Connect an item to its related item using the dots.</p>', $html);
         $this->assertStringContainsString('>Correct</span>', $html);
         $this->assertStringContainsString('>Incorrect</span>', $html);
         $this->assertStringContainsString(':aria-disabled="String(!isEndpointAvailable(', $html);
-        $this->assertStringContainsString('Remove incorrect connection', $html);
+        $this->assertStringNotContainsString('Remove incorrect connection', $html);
         $this->assertStringNotContainsString('Check match', $html);
         $this->assertStringNotContainsString('data-match-left=', $html);
         $this->assertStringNotContainsString('data-match-right=', $html);
@@ -272,13 +279,15 @@ class InteractiveActivityRenderingTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('sequencing-drag-instructions', $html);
-        $this->assertStringContainsString('class="mb-3 text-sm text-gray-600"', $html);
+        $this->assertStringContainsString('class="sr-only"', $html);
         $this->assertStringContainsString('Use Space or Enter to pick up an item.', $html);
         $this->assertStringContainsString('aria-describedby="sequencing-drag-instructions"', $html);
         $this->assertStringContainsString('@pointerdown.prevent.stop="beginPointerDrag(index, $event)"', $html);
         $this->assertStringContainsString('aria-pressed="isDragging() && draggedId === itemId"', $html);
         $this->assertStringContainsString('x-show="isDragging()"', $html);
         $this->assertStringContainsString('x-text="dragAnnouncement"', $html);
+        $this->assertStringContainsString('x-text="itemState(itemId, index)"', $html);
+        $this->assertStringContainsString('positionLabel(index)', $html);
         $this->assertStringNotContainsString('Move First up', $html);
         $this->assertStringNotContainsString('Move First down', $html);
         $this->assertStringNotContainsString('>â†‘<', $html);
@@ -295,7 +304,7 @@ class InteractiveActivityRenderingTest extends TestCase
                         'right_items' => [['id' => 'right-1', 'value' => 'First']],
                     ]],
                 ])->render(),
-                3,
+                4,
             ],
             [
                 view('learner.lessons.partials.interactive-activities.sequencing', [
@@ -303,7 +312,7 @@ class InteractiveActivityRenderingTest extends TestCase
                         'items' => [['id' => 'item-1', 'value' => 'First']],
                     ]],
                 ])->render(),
-                2,
+                3,
             ],
             [
                 view('learner.lessons.partials.interactive-activities.shell', [
@@ -314,7 +323,7 @@ class InteractiveActivityRenderingTest extends TestCase
                         'payload' => ['left_items' => [], 'right_items' => []],
                     ],
                 ])->render(),
-                5,
+                9,
             ],
         ];
 
@@ -347,6 +356,10 @@ class InteractiveActivityRenderingTest extends TestCase
             $this->assertStringContainsString('x-show="feedback.message"', $html);
             $this->assertStringContainsString('role="status"', $html);
             $this->assertStringContainsString('x-text="feedback.message"', $html);
+            $this->assertStringContainsString('aria-label="How to complete this activity"', $html);
+            $this->assertStringContainsString('x-show="helpOpen"', $html);
+            $this->assertStringContainsString('role="dialog" aria-modal="true"', $html);
+            $this->assertStringContainsString('Activity guide', $html);
             $this->assertStringContainsString('x-show="error" role="alert"', $html);
             $this->assertStringContainsString("x-show=\"['completed', 'practice_completed'].includes(status) && explanation\"", $html);
             $this->assertStringContainsString('x-html="explanation"', $html);
