@@ -16,7 +16,7 @@ test('buttons and keyboard use the same order primitive', () => {
     activity.move(2, -1);
     activity.keyboardMove(1, -1, { key: 'ArrowUp', preventDefault() {} });
     assert.deepEqual(activity.order, ['three', 'one', 'two']);
-    assert.equal(activity.positionLabel(1), '2 of 3');
+    assert.equal(activity.positionLabel(1), '2');
 });
 
 test('pointer reorder uses the shared order and a debounced full state save', async () => {
@@ -73,6 +73,14 @@ test('correct state locks controls and practice resets local status', async () =
     activity.resetPractice();
     assert.equal(activity.status, 'practice');
     assert.deepEqual(activity.order, ['one', 'two', 'three']);
+});
+
+test('practice completion locks sequencing controls until practice is reset', () => {
+    const activity = createSequencingActivity({ initialStatus: 'practice_completed' });
+
+    assert.equal(activity.isLocked(), true);
+    activity.retryAnswer();
+    assert.deepEqual(activity.positionResults, []);
 });
 
 test('successful sequencing responses dispatch state and a scoped result for the configured activity', async () => {
@@ -170,6 +178,65 @@ test('failed sequencing state save dispatches a scoped error', async () => {
         name: 'interactive-activity-error',
         detail: { activityId: 'sequencing-42', message: 'Offline' },
     }]);
+});
+
+test('sequencing exposes per-position feedback and retry preserves the current arrangement', async () => {
+    const activity = createSequencingActivity({
+        initialOrder: ['one', 'two', 'three'],
+        checkUrl: '/check',
+    }, async () => response({
+        status: 'in_progress',
+        is_correct: false,
+        is_complete: false,
+        position_results: [
+            { item_id: 'two', position: 1, is_correct: false },
+            { item_id: 'one', position: 2, is_correct: false },
+            { item_id: 'three', position: 3, is_correct: true },
+        ],
+    }));
+
+    await activity.checkAnswer();
+
+    assert.equal(activity.itemState('two', 0), 'incorrect');
+    assert.equal(activity.itemState('one', 1), 'incorrect');
+    assert.equal(activity.itemState('three', 2), 'correct');
+    assert.equal(activity.hasIncorrectResults(), true);
+
+    const arrangement = [...activity.order];
+    activity.retryAnswer();
+
+    assert.deepEqual(activity.order, arrangement);
+    assert.deepEqual(activity.positionResults, []);
+    assert.equal(activity.hasIncorrectResults(), false);
+});
+
+test('completed response rehydrates the persisted correct sequence instead of validating stale local order', async () => {
+    const activity = createSequencingActivity({
+        initialOrder: ['two', 'one', 'three'],
+        items: [
+            { id: 'two', value: 'Second' },
+            { id: 'one', value: 'First' },
+            { id: 'three', value: 'Third' },
+        ],
+        checkUrl: '/check',
+    }, async () => response({
+        status: 'completed',
+        accepted: false,
+        is_correct: true,
+        is_complete: true,
+        payload: {
+            items: [
+                { id: 'one', value: 'First' },
+                { id: 'two', value: 'Second' },
+                { id: 'three', value: 'Third' },
+            ],
+        },
+    }));
+
+    await activity.checkAnswer();
+
+    assert.deepEqual(activity.order, ['one', 'two', 'three']);
+    assert.equal(activity.isLocked(), true);
 });
 
 test('a recovered sequencing state save clears its error and dispatches a scoped recovery', async () => {

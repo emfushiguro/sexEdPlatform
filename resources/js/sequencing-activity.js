@@ -22,6 +22,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         previewEvaluateUrl: config.previewEvaluateUrl ?? null,
         status: config.initialStatus || 'in_progress',
         revision: config.revision ?? 1,
+        positionResults: Array.isArray(config.initialPositionResults) ? [...config.initialPositionResults] : [],
         error: '',
         feedback: '',
         submitting: false,
@@ -38,11 +39,34 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         lastPointerY: null,
 
         isLocked() {
-            return this.status === 'completed' || this.submitting;
+            return ['completed', 'practice_completed'].includes(this.status) || this.submitting;
         },
 
         positionLabel(index) {
-            return `${index + 1} of ${this.order.length}`;
+            return `${index + 1}`;
+        },
+
+        positionResultFor(itemId, index) {
+            return this.positionResults.find((result) => result.item_id === itemId && result.position === index + 1) ?? null;
+        },
+
+        itemState(itemId, index) {
+            const result = this.positionResultFor(itemId, index);
+            if (!result) return 'idle';
+            return result.is_correct ? 'correct' : 'incorrect';
+        },
+
+        hasIncorrectResults() {
+            return this.positionResults.some((result) => !result.is_correct);
+        },
+
+        retryAnswer() {
+            if (this.isLocked()) return this;
+            this.positionResults = [];
+            this.feedback = '';
+            this.error = '';
+            this.$dispatch?.('interactive-activity-retry', { activityId: config.activityId, type: 'sequencing' });
+            return this;
         },
 
         itemFor(id) {
@@ -58,8 +82,21 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             });
         },
 
+        applyEvaluation(data) {
+            const positionResults = Array.isArray(data.position_results) ? [...data.position_results] : [];
+            if (data.is_complete && Array.isArray(data.payload?.items)) {
+                this.loadPayload(data.payload, data.status, data.preview_token);
+            } else {
+                this.status = data.status ?? this.status;
+            }
+            this.positionResults = positionResults;
+            return this;
+        },
+
         move(index, delta) {
             if (!this.isLocked()) {
+                this.positionResults = [];
+                this.feedback = '';
                 this.order = moveItem(this.order, index, delta);
                 this.candidateOrder = [...this.order];
             }
@@ -94,6 +131,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
 
         beginPointerDrag(index, event = null) {
             if (this.isLocked() || !Number.isInteger(index) || index < 0 || index >= this.order.length) return this;
+            this.positionResults = [];
             this.feedback = '';
             this.error = '';
             this.reorder.cancel().begin(index);
@@ -243,7 +281,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         },
 
         scheduleSave() {
-            if (config.preview || !config.stateUrl || typeof request !== 'function' || this.status === 'completed') return this;
+            if (config.preview || !config.stateUrl || typeof request !== 'function' || ['completed', 'practice_completed'].includes(this.status)) return this;
             clearTimeout(this.saveTimer);
             this.saveTimer = setTimeout(() => this.persistState(), config.saveDebounceMs ?? 300);
             return this;
@@ -286,7 +324,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                     });
                     const data = await readResponse(response);
                     if (data.preview_token !== undefined) this.previewToken = data.preview_token;
-                    this.status = data.status ?? this.status;
+                    this.applyEvaluation(data);
                     if (!data.is_correct) this.feedback = 'Not quite, try again';
                     this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
                     this.publishResult(data);
@@ -302,7 +340,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
                     body: JSON.stringify({ revision: this.revision, item_order: [...this.order] }),
                 });
                 const data = await readResponse(response);
-                this.status = data.status ?? this.status;
+                this.applyEvaluation(data);
                 if (!data.is_correct) this.feedback = 'Not quite, try again';
                 this.$dispatch?.('interactive-activity-state', { activityId: config.activityId, status: this.status, data });
                 this.publishResult(data);
@@ -322,6 +360,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             this.initialOrder = [...this.order];
             this.candidateOrder = [...this.order];
             this.status = status ?? this.status;
+            this.positionResults = [];
             if (previewToken !== undefined) this.previewToken = previewToken;
             this.feedback = '';
             this.error = '';
@@ -341,6 +380,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             this.order = [...this.initialOrder];
             this.candidateOrder = [...this.order];
             this.status = 'practice';
+            this.positionResults = [];
             this.feedback = '';
             this.error = '';
             this.reorder.cancel();
