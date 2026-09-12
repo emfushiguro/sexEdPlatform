@@ -45,6 +45,60 @@ class SequencingActivityFlowTest extends TestCase
         $this->assertStringNotContainsString('correct_position', $response->getContent());
     }
 
+    public function test_zero_attempt_canonical_progress_is_reshuffled_without_resetting_real_progress(): void
+    {
+        $canonical = ['item-1', 'item-2', 'item-3'];
+
+        [$freshLearner, $freshActivity] = $this->fixture();
+        $freshProgress = InteractiveActivityProgress::factory()->create([
+            'user_id' => $freshLearner->id,
+            'interactive_activity_id' => $freshActivity->id,
+            'activity_revision' => 1,
+            'status' => 'in_progress',
+            'attempt_count' => 0,
+            'working_state' => ['item_order' => $canonical],
+        ]);
+
+        $this->actingAs($freshLearner)
+            ->getJson(route('learner.interactive-activities.show', $freshActivity))
+            ->assertOk();
+
+        $this->assertNotSame($canonical, $freshProgress->refresh()->working_state['item_order']);
+
+        [$attemptedLearner, $attemptedActivity] = $this->fixture();
+        $attemptedProgress = InteractiveActivityProgress::factory()->create([
+            'user_id' => $attemptedLearner->id,
+            'interactive_activity_id' => $attemptedActivity->id,
+            'activity_revision' => 1,
+            'status' => 'in_progress',
+            'attempt_count' => 1,
+            'working_state' => ['item_order' => $canonical],
+        ]);
+
+        $this->actingAs($attemptedLearner)
+            ->getJson(route('learner.interactive-activities.show', $attemptedActivity))
+            ->assertOk();
+
+        $this->assertSame($canonical, $attemptedProgress->refresh()->working_state['item_order']);
+
+        [$completedLearner, $completedActivity] = $this->fixture();
+        $completedProgress = InteractiveActivityProgress::factory()->create([
+            'user_id' => $completedLearner->id,
+            'interactive_activity_id' => $completedActivity->id,
+            'activity_revision' => 1,
+            'status' => 'completed',
+            'attempt_count' => 2,
+            'completed_at' => now(),
+            'working_state' => ['item_order' => $canonical],
+        ]);
+
+        $this->actingAs($completedLearner)
+            ->getJson(route('learner.interactive-activities.show', $completedActivity))
+            ->assertOk();
+
+        $this->assertSame($canonical, $completedProgress->refresh()->working_state['item_order']);
+    }
+
     public function test_sequence_state_save_accepts_exact_order_without_incrementing_attempts(): void
     {
         [$learner, $activity] = $this->fixture();
@@ -77,6 +131,10 @@ class SequencingActivityFlowTest extends TestCase
             ->assertJsonPath('accepted', true)
             ->assertJsonPath('is_correct', false)
             ->assertJsonPath('attempt_count', 1)
+            ->assertJsonPath('position_results.0.item_id', 'item-2')
+            ->assertJsonPath('position_results.0.position', 1)
+            ->assertJsonPath('position_results.0.is_correct', false)
+            ->assertJsonPath('position_results.2.is_correct', true)
             ->assertJsonMissingPath('correct_position');
 
         $this->actingAs($learner)
@@ -87,6 +145,7 @@ class SequencingActivityFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'completed')
             ->assertJsonPath('attempt_count', 2)
+            ->assertJsonPath('position_results.0.is_correct', true)
             ->assertJsonPath('explanation', 'Sequence explained here.');
     }
 

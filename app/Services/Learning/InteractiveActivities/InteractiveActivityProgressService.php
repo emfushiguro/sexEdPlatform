@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Learning\InteractiveActivities;
 
+use App\Enums\InteractiveActivityType;
 use App\Models\InteractiveActivity;
 use App\Models\InteractiveActivityProgress;
 use App\Models\User;
@@ -160,6 +161,12 @@ class InteractiveActivityProgressService
                 'started_at' => now(),
             ]);
         } elseif (! is_array($progress->working_state)) {
+            $progress->working_state = $handler->initialWorkingState($configuration, new Randomizer);
+            $progress->save();
+        } elseif ($lockedActivity->activity_type === InteractiveActivityType::SEQUENCING
+            && $progress->status === 'in_progress'
+            && (int) $progress->attempt_count === 0
+            && ($progress->working_state['item_order'] ?? null) === array_column($configuration['items'] ?? [], 'id')) {
             $progress->working_state = $handler->initialWorkingState($configuration, new Randomizer);
             $progress->save();
         }
