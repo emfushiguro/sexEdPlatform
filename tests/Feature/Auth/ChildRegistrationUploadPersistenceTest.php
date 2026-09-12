@@ -28,6 +28,15 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
             ->assertOk()
             ->assertSee('x-data="guardianEvidenceForm', false)
             ->assertSee('Add back side', false)
+            ->assertSee('data-testid="relationship-evidence-dropzone"', false)
+            ->assertSee('Drop a file here or', false)
+            ->assertSee('>browse</span>', false)
+            ->assertSee('Required core evidence:', false)
+            ->assertSee('data-testid="relationship-evidence-clear"', false)
+            ->assertSee('data-testid="relationship-evidence-preview"', false)
+            ->assertSee('Selected preview', false)
+            ->assertSee('Replace', false)
+            ->assertSee('@drop.prevent="handleDrop(index, $event)"', false)
             ->assertDontSee('x-init="init()"', false);
     }
 
