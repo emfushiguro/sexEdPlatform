@@ -194,7 +194,7 @@
             </label>
         </div>
 
-        <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+        <div class="flex items-center justify-between gap-4 pt-4 border-t border-gray-200">
             <a href="{{ route('parent.create-child.validation') }}" class="text-sm text-gray-500 hover:text-gray-700">Back</a>
             <button type="submit" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);" class="inline-flex items-center justify-center px-8 py-3.5 font-semibold text-white rounded-xl shadow-md hover:opacity-90">Submit Request</button>
         </div>

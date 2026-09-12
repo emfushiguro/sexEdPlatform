@@ -40,6 +40,19 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
             ->assertDontSee('x-init="init()"', false);
     }
 
+    public function test_child_relationship_verification_page_spaces_confirmation_actions(): void
+    {
+        $parent = $this->createApprovedParent();
+        $session = $this->childWizardSession();
+        $session['child_step3'] = ['username' => 'confirmation-spacing'];
+
+        $this->actingAs($parent)
+            ->withSession($session)
+            ->get(route('parent.create-child.relationship-verification'))
+            ->assertOk()
+            ->assertSee('class="flex items-center justify-between gap-4 pt-4 border-t border-gray-200"', false);
+    }
+
     public function test_child_credentials_submit_notifies_admins_about_new_child_verification_request(): void
     {
         Storage::fake('public');
