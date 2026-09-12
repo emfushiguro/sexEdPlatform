@@ -101,9 +101,6 @@
         opacity: 0.45;
     }
 
-    .interactive-sequence-row--correct { @apply border-emerald-400 bg-emerald-50; }
-    .interactive-sequence-row--incorrect { @apply border-rose-400 bg-rose-50; }
-
     .interactive-sequence-source { opacity: 0.7; }
     .interactive-sequence-handle { touch-action: none; }
     .interactive-sequence-insertion-bar {

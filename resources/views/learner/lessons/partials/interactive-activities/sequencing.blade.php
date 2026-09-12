@@ -25,12 +25,12 @@
 
     <ol class="interactive-sequence-list space-y-2" aria-label="Sequence items">
         <template x-for="(itemId, index) in order" :key="itemId">
-            <li class="interactive-sequence-row relative flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3"
+            <li class="interactive-sequence-row interactive-match-card relative"
                 :data-sequence-index="index"
                 :class="{
                     'interactive-sequence-row--dragged': isDragging() && draggedId === itemId,
-                    'interactive-sequence-row--correct': itemState(itemId, index) === 'correct',
-                    'interactive-sequence-row--incorrect': itemState(itemId, index) === 'incorrect'
+                    'interactive-match-card--correct': itemState(itemId, index) === 'correct',
+                    'interactive-match-card--incorrect': itemState(itemId, index) === 'incorrect'
                 }"
                 :aria-posinset="index + 1"
                 :aria-setsize="order.length">

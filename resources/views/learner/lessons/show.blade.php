@@ -225,9 +225,7 @@
                                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400 leading-snug">{{ $__t->title }}</p>
                                             @if($__t->type === 'interactive_checkpoint')
                                                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">QUICK CHECK · Optional</p>
-                                            @elseif($__t->type === 'interactive')
-                                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">INTERACTIVE ACTIVITY · Optional</p>
-                                            @else
+                                            @elseif($__t->type !== 'interactive')
                                             <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ $__t->duration }}m · {{ $__tLabel }}{{ $__t->is_prerequisite ? ' · Required' : '' }}</p>
                                             @endif
                                         </div>
@@ -241,9 +239,7 @@
                                             </p>
                                             @if($__t->type === 'interactive_checkpoint')
                                                 <p class="text-xs mt-0.5 {{ $__tCurrent ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500' }}">QUICK CHECK · Optional</p>
-                                            @elseif($__t->type === 'interactive')
-                                                <p class="text-xs mt-0.5 {{ $__tCurrent ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500' }}">INTERACTIVE ACTIVITY · Optional</p>
-                                            @else
+                                            @elseif($__t->type !== 'interactive')
                                             <p class="text-xs mt-0.5 {{ $__tCurrent ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500' }}">
                                                 {{ $__t->duration }}m · {{ $__tLabel }}{{ $__t->is_prerequisite ? ' · Required' : '' }}
                                             </p>

@@ -23,7 +23,6 @@
             <path stroke-linecap="round" d="M12 16.5h.01"></path>
         </svg>
     </button>
-    <p class="pr-14 text-xs font-semibold uppercase tracking-[0.16em] text-purple-600">INTERACTIVE ACTIVITY · Optional</p>
     <h3 class="mt-2 pr-14 text-lg font-semibold text-gray-900">{{ $activity['title'] ?? 'Interactive Activity' }}</h3>
     @if(!empty($activity['instructions']))
         <div class="mt-2 prose prose-sm max-w-none text-gray-600">{!! $activity['instructions'] !!}</div>

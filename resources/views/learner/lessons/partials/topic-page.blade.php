@@ -24,15 +24,13 @@
             </div>
             <div class="flex-1 min-w-0">
                 <h3 class="text-sm font-semibold text-white leading-snug">{{ $currentTopic->title }}</h3>
-                <p class="text-white/70 text-xs">
-                    @if($currentTopic->isOptionalInteraction())
-                        INTERACTIVE ACTIVITY · Optional
-                    @else
+                @if(! $currentTopic->isOptionalInteraction())
+                    <p class="text-white/70 text-xs">
                         Topic {{ $currentTopicIndex + 1 }} of {{ $lessonTopics->count() }}
                         <span class="mx-1">·</span>{{ $currentTopic->duration }}m
                         <span class="mx-1">·</span>{{ ucfirst($currentTopic->type) }}
-                    @endif
-                </p>
+                    </p>
+                @endif
                 @if(($module->created_by ?? null) && ($module->created_by ?? null) !== auth()->id())
                     <button
                         type="button"

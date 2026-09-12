@@ -71,7 +71,7 @@ class InteractiveActivityRenderingTest extends TestCase
 
         $html = $this->page($learner, $lesson, 1);
 
-        $this->assertStringContainsString('INTERACTIVE ACTIVITY · Optional', $html);
+        $this->assertStringNotContainsString('INTERACTIVE ACTIVITY · Optional', $html);
         $row = substr($html, max(0, strpos($html, $host->title) - 100), 700);
         $this->assertStringNotContainsString('0m', $row);
         $this->assertStringNotContainsString('Required', $row);
@@ -297,6 +297,11 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringContainsString('x-show="itemState(itemId, index) === \'correct\'"', $html);
         $this->assertStringContainsString('interactive-match-badge--correct', $html);
         $this->assertStringContainsString('interactive-match-badge--incorrect', $html);
+        $this->assertStringContainsString('class="interactive-sequence-row interactive-match-card', $html);
+        $this->assertStringContainsString("'interactive-match-card--correct': itemState(itemId, index) === 'correct'", $html);
+        $this->assertStringContainsString("'interactive-match-card--incorrect': itemState(itemId, index) === 'incorrect'", $html);
+        $this->assertStringNotContainsString('interactive-sequence-row--correct', $html);
+        $this->assertStringNotContainsString('interactive-sequence-row--incorrect', $html);
         $this->assertStringContainsString('positionLabel(index)', $html);
         $this->assertStringNotContainsString('Move First up', $html);
         $this->assertStringNotContainsString('Move First down', $html);
