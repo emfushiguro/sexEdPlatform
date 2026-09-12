@@ -544,6 +544,9 @@ class AdminParentChildVerificationUiTest extends TestCase
         self::assertStringContainsString('h-9 w-9 rounded-full object-cover', $relationshipTableMarkup);
         self::assertStringContainsString('alt="Ari Guardian avatar"', $relationshipTableMarkup);
         self::assertStringContainsString('aria-label="Dina Dependent avatar fallback"', $relationshipTableMarkup);
+        self::assertStringContainsString('title="View Relationship Verification"', $relationshipTableMarkup);
+        self::assertStringContainsString('aria-label="View relationship verification"', $relationshipTableMarkup);
+        self::assertStringNotContainsString('>View</a>', $relationshipTableMarkup);
 
         $this->actingAs($admin)
             ->get(route('admin.parent-verifications.relationships.show', $relationship))

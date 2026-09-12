@@ -1045,16 +1045,9 @@
                                                 class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition"
                                                 :class="currentStatus === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : (currentStatus === 'rejected' ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' : 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100')"
                                                 aria-label="View dependent account verification">
-                                            <svg x-show="currentStatus === 'pending'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                            <svg x-show="currentStatus === 'approved'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                            <svg x-show="currentStatus === 'rejected'" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                           </button>
 
@@ -1303,7 +1296,15 @@
                                     <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusClass }}">{{ $application->relationshipVerificationLabel() }}</span>
                                 </td>
                                 <td class="px-4 py-4 text-right">
-                                    <a href="{{ route('admin.parent-verifications.relationships.show', $application) }}" class="inline-flex items-center rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100">View</a>
+                                    <a href="{{ route('admin.parent-verifications.relationships.show', $application) }}"
+                                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-200 bg-purple-50 text-purple-700 transition hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                                       title="View Relationship Verification"
+                                       aria-label="View relationship verification">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </a>
                                 </td>
                             </tr>
                         @empty
