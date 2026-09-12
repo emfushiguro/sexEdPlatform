@@ -83,8 +83,17 @@ class SequencingActivityHandler implements InteractiveActivityHandler
 
         $workingState['item_order'] = array_values($order);
         $correct = $workingState['item_order'] === $canonical;
+        $positionResults = [];
+        foreach ($workingState['item_order'] as $index => $itemId) {
+            $isCorrect = $itemId === ($canonical[$index] ?? null);
+            $positionResults[] = [
+                'item_id' => $itemId,
+                'position' => $index + 1,
+                'is_correct' => $isCorrect,
+            ];
+        }
 
-        return $this->result(true, $correct, $correct, $workingState);
+        return $this->result(true, $correct, $correct, $workingState, null, ['position_results' => $positionResults]);
     }
 
     public function answerFingerprint(array $configuration): string
@@ -122,7 +131,7 @@ class SequencingActivityHandler implements InteractiveActivityHandler
         return mb_strtolower((string) preg_replace('/\s+/u', ' ', trim($value)));
     }
 
-    private function result(bool $accepted, bool $correct, bool $complete, array $workingState, ?string $rejectionReason = null): array
+    private function result(bool $accepted, bool $correct, bool $complete, array $workingState, ?string $rejectionReason = null, array $details = []): array
     {
         $result = ['accepted' => $accepted, 'is_correct' => $correct, 'is_complete' => $complete, 'working_state' => $workingState];
 
@@ -130,6 +139,6 @@ class SequencingActivityHandler implements InteractiveActivityHandler
             $result['rejection_reason'] = $rejectionReason;
         }
 
-        return $result;
+        return [...$result, ...$details];
     }
 }

@@ -21,27 +21,39 @@
     @pointerup.window="dropPointerDrag($event)"
     @pointercancel.window="cancelDrag()"
     @keydown.escape.window="if (isDragging()) cancelDrag()">
-    <p id="sequencing-drag-instructions" class="mb-3 text-sm text-gray-600">Use Space or Enter to pick up an item. Use the arrow keys, Home, or End to choose a position, then Space or Enter to drop it. Press Escape to cancel.</p>
+    <p id="sequencing-drag-instructions" class="sr-only">Use Space or Enter to pick up an item. Use the arrow keys, Home, or End to choose a position, then Space or Enter to drop it. Press Escape to cancel.</p>
 
     <ol class="interactive-sequence-list space-y-2" aria-label="Sequence items">
         <template x-for="(itemId, index) in order" :key="itemId">
             <li class="interactive-sequence-row relative flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3"
                 :data-sequence-index="index"
-                :class="isDragging() && draggedId === itemId ? 'interactive-sequence-row--dragged' : ''"
+                :class="{
+                    'interactive-sequence-row--dragged': isDragging() && draggedId === itemId,
+                    'interactive-sequence-row--correct': itemState(itemId, index) === 'correct',
+                    'interactive-sequence-row--incorrect': itemState(itemId, index) === 'incorrect'
+                }"
                 :aria-posinset="index + 1"
                 :aria-setsize="order.length">
                 <div x-show="isDragging() && dragOverIndex === index && draggedId !== itemId" class="interactive-sequence-insertion-bar absolute -top-2 left-2 right-2" aria-hidden="true"></div>
-                <span class="interactive-sequence-position min-w-12 text-xs font-semibold text-gray-500" x-text="positionLabel(index)"></span>
+                <span class="interactive-sequence-position min-w-8 text-xs font-semibold text-gray-500" x-text="positionLabel(index)"></span>
                 <span class="flex-1 text-sm text-gray-800" :class="isDragging() && draggedId === itemId ? 'interactive-sequence-source' : ''" x-text="itemFor(itemId).value"></span>
+                <span x-cloak x-show="itemState(itemId, index) !== 'idle'" class="interactive-sequence-state inline-flex items-center gap-1 text-xs font-semibold" :class="itemState(itemId, index) === 'correct' ? 'text-emerald-700' : 'text-rose-700'">
+                    <span x-text="itemState(itemId, index)"></span>
+                    <span aria-hidden="true" x-text="itemState(itemId, index) === 'correct' ? '✓' : '×'"></span>
+                </span>
                 <button type="button"
                     :aria-label="`Drag ${itemFor(itemId).value}. Position ${index + 1} of ${order.length}.`"
                     aria-describedby="sequencing-drag-instructions"
                     :aria-pressed="isDragging() && draggedId === itemId"
                     @pointerdown.prevent.stop="beginPointerDrag(index, $event)"
                     @keydown="handleDragKey(index, $event)"
-                    class="interactive-sequence-handle inline-flex min-h-11 min-w-11 cursor-grab items-center justify-center rounded-lg border border-gray-300 bg-white text-lg text-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 active:cursor-grabbing"
+                    class="interactive-sequence-handle inline-flex min-h-11 min-w-11 cursor-grab items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 active:cursor-grabbing"
                     :class="isDragging() && draggedId === itemId ? 'cursor-grabbing' : ''">
-                    <span aria-hidden="true">â ¿</span>
+                    <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="8" cy="6" r="1.5"></circle><circle cx="16" cy="6" r="1.5"></circle>
+                        <circle cx="8" cy="12" r="1.5"></circle><circle cx="16" cy="12" r="1.5"></circle>
+                        <circle cx="8" cy="18" r="1.5"></circle><circle cx="16" cy="18" r="1.5"></circle>
+                    </svg>
                     <span class="sr-only">Drag item</span>
                 </button>
             </li>
@@ -53,5 +65,8 @@
     </div>
     <div id="sequencing-drag-announcement" class="sr-only" aria-live="polite" x-text="dragAnnouncement"></div>
 
-    <button type="button" @click="checkAnswer()" :disabled="isLocked()" class="mt-4 min-h-11 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Check answer</button>
+    <div class="mt-4 flex flex-wrap gap-3">
+        <button type="button" x-show="!isLocked()" @click="checkAnswer()" :disabled="isLocked()" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Check answer</button>
+        <button type="button" x-cloak x-show="hasIncorrectResults() && !isLocked()" @click="retryAnswer()" :disabled="isLocked()" class="min-h-11 rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Retry</button>
+    </div>
 </div>

@@ -7,7 +7,7 @@ test('matching feedback distinguishes progress, incorrect, and completion', () =
         kind: 'correct', message: 'Correct match. 2 of 4 pairs complete.', icon: 'check',
     });
     assert.equal(feedbackForEvaluation('matching', { is_correct: false }).message,
-        'Incorrect match. Remove or replace this connection and try again.');
+        'Incorrect match. Review the highlighted connections and try again.');
     assert.equal(feedbackForEvaluation('matching', { is_correct: true, is_complete: true }).message,
         'Correct. Activity complete.');
 });

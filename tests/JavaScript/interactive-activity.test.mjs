@@ -158,3 +158,42 @@ test('practice publishes the returned payload only to its activity instance', as
         payload: { items: [{ id: 'fresh' }] },
     });
 });
+
+test('common activity opens and closes the accessible help dialog and clears retry feedback', () => {
+    const activity = createInteractiveActivity({ activityId: 41 });
+    let focused = 0;
+    const trigger = { focus: () => { focused += 1; } };
+
+    activity.openHelp(trigger);
+    assert.equal(activity.helpOpen, true);
+    activity.closeHelp();
+    assert.equal(activity.helpOpen, false);
+    assert.equal(focused, 1);
+
+    activity.feedback = { kind: 'incorrect', message: 'Try again', icon: 'x' };
+    activity.handleActivityRetry({ activityId: 41 });
+    assert.deepEqual(activity.feedback, { kind: 'idle', message: '', icon: null });
+});
+
+test('help dialog traps Tab focus at both ends', () => {
+    const originalDocument = globalThis.document;
+    const activity = createInteractiveActivity({ activityId: 41 });
+    const first = { focus() { focused = 'first'; } };
+    const last = { focus() { focused = 'last'; } };
+    let focused = null;
+    let prevented = 0;
+    activity.$refs = { helpDialog: { querySelectorAll: () => [first, last], focus() {} } };
+
+    try {
+        globalThis.document = { activeElement: last };
+        activity.handleHelpKeydown({ key: 'Tab', shiftKey: false, preventDefault: () => { prevented += 1; } });
+        assert.equal(focused, 'first');
+
+        globalThis.document.activeElement = first;
+        activity.handleHelpKeydown({ key: 'Tab', shiftKey: true, preventDefault: () => { prevented += 1; } });
+        assert.equal(focused, 'last');
+        assert.equal(prevented, 2);
+    } finally {
+        globalThis.document = originalDocument;
+    }
+});

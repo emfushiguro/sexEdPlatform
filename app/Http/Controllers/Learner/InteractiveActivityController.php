@@ -40,20 +40,27 @@ class InteractiveActivityController extends Controller
     {
         $validated = $request->validate([
             'revision' => ['required', 'integer'],
-            'left_id' => ['required', 'string'],
-            'right_id' => ['required', 'string'],
+            'connections' => ['sometimes', 'array', 'max:12'],
+            'connections.*' => ['array'],
+            'connections.*.left_id' => ['required', 'string'],
+            'connections.*.right_id' => ['required', 'string'],
+            'left_id' => ['required_without:connections', 'string'],
+            'right_id' => ['required_without:connections', 'string'],
             'practice' => ['sometimes', 'boolean'],
             'working_state' => ['sometimes', 'array'],
         ]);
         $this->authorizeActivity($request, $interactiveActivity);
         $this->ensureActivityType($interactiveActivity, InteractiveActivityType::MATCHING);
 
+        $answer = array_key_exists('connections', $validated)
+            ? ['connections' => $validated['connections']]
+            : ['left_id' => $validated['left_id'], 'right_id' => $validated['right_id']];
+
         return $this->evaluationResponse($interactiveActivity, $this->progress->evaluate(
             Auth::user(),
             $interactiveActivity,
             [
-                'left_id' => $validated['left_id'],
-                'right_id' => $validated['right_id'],
+                ...$answer,
                 '_working_state' => $validated['working_state'] ?? null,
             ],
             (bool) ($validated['practice'] ?? false),
@@ -171,7 +178,7 @@ class InteractiveActivityController extends Controller
 
         $statusCode = ($result['rejection_reason'] ?? null) === 'invalid_answer' ? 422 : 200;
 
-        return response()->json([
+        $response = [
             'available' => $presentation['available'] ?? true,
             'id' => $activity->id,
             'type' => $activity->activity_type->value,
@@ -183,7 +190,14 @@ class InteractiveActivityController extends Controller
             'attempt_count' => $result['attempt_count'],
             'payload' => $result['payload'] ?? ($presentation['payload'] ?? null),
             'explanation' => $result['explanation'],
-        ], $statusCode);
+        ];
+        foreach (['pair_results', 'position_results'] as $detailKey) {
+            if (array_key_exists($detailKey, $result)) {
+                $response[$detailKey] = $result[$detailKey];
+            }
+        }
+
+        return response()->json($response, $statusCode);
     }
 
     /** @return array<string, mixed> */

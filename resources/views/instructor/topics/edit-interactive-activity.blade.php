@@ -27,12 +27,6 @@
             <input id="activity_title" name="title" value="{{ old('title', $activity->title) }}" required maxlength="255" class="mt-1 block w-full rounded-xl border-gray-300">
         </label>
         @include('instructor.topics.partials.interactive-activity-fields')
-        <label for="activity_instructions" class="block text-sm font-semibold text-gray-900">Instructions
-            <textarea id="activity_instructions" name="instructions" maxlength="10000" rows="4" class="mt-1 block w-full rounded-xl border-gray-300">{{ old('instructions', $activity->instructions) }}</textarea>
-        </label>
-        <label for="activity_explanation" class="block text-sm font-semibold text-gray-900">Explanation
-            <textarea id="activity_explanation" name="explanation" maxlength="10000" rows="4" class="mt-1 block w-full rounded-xl border-gray-300">{{ old('explanation', $activity->explanation) }}</textarea>
-        </label>
         <div class="flex justify-end gap-3">
             <a href="{{ route(app(\App\Support\ContentPanelContext::class)->name('lessons.show'), $lesson) }}" class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">Cancel</a>
             <button type="submit" class="rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white">Save activity</button>

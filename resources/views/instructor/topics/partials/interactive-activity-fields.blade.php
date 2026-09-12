@@ -75,6 +75,16 @@
     </fieldset>
     @error('placement') <p id="activity-placement-error" class="-mt-4 mb-6 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
 
+    <label for="activity_instructions" class="mb-6 block text-sm font-semibold text-gray-900">Instructions <span class="font-normal text-gray-400">(Optional)</span>
+        <textarea id="activity_instructions" name="instructions" maxlength="10000" rows="4" class="mt-1 block w-full rounded-xl border-gray-300">{{ old('instructions', $fieldActivity?->instructions) }}</textarea>
+    </label>
+    @error('instructions') <p id="activity-instructions-error" class="-mt-5 mb-6 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
+
+    <label for="activity_explanation" class="mb-6 block text-sm font-semibold text-gray-900">Explanation <span class="font-normal text-gray-400">(Optional)</span>
+        <textarea id="activity_explanation" name="explanation" maxlength="10000" rows="4" class="mt-1 block w-full rounded-xl border-gray-300">{{ old('explanation', $fieldActivity?->explanation) }}</textarea>
+    </label>
+    @error('explanation') <p id="activity-explanation-error" class="-mt-5 mb-6 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
+
     <div x-show="placement === 'inside_topic'" class="mb-6 space-y-4">
         <label for="activity_parent_topic_id" class="block text-sm font-semibold text-gray-900">Containing Topic</label>
         <select id="activity_parent_topic_id" name="parent_topic_id" x-model="parentTopicId" @change="insertAfterBlock = 0" :disabled="placement !== 'inside_topic'" aria-describedby="activity-parent-topic-error" aria-invalid="{{ $errors->has('parent_topic_id') ? 'true' : 'false' }}" class="w-full rounded-xl border-gray-200 focus:border-purple-400 focus:ring-purple-300">

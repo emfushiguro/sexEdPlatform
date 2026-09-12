@@ -17,6 +17,8 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
         feedback: emptyActivityFeedback(),
         submitting: false,
         practiceMode: false,
+        helpOpen: false,
+        helpTrigger: null,
         previewToken: config.previewToken ?? null,
         previewEvaluateUrl: config.previewEvaluateUrl ?? null,
 
@@ -38,6 +40,49 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
 
         clearFeedback() {
             this.feedback = emptyActivityFeedback();
+            return this;
+        },
+
+        openHelp(trigger = null) {
+            this.helpTrigger = trigger;
+            this.helpOpen = true;
+            const focusDialog = () => this.$refs?.helpDialog?.focus?.();
+            if (typeof this.$nextTick === 'function') this.$nextTick(focusDialog);
+            else if (typeof queueMicrotask === 'function') queueMicrotask(focusDialog);
+            else setTimeout(focusDialog, 0);
+            return this;
+        },
+
+        handleHelpKeydown(event) {
+            if (event?.key !== 'Tab') return this;
+
+            const dialog = this.$refs?.helpDialog;
+            const focusable = Array.from(dialog?.querySelectorAll?.('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
+            if (focusable.length === 0) {
+                event.preventDefault();
+                dialog?.focus?.();
+                return this;
+            }
+
+            const active = typeof document !== 'undefined' ? document.activeElement : null;
+            const first = focusable[0];
+            const last = focusable.at(-1);
+            if (event.shiftKey && active === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && active === last) {
+                event.preventDefault();
+                first.focus();
+            }
+
+            return this;
+        },
+
+        closeHelp() {
+            this.helpOpen = false;
+            const trigger = this.helpTrigger;
+            this.helpTrigger = null;
+            trigger?.focus?.();
             return this;
         },
 
@@ -63,6 +108,12 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
             this.error = '';
             if (this.feedback.kind === 'error') this.clearFeedback();
             return this;
+        },
+
+        handleActivityRetry(detail = {}) {
+            if (detail.activityId !== config.activityId) return this;
+            this.error = '';
+            return this.clearFeedback();
         },
 
         applyResponse(data) {

@@ -175,7 +175,8 @@ test('preview local adapters evaluate matching and sequencing without network na
         rightItems: [{ id: 'right', value: 'Right' }],
     }, async () => ({ ok: true, json: async () => ({ status: 'practice_completed', is_correct: true, is_complete: true, preview_token: 'token-2' }) }));
     matching.startConnection('left', 'left');
-    const matchingResult = await matching.finishConnection('right', 'right');
+    matching.finishConnection('right', 'right');
+    const matchingResult = await matching.checkAnswer();
     assert.equal(matchingResult.is_correct, true);
     assert.equal(matching.status, 'practice_completed');
 

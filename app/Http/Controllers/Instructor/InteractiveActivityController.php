@@ -70,8 +70,12 @@ class InteractiveActivityController extends Controller
                 throw ValidationException::withMessages(['action' => 'The Preview action does not match the activity type.']);
             }
             $answer += $request->validate([
-                'left_id' => ['required', 'string'],
-                'right_id' => ['required', 'string'],
+                'connections' => ['sometimes', 'array', 'max:12'],
+                'connections.*' => ['array'],
+                'connections.*.left_id' => ['required', 'string'],
+                'connections.*.right_id' => ['required', 'string'],
+                'left_id' => ['required_without:connections', 'string'],
+                'right_id' => ['required_without:connections', 'string'],
             ]);
         } elseif ($validated['action'] === 'check_sequence') {
             if ($context['activity_type'] !== 'sequencing') {
