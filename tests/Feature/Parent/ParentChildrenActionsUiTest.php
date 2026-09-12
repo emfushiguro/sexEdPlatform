@@ -61,6 +61,23 @@ class ParentChildrenActionsUiTest extends TestCase
             ->assertDontSee(route('parent.children.support-information.edit', $deniedChild), false);
     }
 
+    public function test_my_dependents_message_action_remains_available_for_a_stale_learner_role(): void
+    {
+        $parent = $this->createApprovedParent();
+        $child = $this->createChildForParent($parent, 'approved', 'Chat', 'Dependent');
+
+        $parent->roles()->firstOrFail()->revokePermissionTo('access chat');
+        $parent->forgetCachedPermissions();
+
+        $response = $this->actingAs($parent)->get(route('parent.children.index'));
+
+        $response->assertOk()
+            ->assertSee('Message '.$child->full_name, false)
+            ->assertSee('open-global-chat', false)
+            ->assertSee('target_user_id: '.$child->id, false)
+            ->assertSee('globalPopupChat({', false);
+    }
+
     private function createApprovedParent(): User
     {
         $this->seedLocationRows();

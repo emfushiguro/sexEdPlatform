@@ -88,4 +88,26 @@ class ChatPageRenderTest extends TestCase
             ->assertOk()
             ->assertSee('data-chat-root', false);
     }
+
+    public function test_learner_with_a_stale_spatie_role_can_open_chat_page(): void
+    {
+        $learner = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $learner->assignRole('learner');
+        $learner->roles()->firstOrFail()->revokePermissionTo('access chat');
+        $learner->forgetCachedPermissions();
+
+        $this->assertFalse($learner->fresh()->can('access chat'));
+
+        $this->actingAs($learner)
+            ->get(route('chat.page'))
+            ->assertOk()
+            ->assertSee('data-chat-root', false);
+
+        $this->actingAs($learner)
+            ->getJson(route('chat.conversations.index'))
+            ->assertOk();
+    }
 }

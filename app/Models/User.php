@@ -739,14 +739,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function canAccessChat(): bool
     {
-        if ($this->can('access chat')) {
-            return true;
-        }
-
-        // Older learner records may predate the Spatie role assignment. Keep
-        // the trusted legacy learner column usable without bypassing an
-        // explicitly assigned role whose permissions were removed.
-        return $this->role === 'learner' && ! $this->roles()->exists();
+        return $this->can('access chat') || $this->isLearner();
     }
 
     public function hasLearnerToInstructorTransition(): bool
