@@ -1,5 +1,5 @@
 /**
- * TinyMCE version 8.8.2 (2026-07-27)
+ * TinyMCE version 8.3.2 (2026-01-14)
  */
 
 (function () {
@@ -3103,14 +3103,11 @@
             attrs.class = data.class;
         }
         styles.height = addPxSuffix(data.height);
-        // TINY-12797: Make sure only CSS width or attribute is applied based on `table_style_by_css` option
         if (shouldStyleWithCss$1) {
             styles.width = addPxSuffix(data.width);
-            attrs.width = null;
         }
-        else {
+        else if (dom.getAttrib(tableElm, 'width')) {
             attrs.width = removePxSuffix(data.width);
-            styles.width = '';
         }
         if (shouldStyleWithCss$1) {
             if (borderIsZero) {
@@ -3199,6 +3196,7 @@
         });
     };
     const open = (editor, insertNewTable) => {
+        const dom = editor.dom;
         let tableElm;
         let data = extractDataFromSettings(editor, hasAdvancedTableTab(editor));
         // Cases for creation/update of tables:
@@ -3217,10 +3215,7 @@
             }
         }
         else {
-            tableElm = getSelectionCellOrCaption(getSelectionStart(editor), getIsRoot(editor))
-                .bind((cellOrCaption) => table(cellOrCaption, getIsRoot(editor)))
-                .map((table) => table.dom)
-                .getOrNull();
+            tableElm = dom.getParent(editor.selection.getStart(), 'table', editor.getBody());
             if (tableElm) {
                 // Case 2 - isNew == false && table parent
                 data = extractDataFromTableElement(editor, tableElm, hasAdvancedTableTab(editor));

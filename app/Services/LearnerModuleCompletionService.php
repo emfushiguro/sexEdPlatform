@@ -3,11 +3,15 @@
 namespace App\Services;
 
 use App\Enums\EnrollmentStatus;
+use App\Models\InteractiveActivity;
+use App\Models\InteractiveActivityProgress;
+use App\Models\InteractiveCheckpointProgress;
 use App\Models\LessonTopicProgress;
 use App\Models\Module;
 use App\Models\QuizAttempt;
 use App\Models\User;
 use App\Models\UserProgress;
+use Illuminate\Support\Collection;
 
 class LearnerModuleCompletionService
 {
@@ -27,6 +31,81 @@ class LearnerModuleCompletionService
     public function isFullyCompleted(User $user, Module $module): bool
     {
         return $this->completionBlockerReason($user, $module, requirePassingLessonQuizzes: true) === null;
+    }
+
+    /**
+     * @param Collection<int, mixed> $topics
+     * @return Collection<int, int>
+     */
+    public function completedTopicIds(User $user, Collection $topics): Collection
+    {
+        $topicIds = $topics
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($topicIds->isEmpty()) {
+            return collect();
+        }
+
+        $completedTopicIds = LessonTopicProgress::query()
+            ->where('user_id', $user->id)
+            ->whereIn('lesson_topic_id', $topicIds)
+            ->where('completed', true)
+            ->pluck('lesson_topic_id');
+
+        $checkpointTopicIds = $topics
+            ->filter(fn ($topic): bool => $topic->type === 'interactive_checkpoint')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($checkpointTopicIds->isNotEmpty()) {
+            $completedTopicIds = $completedTopicIds->merge(
+                InteractiveCheckpointProgress::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('lesson_topic_id', $checkpointTopicIds)
+                    ->whereNull('checkpoint_block_uuid')
+                    ->whereIn('status', ['correct', 'skipped'])
+                    ->pluck('lesson_topic_id'),
+            );
+        }
+
+        $activityTopicIds = $topics
+            ->filter(fn ($topic): bool => $topic->type === 'interactive')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($activityTopicIds->isNotEmpty()) {
+            $activities = InteractiveActivity::query()
+                ->whereIn('lesson_topic_id', $activityTopicIds)
+                ->where('placement', 'between_topics')
+                ->get(['id', 'lesson_topic_id', 'revision'])
+                ->keyBy('id');
+
+            if ($activities->isNotEmpty()) {
+                $completedTopicIds = $completedTopicIds->merge(
+                    InteractiveActivityProgress::query()
+                        ->where('user_id', $user->id)
+                        ->whereIn('interactive_activity_id', $activities->keys())
+                        ->whereIn('status', ['completed', 'skipped'])
+                        ->get(['interactive_activity_id', 'activity_revision'])
+                        ->filter(fn (InteractiveActivityProgress $progress): bool => (int) $progress->activity_revision === (int) $activities->get($progress->interactive_activity_id)->revision)
+                        ->map(fn (InteractiveActivityProgress $progress): int => (int) $activities->get($progress->interactive_activity_id)->lesson_topic_id),
+                );
+            }
+        }
+
+        return $completedTopicIds
+            ->map(fn ($id): int => (int) $id)
+            ->intersect($topicIds)
+            ->unique()
+            ->values();
     }
 
     public function completionBlockerReason(User $user, Module $module, bool $requirePassingLessonQuizzes = true): ?string
@@ -67,14 +146,10 @@ class LearnerModuleCompletionService
             return 'Complete all lessons before submitting feedback.';
         }
 
-        $topicIds = $lessons->flatMap(fn ($lesson) => $lesson->topics->pluck('id'))->unique();
+        $topics = $lessons->flatMap(fn ($lesson) => $lesson->topics);
+        $topicIds = $topics->pluck('id')->unique();
         if ($topicIds->isNotEmpty()) {
-            $completedTopicIds = LessonTopicProgress::query()
-                ->where('user_id', $user->id)
-                ->whereIn('lesson_topic_id', $topicIds)
-                ->where('completed', true)
-                ->pluck('lesson_topic_id')
-                ->unique();
+            $completedTopicIds = $this->completedTopicIds($user, $topics);
 
             if ($completedTopicIds->count() < $topicIds->count()) {
                 return 'Complete all lesson topics before submitting feedback.';

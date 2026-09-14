@@ -1,94 +1,78 @@
-# Task 2: Safe Human-Readable Checkpoint Editing
+# Task 2: Centralize accessible activity feedback
 
 ## Implementation
 
-- Added `questionTextForEditor(html, type)`: rich question types retain stored HTML; plain fill-in-the-blank types use the existing HTML-to-text sanitizer.
-- Applied that conversion when authoring state is created and exposed it as `window.questionTextForEditor` for Blade checkpoint initialization.
-- Changed the checkpoint edit form to pass every initial authoring value through `@js`, including type, question text, explanation, options, acceptable answers, Word Bank, case sensitivity, and image URL.
-- Collapsed adjacent newline boundaries in `stripQuestionHtml`, so `<br>` beside paragraph markup produces the single visual line break required by the editor prefill contract.
-- Updated explanation help text to: `Shown after a correct answer. It is hidden after an incorrect answer or skip.`
+- Added the dependency-free `activity-feedback.js` mapper with the specified idle, evaluation, and lifecycle messages.
+- Added parent-level Alpine feedback state, scoped result handling, lifecycle clearing, request-error feedback, and `practice_completed` controls.
+- Matching and sequencing now publish scoped evaluation details to the shared shell. Their duplicate local feedback regions were removed so each activity has one central status region and one central request-error alert.
+- Learner and Preview instructions render the stored sanitized rich text. Completed and practice-completed explanations render with `x-html` only after the matching status is active; activity authoring sanitizes both fields before storage.
 
-## TDD evidence
+## Files
 
-### RED
+Created:
 
-1. Added the requested JavaScript `questionTextForEditor` test and checkpoint-edit feature regression test before production code.
-2. Ran:
+- `resources/js/activity-feedback.js`
+- `tests/JavaScript/activity-feedback.test.mjs`
 
-   ```powershell
-   node --test tests/JavaScript/question-authoring.test.mjs
-   ```
+Modified:
 
-   Result: failed as expected with `SyntaxError: ... does not provide an export named 'questionTextForEditor'` (1 failing test file).
+- `resources/js/interactive-activity.js`
+- `resources/js/matching-activity.js`
+- `resources/js/sequencing-activity.js`
+- `resources/views/learner/lessons/partials/interactive-activities/shell.blade.php`
+- `resources/views/learner/lessons/partials/interactive-activities/matching.blade.php`
+- `resources/views/learner/lessons/partials/interactive-activities/sequencing.blade.php`
+- `tests/JavaScript/interactive-activity.test.mjs`
+- `tests/JavaScript/matching-activity.test.mjs`
+- `tests/JavaScript/sequencing-activity.test.mjs`
+- `tests/Feature/Learner/InteractiveActivityRenderingTest.php`
 
-3. Ran:
+The child component files are required to publish the scoped result event and eliminate their duplicate live/error regions.
 
-   ```powershell
-   php artisan test tests/Feature/Instructor/InteractiveCheckpointAuthoringTest.php tests/Feature/Instructor/QuizQuestionAuthoringRegressionTest.php
-   ```
+## RED evidence
 
-   Result in the workspace sandbox: failed before test execution with Symfony's known Windows cwd error: `The provided cwd "C:\Users\Jaded\ConciousConnections" does not exist.` The same command was retried escalated and completed with no output/error.
+1. `node --test tests/JavaScript/activity-feedback.test.mjs` failed before the mapper existed with `ERR_MODULE_NOT_FOUND` for `resources/js/activity-feedback.js`.
+2. The required combined JavaScript RED run had four intended failures: missing skipped feedback, missing request-error feedback, feedback not clearing, and missing `handleActivityResult`.
+3. The PHP rendering RED run completed with 10 passing tests and one failure because the shell did not contain the scoped `interactive-activity-result` listener.
+4. Child result-event tests then failed because only lifecycle state was dispatched. The expected `interactive-activity-result` events were absent.
 
-### GREEN
+## GREEN evidence
 
-1. Ran:
+Required JavaScript command:
 
-   ```powershell
-   node --test tests/JavaScript/question-authoring.test.mjs
-   ```
+```text
+node --test tests/JavaScript/activity-feedback.test.mjs tests/JavaScript/interactive-activity.test.mjs
+7 tests passed, 0 failed.
+```
 
-   Result: 12 tests passed, 0 failed.
+Extended JavaScript coverage:
 
-2. Ran:
+```text
+node --test tests/JavaScript/activity-feedback.test.mjs tests/JavaScript/interactive-activity.test.mjs tests/JavaScript/matching-activity.test.mjs tests/JavaScript/sequencing-activity.test.mjs
+20 tests passed, 0 failed.
+```
 
-   ```powershell
-   php artisan test tests/Feature/Instructor/InteractiveCheckpointAuthoringTest.php tests/Feature/Instructor/QuizQuestionAuthoringRegressionTest.php
-   ```
+Required PHP command:
 
-   Result: completed successfully through the escalated Windows execution path; no test runner output was emitted.
+```text
+php vendor/bin/phpunit --do-not-cache-result tests/Feature/Learner/InteractiveActivityRenderingTest.php --testdox
+OK (11 tests, 54 assertions)
+```
 
-3. Ran:
-
-   ```powershell
-   pnpm.cmd build
-   ```
-
-   Result: Vite 7.3.0 built successfully (`80 modules transformed`, `built in 13.00s`). Generated `public/build` artifacts were intentionally not staged.
-
-4. Ran `git diff --check`; result: no whitespace errors.
-
-## Files changed
-
-- `resources/js/question-authoring.js`
-- `resources/js/app.js`
-- `resources/views/instructor/topics/edit-checkpoint.blade.php`
-- `resources/views/instructor/quizzes/partials/question-fields.blade.php`
-- `tests/JavaScript/question-authoring.test.mjs`
-- `tests/Feature/Instructor/InteractiveCheckpointAuthoringTest.php`
-- `tests/Feature/Instructor/QuizQuestionAuthoringRegressionTest.php`
-
-Commit: `70ee178 fix: render checkpoint editor content safely`
+PHP took about 32 seconds, exceeding the foreground terminal window, so it was captured from a hidden background PHP process. `git diff --check` was clean for all Task 2 code and test files.
 
 ## Self-review
 
-- The conversion lives at the shared authoring boundary, so plain types cannot receive serialized rich markup even from non-checkpoint callers.
-- The checkpoint Blade path uses `@js` for each server-supplied authoring value; rich HTML is passed as data, not interpolated into JavaScript source.
-- No dependencies or speculative abstractions were added.
-- Only the seven Task 2 code/test files will be staged. Pre-existing and build-generated artifacts remain unstaged.
+- Confirmed all result and lifecycle actions are scoped by `activityId`.
+- Confirmed no new dependencies, schema changes, scoring, completion rules, or activity-required behavior were added.
+- Confirmed only the common shell owns the feedback status and request-error alert; child controls retain their existing focus and target sizing.
+- Confirmed stored instructions and explanations are sanitized by `InteractiveActivityAuthoringService` before their rich-text rendering.
+- Preserved all unrelated dirty files, including `resources/views/instructor/topics/create.blade.php` and `public/build` output.
 
 ## Concerns
 
-- Laravel's test command cannot create its child process under the sandbox's Windows cwd mapping. It completed without output via the approved escalated execution path; the JavaScript tests and production build produced explicit passing output.
+None. The task brief's listed files did not include the two child activity components, but the scoped result event and one-region requirement require these directly coupled changes.
 
-## Review fixes (2026-08-27)
+## Commit
 
-- `stripQuestionHtml` now decodes common named HTML entities plus decimal and hexadecimal numeric entities with Unicode code-point validation. This keeps Node tests compatible without adding a browser-only DOM dependency.
-- Updated the checkpoint edit feature assertion to require the exact safely escaped `@js` payload (`\u003C...\u003E`) and to reject raw `<strong>` markup, preserving the JSON-boundary coverage.
-- No checkpoint feedback rendering or controller code was changed; that remains Task 3 scope.
-
-### TDD evidence
-
-1. Added `rich to plain conversion decodes named and numeric HTML entities` before changing production code.
-2. **RED:** `node --test tests/JavaScript/question-authoring.test.mjs` produced 12 passing tests and 1 expected failure: literal `&quot;It&apos;s&#x2014;safe&quot; &#169; &#128512;` rather than decoded text.
-3. **GREEN:** the same focused Node command produced 13 passing tests and 0 failures.
-4. Focused PHP tests first failed under the normal sandbox with Symfony's known Windows cwd error. The immediate escalated retry completed with no runner output, so its pass/fail result is not independently observable from this run.
+`b941252d9791cb12651b41cf3f6e5cc242d1af67 feat: unify interactive activity feedback`

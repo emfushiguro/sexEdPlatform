@@ -54,7 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/connector/{connector}/community/{communityPost}/comments', [CommunityCommentController::class, 'store'])->name('connector.community.comments.store');
     Route::post('/connector/{connector}/community/{communityPost}/upvote', [CommunityUpvoteController::class, 'togglePost'])->name('connector.community.posts.upvote');
     Route::post('/connector/{connector}/community/{communityPost}/pin', [CommunityPinController::class, 'store'])->name('connector.community.posts.pin');
-    Route::delete('/connector/{connector}/community/{communityPost}/pin', [CommunityPinController::class, 'destroy'])->name('connector.community.posts.pin');
+    Route::delete('/connector/{connector}/community/{communityPost}/pin', [CommunityPinController::class, 'destroy'])->name('connector.community.posts.unpin');
     Route::post('/connector/{connector}/community/{communityPost}/comments/{communityComment}/upvote', [CommunityUpvoteController::class, 'toggleComment'])->name('connector.community.comments.upvote');
     Route::post('/connector/{connector}/community/{communityPost}/reactions', [CommunityReactionController::class, 'store'])->name('connector.community.reactions.store');
     Route::delete('/connector/{connector}/community/{communityPost}/reactions', [CommunityReactionController::class, 'destroy'])->name('connector.community.reactions.destroy');

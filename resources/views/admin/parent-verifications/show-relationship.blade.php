@@ -108,9 +108,6 @@
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Verification Status</p>
                 <div class="flex flex-wrap items-center gap-3 mt-2">
                     <h1 class="text-2xl font-bold text-gray-900">{{ $relationship->relationshipVerificationLabel() }}</h1>
-                    <span class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold {{ $badge($status) }}">
-                        Overall relationship status: {{ $humanStatus($status) }}
-                    </span>
                 </div>
                 <p class="mt-2 text-sm text-gray-500">
                     Submitted {{ $relationship->relationship_verification_submitted_at?->format('M d, Y h:i A') ?? 'not submitted' }}
@@ -121,29 +118,24 @@
                 </p>
             </div>
         </div>
-        <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <span class="font-semibold">Administrative verification of submitted identity and relationship evidence.</span>
-            <br>
-            This is an administrative verification of submitted identity and relationship evidence. It is not a legal determination of parenthood, adoption, custody, or guardianship.
-        </p>
     </section>
 
     <section class="p-5 bg-white border border-gray-200 shadow-sm rounded-xl">
         <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-gray-500">Verification Requirements</h2>
         <dl class="grid gap-3 mt-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <div class="p-3 border border-gray-100 rounded-lg bg-gray-50">
                 <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">Guardian verification</dt>
                 <dd class="mt-1 font-semibold text-gray-900">{{ $humanStatus($guardianStatus) }}</dd>
             </div>
-            <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <div class="p-3 border border-gray-100 rounded-lg bg-gray-50">
                 <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">Dependent validation</dt>
                 <dd class="mt-1 font-semibold text-gray-900">{{ $humanStatus($dependentStatus) }}</dd>
             </div>
-            <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <div class="p-3 border border-gray-100 rounded-lg bg-gray-50">
                 <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">Relationship verification</dt>
                 <dd class="mt-1 font-semibold text-gray-900">{{ $humanStatus($status) }}</dd>
             </div>
-            <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <div class="p-3 border border-gray-100 rounded-lg bg-gray-50">
                 <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">Overall relationship</dt>
                 <dd class="mt-1 font-semibold text-gray-900">{{ $humanStatus($relationshipStatus) }}</dd>
             </div>
@@ -196,7 +188,7 @@
         <div class="grid gap-4 mt-4 lg:grid-cols-2">
             @foreach($guardianIdentityDocuments as $document)
                 <article class="overflow-hidden border border-gray-200 rounded-xl bg-gray-50">
-                    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 bg-white">
+                    <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white border-b border-gray-200">
                         <h3 class="text-sm font-semibold text-gray-900">{{ $document['label'] }}</h3>
                         @if($document['url'])
                             <div class="flex items-center gap-2">
@@ -209,9 +201,9 @@
                     @if($document['url'])
                         <div class="p-3 bg-gray-100">
                             @if($document['is_pdf'])
-                                <iframe src="{{ $document['url'] }}#toolbar=0&amp;navpanes=0" title="{{ $document['label'] }}" class="h-72 w-full rounded-lg border border-gray-200 bg-white"></iframe>
+                                <iframe src="{{ $document['url'] }}#toolbar=0&amp;navpanes=0" title="{{ $document['label'] }}" class="w-full bg-white border border-gray-200 rounded-lg h-72"></iframe>
                             @else
-                                <img src="{{ $document['url'] }}" alt="{{ $document['label'] }}" class="h-72 w-full rounded-lg border border-gray-200 bg-white object-contain">
+                                <img src="{{ $document['url'] }}" alt="{{ $document['label'] }}" class="object-contain w-full bg-white border border-gray-200 rounded-lg h-72">
                             @endif
                         </div>
                     @else
@@ -226,7 +218,6 @@
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">Submitted Documents</h2>
-                <p class="mt-1 text-sm text-gray-500">Review document type, submitter, side, and current verification state in one place.</p>
             </div>
             <span class="text-sm font-semibold text-gray-500">{{ $relationship->verificationDocuments->count() }} submitted</span>
         </div>
@@ -235,11 +226,6 @@
             <div class="mt-5" data-testid="evidence-round-{{ $round }}">
                 <div class="flex flex-wrap items-center gap-2 mb-3">
                     <h3 class="text-sm font-semibold text-gray-900">Evidence round {{ $round }}</h3>
-                    @if((int) $round === (int) $relationship->current_evidence_round)
-                        <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Current round</span>
-                    @else
-                        <span class="rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">Previous round · read-only</span>
-                    @endif
                 </div>
                 <div class="grid gap-3 xl:grid-cols-2">
                     @foreach($roundDocuments as $document)

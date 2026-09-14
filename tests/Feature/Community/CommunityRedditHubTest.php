@@ -262,7 +262,7 @@ class CommunityRedditHubTest extends DatabaseTestCase
         $this->assertNotNull($post->fresh()->featured_at);
 
         $this->actingAs($owner)
-            ->delete(route('connector.community.posts.pin', [$connector, $post]))
+            ->delete(route('connector.community.posts.unpin', [$connector, $post]))
             ->assertRedirect();
         $this->assertNull($post->fresh()->featured_at);
     }

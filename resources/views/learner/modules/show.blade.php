@@ -227,16 +227,10 @@
                         @foreach($lessons as $index => $lesson)
                             @php
                                 $isCompleted = in_array($lesson->id, $completedLessonIds);
-                                $topics      = $lesson->topics()->ordered()->get();
+                                $topics      = $lesson->topics;
                                 $topicsCount = $topics->count();
                                 $hasBreakdown = $topicsCount > 0 || (bool) $lesson->quiz;
-                                $completedTopicsCount = 0;
-                                if ($topicsCount > 0) {
-                                    $completedTopicsCount = \App\Models\LessonTopicProgress::where('user_id', auth()->id())
-                                        ->whereIn('lesson_topic_id', $topics->pluck('id'))
-                                        ->where('completed', true)
-                                        ->count();
-                                }
+                                $completedTopicsCount = $topics->pluck('id')->intersect($completedTopicIds)->count();
                             @endphp
                             <div>
                                 {{-- Lesson row --}}
@@ -319,10 +313,7 @@
 
                                         @foreach($topics as $topic)
                                             @php
-                                                $isTopicCompleted = \App\Models\LessonTopicProgress::where('user_id', auth()->id())
-                                                    ->where('lesson_topic_id', $topic->id)
-                                                    ->where('completed', true)
-                                                    ->exists();
+                                                $isTopicCompleted = in_array($topic->id, $completedTopicIds, true);
                                             @endphp
                                             <div class="flex items-center gap-3 px-6 sm:px-8 py-2.5">
                                                 <div class="flex-shrink-0">

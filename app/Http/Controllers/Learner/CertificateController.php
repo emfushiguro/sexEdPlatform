@@ -3,22 +3,23 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
-use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\Certificate;
-use App\Models\LessonTopicProgress;
-use App\Models\QuizAttempt;
-use App\Models\UserProgress;
+use App\Models\User;
 use App\Notifications\Instructor\LearnerCertificateIssuedNotification;
 use App\Notifications\Learner\CertificateIssuedNotification;
 use App\Services\CertificatePdfService;
 use App\Services\GamificationService;
-use Illuminate\Http\Request;
+use App\Services\LearnerModuleCompletionService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class CertificateController extends Controller
 {
+    public function __construct(private readonly LearnerModuleCompletionService $completionService)
+    {
+    }
+
     /**
      * Display user's certificates
      */
@@ -42,7 +43,7 @@ class CertificateController extends Controller
             return back()->with('info', 'You already have a certificate for this module.');
         }
 
-        $eligibilityError = $this->getEligibilityError($user->id, $module);
+        $eligibilityError = $this->getEligibilityError($user, $module);
 
         if ($eligibilityError) {
             return back()->with('error', $eligibilityError);
@@ -100,7 +101,7 @@ class CertificateController extends Controller
 
         $certificate->loadMissing('module');
 
-        $eligibilityError = $this->getEligibilityError($user->id, $certificate->module);
+        $eligibilityError = $this->getEligibilityError($user, $certificate->module);
         if ($eligibilityError) {
             return redirect()
                 ->route('learner.modules.show', $certificate->module)
@@ -130,112 +131,16 @@ class CertificateController extends Controller
         return response()->download(Storage::disk('public')->path($pdfPath), $downloadName);
     }
 
-    private function getEligibilityError(int $userId, Module $module): ?string
+    private function getEligibilityError(User $user, Module $module): ?string
     {
-        if (!Auth::user()->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved)
-            ->exists()) {
-            return 'You must be enrolled in this module.';
-        }
+        $reason = $this->completionService->completionBlockerReason($user, $module);
 
-        $lessons = $module->lessons()
-            ->where('is_published', true)
-            ->with([
-                'topics',
-                'quiz' => fn ($query) => $query->where('is_active', true),
-            ])
-            ->get();
-
-        if ($lessons->isEmpty()) {
-            return 'No published lessons are available yet for this module.';
-        }
-
-        $completedLessonIds = UserProgress::where('user_id', $userId)
-            ->where('module_id', $module->id)
-            ->where('completed', true)
-            ->pluck('lesson_id')
-            ->unique();
-
-        if ($completedLessonIds->count() < $lessons->count()) {
-            return 'You must complete all lessons before getting a certificate.';
-        }
-
-        $topicIds = $lessons->flatMap(fn ($lesson) => $lesson->topics->pluck('id'))->unique();
-        if ($topicIds->isNotEmpty()) {
-            $completedTopicIds = LessonTopicProgress::where('user_id', $userId)
-                ->whereIn('lesson_topic_id', $topicIds)
-                ->where('completed', true)
-                ->pluck('lesson_topic_id')
-                ->unique();
-
-            if ($completedTopicIds->count() < $topicIds->count()) {
-                return 'You must complete all lesson topics before getting a certificate.';
-            }
-        }
-
-        $lessonQuizIds = $lessons
-            ->pluck('quiz')
-            ->filter()
-            ->pluck('id')
-            ->unique();
-
-        if ($lessonQuizIds->isNotEmpty()) {
-            $lessonQuizById = $lessons
-                ->pluck('quiz')
-                ->filter()
-                ->keyBy('id');
-
-            $allLessonQuizzesCompleted = $lessonQuizIds->every(function ($quizId) use ($userId, $lessonQuizById) {
-                $attemptCount = QuizAttempt::where('user_id', $userId)
-                    ->where('quiz_id', $quizId)
-                    ->count();
-
-                if ($attemptCount === 0) {
-                    return false;
-                }
-
-                $hasPassed = QuizAttempt::where('user_id', $userId)
-                    ->where('quiz_id', $quizId)
-                    ->where('passed', true)
-                    ->exists();
-
-                if ($hasPassed) {
-                    return true;
-                }
-
-                $attemptLimit = $lessonQuizById->get($quizId)?->attempt_limit;
-
-                return $attemptLimit !== null && $attemptCount >= (int) $attemptLimit;
-            });
-
-            if (!$allLessonQuizzesCompleted) {
-                return 'You must complete all lesson quizzes before getting a certificate.';
-            }
-        }
-
-        if ($module->final_quiz_id) {
-            $finalAttemptCount = QuizAttempt::where('user_id', $userId)
-                ->where('quiz_id', $module->final_quiz_id)
-                ->count();
-
-            $hasPassedFinalQuiz = QuizAttempt::where('user_id', $userId)
-                ->where('quiz_id', $module->final_quiz_id)
-                ->where('passed', true)
-                ->exists();
-
-            $finalQuizAttemptLimit = $module->quizzes()
-                ->where('id', $module->final_quiz_id)
-                ->value('attempt_limit');
-
-            $isFinalQuizCompleted = $hasPassedFinalQuiz
-                || ($finalQuizAttemptLimit !== null && $finalAttemptCount >= (int) $finalQuizAttemptLimit);
-
-            if (!$isFinalQuizCompleted) {
-                return 'You must complete the final quiz before getting a certificate.';
-            }
-        }
-
-        return null;
+        return match ($reason) {
+            'Complete all lessons before submitting feedback.' => 'You must complete all lessons before getting a certificate.',
+            'Complete all lesson topics before submitting feedback.' => 'You must complete all lesson topics before getting a certificate.',
+            'Complete all lesson quizzes before submitting feedback.' => 'You must complete all lesson quizzes before getting a certificate.',
+            'Complete the final quiz before submitting feedback.' => 'You must complete the final quiz before getting a certificate.',
+            default => $reason,
+        };
     }
 }

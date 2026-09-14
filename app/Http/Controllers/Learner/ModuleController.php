@@ -10,7 +10,6 @@ use App\Models\ModuleEnrollment;
 use App\Models\ModulePurchase;
 use App\Models\ParentChildAccount;
 use App\Models\QuizAttempt;
-use App\Models\LessonTopicProgress;
 use App\Models\ContentReport;
 use App\Models\InstructorFeedback;
 use App\Models\ModuleFeedback;
@@ -284,13 +283,10 @@ class ModuleController extends Controller
 
         $moduleCertificate = $user->certificates()->where('module_id', $module->id)->first();
 
-        $topicIds = $lessons->flatMap(fn ($lesson) => $lesson->topics->pluck('id'))->unique();
-        $completedTopicIds = LessonTopicProgress::where('user_id', $user->id)
-            ->whereIn('lesson_topic_id', $topicIds)
-            ->where('completed', true)
-            ->pluck('lesson_topic_id')
-            ->unique();
-        $allTopicsCompleted = $topicIds->isEmpty() || $completedTopicIds->count() === $topicIds->count();
+        $topics = $lessons->flatMap(fn ($lesson) => $lesson->topics);
+        $topicIds = $topics->pluck('id')->unique();
+        $completedTopicIds = $this->completionService->completedTopicIds($user, $topics)->all();
+        $allTopicsCompleted = $topicIds->isEmpty() || count($completedTopicIds) === $topicIds->count();
 
         $lessonQuizIds = collect($lessonQuizzes)->pluck('id')->unique();
         $lessonQuizById = collect($lessonQuizzes)->keyBy('id');
@@ -420,6 +416,7 @@ class ModuleController extends Controller
             'quizAttempts',
             'moduleCertificate',
             'certificateEligible',
+            'completedTopicIds',
             'shieldsRemaining',
             'reviewSummary',
             'recentReviews',
