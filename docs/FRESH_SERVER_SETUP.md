@@ -63,13 +63,48 @@ php artisan key:generate
 
 ## 5. Database and Laravel Bootstrap
 
+Run this from the application root after Hostinger finishes the Git checkout.
+The `cp`/`mv` block is safe to repeat: it only runs when `public/storage` is
+a real directory instead of a symbolic link. It preserves that directory's
+files in Laravel's canonical public disk and moves the old directory to a
+recoverable backup.
+
 ```bash
+cd /path/to/your/project
+
+php artisan optimize:clear
 php artisan migrate --force
-php artisan storage:link
+
+mkdir -p storage/app/public
+if [ -d public/storage ] && [ ! -L public/storage ]; then
+    cp -a public/storage/. storage/app/public/
+    mv public/storage "public/storage-backup-$(date +%Y%m%d-%H%M%S)"
+fi
+php artisan storage:link --force
+
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan event:cache
+php artisan optimize
+
+test -L public/storage
 ```
+
+Do not replace the `cp`/`mv` block with `rm -rf public/storage`. The old
+directory can contain uploaded media or other runtime files.
+
+For the currently reported missing module image, verify that the file still
+exists on the server and is served successfully:
+
+```bash
+test -f storage/app/public/modules/cDSb0q7slODyGtKDKwYTO40Ba5JZ8ztGiSXwHJtw.png
+curl -I https://consciousconnections.online/storage/modules/cDSb0q7slODyGtKDKwYTO40Ba5JZ8ztGiSXwHJtw.png
+```
+
+The first command must succeed before the URL can return `200`. If it fails,
+restore the file from the Hostinger backup or re-upload it; Artisan cache
+commands cannot recreate a missing upload.
 
 ## 6. Background Processes (Required)
 
