@@ -56,6 +56,39 @@ class VideoUploadTest extends TestCase
         $this->assertCount(1, Storage::disk('public')->allFiles('videos'));
     }
 
+    public function test_video_create_storage_failure_returns_ajax_error_without_topic_or_video(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $disk = Mockery::mock(Filesystem::class);
+        $disk->shouldReceive('putFileAs')->once()->andReturn(false);
+
+        $manager = Mockery::mock(FilesystemFactory::class);
+        $manager->shouldReceive('disk')->with('public')->andReturn($disk);
+        Storage::swap($manager);
+
+        $response = $this->actingAs($instructor)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->post(route('instructor.topics.store'), [
+                'lesson_id' => $lesson->id,
+                'title' => 'Failed video',
+                'type' => 'video',
+                'duration' => 3,
+                'video_source' => 'upload',
+                'video_file' => UploadedFile::fake()->create('failed.mp4', 100, 'video/mp4'),
+            ]);
+
+        $response->assertStatus(500)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('errors.error.0', 'Failed to store video upload.');
+        $this->assertDatabaseMissing('lesson_topics', [
+            'lesson_id' => $lesson->id,
+            'title' => 'Failed video',
+        ]);
+    }
+
     public function test_instructor_cannot_upload_a_video_over_the_100_mib_boundary(): void
     {
         Storage::fake('public');
@@ -142,7 +175,7 @@ class VideoUploadTest extends TestCase
         $this->assertNotSame('videos/old.mp4', $topic->fresh()->video_file_path);
     }
 
-    public function test_persistence_veto_after_replacement_storage_preserves_existing_video(): void
+    public function test_video_update_persistence_failure_returns_ajax_error_and_deletes_replacement(): void
     {
         Storage::fake('public');
         [$instructor, $lesson] = $this->topicAuthoringFixture();
@@ -160,6 +193,10 @@ class VideoUploadTest extends TestCase
 
         try {
             $response = $this->actingAs($instructor)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'X-Requested-With' => 'XMLHttpRequest',
+                ])
                 ->put(route('instructor.topics.update', $topic), [
                     'title' => 'Vetoed replacement',
                     'type' => 'video',
@@ -171,9 +208,11 @@ class VideoUploadTest extends TestCase
             LessonTopic::flushEventListeners();
         }
 
-        $response->assertRedirect(route('instructor.lessons.show', $lesson));
+        $response->assertStatus(500)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('errors.error.0', 'Failed to update topic.');
         Storage::disk('public')->assertExists('videos/old.mp4');
-        $this->assertCount(2, Storage::disk('public')->allFiles('videos'));
+        $this->assertCount(1, Storage::disk('public')->allFiles('videos'));
         $this->assertSame('videos/old.mp4', $topic->fresh()->video_file_path);
     }
 

@@ -151,7 +151,19 @@ class TopicController extends Controller
         // Handle video
         if ($validated['type'] === 'video') {
             if ($request->hasFile('video_file')) {
-                $validated['video_file_path'] = $request->file('video_file')->store('videos', 'public');
+                $videoPath = $request->file('video_file')->store('videos', 'public');
+                if ($videoPath === false) {
+                    if ($request->wantsJson() || $request->ajax()) {
+                        return response()->json([
+                            'success' => false,
+                            'errors' => ['error' => ['Failed to store video upload.']],
+                        ], 500);
+                    }
+
+                    return back()->withErrors(['error' => 'Failed to store video upload.'])->withInput();
+                }
+
+                $validated['video_file_path'] = $videoPath;
                 $validated['video_provider'] = 'local';
                 $validated['video_id'] = null;
             } elseif (! empty($validated['video_url'])) {
@@ -384,11 +396,25 @@ class TopicController extends Controller
         }
 
         $oldVideoPathToDelete = null;
+        $newVideoPathToDelete = null;
 
         // Handle video
         if ($validated['type'] === 'video') {
             if ($request->hasFile('video_file')) {
-                $validated['video_file_path'] = $request->file('video_file')->store('videos', 'public');
+                $videoPath = $request->file('video_file')->store('videos', 'public');
+                if ($videoPath === false) {
+                    if ($request->wantsJson() || $request->ajax()) {
+                        return response()->json([
+                            'success' => false,
+                            'errors' => ['error' => ['Failed to store video upload.']],
+                        ], 500);
+                    }
+
+                    return back()->withErrors(['error' => 'Failed to store video upload.'])->withInput();
+                }
+
+                $validated['video_file_path'] = $videoPath;
+                $newVideoPathToDelete = $videoPath;
                 $oldVideoPathToDelete = $topic->video_file_path;
                 $validated['video_provider'] = 'local';
                 $validated['video_id'] = null;
@@ -517,6 +543,21 @@ class TopicController extends Controller
         }
 
         $topicUpdated = $topic->update($validated);
+
+        if (! $topicUpdated) {
+            if ($newVideoPathToDelete !== null) {
+                Storage::disk('public')->delete($newVideoPathToDelete);
+            }
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => ['error' => ['Failed to update topic.']],
+                ], 500);
+            }
+
+            return back()->withErrors(['error' => 'Failed to update topic.'])->withInput();
+        }
 
         if ($topicUpdated && $oldVideoPathToDelete !== null) {
             Storage::disk('public')->delete($oldVideoPathToDelete);

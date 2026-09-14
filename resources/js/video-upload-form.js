@@ -75,6 +75,7 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
     const originalButtonHtml = submitButton?.innerHTML;
     const maxBytes = Number(form.dataset.videoMaxBytes || VIDEO_UPLOAD_MAX_BYTES);
     let previouslyFocusedElement;
+    let invalidFileSelection = false;
 
     const setFileError = (message) => {
         setText(fileError, message || '');
@@ -130,14 +131,21 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
         setFileError(error);
 
         if (error) {
+            invalidFileSelection = true;
             fileInput.value = '';
             setText(fileName, 'MP4, MPEG, MOV, AVI, or WebM up to 100 MB');
             return;
         }
 
         if (file) {
+            invalidFileSelection = false;
             setText(fileName, `${file.name} (${formatMiB(file.size)})`);
         }
+    });
+
+    form.addEventListener('reset', () => {
+        invalidFileSelection = false;
+        setFileError(null);
     });
 
     form.addEventListener('submit', (event) => {
@@ -146,9 +154,11 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
 
         toggle(formError, true);
 
-        if (error) {
+        if (error || invalidFileSelection) {
             event.preventDefault();
-            setFileError(error);
+            if (error) {
+                setFileError(error);
+            }
             return;
         }
 
