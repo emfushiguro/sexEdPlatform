@@ -25,7 +25,8 @@ Use `storage/app/public` as the only canonical public-media location.
   application; new runtime uploads are not added to Git.
 - During the first production cleanup, copy any files still present in a real
   `public/storage` directory into `storage/app/public`, move the old directory
-  to a timestamped backup, and then create the Laravel storage link.
+  to a timestamped backup outside the web root, and then create the Laravel
+  storage link.
 - On every subsequent deployment, ensure any stale non-link at
   `public/storage` is moved aside before running `php artisan storage:link`.
 - Run cache clearing before rebuilding Laravel caches so production config and
@@ -34,9 +35,9 @@ Use `storage/app/public` as the only canonical public-media location.
 ## Deployment data flow
 
 ```text
-upload -> storage/app/public/<path>
-       -> public/storage/<path> (symlink)
-       -> https://consciousconnections.online/storage/<path>
+upload -> storage/app/public/relative-file-path
+       -> public/storage/relative-file-path (symlink)
+       -> https://consciousconnections.online/storage/relative-file-path
 ```
 
 The HTTP layer should serve the symlinked `public/storage` path directly. No
@@ -47,7 +48,9 @@ new controller or database migration is needed.
 - Do not run `migrate:fresh`, `db:wipe`, `TRUNCATE`, `DROP`, or unscoped
   deletes.
 - The first cleanup uses `cp` plus `mv`, not deletion, so the old deployed
-  media remains recoverable while the link is repaired.
+  media remains recoverable while the link is repaired. The backup belongs
+  under `storage/backups/`, never under `public/`, because the old tree may
+  contain sensitive uploaded documents.
 - Verify both `public/storage` being a symlink and one known file existing in
   `storage/app/public` before declaring deployment successful.
 - If symlink creation is not permitted by the Hostinger account, stop and use

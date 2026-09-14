@@ -67,7 +67,7 @@ Run this from the application root after Hostinger finishes the Git checkout.
 The `cp`/`mv` block is safe to repeat: it only runs when `public/storage` is
 a real directory instead of a symbolic link. It preserves that directory's
 files in Laravel's canonical public disk and moves the old directory to a
-recoverable backup.
+recoverable backup outside the web root.
 
 ```bash
 cd /path/to/your/project
@@ -78,7 +78,8 @@ php artisan migrate --force
 mkdir -p storage/app/public
 if [ -d public/storage ] && [ ! -L public/storage ]; then
     cp -a public/storage/. storage/app/public/
-    mv public/storage "public/storage-backup-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p storage/backups
+    mv public/storage "storage/backups/public-storage-$(date +%Y%m%d-%H%M%S)"
 fi
 php artisan storage:link --force
 
@@ -92,7 +93,9 @@ test -L public/storage
 ```
 
 Do not replace the `cp`/`mv` block with `rm -rf public/storage`. The old
-directory can contain uploaded media or other runtime files.
+directory can contain uploaded media or other runtime files. The backup must
+remain under `storage/backups`, not under `public/`, because it may contain
+sensitive uploaded documents.
 
 For the currently reported missing module image, verify that the file still
 exists on the server and is served successfully:

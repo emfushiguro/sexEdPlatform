@@ -141,7 +141,8 @@ php artisan migrate --force
 mkdir -p storage/app/public
 if [ -d public/storage ] && [ ! -L public/storage ]; then
     cp -a public/storage/. storage/app/public/
-    mv public/storage "public/storage-backup-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p storage/backups
+    mv public/storage "storage/backups/public-storage-$(date +%Y%m%d-%H%M%S)"
 fi
 php artisan storage:link --force
 
@@ -154,7 +155,7 @@ php artisan optimize
 test -L public/storage
 ```
 
-Explain that the `cp`/`mv` block is safe to run on every deployment: it only acts when Hostinger has checked out a real directory, copies its media into the canonical disk, and keeps a recoverable backup. It must not be replaced with `rm -rf public/storage`.
+Explain that the `cp`/`mv` block is safe to run on every deployment: it only acts when Hostinger has checked out a real directory, copies its media into the canonical disk, and keeps a recoverable backup outside the web root. It must not be replaced with `rm -rf public/storage`.
 
 - [ ] **Step 2: Add production verification commands**
 
