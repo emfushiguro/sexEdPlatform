@@ -516,9 +516,9 @@ class TopicController extends Controller
             unset($validated[$field]);
         }
 
-        $topic->update($validated);
+        $topicUpdated = $topic->update($validated);
 
-        if ($oldVideoPathToDelete !== null) {
+        if ($topicUpdated && $oldVideoPathToDelete !== null) {
             Storage::disk('public')->delete($oldVideoPathToDelete);
         }
 

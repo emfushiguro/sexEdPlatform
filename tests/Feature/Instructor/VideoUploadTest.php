@@ -105,6 +105,7 @@ class VideoUploadTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Topic created successfully!')
             ->assertJsonPath('redirect', route('instructor.lessons.show', $lesson));
     }
 
@@ -135,9 +136,45 @@ class VideoUploadTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Topic updated successfully!')
             ->assertJsonPath('redirect', route('instructor.lessons.show', $lesson));
         Storage::disk('public')->assertMissing('videos/old.mp4');
         $this->assertNotSame('videos/old.mp4', $topic->fresh()->video_file_path);
+    }
+
+    public function test_persistence_veto_after_replacement_storage_preserves_existing_video(): void
+    {
+        Storage::fake('public');
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        Storage::disk('public')->put('videos/old.mp4', 'old video');
+        $topic = LessonTopic::factory()->create([
+            'lesson_id' => $lesson->id,
+            'type' => 'video',
+            'video_provider' => 'local',
+            'video_file_path' => 'videos/old.mp4',
+        ]);
+
+        LessonTopic::saving(static function (LessonTopic $model): bool {
+            return false;
+        });
+
+        try {
+            $response = $this->actingAs($instructor)
+                ->put(route('instructor.topics.update', $topic), [
+                    'title' => 'Vetoed replacement',
+                    'type' => 'video',
+                    'duration' => 3,
+                    'video_source' => 'upload',
+                    'video_file' => UploadedFile::fake()->create('replacement.mp4', 100, 'video/mp4'),
+                ]);
+        } finally {
+            LessonTopic::flushEventListeners();
+        }
+
+        $response->assertRedirect(route('instructor.lessons.show', $lesson));
+        Storage::disk('public')->assertExists('videos/old.mp4');
+        $this->assertCount(2, Storage::disk('public')->allFiles('videos'));
+        $this->assertSame('videos/old.mp4', $topic->fresh()->video_file_path);
     }
 
     public function test_failed_replacement_storage_does_not_delete_the_existing_video(): void
