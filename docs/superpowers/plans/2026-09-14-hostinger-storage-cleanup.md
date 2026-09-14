@@ -69,7 +69,7 @@ Run:
 
 ```powershell
 git check-ignore -v -- storage/app/public/modules/new-upload.png storage/app/public/avatars/new-avatar.png
-git check-ignore -v -- public/storage
+git check-ignore -v --no-index -- public/storage/new-upload.png
 git ls-files storage/app/public/modules | Select-Object -First 1
 ```
 
@@ -186,7 +186,7 @@ Run:
 ```powershell
 git diff --check
 git ls-files public/storage
-git check-ignore -q public/storage
+git check-ignore -q --no-index public/storage/new-upload.png
 git check-ignore -q storage/app/public/modules/new-upload.png
 git status --short
 ```
@@ -213,4 +213,3 @@ git log -3 --oneline
 ```
 
 Expected: no uncommitted changes and the latest commits are the storage ignore cleanup, duplicate-tree removal, and deployment documentation changes.
-

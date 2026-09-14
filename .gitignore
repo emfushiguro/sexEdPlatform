@@ -63,5 +63,3 @@ fix-index.cjs
 # Keep user-facing assets/media trackable
 !/public/media/
 !/public/media/**
-!/storage/app/public/
-!/storage/app/public/**
