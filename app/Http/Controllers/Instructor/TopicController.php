@@ -383,23 +383,20 @@ class TopicController extends Controller
             ])->withInput();
         }
 
+        $oldVideoPathToDelete = null;
+
         // Handle video
         if ($validated['type'] === 'video') {
             if ($request->hasFile('video_file')) {
-                // Delete old video file if exists
-                if ($topic->video_file_path) {
-                    Storage::disk('public')->delete($topic->video_file_path);
-                }
                 $validated['video_file_path'] = $request->file('video_file')->store('videos', 'public');
+                $oldVideoPathToDelete = $topic->video_file_path;
                 $validated['video_provider'] = 'local';
                 $validated['video_id'] = null;
             } elseif (! empty($validated['video_url'])) {
                 $videoData = VideoEmbedHelper::parseVideoUrl($validated['video_url']);
+                $oldVideoPathToDelete = $topic->video_file_path;
                 $validated['video_provider'] = $videoData['provider'];
                 $validated['video_id'] = $videoData['video_id'];
-                if ($topic->video_file_path) {
-                    Storage::disk('public')->delete($topic->video_file_path);
-                }
                 $validated['video_file_path'] = null;
             }
 
@@ -521,6 +518,10 @@ class TopicController extends Controller
 
         $topic->update($validated);
 
+        if ($oldVideoPathToDelete !== null) {
+            Storage::disk('public')->delete($oldVideoPathToDelete);
+        }
+
         // Update lesson duration
         $lesson = $topic->lesson;
         $lesson->duration = $lesson->topics()->instructional()->sum('duration');
@@ -530,6 +531,14 @@ class TopicController extends Controller
         $module = $lesson->module;
         $module->duration_minutes = $module->lessons()->sum('duration');
         $module->save();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Topic updated successfully!',
+                'redirect' => route($this->routeName('lessons.show'), $topic->lesson),
+            ]);
+        }
 
         return redirect()->route($this->routeName('lessons.show'), $topic->lesson)
             ->with('success', 'Topic updated successfully!');

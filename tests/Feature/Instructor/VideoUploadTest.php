@@ -6,9 +6,13 @@ use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\User;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class VideoUploadTest extends TestCase
@@ -78,6 +82,110 @@ class VideoUploadTest extends TestCase
             'title' => 'Oversized video',
         ]);
         $this->assertSame([], Storage::disk('public')->allFiles('videos'));
+    }
+
+    public function test_video_create_ajax_response_contains_the_lesson_redirect(): void
+    {
+        Storage::fake('public');
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+
+        $response = $this->actingAs($instructor)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->post(route('instructor.topics.store'), [
+                'lesson_id' => $lesson->id,
+                'title' => 'AJAX video',
+                'type' => 'video',
+                'duration' => 3,
+                'video_source' => 'upload',
+                'video_file' => UploadedFile::fake()->create('ajax.mp4', 100, 'video/mp4'),
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('redirect', route('instructor.lessons.show', $lesson));
+    }
+
+    public function test_video_update_ajax_response_contains_the_lesson_redirect(): void
+    {
+        Storage::fake('public');
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        Storage::disk('public')->put('videos/old.mp4', 'old video');
+        $topic = LessonTopic::factory()->create([
+            'lesson_id' => $lesson->id,
+            'type' => 'video',
+            'video_provider' => 'local',
+            'video_file_path' => 'videos/old.mp4',
+        ]);
+
+        $response = $this->actingAs($instructor)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->put(route('instructor.topics.update', $topic), [
+                'title' => 'Updated video',
+                'type' => 'video',
+                'duration' => 3,
+                'video_source' => 'upload',
+                'video_file' => UploadedFile::fake()->create('replacement.mp4', 100, 'video/mp4'),
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('redirect', route('instructor.lessons.show', $lesson));
+        Storage::disk('public')->assertMissing('videos/old.mp4');
+        $this->assertNotSame('videos/old.mp4', $topic->fresh()->video_file_path);
+    }
+
+    public function test_failed_replacement_storage_does_not_delete_the_existing_video(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $topic = LessonTopic::factory()->create([
+            'lesson_id' => $lesson->id,
+            'type' => 'video',
+            'video_provider' => 'local',
+            'video_file_path' => 'videos/old.mp4',
+        ]);
+
+        $deleted = false;
+        $disk = Mockery::mock(Filesystem::class);
+        $disk->shouldReceive('delete')
+            ->zeroOrMoreTimes()
+            ->andReturnUsing(function () use (&$deleted): bool {
+                $deleted = true;
+
+                return true;
+            });
+        $disk->shouldReceive('putFileAs')
+            ->once()
+            ->andThrow(new RuntimeException('disk full'));
+
+        $manager = Mockery::mock(FilesystemFactory::class);
+        $manager->shouldReceive('disk')->with('public')->andReturn($disk);
+        Storage::swap($manager);
+
+        $this->withoutExceptionHandling();
+
+        try {
+            $this->actingAs($instructor)
+                ->put(route('instructor.topics.update', $topic), [
+                    'title' => 'Failed replacement',
+                    'type' => 'video',
+                    'duration' => 3,
+                    'video_source' => 'upload',
+                    'video_file' => UploadedFile::fake()->create('replacement.mp4', 100, 'video/mp4'),
+                ]);
+
+            $this->fail('Expected replacement storage to fail.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('disk full', $exception->getMessage());
+        }
+
+        $this->assertFalse($deleted);
+        $this->assertSame('videos/old.mp4', $topic->fresh()->video_file_path);
     }
 
     /** @return array{User, Lesson} */
