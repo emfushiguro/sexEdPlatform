@@ -236,12 +236,13 @@
                     accept=".mp4,.mpeg,.mpg,.mov,.avi,.webm,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
                     class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('video_file') border-red-500 @enderror"
                     data-video-file-input
-                    aria-describedby="videoFileName videoFileClientError"
+                    aria-describedby="videoFileName videoFileClientError{{ $errors->has('video_file') ? ' videoFileServerError' : '' }}"
+                    aria-invalid="{{ $errors->has('video_file') ? 'true' : 'false' }}"
                 >
                 <p class="mt-1 text-sm text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
                 <p id="videoFileClientError" data-video-error class="hidden mt-1 text-sm text-red-600" role="alert"></p>
                 @error('video_file')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    <p id="videoFileServerError" class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
 

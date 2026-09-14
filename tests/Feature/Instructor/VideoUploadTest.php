@@ -234,6 +234,7 @@ class VideoUploadTest extends TestCase
             'video_provider' => 'local',
             'video_file_path' => 'videos/current.mp4',
         ]);
+        $acceptedVideoFormats = 'accept=".mp4,.mpeg,.mpg,.mov,.avi,.webm,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"';
 
         $responses = [
             $this->actingAs($instructor)
@@ -247,10 +248,44 @@ class VideoUploadTest extends TestCase
                 ->assertSee('data-video-upload-form', false)
                 ->assertSee('data-video-max-bytes="104857600"', false)
                 ->assertSee('data-video-file-input', false)
+                ->assertSee('for="video_file"', false)
+                ->assertSee('id="video_file"', false)
+                ->assertSee($acceptedVideoFormats, false)
+                ->assertSee('aria-describedby="videoFileName videoFileClientError"', false)
+                ->assertSee('aria-invalid="false"', false)
                 ->assertSee('data-video-error', false)
                 ->assertSee('data-video-upload-overlay', false)
+                ->assertSee('role="dialog"', false)
+                ->assertSee('aria-modal="true"', false)
+                ->assertSee('tabindex="-1"', false)
                 ->assertSee('data-upload-progress', false)
-                ->assertSee('aria-live="polite"', false);
+                ->assertSee('role="progressbar"', false)
+                ->assertSee('aria-valuemin="0"', false)
+                ->assertSee('aria-valuemax="100"', false)
+                ->assertSee('aria-valuenow="0"', false)
+                ->assertSee('data-upload-status', false)
+                ->assertSee('aria-live="polite"', false)
+                ->assertSee('data-video-upload-form-error', false);
+        }
+
+        $errors = new \Illuminate\Support\ViewErrorBag();
+        $errors->put('default', new \Illuminate\Support\MessageBag([
+            'video_file' => ['A valid video is required.'],
+        ]));
+
+        foreach ([
+            $this->actingAs($instructor)
+                ->withSession(['errors' => $errors])
+                ->get(route('instructor.topics.create', ['lesson' => $lesson])),
+            $this->actingAs($instructor)
+                ->withSession(['errors' => $errors])
+                ->get(route('instructor.topics.edit', $topic)),
+        ] as $response) {
+            $response->assertOk()
+                ->assertSee('aria-describedby="videoFileName videoFileClientError videoFileServerError"', false)
+                ->assertSee('aria-invalid="true"', false)
+                ->assertSee('id="videoFileServerError"', false)
+                ->assertSee('A valid video is required.', false);
         }
     }
 

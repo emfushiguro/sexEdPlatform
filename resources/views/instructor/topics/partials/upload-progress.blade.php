@@ -4,6 +4,7 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="videoUploadStatus"
+    tabindex="-1"
 >
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
         <div data-upload-spinner class="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-purple-100 border-t-purple-700"></div>

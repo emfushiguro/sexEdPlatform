@@ -184,7 +184,9 @@
                 <div class="relative">
                     <input type="file" name="video_file" id="video_file"
                         accept=".mp4,.mpeg,.mpg,.mov,.avi,.webm,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
-                        class="sr-only" data-video-file-input aria-describedby="videoFileName videoFileClientError">
+                        class="sr-only" data-video-file-input
+                        aria-describedby="videoFileName videoFileClientError{{ $errors->has('video_file') ? ' videoFileServerError' : '' }}"
+                        aria-invalid="{{ $errors->has('video_file') ? 'true' : 'false' }}">
                     <label for="video_file"
                         class="flex items-center justify-center w-full px-6 py-4 transition border-2 border-gray-200 border-dashed cursor-pointer rounded-xl hover:border-purple-400 hover:bg-purple-50 focus-within:border-purple-400 focus-within:bg-purple-50 focus-within:ring-2 focus-within:ring-purple-300">
                         <div class="text-center">
@@ -201,7 +203,7 @@
                 </div>
                 <p id="videoFileClientError" data-video-error class="hidden mt-1 text-sm text-red-600" role="alert"></p>
                 @error('video_file')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    <p id="videoFileServerError" class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
 

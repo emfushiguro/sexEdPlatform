@@ -74,6 +74,28 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
     const submitButton = form.querySelector('[type="submit"]');
     const originalButtonHtml = submitButton?.innerHTML;
     const maxBytes = Number(form.dataset.videoMaxBytes || VIDEO_UPLOAD_MAX_BYTES);
+    let previouslyFocusedElement;
+
+    const setFileError = (message) => {
+        setText(fileError, message || '');
+        toggle(fileError, !message);
+        fileInput?.setAttribute('aria-invalid', message ? 'true' : 'false');
+    };
+
+    const showOverlay = () => {
+        previouslyFocusedElement = document.activeElement;
+        toggle(overlay, false);
+        overlay?.focus();
+    };
+
+    const trapOverlayFocus = (event) => {
+        if (event.key === 'Tab' && overlay && !overlay.classList.contains('hidden')) {
+            event.preventDefault();
+            overlay.focus();
+        }
+    };
+
+    document.addEventListener('keydown', trapOverlayFocus);
 
     const showError = (message) => {
         setText(formError, message);
@@ -87,6 +109,8 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
             submitButton.disabled = false;
             submitButton.innerHTML = originalButtonHtml;
         }
+        previouslyFocusedElement?.focus();
+        previouslyFocusedElement = undefined;
     };
 
     const updateProgress = (loaded, total) => {
@@ -103,8 +127,7 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
         const file = fileInput.files?.[0];
         const error = allowedVideoFileError(file, maxBytes);
 
-        setText(fileError, error || '');
-        toggle(fileError, !error);
+        setFileError(error);
 
         if (error) {
             fileInput.value = '';
@@ -125,12 +148,11 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
 
         if (error) {
             event.preventDefault();
-            setText(fileError, error);
-            toggle(fileError, false);
+            setFileError(error);
             return;
         }
 
-        toggle(overlay, false);
+        showOverlay();
         setText(status, file ? 'Uploading video...' : 'Saving topic...');
         toggle(spinner, Boolean(file));
         toggle(progressPanel, !file);
