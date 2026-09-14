@@ -225,6 +225,35 @@ class VideoUploadTest extends TestCase
         $this->assertSame('videos/old.mp4', $topic->fresh()->video_file_path);
     }
 
+    public function test_topic_authoring_pages_render_the_video_upload_progress_contract(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $topic = LessonTopic::factory()->create([
+            'lesson_id' => $lesson->id,
+            'type' => 'video',
+            'video_provider' => 'local',
+            'video_file_path' => 'videos/current.mp4',
+        ]);
+
+        $responses = [
+            $this->actingAs($instructor)
+                ->get(route('instructor.topics.create', ['lesson' => $lesson])),
+            $this->actingAs($instructor)
+                ->get(route('instructor.topics.edit', $topic)),
+        ];
+
+        foreach ($responses as $response) {
+            $response->assertOk()
+                ->assertSee('data-video-upload-form', false)
+                ->assertSee('data-video-max-bytes="104857600"', false)
+                ->assertSee('data-video-file-input', false)
+                ->assertSee('data-video-error', false)
+                ->assertSee('data-video-upload-overlay', false)
+                ->assertSee('data-upload-progress', false)
+                ->assertSee('aria-live="polite"', false);
+        }
+    }
+
     /** @return array{User, Lesson} */
     private function topicAuthoringFixture(): array
     {

@@ -14,23 +14,9 @@
         </div>
     @endif
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black bg-opacity-50">
-        <div class="flex flex-col items-center p-8 bg-white rounded-xl">
-            <svg class="w-12 h-12 mb-4 text-purple-700 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
-                viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                </circle>
-                <path class="opacity-75" fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                </path>
-            </svg>
-            <p class="text-lg font-semibold text-gray-700">Creating topic...</p>
-            <p class="mt-2 text-sm text-gray-500">Please wait while we process your request</p>
-        </div>
-    </div>
+    @include('instructor.topics.partials.upload-progress')
 
-    <form action="{{ route($contentRoutePrefix . '.topics.store') }}" method="POST" enctype="multipart/form-data" id="topicForm">
+    <form action="{{ route($contentRoutePrefix . '.topics.store') }}" method="POST" enctype="multipart/form-data" id="topicForm" data-video-upload-form data-video-max-bytes="104857600">
         @csrf
         <input type="hidden" name="lesson_id" value="{{ $lesson->id }}">
 
@@ -196,10 +182,11 @@
                     Upload Video <span class="text-red-500">*</span>
                 </label>
                 <div class="relative">
-                    <input type="file" name="video_file" id="video_file" accept="video/*" class="hidden"
-                        onchange="updateFileName(this, 'videoFileName')">
+                    <input type="file" name="video_file" id="video_file"
+                        accept=".mp4,.mpeg,.mpg,.mov,.avi,.webm,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
+                        class="sr-only" data-video-file-input aria-describedby="videoFileName videoFileClientError">
                     <label for="video_file"
-                        class="flex items-center justify-center w-full px-6 py-4 transition border-2 border-gray-200 border-dashed cursor-pointer rounded-xl hover:border-purple-400 hover:bg-purple-50">
+                        class="flex items-center justify-center w-full px-6 py-4 transition border-2 border-gray-200 border-dashed cursor-pointer rounded-xl hover:border-purple-400 hover:bg-purple-50 focus-within:border-purple-400 focus-within:bg-purple-50 focus-within:ring-2 focus-within:ring-purple-300">
                         <div class="text-center">
                             <svg class="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor"
                                 viewBox="0 0 24 24">
@@ -208,10 +195,11 @@
                             </svg>
                             <p class="mt-2 text-sm text-gray-600"><span class="font-semibold text-purple-700">Click to
                                     upload video</span></p>
-                            <p class="mt-1 text-xs text-gray-500" id="videoFileName">MP4, WebM, MOV up to 100MB</p>
+                            <p class="mt-1 text-xs text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
                         </div>
                     </label>
                 </div>
+                <p id="videoFileClientError" data-video-error class="hidden mt-1 text-sm text-red-600" role="alert"></p>
                 @error('video_file')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
@@ -398,10 +386,7 @@
     <script src="{{ asset('build/tinymce/tinymce.min.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Form submission loading indicator
             const form = document.getElementById('topicForm');
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            const submitButton = document.getElementById('submitButton');
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
 
             async function uploadTinyMceImage(file) {
@@ -458,13 +443,6 @@
                     form.appendChild(hiddenInput);
                 });
 
-                // Show loading overlay
-                loadingOverlay.classList.remove('hidden');
-                submitButton.disabled = true;
-                submitButton.innerHTML =
-                    '<svg class=\"animate-spin -ml-1 mr-3 h-5 w-5 text-white inline\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle><path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\"></path></svg> Creating...';
-
-                // Let the form submit naturally
             });
 
             // Initialize TinyMCE with image upload
@@ -622,15 +600,6 @@
                 urlField.classList.remove('hidden');
             } else if (videoSource.value === 'upload') {
                 fileField.classList.remove('hidden');
-            }
-        }
-
-        // Update file name display
-        function updateFileName(input, elementId) {
-            const fileNameElement = document.getElementById(elementId);
-            if (input.files && input.files[0]) {
-                fileNameElement.textContent = input.files[0].name;
-                fileNameElement.classList.add('text-purple-700', 'font-medium');
             }
         }
 
