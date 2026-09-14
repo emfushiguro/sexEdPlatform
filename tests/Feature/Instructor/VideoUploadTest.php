@@ -268,7 +268,7 @@ class VideoUploadTest extends TestCase
                 ->assertSee('data-video-upload-form-error', false);
         }
 
-        $errors = new \Illuminate\Support\ViewErrorBag();
+        $errors = new \Illuminate\Support\ViewErrorBag;
         $errors->put('default', new \Illuminate\Support\MessageBag([
             'video_file' => ['A valid video is required.'],
         ]));
