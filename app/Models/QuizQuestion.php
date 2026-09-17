@@ -13,6 +13,7 @@ class QuizQuestion extends Model
         'checkpoint_topic_id',
         'checkpoint_block_uuid',
         'question_text',
+        'context_description',
         'question_type',
         'points',
         'order',
@@ -21,6 +22,10 @@ class QuizQuestion extends Model
         'word_bank',
         'image_path',
         'explanation',
+        'allow_own_perspective',
+        'perspective_prompt',
+        'perspective_character_limit',
+        'reflection_guide',
     ];
 
     protected function casts(): array
@@ -30,6 +35,8 @@ class QuizQuestion extends Model
             'order' => 'integer',
             'case_sensitive' => 'boolean',
             'word_bank' => 'array',
+            'allow_own_perspective' => 'boolean',
+            'perspective_character_limit' => 'integer',
         ];
     }
 
