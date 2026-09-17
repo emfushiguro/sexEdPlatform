@@ -9,7 +9,6 @@ use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
-use App\Models\QuizAttempt;
 use App\Models\QuizQuestion;
 use App\Models\User;
 use App\Models\UserDailyShield;

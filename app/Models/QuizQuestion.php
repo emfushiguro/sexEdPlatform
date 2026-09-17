@@ -84,7 +84,7 @@ class QuizQuestion extends Model
 
     private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string
     {
-        if (!$path) {
+        if (! $path) {
             return null;
         }
 
@@ -98,8 +98,8 @@ class QuizQuestion extends Model
             $normalized = substr($normalized, 8);
         }
 
-        if (!str_contains($normalized, '/') && $defaultDirectory !== '') {
-            $normalized = trim($defaultDirectory, '/') . '/' . $normalized;
+        if (! str_contains($normalized, '/') && $defaultDirectory !== '') {
+            $normalized = trim($defaultDirectory, '/').'/'.$normalized;
         }
 
         return Storage::url($normalized);

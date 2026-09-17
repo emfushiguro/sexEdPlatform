@@ -34,7 +34,7 @@ class LearnerModuleCompletionService
     }
 
     /**
-     * @param Collection<int, mixed> $topics
+     * @param  Collection<int, mixed>  $topics
      * @return Collection<int, int>
      */
     public function completedTopicIds(User $user, Collection $topics): Collection
@@ -115,7 +115,7 @@ class LearnerModuleCompletionService
             ->where('status', EnrollmentStatus::Approved)
             ->first();
 
-        if (!$enrollment) {
+        if (! $enrollment) {
             return 'You must be enrolled in this module.';
         }
 
@@ -198,7 +198,7 @@ class LearnerModuleCompletionService
                 return $attemptLimit !== null && $attemptCount >= (int) $attemptLimit;
             });
 
-            if (!$allLessonQuizzesCompleted) {
+            if (! $allLessonQuizzesCompleted) {
                 return 'Complete all lesson quizzes before submitting feedback.';
             }
         }
@@ -222,7 +222,7 @@ class LearnerModuleCompletionService
             $isFinalQuizCompleted = $hasPassedFinalQuiz
                 || ($finalQuizAttemptLimit !== null && $finalAttemptCount >= (int) $finalQuizAttemptLimit);
 
-            if (!$isFinalQuizCompleted) {
+            if (! $isFinalQuizCompleted) {
                 return 'Complete the final quiz before submitting feedback.';
             }
         }
