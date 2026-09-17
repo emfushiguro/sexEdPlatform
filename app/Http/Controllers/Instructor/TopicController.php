@@ -605,8 +605,7 @@ class TopicController extends Controller
         $this->authorize('update', $topic);
         $this->ensureAdminCanMutateTopic($topic);
         $this->assertInsideCheckpointBelongsToTopic($topic, $question);
-        $request->merge(['points' => 1]);
-        $questionData = $this->questionAuthoring->validate($request);
+        $questionData = $this->questionAuthoring->validateCheckpoint($request, $question);
 
         $this->questionAuthoring->updateQuestion($question, $questionData);
 
@@ -619,9 +618,8 @@ class TopicController extends Controller
         $topicData = $request->validate([
             'title' => ['required', 'string', 'max:255'],
         ]);
-        $request->merge(['points' => 1]);
-        $questionData = $this->questionAuthoring->validate($request);
         $question = $topic->checkpointQuestion()->with('options')->firstOrFail();
+        $questionData = $this->questionAuthoring->validateCheckpoint($request, $question);
 
         DB::transaction(function () use ($topic, $topicData, $question, $questionData) {
             $topic->update([
@@ -705,8 +703,7 @@ class TopicController extends Controller
             'parent_topic_id' => ['nullable', 'required_if:checkpoint_placement,inside_topic', 'integer', 'exists:lesson_topics,id'],
             'insert_after_block' => ['nullable', 'integer', 'min:0'],
         ]);
-        $request->merge(['points' => 1]);
-        $questionData = $this->questionAuthoring->validate($request);
+        $questionData = $this->questionAuthoring->validateCheckpoint($request);
 
         return DB::transaction(function () use ($placement, $questionData, $lesson) {
             if ($placement['checkpoint_placement'] === 'inside_topic') {

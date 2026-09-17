@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 
 class QuestionAuthoringService
@@ -16,6 +17,8 @@ class QuestionAuthoringService
     private const CHOICE_TYPES = ['multiple_choice', 'true_false', 'multiple_select'];
 
     private const TEXT_ANSWER_TYPES = ['fill_blank_text', 'fill_blank_select', 'identification'];
+
+    private const PERSPECTIVE_TYPE = 'perspective_feedback';
 
     public const TYPES = [
         'multiple_choice',
@@ -26,24 +29,70 @@ class QuestionAuthoringService
         'identification',
     ];
 
+    public const CHECKPOINT_TYPES = [
+        ...self::TYPES,
+        self::PERSPECTIVE_TYPE,
+    ];
+
     public function validate(Request $request): array
+    {
+        return $this->validateForTypes($request, self::TYPES);
+    }
+
+    public function validateCheckpoint(Request $request, ?QuizQuestion $question = null): array
+    {
+        if ($request->input('question_type') !== self::PERSPECTIVE_TYPE) {
+            $request->merge(['points' => 1]);
+        }
+
+        return $this->validateForTypes($request, self::CHECKPOINT_TYPES, $question);
+    }
+
+    private function validateForTypes(Request $request, array $allowedTypes, ?QuizQuestion $question = null): array
     {
         $this->normalizeRequest($request);
 
+        $type = (string) $request->input('question_type');
+        $rules = $type === self::PERSPECTIVE_TYPE
+            ? $this->perspectiveRules($allowedTypes)
+            : $this->rules($allowedTypes);
+
         $validator = ValidatorFacade::make(
             array_merge($request->all(), ['image' => $request->file('image')]),
-            $this->rules(),
+            $rules,
         );
-        $validator->after(fn (Validator $validator) => $this->validateConfiguration($validator, $request));
+        $validator->after(function (Validator $validator) use ($request, $question): void {
+            $this->validateConfiguration($validator, $request);
+            $this->validatePerspectiveTypeConversion($validator, $request, $question);
+        });
 
         return $validator->validate();
     }
 
-    public function rules(): array
+    private function perspectiveRules(array $allowedTypes): array
     {
         return [
             'question_text' => ['required', 'string'],
-            'question_type' => ['required', 'in:'.implode(',', self::TYPES)],
+            'question_type' => ['required', 'in:'.implode(',', $allowedTypes)],
+            'points' => ['required', 'integer', 'min:0', 'max:0'],
+            'context_description' => ['nullable', 'string', 'max:5000'],
+            'perspective_options' => ['required', 'array', 'min:2', 'max:12'],
+            'perspective_options.*.id' => ['nullable', 'integer', 'distinct'],
+            'perspective_options.*.text' => ['required', 'string', 'max:500'],
+            'perspective_options.*.feedback' => ['required', 'string', 'max:5000'],
+            'allow_own_perspective' => ['required', 'boolean'],
+            'perspective_prompt' => ['nullable', 'required_if:allow_own_perspective,1', 'string', 'max:500'],
+            'perspective_character_limit' => ['nullable', 'required_if:allow_own_perspective,1', 'integer', 'min:100', 'max:5000'],
+            'reflection_guide' => ['nullable', 'string', 'max:5000'],
+            'explanation' => ['nullable', 'string', 'max:5000'],
+        ];
+    }
+
+    public function rules(array $allowedTypes = self::TYPES): array
+    {
+        return [
+            'question_text' => ['required', 'string'],
+            'question_type' => ['required', 'in:'.implode(',', $allowedTypes)],
             'points' => ['required', 'integer', 'min:1'],
             'options' => ['required_if:question_type,'.implode(',', self::CHOICE_TYPES), 'array', 'min:2'],
             'options.*' => ['required_with:options', 'string'],
@@ -62,6 +111,21 @@ class QuestionAuthoringService
     public function normalizeRequest(Request $request): void
     {
         $type = (string) $request->input('question_type');
+
+        if ($type === self::PERSPECTIVE_TYPE) {
+            $request->merge([
+                'points' => 0,
+                'allow_own_perspective' => $request->boolean('allow_own_perspective') ? 1 : 0,
+                'perspective_options' => array_values((array) $request->input('perspective_options', [])),
+            ]);
+            $request->request->remove('options');
+            $request->request->remove('correct_options');
+            $request->request->remove('acceptable_answers');
+            $request->request->remove('case_sensitive');
+            $request->request->remove('word_bank');
+
+            return;
+        }
 
         if (in_array($type, self::CHOICE_TYPES, true)) {
             $options = array_values(array_map(
@@ -173,6 +237,28 @@ class QuestionAuthoringService
         }
     }
 
+    private function validatePerspectiveTypeConversion(
+        Validator $validator,
+        Request $request,
+        ?QuizQuestion $question,
+    ): void {
+        if (! $question || $question->question_type === $request->input('question_type')) {
+            return;
+        }
+
+        $involvesPerspective = in_array(self::PERSPECTIVE_TYPE, [
+            $question->question_type,
+            (string) $request->input('question_type'),
+        ], true);
+
+        if ($involvesPerspective && $question->checkpointProgress()->exists()) {
+            $validator->errors()->add(
+                'question_type',
+                'The checkpoint type cannot be changed after a learner has interacted with it.',
+            );
+        }
+    }
+
     public function createQuestion(array $data, array $owner): QuizQuestion
     {
         return $this->withinTransaction(function () use ($data, $owner): QuizQuestion {
@@ -215,13 +301,15 @@ class QuestionAuthoringService
         };
         $usesTextAnswers = in_array($data['question_type'], self::TEXT_ANSWER_TYPES, true);
         $usesImage = $data['question_type'] === 'identification';
+        $isPerspective = $data['question_type'] === self::PERSPECTIVE_TYPE;
 
         return array_merge($owner, [
             'question_text' => $data['question_text'],
             'question_type' => $data['question_type'],
-            'points' => (int) $data['points'],
+            'points' => $isPerspective ? 0 : (int) $data['points'],
+            'context_description' => $isPerspective ? ($data['context_description'] ?? null) : null,
             'acceptable_answers' => $acceptableAnswers,
-            'case_sensitive' => $usesTextAnswers && ! empty($data['case_sensitive']),
+            'case_sensitive' => ! $isPerspective && $usesTextAnswers && ! empty($data['case_sensitive']),
             'word_bank' => $data['question_type'] === 'fill_blank_select'
                 ? array_map('trim', explode(',', $data['word_bank']))
                 : null,
@@ -231,11 +319,23 @@ class QuestionAuthoringService
                     : (! empty($data['remove_existing_image']) ? null : ($data['image_path'] ?? $existingImagePath)))
                 : null,
             'explanation' => $data['explanation'] ?? null,
+            'allow_own_perspective' => $isPerspective && ! empty($data['allow_own_perspective']),
+            'perspective_prompt' => $isPerspective ? ($data['perspective_prompt'] ?? null) : null,
+            'perspective_character_limit' => $isPerspective
+                ? ($data['perspective_character_limit'] ?? null)
+                : null,
+            'reflection_guide' => $isPerspective ? ($data['reflection_guide'] ?? null) : null,
         ]);
     }
 
     private function replaceOptions(QuizQuestion $question, array $data): void
     {
+        if ($data['question_type'] === self::PERSPECTIVE_TYPE) {
+            $this->syncPerspectiveOptions($question, $data['perspective_options']);
+
+            return;
+        }
+
         $question->options()->delete();
 
         if (! in_array($data['question_type'], ['multiple_choice', 'true_false', 'multiple_select'], true)
@@ -253,6 +353,34 @@ class QuestionAuthoringService
                 'order' => $index,
             ]);
         }
+    }
+
+    private function syncPerspectiveOptions(QuizQuestion $question, array $submitted): void
+    {
+        $existing = $question->options()->get()->keyBy('id');
+        $keptIds = [];
+
+        foreach (array_values($submitted) as $order => $optionData) {
+            $id = isset($optionData['id']) ? (int) $optionData['id'] : null;
+
+            if ($id !== null && ! $existing->has($id)) {
+                throw ValidationException::withMessages([
+                    'perspective_options' => 'Every response option must belong to this checkpoint.',
+                ]);
+            }
+
+            $option = $id !== null ? $existing->get($id) : $question->options()->make();
+            $option->fill([
+                'option_text' => $optionData['text'],
+                'feedback' => $optionData['feedback'],
+                'is_correct' => false,
+                'order' => $order,
+            ]);
+            $option->save();
+            $keptIds[] = $option->id;
+        }
+
+        $question->options()->whereNotIn('id', $keptIds)->delete();
     }
 
     private function imageDirectory(): string

@@ -2,7 +2,10 @@
 
 namespace Tests\Unit\Services\Learning;
 
+use App\Models\InteractiveCheckpointProgress;
+use App\Models\LessonTopic;
 use App\Models\Quiz;
+use App\Models\QuizQuestion;
 use App\Models\User;
 use App\Services\Learning\QuestionAuthoringService;
 use Illuminate\Database\QueryException;
@@ -11,10 +14,216 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class QuestionAuthoringServiceTest extends TestCase
 {
+    public function test_perspective_feedback_is_valid_only_in_checkpoint_context(): void
+    {
+        $request = Request::create('/', 'POST', [
+            'question_text' => '<p>How would you respond?</p>',
+            'question_type' => 'perspective_feedback',
+            'points' => 99,
+            'context_description' => 'A friend asks for support.',
+            'perspective_options' => [
+                ['text' => 'Listen first.', 'feedback' => 'Listening creates room for the person to explain.'],
+                ['text' => 'Decide for them.', 'feedback' => 'Support differs from taking control of another person decision.'],
+            ],
+            'allow_own_perspective' => 1,
+            'perspective_prompt' => 'What would you do?',
+            'perspective_character_limit' => 1000,
+            'reflection_guide' => 'Consider boundaries and possible effects.',
+            'explanation' => 'Support should respect the other person agency.',
+        ]);
+
+        $data = app(QuestionAuthoringService::class)->validateCheckpoint($request);
+
+        $this->assertSame('perspective_feedback', $data['question_type']);
+        $this->assertSame(0, $data['points']);
+        $this->expectException(ValidationException::class);
+        app(QuestionAuthoringService::class)->validate($request);
+    }
+
+    public function test_perspective_option_ids_and_feedback_survive_reordering(): void
+    {
+        $question = QuizQuestion::create([
+            'checkpoint_topic_id' => LessonTopic::factory()->create()->id,
+            'question_text' => '<p>Scenario</p>',
+            'question_type' => 'perspective_feedback',
+            'points' => 0,
+            'order' => 1,
+        ]);
+        $first = $question->options()->create([
+            'option_text' => 'First',
+            'feedback' => 'First feedback',
+            'is_correct' => false,
+            'order' => 0,
+        ]);
+        $second = $question->options()->create([
+            'option_text' => 'Second',
+            'feedback' => 'Second feedback',
+            'is_correct' => false,
+            'order' => 1,
+        ]);
+
+        $updated = app(QuestionAuthoringService::class)->updateQuestion($question, [
+            'question_text' => '<p>Scenario</p>',
+            'question_type' => 'perspective_feedback',
+            'points' => 0,
+            'context_description' => null,
+            'perspective_options' => [
+                ['id' => $second->id, 'text' => 'Second edited', 'feedback' => 'Second feedback edited'],
+                ['id' => $first->id, 'text' => 'First', 'feedback' => 'First feedback'],
+            ],
+            'allow_own_perspective' => false,
+            'perspective_prompt' => null,
+            'perspective_character_limit' => null,
+            'reflection_guide' => null,
+            'explanation' => null,
+        ]);
+
+        $this->assertSame([$second->id, $first->id], $updated->options->pluck('id')->all());
+        $this->assertSame('Second feedback edited', $updated->options->first()->feedback);
+        $this->assertFalse($updated->options->first()->is_correct);
+    }
+
+    public function test_perspective_type_conversion_is_blocked_after_learner_progress(): void
+    {
+        $topic = LessonTopic::factory()->create();
+        $question = QuizQuestion::create([
+            'checkpoint_topic_id' => $topic->id,
+            'question_text' => '<p>Existing question</p>',
+            'question_type' => 'multiple_choice',
+            'points' => 1,
+            'order' => 1,
+        ]);
+        InteractiveCheckpointProgress::create([
+            'user_id' => User::factory()->create()->id,
+            'lesson_topic_id' => $topic->id,
+            'quiz_question_id' => $question->id,
+            'status' => 'skipped',
+            'skipped_at' => now(),
+            'completed_at' => now(),
+        ]);
+        $request = Request::create('/', 'PUT', $this->validPerspectivePayload());
+
+        try {
+            app(QuestionAuthoringService::class)->validateCheckpoint($request, $question);
+            $this->fail('Validation should have failed.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('question_type', $exception->errors());
+        }
+    }
+
+    public function test_perspective_update_rejects_an_option_id_owned_by_another_question(): void
+    {
+        $topic = LessonTopic::factory()->create();
+        $question = QuizQuestion::create([
+            'checkpoint_topic_id' => $topic->id,
+            'question_text' => '<p>Scenario</p>',
+            'question_type' => 'perspective_feedback',
+            'points' => 0,
+            'order' => 1,
+        ]);
+        $other = QuizQuestion::create([
+            'checkpoint_topic_id' => $topic->id,
+            'question_text' => '<p>Other scenario</p>',
+            'question_type' => 'perspective_feedback',
+            'points' => 0,
+            'order' => 2,
+        ]);
+        $foreign = $other->options()->create([
+            'option_text' => 'Foreign',
+            'feedback' => 'Foreign feedback',
+            'is_correct' => false,
+            'order' => 0,
+        ]);
+        $data = array_replace($this->validPerspectivePayload(), [
+            'perspective_options' => [
+                ['id' => $foreign->id, 'text' => 'Foreign', 'feedback' => 'Foreign feedback'],
+                ['text' => 'Local', 'feedback' => 'Local feedback'],
+            ],
+        ]);
+
+        $this->expectException(ValidationException::class);
+        app(QuestionAuthoringService::class)->updateQuestion($question, $data);
+    }
+
+    #[DataProvider('invalidPerspectivePayloads')]
+    public function test_invalid_perspective_feedback_configuration_is_rejected(array $changes, string $errorKey): void
+    {
+        $request = Request::create('/', 'POST', array_replace($this->validPerspectivePayload(), $changes));
+
+        try {
+            app(QuestionAuthoringService::class)->validateCheckpoint($request);
+            $this->fail('Validation should have failed.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey($errorKey, $exception->errors());
+        }
+    }
+
+    public static function invalidPerspectivePayloads(): array
+    {
+        $validOption = ['text' => 'Listen', 'feedback' => 'Listening makes space for the concern.'];
+
+        return [
+            'fewer than two responses' => [
+                ['perspective_options' => [$validOption]],
+                'perspective_options',
+            ],
+            'more than twelve responses' => [
+                ['perspective_options' => array_fill(0, 13, $validOption)],
+                'perspective_options',
+            ],
+            'empty response text' => [
+                ['perspective_options' => [
+                    ['text' => '', 'feedback' => 'Feedback'],
+                    ['text' => 'Respond', 'feedback' => 'Feedback'],
+                ]],
+                'perspective_options.0.text',
+            ],
+            'missing response feedback' => [
+                ['perspective_options' => [
+                    ['text' => 'Listen', 'feedback' => ''],
+                    ['text' => 'Respond', 'feedback' => 'Feedback'],
+                ]],
+                'perspective_options.0.feedback',
+            ],
+            'character limit below minimum' => [
+                ['perspective_character_limit' => 99],
+                'perspective_character_limit',
+            ],
+            'character limit above maximum' => [
+                ['perspective_character_limit' => 5001],
+                'perspective_character_limit',
+            ],
+            'missing enabled pathway prompt' => [
+                ['perspective_prompt' => ''],
+                'perspective_prompt',
+            ],
+        ];
+    }
+
+    private function validPerspectivePayload(): array
+    {
+        return [
+            'question_text' => '<p>How would you respond?</p>',
+            'question_type' => 'perspective_feedback',
+            'points' => 0,
+            'context_description' => null,
+            'perspective_options' => [
+                ['text' => 'Listen', 'feedback' => 'Listening makes space for the concern.'],
+                ['text' => 'Direct them', 'feedback' => 'Direction can replace support with control.'],
+            ],
+            'allow_own_perspective' => 1,
+            'perspective_prompt' => 'What would you do?',
+            'perspective_character_limit' => 1000,
+            'reflection_guide' => null,
+            'explanation' => null,
+        ];
+    }
+
     public function test_creates_multiple_choice_question_with_correct_option(): void
     {
         $quiz = Quiz::factory()->create();
