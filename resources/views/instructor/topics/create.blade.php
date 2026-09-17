@@ -344,6 +344,7 @@
                 @include('instructor.quizzes.partials.question-fields', [
                     'selectedType' => old('question_type', 'multiple_choice'),
                     'allowTypeSwitch' => true,
+                    'isCheckpoint' => true,
                     'showPoints' => false,
                     'showExplanation' => true,
                     'editorUploadUrl' => route($contentRoutePrefix . '.upload.image'),

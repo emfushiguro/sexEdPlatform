@@ -10,6 +10,27 @@ use Tests\TestCase;
 
 class QuizQuestionAuthoringRegressionTest extends TestCase
 {
+    public function test_formal_quiz_authoring_does_not_offer_perspective_feedback(): void
+    {
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'content_owner_type' => 'instructor',
+        ]);
+        $quiz = Quiz::create([
+            'module_id' => $module->id,
+            'title' => 'Formal quiz',
+            'passing_score' => 70,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($instructor)
+            ->get(route('instructor.quizzes.add-question', $quiz))
+            ->assertOk()
+            ->assertDontSee('<option value="perspective_feedback">', false);
+    }
+
     public function test_quiz_add_page_uses_refined_type_specific_guidance(): void
     {
         [$instructor, $quiz] = $this->quizFixture();

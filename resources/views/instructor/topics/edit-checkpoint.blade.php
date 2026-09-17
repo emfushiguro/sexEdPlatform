@@ -37,6 +37,7 @@
             'question' => $question,
             'selectedType' => old('question_type', $question->question_type),
             'allowTypeSwitch' => true,
+            'isCheckpoint' => true,
             'showPoints' => false,
             'showExplanation' => true,
             'editorUploadUrl' => route($contentRoutePrefix . '.upload.image'),

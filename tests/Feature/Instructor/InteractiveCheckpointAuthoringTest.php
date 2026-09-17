@@ -460,6 +460,94 @@ class InteractiveCheckpointAuthoringTest extends TestCase
         $this->actingAs($instructor)->get(route('instructor.topics.checkpoints.edit', [$topic, $question]))->assertNotFound();
     }
 
+    public function test_instructor_can_create_and_reload_perspective_feedback(): void
+    {
+        [$instructor, $lesson] = $this->authoringFixture('instructor');
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.topics.store'), [
+                'lesson_id' => $lesson->id,
+                'title' => 'Perspective checkpoint',
+                'type' => 'interactive_checkpoint',
+                'checkpoint_placement' => 'between_topics',
+                'question_type' => 'perspective_feedback',
+                'question_text' => '<p>A friend describes a relationship concern. How would you respond?</p>',
+                'context_description' => 'Think about support, autonomy, and boundaries.',
+                'perspective_options' => [
+                    ['text' => 'Listen and ask what they need.', 'feedback' => 'Listening centers the person needs.'],
+                    ['text' => 'Tell them what to do.', 'feedback' => 'Directing them may replace support with control.'],
+                    ['text' => 'Ignore the concern.', 'feedback' => 'Ignoring the concern may leave the person unsupported.'],
+                ],
+                'allow_own_perspective' => 1,
+                'perspective_prompt' => 'Share how you would respond.',
+                'perspective_character_limit' => 1000,
+                'reflection_guide' => 'Consider feelings, boundaries, and possible effects.',
+                'explanation' => 'Support can combine care with respect for autonomy.',
+            ])
+            ->assertRedirect(route('instructor.lessons.show', $lesson));
+
+        $topic = $lesson->topics()->where('type', 'interactive_checkpoint')->firstOrFail();
+        $question = $topic->checkpointQuestion()->with('options')->firstOrFail();
+
+        $this->assertSame('perspective_feedback', $question->question_type);
+        $this->assertSame(0, $question->points);
+        $this->assertTrue($question->allow_own_perspective);
+        $this->assertSame(1000, $question->perspective_character_limit);
+        $this->assertTrue($question->options->every(fn ($option) => ! $option->is_correct));
+        $this->assertSame(
+            ['Listening centers the person needs.', 'Directing them may replace support with control.', 'Ignoring the concern may leave the person unsupported.'],
+            $question->options->pluck('feedback')->all(),
+        );
+
+        $this->actingAs($instructor)
+            ->get(route('instructor.topics.edit', $topic))
+            ->assertOk()
+            ->assertSee('Share how you would respond.')
+            ->assertSee('Consider feelings, boundaries, and possible effects.')
+            ->assertSee('Support can combine care with respect for autonomy.');
+    }
+
+    public function test_perspective_feedback_edit_preserves_ids_while_reordering_and_deleting(): void
+    {
+        [$instructor, $lesson] = $this->authoringFixture('instructor');
+        $topic = LessonTopic::factory()->create([
+            'lesson_id' => $lesson->id,
+            'type' => 'interactive_checkpoint',
+            'interactive_config' => ['placement' => 'between_topics'],
+        ]);
+        $question = QuizQuestion::create([
+            'checkpoint_topic_id' => $topic->id,
+            'question_text' => '<p>Scenario</p>',
+            'question_type' => 'perspective_feedback',
+            'points' => 0,
+            'order' => 1,
+        ]);
+        $first = $question->options()->create(['option_text' => 'First', 'feedback' => 'First feedback', 'is_correct' => false, 'order' => 0]);
+        $second = $question->options()->create(['option_text' => 'Second', 'feedback' => 'Second feedback', 'is_correct' => false, 'order' => 1]);
+        $removed = $question->options()->create(['option_text' => 'Remove me', 'feedback' => 'Removed feedback', 'is_correct' => false, 'order' => 2]);
+
+        $this->actingAs($instructor)
+            ->put(route('instructor.topics.update', $topic), [
+                'title' => 'Edited perspective checkpoint',
+                'question_type' => 'perspective_feedback',
+                'question_text' => '<p>Scenario edited</p>',
+                'perspective_options' => [
+                    ['id' => $second->id, 'text' => 'Second edited', 'feedback' => 'Second feedback edited'],
+                    ['id' => $first->id, 'text' => 'First', 'feedback' => 'First feedback'],
+                    ['text' => 'New response', 'feedback' => 'New feedback'],
+                ],
+                'allow_own_perspective' => 0,
+                'explanation' => null,
+            ])
+            ->assertRedirect(route('instructor.lessons.show', $lesson));
+
+        $options = $question->refresh()->options;
+        $this->assertSame([$second->id, $first->id], $options->take(2)->pluck('id')->all());
+        $this->assertSame('Second feedback edited', $options->first()->feedback);
+        $this->assertFalse($options->contains('id', $removed->id));
+        $this->assertSame('New response', $options->last()->option_text);
+    }
+
     public function test_admin_can_edit_an_admin_owned_checkpoint_through_admin_routes(): void
     {
         [$admin, $lesson] = $this->authoringFixture('admin');

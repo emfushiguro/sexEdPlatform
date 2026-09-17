@@ -1,4 +1,4 @@
-const RICH_TYPES = ['multiple_choice', 'true_false', 'multiple_select', 'identification'];
+const RICH_TYPES = ['multiple_choice', 'true_false', 'multiple_select', 'identification', 'perspective_feedback'];
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'multiple_select'];
 const BLANK_TYPES = ['fill_blank_text', 'fill_blank_select'];
 function decodeQuestionHtmlEntities(value) {
@@ -52,6 +52,13 @@ function defaultOptions(type, nextKey) {
     return [];
 }
 
+function defaultPerspectiveOptions(nextKey) {
+    return [
+        { key: nextKey(), id: null, text: '', feedback: '' },
+        { key: nextKey(), id: null, text: '', feedback: '' },
+    ];
+}
+
 export function createQuestionAuthoring(config = {}) {
     let key = 0;
     const nextKey = () => `question-row-${key += 1}`;
@@ -75,13 +82,27 @@ export function createQuestionAuthoring(config = {}) {
                 readonly: Boolean(option.readonly),
             }))
             : defaultOptions(type, nextKey));
+    const initialPerspectiveOptions = Array.isArray(config.perspectiveOptions) && config.perspectiveOptions.length
+        ? config.perspectiveOptions.map((option) => ({
+            key: nextKey(),
+            id: option.id === null || option.id === undefined ? null : Number(option.id),
+            text: String(option.text || ''),
+            feedback: String(option.feedback || ''),
+        }))
+        : defaultPerspectiveOptions(nextKey);
 
     return {
         questionType: type,
         questionText: questionTextForEditor(config.questionText || '', type),
         points: Number(config.points || 1),
         explanation: config.explanation || '',
+        contextDescription: config.contextDescription || '',
+        allowOwnPerspective: Boolean(config.allowOwnPerspective),
+        perspectivePrompt: config.perspectivePrompt || '',
+        perspectiveCharacterLimit: Number(config.perspectiveCharacterLimit || 1000),
+        reflectionGuide: config.reflectionGuide || '',
         options: initialOptions,
+        perspectiveOptions: initialPerspectiveOptions,
         answers: initialAnswers,
         answerKeys: initialAnswers.map(() => nextKey()),
         wordBank: config.wordBank || '',
@@ -105,6 +126,10 @@ export function createQuestionAuthoring(config = {}) {
             return CHOICE_TYPES.includes(this.questionType);
         },
 
+        isPerspectiveType() {
+            return this.questionType === 'perspective_feedback';
+        },
+
         isBlankType() {
             return BLANK_TYPES.includes(this.questionType);
         },
@@ -125,6 +150,23 @@ export function createQuestionAuthoring(config = {}) {
         removeOption(index) {
             if (!this.canRemoveOptions()) return;
             this.options.splice(index, 1);
+        },
+
+        addPerspectiveOption() {
+            if (this.perspectiveOptions.length >= 12) return;
+            this.perspectiveOptions.push({ key: nextKey(), id: null, text: '', feedback: '' });
+        },
+
+        removePerspectiveOption(index) {
+            if (this.perspectiveOptions.length <= 2) return;
+            this.perspectiveOptions.splice(index, 1);
+        },
+
+        movePerspectiveOption(index, direction) {
+            const target = index + direction;
+            if (target < 0 || target >= this.perspectiveOptions.length) return;
+            const [option] = this.perspectiveOptions.splice(index, 1);
+            this.perspectiveOptions.splice(target, 0, option);
         },
 
         setOnlyCorrect(index) {
@@ -235,10 +277,16 @@ export function createQuestionAuthoring(config = {}) {
 
             this.questionType = nextType;
             this.options = defaultOptions(nextType, nextKey);
+            this.perspectiveOptions = defaultPerspectiveOptions(nextKey);
             this.answers = [''];
             this.answerKeys = [nextKey()];
             this.wordBank = '';
             this.caseSensitive = false;
+            this.contextDescription = '';
+            this.allowOwnPerspective = false;
+            this.perspectivePrompt = '';
+            this.perspectiveCharacterLimit = 1000;
+            this.reflectionGuide = '';
             this.currentImageUrl = null;
             this.errors = {};
             if (this.$refs?.imageInput) this.$refs.imageInput.value = '';
@@ -250,6 +298,22 @@ export function createQuestionAuthoring(config = {}) {
         validationErrors() {
             const errors = {};
             if (!stripQuestionHtml(this.questionText)) errors.question_text = 'Question text is required.';
+
+            if (this.isPerspectiveType()) {
+                if (this.perspectiveOptions.length < 2 || this.perspectiveOptions.length > 12
+                    || this.perspectiveOptions.some((option) => !option.text.trim() || !option.feedback.trim())) {
+                    errors.perspective_options = 'Every response needs text and educational feedback.';
+                }
+                if (this.allowOwnPerspective && !this.perspectivePrompt.trim()) {
+                    errors.perspective_prompt = 'Add a prompt for the learner\'s own perspective.';
+                }
+                if (this.allowOwnPerspective
+                    && (this.perspectiveCharacterLimit < 100 || this.perspectiveCharacterLimit > 5000)) {
+                    errors.perspective_character_limit = 'Use a character limit between 100 and 5000.';
+                }
+
+                return errors;
+            }
 
             if (this.isChoiceType()) {
                 if (this.options.length < 2 || this.options.some((option) => !option.text.trim())) {

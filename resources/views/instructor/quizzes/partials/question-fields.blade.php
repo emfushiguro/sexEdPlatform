@@ -1,4 +1,5 @@
 @php
+    $isCheckpoint = $isCheckpoint ?? false;
     $allowTypeSwitch = $allowTypeSwitch ?? true;
     $showPoints = $showPoints ?? true;
     $showExplanation = $showExplanation ?? false;
@@ -6,6 +7,18 @@
     $questionText = old('question_text', $question->question_text ?? '');
     $blankCount = substr_count(strip_tags((string) $questionText), '_____');
     $existingOptions = isset($question) ? $question->options->values() : collect();
+    $submittedPerspectiveOptions = old('perspective_options');
+    $perspectiveOptions = is_array($submittedPerspectiveOptions)
+        ? collect($submittedPerspectiveOptions)->values()->map(fn ($option) => [
+            'id' => isset($option['id']) ? (int) $option['id'] : null,
+            'text' => $option['text'] ?? '',
+            'feedback' => $option['feedback'] ?? '',
+        ])->all()
+        : $existingOptions->map(fn ($option) => [
+            'id' => $option->id,
+            'text' => $option->option_text,
+            'feedback' => $option->feedback ?? '',
+        ])->all();
     $submittedOptions = old('options');
     $submittedCorrect = array_map('intval', (array) old('correct_options', []));
     $options = is_array($submittedOptions)
@@ -38,6 +51,14 @@
         'fill_blank_select' => ['label' => 'Fill in the Blanks — Word Bank', 'description' => 'Learners choose ordered answers from a Word Bank.', 'badge' => 'bg-orange-50 text-orange-700 border-orange-200'],
         'multiple_select' => ['label' => 'Multiple Select', 'description' => 'Learners select every correct answer.', 'badge' => 'bg-purple-50 text-purple-700 border-purple-200'],
     ];
+
+    if ($isCheckpoint) {
+        $typeMeta['perspective_feedback'] = [
+            'label' => 'Perspective Feedback',
+            'description' => 'Learners choose a guided response or optionally share their own perspective.',
+            'badge' => 'bg-sky-50 text-sky-700 border-sky-200',
+        ];
+    }
 @endphp
 
 @once
@@ -52,6 +73,12 @@
     points: @js(old('points', $question->points ?? 1)),
     explanation: @js(old('explanation', $question->explanation ?? '')),
     options: @js($options),
+    perspectiveOptions: @js($perspectiveOptions),
+    contextDescription: @js(old('context_description', $question->context_description ?? '')),
+    allowOwnPerspective: @js((bool) old('allow_own_perspective', $question->allow_own_perspective ?? false)),
+    perspectivePrompt: @js(old('perspective_prompt', $question->perspective_prompt ?? '')),
+    perspectiveCharacterLimit: @js(old('perspective_character_limit', $question->perspective_character_limit ?? 1000)),
+    reflectionGuide: @js(old('reflection_guide', $question->reflection_guide ?? '')),
     answers: @js($answers),
     wordBank: @js(old('word_bank', isset($question) && is_array($question->word_bank) ? implode(', ', $question->word_bank) : '')),
     caseSensitive: @js((bool) old('case_sensitive', $question->case_sensitive ?? false)),
@@ -83,7 +110,7 @@
 
     <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div class="mb-2 flex items-center justify-between gap-3">
-            <label for="question_text" class="text-sm font-semibold text-gray-700">Question Text <span class="text-red-500">*</span></label>
+            <label for="question_text" class="text-sm font-semibold text-gray-700"><span x-text="isPerspectiveType() ? 'Scenario / Question' : 'Question Text'"></span> <span class="text-red-500">*</span></label>
             <button x-show="isBlankType()" type="button" @click="insertBlank()" class="min-h-10 rounded-xl border border-purple-200 bg-purple-50 px-3 text-xs font-semibold text-purple-700 hover:bg-purple-100">Insert Blank (_____)</button>
         </div>
         <template x-if="isRichType()">
@@ -104,8 +131,67 @@
             @error('points') <p id="points_error" class="mt-1 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
         </div>
     @else
-        <input type="hidden" name="points" value="1">
+        <input type="hidden" name="points" :value="isPerspectiveType() ? 0 : 1">
     @endif
+
+    <template x-if="isPerspectiveType()">
+        <div class="space-y-6">
+            <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <label for="context_description" class="block text-sm font-semibold text-gray-900">Context / Description <span class="font-normal text-gray-400">(Optional)</span></label>
+                <textarea id="context_description" name="context_description" rows="4" maxlength="5000" x-model="contextDescription" class="mt-2 w-full rounded-xl border-gray-200 text-sm focus:border-purple-400 focus:ring-purple-300"></textarea>
+            </section>
+
+            <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm" role="group" aria-labelledby="perspective_options_heading">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 id="perspective_options_heading" class="text-sm font-semibold text-gray-900">Guided Responses</h3>
+                        <p class="text-xs text-gray-500">Add 2–12 responses and educational feedback for each one.</p>
+                    </div>
+                    <button type="button" @click="addPerspectiveOption()" :disabled="perspectiveOptions.length >= 12" class="min-h-11 rounded-xl border border-purple-200 px-3 text-sm font-semibold text-purple-700 disabled:opacity-50">Add Response</button>
+                </div>
+                <div class="mt-4 space-y-4">
+                    <template x-for="(option, index) in perspectiveOptions" :key="option.key">
+                        <fieldset class="rounded-xl border border-gray-200 p-4">
+                            <legend class="px-1 text-sm font-semibold text-gray-800" x-text="`Response ${index + 1}`"></legend>
+                            <input x-show="option.id !== null" type="hidden" :name="`perspective_options[${index}][id]`" :value="option.id">
+                            <label class="block text-xs font-semibold text-gray-700" :for="`perspective-option-${index}`">Response text</label>
+                            <input :id="`perspective-option-${index}`" :name="`perspective_options[${index}][text]`" x-model="option.text" maxlength="500" required class="mt-1 w-full rounded-xl border-gray-200 text-sm">
+                            <label class="mt-3 block text-xs font-semibold text-gray-700" :for="`perspective-feedback-${index}`">Educational feedback</label>
+                            <textarea :id="`perspective-feedback-${index}`" :name="`perspective_options[${index}][feedback]`" x-model="option.feedback" maxlength="5000" rows="3" required class="mt-1 w-full rounded-xl border-gray-200 text-sm"></textarea>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <button type="button" @click="movePerspectiveOption(index, -1)" :disabled="index === 0" :aria-label="`Move response ${index + 1} up`" class="min-h-11 rounded-lg border px-3 text-sm disabled:opacity-40">Move up</button>
+                                <button type="button" @click="movePerspectiveOption(index, 1)" :disabled="index === perspectiveOptions.length - 1" :aria-label="`Move response ${index + 1} down`" class="min-h-11 rounded-lg border px-3 text-sm disabled:opacity-40">Move down</button>
+                                <button type="button" @click="removePerspectiveOption(index)" :disabled="perspectiveOptions.length <= 2" :aria-label="`Remove response ${index + 1}`" class="min-h-11 rounded-lg border border-red-200 px-3 text-sm text-red-700 disabled:opacity-40">Remove</button>
+                            </div>
+                        </fieldset>
+                    </template>
+                </div>
+                <p x-show="errors.perspective_options" x-text="errors.perspective_options" class="mt-2 text-xs text-red-600" role="alert"></p>
+            </section>
+
+            <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <label class="flex items-start gap-3">
+                    <input type="checkbox" name="allow_own_perspective" value="1" x-model="allowOwnPerspective" class="mt-0.5 h-6 w-6 rounded text-purple-600">
+                    <span><span class="block text-sm font-semibold text-gray-900">Allow learner to share their own perspective</span><span class="block text-xs text-gray-500">The learner chooses this or a guided response, never both.</span></span>
+                </label>
+                <input type="hidden" name="allow_own_perspective" value="0" :disabled="allowOwnPerspective">
+                <div x-show="allowOwnPerspective" class="mt-4 space-y-4">
+                    <div>
+                        <label for="perspective_prompt" class="block text-sm font-semibold text-gray-700">Custom response prompt</label>
+                        <input id="perspective_prompt" name="perspective_prompt" x-model="perspectivePrompt" maxlength="500" :required="allowOwnPerspective" class="mt-1 w-full rounded-xl border-gray-200">
+                    </div>
+                    <div>
+                        <label for="perspective_character_limit" class="block text-sm font-semibold text-gray-700">Character limit</label>
+                        <input id="perspective_character_limit" name="perspective_character_limit" type="number" min="100" max="5000" x-model.number="perspectiveCharacterLimit" :required="allowOwnPerspective" class="mt-1 w-40 rounded-xl border-gray-200">
+                    </div>
+                    <div>
+                        <label for="reflection_guide" class="block text-sm font-semibold text-gray-700">Reflection Guide <span class="font-normal text-gray-400">(Optional)</span></label>
+                        <textarea id="reflection_guide" name="reflection_guide" rows="4" maxlength="5000" x-model="reflectionGuide" class="mt-1 w-full rounded-xl border-gray-200"></textarea>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </template>
 
     <template x-if="isChoiceType()">
         <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm" role="group" aria-labelledby="answer_options_heading">
@@ -191,8 +277,9 @@
 
     @if($showExplanation)
         <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <label for="explanation" class="block text-sm font-semibold text-gray-900">Explanation <span class="font-normal text-gray-400">(Optional)</span></label>
-            <p class="mb-3 text-xs text-gray-500">Shown after a correct answer. It is hidden after an incorrect answer or skip.</p>
+            <label for="explanation" class="block text-sm font-semibold text-gray-900"><span x-text="isPerspectiveType() ? 'General Explanation' : 'Explanation'"></span> <span class="font-normal text-gray-400">(Optional)</span></label>
+            <p x-show="!isPerspectiveType()" class="mb-3 text-xs text-gray-500">Shown after a correct answer. It is hidden after an incorrect answer or skip.</p>
+            <p x-show="isPerspectiveType()" class="mb-3 text-xs text-gray-500">Shown after a learner submits a guided or written perspective.</p>
             <textarea id="explanation" name="explanation" rows="4" maxlength="5000" x-model="explanation" aria-describedby="explanation_error" aria-invalid="{{ $errors->has('explanation') ? 'true' : 'false' }}" class="w-full rounded-xl border-gray-200 text-sm focus:border-purple-400 focus:ring-purple-300"></textarea>
             @error('explanation') <p id="explanation_error" class="mt-1 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
         </section>

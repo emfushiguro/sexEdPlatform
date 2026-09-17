@@ -6,6 +6,48 @@ import {
     stripQuestionHtml,
 } from '../../resources/js/question-authoring.js';
 
+test('perspective feedback starts with two neutral response rows', () => {
+    const form = createQuestionAuthoring({ type: 'perspective_feedback' });
+
+    assert.equal(form.isPerspectiveType(), true);
+    assert.equal(form.perspectiveOptions.length, 2);
+    assert.deepEqual(form.correctIndices(), []);
+});
+
+test('perspective feedback requires option feedback and enabled writing configuration', () => {
+    const form = createQuestionAuthoring({
+        type: 'perspective_feedback',
+        questionText: '<p>Scenario</p>',
+        perspectiveOptions: [
+            { id: 10, text: 'Listen', feedback: '' },
+            { id: 11, text: 'Ignore it', feedback: 'Ignoring may leave the concern unsupported.' },
+        ],
+        allowOwnPerspective: true,
+        perspectivePrompt: '',
+        perspectiveCharacterLimit: 99,
+    });
+
+    assert.deepEqual(form.validationErrors(), {
+        perspective_options: 'Every response needs text and educational feedback.',
+        perspective_prompt: 'Add a prompt for the learner\'s own perspective.',
+        perspective_character_limit: 'Use a character limit between 100 and 5000.',
+    });
+});
+
+test('perspective response rows reorder without changing stable ids', () => {
+    const form = createQuestionAuthoring({
+        type: 'perspective_feedback',
+        perspectiveOptions: [
+            { id: 10, text: 'A', feedback: 'A feedback' },
+            { id: 11, text: 'B', feedback: 'B feedback' },
+        ],
+    });
+
+    form.movePerspectiveOption(1, -1);
+
+    assert.deepEqual(form.perspectiveOptions.map((option) => option.id), [11, 10]);
+});
+
 test('multiple choice adds unlimited options and never removes below two', () => {
     const state = createQuestionAuthoring({
         type: 'multiple_choice',
