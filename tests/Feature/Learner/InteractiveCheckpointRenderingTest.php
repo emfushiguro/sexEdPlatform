@@ -160,6 +160,76 @@ class InteractiveCheckpointRenderingTest extends TestCase
         );
     }
 
+    public function test_perspective_feedback_renders_accessible_pathways(): void
+    {
+        [$learner, $topic, $question] = $this->betweenCheckpointFixture();
+        $question->update([
+            'question_text' => '<p>Perspective scenario</p>',
+            'question_type' => 'perspective_feedback',
+            'points' => 0,
+            'allow_own_perspective' => true,
+            'perspective_prompt' => 'Share your perspective.',
+            'perspective_character_limit' => 1000,
+            'reflection_guide' => 'Consider boundaries.',
+            'explanation' => 'Respect matters.',
+        ]);
+        $question->options()->delete();
+        $question->options()->createMany([
+            ['option_text' => 'Listen', 'feedback' => 'Listening helps.', 'is_correct' => false, 'order' => 0],
+            ['option_text' => 'Ignore it', 'feedback' => 'Ignoring can leave concerns unsupported.', 'is_correct' => false, 'order' => 1],
+        ]);
+
+        $this->actingAs($learner)
+            ->get(route('learner.lessons.show', ['lesson' => $topic->lesson, 'topic' => 0]))
+            ->assertOk()
+            ->assertSee('Perspective Feedback')
+            ->assertSee('Choose a Response')
+            ->assertSee('Share Your Perspective')
+            ->assertSee('Reflection Guide')
+            ->assertSee('characters remaining')
+            ->assertDontSee('Correct Answer');
+    }
+
+    public function test_completed_written_perspective_renders_neutral_saved_state(): void
+    {
+        [$learner, $topic, $question] = $this->betweenCheckpointFixture();
+        $question->options()->delete();
+        $question->update([
+            'question_text' => '<p>Perspective scenario</p>',
+            'question_type' => 'perspective_feedback',
+            'points' => 0,
+            'allow_own_perspective' => true,
+            'perspective_prompt' => 'Share your perspective.',
+            'perspective_character_limit' => 1000,
+            'reflection_guide' => 'Consider boundaries.',
+            'explanation' => 'Respect matters.',
+        ]);
+        $question->options()->createMany([
+            ['option_text' => 'Listen', 'feedback' => 'Listening helps.', 'is_correct' => false, 'order' => 0],
+            ['option_text' => 'Ignore it', 'feedback' => 'Ignoring can leave concerns unsupported.', 'is_correct' => false, 'order' => 1],
+        ]);
+        InteractiveCheckpointProgress::create([
+            'user_id' => $learner->id,
+            'lesson_topic_id' => $topic->id,
+            'quiz_question_id' => $question->id,
+            'status' => 'completed',
+            'latest_answer' => ['pathway' => 'own', 'perspective_text' => 'Stored reflection'],
+            'is_correct' => null,
+            'attempt_count' => 1,
+            'answered_at' => now(),
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($learner)
+            ->get(route('learner.lessons.show', ['lesson' => $topic->lesson, 'topic' => 0]))
+            ->assertOk()
+            ->assertSee('Your Perspective')
+            ->assertSee('Why This Matters')
+            ->assertSee('Stored reflection')
+            ->assertDontSee('Correct')
+            ->assertDontSee('Incorrect');
+    }
+
     private function page(User $learner, LessonTopic $topic): string
     {
         return $this->actingAs($learner)

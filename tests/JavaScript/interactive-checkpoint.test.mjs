@@ -5,6 +5,79 @@ import {
     createInteractiveCheckpoint,
 } from '../../resources/js/interactive-checkpoint.js';
 
+test('perspective feedback submits exactly one guided pathway', async () => {
+    let submittedBody;
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'perspective_feedback',
+        questionId: 17,
+        submitUrl: '/submit',
+        skipUrl: '/skip',
+        csrf: 'token',
+        perspectiveCharacterLimit: 1000,
+    }, async (_url, options) => {
+        submittedBody = JSON.parse(options.body);
+        return {
+            ok: true,
+            json: async () => ({
+                status: 'completed',
+                is_correct: null,
+                pathway: 'guided',
+                result: { pathway: 'guided', option_id: 4, option_text: 'Listen', feedback: 'Listening helps.' },
+                feedback: 'Listening helps.',
+                explanation: 'Respect autonomy.',
+            }),
+        };
+    });
+
+    checkpoint.choosePerspectivePathway('guided');
+    checkpoint.answer.option_id = 4;
+    await checkpoint.submit();
+
+    assert.deepEqual(submittedBody, {
+        answer: { pathway: 'guided', option_id: 4, perspective_text: '' },
+    });
+    assert.equal(checkpoint.state, 'completed');
+    assert.equal(checkpoint.isCorrect, null);
+    assert.equal(checkpoint.showContinue(), true);
+    assert.equal(checkpoint.feedback, 'Listening helps.');
+});
+
+test('written perspective counts remaining characters and survives request errors', async () => {
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'perspective_feedback',
+        submitUrl: '/submit',
+        skipUrl: '/skip',
+        csrf: 'token',
+        perspectiveCharacterLimit: 20,
+    }, async () => ({
+        ok: false,
+        json: async () => ({ message: 'Unable to save the checkpoint.' }),
+    }));
+
+    checkpoint.choosePerspectivePathway('own');
+    checkpoint.answer.perspective_text = 'My own view';
+    assert.equal(checkpoint.remainingPerspectiveCharacters(), 9);
+
+    await checkpoint.submit();
+
+    assert.equal(checkpoint.answer.perspective_text, 'My own view');
+    assert.equal(checkpoint.state, 'error');
+});
+
+test('stored completed perspective is restored without correctness', () => {
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'perspective_feedback',
+        initialStatus: 'completed',
+        initialResult: { pathway: 'own', perspective_text: 'Stored reflection' },
+        initialExplanation: 'Consider the impact.',
+    });
+
+    assert.equal(checkpoint.state, 'completed');
+    assert.equal(checkpoint.answer.perspective_text, 'Stored reflection');
+    assert.equal(checkpoint.isCorrect, null);
+    assert.equal(checkpoint.showSkip(), false);
+});
+
 test('incorrect hides explanation and exposes retry or skip', async () => {
     const request = async () => ({
         ok: true,

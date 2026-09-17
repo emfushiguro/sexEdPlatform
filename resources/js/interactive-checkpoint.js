@@ -1,5 +1,6 @@
 export function emptyCheckpointAnswer(type, blankCount = 1) {
     if (type === 'multiple_select') return [];
+    if (type === 'perspective_feedback') return { pathway: null, option_id: null, perspective_text: '' };
     if (['fill_blank_text', 'fill_blank_select'].includes(type)) {
         return Array(Math.max(1, blankCount)).fill('');
     }
@@ -13,18 +14,33 @@ async function readResponse(response) {
 }
 
 export function createInteractiveCheckpoint(config = {}, request = globalThis.fetch?.bind(globalThis)) {
-    const initialStatus = ['correct', 'incorrect', 'skipped'].includes(config.initialStatus)
+    const initialStatus = ['correct', 'incorrect', 'completed', 'skipped'].includes(config.initialStatus)
         ? config.initialStatus
         : 'ready';
+    const initialAnswer = config.type === 'perspective_feedback' && config.initialResult
+        ? { ...emptyCheckpointAnswer(config.type), ...config.initialResult }
+        : emptyCheckpointAnswer(config.type, config.blankCount);
 
     const checkpoint = {
-        answer: emptyCheckpointAnswer(config.type, config.blankCount),
+        answer: initialAnswer,
         state: initialStatus,
         isCorrect: initialStatus === 'correct' ? true : null,
-        explanation: initialStatus === 'correct' ? config.initialExplanation || null : null,
+        explanation: ['correct', 'completed'].includes(initialStatus) ? config.initialExplanation || null : null,
+        feedback: initialStatus === 'completed' ? config.initialFeedback || null : null,
+        result: initialStatus === 'completed' ? config.initialResult || null : null,
+        perspectiveCharacterLimit: Number(config.perspectiveCharacterLimit || 1000),
         error: '',
+        choosePerspectivePathway(pathway) {
+            if (!['guided', 'own'].includes(pathway) || this.state === 'completed') return;
+            this.answer.pathway = pathway;
+            if (pathway === 'guided') this.answer.perspective_text = '';
+            if (pathway === 'own') this.answer.option_id = null;
+        },
+        remainingPerspectiveCharacters() {
+            return this.perspectiveCharacterLimit - Array.from(this.answer.perspective_text || '').length;
+        },
         showSkip() { return ['ready', 'incorrect', 'error'].includes(this.state); },
-        showContinue() { return ['correct', 'skipped'].includes(this.state); },
+        showContinue() { return ['correct', 'completed', 'skipped'].includes(this.state); },
         retry() {
             this.answer = emptyCheckpointAnswer(config.type, config.blankCount);
             this.state = 'ready';
@@ -44,8 +60,13 @@ export function createInteractiveCheckpoint(config = {}, request = globalThis.fe
                 const data = await readResponse(response);
                 this.state = data.status;
                 this.isCorrect = data.is_correct;
-                this.explanation = data.status === 'correct' ? data.explanation : null;
-                if (['correct', 'skipped'].includes(data.status)) this.claimForward();
+                this.result = data.result || null;
+                this.feedback = data.feedback || null;
+                this.explanation = ['correct', 'completed'].includes(data.status) ? data.explanation : null;
+                if (data.result && config.type === 'perspective_feedback') {
+                    this.answer = { ...emptyCheckpointAnswer(config.type), ...data.result };
+                }
+                if (['correct', 'completed', 'skipped'].includes(data.status)) this.claimForward();
             } catch (error) {
                 this.state = 'error';
                 this.error = error.message || 'Unable to save the checkpoint.';
@@ -62,8 +83,10 @@ export function createInteractiveCheckpoint(config = {}, request = globalThis.fe
                 const data = await readResponse(response);
                 this.state = data.status;
                 this.isCorrect = data.is_correct;
-                this.explanation = data.status === 'correct' ? data.explanation : null;
-                if (['correct', 'skipped'].includes(data.status)) this.claimForward();
+                this.result = data.result || null;
+                this.feedback = data.feedback || null;
+                this.explanation = ['correct', 'completed'].includes(data.status) ? data.explanation : null;
+                if (['correct', 'completed', 'skipped'].includes(data.status)) this.claimForward();
             } catch (error) {
                 this.state = 'error';
                 this.error = error.message || 'Unable to skip the checkpoint.';

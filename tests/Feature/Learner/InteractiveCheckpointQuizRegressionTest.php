@@ -13,6 +13,27 @@ use Tests\TestCase;
 
 class InteractiveCheckpointQuizRegressionTest extends TestCase
 {
+    public function test_formal_quiz_authoring_rejects_perspective_feedback(): void
+    {
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'content_owner_type' => 'instructor',
+        ]);
+        $quiz = Quiz::factory()->create(['module_id' => $module->id]);
+
+        $this->actingAs($instructor)
+            ->from(route('instructor.quizzes.add-question', $quiz))
+            ->post(route('instructor.quizzes.store-question', $quiz), [
+                'question_type' => 'perspective_feedback',
+                'question_text' => '<p>Perspective scenario</p>',
+                'points' => 0,
+            ])
+            ->assertRedirect(route('instructor.quizzes.add-question', $quiz))
+            ->assertSessionHasErrors('question_type');
+    }
+
     public function test_formal_quiz_submission_still_creates_attempt_and_drains_shield_on_failure(): void
     {
         [$learner, $quiz, $question, $correctOption] = $this->formalQuizFixture();
