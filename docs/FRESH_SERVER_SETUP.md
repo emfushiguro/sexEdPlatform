@@ -76,12 +76,17 @@ php artisan optimize:clear
 php artisan migrate --force
 
 mkdir -p storage/app/public
-if [ -d public/storage ] && [ ! -L public/storage ]; then
+if [ -L public/storage ]; then
+    unlink public/storage
+elif [ -d public/storage ]; then
     cp -a public/storage/. storage/app/public/
     mkdir -p storage/backups
     mv public/storage "storage/backups/public-storage-$(date +%Y%m%d-%H%M%S)"
+elif [ -e public/storage ]; then
+    echo "Unexpected non-directory at public/storage; stopping." >&2
+    exit 1
 fi
-php artisan storage:link --force
+ln -s "$(pwd)/storage/app/public" public/storage
 
 php artisan config:cache
 php artisan route:cache
@@ -90,7 +95,15 @@ php artisan event:cache
 php artisan optimize
 
 test -L public/storage
+test -f public/storage/modules/cDSb0q7slODyGtKDKwYTO40Ba5JZ8ztGiSXwHJtw.png
 ```
+
+Hostinger may disable PHP `exec()`, so do not use `php artisan storage:link`
+for this deployment. The shell `ln -s` command above creates the link without
+requiring that PHP function. The domain document root must be the project's
+`public` directory (for example,
+`/home/u789110384/domains/consciousconnections.online/public_html/public`),
+not the Laravel application root.
 
 Do not replace the `cp`/`mv` block with `rm -rf public/storage`. The old
 directory can contain uploaded media or other runtime files. The backup must

@@ -1,78 +1,89 @@
-# Task 2: Centralize accessible activity feedback
+# Task 2 TDD Report: Make video AJAX updates safe and redirectable
 
-## Implementation
+## Scope
 
-- Added the dependency-free `activity-feedback.js` mapper with the specified idle, evaluation, and lifecycle messages.
-- Added parent-level Alpine feedback state, scoped result handling, lifecycle clearing, request-error feedback, and `practice_completed` controls.
-- Matching and sequencing now publish scoped evaluation details to the shared shell. Their duplicate local feedback regions were removed so each activity has one central status region and one central request-error alert.
-- Learner and Preview instructions render the stored sanitized rich text. Completed and practice-completed explanations render with `x-html` only after the matching status is active; activity authoring sanitizes both fields before storage.
-
-## Files
-
-Created:
-
-- `resources/js/activity-feedback.js`
-- `tests/JavaScript/activity-feedback.test.mjs`
-
-Modified:
-
-- `resources/js/interactive-activity.js`
-- `resources/js/matching-activity.js`
-- `resources/js/sequencing-activity.js`
-- `resources/views/learner/lessons/partials/interactive-activities/shell.blade.php`
-- `resources/views/learner/lessons/partials/interactive-activities/matching.blade.php`
-- `resources/views/learner/lessons/partials/interactive-activities/sequencing.blade.php`
-- `tests/JavaScript/interactive-activity.test.mjs`
-- `tests/JavaScript/matching-activity.test.mjs`
-- `tests/JavaScript/sequencing-activity.test.mjs`
-- `tests/Feature/Learner/InteractiveActivityRenderingTest.php`
-
-The child component files are required to publish the scoped result event and eliminate their duplicate live/error regions.
+- Modified `app/Http/Controllers/Instructor/TopicController.php`.
+- Modified `tests/Feature/Instructor/VideoUploadTest.php`.
+- Did not modify, stage, or commit `docs/FRESH_SERVER_SETUP.md`.
+- Used the isolated `cc_db_test` test database only; no development database was reset, wiped, seeded, or otherwise changed.
 
 ## RED evidence
 
-1. `node --test tests/JavaScript/activity-feedback.test.mjs` failed before the mapper existed with `ERR_MODULE_NOT_FOUND` for `resources/js/activity-feedback.js`.
-2. The required combined JavaScript RED run had four intended failures: missing skipped feedback, missing request-error feedback, feedback not clearing, and missing `handleActivityResult`.
-3. The PHP rendering RED run completed with 10 passing tests and one failure because the shell did not contain the scoped `interactive-activity-result` listener.
-4. Child result-event tests then failed because only lifecycle state was dispatched. The expected `interactive-activity-result` events were absent.
+Added the three prescribed feature tests before any controller edits:
 
-## GREEN evidence
+1. AJAX video creation returns its lesson redirect (existing behavior characterization).
+2. AJAX video replacement returns its lesson redirect and removes the old file.
+3. Failed replacement storage leaves the existing file/path untouched.
 
-Required JavaScript command:
+First required filtered invocation:
 
-```text
-node --test tests/JavaScript/activity-feedback.test.mjs tests/JavaScript/interactive-activity.test.mjs
-7 tests passed, 0 failed.
+```powershell
+php vendor/bin/phpunit tests/Feature/Instructor/VideoUploadTest.php --filter="video_create_ajax|video_update_ajax|failed_replacement" --do-not-cache-result
 ```
 
-Extended JavaScript coverage:
+The initial run encountered a test-environment bootstrap error because `cc_db_test.migrations` did not yet exist. It also showed the two expected application failures: update returned HTTP 302 rather than HTTP 200 JSON, and failed replacement storage had already invoked deletion.
 
-```text
-node --test tests/JavaScript/activity-feedback.test.mjs tests/JavaScript/interactive-activity.test.mjs tests/JavaScript/matching-activity.test.mjs tests/JavaScript/sequencing-activity.test.mjs
-20 tests passed, 0 failed.
+The exact command was rerun after the isolated schema initialization. Result: `Tests: 3, Assertions: 8, Failures: 2`.
+
+- `test_video_create_ajax_response_contains_the_lesson_redirect`: passed.
+- `test_video_update_ajax_response_contains_the_lesson_redirect`: failed: expected 200, received 302.
+- `test_failed_replacement_storage_does_not_delete_the_existing_video`: failed: deletion flag was `true`.
+
+This confirms the requested RED characterization without production-code changes.
+
+## GREEN implementation
+
+In `TopicController::update()`:
+
+- Initialized `$oldVideoPathToDelete` immediately before video handling.
+- Stored a replacement upload before recording the old path for deletion.
+- Deferred removal of a local old path for both upload and URL video replacements.
+- Deleted the deferred old path only immediately after `$topic->update($validated)` succeeds.
+- Returned `{success: true, message: "Topic updated successfully!", redirect: ...}` for JSON/AJAX updates immediately before the existing redirect.
+- Kept validation, public disk usage, and the non-AJAX redirect unchanged.
+
+## Verification
+
+Focused suite command:
+
+```powershell
+php vendor/bin/phpunit tests/Feature/Instructor/VideoUploadTest.php --do-not-cache-result
 ```
 
-Required PHP command:
+Result: `OK (6 tests, 24 assertions)` in 44.751 seconds.
 
-```text
-php vendor/bin/phpunit --do-not-cache-result tests/Feature/Learner/InteractiveActivityRenderingTest.php --testdox
-OK (11 tests, 54 assertions)
-```
-
-PHP took about 32 seconds, exceeding the foreground terminal window, so it was captured from a hidden background PHP process. `git diff --check` was clean for all Task 2 code and test files.
+`git diff --check` produced no whitespace errors.
 
 ## Self-review
 
-- Confirmed all result and lifecycle actions are scoped by `activityId`.
-- Confirmed no new dependencies, schema changes, scoring, completion rules, or activity-required behavior were added.
-- Confirmed only the common shell owns the feedback status and request-error alert; child controls retain their existing focus and target sizing.
-- Confirmed stored instructions and explanations are sanitized by `InteractiveActivityAuthoringService` before their rich-text rendering.
-- Preserved all unrelated dirty files, including `resources/views/instructor/topics/create.blade.php` and `public/build` output.
+- The old file is not scheduled for deletion until after the new upload is stored.
+- If `store()` throws, execution stops before database update or deletion; the old database path and file remain intact.
+- If `$topic->update($validated)` throws, deletion is also skipped.
+- AJAX detection uses both `wantsJson()` and `ajax()`, matching the create method.
+- No migrations, dependencies, logging changes, refactors, database reset/reseed, or unrelated files were introduced.
 
 ## Concerns
 
-None. The task brief's listed files did not include the two child activity components, but the scoped result event and one-region requirement require these directly coupled changes.
+The initial focused RED command exposed an existing isolated-test initialization issue (`cc_db_test.migrations` absent). Rerunning the same non-cache PHPUnit command initialized the isolated schema and yielded the intended RED results. The final six-test focused suite passes.
 
-## Commit
+## Fix review
 
-`b941252d9791cb12651b41cf3f6e5cc242d1af67 feat: unify interactive activity feedback`
+The review fix was verified against the persistence-veto regression: `TopicController::update()` now captures the boolean result of `$topic->update($validated)` and deletes the deferred old local video only when that result is truthy. The regression test stores the replacement first, vetoes model persistence through `LessonTopic::saving`, and confirms the original database path and file remain while both files exist on the fake public disk.
+
+The create AJAX assertion now covers `success`, `message` (`Topic created successfully!`), and the lesson redirect. The update AJAX assertion covers `success`, `message` (`Topic updated successfully!`), and the lesson redirect, plus replacement of the old file. The focused scope was inspected and remains limited to the controller's update behavior and `VideoUploadTest`; `docs/FRESH_SERVER_SETUP.md` was not touched, staged, or committed.
+
+Exact verification commands and results:
+
+```powershell
+php vendor/bin/phpunit tests/Feature/Instructor/VideoUploadTest.php --do-not-cache-result
+```
+
+Result: `OK (7 tests, 31 assertions)` in `44.990` seconds.
+
+```powershell
+php -l app/Http/Controllers/Instructor/TopicController.php
+php -l tests/Feature/Instructor/VideoUploadTest.php
+git diff --check
+```
+
+Results: both PHP files reported no syntax errors; `git diff --check` reported no whitespace errors.
