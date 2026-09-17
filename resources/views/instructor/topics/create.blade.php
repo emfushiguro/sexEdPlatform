@@ -75,7 +75,7 @@
                 <label class="block mb-4 text-sm font-medium text-gray-700">
                     Topic Type <span class="text-red-500">*</span>
                 </label>
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <!-- Video Type -->
                     <label
                         class="relative flex flex-col items-center p-6 transition-all border-2 border-gray-200 cursor-pointer rounded-xl hover:border-purple-400 hover:shadow-md topic-type-card">
