@@ -37,7 +37,7 @@ Checkpoint and activity responses already expose authoritative semantic states s
 
 Topic completion and automatic lesson completion occur in `Learner\LessonController`. Formal quiz attempts and the final-quiz module-completion transition occur in `Learner\QuizController`. A secondary guarded module-completion transition exists in `Learner\ModuleController::completion()`.
 
-The existing learner profile editor is `resources/views/profile/learner-edit.blade.php`. It already uses tabbed controls and is the appropriate location for browser-local sound preferences.
+The active learner profile editor is the dashboard modal in `resources/views/learner/partials/edit-profile-modal.blade.php`. The `/profile/learner/edit` route redirects to that modal, whose existing tabbed controls are the appropriate location for browser-local sound preferences.
 
 ## Goals
 
@@ -256,7 +256,7 @@ Both learner layouts consume the same flash key and pass it to the centralized s
 
 ### Settings
 
-Add a Sound Effects tab to `resources/views/profile/learner-edit.blade.php`, extending the existing tab system without rewriting it.
+Add a Sound Effects tab to `resources/views/learner/partials/edit-profile-modal.blade.php`, extending the active dashboard modal's existing tab system without rewriting it. Do not revive the legacy standalone learner profile view.
 
 The tab contains:
 
