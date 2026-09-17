@@ -58,6 +58,20 @@ class ModuleInteractionCompletionTest extends TestCase
             ->assertSee('Interactive Checkpoint', false);
     }
 
+    public function test_completed_perspective_feedback_counts_as_a_resolved_checkpoint(): void
+    {
+        [$learner, $module] = $this->completedModuleWithStandaloneInteractions();
+
+        $this->actingAs($learner)
+            ->post(route('learner.certificates.check', $module))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('certificates', [
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+        ]);
+    }
+
     /** @return array{User, Module} */
     private function completedModuleWithStandaloneInteractions(): array
     {
@@ -138,18 +152,18 @@ class ModuleInteractionCompletionTest extends TestCase
 
         $checkpoint = QuizQuestion::create([
             'checkpoint_topic_id' => $checkpointTopic->id,
-            'question_text' => 'Checkpoint question',
-            'question_type' => 'true_false',
-            'points' => 1,
+            'question_text' => 'Perspective checkpoint question',
+            'question_type' => 'perspective_feedback',
+            'points' => 0,
             'order' => 1,
         ]);
         InteractiveCheckpointProgress::create([
             'user_id' => $learner->id,
             'lesson_topic_id' => $checkpointTopic->id,
             'quiz_question_id' => $checkpoint->id,
-            'status' => 'correct',
-            'latest_answer' => ['is_correct' => true],
-            'is_correct' => true,
+            'status' => 'completed',
+            'latest_answer' => ['pathway' => 'own', 'perspective_text' => 'My reflection'],
+            'is_correct' => null,
             'attempt_count' => 1,
             'answered_at' => now(),
             'completed_at' => now(),

@@ -69,7 +69,7 @@ class LearnerModuleCompletionService
                     ->where('user_id', $user->id)
                     ->whereIn('lesson_topic_id', $checkpointTopicIds)
                     ->whereNull('checkpoint_block_uuid')
-                    ->whereIn('status', ['correct', 'skipped'])
+                    ->whereIn('status', ['correct', 'completed', 'skipped'])
                     ->pluck('lesson_topic_id'),
             );
         }

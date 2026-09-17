@@ -228,7 +228,7 @@ class LessonController extends Controller
                 ->toArray();
         }
         $resolvedCheckpointTopicIds = $checkpointProgress
-            ->filter(fn (InteractiveCheckpointProgress $progress) => in_array($progress->status, ['correct', 'skipped'], true))
+            ->filter(fn (InteractiveCheckpointProgress $progress) => in_array($progress->status, ['correct', 'completed', 'skipped'], true))
             ->filter(fn (InteractiveCheckpointProgress $progress) => $progress->checkpoint_block_uuid === null)
             ->pluck('lesson_topic_id')
             ->map(fn ($id) => (int) $id)
