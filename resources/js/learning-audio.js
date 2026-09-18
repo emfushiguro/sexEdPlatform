@@ -67,14 +67,20 @@ export function createLearningAudioService({
             eventTarget?.removeEventListener?.('keydown', unlock);
         } catch { /* A missing document cannot affect application flow. */ }
     };
-    const retryPending = (key) => {
-        try { playLoaded(key, true); } catch (error) { safelyWarn('Learning audio playback failed.', error); }
+    const retryPending = (pending) => {
+        pendingPlayback = pending;
+        try {
+            if (!playLoaded(pending.key, true)) pendingPlayback = null;
+        } catch (error) {
+            pendingPlayback = null;
+            safelyWarn('Learning audio playback failed.', error);
+        }
     };
     const unlock = () => {
         const pending = pendingPlayback;
+        pendingPlayback = null;
         removeUnlockListeners();
         if (!pending || !enabled) {
-            pendingPlayback = null;
             return;
         }
 
@@ -82,13 +88,13 @@ export function createLearningAudioService({
             const resume = howler?.ctx?.state === 'suspended' ? howler.ctx.resume?.() : null;
             if (resume?.then) {
                 Promise.resolve(resume).catch((error) => safelyWarn('Learning audio context resume failed.', error))
-                    .then(() => retryPending(pending.key));
+                    .then(() => retryPending(pending));
             } else {
-                retryPending(pending.key);
+                retryPending(pending);
             }
         } catch (error) {
             safelyWarn('Learning audio context resume failed.', error);
-            retryPending(pending.key);
+            retryPending(pending);
         }
     };
     const retainPending = (key) => {
@@ -116,17 +122,17 @@ export function createLearningAudioService({
         try { sounds.get(active?.key)?.stop(active.id); } catch (error) { safelyWarn('Learning audio stop failed.', error); }
     };
     const playLoaded = (key, retry = false) => {
-        if (!enabled || unavailable.has(key)) return;
+        if (!enabled || unavailable.has(key)) return false;
         const sound = sounds.get(key);
-        if (!sound) return;
+        if (!sound) return false;
 
         const priority = PRIORITY[key];
         if (activePlayback) {
-            if (priority < activePlayback.priority) return;
+            if (priority < activePlayback.priority) return false;
         }
         if (key === 'selection') {
             const at = now();
-            if (!retry && at - lastSelectionAt < SELECTION_COOLDOWN_MS) return;
+            if (!retry && at - lastSelectionAt < SELECTION_COOLDOWN_MS) return false;
             lastSelectionAt = at;
         }
         if (activePlayback) {
@@ -138,9 +144,11 @@ export function createLearningAudioService({
             const id = sound.play();
             if (retry && activePlayback?.key === key && activePlayback.id === null) activePlayback.id = id;
             if (!retry && pendingPlayback?.key !== key) activePlayback = { key, id, priority };
+            return true;
         } catch (error) {
             safelyWarn('Learning audio playback failed.', error);
             handlePlaybackError(key, undefined);
+            return false;
         }
     };
     const initialize = () => {

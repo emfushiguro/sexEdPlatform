@@ -289,6 +289,34 @@ test('synchronous retry failure is discarded without new listeners or another re
     assert.equal(eventTarget.listeners.size, 0);
 });
 
+test('deferred unlock retries do not leave stale pending playback untracked', async () => {
+    const eventTarget = createEventTarget();
+    let time = 0;
+    const { service, audio } = createService({ eventTarget, now: () => time, howlerOptions: { playError: ['async'] } });
+    await service.initialize();
+    const [selection, , , success] = audio.sounds;
+    let resolveResume;
+    audio.Howler.ctx.state = 'suspended';
+    audio.Howler.ctx.resume = () => new Promise((resolve) => { resolveResume = resolve; });
+
+    service.play('selection');
+    await flush();
+    eventTarget.fire('pointerdown');
+    service.play('success');
+    await flush();
+    resolveResume();
+    await flush();
+    success.end(2);
+
+    time += 151;
+    service.play('selection');
+    await flush();
+    service.play('success');
+    await flush();
+
+    assert.deepEqual(selection.stopCalls, [3]);
+});
+
 test('load, construction, asset, storage, and playback failures stay contained', async () => {
     const warnings = [];
     const failingLoad = createService({
