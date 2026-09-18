@@ -129,6 +129,14 @@ test('defaults to enabled at seventy percent when storage is missing or malforme
     assert.equal(malformed.volume, 0.7);
 });
 
+test('defaults blank and whitespace persisted volume to seventy percent', () => {
+    const blank = createService({ storage: createStorage({ [LEARNING_AUDIO_STORAGE_KEYS.volume]: '' }) }).service;
+    const whitespace = createService({ storage: createStorage({ [LEARNING_AUDIO_STORAGE_KEYS.volume]: '  ' }) }).service;
+
+    assert.equal(blank.volume, 0.7);
+    assert.equal(whitespace.volume, 0.7);
+});
+
 test('persists enabled and clamped volume with stable namespaced keys', async () => {
     const storage = createStorage();
     const { service } = createService({ storage });
@@ -315,6 +323,36 @@ test('deferred unlock retries do not leave stale pending playback untracked', as
     await flush();
 
     assert.deepEqual(selection.stopCalls, [3]);
+});
+
+test('a deferred selection retry preserves a newer blocked complete event', async () => {
+    const eventTarget = createEventTarget();
+    const { service, audio } = createService({ eventTarget, howlerOptions: { playError: ['async', 'async', 'async'] } });
+    await service.initialize();
+    const [selection, , , , complete] = audio.sounds;
+    let resolveResume;
+    audio.Howler.ctx.state = 'suspended';
+    audio.Howler.ctx.resume = () => new Promise((resolve) => { resolveResume = resolve; });
+
+    service.play('selection');
+    await flush();
+    eventTarget.fire('pointerdown');
+    service.play('complete');
+    await flush();
+
+    audio.Howler.ctx.state = 'running';
+    resolveResume();
+    await flush();
+
+    assert.deepEqual(selection.playCalls, [1]);
+    assert.deepEqual(complete.playCalls, [2]);
+    assert.deepEqual([...eventTarget.listeners.keys()].sort(), ['keydown', 'pointerdown']);
+
+    eventTarget.fire('keydown');
+    await flush();
+
+    assert.deepEqual(complete.playCalls, [2, 3]);
+    assert.equal(eventTarget.listeners.size, 0);
 });
 
 test('a later successful same-key play replaces active audio and clears stale retry state', async () => {

@@ -51,7 +51,9 @@ export function createLearningAudioService({
     const storedEnabled = read(LEARNING_AUDIO_STORAGE_KEYS.enabled);
     let enabled = storedEnabled === 'true' ? true : storedEnabled === 'false' ? false : DEFAULT_ENABLED;
     const storedVolume = read(LEARNING_AUDIO_STORAGE_KEYS.volume);
-    const parsedStoredVolume = Number(storedVolume);
+    const parsedStoredVolume = typeof storedVolume === 'string' && storedVolume.trim() !== ''
+        ? Number(storedVolume)
+        : Number.NaN;
     let volume = storedVolume !== null && Number.isFinite(parsedStoredVolume) && parsedStoredVolume >= 0 && parsedStoredVolume <= 1
         ? parsedStoredVolume
         : DEFAULT_VOLUME;
@@ -68,6 +70,7 @@ export function createLearningAudioService({
         } catch { /* A missing document cannot affect application flow. */ }
     };
     const retryPending = (pending) => {
+        if (pendingPlayback && pendingPlayback.priority > pending.priority) return;
         pendingPlayback = pending;
         try {
             if (!playLoaded(pending.key, true)) pendingPlayback = null;
