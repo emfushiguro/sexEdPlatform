@@ -57,19 +57,25 @@ function createHowlerDouble({ constructError = false, playError = false } = {}) 
             this.volumeCalls = [];
             this.playCalls = [];
             this.stopCalls = [];
+            this.callbackCalls = { onloaderror: [], onend: [], onstop: [], onplayerror: [] };
             sounds.push(this);
         }
 
         play() {
             const id = nextId++;
             this.playCalls.push(id);
-            if (playError) queueMicrotask(() => this.options.onplayerror?.(id, new Error('Playback blocked')));
+            const errorMode = Array.isArray(playError) ? playError.shift() : playError ? 'async' : null;
+            if (errorMode) {
+                const notify = () => this.trigger('onplayerror', id, new Error('Playback blocked'));
+                if (errorMode === 'sync') notify();
+                else queueMicrotask(notify);
+            }
             return id;
         }
 
         stop(id) {
             this.stopCalls.push(id);
-            this.options.onstop?.(id);
+            this.trigger('onstop', id);
         }
 
         volume(value) {
@@ -77,11 +83,16 @@ function createHowlerDouble({ constructError = false, playError = false } = {}) 
         }
 
         failLoad() {
-            this.options.onloaderror?.(null, new Error('Asset unavailable'));
+            this.trigger('onloaderror', null, new Error('Asset unavailable'));
         }
 
         end(id) {
-            this.options.onend?.(id);
+            this.trigger('onend', id);
+        }
+
+        trigger(callback, ...args) {
+            this.callbackCalls[callback].push(args);
+            this.options[callback]?.(...args);
         }
     }
 
@@ -244,6 +255,37 @@ test('blocked playback retains one highest-priority event and retries once on th
     assert.equal(audio.Howler.ctx.resumeCalls, 1);
     assert.equal(audio.sounds[4].playCalls.length, 2);
     await flush();
+    assert.equal(eventTarget.listeners.size, 0);
+});
+
+test('blocked selection retries once even while its cooldown is active', async () => {
+    const eventTarget = createEventTarget();
+    const { service, audio } = createService({ eventTarget, howlerOptions: { playError: ['async'] } });
+    await service.initialize();
+
+    service.play('selection');
+    await flush();
+    assert.equal(audio.sounds[0].callbackCalls.onplayerror.length, 1);
+
+    eventTarget.fire('pointerdown');
+
+    assert.equal(audio.sounds[0].playCalls.length, 2);
+    assert.equal(audio.sounds[0].callbackCalls.onplayerror.length, 1);
+});
+
+test('synchronous retry failure is discarded without new listeners or another retry', async () => {
+    const eventTarget = createEventTarget();
+    const { service, audio } = createService({ eventTarget, howlerOptions: { playError: ['async', 'sync'] } });
+    await service.initialize();
+
+    service.play('complete');
+    await flush();
+    assert.deepEqual([...eventTarget.listeners.keys()].sort(), ['keydown', 'pointerdown']);
+
+    eventTarget.fire('pointerdown');
+
+    assert.equal(audio.sounds[4].playCalls.length, 2);
+    assert.equal(audio.sounds[4].callbackCalls.onplayerror.length, 2);
     assert.equal(eventTarget.listeners.size, 0);
 });
 

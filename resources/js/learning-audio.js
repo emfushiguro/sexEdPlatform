@@ -33,7 +33,6 @@ export function createLearningAudioService({
     let activePlayback = null;
     let pendingPlayback = null;
     let lastSelectionAt = Number.NEGATIVE_INFINITY;
-    let retryingPlayback = null;
 
     const safelyWarn = (...args) => {
         try { warn(...args); } catch { /* Audio diagnostics must stay optional. */ }
@@ -58,8 +57,9 @@ export function createLearningAudioService({
         : DEFAULT_VOLUME;
 
     const clearActive = (key, id) => {
-        if (activePlayback?.key === key && activePlayback.id === id) activePlayback = null;
-        if (retryingPlayback?.key === key && retryingPlayback.id === id) retryingPlayback = null;
+        if (activePlayback?.key !== key || (activePlayback.id !== id && activePlayback.id !== null)) return;
+        activePlayback = null;
+        if (pendingPlayback?.key === key) pendingPlayback = null;
     };
     const removeUnlockListeners = () => {
         try {
@@ -68,14 +68,15 @@ export function createLearningAudioService({
         } catch { /* A missing document cannot affect application flow. */ }
     };
     const retryPending = (key) => {
-        retryingPlayback = { key, id: null };
         try { playLoaded(key, true); } catch (error) { safelyWarn('Learning audio playback failed.', error); }
     };
     const unlock = () => {
         const pending = pendingPlayback;
-        pendingPlayback = null;
         removeUnlockListeners();
-        if (!pending || !enabled) return;
+        if (!pending || !enabled) {
+            pendingPlayback = null;
+            return;
+        }
 
         try {
             const resume = howler?.ctx?.state === 'suspended' ? howler.ctx.resume?.() : null;
@@ -100,16 +101,18 @@ export function createLearningAudioService({
             safelyWarn('Learning audio unlock listener failed.', error);
         }
     };
-    const handlePlaybackError = (key, id, retry) => {
-        const isRetry = retryingPlayback?.key === key && retryingPlayback.id === id;
+    const handlePlaybackError = (key, id) => {
+        const isRetry = pendingPlayback?.key === key
+            && activePlayback?.key === key
+            && (activePlayback.id === id || activePlayback.id === null);
         clearActive(key, id);
         if (isRetry) return;
-        if (retry) return;
         retainPending(key);
     };
     const stopActive = () => {
         const active = activePlayback;
         activePlayback = null;
+        if (pendingPlayback?.key === active?.key) pendingPlayback = null;
         try { sounds.get(active?.key)?.stop(active.id); } catch (error) { safelyWarn('Learning audio stop failed.', error); }
     };
     const playLoaded = (key, retry = false) => {
@@ -123,7 +126,7 @@ export function createLearningAudioService({
         }
         if (key === 'selection') {
             const at = now();
-            if (at - lastSelectionAt < SELECTION_COOLDOWN_MS) return;
+            if (!retry && at - lastSelectionAt < SELECTION_COOLDOWN_MS) return;
             lastSelectionAt = at;
         }
         if (activePlayback) {
@@ -131,13 +134,13 @@ export function createLearningAudioService({
         }
 
         try {
+            if (retry) activePlayback = { key, id: null, priority };
             const id = sound.play();
-            if (retryingPlayback?.key === key && retryingPlayback.id === null) retryingPlayback.id = id;
-            if (pendingPlayback?.key !== key) activePlayback = { key, id, priority };
+            if (retry && activePlayback?.key === key && activePlayback.id === null) activePlayback.id = id;
+            if (!retry && pendingPlayback?.key !== key) activePlayback = { key, id, priority };
         } catch (error) {
             safelyWarn('Learning audio playback failed.', error);
-            if (retryingPlayback?.key === key && retryingPlayback.id === null) retryingPlayback = null;
-            handlePlaybackError(key, undefined, retry);
+            handlePlaybackError(key, undefined);
         }
     };
     const initialize = () => {
@@ -156,7 +159,7 @@ export function createLearningAudioService({
                         onloaderror: () => unavailable.add(key),
                         onend: (id) => clearActive(key, id),
                         onstop: (id) => clearActive(key, id),
-                        onplayerror: (id) => handlePlaybackError(key, id, false),
+                        onplayerror: (id) => handlePlaybackError(key, id),
                     }));
                 }
                 return true;
