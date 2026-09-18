@@ -341,6 +341,26 @@ test('a later successful same-key play replaces active audio and clears stale re
     assert.deepEqual(success.playCalls, [1, 2, 3]);
 });
 
+test('obsolete same-key playback errors do not retain a retry listener', async () => {
+    const eventTarget = createEventTarget();
+    const { service, audio } = createService({ eventTarget });
+    await service.initialize();
+    const success = audio.sounds[3];
+
+    service.play('success');
+    await flush();
+    service.play('success');
+    await flush();
+
+    success.trigger('onplayerror', 1, new Error('Playback blocked'));
+    assert.equal(eventTarget.listeners.size, 0);
+
+    success.end(2);
+    eventTarget.fire('pointerdown');
+    await flush();
+    assert.deepEqual(success.playCalls, [1, 2]);
+});
+
 test('load, construction, asset, storage, and playback failures stay contained', async () => {
     const warnings = [];
     const failingLoad = createService({

@@ -108,6 +108,7 @@ export function createLearningAudioService({
         }
     };
     const handlePlaybackError = (key, id) => {
+        if (activePlayback?.key !== key || (id !== null && activePlayback.id !== null && activePlayback.id !== id)) return;
         const isRetry = pendingPlayback?.key === key
             && activePlayback?.key === key
             && (activePlayback.id === id || activePlayback.id === null);
