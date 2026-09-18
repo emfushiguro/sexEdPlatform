@@ -317,6 +317,30 @@ test('deferred unlock retries do not leave stale pending playback untracked', as
     assert.deepEqual(selection.stopCalls, [3]);
 });
 
+test('a later successful same-key play replaces active audio and clears stale retry state', async () => {
+    const eventTarget = createEventTarget();
+    const { service, audio } = createService({ eventTarget, howlerOptions: { playError: ['async'] } });
+    await service.initialize();
+    const success = audio.sounds[3];
+
+    service.play('success');
+    await flush();
+    assert.deepEqual([...eventTarget.listeners.keys()].sort(), ['keydown', 'pointerdown']);
+
+    service.play('success');
+    await flush();
+    assert.deepEqual(success.playCalls, [1, 2]);
+    assert.equal(eventTarget.listeners.size, 0);
+
+    eventTarget.fire('pointerdown');
+    assert.deepEqual(success.playCalls, [1, 2]);
+
+    service.play('success');
+    await flush();
+    assert.deepEqual(success.stopCalls, [2]);
+    assert.deepEqual(success.playCalls, [1, 2, 3]);
+});
+
 test('load, construction, asset, storage, and playback failures stay contained', async () => {
     const warnings = [];
     const failingLoad = createService({

@@ -140,10 +140,13 @@ export function createLearningAudioService({
         }
 
         try {
-            if (retry) activePlayback = { key, id: null, priority };
+            if (!retry && pendingPlayback?.key === key) {
+                pendingPlayback = null;
+                removeUnlockListeners();
+            }
+            activePlayback = { key, id: null, priority };
             const id = sound.play();
-            if (retry && activePlayback?.key === key && activePlayback.id === null) activePlayback.id = id;
-            if (!retry && pendingPlayback?.key !== key) activePlayback = { key, id, priority };
+            if (activePlayback?.key === key && activePlayback.id === null) activePlayback.id = id;
             return true;
         } catch (error) {
             safelyWarn('Learning audio playback failed.', error);
