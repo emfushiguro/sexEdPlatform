@@ -424,14 +424,42 @@ test('load, construction, asset, storage, and playback failures stay contained',
     assert.ok(warnings.length >= 2);
 });
 
-test('page initialization ignores non-learner pages and consumes a valid flashed event', async () => {
+test('page initialization does nothing without the learner marker', () => {
     const calls = [];
     const service = { initialize: () => calls.push('initialize'), play: (key) => calls.push(key) };
     const noAudio = { body: { hasAttribute: () => false, dataset: { learningAudioEvent: 'complete' } } };
-    const learner = { body: { hasAttribute: (name) => name === 'data-learning-audio', dataset: { learningAudioEvent: 'complete' } } };
 
     initializeLearningAudioPage(service, noAudio);
+
+    assert.deepEqual(calls, []);
+});
+
+test('page initialization initializes once with the learner marker', () => {
+    const calls = [];
+    const service = { initialize: () => calls.push('initialize'), play: (key) => calls.push(key) };
+    const learner = { body: { hasAttribute: (name) => name === 'data-learning-audio', dataset: {} } };
+
+    initializeLearningAudioPage(service, learner);
+
+    assert.deepEqual(calls, ['initialize']);
+});
+
+test('page initialization plays a valid flashed learner event once', () => {
+    const calls = [];
+    const service = { initialize: () => calls.push('initialize'), play: (key) => calls.push(key) };
+    const learner = { body: { hasAttribute: (name) => name === 'data-learning-audio', dataset: { learningAudioEvent: 'complete' } } };
+
     initializeLearningAudioPage(service, learner);
 
     assert.deepEqual(calls, ['initialize', 'complete']);
+});
+
+test('page initialization ignores an unknown flashed learner event', () => {
+    const calls = [];
+    const service = { initialize: () => calls.push('initialize'), play: (key) => calls.push(key) };
+    const learner = { body: { hasAttribute: (name) => name === 'data-learning-audio', dataset: { learningAudioEvent: 'unknown' } } };
+
+    initializeLearningAudioPage(service, learner);
+
+    assert.deepEqual(calls, ['initialize']);
 });

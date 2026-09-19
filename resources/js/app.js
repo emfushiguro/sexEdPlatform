@@ -10,6 +10,7 @@ import { createInteractiveActivityAuthoring } from './interactive-activity-autho
 import { createInteractiveActivity } from './interactive-activity';
 import { createMatchingActivity } from './matching-activity';
 import { createSequencingActivity } from './sequencing-activity';
+import { initializeLearningAudioPage, learningAudio } from './learning-audio';
 import './toast'; // Toast notification system
 import './admin-community';
 import './chat/store';
@@ -340,4 +341,7 @@ Alpine.store('modals', {
     },
 });
 
+window.learningAudio = learningAudio;
+Alpine.store('learningAudio', learningAudio);
+initializeLearningAudioPage(learningAudio);
 Alpine.start();

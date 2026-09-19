@@ -61,9 +61,12 @@ class LessonPageTest extends TestCase
         /** @var User $learner */
 
         $this->actingAs($learner)
+            ->withSession(['learning_audio_event' => 'complete'])
             ->get(route('learner.lessons.show', $lesson))
             ->assertOk()
-            ->assertSee($lesson->title);
+            ->assertSee($lesson->title)
+            ->assertSee('data-learning-audio', false)
+            ->assertSee('data-learning-audio-event="complete"', false);
     }
 
     public function test_lesson_page_does_not_contain_about_this_lesson_block(): void

@@ -32,7 +32,8 @@ class LearnerGamificationDashboardDynamicViewTest extends TestCase
         $response = $this->actingAs($learner)
             ->get(route('learner.dashboard'));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertSee('data-learning-audio', false);
         $response->assertSee('150/300 XP', false);
         $response->assertSee('0/5', false);
         $response->assertSee('Buy Saver — ⭐ 42', false);
