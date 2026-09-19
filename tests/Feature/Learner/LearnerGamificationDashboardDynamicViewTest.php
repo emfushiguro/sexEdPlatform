@@ -36,6 +36,7 @@ class LearnerGamificationDashboardDynamicViewTest extends TestCase
             ->assertSee('data-learning-audio', false)
             ->assertSee('data-learning-audio-settings', false)
             ->assertSee('data-learning-audio-toggle', false)
+            ->assertSee(":data-learning-audio-state=\"\$store.learningAudio.enabled ? 'on' : 'off'\"", false)
             ->assertSee('Sound Effects')
             ->assertSee('Test Sound')
             ->assertSee('role="switch"', false)

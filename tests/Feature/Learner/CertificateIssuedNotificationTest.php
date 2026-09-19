@@ -58,9 +58,11 @@ class CertificateIssuedNotificationTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        $this->actingAs($learner)
+        $response = $this->actingAs($learner)
             ->post(route('learner.certificates.check', $module))
             ->assertRedirect();
+
+        $response->assertSessionHas('learning_audio_event', 'complete');
 
         $certificate = Certificate::query()
             ->where('user_id', $learner->id)

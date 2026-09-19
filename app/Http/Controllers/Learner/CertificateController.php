@@ -84,7 +84,8 @@ class CertificateController extends Controller
         }
 
         return redirect()->route('learner.certificates.show', $certificate)
-            ->with('success', "Congratulations! Your certificate has been generated! You earned {$certificatePoints} bonus points! 🎉");
+            ->with('success', "Congratulations! Your certificate has been generated! You earned {$certificatePoints} bonus points! 🎉")
+            ->with('learning_audio_event', 'complete');
     }
 
     /**

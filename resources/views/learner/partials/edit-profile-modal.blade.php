@@ -443,11 +443,25 @@
                     <button
                         type="button"
                         role="switch"
-                        aria-label="Toggle sound effects"
+                        :data-learning-audio-state="$store.learningAudio.enabled ? 'on' : 'off'"
                         :aria-checked="$store.learningAudio.enabled.toString()"
+                        :aria-label="$store.learningAudio.enabled ? 'Turn sound effects off' : 'Turn sound effects on'"
                         @click="$store.learningAudio.setEnabled(!$store.learningAudio.enabled)"
-                        class="inline-flex min-h-11 min-w-[4.5rem] items-center justify-center rounded-xl border border-purple-300 px-4 text-sm font-bold text-purple-700 transition-colors hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-900/30 dark:focus:ring-offset-gray-900"
+                        class="inline-flex min-h-11 min-w-[5.75rem] items-center justify-center gap-2 rounded-xl border px-3 text-xs font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                        :class="$store.learningAudio.enabled
+                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30'
+                            : 'border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'"
                     >
+                        <span
+                            aria-hidden="true"
+                            class="relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors"
+                            :class="$store.learningAudio.enabled ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-gray-600'"
+                        >
+                            <span
+                                class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                                :class="$store.learningAudio.enabled ? 'translate-x-4' : 'translate-x-0'"
+                            ></span>
+                        </span>
                         <span x-text="$store.learningAudio.enabled ? 'ON' : 'OFF'"></span>
                     </button>
                 </div>
