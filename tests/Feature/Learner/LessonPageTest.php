@@ -66,6 +66,7 @@ class LessonPageTest extends TestCase
             ->assertOk()
             ->assertSee($lesson->title)
             ->assertSee('data-learning-audio', false)
+            ->assertSee('data-learning-audio-toggle', false)
             ->assertSee('data-learning-audio-event="complete"', false);
     }
 

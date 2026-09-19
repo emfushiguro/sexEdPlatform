@@ -73,6 +73,7 @@
                 ['key' => 'profile',      'label' => 'Profile'],
                 ['key' => 'password',     'label' => 'Password'],
                 ['key' => 'subscription', 'label' => 'Subscription'],
+                ['key' => 'sound',        'label' => 'Sound Effects'],
             ] as $tab)
             <button
                 @click="activeTab = '{{ $tab['key'] }}'"
@@ -423,6 +424,62 @@
             </a>
 
         </div>{{-- /subscription tab --}}
+
+        {{-- TAB: SOUND EFFECTS                                    --}}
+        <div x-show="activeTab === 'sound'" x-cloak class="p-6 space-y-5" data-learning-audio-settings>
+            <div>
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Sound Effects</h3>
+                <p class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                    Control the feedback sounds used while you learn. These preferences apply only to this browser and device.
+                </p>
+            </div>
+
+            <div class="rounded-2xl border border-purple-100 bg-purple-50/40 p-4 dark:border-purple-800/40 dark:bg-purple-900/10">
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Sound effects</p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Play gentle audio feedback during learning.</p>
+                    </div>
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-label="Toggle sound effects"
+                        :aria-checked="$store.learningAudio.enabled.toString()"
+                        @click="$store.learningAudio.setEnabled(!$store.learningAudio.enabled)"
+                        class="inline-flex min-h-11 min-w-[4.5rem] items-center justify-center rounded-xl border border-purple-300 px-4 text-sm font-bold text-purple-700 transition-colors hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-900/30 dark:focus:ring-offset-gray-900"
+                    >
+                        <span x-text="$store.learningAudio.enabled ? 'ON' : 'OFF'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between gap-3">
+                    <label for="learning-audio-volume" class="text-sm font-semibold text-gray-800 dark:text-gray-200">Volume</label>
+                    <output for="learning-audio-volume" class="text-sm font-bold text-purple-700 dark:text-purple-300" x-text="`${Math.round($store.learningAudio.volume * 100)}%`"></output>
+                </div>
+                <input
+                    id="learning-audio-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    aria-label="Sound effects volume"
+                    :value="Math.round($store.learningAudio.volume * 100)"
+                    @input="$store.learningAudio.setVolume(Number($event.target.value) / 100)"
+                    class="mt-3 min-h-11 w-full accent-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                >
+            </div>
+
+            <button
+                type="button"
+                :disabled="!$store.learningAudio.enabled"
+                @click="$store.learningAudio.unlock(); $store.learningAudio.play('correct')"
+                class="inline-flex min-h-11 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-gray-900"
+            >
+                Test Sound
+            </button>
+        </div>{{-- /sound effects tab --}}
 
     </div>{{-- /panel --}}
 </div>{{-- /root --}}

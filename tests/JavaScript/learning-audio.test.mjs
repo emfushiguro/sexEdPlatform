@@ -463,3 +463,19 @@ test('page initialization ignores an unknown flashed learner event', () => {
 
     assert.deepEqual(calls, ['initialize']);
 });
+
+test('public unlock initializes enabled audio and resolves successfully', async () => {
+    const { service, audio } = createService();
+
+    assert.equal(await service.unlock(), true);
+    assert.equal(audio.sounds.length, 5);
+});
+
+test('public unlock is a safe no-op when audio is disabled', async () => {
+    const { service, audio } = createService({
+        storage: createStorage({ [LEARNING_AUDIO_STORAGE_KEYS.enabled]: 'false' }),
+    });
+
+    assert.equal(await service.unlock(), false);
+    assert.equal(audio.sounds.length, 0);
+});

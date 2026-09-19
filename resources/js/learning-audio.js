@@ -65,8 +65,8 @@ export function createLearningAudioService({
     };
     const removeUnlockListeners = () => {
         try {
-            eventTarget?.removeEventListener?.('pointerdown', unlock);
-            eventTarget?.removeEventListener?.('keydown', unlock);
+            eventTarget?.removeEventListener?.('pointerdown', handleUnlock);
+            eventTarget?.removeEventListener?.('keydown', handleUnlock);
         } catch { /* A missing document cannot affect application flow. */ }
     };
     const retryPending = (pending) => {
@@ -79,33 +79,43 @@ export function createLearningAudioService({
             safelyWarn('Learning audio playback failed.', error);
         }
     };
-    const unlock = () => {
+    const handleUnlock = () => {
         const pending = pendingPlayback;
         pendingPlayback = null;
         removeUnlockListeners();
-        if (!pending || !enabled) {
-            return;
+        if (!enabled) {
+            return Promise.resolve(false);
         }
 
         try {
             const resume = howler?.ctx?.state === 'suspended' ? howler.ctx.resume?.() : null;
             if (resume?.then) {
-                Promise.resolve(resume).catch((error) => safelyWarn('Learning audio context resume failed.', error))
-                    .then(() => retryPending(pending));
+                return Promise.resolve(resume)
+                    .then(() => {
+                        if (pending) retryPending(pending);
+                        return true;
+                    })
+                    .catch((error) => {
+                        safelyWarn('Learning audio context resume failed.', error);
+                        if (pending) retryPending(pending);
+                        return false;
+                    });
             } else {
-                retryPending(pending);
+                if (pending) retryPending(pending);
             }
+            return Promise.resolve(true);
         } catch (error) {
             safelyWarn('Learning audio context resume failed.', error);
-            retryPending(pending);
+            if (pending) retryPending(pending);
+            return Promise.resolve(false);
         }
     };
     const retainPending = (key) => {
         const priority = PRIORITY[key];
         if (!pendingPlayback || priority > pendingPlayback.priority) pendingPlayback = { key, priority };
         try {
-            eventTarget?.addEventListener?.('pointerdown', unlock, { once: true });
-            eventTarget?.addEventListener?.('keydown', unlock, { once: true });
+            eventTarget?.addEventListener?.('pointerdown', handleUnlock, { once: true });
+            eventTarget?.addEventListener?.('keydown', handleUnlock, { once: true });
         } catch (error) {
             safelyWarn('Learning audio unlock listener failed.', error);
         }
@@ -204,6 +214,16 @@ export function createLearningAudioService({
             try { sound.volume(volume); } catch (error) { safelyWarn('Learning audio volume failed.', error); }
         }
     };
+    const unlock = () => {
+        if (!enabled) return Promise.resolve(false);
+
+        return initialize()
+            .then((initialized) => initialized && enabled ? handleUnlock() : false)
+            .catch((error) => {
+                safelyWarn('Learning audio unlock failed.', error);
+                return false;
+            });
+    };
     const play = (key) => {
         if (!Object.hasOwn(LEARNING_AUDIO_SOURCES, key) || !enabled) return;
         void initialize()
@@ -215,6 +235,7 @@ export function createLearningAudioService({
         get enabled() { return enabled; },
         get volume() { return volume; },
         initialize,
+        unlock,
         setEnabled,
         setVolume,
         play,
