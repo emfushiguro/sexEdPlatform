@@ -57,6 +57,19 @@ export function createLearningAudioService({
     let volume = storedVolume !== null && Number.isFinite(parsedStoredVolume) && parsedStoredVolume >= 0 && parsedStoredVolume <= 1
         ? parsedStoredVolume
         : DEFAULT_VOLUME;
+    const stateListeners = new Set();
+
+    const getState = () => ({ enabled, volume });
+    const notifyStateChange = () => {
+        for (const listener of [...stateListeners]) {
+            try { listener(getState()); } catch (error) { safelyWarn('Learning audio state listener failed.', error); }
+        }
+    };
+    const subscribe = (listener) => {
+        if (typeof listener !== 'function') return () => {};
+        stateListeners.add(listener);
+        return () => stateListeners.delete(listener);
+    };
 
     const clearActive = (key, id) => {
         if (activePlayback?.key !== key || (activePlayback.id !== id && activePlayback.id !== null)) return;
@@ -198,6 +211,7 @@ export function createLearningAudioService({
     const setEnabled = (value) => {
         enabled = Boolean(value);
         write(LEARNING_AUDIO_STORAGE_KEYS.enabled, enabled);
+        notifyStateChange();
         if (!enabled) {
             stopActive();
             pendingPlayback = null;
@@ -210,6 +224,7 @@ export function createLearningAudioService({
         const parsed = Number(value);
         volume = Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : DEFAULT_VOLUME;
         write(LEARNING_AUDIO_STORAGE_KEYS.volume, volume);
+        notifyStateChange();
         for (const sound of sounds.values()) {
             try { sound.volume(volume); } catch (error) { safelyWarn('Learning audio volume failed.', error); }
         }
@@ -234,6 +249,7 @@ export function createLearningAudioService({
     return {
         get enabled() { return enabled; },
         get volume() { return volume; },
+        subscribe,
         initialize,
         unlock,
         setEnabled,

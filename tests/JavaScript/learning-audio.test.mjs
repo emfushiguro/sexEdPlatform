@@ -154,6 +154,22 @@ test('persists enabled and clamped volume with stable namespaced keys', async ()
     assert.deepEqual(Object.keys(LEARNING_AUDIO_STORAGE_KEYS), ['enabled', 'volume']);
 });
 
+test('notifies state subscribers when enabled or volume changes', () => {
+    const { service } = createService();
+    const states = [];
+    const unsubscribe = service.subscribe((state) => states.push(state));
+
+    service.setEnabled(false);
+    service.setVolume(0.35);
+    unsubscribe();
+    service.setEnabled(true);
+
+    assert.deepEqual(states, [
+        { enabled: false, volume: 0.7 },
+        { enabled: false, volume: 0.35 },
+    ]);
+});
+
 test('maps and preloads exactly five semantic files through one Howl bank', async () => {
     const { service, audio } = createService();
 

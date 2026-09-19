@@ -341,7 +341,22 @@ Alpine.store('modals', {
     },
 });
 
+const learningAudioStore = {
+    enabled: learningAudio.enabled,
+    volume: learningAudio.volume,
+    initialize: (...args) => learningAudio.initialize(...args),
+    unlock: (...args) => learningAudio.unlock(...args),
+    setEnabled: (value) => learningAudio.setEnabled(value),
+    setVolume: (value) => learningAudio.setVolume(value),
+    play: (key) => learningAudio.play(key),
+};
+
+Alpine.store('learningAudio', learningAudioStore);
+const reactiveLearningAudioStore = Alpine.store('learningAudio');
+learningAudio.subscribe(({ enabled, volume }) => {
+    reactiveLearningAudioStore.enabled = enabled;
+    reactiveLearningAudioStore.volume = volume;
+});
 window.learningAudio = learningAudio;
-Alpine.store('learningAudio', learningAudio);
 initializeLearningAudioPage(learningAudio);
 Alpine.start();

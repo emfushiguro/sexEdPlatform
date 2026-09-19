@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserDailyShield;
 use App\Services\Gamification\GamificationPolicyResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class LearnerGamificationDashboardDynamicViewTest extends TestCase
@@ -47,6 +48,17 @@ class LearnerGamificationDashboardDynamicViewTest extends TestCase
         $response->assertSee('⭐ 21 pts', false);
         $response->assertSee('⭐ 84 pts', false);
         $response->assertSee('Full Refill (5 Shields)', false);
+    }
+
+    public function test_audio_navigation_toggles_do_not_use_green_enabled_styling(): void
+    {
+        foreach (['views/layouts/learner-header.blade.php', 'views/layouts/learner-fullscreen.blade.php'] as $view) {
+            $contents = File::get(resource_path($view));
+            preg_match('/data-learning-audio-toggle.*?<\/button>/s', $contents, $matches);
+
+            $this->assertNotEmpty($matches, "Audio toggle not found in {$view}.");
+            $this->assertStringNotContainsString('emerald', $matches[0]);
+        }
     }
 
     public function test_streak_saver_button_uses_dynamic_threshold_copy_when_points_are_insufficient(): void
