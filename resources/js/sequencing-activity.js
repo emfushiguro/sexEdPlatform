@@ -187,7 +187,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             return this;
         },
 
-        dropPointerDrag(event = null) {
+        dropPointerDrag(event = null, { playSelection = true } = {}) {
             if (!this.isDragging()) return this;
             const eventTarget = event && typeof event === 'object' ? this.resolveDragIndex(event) : null;
             if (event && typeof event === 'object' && eventTarget === null) return this.cancelDrag();
@@ -207,7 +207,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             this.lastPointerY = null;
             this.dragAnnouncement = `Dropped ${label}, position ${to + 1} of ${this.order.length}.`;
             if (changed) {
-                audio?.play?.('selection');
+                if (playSelection) audio?.play?.('selection');
                 this.scheduleSave();
             }
             return this;
@@ -318,7 +318,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
 
         async checkAnswer() {
             if (this.isLocked()) return null;
-            if (this.isDragging()) this.dropPointerDrag();
+            if (this.isDragging()) this.dropPointerDrag(null, { playSelection: false });
             clearTimeout(this.saveTimer);
             this.submitting = true;
             this.feedback = '';

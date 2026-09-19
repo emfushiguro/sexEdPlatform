@@ -393,3 +393,23 @@ test('sequencing stays silent for locked moves, cancellation, and checkAnswer', 
 
     assert.deepEqual(played, []);
 });
+
+test('checkAnswer commits an active pointer drag without playing selection audio', async () => {
+    const played = [];
+    const events = [];
+    const activity = createSequencingActivity({
+        activityId: 'sequencing-43',
+        audio: { play: (key) => played.push(key) },
+        initialOrder: ['one', 'two'],
+        checkUrl: '/check',
+    }, async () => response({ status: 'completed', is_correct: true, is_complete: true }));
+    activity.$dispatch = (name, detail) => events.push({ name, detail });
+
+    activity.beginPointerDrag(0, { clientX: 10, clientY: 10 });
+    activity.setDragTarget(1);
+    await activity.checkAnswer();
+
+    assert.deepEqual(activity.order, ['two', 'one']);
+    assert.deepEqual(played, []);
+    assert.equal(events.find(({ name }) => name === 'interactive-activity-result')?.detail.activityId, 'sequencing-43');
+});
