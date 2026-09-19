@@ -942,6 +942,8 @@ class ModuleController extends Controller
                 ->with('error', 'Pass the final quiz first to unlock module completion.');
         }
 
+        $newlyCompleted = false;
+
         if ($enrollment->completed_at === null && $this->completionService->isFullyCompleted($user, $module)) {
             $enrollment->update([
                 'completed_at' => now(),
@@ -952,6 +954,12 @@ class ModuleController extends Controller
             if ($moduleCompletionPoints > 0) {
                 session()->flash('points_earned', $moduleCompletionPoints);
             }
+
+            $newlyCompleted = true;
+        }
+
+        if ($newlyCompleted) {
+            session()->now('learning_audio_event', 'success');
         }
 
         $module->loadMissing('publishedRevision');

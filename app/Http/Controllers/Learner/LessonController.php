@@ -472,6 +472,7 @@ class LessonController extends Controller
         $lessonPoints = $this->gamificationService->awardConfiguredPoints($user, 'lesson_complete');
         $this->gamificationService->updateStreak($user);
         session()->flash('points_earned', $lessonPoints);
+        session()->flash('learning_audio_event', 'complete');
 
         return back()->with('success', "Lesson completed! You earned {$lessonPoints} points! 🎉");
     }
@@ -508,6 +509,12 @@ class LessonController extends Controller
             abort(404);
         }
 
+        $wasAlreadyCompleted = LessonTopicProgress::query()
+            ->where('user_id', $user->id)
+            ->where('lesson_topic_id', $topic->id)
+            ->where('completed', true)
+            ->exists();
+
         // Mark topic as completed
         $topic->markCompleted($user->id);
 
@@ -540,6 +547,10 @@ class LessonController extends Controller
             // Award lesson complete bonus using dynamic policy values
             $lessonCompletePoints = $this->gamificationService->awardConfiguredPoints($user, 'lesson_complete');
             session()->flash('points_earned', $lessonCompletePoints);
+        }
+
+        if (! $wasAlreadyCompleted) {
+            session()->flash('learning_audio_event', 'complete');
         }
 
         // Check if we should navigate to next topic

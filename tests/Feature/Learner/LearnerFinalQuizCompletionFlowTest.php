@@ -107,6 +107,64 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
             ->assertSee('Return to Modules', false);
     }
 
+    public function test_direct_module_completion_flashes_success_only_on_first_transition(): void
+    {
+        /** @var User $learner */
+        $learner = User::factory()->create(['role' => 'learner']);
+        $learner->assignRole('learner');
+        LearnerProfile::query()->create([
+            'user_id' => $learner->id,
+            'username' => 'direct_completion_learner',
+            'birthdate' => now()->subYears(20)->toDateString(),
+        ]);
+
+        $module = Module::factory()->create(['is_published' => true]);
+        $lesson = Lesson::factory()->create([
+            'module_id' => $module->id,
+            'is_published' => true,
+        ]);
+        $finalQuiz = Quiz::factory()->create([
+            'module_id' => $module->id,
+            'is_active' => true,
+            'attempt_limit' => 3,
+        ]);
+        $module->update(['final_quiz_id' => $finalQuiz->id]);
+
+        ModuleEnrollment::query()->create([
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+            'status' => EnrollmentStatus::Approved,
+            'enrolled_at' => now(),
+        ]);
+        UserProgress::query()->create([
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+            'lesson_id' => $lesson->id,
+            'completed' => true,
+            'progress_percentage' => 100,
+            'completed_at' => now(),
+        ]);
+        QuizAttempt::query()->create([
+            'user_id' => $learner->id,
+            'quiz_id' => $finalQuiz->id,
+            'answers' => [],
+            'score' => 100,
+            'passed' => true,
+            'started_at' => now()->subMinute(),
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($learner)
+            ->get(route('learner.modules.completion', $module))
+            ->assertOk()
+            ->assertSee('data-learning-audio-event="success"', false);
+
+        $this->actingAs($learner)
+            ->get(route('learner.modules.completion', $module))
+            ->assertOk()
+            ->assertDontSee('data-learning-audio-event="success"', false);
+    }
+
     public function test_completion_page_requires_passed_final_quiz(): void
     {
         /** @var User $learner */
