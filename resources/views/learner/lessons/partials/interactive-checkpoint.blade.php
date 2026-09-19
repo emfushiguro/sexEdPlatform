@@ -51,7 +51,7 @@
             @foreach($parts as $index => $part)
                 {!! $part !!}
                 @if($index < $blankCount)
-                    <button type="button" x-show="wordBank" @click="wordBank.removeWord({{ $index }})" class="inline-flex min-w-28 border-b-2 border-purple-300 align-baseline" x-text="wordBank?.answers()[{{ $index }}] || '_____'"></button>
+                    <button type="button" x-show="wordBank" @click="if (wordBank?.selectedIndices[{{ $index }}] !== null) { wordBank.removeWord({{ $index }}); $store.learningAudio.play('selection') }" class="inline-flex min-w-28 border-b-2 border-purple-300 align-baseline" x-text="wordBank?.answers()[{{ $index }}] || '_____'"></button>
                 @endif
             @endforeach
         @else
@@ -74,11 +74,11 @@
                     <legend class="text-sm font-semibold text-gray-900 dark:text-white">How would you like to respond?</legend>
                     <div class="mt-3 grid gap-3 sm:grid-cols-2">
                         <label class="min-h-11 rounded-xl border bg-white p-4 dark:bg-gray-900" :class="answer.pathway === 'guided' ? 'border-purple-600 ring-2 ring-purple-200' : 'border-gray-200 dark:border-gray-700'">
-                            <input type="radio" name="perspective_pathway_{{ $question->id }}" value="guided" :checked="answer.pathway === 'guided'" @change="choosePerspectivePathway('guided')">
+                            <input type="radio" name="perspective_pathway_{{ $question->id }}" value="guided" :checked="answer.pathway === 'guided'" @change="choosePerspectivePathway('guided'); $store.learningAudio.play('selection')">
                             <span class="ml-2 font-semibold">Choose a Response</span>
                         </label>
                         <label class="min-h-11 rounded-xl border bg-white p-4 dark:bg-gray-900" :class="answer.pathway === 'own' ? 'border-purple-600 ring-2 ring-purple-200' : 'border-gray-200 dark:border-gray-700'">
-                            <input type="radio" name="perspective_pathway_{{ $question->id }}" value="own" :checked="answer.pathway === 'own'" @change="choosePerspectivePathway('own')">
+                            <input type="radio" name="perspective_pathway_{{ $question->id }}" value="own" :checked="answer.pathway === 'own'" @change="choosePerspectivePathway('own'); $store.learningAudio.play('selection')">
                             <span class="ml-2 font-semibold">Share Your Perspective</span>
                         </label>
                     </div>
@@ -92,7 +92,7 @@
                 <div class="mt-3 space-y-3">
                     @foreach($question->options as $option)
                         <label class="flex min-h-11 items-center gap-3 rounded-xl border bg-white p-3 dark:bg-gray-900" :class="Number(answer.option_id) === {{ $option->id }} ? 'border-purple-600 ring-2 ring-purple-200' : 'border-gray-200 dark:border-gray-700'">
-                            <input type="radio" name="perspective_option_{{ $question->id }}" value="{{ $option->id }}" x-model.number="answer.option_id">
+                            <input type="radio" name="perspective_option_{{ $question->id }}" value="{{ $option->id }}" x-model.number="answer.option_id" @change="$store.learningAudio.play('selection')">
                             <span>{{ $option->option_text }}</span>
                         </label>
                     @endforeach
@@ -133,14 +133,14 @@
         @if(! $isPerspectiveFeedback && in_array($question->question_type, ['multiple_choice', 'true_false']))
             @foreach($question->options as $option)
                 <label class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                    <input type="radio" name="checkpoint_{{ $question->id }}" value="{{ $option->id }}" x-model="answer">
+                    <input type="radio" name="checkpoint_{{ $question->id }}" value="{{ $option->id }}" x-model="answer" @change="$store.learningAudio.play('selection')">
                     <span>{{ $option->option_text }}</span>
                 </label>
             @endforeach
         @elseif(! $isPerspectiveFeedback && $question->question_type === 'multiple_select')
             @foreach($question->options as $option)
                 <label class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                    <input type="checkbox" value="{{ $option->id }}" x-model="answer">
+                    <input type="checkbox" value="{{ $option->id }}" x-model="answer" @change="$store.learningAudio.play('selection')">
                     <span>{{ $option->option_text }}</span>
                 </label>
             @endforeach
@@ -153,7 +153,7 @@
         @elseif(! $isPerspectiveFeedback && $question->question_type === 'fill_blank_select')
             <div class="flex flex-wrap gap-2">
                 <template x-for="(word, wordIndex) in wordBank?.words || []" :key="wordIndex">
-                    <button type="button" @click="wordBank.selectWord(wordIndex)" :disabled="wordBank.isUsed(wordIndex)" x-text="word" class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium hover:bg-purple-50 disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900"></button>
+                    <button type="button" @click="if (!wordBank.isUsed(wordIndex) && wordBank.selectedIndices.includes(null)) { wordBank.selectWord(wordIndex); $store.learningAudio.play('selection') }" :disabled="wordBank.isUsed(wordIndex)" x-text="word" class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium hover:bg-purple-50 disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900"></button>
                 </template>
             </div>
         @endif

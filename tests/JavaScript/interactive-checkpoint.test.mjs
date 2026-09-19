@@ -111,6 +111,85 @@ test('correct removes skip and exposes continuation', async () => {
     assert.equal(checkpoint.showContinue(), true);
 });
 
+test('plays the authoritative result sound after a correct response', async () => {
+    const sounds = [];
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'identification', submitUrl: '/submit', csrf: 'token',
+        audio: { play: (key) => sounds.push(key) },
+    }, async () => ({
+        ok: true,
+        json: async () => ({ status: 'correct', is_correct: true, explanation: 'Correct.' }),
+    }));
+
+    await checkpoint.submit();
+
+    assert.deepEqual(sounds, ['correct']);
+});
+
+test('plays the authoritative result sound after an incorrect response', async () => {
+    const sounds = [];
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'identification', submitUrl: '/submit', csrf: 'token',
+        audio: { play: (key) => sounds.push(key) },
+    }, async () => ({
+        ok: true,
+        json: async () => ({ status: 'incorrect', is_correct: false }),
+    }));
+
+    await checkpoint.submit();
+
+    assert.deepEqual(sounds, ['incorrect']);
+});
+
+test('plays success for completed perspective feedback without correctness sounds', async () => {
+    const sounds = [];
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'perspective_feedback', submitUrl: '/submit', csrf: 'token',
+        audio: { play: (key) => sounds.push(key) },
+    }, async () => ({
+        ok: true,
+        json: async () => ({
+            status: 'completed', is_correct: null,
+            result: { pathway: 'own', perspective_text: 'My perspective' },
+        }),
+    }));
+
+    checkpoint.choosePerspectivePathway('own');
+    checkpoint.answer.perspective_text = 'My perspective';
+    await checkpoint.submit();
+
+    assert.deepEqual(sounds, ['success']);
+    assert.equal(sounds.includes('correct'), false);
+    assert.equal(sounds.includes('incorrect'), false);
+});
+
+test('does not play sound for skipped responses, request errors, restored state, or retry', async () => {
+    const sounds = [];
+    const audio = { play: (key) => sounds.push(key) };
+    const skipped = createInteractiveCheckpoint({
+        type: 'identification', skipUrl: '/skip', csrf: 'token', audio,
+    }, async () => ({
+        ok: true,
+        json: async () => ({ status: 'skipped', is_correct: null }),
+    }));
+    await skipped.skip();
+
+    const failed = createInteractiveCheckpoint({
+        type: 'identification', submitUrl: '/submit', csrf: 'token', audio,
+    }, async () => ({
+        ok: false,
+        json: async () => ({ message: 'Unable to save the checkpoint.' }),
+    }));
+    await failed.submit();
+
+    const restored = createInteractiveCheckpoint({
+        type: 'perspective_feedback', initialStatus: 'completed', audio,
+    });
+    restored.retry();
+
+    assert.deepEqual(sounds, []);
+});
+
 test('request failure retains the answer and exposes an error', async () => {
     const request = async () => ({
         ok: false,

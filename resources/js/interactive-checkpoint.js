@@ -14,6 +14,7 @@ async function readResponse(response) {
 }
 
 export function createInteractiveCheckpoint(config = {}, request = globalThis.fetch?.bind(globalThis)) {
+    const audio = config.audio ?? globalThis.learningAudio;
     const initialStatus = ['correct', 'incorrect', 'completed', 'skipped'].includes(config.initialStatus)
         ? config.initialStatus
         : 'ready';
@@ -63,6 +64,14 @@ export function createInteractiveCheckpoint(config = {}, request = globalThis.fe
                 this.result = data.result || null;
                 this.feedback = data.feedback || null;
                 this.explanation = ['correct', 'completed'].includes(data.status) ? data.explanation : null;
+                const soundKey = data.status === 'correct'
+                    ? 'correct'
+                    : data.status === 'incorrect'
+                        ? 'incorrect'
+                        : data.status === 'completed'
+                            ? 'success'
+                            : null;
+                if (soundKey) audio?.play?.(soundKey);
                 if (data.result && config.type === 'perspective_feedback') {
                     this.answer = { ...emptyCheckpointAnswer(config.type), ...data.result };
                 }
