@@ -121,7 +121,7 @@ class QuizProgressionUxTest extends DatabaseTestCase
 
         $response->assertOk()->assertSee('data-learning-audio-selection', false);
         $this->assertStringContainsString(
-            'if (!isUsed(wordIndex)',
+            "if (!isUsed(wordIndex) && selectedWords.some(selectedWord => selectedWord === null)) { selectWord(wordIndex); \$store.learningAudio.play('selection'); }",
             $response->getContent()
         );
         $this->assertDoesNotMatchRegularExpression(
