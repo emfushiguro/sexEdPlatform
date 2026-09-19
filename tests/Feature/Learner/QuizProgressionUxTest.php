@@ -100,17 +100,30 @@ class QuizProgressionUxTest extends DatabaseTestCase
             'order' => 1,
         ]);
 
+        QuizQuestion::query()->create([
+            'quiz_id' => $quiz->id,
+            'question_text' => 'Complete the phrase.',
+            'question_type' => 'fill_blank_select',
+            'word_bank' => ['alpha', 'beta'],
+            'points' => 1,
+            'order' => 2,
+        ]);
+
         $identification = QuizQuestion::query()->create([
             'quiz_id' => $quiz->id,
             'question_text' => 'Name this concept.',
             'question_type' => 'identification',
             'points' => 1,
-            'order' => 2,
+            'order' => 3,
         ]);
 
         $response = $this->actingAs($learner)->get(route('quizzes.start', $quiz));
 
         $response->assertOk()->assertSee('data-learning-audio-selection', false);
+        $this->assertStringContainsString(
+            'if (!isUsed(wordIndex)',
+            $response->getContent()
+        );
         $this->assertDoesNotMatchRegularExpression(
             '/<input[^>]*type="text"[^>]*data-learning-audio-selection/s',
             $response->getContent()

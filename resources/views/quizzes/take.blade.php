@@ -281,7 +281,7 @@
                   <button
                     type="button"
                     data-learning-audio-selection
-                    @click="if (selectedWords.some(selectedWord => selectedWord === null)) { selectWord(wordIndex); $store.learningAudio.play('selection'); }"
+                    @click="if (!isUsed(wordIndex) && selectedWords.some(selectedWord => selectedWord === null)) { selectWord(wordIndex); $store.learningAudio.play('selection'); }"
                     x-show="!isUsed(wordIndex)"
                     x-text="word"
                     class="px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-150 active:scale-95">
