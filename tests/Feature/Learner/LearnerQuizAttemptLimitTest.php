@@ -44,6 +44,7 @@ class LearnerQuizAttemptLimitTest extends TestCase
             ->get(route('quizzes.start', $quiz))
             ->assertRedirect(route('quizzes.result', $existingAttempt))
             ->assertSessionHas('attempt_limit_reached', true)
-            ->assertSessionHas('info');
+            ->assertSessionHas('info')
+            ->assertSessionMissing('learning_audio_event');
     }
 }

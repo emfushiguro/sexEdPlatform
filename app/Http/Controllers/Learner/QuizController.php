@@ -228,6 +228,8 @@ class QuizController extends Controller
                 $moduleCompletionPoints = $this->completeModuleAndAwardCompletionPoints($user, $completedFinalQuizModule);
             }
 
+            session()->flash('learning_audio_event', 'success');
+
             if ($completedFinalQuizModule) {
                 $completionMessage = 'Congratulations! You have successfully completed this module.';
                 if ($moduleCompletionPoints > 0) {

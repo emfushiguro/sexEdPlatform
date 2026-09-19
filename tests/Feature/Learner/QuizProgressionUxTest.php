@@ -10,6 +10,8 @@ use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
+use App\Models\QuizOption;
+use App\Models\QuizQuestion;
 use App\Models\User;
 use App\Models\UserProgress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,6 +77,45 @@ class QuizProgressionUxTest extends DatabaseTestCase
             ->get(route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1]))
             ->assertOk()
             ->assertSee('View Completion Options');
+    }
+
+    public function test_quiz_start_marks_choice_controls_but_not_text_inputs_for_audio(): void
+    {
+        $this->withoutMiddleware(EnsureProfileCompleted::class);
+
+        [$learner, $module, $lesson, $nextLesson, $quiz] = $this->createQuizScenarioWithNextLesson();
+
+        $multipleChoice = QuizQuestion::query()->create([
+            'quiz_id' => $quiz->id,
+            'question_text' => 'Choose one.',
+            'question_type' => 'multiple_choice',
+            'points' => 1,
+            'order' => 1,
+        ]);
+
+        QuizOption::query()->create([
+            'quiz_question_id' => $multipleChoice->id,
+            'option_text' => 'Choice',
+            'is_correct' => true,
+            'order' => 1,
+        ]);
+
+        $identification = QuizQuestion::query()->create([
+            'quiz_id' => $quiz->id,
+            'question_text' => 'Name this concept.',
+            'question_type' => 'identification',
+            'points' => 1,
+            'order' => 2,
+        ]);
+
+        $response = $this->actingAs($learner)->get(route('quizzes.start', $quiz));
+
+        $response->assertOk()->assertSee('data-learning-audio-selection', false);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input[^>]*type="text"[^>]*data-learning-audio-selection/s',
+            $response->getContent()
+        );
+        $this->assertStringContainsString($identification->question_text, $response->getContent());
     }
 
     /**

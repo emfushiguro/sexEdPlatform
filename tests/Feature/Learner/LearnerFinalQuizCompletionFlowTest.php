@@ -9,6 +9,7 @@ use App\Models\Lesson;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\Quiz;
+use App\Models\QuizAttempt;
 use App\Models\QuizOption;
 use App\Models\QuizQuestion;
 use App\Models\UserProgress;
@@ -93,7 +94,8 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
                 ],
                 'started_at' => now()->timestamp,
             ])
-            ->assertRedirect(route('learner.modules.completion', $module));
+            ->assertRedirect(route('learner.modules.completion', $module))
+            ->assertSessionHas('learning_audio_event', 'success');
 
         $this->actingAs($learner)
             ->get(route('learner.modules.completion', $module))
@@ -140,6 +142,72 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
             ->get(route('learner.modules.completion', $module))
             ->assertRedirect(route('learner.modules.show', $module))
             ->assertSessionHas('error');
+    }
+
+    public function test_failed_persisted_final_quiz_attempt_also_flashes_success_audio_event(): void
+    {
+        /** @var User $learner */
+        $learner = User::factory()->create(['role' => 'learner']);
+        $learner->assignRole('learner');
+        LearnerProfile::query()->create([
+            'user_id' => $learner->id,
+            'username' => 'failed_final_quiz_learner',
+            'birthdate' => now()->subYears(20)->toDateString(),
+        ]);
+
+        $module = Module::factory()->create(['is_published' => true]);
+        $finalQuiz = Quiz::factory()->create([
+            'module_id' => $module->id,
+            'passing_score' => 70,
+            'attempt_limit' => 3,
+            'is_active' => true,
+        ]);
+        $module->update(['final_quiz_id' => $finalQuiz->id]);
+
+        $question = QuizQuestion::query()->create([
+            'quiz_id' => $finalQuiz->id,
+            'question_text' => 'Select the correct answer.',
+            'question_type' => 'multiple_choice',
+            'points' => 1,
+            'order' => 1,
+        ]);
+        QuizOption::query()->create([
+            'quiz_question_id' => $question->id,
+            'option_text' => 'Correct',
+            'is_correct' => true,
+            'order' => 1,
+        ]);
+        $wrongOption = QuizOption::query()->create([
+            'quiz_question_id' => $question->id,
+            'option_text' => 'Wrong',
+            'is_correct' => false,
+            'order' => 2,
+        ]);
+
+        ModuleEnrollment::query()->create([
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+            'status' => EnrollmentStatus::Approved,
+            'enrolled_at' => now(),
+        ]);
+
+        $response = $this->actingAs($learner)
+            ->post(route('quizzes.submit', $finalQuiz), [
+                'answers' => [$question->id => $wrongOption->id],
+                'started_at' => now()->timestamp,
+            ]);
+
+        $attempt = QuizAttempt::query()->latest('id')->firstOrFail();
+
+        $response
+            ->assertRedirect(route('quizzes.result', $attempt))
+            ->assertSessionHas('learning_audio_event', 'success');
+
+        $this->assertDatabaseHas('quiz_attempts', [
+            'user_id' => $learner->id,
+            'quiz_id' => $finalQuiz->id,
+            'passed' => false,
+        ]);
     }
 
     public function test_passing_final_quiz_awards_module_completion_points_once_and_persists_completion_state(): void
