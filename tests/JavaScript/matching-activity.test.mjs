@@ -178,6 +178,43 @@ test('keyboard Space, Enter, and Escape control the active connection', async ()
     assert.equal(prevented, 4);
 });
 
+test('matching plays selection for valid pointer and keyboard connections only', () => {
+    const played = [];
+    const audio = { play: (key) => played.push(key) };
+    const activity = createMatchingActivity({ audio });
+
+    activity.startConnection('left', 'left-1');
+    activity.finishConnection('right', 'right-1');
+    assert.deepEqual(played, ['selection', 'selection']);
+
+    activity.activateEndpoint('left', 'left-2', { key: 'Enter', preventDefault() {} });
+    activity.activateEndpoint('right', 'right-2', { key: ' ', preventDefault() {} });
+    assert.deepEqual(played, ['selection', 'selection', 'selection', 'selection']);
+});
+
+test('matching remains silent for invalid, locked, cancelled, removed, and checked interactions', async () => {
+    const played = [];
+    const audio = { play: (key) => played.push(key) };
+    const activity = createMatchingActivity({
+        audio,
+        initialMatchedPairs: [{ left_id: 'left-1', right_id: 'right-1' }],
+        matchUrl: '/match',
+    }, async () => response({ status: 'in_progress', is_correct: false, is_complete: false }));
+
+    activity.startConnection('left', 'left-1');
+    activity.startConnection('left', 'left-2');
+    assert.deepEqual(played, ['selection']);
+    played.length = 0;
+    activity.finishConnection('left', 'left-3');
+    activity.moveConnection({ clientX: 10, clientY: 10 });
+    activity.cancelConnection();
+    activity.rejectedConnection = { left_id: 'left-2', right_id: 'right-2' };
+    activity.removeRejectedConnection();
+    await activity.checkAnswer();
+
+    assert.deepEqual(played, []);
+});
+
 test('loadPayload rehydrates completed matches and clears transient connection state', async () => {
     const activity = createMatchingActivity({
         initialMatchedPairs: [{ left_id: 'stale-left', right_id: 'stale-right' }],

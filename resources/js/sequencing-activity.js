@@ -11,6 +11,7 @@ async function readResponse(response) {
 }
 
 export function createSequencingActivity(config = {}, request = globalThis.fetch?.bind(globalThis)) {
+    const audio = config.audio ?? globalThis.learningAudio;
     const initialOrder = Array.isArray(config.initialOrder) ? [...config.initialOrder] : [];
     const activity = {
         order: initialOrder,
@@ -94,12 +95,16 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         },
 
         move(index, delta) {
-            if (!this.isLocked()) {
-                this.positionResults = [];
-                this.feedback = '';
-                this.order = moveItem(this.order, index, delta);
-                this.candidateOrder = [...this.order];
-            }
+            if (this.isLocked()) return this;
+            const next = moveItem(this.order, index, delta);
+            const changed = JSON.stringify(next) !== JSON.stringify(this.order);
+            if (!changed) return this;
+
+            this.positionResults = [];
+            this.feedback = '';
+            this.order = next;
+            this.candidateOrder = [...next];
+            audio?.play?.('selection');
             this.scheduleSave();
             return this;
         },
@@ -201,7 +206,10 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             this.dragOverIndex = null;
             this.lastPointerY = null;
             this.dragAnnouncement = `Dropped ${label}, position ${to + 1} of ${this.order.length}.`;
-            if (changed) this.scheduleSave();
+            if (changed) {
+                audio?.play?.('selection');
+                this.scheduleSave();
+            }
             return this;
         },
 

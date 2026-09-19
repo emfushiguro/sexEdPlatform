@@ -33,6 +33,7 @@ export function calculateConnectorLines(leftRects, rightRects, containerRect) {
 }
 
 export function createMatchingActivity(config = {}, request = globalThis.fetch?.bind(globalThis)) {
+    const audio = config.audio ?? globalThis.learningAudio;
     const initialMatchedPairs = Array.isArray(config.initialMatchedPairs) ? copy(config.initialMatchedPairs) : [];
     const activity = {
         activityId: config.activityId,
@@ -290,6 +291,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             this.feedback = '';
             this.error = '';
             this.activeEndpoint = { side, id };
+            audio?.play?.('selection');
             this.hoveredEndpoint = null;
             this.pointerPosition = null;
             this.scheduleConnectorRefresh();
@@ -370,6 +372,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             this.detachEndpoint('left', proposal.left_id);
             this.detachEndpoint('right', proposal.right_id);
             this.matchedPairs.push(proposal);
+            audio?.play?.('selection');
             this.clearPairResult(proposal);
             this.pendingConnection = null;
             this.requestState = 'idle';

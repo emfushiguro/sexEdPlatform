@@ -342,3 +342,54 @@ test('pointer cancellation restores the committed order and does not save', asyn
     assert.equal(calls, 0);
     assert.match(activity.dragAnnouncement, /Cancelled/);
 });
+
+test('sequencing plays selection only when a pointer or keyboard reorder commits', () => {
+    const played = [];
+    const audio = { play: (key) => played.push(key) };
+    const activity = createSequencingActivity({
+        audio,
+        initialOrder: ['one', 'two', 'three'],
+    });
+
+    activity.move(0, -1);
+    assert.deepEqual(played, []);
+    activity.move(1, -1);
+    assert.deepEqual(played, ['selection']);
+
+    activity.beginPointerDrag(0, { clientX: 10, clientY: 10 });
+    activity.setDragTarget(0);
+    assert.deepEqual(played, ['selection']);
+    activity.dropPointerDrag();
+    assert.deepEqual(played, ['selection']);
+
+    activity.beginPointerDrag(0, { clientX: 10, clientY: 10 });
+    activity.setDragTarget(2);
+    assert.deepEqual(played, ['selection']);
+    activity.dropPointerDrag();
+    assert.deepEqual(played, ['selection', 'selection']);
+
+    const event = (key) => ({ key, preventDefault() {} });
+    activity.handleDragKey(2, event('Enter'));
+    activity.handleDragKey(2, event('Home'));
+    assert.deepEqual(played, ['selection', 'selection']);
+    activity.handleDragKey(2, event('Enter'));
+    assert.deepEqual(played, ['selection', 'selection', 'selection']);
+});
+
+test('sequencing stays silent for locked moves, cancellation, and checkAnswer', async () => {
+    const played = [];
+    const activity = createSequencingActivity({
+        audio: { play: (key) => played.push(key) },
+        initialOrder: ['one', 'two'],
+        initialStatus: 'completed',
+        checkUrl: '/check',
+    }, async () => response({ status: 'completed', is_correct: true, is_complete: true }));
+
+    activity.move(1, -1);
+    activity.beginPointerDrag(0, { clientX: 10, clientY: 10 });
+    activity.setDragTarget(1);
+    activity.cancelDrag();
+    await activity.checkAnswer();
+
+    assert.deepEqual(played, []);
+});
