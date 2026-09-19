@@ -7,6 +7,7 @@ async function readResponse(response) {
 }
 
 export function createInteractiveActivity(config = {}, request = globalThis.fetch?.bind(globalThis)) {
+    const audio = config.audio ?? globalThis.learningAudio;
     const activity = {
         activityId: config.activityId,
         status: config.initialStatus || 'in_progress',
@@ -93,6 +94,15 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
             this.explanation = detail.data?.explanation ?? null;
             if (detail.data?.preview_token !== undefined) this.previewToken = detail.data.preview_token;
             this.feedback = feedbackForEvaluation(detail.type, detail.data, detail.meta);
+            const soundKey = detail.data?.is_complete === true
+                ? 'success'
+                : detail.data?.is_correct === true
+                    ? 'correct'
+                    : detail.data?.is_correct === false
+                        ? 'incorrect'
+                        : null;
+
+            if (soundKey) audio?.play?.(soundKey);
             return this;
         },
 

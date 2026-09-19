@@ -103,6 +103,60 @@ test('common activity clears a shared error after its child result succeeds', ()
     assert.deepEqual(activity.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
 });
 
+test('activity coordinator maps accepted results to one semantic sound', () => {
+    const played = [];
+    const activity = createInteractiveActivity({
+        activityId: 41,
+        audio: { play: (soundKey) => played.push(soundKey) },
+    });
+
+    activity.handleActivityResult({
+        activityId: 41,
+        type: 'matching',
+        data: { is_complete: true, is_correct: true },
+    });
+    activity.handleActivityResult({
+        activityId: 41,
+        type: 'matching',
+        data: { is_complete: false, is_correct: true },
+    });
+    activity.handleActivityResult({
+        activityId: 41,
+        type: 'matching',
+        data: { is_complete: false, is_correct: false },
+    });
+    activity.handleActivityResult({
+        activityId: 41,
+        type: 'matching',
+        data: {},
+    });
+
+    assert.deepEqual(played, ['success', 'correct', 'incorrect']);
+});
+
+test('activity coordinator keeps unrelated results and lifecycle paths silent', async () => {
+    const played = [];
+    const activity = createInteractiveActivity({
+        activityId: 41,
+        preview: true,
+        audio: { play: (soundKey) => played.push(soundKey) },
+    });
+
+    activity.handleActivityResult({
+        activityId: 42,
+        type: 'matching',
+        data: { is_complete: true, is_correct: true },
+    });
+    activity.handleActivityError({ activityId: 41, message: 'Offline' });
+    activity.handleActivityRecovered({ activityId: 41 });
+    activity.handleActivityRetry({ activityId: 41 });
+    await activity.skip();
+    await activity.resume();
+    await activity.practice();
+
+    assert.deepEqual(played, []);
+});
+
 test('preview practice posts the current token and publishes the rotated payload token', async () => {
     const events = [];
     const activity = createInteractiveActivity({
