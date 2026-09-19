@@ -1,8 +1,16 @@
 {
-  "_agora-C2xI_ZF1.js": {
-    "file": "assets/agora-C2xI_ZF1.js",
+  "_agora-By7UI9zt.js": {
+    "file": "assets/agora-By7UI9zt.js",
     "name": "agora",
     "isDynamicEntry": true
+  },
+  "_howler-DZeOXej7.js": {
+    "file": "assets/howler-DZeOXej7.js",
+    "name": "howler",
+    "isDynamicEntry": true,
+    "imports": [
+      "_agora-By7UI9zt.js"
+    ]
   },
   "node_modules/pdfjs-dist/build/pdf.mjs": {
     "file": "assets/pdf-vkbVaD7t.js",
@@ -34,7 +42,7 @@
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-BtbENk76.css",
+    "file": "assets/app-DatKEoZs.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -43,15 +51,16 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Bs3Iyprz.js",
+    "file": "assets/app-CyzhtpWX.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
-      "_agora-C2xI_ZF1.js"
+      "_agora-By7UI9zt.js"
     ],
     "dynamicImports": [
-      "_agora-C2xI_ZF1.js",
+      "_howler-DZeOXej7.js",
+      "_agora-By7UI9zt.js",
       "node_modules/pdfjs-dist/build/pdf.mjs",
       "node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
       "node_modules/plyr/dist/plyr.mjs"
