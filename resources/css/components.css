@@ -53,6 +53,35 @@
     .interactive-match-card--correct .interactive-match-dot { @apply text-emerald-600; }
     .interactive-match-dot > span { @apply h-3 w-3 rounded-full bg-current; }
 
+    .interactive-activity-item-image {
+        @apply block max-w-full rounded-lg bg-white object-contain;
+    }
+
+    .interactive-match-item-content {
+        @apply flex min-w-0 flex-1 flex-col gap-2;
+    }
+
+    .interactive-match-item-image {
+        width: 100%;
+        max-height: 10rem;
+    }
+
+    .interactive-sequence-item-content {
+        @apply flex min-w-0 flex-1 items-center gap-3;
+    }
+
+    .interactive-sequence-item-image {
+        @apply h-16 w-20 shrink-0;
+    }
+
+    .interactive-sequence-overlay-image {
+        @apply h-12 w-16 shrink-0;
+    }
+
+    .interactive-item-media-fallback {
+        @apply text-xs font-medium text-amber-800;
+    }
+
     .interactive-match-badge {
         @apply inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm font-bold;
     }
@@ -74,6 +103,7 @@
     @container (max-width: 30rem) {
         .interactive-match-card { padding-inline: .625rem; }
         .interactive-match-grid { grid-template-columns: minmax(0, 1fr) 2rem minmax(0, 1fr); }
+        .interactive-sequence-item-content { @apply items-start; flex-direction: column; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -128,6 +158,19 @@
     }
 
     .interactive-authoring-handle { touch-action: none; }
+
+    .interactive-authoring-media-preview {
+        @apply h-24 w-full rounded-lg border border-gray-200 bg-white object-contain p-1;
+    }
+
+    .interactive-authoring-media-action {
+        @apply inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-purple-200 px-3 py-2 text-xs font-semibold text-purple-700 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700;
+    }
+
+    .interactive-authoring-media-remove {
+        @apply inline-flex min-h-11 items-center justify-center rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700;
+    }
+
     .interactive-authoring-insertion-bar {
         @apply h-1 rounded-full bg-purple-600;
         box-shadow: 0 0 0 3px rgb(124 58 237 / 0.15);

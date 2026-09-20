@@ -377,6 +377,7 @@
                     Cancel
                 </a>
                 <button type="submit"
+                    data-interactive-activity-submit
                     class="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);" id="submitButton">
                     Create Topic

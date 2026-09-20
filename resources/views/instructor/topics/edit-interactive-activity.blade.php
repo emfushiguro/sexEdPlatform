@@ -29,7 +29,7 @@
         @include('instructor.topics.partials.interactive-activity-fields')
         <div class="flex justify-end gap-3">
             <a href="{{ route(app(\App\Support\ContentPanelContext::class)->name('lessons.show'), $lesson) }}" class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">Cancel</a>
-            <button type="submit" class="rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white">Save activity</button>
+            <button type="submit" data-interactive-activity-submit class="rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white">Save activity</button>
         </div>
     </form>
 </div>

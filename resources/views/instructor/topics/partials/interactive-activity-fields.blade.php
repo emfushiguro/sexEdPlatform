@@ -29,6 +29,22 @@
 })->values())
 @php($activityConfigurationHasErrors = collect($errors->keys())->contains(fn ($key) => str_starts_with($key, 'configuration') || str_starts_with($key, 'pairs') || str_starts_with($key, 'items')))
 @php($activityConfigurationError = collect($errors->keys())->filter(fn ($key) => str_starts_with($key, 'configuration') || str_starts_with($key, 'pairs') || str_starts_with($key, 'items'))->map(fn ($key) => $errors->first($key))->filter()->first() ?: 'Review the activity fields above and correct any highlighted values.')
+@php($activityPairs = old('configuration.pairs', $fieldActivity?->activity_type?->value === 'matching' ? ($fieldActivity->configuration['pairs'] ?? []) : []))
+@php($activityItems = old('configuration.items', $fieldActivity?->activity_type?->value === 'sequencing' ? ($fieldActivity->configuration['items'] ?? []) : []))
+@php($hydrateMedia = function (array $item): array {
+    $path = trim((string) ($item['image_path'] ?? ''));
+    $item['image_path'] = $path !== '' ? $path : null;
+    $item['image_alt'] = $path !== '' ? (string) ($item['image_alt'] ?? '') : '';
+    $item['image_url'] = $path !== '' ? \Illuminate\Support\Facades\Storage::disk('public')->url($path) : null;
+
+    return $item;
+})
+@php($activityPairs = collect($activityPairs)->map(fn ($pair) => [
+    ...$pair,
+    'left' => $hydrateMedia((array) ($pair['left'] ?? [])),
+    'right' => $hydrateMedia((array) ($pair['right'] ?? [])),
+])->values()->all())
+@php($activityItems = collect($activityItems)->map(fn ($item) => $hydrateMedia((array) $item))->values()->all())
 <div id="interactiveActivityFields"
      x-data="interactiveActivityAuthoring({
          activityType: @js(old('activity_type', $fieldActivity?->activity_type?->value ?? 'matching')),
@@ -37,11 +53,14 @@
          insertAfterBlock: @js((int) old('insert_after_block', $activityInsertAfterBlock)),
          blockOptions: @js($activityBlockOptions),
          previewUrl: @js(route($contentRoutePrefix . '.interactive-activities.preview')),
+         imageUploadUrl: @js(route($contentRoutePrefix . '.image-library.upload')),
+         imageLibraryUrl: @js(route($contentRoutePrefix . '.image-library.json')),
          csrf: @js(csrf_token()),
          validationErrors: @js($errors->getMessages()),
-         pairs: @js(old('configuration.pairs', $fieldActivity?->activity_type?->value === 'matching' ? ($fieldActivity->configuration['pairs'] ?? []) : [])),
-         items: @js(old('configuration.items', $fieldActivity?->activity_type?->value === 'sequencing' ? ($fieldActivity->configuration['items'] ?? []) : [])),
+         pairs: @js($activityPairs),
+         items: @js($activityItems),
      })"
+     x-init="return () => cleanupMedia()"
      @pointerup.window="dropAuthoringDrag()"
      @pointercancel.window="cancelAuthoringDrag()"
      @keydown.escape.window="if (authoringReorder.active()) cancelAuthoringDrag()"
@@ -116,11 +135,34 @@
     </div>
 
     <div class="mt-6 flex justify-end">
-        <button type="button" data-preview-trigger @click="openPreview($event.currentTarget)" :disabled="isLoading" class="rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="button" data-preview-trigger @click="openPreview($event.currentTarget)" :disabled="isLoading || hasPendingMedia()" class="rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-50">
             <span x-show="!isLoading">Interactive Preview</span>
             <span x-show="isLoading">Loading preview…</span>
+            <span x-show="!isLoading && hasPendingMedia()">Finish image uploads first</span>
         </button>
     </div>
 
     @include('instructor.topics.partials.interactive-activity-preview-modal')
+
+    <div x-cloak x-show="imageLibraryOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4" @click.self="closeImageLibrary()" @keydown.escape.window="if (imageLibraryOpen) closeImageLibrary()">
+        <section role="dialog" aria-modal="true" aria-labelledby="activity-image-library-title" class="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+                <h2 id="activity-image-library-title" class="text-lg font-semibold text-gray-900">Choose from Image Library</h2>
+                <button type="button" @click="closeImageLibrary()" class="min-h-11 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700">Close</button>
+            </div>
+            <div class="max-h-[calc(90vh-5rem)] overflow-y-auto p-5">
+                <p x-show="imageLibraryLoading" role="status" class="text-sm text-gray-600">Loading Image Library…</p>
+                <p x-show="imageLibraryError" x-text="imageLibraryError" role="alert" class="text-sm text-red-700"></p>
+                <div x-show="!imageLibraryLoading && !imageLibraryError" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                    <template x-for="image in imageLibraryImages" :key="image.path">
+                        <button type="button" @click="selectLibraryImage(image)" class="rounded-xl border border-gray-200 p-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
+                            <img :src="image.url" alt="" class="interactive-authoring-media-preview" draggable="false">
+                            <span class="mt-2 block truncate text-xs font-medium text-gray-700" x-text="image.filename || image.path"></span>
+                        </button>
+                    </template>
+                </div>
+                <p x-show="!imageLibraryLoading && !imageLibraryError && imageLibraryImages.length === 0" class="text-sm text-gray-600">No images in your library yet.</p>
+            </div>
+        </section>
+    </div>
 </div>

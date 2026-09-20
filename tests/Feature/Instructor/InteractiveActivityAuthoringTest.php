@@ -88,6 +88,16 @@ class InteractiveActivityAuthoringTest extends TestCase
             ->assertSee('aria-modal="true"', false)
             ->assertSee('@keydown.escape.window="if (isOpen) closePreview()"', false)
             ->assertSee('Correct position', false)
+            ->assertSee('imageUploadUrl:', false)
+            ->assertSee('imageLibraryUrl:', false)
+            ->assertSee('Upload image')
+            ->assertSee('Choose from Image Library')
+            ->assertSee('Replace image')
+            ->assertSee('Remove image')
+            ->assertSee('Image alt text')
+            ->assertSee('role="dialog" aria-modal="true" aria-labelledby="activity-image-library-title"', false)
+            ->assertSee('accept="image/jpeg,image/png,image/webp"', false)
+            ->assertSee('data-interactive-activity-submit', false)
             ->assertDontSee('Move pair 1 up')
             ->assertDontSee('Move item 1 up');
 
@@ -99,6 +109,16 @@ class InteractiveActivityAuthoringTest extends TestCase
             ->assertSee(':data-pairs-handle', false)
             ->assertSee(':data-items-handle', false)
             ->assertSee('interactive-authoring-relationship', false)
+            ->assertSee('imageUploadUrl:', false)
+            ->assertSee('imageLibraryUrl:', false)
+            ->assertSee('Upload image')
+            ->assertSee('Choose from Image Library')
+            ->assertSee('Replace image')
+            ->assertSee('Remove image')
+            ->assertSee('Image alt text')
+            ->assertSee('role="dialog" aria-modal="true" aria-labelledby="activity-image-library-title"', false)
+            ->assertSee('accept="image/jpeg,image/png,image/webp"', false)
+            ->assertSee('data-interactive-activity-submit', false)
             ->assertDontSee('Move pair 1 up')
             ->assertDontSee('Move item 1 up');
 
