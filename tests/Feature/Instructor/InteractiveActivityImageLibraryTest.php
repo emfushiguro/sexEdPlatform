@@ -22,7 +22,7 @@ class InteractiveActivityImageLibraryTest extends TestCase
         $instructor->assignRole('instructor');
 
         $upload = $this->actingAs($instructor)->postJson(route('instructor.image-library.upload'), [
-            'image' => UploadedFile::fake()->image('diagram.webp'),
+            'image' => UploadedFile::fake()->create('diagram.webp', 10, 'image/webp'),
         ])->assertOk();
 
         $path = $upload->json('path');
