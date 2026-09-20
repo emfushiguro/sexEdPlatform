@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 
@@ -302,7 +303,7 @@ class TopicController extends Controller
         \Log::info('Creating topic', ['data_keys' => array_keys($validated)]);
 
         try {
-            [$topic, $captionChanges] = DB::transaction(function () use ($lesson, $validated, $captionInput): array {
+            $topic = DB::transaction(function () use ($lesson, $validated, $captionInput, &$captionChanges): LessonTopic {
                 $topic = $lesson->topics()->create($validated);
                 \Log::info('Topic created successfully', ['topic_id' => $topic->id]);
 
@@ -319,7 +320,7 @@ class TopicController extends Controller
                 $module->duration_minutes = $module->lessons()->sum('duration');
                 $module->save();
 
-                return [$topic, $captionChanges];
+                return $topic;
             });
         } catch (Throwable $exception) {
             Storage::disk('public')->delete($storedVideoPaths);
@@ -421,14 +422,33 @@ class TopicController extends Controller
         if ($validated['type'] === 'video' && $finalVideoSource === null) {
             $finalVideoSource = $topic->video_provider === 'local' ? 'upload' : 'url';
         }
-        $isLocalVideo = $validated['type'] === 'video' && $finalVideoSource === 'upload';
+
+        if ($validated['type'] === 'video' && $finalVideoSource === 'upload'
+            && ! $request->hasFile('video_file')
+            && $topic->video_provider !== 'local') {
+            throw ValidationException::withMessages([
+                'video_file' => 'A video file is required when switching to local video.',
+            ]);
+        }
+
+        if ($validated['type'] === 'video' && $finalVideoSource === 'url'
+            && blank($request->input('video_url'))
+            && $topic->video_provider === 'local') {
+            throw ValidationException::withMessages([
+                'video_url' => 'A video URL is required when switching to an external video.',
+            ]);
+        }
+
+        $isLocalVideo = $validated['type'] === 'video'
+            && $finalVideoSource === 'upload'
+            && ($request->hasFile('video_file') || $topic->video_provider === 'local');
         $captionInput = null;
         if ($captionInputProvided) {
             $captionInput = $this->validateCaptionInput(
                 $request,
                 $topic,
                 $validated['type'],
-                $finalVideoSource,
+                $isLocalVideo ? 'upload' : 'url',
             );
         } elseif (! $isLocalVideo) {
             $captionInput = ['tracks' => [], 'default' => null];
@@ -734,7 +754,9 @@ class TopicController extends Controller
         $lesson = $topic->lesson;
         $captionPaths = $topic->captions()->pluck('file_path')->all();
 
-        $topic->delete();
+        if (! $topic->delete()) {
+            throw new RuntimeException('Failed to delete topic.');
+        }
 
         // Delete associated files after persistence succeeds.
         if ($topic->video_file_path) {
@@ -774,7 +796,18 @@ class TopicController extends Controller
         string $type,
         ?string $videoSource,
     ): array {
-        $validator = Validator::make($request->all(), [
+        $validationData = $request->all();
+        foreach ($request->input('captions', []) as $index => $track) {
+            if (filter_var($track['remove'] ?? false, FILTER_VALIDATE_BOOL)) {
+                unset(
+                    $validationData['captions'][$index]['file'],
+                    $validationData['captions'][$index]['language_code'],
+                    $validationData['captions'][$index]['label'],
+                );
+            }
+        }
+
+        $validator = Validator::make($validationData, [
             'captions' => ['nullable', 'array'],
             'captions.*' => ['array'],
             'captions.*.id' => ['nullable', 'integer'],
@@ -814,22 +847,27 @@ class TopicController extends Controller
             }
 
             foreach ($tracks as $index => $track) {
-                if (filter_var($track['remove'] ?? false, FILTER_VALIDATE_BOOL)) {
-                    continue;
-                }
+                $hasId = array_key_exists('id', $track)
+                    && $track['id'] !== null
+                    && $track['id'] !== '';
+                $id = $hasId ? (int) $track['id'] : null;
 
-                $activeIndexes[] = (int) $index;
-                $id = isset($track['id']) ? (int) $track['id'] : null;
-                $file = $request->file('captions.'.$index.'.file');
-                $language = strtolower(trim((string) ($track['language_code'] ?? '')));
-                $label = trim((string) ($track['label'] ?? ''));
-
-                if ($id && (! $topic || ! in_array($id, $allowedIds, true))) {
+                if ($hasId && (! $topic || ! in_array($id, $allowedIds, true))) {
                     $validator->errors()->add(
                         'captions.'.$index.'.id',
                         'The selected caption does not belong to this topic.',
                     );
                 }
+
+                if (filter_var($track['remove'] ?? false, FILTER_VALIDATE_BOOL)) {
+                    continue;
+                }
+
+                $activeIndexes[] = (int) $index;
+                $file = $request->file('captions.'.$index.'.file');
+                $language = strtolower(trim((string) ($track['language_code'] ?? '')));
+                $label = trim((string) ($track['label'] ?? ''));
+
                 if (! $id && ! $file) {
                     $validator->errors()->add(
                         'captions.'.$index.'.file',

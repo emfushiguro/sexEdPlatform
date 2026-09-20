@@ -8,7 +8,7 @@ Branch: `enhancement`
 - `php artisan migrate:status` — exit 0; `2026_09_20_000001_create_lesson_topic_captions_table` is `[4] Ran`.
 - `php artisan migrate` — exit 0; `Nothing to migrate.`
 - `php artisan test ...` — exit 1 before PHPUnit; Symfony rejects the Windows CWD as nonexistent.
-- `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Database/VideoCaptionMigrationTest.php tests/Unit/Rules/WebVttFileTest.php tests/Feature/Instructor/VideoCaptionManagementTest.php tests/Feature/Instructor/VideoUploadTest.php tests/Feature/Learner/VideoCaptionRenderingTest.php tests/Feature/Learner/LessonPageTest.php` — exit 0; **32 tests, 180 assertions**.
+- `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Database/VideoCaptionMigrationTest.php tests/Unit/Rules/WebVttFileTest.php tests/Feature/Instructor/VideoCaptionManagementTest.php tests/Feature/Instructor/VideoUploadTest.php tests/Feature/Learner/VideoCaptionRenderingTest.php tests/Feature/Learner/LessonPageTest.php` — exit 0; **36 tests, 193 assertions**.
 - `node --test <all tests/Unit/JavaScript/*.test.js files>` — exit 0; **11 tests, 11 pass**. PowerShell expanded files explicitly because directory form is unsupported here.
 - `npm.cmd run build` — exit 0; Vite 7.3.0 built successfully after sandbox retry.
 - `vendor\\bin\\pint --test <caption-related PHP files>` — exit 0; **10 files pass**.
@@ -28,7 +28,9 @@ The caption management feature tests cover:
 - cleanup after provider switching and topic deletion;
 - cleanup after failed caption persistence;
 - owner-only topic management and authoring controls;
-- learner rendering for zero, multiple, escaped, default, and external-provider cases.
+- learner rendering for zero, multiple, escaped, default, and external-provider cases;
+- source-switch media requirements, removed-row validation, rollback cleanup, and delete-veto cleanup.
+- source-switch media requirements, removed-row validation, rollback cleanup, and delete-veto cleanup.
 
 ## Manual QA
 
@@ -42,6 +44,8 @@ No browser session was available in this environment (`agent.browsers.list()` re
 - playback, progress, speed, volume, mute, and responsive regressions.
 
 Static and unit coverage confirms that local videos render native tracks, zero-track videos omit caption controls, configured defaults activate, no-default tracks remain off with automatic language selection, and YouTube/Vimeo topics retain the iframe path without local tracks.
+
+The final caption-management rerun after the review fixes passed **14 tests, 61 assertions**. A later attempt to run separate PHPUnit processes in parallel against the shared cc_db_test database left its migration metadata/schema inconsistent; subsequent combined runs reported missing or already-existing base tables. No reset or destructive repair was run.
 
 ## Outstanding issues
 

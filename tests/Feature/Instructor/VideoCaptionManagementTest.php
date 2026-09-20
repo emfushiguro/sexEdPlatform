@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -32,10 +33,11 @@ class VideoCaptionManagementTest extends TestCase
     public function test_owner_can_create_multiple_tracks_with_one_default(): void
     {
         [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $title = 'Captioned video '.Str::uuid();
 
         $this->actingAs($instructor)->post(route('instructor.topics.store'), [
             'lesson_id' => $lesson->id,
-            'title' => 'Captioned video',
+            'title' => $title,
             'type' => 'video',
             'duration' => 3,
             'video_source' => 'upload',
@@ -47,7 +49,7 @@ class VideoCaptionManagementTest extends TestCase
             'caption_default' => 1,
         ])->assertRedirect();
 
-        $topic = LessonTopic::where('title', 'Captioned video')->firstOrFail();
+        $topic = LessonTopic::where('title', $title)->firstOrFail();
         $this->assertDatabaseHas('lesson_topic_captions', [
             'lesson_topic_id' => $topic->id,
             'language_code' => 'en',
@@ -276,6 +278,91 @@ class VideoCaptionManagementTest extends TestCase
         ])->assertSessionHasErrors('captions.0.id');
     }
 
+    public function test_switching_video_source_requires_media_for_the_new_provider(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $local = $this->localVideoTopic($lesson);
+        $caption = $local->captions()->create([
+            'file_path' => 'captions/'.$local->id.'/english.vtt',
+            'language_code' => 'en',
+            'label' => 'English',
+            'is_default' => true,
+        ]);
+        Storage::disk('public')->put($caption->file_path, $this->vttText());
+
+        $this->actingAs($instructor)->put(route('instructor.topics.update', $local), [
+            'title' => $local->title,
+            'type' => 'video',
+            'duration' => 3,
+            'video_source' => 'url',
+        ])->assertSessionHasErrors('video_url');
+
+        $external = LessonTopic::factory()->create([
+            'lesson_id' => $lesson->id,
+            'type' => 'video',
+            'duration' => 3,
+            'video_provider' => 'youtube',
+            'video_id' => 'dQw4w9WgXcQ',
+            'video_file_path' => null,
+        ]);
+
+        $this->actingAs($instructor)->put(route('instructor.topics.update', $external), [
+            'title' => $external->title,
+            'type' => 'video',
+            'duration' => 3,
+            'video_source' => 'upload',
+            'captions' => [[
+                'file' => $this->vtt('external.vtt'),
+                'language_code' => 'en',
+                'label' => 'English',
+            ]],
+        ])->assertSessionHasErrors('video_file');
+    }
+
+    public function test_removed_caption_rows_skip_content_validation_but_still_validate_ids(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $target = $this->localVideoTopic($lesson);
+        $caption = $target->captions()->create([
+            'file_path' => 'captions/'.$target->id.'/english.vtt',
+            'language_code' => 'en',
+            'label' => 'English',
+            'is_default' => true,
+        ]);
+        Storage::disk('public')->put($caption->file_path, $this->vttText());
+
+        $this->actingAs($instructor)->put(route('instructor.topics.update', $target), [
+            'title' => $target->title,
+            'type' => 'video',
+            'duration' => 3,
+            'video_source' => 'upload',
+            'captions' => [[
+                'id' => $caption->id,
+                'remove' => 1,
+                'file' => UploadedFile::fake()->createWithContent('bad.txt', 'not webvtt'),
+            ]],
+        ])->assertRedirect();
+
+        $foreignTopic = $this->localVideoTopic($lesson);
+        $foreignCaption = $foreignTopic->captions()->create([
+            'file_path' => 'captions/'.$foreignTopic->id.'/foreign.vtt',
+            'language_code' => 'en',
+            'label' => 'English',
+            'is_default' => false,
+        ]);
+
+        $this->actingAs($instructor)->put(route('instructor.topics.update', $target), [
+            'title' => $target->title,
+            'type' => 'video',
+            'duration' => 3,
+            'video_source' => 'upload',
+            'captions' => [[
+                'id' => $foreignCaption->id,
+                'remove' => 1,
+            ]],
+        ])->assertSessionHasErrors('captions.0.id');
+    }
+
     public function test_failed_caption_persistence_removes_new_files(): void
     {
         [$instructor, $lesson] = $this->topicAuthoringFixture();
@@ -309,6 +396,66 @@ class VideoCaptionManagementTest extends TestCase
 
         $this->assertSame([], Storage::disk('public')->allFiles('captions'));
         $this->assertDatabaseMissing('lesson_topics', ['title' => 'Failed caption']);
+    }
+
+    public function test_failed_create_after_caption_sync_removes_new_files(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        Module::saving(static function (): void {
+            throw new RuntimeException('module persistence failed');
+        });
+
+        try {
+            $this->actingAs($instructor)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'X-Requested-With' => 'XMLHttpRequest',
+                ])
+                ->post(route('instructor.topics.store'), [
+                    'lesson_id' => $lesson->id,
+                    'title' => 'Failed module persistence',
+                    'type' => 'video',
+                    'duration' => 3,
+                    'video_source' => 'upload',
+                    'video_file' => $this->video(),
+                    'captions' => [[
+                        'file' => $this->vtt('english.vtt'),
+                        'language_code' => 'en',
+                        'label' => 'English',
+                    ]],
+                ])
+                ->assertStatus(500);
+        } finally {
+            Module::flushEventListeners();
+        }
+
+        $this->assertSame([], Storage::disk('public')->allFiles('captions'));
+        $this->assertDatabaseMissing('lesson_topics', ['title' => 'Failed module persistence']);
+    }
+
+    public function test_topic_delete_failure_preserves_caption_files(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $topic = $this->localVideoTopic($lesson);
+        $caption = $topic->captions()->create([
+            'file_path' => 'captions/'.$topic->id.'/english.vtt',
+            'language_code' => 'en',
+            'label' => 'English',
+            'is_default' => true,
+        ]);
+        Storage::disk('public')->put($caption->file_path, $this->vttText());
+        LessonTopic::deleting(static fn (): bool => false);
+
+        try {
+            $this->actingAs($instructor)
+                ->delete(route('instructor.topics.destroy', $topic))
+                ->assertStatus(500);
+        } finally {
+            LessonTopic::flushEventListeners();
+        }
+
+        $this->assertDatabaseHas('lesson_topic_captions', ['id' => $caption->id]);
+        Storage::disk('public')->assertExists($caption->file_path);
     }
 
     public function test_authoring_pages_render_caption_management_only_for_authorized_topic_forms(): void
