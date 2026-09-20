@@ -61,6 +61,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
         connectorFrame: null,
         pointerFrame: null,
         connectorRefreshHandler: null,
+        failedMedia: {},
 
         isLocked() {
             return ['completed', 'practice_completed'].includes(this.status) || this.submitting;
@@ -155,7 +156,28 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             return this.answerChecked ? 'unanswered' : 'idle';
         },
 
-        endpointLabel(side, id, value) {
+        mediaKey(side, id) {
+            return `${side}:${id}`;
+        },
+
+        itemLabel(item) {
+            return item?.value?.trim?.() || item?.image_alt?.trim?.() || 'Matching item';
+        },
+
+        isMediaFailed(side, id) {
+            return this.failedMedia[this.mediaKey(side, id)] === true;
+        },
+
+        mediaLoaded() {
+            return this.scheduleConnectorRefresh();
+        },
+
+        mediaFailed(side, id) {
+            this.failedMedia[this.mediaKey(side, id)] = true;
+            return this.scheduleConnectorRefresh();
+        },
+
+        endpointLabel(side, id) {
             const state = this.endpointState(side, id);
             const pair = this.connectionForEndpoint(side, id);
             const targetId = side === 'left' ? pair?.right_id : pair?.left_id;
@@ -163,12 +185,14 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             const targetLabel = targetId ? this.labelFor(targetItems, targetId) : null;
             const connection = targetLabel ? ` connected to ${targetLabel}` : '';
             const stateLabel = state === 'correct' ? 'correct' : state === 'selected' ? 'selected' : state;
+            const items = side === 'left' ? this.leftItems : this.rightItems;
 
-            return `${value} - ${stateLabel}${connection}`;
+            return `${this.labelFor(items, id)} - ${stateLabel}${connection}`;
         },
 
         labelFor(items, id) {
-            return items.find((item) => item.id === id)?.value ?? id;
+            const item = items.find((candidate) => candidate.id === id);
+            return item ? this.itemLabel(item) : id;
         },
 
         scheduleConnectorRefresh() {
@@ -479,6 +503,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             this.pointerPosition = null;
             this.pendingConnection = null;
             this.rejectedConnection = null;
+            this.failedMedia = {};
             this.requestState = 'idle';
             this.feedback = '';
             this.error = '';
@@ -500,6 +525,7 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             this.feedback = '';
             this.error = '';
             this.connectorLines = [];
+            this.failedMedia = {};
             return this;
         },
     };

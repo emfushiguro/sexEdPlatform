@@ -10,6 +10,30 @@ import { createInteractiveActivity } from '../../resources/js/interactive-activi
 
 const response = (data, ok = true) => ({ ok, json: async () => data });
 
+test('image-only matching items use alt text in endpoint and connection labels', () => {
+    const activity = createMatchingActivity({
+        leftItems: [{ id: 'left-image', value: '', image_alt: 'Water cycle diagram' }],
+        rightItems: [{ id: 'right-text', value: 'Evaporation' }],
+    });
+
+    assert.equal(activity.itemLabel(activity.leftItems[0]), 'Water cycle diagram');
+    assert.match(activity.endpointLabel('left', 'left-image'), /Water cycle diagram/);
+    activity.matchedPairs = [{ left_id: 'left-image', right_id: 'right-text' }];
+    assert.match(activity.endpointLabel('left', 'left-image'), /connected to Evaporation/);
+});
+
+test('matching refreshes dot geometry after image load and image failure', () => {
+    const activity = createMatchingActivity();
+    let refreshes = 0;
+    activity.scheduleConnectorRefresh = () => { refreshes += 1; return activity; };
+
+    activity.mediaLoaded();
+    activity.mediaFailed('left', 'left-image');
+
+    assert.equal(refreshes, 2);
+    assert.equal(activity.isMediaFailed('left', 'left-image'), true);
+});
+
 test('a connection can begin from either side and normalizes to the server shape', () => {
     assert.deepEqual(normalizeProposal(
         { side: 'right', id: 'right-1' },

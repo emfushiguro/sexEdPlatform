@@ -5,6 +5,26 @@ import { createInteractiveActivity } from '../../resources/js/interactive-activi
 
 const response = (data, ok = true) => ({ ok, json: async () => data });
 
+test('image-only sequencing items use alt text in drag announcements', () => {
+    const activity = createSequencingActivity({
+        items: [{ id: 'one', value: '', image_url: '/storage/one.png', image_alt: 'First illustrated step' }],
+        initialOrder: ['one'],
+    });
+
+    assert.equal(activity.itemLabel(activity.items[0]), 'First illustrated step');
+    activity.draggedId = 'one';
+    assert.match(activity.announcement('Picked up', 0), /First illustrated step/);
+});
+
+test('sequencing payload replacement retains image fields and clears failed media state', () => {
+    const activity = createSequencingActivity();
+    activity.failedMedia.one = true;
+    activity.loadPayload({ items: [{ id: 'one', value: '', image_url: '/storage/one.png', image_alt: 'First step' }] }, 'practice');
+
+    assert.equal(activity.itemFor('one').image_url, '/storage/one.png');
+    assert.deepEqual(activity.failedMedia, {});
+});
+
 test('moveItem obeys bounds and preserves one shared order array', () => {
     assert.deepEqual(moveItem(['one', 'two', 'three'], 1, -1), ['two', 'one', 'three']);
     assert.deepEqual(moveItem(['one', 'two', 'three'], 0, -1), ['one', 'two', 'three']);

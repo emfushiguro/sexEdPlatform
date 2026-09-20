@@ -38,6 +38,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         dragAnnouncement: '',
         autoScrollFrame: null,
         lastPointerY: null,
+        failedMedia: {},
 
         isLocked() {
             return ['completed', 'practice_completed'].includes(this.status) || this.submitting;
@@ -72,6 +73,19 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
 
         itemFor(id) {
             return this.items.find((item) => item.id === id) ?? { id, value: id };
+        },
+
+        itemLabel(item) {
+            return item?.value?.trim?.() || item?.image_alt?.trim?.() || 'Item';
+        },
+
+        isMediaFailed(id) {
+            return this.failedMedia[id] === true;
+        },
+
+        mediaFailed(id) {
+            this.failedMedia[id] = true;
+            return this;
         },
 
         publishResult(data) {
@@ -120,7 +134,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         },
 
         announcement(action, index) {
-            const label = this.itemFor(this.draggedId)?.value ?? 'Item';
+            const label = this.itemLabel(this.itemFor(this.draggedId));
             return `${action} ${label}, position ${index + 1} of ${this.order.length}.`;
         },
 
@@ -193,7 +207,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             if (event && typeof event === 'object' && eventTarget === null) return this.cancelDrag();
             if (eventTarget !== null) this.setDragTarget(eventTarget);
             const to = this.reorder.to ?? this.reorder.from;
-            const label = this.itemFor(this.draggedId)?.value ?? 'Item';
+            const label = this.itemLabel(this.itemFor(this.draggedId));
             const next = this.reorder.commit(this.order);
             const changed = JSON.stringify(next) !== JSON.stringify(this.order);
             this.order = next;
@@ -216,7 +230,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
         cancelDrag() {
             if (!this.isDragging()) return this;
             const index = this.reorder.from ?? this.dragIndex ?? 0;
-            const label = this.itemFor(this.draggedId)?.value ?? 'Item';
+            const label = this.itemLabel(this.itemFor(this.draggedId));
             this.reorder.cancel();
             this.candidateOrder = [...this.order];
             this.stopAutoScroll();
@@ -381,6 +395,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             this.lastPointerY = null;
             this.dragIndex = null;
             this.dragOverIndex = null;
+            this.failedMedia = {};
             return this;
         },
 
@@ -400,6 +415,7 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             this.lastPointerY = null;
             this.dragIndex = null;
             this.dragOverIndex = null;
+            this.failedMedia = {};
             return this;
         },
     };
