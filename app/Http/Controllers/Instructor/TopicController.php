@@ -8,20 +8,26 @@ use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
+use App\Rules\WebVttFile;
 use App\Services\Content\ContentOwnershipGuard;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityAuthoringService;
 use App\Services\Learning\QuestionAuthoringService;
+use App\Services\LessonTopicCaptionService;
 use App\Support\ContentPanelContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use RuntimeException;
+use Throwable;
 
 class TopicController extends Controller
 {
     public function __construct(
         private QuestionAuthoringService $questionAuthoring,
         private InteractiveActivityAuthoringService $activityAuthoring,
+        private LessonTopicCaptionService $captionService,
     ) {}
 
     public function create(Request $request)
@@ -119,6 +125,15 @@ class TopicController extends Controller
             throw $e;
         }
 
+        $captionInput = $this->validateCaptionInput(
+            $request,
+            null,
+            $validated['type'],
+            $request->input('video_source'),
+        );
+        $storedVideoPaths = [];
+        $captionChanges = ['stored' => [], 'obsolete' => []];
+
         // Validate that text topics have either text_content or image_attachments
         if ($validated['type'] === 'text') {
             if (empty($request->input('text_content')) && ! $request->hasFile('image_attachments')) {
@@ -164,6 +179,7 @@ class TopicController extends Controller
                 }
 
                 $validated['video_file_path'] = $videoPath;
+                $storedVideoPaths[] = $videoPath;
                 $validated['video_provider'] = 'local';
                 $validated['video_id'] = null;
             } elseif (! empty($validated['video_url'])) {
@@ -269,7 +285,16 @@ class TopicController extends Controller
         ]);
 
         // Clean up temporary fields that shouldn't be stored in database
-        $temporaryFields = ['video_source', 'video_url', 'video_file', 'video_description', 'image_captions', 'worksheet_instructions'];
+        $temporaryFields = [
+            'video_source',
+            'video_url',
+            'video_file',
+            'video_description',
+            'image_captions',
+            'worksheet_instructions',
+            'captions',
+            'caption_default',
+        ];
         foreach ($temporaryFields as $field) {
             unset($validated[$field]);
         }
@@ -277,32 +302,45 @@ class TopicController extends Controller
         \Log::info('Creating topic', ['data_keys' => array_keys($validated)]);
 
         try {
-            $topic = $lesson->topics()->create($validated);
-            \Log::info('Topic created successfully', ['topic_id' => $topic->id]);
-        } catch (\Exception $e) {
+            [$topic, $captionChanges] = DB::transaction(function () use ($lesson, $validated, $captionInput): array {
+                $topic = $lesson->topics()->create($validated);
+                \Log::info('Topic created successfully', ['topic_id' => $topic->id]);
+
+                $captionChanges = $this->captionService->sync(
+                    $topic,
+                    $captionInput['tracks'],
+                    $captionInput['default'],
+                );
+
+                $lesson->duration = $lesson->topics()->instructional()->sum('duration');
+                $lesson->save();
+
+                $module = $lesson->module;
+                $module->duration_minutes = $module->lessons()->sum('duration');
+                $module->save();
+
+                return [$topic, $captionChanges];
+            });
+        } catch (Throwable $exception) {
+            Storage::disk('public')->delete($storedVideoPaths);
+            Storage::disk('public')->delete($captionChanges['stored']);
+
             \Log::error('Failed to create topic', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'error' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
             ]);
 
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'errors' => ['error' => ['Failed to create topic: '.$e->getMessage()]],
+                    'errors' => ['error' => ['Failed to create topic: '.$exception->getMessage()]],
                 ], 500);
             }
 
-            return back()->withErrors(['error' => 'Failed to create topic: '.$e->getMessage()])->withInput();
+            return back()->withErrors(['error' => 'Failed to create topic: '.$exception->getMessage()])->withInput();
         }
 
-        // Update lesson duration (sum of all topics)
-        $lesson->duration = $lesson->topics()->instructional()->sum('duration');
-        $lesson->save();
-
-        // Update module duration (sum of all lessons)
-        $module = $lesson->module;
-        $module->duration_minutes = $module->lessons()->sum('duration');
-        $module->save();
+        Storage::disk('public')->delete($captionChanges['obsolete']);
 
         // Return JSON for AJAX requests
         if ($request->wantsJson() || $request->ajax()) {
@@ -321,7 +359,7 @@ class TopicController extends Controller
     {
         $this->authorize('update', $topic);
         $this->ensureAdminCanMutateTopic($topic);
-        $topic->load('lesson');
+        $topic->load(['lesson', 'captions']);
 
         if ($topic->type === 'interactive_checkpoint') {
             $question = $topic->checkpointQuestion()->with('options')->firstOrFail();
@@ -377,6 +415,25 @@ class TopicController extends Controller
 
         ]);
 
+        $captionInputProvided = $request->exists('captions')
+            || $request->exists('caption_default');
+        $finalVideoSource = $request->input('video_source');
+        if ($validated['type'] === 'video' && $finalVideoSource === null) {
+            $finalVideoSource = $topic->video_provider === 'local' ? 'upload' : 'url';
+        }
+        $isLocalVideo = $validated['type'] === 'video' && $finalVideoSource === 'upload';
+        $captionInput = null;
+        if ($captionInputProvided) {
+            $captionInput = $this->validateCaptionInput(
+                $request,
+                $topic,
+                $validated['type'],
+                $finalVideoSource,
+            );
+        } elseif (! $isLocalVideo) {
+            $captionInput = ['tracks' => [], 'default' => null];
+        }
+
         if ($validated['type'] === 'text') {
             $existingImages = is_array($topic->image_attachments) ? count($topic->image_attachments) : 0;
             $imagesMarkedForDelete = count($request->input('delete_images', []));
@@ -397,6 +454,7 @@ class TopicController extends Controller
 
         $oldVideoPathToDelete = null;
         $newVideoPathToDelete = null;
+        $captionChanges = ['stored' => [], 'obsolete' => []];
 
         // Handle video
         if ($validated['type'] === 'video') {
@@ -537,41 +595,57 @@ class TopicController extends Controller
             'worksheet_file',
             'worksheet_files',
             'delete_images',
+            'captions',
+            'caption_default',
         ];
         foreach ($temporaryFields as $field) {
             unset($validated[$field]);
         }
 
-        $topicUpdated = $topic->update($validated);
+        try {
+            DB::transaction(function () use ($topic, $validated, $captionInput, &$captionChanges): void {
+                if (! $topic->update($validated)) {
+                    throw new RuntimeException('Failed to update topic.');
+                }
 
-        if (! $topicUpdated) {
+                if ($captionInput !== null) {
+                    $captionChanges = $this->captionService->sync(
+                        $topic,
+                        $captionInput['tracks'],
+                        $captionInput['default'],
+                    );
+                }
+
+                $lesson = $topic->lesson;
+                $lesson->duration = $lesson->topics()->instructional()->sum('duration');
+                $lesson->save();
+
+                $module = $lesson->module;
+                $module->duration_minutes = $module->lessons()->sum('duration');
+                $module->save();
+            });
+        } catch (Throwable $exception) {
             if ($newVideoPathToDelete !== null) {
                 Storage::disk('public')->delete($newVideoPathToDelete);
             }
+            Storage::disk('public')->delete($captionChanges['stored']);
 
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'errors' => ['error' => ['Failed to update topic.']],
+                    'errors' => ['error' => [$exception->getMessage()]],
                 ], 500);
             }
 
-            return back()->withErrors(['error' => 'Failed to update topic.'])->withInput();
+            return back()->withErrors(['error' => $exception->getMessage()])->withInput();
         }
 
-        if ($topicUpdated && $oldVideoPathToDelete !== null) {
+        if ($oldVideoPathToDelete !== null) {
             Storage::disk('public')->delete($oldVideoPathToDelete);
         }
+        Storage::disk('public')->delete($captionChanges['obsolete']);
 
-        // Update lesson duration
         $lesson = $topic->lesson;
-        $lesson->duration = $lesson->topics()->instructional()->sum('duration');
-        $lesson->save();
-
-        // Update module duration
-        $module = $lesson->module;
-        $module->duration_minutes = $module->lessons()->sum('duration');
-        $module->save();
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
@@ -658,8 +732,11 @@ class TopicController extends Controller
         $this->ensureAdminCanMutateTopic($topic);
 
         $lesson = $topic->lesson;
+        $captionPaths = $topic->captions()->pluck('file_path')->all();
 
-        // Delete associated files
+        $topic->delete();
+
+        // Delete associated files after persistence succeeds.
         if ($topic->video_file_path) {
             Storage::disk('public')->delete($topic->video_file_path);
         }
@@ -673,8 +750,7 @@ class TopicController extends Controller
                 }
             }
         }
-
-        $topic->delete();
+        Storage::disk('public')->delete($captionPaths);
 
         // Update lesson duration
         $lesson->duration = $lesson->topics()->instructional()->sum('duration');
@@ -687,6 +763,119 @@ class TopicController extends Controller
 
         return redirect()->route($this->routeName('lessons.show'), $lesson)
             ->with('success', 'Topic deleted successfully!');
+    }
+
+    /**
+     * @return array{tracks: array<int, array<string, mixed>>, default: ?int}
+     */
+    private function validateCaptionInput(
+        Request $request,
+        ?LessonTopic $topic,
+        string $type,
+        ?string $videoSource,
+    ): array {
+        $validator = Validator::make($request->all(), [
+            'captions' => ['nullable', 'array'],
+            'captions.*' => ['array'],
+            'captions.*.id' => ['nullable', 'integer'],
+            'captions.*.file' => ['nullable', 'file', 'max:2048', new WebVttFile],
+            'captions.*.language_code' => [
+                'nullable',
+                'string',
+                'max:35',
+                'regex:/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/',
+            ],
+            'captions.*.label' => ['nullable', 'string', 'max:100'],
+            'captions.*.remove' => ['nullable', 'boolean'],
+            'caption_default' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $validator->after(function ($validator) use (
+            $request,
+            $topic,
+            $type,
+            $videoSource,
+        ): void {
+            $tracks = $request->input('captions', []);
+            $isLocalVideo = $type === 'video' && $videoSource === 'upload';
+            $allowedIds = $topic
+                ? $topic->captions()->pluck('id')->map(fn ($id): int => (int) $id)->all()
+                : [];
+            $activeIndexes = [];
+            $seenLanguages = [];
+
+            if (! $isLocalVideo && ($tracks !== [] || $request->hasFile('captions'))) {
+                $validator->errors()->add(
+                    'captions',
+                    'Caption files are available only for uploaded local videos.',
+                );
+
+                return;
+            }
+
+            foreach ($tracks as $index => $track) {
+                if (filter_var($track['remove'] ?? false, FILTER_VALIDATE_BOOL)) {
+                    continue;
+                }
+
+                $activeIndexes[] = (int) $index;
+                $id = isset($track['id']) ? (int) $track['id'] : null;
+                $file = $request->file('captions.'.$index.'.file');
+                $language = strtolower(trim((string) ($track['language_code'] ?? '')));
+                $label = trim((string) ($track['label'] ?? ''));
+
+                if ($id && (! $topic || ! in_array($id, $allowedIds, true))) {
+                    $validator->errors()->add(
+                        'captions.'.$index.'.id',
+                        'The selected caption does not belong to this topic.',
+                    );
+                }
+                if (! $id && ! $file) {
+                    $validator->errors()->add(
+                        'captions.'.$index.'.file',
+                        'A WebVTT file is required.',
+                    );
+                }
+                if ($language === '') {
+                    $validator->errors()->add(
+                        'captions.'.$index.'.language_code',
+                        'A caption language code is required.',
+                    );
+                } elseif (isset($seenLanguages[$language])) {
+                    $validator->errors()->add(
+                        'captions.'.$index.'.language_code',
+                        'Each caption language may be added only once.',
+                    );
+                } else {
+                    $seenLanguages[$language] = true;
+                }
+                if ($label === '') {
+                    $validator->errors()->add(
+                        'captions.'.$index.'.label',
+                        'A learner-facing caption label is required.',
+                    );
+                }
+            }
+
+            $default = $request->input('caption_default');
+            if ($default !== null
+                && $default !== ''
+                && ! in_array((int) $default, $activeIndexes, true)) {
+                $validator->errors()->add(
+                    'caption_default',
+                    'The default caption must reference an active track.',
+                );
+            }
+        });
+
+        $validated = $validator->validate();
+
+        return [
+            'tracks' => $validated['captions'] ?? [],
+            'default' => isset($validated['caption_default'])
+                ? (int) $validated['caption_default']
+                : null,
+        ];
     }
 
     private function routeName(string $suffix): string
