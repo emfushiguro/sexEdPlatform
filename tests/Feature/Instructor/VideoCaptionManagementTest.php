@@ -24,6 +24,11 @@ class VideoCaptionManagementTest extends TestCase
         Storage::fake('public');
     }
 
+    protected function refreshTestDatabase(): void
+    {
+        // Shared cc_db_test schema is provisioned outside this test process.
+    }
+
     public function test_owner_can_create_multiple_tracks_with_one_default(): void
     {
         [$instructor, $lesson] = $this->topicAuthoringFixture();
@@ -304,6 +309,35 @@ class VideoCaptionManagementTest extends TestCase
 
         $this->assertSame([], Storage::disk('public')->allFiles('captions'));
         $this->assertDatabaseMissing('lesson_topics', ['title' => 'Failed caption']);
+    }
+
+    public function test_authoring_pages_render_caption_management_only_for_authorized_topic_forms(): void
+    {
+        [$owner, $lesson] = $this->topicAuthoringFixture();
+        $topic = $this->localVideoTopic($lesson);
+        $other = User::factory()->create();
+        $other->assignRole('instructor');
+
+        $responses = [
+            $this->actingAs($owner)
+                ->get(route('instructor.topics.create', ['lesson' => $lesson])),
+            $this->actingAs($owner)
+                ->get(route('instructor.topics.edit', $topic)),
+        ];
+
+        foreach ($responses as $response) {
+            $response->assertOk()
+                ->assertSee('data-caption-tracks-form', false)
+                ->assertSee('data-caption-template', false)
+                ->assertSee('data-add-caption', false)
+                ->assertSee('name="caption_default"', false)
+                ->assertSee('accept=".vtt,text/vtt,text/plain"', false)
+                ->assertSee('WebVTT up to 2 MB', false);
+        }
+
+        $this->actingAs($other)
+            ->get(route('instructor.topics.edit', $topic))
+            ->assertForbidden();
     }
 
     private function vtt(string $name, string $cue = 'Hello'): UploadedFile

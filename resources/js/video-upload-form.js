@@ -207,11 +207,14 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
                 return;
             }
 
+            const firstValidationError = Object.values(payload.errors || {})
+                .flat()
+                .find(Boolean);
             const message = xhr.status === 413
-                ? 'The video is larger than the server request limit. Choose a video of 100 MB or less.'
-                : payload.errors?.video_file?.[0]
+                ? 'The upload is larger than the server request limit.'
+                : firstValidationError
                     || payload.message
-                    || 'The video could not be uploaded. Please try again.';
+                    || 'The topic could not be saved. Please try again.';
             restoreAfterFailure(message);
         });
 

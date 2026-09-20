@@ -207,6 +207,8 @@
                 @enderror
             </div>
 
+            @include('instructor.topics.partials.caption-tracks')
+
             <!-- Video Description/Instructions -->
             <div class="mb-6">
                 <label for="video_description" class="block mb-2 text-sm font-medium text-gray-700">

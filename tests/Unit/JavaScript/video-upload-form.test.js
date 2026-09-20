@@ -109,3 +109,63 @@ test('keeps a cleared invalid selection blocked until reset', () => {
         globalThis.document = previousDocument;
     }
 });
+
+test('shows the first nested validation error returned by the server', () => {
+    const previousDocument = globalThis.document;
+    const previousFormData = globalThis.FormData;
+    const document = {
+        activeElement: null,
+        addEventListener() {},
+        querySelector(selector) {
+            return selector === '[data-video-upload-form-error]' ? formError : null;
+        },
+    };
+    const form = new FakeElement();
+    const fileInput = new FakeElement();
+    const submitButton = new FakeElement();
+    const formError = new FakeElement();
+    form.dataset = { videoMaxBytes: String(VIDEO_UPLOAD_MAX_BYTES) };
+    form.method = 'POST';
+    form.action = '/topics';
+    form.querySelector = (selector) => ({
+        '[data-video-file-input]': fileInput,
+        '[type="submit"]': submitButton,
+        'input[name="_token"]': null,
+    }[selector] ?? null);
+    fileInput.files = [{ name: 'video.mp4', size: 100, type: 'video/mp4' }];
+
+    class FakeXhr {
+        constructor() {
+            this.upload = new FakeElement();
+            this.listeners = {};
+            this.status = 422;
+            this.response = {
+                errors: { 'captions.0.file': ['Caption file is invalid.'] },
+            };
+        }
+
+        open() {}
+
+        setRequestHeader() {}
+
+        addEventListener(type, listener) {
+            this.listeners[type] = listener;
+        }
+
+        send() {
+            this.listeners.load();
+        }
+    }
+
+    globalThis.document = document;
+    globalThis.FormData = class {};
+
+    try {
+        initializeVideoUploadForm(form, () => new FakeXhr());
+        form.dispatch('submit', { preventDefault() {} });
+        assert.equal(formError.textContent, 'Caption file is invalid.');
+    } finally {
+        globalThis.document = previousDocument;
+        globalThis.FormData = previousFormData;
+    }
+});

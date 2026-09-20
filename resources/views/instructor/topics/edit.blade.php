@@ -246,6 +246,8 @@
                 @enderror
             </div>
 
+            @include('instructor.topics.partials.caption-tracks')
+
             <div class="mb-6">
                 <label for="video_description" class="block text-sm font-medium text-gray-700 mb-2">
                     Video Description/Instructions
