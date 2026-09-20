@@ -84,13 +84,15 @@
                                playsinline
                                title="{{ $currentTopic->title }}">
                             <source src="{{ $currentTopic->video_file_url }}" type="video/mp4">
-                            @if($currentTopic->caption_file_path)
-                                <track kind="subtitles"
-                                       label="Subtitles"
-                                       srclang="en"
-                                       src="{{ asset('storage/' . $currentTopic->caption_file_path) }}"
-                                       default>
-                            @endif
+                            @foreach($currentTopic->captions as $caption)
+                                <track
+                                    kind="subtitles"
+                                    src="{{ $caption->file_url }}"
+                                    srclang="{{ $caption->language_code }}"
+                                    label="{{ $caption->label }}"
+                                    @if($caption->is_default) default @endif
+                                >
+                            @endforeach
                         </video>
                     </div>
                 @elseif($currentTopic->video_embed_url)

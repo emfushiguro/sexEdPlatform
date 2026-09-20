@@ -60,6 +60,7 @@ class LessonController extends Controller
             ->orderBy('order')
             ->with([
                 'topics.interactiveActivities',
+                'topics.captions',
                 'quiz' => fn ($q) => $q->where('is_active', true)->with('questions'),
             ])
             ->get();
@@ -213,6 +214,7 @@ class LessonController extends Controller
         $lessonTopics = $lesson->topics()->ordered()->with([
             'checkpointQuestions.options',
             'interactiveActivities',
+            'captions',
         ])->get();
         $checkpointQuestionIds = $lessonTopics->flatMap->checkpointQuestions->pluck('id');
         $checkpointProgress = InteractiveCheckpointProgress::where('user_id', $user->id)

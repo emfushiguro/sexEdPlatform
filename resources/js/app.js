@@ -1,6 +1,7 @@
 import './bootstrap';
 import './video-upload-form';
 import './caption-tracks-form';
+import { plyrOptionsFor } from './video-player';
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import persist from '@alpinejs/persist';
@@ -127,15 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.Plyr = Plyr;
 
     players.forEach((el) => {
-        new Plyr(el, {
-            speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-            captions: { active: el.querySelector('track') !== null, language: 'en', update: true },
-            controls: [
-                'play-large', 'play', 'progress', 'current-time',
-                'mute', 'volume', 'captions', 'settings', 'fullscreen',
-            ],
-            settings: ['captions', 'speed'],
-        });
+        new Plyr(el, plyrOptionsFor(el));
     });
 });
 
