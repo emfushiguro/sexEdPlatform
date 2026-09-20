@@ -21,7 +21,6 @@ class LessonTopic extends Model
         'video_provider',
         'video_id',
         'video_file_path',
-        'caption_file_path',
         'text_content',
         'content_blocks',
         'file_path',
@@ -68,6 +67,13 @@ class LessonTopic extends Model
     public function progress(): HasMany
     {
         return $this->hasMany(LessonTopicProgress::class);
+    }
+
+    public function captions(): HasMany
+    {
+        return $this->hasMany(LessonTopicCaption::class)
+            ->orderByDesc('is_default')
+            ->orderBy('id');
     }
 
     public function interactiveActivities(): HasMany
