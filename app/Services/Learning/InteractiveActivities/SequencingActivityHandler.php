@@ -6,6 +6,7 @@ namespace App\Services\Learning\InteractiveActivities;
 
 use App\Contracts\Learning\InteractiveActivityHandler;
 use App\Enums\InteractiveActivityType;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -27,7 +28,9 @@ class SequencingActivityHandler implements InteractiveActivityHandler
             "{$prefix}items" => ['required', 'array', 'min:3', 'max:12'],
             "{$prefix}items.*.id" => ['nullable', 'string'],
             "{$prefix}items.*.kind" => ['required', 'in:text'],
-            "{$prefix}items.*.value" => ['required', 'string', 'max:500'],
+            "{$prefix}items.*.value" => ['present', 'nullable', 'string', 'max:500'],
+            "{$prefix}items.*.image_path" => ['nullable', 'string', 'max:2048'],
+            "{$prefix}items.*.image_alt" => ['nullable', 'string', 'max:500'],
             "{$prefix}items.*.correct_position" => ['nullable', 'integer'],
         ];
     }
@@ -41,9 +44,7 @@ class SequencingActivityHandler implements InteractiveActivityHandler
             'schema_version' => 1,
             'items' => array_map(function (array $item, int $index) use ($existingIds): array {
                 return [
-                    'id' => isset($existingIds[$item['id'] ?? '']) ? $item['id'] : (string) Str::uuid(),
-                    'kind' => 'text',
-                    'value' => trim($item['value']),
+                    ...$this->normalizeItem($item, isset($existingIds[$item['id'] ?? '']) ? $item['id'] : (string) Str::uuid()),
                     'correct_position' => $index + 1,
                 ];
             }, $configuration['items'], array_keys($configuration['items'])),
@@ -66,7 +67,7 @@ class SequencingActivityHandler implements InteractiveActivityHandler
     {
         $items = [];
         foreach ($configuration['items'] as $item) {
-            $items[$item['id']] = ['id' => $item['id'], 'kind' => $item['kind'], 'value' => $item['value']];
+            $items[$item['id']] = $this->learnerItem($item);
         }
 
         return ['items' => array_values(array_filter(array_map(static fn (string $id): ?array => $items[$id] ?? null, $workingState['item_order'] ?? [])))];
@@ -100,7 +101,7 @@ class SequencingActivityHandler implements InteractiveActivityHandler
     {
         $items = $configuration['items'] ?? [];
         usort($items, static fn (array $a, array $b): int => ($a['correct_position'] ?? 0) <=> ($b['correct_position'] ?? 0));
-        $material = array_map(fn (array $item): string => $this->comparisonValue($item['value']), $items);
+        $material = array_map(fn (array $item): string => $this->semanticValue($item), $items);
 
         return hash('sha256', json_encode($material, JSON_THROW_ON_ERROR));
     }
@@ -118,7 +119,18 @@ class SequencingActivityHandler implements InteractiveActivityHandler
 
         $validator = Validator::make($configuration, $this->rules(''));
         $validator->after(function ($validator) use ($configuration): void {
-            $values = array_map(fn (array $item): string => $this->comparisonValue((string) ($item['value'] ?? '')), $configuration['items'] ?? []);
+            $values = [];
+            foreach ($configuration['items'] ?? [] as $index => $item) {
+                $text = trim((string) ($item['value'] ?? ''));
+                $path = trim((string) ($item['image_path'] ?? ''));
+                if ($text === '' && $path === '') {
+                    $validator->errors()->add("items.{$index}.value", 'An item requires text or an image.');
+                }
+                if ($path !== '' && trim((string) ($item['image_alt'] ?? '')) === '') {
+                    $validator->errors()->add("items.{$index}.image_alt", 'An image requires alt text.');
+                }
+                $values[] = $this->duplicateValue($item);
+            }
             if (count($values) !== count(array_unique($values))) {
                 $validator->errors()->add('items', 'Duplicate item values are not allowed.');
             }
@@ -129,6 +141,47 @@ class SequencingActivityHandler implements InteractiveActivityHandler
     private function comparisonValue(string $value): string
     {
         return mb_strtolower((string) preg_replace('/\s+/u', ' ', trim($value)));
+    }
+
+    private function normalizeItem(array $item, string $id): array
+    {
+        $path = trim((string) ($item['image_path'] ?? ''));
+
+        return [
+            'id' => $id,
+            'kind' => 'text',
+            'value' => trim((string) ($item['value'] ?? '')),
+            'image_path' => $path !== '' ? $path : null,
+            'image_alt' => $path !== '' ? trim((string) ($item['image_alt'] ?? '')) : null,
+        ];
+    }
+
+    private function learnerItem(array $item): array
+    {
+        return [
+            'id' => $item['id'],
+            'kind' => $item['kind'],
+            'value' => $item['value'],
+            'image_url' => $item['image_path'] ? Storage::disk('public')->url($item['image_path']) : null,
+            'image_alt' => $item['image_alt'],
+        ];
+    }
+
+    private function duplicateValue(array $item): string
+    {
+        $text = $this->comparisonValue((string) ($item['value'] ?? ''));
+
+        return $text !== '' ? "text:{$text}" : 'image:'.trim((string) ($item['image_path'] ?? ''));
+    }
+
+    private function semanticValue(array $item): string
+    {
+        $text = $this->comparisonValue((string) ($item['value'] ?? ''));
+        if ($text !== '') {
+            return "text:{$text}";
+        }
+
+        return 'image:'.trim((string) ($item['image_path'] ?? '')).'|'.$this->comparisonValue((string) ($item['image_alt'] ?? ''));
     }
 
     private function result(bool $accepted, bool $correct, bool $complete, array $workingState, ?string $rejectionReason = null, array $details = []): array

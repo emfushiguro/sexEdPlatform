@@ -8,6 +8,7 @@ use App\Enums\InteractiveActivityType;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityRegistry;
 use App\Services\Learning\InteractiveActivities\MatchingActivityHandler;
 use App\Services\Learning\InteractiveActivities\SequencingActivityHandler;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Random\Engine\Mt19937;
@@ -319,6 +320,101 @@ class InteractiveActivityHandlerTest extends UnitTestCase
         $changed['items'][1]['value'] = 'Changed';
         $this->assertSame($sequencing->answerFingerprint($base), $sequencing->answerFingerprint($display));
         $this->assertNotSame($sequencing->answerFingerprint($base), $sequencing->answerFingerprint($changed));
+    }
+
+    public function test_handlers_normalize_and_present_optional_item_images(): void
+    {
+        Storage::fake('public');
+
+        $matching = new MatchingActivityHandler;
+        $matchingConfiguration = $matching->normalize(['pairs' => [
+            [
+                'left' => ['kind' => 'text', 'value' => '', 'image_path' => 'quiz-images/user-1/source.png', 'image_alt' => 'Source diagram'],
+                'right' => ['kind' => 'text', 'value' => 'Target text'],
+            ],
+            [
+                'left' => ['kind' => 'text', 'value' => 'Second source', 'image_path' => 'quiz-images/user-1/second.png', 'image_alt' => 'Supporting illustration'],
+                'right' => ['kind' => 'text', 'value' => '', 'image_path' => 'quiz-images/user-1/target.webp', 'image_alt' => 'Target illustration'],
+            ],
+        ]]);
+        $rightIds = array_column(array_column($matchingConfiguration['pairs'], 'right'), 'id');
+        $matchingPayload = $matching->learnerPayload($matchingConfiguration, [
+            'right_order' => $rightIds,
+            'matched' => [],
+        ]);
+
+        $this->assertSame('', $matchingConfiguration['pairs'][0]['left']['value']);
+        $this->assertSame('quiz-images/user-1/source.png', $matchingConfiguration['pairs'][0]['left']['image_path']);
+        $this->assertSame('Source diagram', $matchingPayload['left_items'][0]['image_alt']);
+        $this->assertStringEndsWith('/quiz-images/user-1/source.png', $matchingPayload['left_items'][0]['image_url']);
+        $this->assertNull($matchingPayload['right_items'][0]['image_url']);
+
+        $sequencing = new SequencingActivityHandler;
+        $sequencingConfiguration = $sequencing->normalize(['items' => [
+            ['kind' => 'text', 'value' => '', 'image_path' => 'quiz-images/user-1/one.png', 'image_alt' => 'First step'],
+            ['kind' => 'text', 'value' => 'Second step'],
+            ['kind' => 'text', 'value' => 'Third step', 'image_path' => 'quiz-images/user-1/three.png', 'image_alt' => 'Third-step diagram'],
+        ]]);
+        $itemIds = array_column($sequencingConfiguration['items'], 'id');
+        $sequencingPayload = $sequencing->learnerPayload($sequencingConfiguration, ['item_order' => $itemIds]);
+
+        $this->assertSame('First step', $sequencingPayload['items'][0]['image_alt']);
+        $this->assertStringEndsWith('/quiz-images/user-1/one.png', $sequencingPayload['items'][0]['image_url']);
+        $this->assertNull($sequencingPayload['items'][1]['image_url']);
+    }
+
+    public function test_handlers_require_text_or_image_and_alt_text_for_images(): void
+    {
+        $matching = new MatchingActivityHandler;
+        $this->assertValidationFails(fn (): array => $matching->normalize(['pairs' => [
+            ['left' => ['kind' => 'text', 'value' => ''], 'right' => ['kind' => 'text', 'value' => 'One']],
+            ['left' => ['kind' => 'text', 'value' => 'Two'], 'right' => ['kind' => 'text', 'value' => 'Second']],
+        ]]));
+        $this->assertValidationFails(fn (): array => $matching->normalize(['pairs' => [
+            ['left' => ['kind' => 'text', 'value' => '', 'image_path' => 'quiz-images/user-1/a.png', 'image_alt' => ''], 'right' => ['kind' => 'text', 'value' => 'One']],
+            ['left' => ['kind' => 'text', 'value' => 'Two'], 'right' => ['kind' => 'text', 'value' => 'Second']],
+        ]]));
+
+        $sequencing = new SequencingActivityHandler;
+        $this->assertValidationFails(fn (): array => $sequencing->normalize(['items' => [
+            ['kind' => 'text', 'value' => ''],
+            ['kind' => 'text', 'value' => 'Second'],
+            ['kind' => 'text', 'value' => 'Third'],
+        ]]));
+        $this->assertValidationFails(fn (): array => $sequencing->normalize(['items' => [
+            ['kind' => 'text', 'value' => '', 'image_path' => 'quiz-images/user-1/a.png'],
+            ['kind' => 'text', 'value' => 'Second'],
+            ['kind' => 'text', 'value' => 'Third'],
+        ]]));
+    }
+
+    public function test_image_only_duplicates_and_semantic_fingerprints_are_media_aware(): void
+    {
+        $sequencing = new SequencingActivityHandler;
+        $this->assertValidationFails(fn (): array => $sequencing->normalize(['items' => [
+            ['kind' => 'text', 'value' => '', 'image_path' => 'quiz-images/user-1/same.png', 'image_alt' => 'First'],
+            ['kind' => 'text', 'value' => '', 'image_path' => 'quiz-images/user-1/same.png', 'image_alt' => 'Second'],
+            ['kind' => 'text', 'value' => 'Third'],
+        ]]));
+
+        $textBase = $sequencing->normalize(['items' => [
+            ['kind' => 'text', 'value' => 'First', 'image_path' => 'quiz-images/user-1/first.png', 'image_alt' => 'First image'],
+            ['kind' => 'text', 'value' => 'Second'],
+            ['kind' => 'text', 'value' => 'Third'],
+        ]]);
+        $textMediaChanged = $textBase;
+        $textMediaChanged['items'][0]['image_path'] = 'quiz-images/user-1/replacement.png';
+        $textMediaChanged['items'][0]['image_alt'] = 'Replacement image';
+        $this->assertSame($sequencing->answerFingerprint($textBase), $sequencing->answerFingerprint($textMediaChanged));
+
+        $imageBase = $sequencing->normalize(['items' => [
+            ['kind' => 'text', 'value' => '', 'image_path' => 'quiz-images/user-1/first.png', 'image_alt' => 'First image'],
+            ['kind' => 'text', 'value' => 'Second'],
+            ['kind' => 'text', 'value' => 'Third'],
+        ]]);
+        $imageChanged = $imageBase;
+        $imageChanged['items'][0]['image_alt'] = 'A materially different first image';
+        $this->assertNotSame($sequencing->answerFingerprint($imageBase), $sequencing->answerFingerprint($imageChanged));
     }
 
     private function assertValidationFails(callable $callback): void

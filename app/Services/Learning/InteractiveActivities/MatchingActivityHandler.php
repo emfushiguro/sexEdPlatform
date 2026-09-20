@@ -6,6 +6,7 @@ namespace App\Services\Learning\InteractiveActivities;
 
 use App\Contracts\Learning\InteractiveActivityHandler;
 use App\Enums\InteractiveActivityType;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -28,10 +29,14 @@ class MatchingActivityHandler implements InteractiveActivityHandler
             "{$prefix}pairs.*.id" => ['nullable', 'string'],
             "{$prefix}pairs.*.left.id" => ['nullable', 'string'],
             "{$prefix}pairs.*.left.kind" => ['required', 'in:text'],
-            "{$prefix}pairs.*.left.value" => ['required', 'string', 'max:500'],
+            "{$prefix}pairs.*.left.value" => ['present', 'nullable', 'string', 'max:500'],
+            "{$prefix}pairs.*.left.image_path" => ['nullable', 'string', 'max:2048'],
+            "{$prefix}pairs.*.left.image_alt" => ['nullable', 'string', 'max:500'],
             "{$prefix}pairs.*.right.id" => ['nullable', 'string'],
             "{$prefix}pairs.*.right.kind" => ['required', 'in:text'],
-            "{$prefix}pairs.*.right.value" => ['required', 'string', 'max:500'],
+            "{$prefix}pairs.*.right.value" => ['present', 'nullable', 'string', 'max:500'],
+            "{$prefix}pairs.*.right.image_path" => ['nullable', 'string', 'max:2048'],
+            "{$prefix}pairs.*.right.image_alt" => ['nullable', 'string', 'max:500'],
         ];
     }
 
@@ -50,16 +55,8 @@ class MatchingActivityHandler implements InteractiveActivityHandler
 
                 return [
                     'id' => isset($existingPairIds[$pair['id'] ?? '']) ? $pair['id'] : (string) Str::uuid(),
-                    'left' => [
-                        'id' => isset($existingLeftIds[$left['id'] ?? '']) ? $left['id'] : (string) Str::uuid(),
-                        'kind' => 'text',
-                        'value' => trim($left['value']),
-                    ],
-                    'right' => [
-                        'id' => isset($existingRightIds[$right['id'] ?? '']) ? $right['id'] : (string) Str::uuid(),
-                        'kind' => 'text',
-                        'value' => trim($right['value']),
-                    ],
+                    'left' => $this->normalizeItem($left, isset($existingLeftIds[$left['id'] ?? '']) ? $left['id'] : (string) Str::uuid()),
+                    'right' => $this->normalizeItem($right, isset($existingRightIds[$right['id'] ?? '']) ? $right['id'] : (string) Str::uuid()),
                 ];
             }, $configuration['pairs']),
         ];
@@ -82,8 +79,8 @@ class MatchingActivityHandler implements InteractiveActivityHandler
         $rightById = [];
         $left = [];
         foreach ($configuration['pairs'] as $pair) {
-            $left[] = $pair['left'];
-            $rightById[$pair['right']['id']] = $pair['right'];
+            $left[] = $this->learnerItem($pair['left']);
+            $rightById[$pair['right']['id']] = $this->learnerItem($pair['right']);
         }
         $matches = $workingState['matched'] ?? [];
 
@@ -211,7 +208,7 @@ class MatchingActivityHandler implements InteractiveActivityHandler
 
     public function answerFingerprint(array $configuration): string
     {
-        $material = array_map(fn (array $pair): array => [$this->comparisonValue($pair['left']['value']), $this->comparisonValue($pair['right']['value'])], $configuration['pairs'] ?? []);
+        $material = array_map(fn (array $pair): array => [$this->semanticValue($pair['left']), $this->semanticValue($pair['right'])], $configuration['pairs'] ?? []);
         usort($material, static fn (array $a, array $b): int => $a <=> $b);
 
         return hash('sha256', json_encode($material, JSON_THROW_ON_ERROR));
@@ -231,7 +228,19 @@ class MatchingActivityHandler implements InteractiveActivityHandler
         $validator = Validator::make($configuration, $this->rules(''));
         $validator->after(function ($validator) use ($configuration): void {
             foreach (['left', 'right'] as $side) {
-                $values = array_map(fn (array $pair): string => $this->comparisonValue((string) ($pair[$side]['value'] ?? '')), $configuration['pairs'] ?? []);
+                $values = [];
+                foreach ($configuration['pairs'] ?? [] as $index => $pair) {
+                    $item = $pair[$side] ?? [];
+                    $text = trim((string) ($item['value'] ?? ''));
+                    $path = trim((string) ($item['image_path'] ?? ''));
+                    if ($text === '' && $path === '') {
+                        $validator->errors()->add("pairs.{$index}.{$side}.value", 'An item requires text or an image.');
+                    }
+                    if ($path !== '' && trim((string) ($item['image_alt'] ?? '')) === '') {
+                        $validator->errors()->add("pairs.{$index}.{$side}.image_alt", 'An image requires alt text.');
+                    }
+                    $values[] = $this->duplicateValue($item);
+                }
                 if (count($values) !== count(array_unique($values))) {
                     $validator->errors()->add("pairs.{$side}", "Duplicate {$side} values are not allowed.");
                 }
@@ -243,6 +252,47 @@ class MatchingActivityHandler implements InteractiveActivityHandler
     private function comparisonValue(string $value): string
     {
         return mb_strtolower((string) preg_replace('/\s+/u', ' ', trim($value)));
+    }
+
+    private function normalizeItem(array $item, string $id): array
+    {
+        $path = trim((string) ($item['image_path'] ?? ''));
+
+        return [
+            'id' => $id,
+            'kind' => 'text',
+            'value' => trim((string) ($item['value'] ?? '')),
+            'image_path' => $path !== '' ? $path : null,
+            'image_alt' => $path !== '' ? trim((string) ($item['image_alt'] ?? '')) : null,
+        ];
+    }
+
+    private function learnerItem(array $item): array
+    {
+        return [
+            'id' => $item['id'],
+            'kind' => $item['kind'],
+            'value' => $item['value'],
+            'image_url' => $item['image_path'] ? Storage::disk('public')->url($item['image_path']) : null,
+            'image_alt' => $item['image_alt'],
+        ];
+    }
+
+    private function duplicateValue(array $item): string
+    {
+        $text = $this->comparisonValue((string) ($item['value'] ?? ''));
+
+        return $text !== '' ? "text:{$text}" : 'image:'.trim((string) ($item['image_path'] ?? ''));
+    }
+
+    private function semanticValue(array $item): string
+    {
+        $text = $this->comparisonValue((string) ($item['value'] ?? ''));
+        if ($text !== '') {
+            return "text:{$text}";
+        }
+
+        return 'image:'.trim((string) ($item['image_path'] ?? '')).'|'.$this->comparisonValue((string) ($item['image_alt'] ?? ''));
     }
 
     private function containsId(array $pairs, string $key, string $id): bool
