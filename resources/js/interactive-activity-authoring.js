@@ -2,8 +2,29 @@ import { createReorderSession, keyboardDestination, moveAt } from './pointer-reo
 
 const copy = (value) => JSON.parse(JSON.stringify(value));
 
-const defaultPair = () => ({ left: { value: '' }, right: { value: '' } });
-const defaultItem = () => ({ value: '' });
+const defaultContentItem = () => ({
+    value: '',
+    image_path: null,
+    image_url: null,
+    image_alt: '',
+    imageUploading: false,
+    imageError: '',
+    localPreviewUrl: null,
+});
+
+const contentItem = (item = {}) => ({
+    ...defaultContentItem(),
+    ...item,
+    value: item?.value ?? '',
+});
+
+const defaultPair = () => ({ left: defaultContentItem(), right: defaultContentItem() });
+const defaultItem = () => defaultContentItem();
+const authoringPair = (pair = {}) => ({
+    ...pair,
+    left: contentItem(pair.left),
+    right: contentItem(pair.right),
+});
 
 export function createInteractiveActivityPreview(options = {}, request = globalThis.fetch?.bind(globalThis)) {
     return {
@@ -87,11 +108,23 @@ export function createInteractiveActivityAuthoring(options = {}) {
             ? copy(options.validationErrors)
             : {},
         pairs: Array.isArray(options.pairs) && options.pairs.length > 0
-            ? copy(options.pairs)
+            ? options.pairs.map(authoringPair)
             : [defaultPair(), defaultPair()],
         items: Array.isArray(options.items) && options.items.length > 0
-            ? copy(options.items)
+            ? options.items.map(contentItem)
             : [defaultItem(), defaultItem(), defaultItem()],
+        imageUploadUrl: options.imageUploadUrl ?? '',
+        imageLibraryUrl: options.imageLibraryUrl ?? '',
+        csrf: options.csrf ?? '',
+        mediaRequest: options.request ?? globalThis.fetch?.bind(globalThis),
+        mediaUploadCount: 0,
+        imageLibraryOpen: false,
+        imageLibraryLoading: false,
+        imageLibraryLoaded: false,
+        imageLibraryImages: [],
+        imageLibraryError: '',
+        mediaTarget: null,
+        mediaTrigger: null,
         dragIndex: null,
         dragOverIndex: null,
         authoringReorder: createReorderSession(),
@@ -100,6 +133,154 @@ export function createInteractiveActivityAuthoring(options = {}) {
 
         setActivityType(type) {
             this.activityType = type === 'sequencing' ? 'sequencing' : 'matching';
+            return this;
+        },
+
+        mediaItem(kind, index, side = null) {
+            if (kind === 'pairs') return this.pairs[index]?.[side] ?? null;
+            if (kind === 'items') return this.items[index] ?? null;
+            return null;
+        },
+
+        itemLabel(item) {
+            return item?.value?.trim?.() || item?.image_alt?.trim?.() || 'Item';
+        },
+
+        attachImage(kind, index, side, image) {
+            const item = this.mediaItem(kind, index, side);
+            if (!item || !image?.path || !image?.url) return this;
+            item.image_path = image.path;
+            item.image_url = image.url;
+            item.imageError = '';
+            return this;
+        },
+
+        removeImage(kind, index, side = null) {
+            const item = this.mediaItem(kind, index, side);
+            if (!item) return this;
+            if (item.localPreviewUrl) globalThis.URL?.revokeObjectURL?.(item.localPreviewUrl);
+            item.image_path = null;
+            item.image_url = null;
+            item.image_alt = '';
+            item.imageError = '';
+            item.localPreviewUrl = null;
+            return this;
+        },
+
+        serializedItem(item, extra = {}) {
+            return {
+                ...extra,
+                kind: 'text',
+                value: item?.value ?? '',
+                image_path: item?.image_path || null,
+                image_alt: item?.image_path ? (item?.image_alt ?? '') : null,
+            };
+        },
+
+        hasPendingMedia() {
+            return this.mediaUploadCount > 0;
+        },
+
+        syncMediaControls() {
+            const form = this.$root?.closest?.('form');
+            form?.querySelectorAll?.('[data-interactive-activity-submit]').forEach((button) => {
+                button.disabled = this.hasPendingMedia();
+            });
+            return this;
+        },
+
+        async uploadImage(kind, index, side, file) {
+            const item = this.mediaItem(kind, index, side);
+            if (!item || !file || typeof this.mediaRequest !== 'function' || !this.imageUploadUrl) return this;
+
+            const previous = { ...item };
+            const previewUrl = globalThis.URL?.createObjectURL?.(file) ?? null;
+            item.imageUploading = true;
+            item.imageError = '';
+            item.localPreviewUrl = previewUrl;
+            if (previewUrl) item.image_url = previewUrl;
+            this.mediaUploadCount += 1;
+            this.syncMediaControls();
+
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                const response = await this.mediaRequest(this.imageUploadUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.csrf, Accept: 'application/json' },
+                    body: formData,
+                });
+                const data = await response.json();
+                if (!response.ok || !data.path || !data.url) {
+                    throw new Error(data.message || 'Unable to upload image.');
+                }
+                this.attachImage(kind, index, side, data);
+            } catch (error) {
+                Object.assign(item, previous);
+                item.imageError = error.message || 'Unable to upload image.';
+            } finally {
+                if (previewUrl) globalThis.URL?.revokeObjectURL?.(previewUrl);
+                item.localPreviewUrl = null;
+                item.imageUploading = false;
+                this.mediaUploadCount = Math.max(0, this.mediaUploadCount - 1);
+                this.syncMediaControls();
+            }
+
+            return this;
+        },
+
+        async openImageLibrary(kind, index, side, trigger = null) {
+            this.mediaTarget = { kind, index, side };
+            this.mediaTrigger = trigger;
+            this.imageLibraryOpen = true;
+            this.imageLibraryError = '';
+
+            if (this.imageLibraryLoaded) return this;
+            if (this.imageLibraryLoading || typeof this.mediaRequest !== 'function' || !this.imageLibraryUrl) return this;
+
+            this.imageLibraryLoading = true;
+            try {
+                const response = await this.mediaRequest(this.imageLibraryUrl, {
+                    headers: { Accept: 'application/json' },
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Unable to load the Image Library.');
+                this.imageLibraryImages = Array.isArray(data.images) ? data.images : [];
+                this.imageLibraryLoaded = true;
+            } catch (error) {
+                this.imageLibraryError = error.message || 'Unable to load the Image Library.';
+            } finally {
+                this.imageLibraryLoading = false;
+            }
+
+            return this;
+        },
+
+        selectLibraryImage(image) {
+            if (this.mediaTarget) {
+                this.attachImage(
+                    this.mediaTarget.kind,
+                    this.mediaTarget.index,
+                    this.mediaTarget.side,
+                    image,
+                );
+            }
+            return this.closeImageLibrary();
+        },
+
+        closeImageLibrary() {
+            this.imageLibraryOpen = false;
+            this.mediaTarget = null;
+            this.mediaTrigger?.focus?.();
+            this.mediaTrigger = null;
+            return this;
+        },
+
+        cleanupMedia() {
+            [...this.pairs.flatMap((pair) => [pair.left, pair.right]), ...this.items]
+                .forEach((item) => {
+                    if (item?.localPreviewUrl) globalThis.URL?.revokeObjectURL?.(item.localPreviewUrl);
+                });
             return this;
         },
 
@@ -151,8 +332,8 @@ export function createInteractiveActivityAuthoring(options = {}) {
         authoringLabel(kind, index) {
             const value = this.authoringItems(kind)[index];
             return kind === 'pairs'
-                ? `${value?.left?.value || 'Pair'} / ${value?.right?.value || 'pair'}`
-                : value?.value || 'Item';
+                ? `${this.itemLabel(value?.left) || 'Pair'} / ${this.itemLabel(value?.right) || 'pair'}`
+                : this.itemLabel(value);
         },
 
         authoringAnnouncement(action, kind, index) {
@@ -250,10 +431,8 @@ export function createInteractiveActivityAuthoring(options = {}) {
             if (this.activityType === 'sequencing') {
                 return {
                     schema_version: 1,
-                    items: this.items.map((item, index) => ({
+                    items: this.items.map((item, index) => this.serializedItem(item, {
                         ...(item.id ? { id: item.id } : {}),
-                        kind: 'text',
-                        value: item.value ?? '',
                         correct_position: index + 1,
                     })),
                 };
@@ -263,16 +442,8 @@ export function createInteractiveActivityAuthoring(options = {}) {
                 schema_version: 1,
                 pairs: this.pairs.map((pair) => ({
                     ...(pair.id ? { id: pair.id } : {}),
-                    left: {
-                        ...(pair.left?.id ? { id: pair.left.id } : {}),
-                        kind: 'text',
-                        value: pair.left?.value ?? '',
-                    },
-                    right: {
-                        ...(pair.right?.id ? { id: pair.right.id } : {}),
-                        kind: 'text',
-                        value: pair.right?.value ?? '',
-                    },
+                    left: this.serializedItem(pair.left, pair.left?.id ? { id: pair.left.id } : {}),
+                    right: this.serializedItem(pair.right, pair.right?.id ? { id: pair.right.id } : {}),
                 })),
             };
         },
@@ -282,6 +453,10 @@ export function createInteractiveActivityAuthoring(options = {}) {
         },
 
         async openPreview(trigger = null) {
+            if (this.hasPendingMedia()) {
+                this.previewError = 'Wait for image uploads to finish.';
+                return null;
+            }
             const form = trigger?.closest?.('form') ?? this.$root?.closest?.('form');
             const result = await this.open(form, trigger);
             if (result === null) this.validationErrors = copy(this.errors);

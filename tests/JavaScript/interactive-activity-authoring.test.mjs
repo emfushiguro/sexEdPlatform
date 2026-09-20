@@ -105,6 +105,124 @@ test('authoring exposes field-specific validation messages', () => {
     assert.equal(authoring.errorFor('configuration.items.1.value'), '');
 });
 
+test('authoring serializes optional media and removes transient preview state', () => {
+    const authoring = createInteractiveActivityAuthoring({
+        pairs: [
+            { left: { value: '', image_path: 'quiz-images/user-1/left.png', image_url: '/storage/left.png', image_alt: 'Left diagram' }, right: { value: 'Right' } },
+            { left: { value: 'Second left' }, right: { value: 'Second right' } },
+        ],
+        items: [
+            { value: '', image_path: 'quiz-images/user-1/one.png', image_url: '/storage/one.png', image_alt: 'First step' },
+            { value: 'Second' },
+            { value: 'Third' },
+        ],
+    });
+
+    assert.deepEqual(authoring.configuration().pairs[0].left, {
+        kind: 'text',
+        value: '',
+        image_path: 'quiz-images/user-1/left.png',
+        image_alt: 'Left diagram',
+    });
+    authoring.setActivityType('sequencing');
+    assert.equal(authoring.configuration().items[0].image_path, 'quiz-images/user-1/one.png');
+    assert.equal(authoring.configuration().items[0].image_url, undefined);
+    assert.equal(authoring.itemLabel(authoring.items[0]), 'First step');
+});
+
+test('removeImage detaches reusable media and clears its alt text', () => {
+    const authoring = createInteractiveActivityAuthoring({
+        items: [
+            { value: '', image_path: 'quiz-images/user-1/one.png', image_url: '/storage/one.png', image_alt: 'First step' },
+            { value: 'Second' },
+            { value: 'Third' },
+        ],
+    });
+
+    authoring.removeImage('items', 0, null);
+
+    assert.equal(authoring.items[0].image_path, null);
+    assert.equal(authoring.items[0].image_url, null);
+    assert.equal(authoring.items[0].image_alt, '');
+});
+
+test('pending uploads disable and restore the owning activity form submit control', () => {
+    const submit = { disabled: false };
+    const form = {
+        querySelectorAll(selector) {
+            assert.equal(selector, '[data-interactive-activity-submit]');
+            return [submit];
+        },
+    };
+    const authoring = createInteractiveActivityAuthoring();
+    authoring.$root = { closest: (selector) => selector === 'form' ? form : null };
+
+    authoring.mediaUploadCount = 1;
+    authoring.syncMediaControls();
+    assert.equal(submit.disabled, true);
+
+    authoring.mediaUploadCount = 0;
+    authoring.syncMediaControls();
+    assert.equal(submit.disabled, false);
+});
+
+test('uploadImage attaches the returned reusable library asset and restores failures safely', async () => {
+    const originalFormData = globalThis.FormData;
+    const originalUrl = globalThis.URL;
+    const revoked = [];
+    globalThis.FormData = class {
+        constructor() { this.values = []; }
+        append(key, value) { this.values.push([key, value]); }
+    };
+    globalThis.URL = {
+        createObjectURL: () => 'blob:preview',
+        revokeObjectURL: (url) => revoked.push(url),
+    };
+
+    try {
+        const authoring = createInteractiveActivityAuthoring({
+            imageUploadUrl: '/image-library/upload',
+            request: async () => ({
+                ok: true,
+                async json() {
+                    return { path: 'quiz-images/user-1/new.webp', url: '/storage/new.webp' };
+                },
+            }),
+        });
+        await authoring.uploadImage('pairs', 0, 'left', { name: 'new.webp' });
+
+        assert.equal(authoring.pairs[0].left.image_path, 'quiz-images/user-1/new.webp');
+        assert.equal(authoring.pairs[0].left.image_url, '/storage/new.webp');
+        assert.equal(authoring.pairs[0].left.imageUploading, false);
+        assert.deepEqual(revoked, ['blob:preview']);
+    } finally {
+        globalThis.FormData = originalFormData;
+        globalThis.URL = originalUrl;
+    }
+});
+
+test('image library loads once, attaches to the active target, and restores focus', async () => {
+    let calls = 0;
+    let focused = 0;
+    const authoring = createInteractiveActivityAuthoring({
+        imageLibraryUrl: '/image-library/json',
+        request: async () => {
+            calls += 1;
+            return { ok: true, async json() { return { images: [{ path: 'quiz-images/user-1/library.png', url: '/storage/library.png' }] }; } };
+        },
+    });
+    const trigger = { focus() { focused += 1; } };
+
+    await authoring.openImageLibrary('items', 0, null, trigger);
+    await authoring.openImageLibrary('items', 0, null, trigger);
+    authoring.selectLibraryImage(authoring.imageLibraryImages[0]);
+
+    assert.equal(calls, 1);
+    assert.equal(authoring.items[0].image_path, 'quiz-images/user-1/library.png');
+    assert.equal(authoring.imageLibraryOpen, false);
+    assert.equal(focused, 1);
+});
+
 test('preview submits FormData, initializes injected Alpine HTML, supports viewports, and restores focus', async () => {
     const originalFormData = globalThis.FormData;
     const calls = [];
