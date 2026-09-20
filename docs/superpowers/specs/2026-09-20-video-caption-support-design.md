@@ -190,8 +190,9 @@ For creates and edits:
 
 Switching a topic from a local video to YouTube/Vimeo removes every caption
 record and caption file after the source update succeeds. Deleting a topic
-through the existing controller similarly deletes its caption files before
-the database cascade removes their records.
+through the existing controller captures the caption paths before the database
+cascade removes their records, then deletes the files only after the topic
+deletion succeeds.
 
 The service is deliberately limited to caption synchronization. Existing
 video, image, worksheet, duration, and redirect behavior remains in the
@@ -286,4 +287,3 @@ Manual responsive QA will exercise caption toggling, language switching,
 default behavior, seeking, playback speed, volume/mute, desktop, mobile,
 fullscreen, and a no-caption local video. These checks use disposable topics
 through normal application flows and never reset development data.
-
