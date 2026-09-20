@@ -47,6 +47,7 @@ class ImageLibraryController extends Controller
 
         foreach ($files as $file) {
             $images[] = [
+                'path'     => $file,
                 'filename' => basename($file),
                 'url'      => asset('storage/' . $file),
                 'size_kb'  => round(Storage::disk('public')->size($file) / 1024, 1),
