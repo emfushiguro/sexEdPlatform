@@ -36,13 +36,22 @@
                 :aria-setsize="order.length">
                 <div x-show="isDragging() && dragOverIndex === index && draggedId !== itemId" class="interactive-sequence-insertion-bar absolute -top-2 left-2 right-2" aria-hidden="true"></div>
                 <span class="interactive-sequence-position min-w-8 text-xs font-semibold text-gray-500" x-text="positionLabel(index)"></span>
-                <span class="flex-1 text-sm text-gray-800" :class="isDragging() && draggedId === itemId ? 'interactive-sequence-source' : ''" x-text="itemFor(itemId).value"></span>
+                <div class="interactive-sequence-item-content" :class="isDragging() && draggedId === itemId ? 'interactive-sequence-source' : ''">
+                    <img x-show="itemFor(itemId).image_url && !isMediaFailed(itemId)"
+                         :src="itemFor(itemId).image_url"
+                         :alt="itemFor(itemId).image_alt"
+                         @@error="mediaFailed(itemId)"
+                         draggable="false"
+                         class="interactive-activity-item-image interactive-sequence-item-image">
+                    <span x-show="isMediaFailed(itemId)" class="interactive-item-media-fallback" x-text="`Image unavailable: ${itemFor(itemId).image_alt || 'Item image'}`"></span>
+                    <span x-show="itemFor(itemId).value" class="text-sm text-gray-800" x-text="itemFor(itemId).value"></span>
+                </div>
                 <span x-cloak x-show="itemState(itemId, index) === 'correct'" class="text-xs font-semibold text-emerald-700">Correct</span>
                 <span x-cloak x-show="itemState(itemId, index) === 'incorrect'" class="text-xs font-semibold text-rose-700">Incorrect</span>
                 <span class="interactive-match-badge interactive-match-badge--correct" x-cloak x-show="itemState(itemId, index) === 'correct'" aria-hidden="true">✓</span>
                 <span class="interactive-match-badge interactive-match-badge--incorrect" x-cloak x-show="itemState(itemId, index) === 'incorrect'" aria-hidden="true">×</span>
                 <button type="button"
-                    :aria-label="`Drag ${itemFor(itemId).value}. Position ${index + 1} of ${order.length}.`"
+                    :aria-label="`Drag ${itemLabel(itemFor(itemId))}. Position ${index + 1} of ${order.length}.`"
                     aria-describedby="sequencing-drag-instructions"
                     :aria-pressed="isDragging() && draggedId === itemId"
                     @pointerdown.prevent.stop="beginPointerDrag(index, $event)"
@@ -61,7 +70,10 @@
     </ol>
 
     <div x-cloak x-show="isDragging()" :style="dragOverlayStyle()" class="interactive-sequence-overlay fixed z-50 pointer-events-none rounded-xl border border-purple-300 bg-white px-3 py-3 shadow-xl" aria-hidden="true">
-        <span class="text-sm font-semibold text-gray-900" x-text="itemFor(draggedId).value"></span>
+        <div class="flex items-center gap-2">
+            <img x-show="itemFor(draggedId).image_url && !isMediaFailed(draggedId)" :src="itemFor(draggedId).image_url" :alt="itemFor(draggedId).image_alt" draggable="false" class="interactive-activity-item-image interactive-sequence-overlay-image">
+            <span class="text-sm font-semibold text-gray-900" x-text="itemLabel(itemFor(draggedId))"></span>
+        </div>
     </div>
     <div id="sequencing-drag-announcement" class="sr-only" aria-live="polite" x-text="dragAnnouncement"></div>
 

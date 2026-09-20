@@ -37,6 +37,7 @@
         <div class="space-y-2">
             <h4 class="text-sm font-semibold text-gray-700">Match each item</h4>
             <div class="space-y-2">
+                @php($matchSide = 'left')
                 @foreach(($activity['payload']['left_items'] ?? []) as $item)
                     <div class="interactive-match-card" :class="{
                         'interactive-match-card--selected': endpointState('left', @js($item['id'])) === 'selected',
@@ -45,7 +46,23 @@
                         'interactive-match-card--correct': endpointState('left', @js($item['id'])) === 'correct',
                         'interactive-match-card--incorrect': endpointState('left', @js($item['id'])) === 'incorrect'
                     }">
-                        <span class="min-w-0 flex-1 text-sm text-gray-900">{{ $item['value'] }}</span>
+                        <div class="interactive-match-item-content">
+                            @if(filled(trim((string) ($item['image_url'] ?? ''))))
+                                <img src="{{ $item['image_url'] }}"
+                                     alt="{{ $item['image_alt'] ?? '' }}"
+                                     loading="lazy"
+                                     decoding="async"
+                                     draggable="false"
+                                     @load="mediaLoaded()"
+                                     @@error="mediaFailed(@js($matchSide), @js($item['id']))"
+                                     x-show="!isMediaFailed(@js($matchSide), @js($item['id']))"
+                                     class="interactive-activity-item-image interactive-match-item-image">
+                                <span x-cloak x-show="isMediaFailed(@js($matchSide), @js($item['id']))" class="interactive-item-media-fallback">Image unavailable: {{ $item['image_alt'] ?? '' }}</span>
+                            @endif
+                            @if(trim((string) ($item['value'] ?? '')) !== '')
+                                <span class="text-sm text-gray-900">{{ $item['value'] }}</span>
+                            @endif
+                        </div>
                         <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'selected'" class="text-xs font-semibold text-violet-700">Selected</span>
                         <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'pending'" class="text-xs font-semibold text-violet-700">Connected</span>
                         <span x-cloak x-show="endpointState('left', @js($item['id'])) === 'unanswered'" class="text-xs font-semibold text-gray-600">Unanswered</span>
@@ -74,6 +91,7 @@
         <div class="space-y-2">
             <h4 class="text-sm font-semibold text-gray-700">Related item</h4>
             <div class="space-y-2">
+                @php($matchSide = 'right')
                 @foreach(($activity['payload']['right_items'] ?? []) as $item)
                     <div class="interactive-match-card" :class="{
                         'interactive-match-card--selected': endpointState('right', @js($item['id'])) === 'selected',
@@ -93,7 +111,23 @@
                             class="interactive-match-dot interactive-match-dot--right min-h-11 min-w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
                             <span aria-hidden="true"></span>
                         </button>
-                        <span class="min-w-0 flex-1 text-sm text-gray-900">{{ $item['value'] }}</span>
+                        <div class="interactive-match-item-content">
+                            @if(filled(trim((string) ($item['image_url'] ?? ''))))
+                                <img src="{{ $item['image_url'] }}"
+                                     alt="{{ $item['image_alt'] ?? '' }}"
+                                     loading="lazy"
+                                     decoding="async"
+                                     draggable="false"
+                                     @load="mediaLoaded()"
+                                     @@error="mediaFailed(@js($matchSide), @js($item['id']))"
+                                     x-show="!isMediaFailed(@js($matchSide), @js($item['id']))"
+                                     class="interactive-activity-item-image interactive-match-item-image">
+                                <span x-cloak x-show="isMediaFailed(@js($matchSide), @js($item['id']))" class="interactive-item-media-fallback">Image unavailable: {{ $item['image_alt'] ?? '' }}</span>
+                            @endif
+                            @if(trim((string) ($item['value'] ?? '')) !== '')
+                                <span class="text-sm text-gray-900">{{ $item['value'] }}</span>
+                            @endif
+                        </div>
                         <span x-cloak x-show="endpointState('right', @js($item['id'])) === 'selected'" class="text-xs font-semibold text-violet-700">Selected</span>
                         <span x-cloak x-show="endpointState('right', @js($item['id'])) === 'pending'" class="text-xs font-semibold text-violet-700">Connected</span>
                         <span x-cloak x-show="endpointState('right', @js($item['id'])) === 'unanswered'" class="text-xs font-semibold text-gray-600">Unanswered</span>

@@ -275,6 +275,32 @@ class InteractiveActivityRenderingTest extends TestCase
         $this->assertStringNotContainsString('lg:hidden', $html);
     }
 
+    public function test_matching_and_sequencing_render_accessible_responsive_item_media(): void
+    {
+        $matching = view('learner.lessons.partials.interactive-activities.matching', [
+            'activity' => ['id' => 'matching-media', 'payload' => [
+                'left_items' => [['id' => 'left-1', 'value' => '', 'image_url' => '/storage/source.png', 'image_alt' => 'Source diagram']],
+                'right_items' => [['id' => 'right-1', 'value' => 'Target', 'image_url' => null, 'image_alt' => null]],
+            ]],
+        ])->render();
+        $this->assertStringContainsString('class="interactive-activity-item-image interactive-match-item-image"', $matching);
+        $this->assertStringContainsString('alt="Source diagram"', $matching);
+        $this->assertStringContainsString('@load="mediaLoaded()"', $matching);
+        $this->assertStringContainsString("@error=\"mediaFailed('left', 'left-1')\"", $matching);
+        $this->assertStringContainsString('data-match-dot-side="left"', $matching);
+        $this->assertStringContainsString('Image unavailable: Source diagram', $matching);
+
+        $sequencing = view('learner.lessons.partials.interactive-activities.sequencing', [
+            'activity' => ['id' => 'sequencing-media', 'payload' => ['items' => [
+                ['id' => 'item-1', 'value' => '', 'image_url' => '/storage/step.png', 'image_alt' => 'Illustrated first step'],
+            ]]],
+        ])->render();
+        $this->assertStringContainsString('interactive-sequence-item-image', $sequencing);
+        $this->assertStringContainsString(':alt="itemFor(itemId).image_alt"', $sequencing);
+        $this->assertStringContainsString('draggable="false"', $sequencing);
+        $this->assertStringContainsString('@pointerdown.prevent.stop="beginPointerDrag(index, $event)"', $sequencing);
+    }
+
     public function test_sequencing_activity_renders_handle_dragging_without_visible_move_buttons(): void
     {
         $html = view('learner.lessons.partials.interactive-activities.sequencing', [
