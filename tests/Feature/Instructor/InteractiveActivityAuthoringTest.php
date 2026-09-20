@@ -11,6 +11,7 @@ use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\User;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -435,6 +436,94 @@ class InteractiveActivityAuthoringTest extends TestCase
 
         $this->assertSame(2, $activity->refresh()->revision);
         $this->assertTrue($parent->fresh()->interactiveActivities()->whereKey($activity->id)->exists());
+    }
+
+    public function test_instructor_can_create_and_preview_image_only_activity_items(): void
+    {
+        Storage::fake('public');
+        [$instructor, $lesson] = $this->authoringFixture();
+        $path = "quiz-images/user-{$instructor->id}/diagram.png";
+        Storage::disk('public')->put($path, 'image-bytes');
+        $configuration = [
+            'pairs' => [
+                ['left' => ['value' => '', 'image_path' => $path, 'image_alt' => 'Consent diagram'], 'right' => ['value' => 'Freely given agreement']],
+                ['left' => ['value' => 'Boundary'], 'right' => ['value' => '', 'image_path' => $path, 'image_alt' => 'Boundary illustration']],
+            ],
+        ];
+
+        $this->actingAs($instructor)
+            ->postJson(route('instructor.interactive-activities.preview'), $this->previewPayload($lesson, null, ['configuration' => $configuration]))
+            ->assertOk()
+            ->assertJsonPath('html', fn (string $html): bool => str_contains($html, 'Consent diagram'));
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.topics.store'), $this->previewPayload($lesson, null, ['configuration' => $configuration]))
+            ->assertRedirect(route('instructor.lessons.show', $lesson));
+
+        $activity = InteractiveActivity::query()->latest('id')->firstOrFail();
+        $this->assertSame($path, $activity->configuration['pairs'][0]['left']['image_path']);
+        $this->assertSame('Consent diagram', $activity->configuration['pairs'][0]['left']['image_alt']);
+    }
+
+    public function test_authoring_rejects_new_image_paths_outside_the_current_users_library(): void
+    {
+        Storage::fake('public');
+        [$instructor, $lesson] = $this->authoringFixture();
+        $foreignPath = 'quiz-images/user-999/foreign.png';
+        Storage::disk('public')->put($foreignPath, 'image-bytes');
+        $configuration = $this->matchingConfiguration();
+        $configuration['pairs'][0]['left'] = ['value' => '', 'image_path' => $foreignPath, 'image_alt' => 'Foreign image'];
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.topics.store'), $this->previewPayload($lesson, null, ['configuration' => $configuration]))
+            ->assertSessionHasErrors('configuration.pairs.0.left.image_path');
+
+        $this->assertDatabaseCount('interactive_activities', 0);
+    }
+
+    public function test_authorized_edit_preserves_an_unchanged_existing_image_path(): void
+    {
+        Storage::fake('public');
+        [$instructor, $lesson] = $this->authoringFixture();
+        [, $activity] = $this->insideActivity($lesson);
+        $configuration = $activity->configuration;
+        $configuration['pairs'][0]['left']['value'] = '';
+        $configuration['pairs'][0]['left']['image_path'] = 'quiz-images/user-999/legacy.png';
+        $configuration['pairs'][0]['left']['image_alt'] = 'Existing legacy diagram';
+        $activity->update(['configuration' => $configuration]);
+
+        $this->actingAs($instructor)
+            ->put(route('instructor.interactive-activities.update', $activity), $this->activityPayload($activity))
+            ->assertRedirect(route('instructor.lessons.show', $lesson));
+
+        $this->assertSame('quiz-images/user-999/legacy.png', $activity->refresh()->configuration['pairs'][0]['left']['image_path']);
+    }
+
+    public function test_media_revisions_distinguish_supporting_and_image_only_content(): void
+    {
+        Storage::fake('public');
+        [$instructor, $lesson] = $this->authoringFixture();
+        [, $activity] = $this->insideActivity($lesson);
+        foreach (['support.png', 'replacement.png'] as $filename) {
+            Storage::disk('public')->put("quiz-images/user-{$instructor->id}/{$filename}", 'image-bytes');
+        }
+
+        $supporting = $activity->configuration;
+        $supporting['pairs'][0]['left']['image_path'] = "quiz-images/user-{$instructor->id}/support.png";
+        $supporting['pairs'][0]['left']['image_alt'] = 'Supporting diagram';
+        $this->actingAs($instructor)->put(route('instructor.interactive-activities.update', $activity), $this->activityPayload($activity, ['configuration' => $supporting]))->assertRedirect();
+        $this->assertSame(1, $activity->refresh()->revision);
+
+        $imageOnly = $activity->configuration;
+        $imageOnly['pairs'][0]['left']['value'] = '';
+        $this->actingAs($instructor)->put(route('instructor.interactive-activities.update', $activity), $this->activityPayload($activity, ['configuration' => $imageOnly]))->assertRedirect();
+        $this->assertSame(2, $activity->refresh()->revision);
+
+        $replacement = $activity->configuration;
+        $replacement['pairs'][0]['left']['image_path'] = "quiz-images/user-{$instructor->id}/replacement.png";
+        $replacement['pairs'][0]['left']['image_alt'] = 'Replacement semantic diagram';
+        $this->actingAs($instructor)->put(route('instructor.interactive-activities.update', $activity), $this->activityPayload($activity, ['configuration' => $replacement]))->assertRedirect();
+        $this->assertSame(3, $activity->refresh()->revision);
     }
 
     public function test_instructor_can_open_activity_editor(): void

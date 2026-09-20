@@ -14,6 +14,7 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -54,6 +55,12 @@ class InteractiveActivityAuthoringService
         $configuration = $this->addDefaultTextKinds($validated['configuration'], $validated['activity_type']);
         $configuration = Validator::make(['configuration' => $configuration], $handler->rules())->validate()['configuration'];
         $normalized = $handler->normalize($configuration, $activity?->configuration);
+        $this->validateImagePaths(
+            $normalized,
+            $validated['activity_type'],
+            $request->user(),
+            $activity?->configuration,
+        );
 
         return [
             'lesson_id' => $lesson->id,
@@ -494,6 +501,53 @@ class InteractiveActivityAuthoringService
         }
 
         return $configuration;
+    }
+
+    private function validateImagePaths(array $configuration, string $activityType, User $author, ?array $existingConfiguration): void
+    {
+        $existingPaths = array_values(array_filter(array_map(
+            static fn (array $entry): mixed => $entry['item']['image_path'] ?? null,
+            $this->configuredItems($existingConfiguration ?? [], $activityType),
+        ), 'is_string'));
+        $directory = 'quiz-images/user-'.$author->id.'/';
+
+        foreach ($this->configuredItems($configuration, $activityType) as $entry) {
+            $path = $entry['item']['image_path'] ?? null;
+            if (! is_string($path) || $path === '' || in_array($path, $existingPaths, true)) {
+                continue;
+            }
+
+            if (! str_starts_with($path, $directory) || ! Storage::disk('public')->exists($path)) {
+                throw ValidationException::withMessages([
+                    $entry['key'].'.image_path' => 'Choose an image from your Image Library.',
+                ]);
+            }
+        }
+    }
+
+    /** @return list<array{key: string, item: array<string, mixed>}> */
+    private function configuredItems(array $configuration, string $activityType): array
+    {
+        $items = [];
+        if ($activityType === InteractiveActivityType::MATCHING->value) {
+            foreach (($configuration['pairs'] ?? []) as $index => $pair) {
+                foreach (['left', 'right'] as $side) {
+                    if (is_array($pair[$side] ?? null)) {
+                        $items[] = ['key' => "configuration.pairs.{$index}.{$side}", 'item' => $pair[$side]];
+                    }
+                }
+            }
+
+            return $items;
+        }
+
+        foreach (($configuration['items'] ?? []) as $index => $item) {
+            if (is_array($item)) {
+                $items[] = ['key' => "configuration.items.{$index}", 'item' => $item];
+            }
+        }
+
+        return $items;
     }
 
     private function sanitize(?string $html): ?string
