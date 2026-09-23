@@ -73,7 +73,17 @@ export function createLearningPathBuilder(config = {}) {
         },
 
         get mismatchedModuleIds() {
-            return this.moduleIds.filter((id) => !this.eligible(this.moduleFor(id)));
+            return this.moduleIds.filter((id) => {
+                const module = this.moduleFor(id);
+                return Boolean(module) && module.learnerVisible !== false && !this.eligible(module);
+            });
+        },
+
+        get unavailableModuleIds() {
+            return this.moduleIds.filter((id) => {
+                const module = this.moduleFor(id);
+                return !module || module.learnerVisible === false;
+            });
         },
 
         setCategories(categories) {
@@ -92,6 +102,7 @@ export function createLearningPathBuilder(config = {}) {
         },
 
         add(id) {
+            if (this.isDragging()) this.cancelDrag();
             const module = this.moduleFor(id);
             const moduleId = asId(id);
             if (!module || this.selected(moduleId) || !this.eligible(module)) return this;
@@ -105,7 +116,7 @@ export function createLearningPathBuilder(config = {}) {
 
         remove(id) {
             const moduleId = asId(id);
-            if (this.isDragging() && this.draggedId === moduleId) this.cancelDrag();
+            if (this.isDragging()) this.cancelDrag();
             this.moduleIds = this.moduleIds.filter((selectedId) => selectedId !== moduleId);
             this.candidateOrder = this.candidateOrder.filter((selectedId) => selectedId !== moduleId);
             this.removeRow(moduleId);
@@ -114,6 +125,7 @@ export function createLearningPathBuilder(config = {}) {
         },
 
         moveUp(index) {
+            if (this.isDragging()) this.cancelDrag();
             if (!isIndex(index) || index <= 0 || index >= this.moduleIds.length) return this;
             this.moduleIds = moveAt(this.moduleIds, index, index - 1);
             this.candidateOrder = [...this.moduleIds];
@@ -122,6 +134,7 @@ export function createLearningPathBuilder(config = {}) {
         },
 
         moveDown(index) {
+            if (this.isDragging()) this.cancelDrag();
             if (!isIndex(index) || index >= this.moduleIds.length - 1) return this;
             this.moduleIds = moveAt(this.moduleIds, index, index + 1);
             this.candidateOrder = [...this.moduleIds];
@@ -130,11 +143,13 @@ export function createLearningPathBuilder(config = {}) {
         },
 
         moveUpById(id) {
-            return this.moveUp(this.indexFor(id));
+            if (this.isDragging()) this.cancelDrag();
+            return this.moveUp(this.indexFor(id, this.moduleIds));
         },
 
         moveDownById(id) {
-            return this.moveDown(this.indexFor(id));
+            if (this.isDragging()) this.cancelDrag();
+            return this.moveDown(this.indexFor(id, this.moduleIds));
         },
 
         initializeRows() {
@@ -166,6 +181,11 @@ export function createLearningPathBuilder(config = {}) {
                 row.dataset.learningPathIndex = String(index);
                 row.setAttribute('aria-posinset', String(index + 1));
                 row.setAttribute('aria-setsize', String(order.length));
+                row.classList.toggle('learning-path-order-row--dragged', this.isDragging() && this.draggedId === asId(moduleId));
+                const insertion = row.querySelector('[data-learning-path-insertion]');
+                if (insertion) {
+                    insertion.hidden = !(this.isDragging() && this.dragOverIndex === index);
+                }
                 const handle = row.querySelector('[data-learning-path-handle]');
                 handle?.setAttribute('aria-label', `Reorder ${this.moduleLabel(this.moduleFor(moduleId))}, position ${index + 1} of ${order.length}`);
                 handle?.setAttribute('aria-pressed', String(this.isDragging() && this.draggedId === asId(moduleId)));
@@ -184,7 +204,12 @@ export function createLearningPathBuilder(config = {}) {
             const row = document.createElement('li');
             row.dataset.learningPathRow = 'true';
             row.dataset.moduleId = String(module.id);
-            row.className = 'learning-path-order-row flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm';
+            row.className = 'learning-path-order-row relative flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm';
+
+            const insertion = document.createElement('div');
+            insertion.dataset.learningPathInsertion = 'true';
+            insertion.hidden = true;
+            insertion.className = 'learning-path-order-insertion-line absolute -top-1 left-3 right-3 h-1 rounded-full bg-purple-600';
 
             const handle = document.createElement('button');
             handle.type = 'button';
@@ -205,25 +230,26 @@ export function createLearningPathBuilder(config = {}) {
             label.className = 'min-w-0 flex-1';
             label.textContent = this.moduleOptionLabel(module);
 
-            const up = this.actionButton('Move up', 'data-learning-path-up');
-            const down = this.actionButton('Move down', 'data-learning-path-down');
-            const remove = this.actionButton('Remove', 'data-learning-path-remove');
+            const moduleLabel = this.moduleLabel(module);
+            const up = this.actionButton(`Move up ${moduleLabel}`, 'data-learning-path-up', '↑');
+            const down = this.actionButton(`Move down ${moduleLabel}`, 'data-learning-path-down', '↓');
+            const remove = this.actionButton(`Remove ${moduleLabel}`, 'data-learning-path-remove', '×');
             up.addEventListener('click', () => this.moveUpById(module.id));
             down.addEventListener('click', () => this.moveDownById(module.id));
             remove.addEventListener('click', () => this.remove(module.id));
 
-            row.append(handle, hidden, label, up, down, remove);
+            row.append(insertion, handle, hidden, label, up, down, remove);
             selected.append(row);
             return this;
         },
 
-        actionButton(label, dataAttribute) {
+        actionButton(label, dataAttribute, icon) {
             const button = document.createElement('button');
             button.type = 'button';
             button.setAttribute(dataAttribute, '');
             button.setAttribute('aria-label', `${label} module`);
             button.className = 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-purple-200 text-xs font-semibold text-purple-700 hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-40';
-            button.textContent = label === 'Move up' ? '↑' : label === 'Move down' ? '↓' : '×';
+            button.textContent = icon;
             return button;
         },
 

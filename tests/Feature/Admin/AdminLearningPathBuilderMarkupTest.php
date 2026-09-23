@@ -19,6 +19,7 @@ class AdminLearningPathBuilderMarkupTest extends TestCase
         $this->assertStringContainsString('aria-describedby', $markup);
         $this->assertStringContainsString('aria-pressed', $markup);
         $this->assertStringContainsString('aria-posinset', $markup);
+        $this->assertStringContainsString('learning-path-order-insertion-line', $markup);
         $this->assertStringContainsString('module_ids[]', $markup);
         $this->assertStringContainsString('@pointerdown', $markup);
         $this->assertStringContainsString('@pointermove.window', $markup);

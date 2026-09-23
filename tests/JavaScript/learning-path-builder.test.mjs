@@ -6,6 +6,7 @@ const fixtures = [
     { id: 11, title: 'Boundaries', categories: ['teens'], thumbnail: null },
     { id: 22, title: 'Communication', categories: ['teens', 'adults'], thumbnail: '/communication.png' },
     { id: 33, title: 'Family safety', categories: ['kids'], thumbnail: null },
+    { id: 44, title: 'Retired module', categories: ['teens'], learnerVisible: false, thumbnail: null },
 ];
 
 const keyEvent = (key) => ({ key, preventDefault() {} });
@@ -49,6 +50,17 @@ test('category changes expose selected modules that no longer match', () => {
 
     assert.deepEqual(builder.mismatchedModuleIds, [11, 22]);
     assert.equal(builder.moduleFor(22).thumbnail, '/communication.png');
+});
+
+test('unavailable selected modules are separated from category mismatches', () => {
+    const builder = createLearningPathBuilder({
+        modules: fixtures,
+        selectedIds: [11, 44],
+        categories: ['kids'],
+    });
+
+    assert.deepEqual(builder.mismatchedModuleIds, [11]);
+    assert.deepEqual(builder.unavailableModuleIds, [44]);
 });
 
 test('move buttons and keyboard ordering share bounded destinations', () => {
@@ -107,4 +119,21 @@ test('pointer drops commit the preview and announce the final position', () => {
     assert.deepEqual(builder.moduleIds, [22, 33, 11]);
     assert.match(builder.dragAnnouncement, /dropped/i);
     assert.match(builder.dragAnnouncement, /position 3 of 3/i);
+});
+
+test('list mutations cancel an active drag before changing the order', () => {
+    const builder = createLearningPathBuilder({
+        modules: fixtures,
+        selectedIds: [11, 22, 33],
+        categories: ['teens'],
+    });
+
+    builder.beginPointerDrag(0, pointerEvent());
+    builder.setDragTarget(2);
+    builder.moveDown(0);
+
+    assert.equal(builder.isDragging(), false);
+    assert.deepEqual(builder.moduleIds, [22, 11, 33]);
+    builder.dropPointerDrag();
+    assert.deepEqual(builder.moduleIds, [22, 11, 33]);
 });

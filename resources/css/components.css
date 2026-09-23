@@ -200,6 +200,11 @@
 
     .learning-path-drag-handle { touch-action: none; }
 
+    .learning-path-order-insertion-line {
+        box-shadow: 0 0 0 3px rgb(124 58 237 / 0.15);
+        pointer-events: none;
+    }
+
     .learning-path-order-overlay {
         pointer-events: none;
         transform: rotate(1deg) scale(1.02);

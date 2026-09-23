@@ -112,7 +112,8 @@
             <div class="mt-4" aria-invalid="{{ $moduleError ? 'true' : 'false' }}" @if($moduleError) aria-describedby="modules-error" @endif>
                 <ol x-ref="selected" aria-label="Selected modules" aria-describedby="learning-path-order-instructions" class="learning-path-order-list space-y-2">
                     @foreach($selectedModules as $index => $module)
-                        <li data-learning-path-row data-module-id="{{ $module->id }}" data-learning-path-index="{{ $index }}" aria-posinset="{{ $index + 1 }}" aria-setsize="{{ $selectedModules->count() }}" class="learning-path-order-row flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm" :class="draggedId === {{ $module->id }} ? 'learning-path-order-row--dragged' : ''">
+                        <li data-learning-path-row data-module-id="{{ $module->id }}" data-learning-path-index="{{ $index }}" aria-posinset="{{ $index + 1 }}" aria-setsize="{{ $selectedModules->count() }}" class="learning-path-order-row relative flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm" :class="draggedId === {{ $module->id }} ? 'learning-path-order-row--dragged' : ''">
+                            <div data-learning-path-insertion x-show="isDragging() && dragOverIndex === indexFor({{ $module->id }})" class="learning-path-order-insertion-line absolute -top-1 left-3 right-3 h-1 rounded-full bg-purple-600" aria-hidden="true"></div>
                             <button type="button" data-learning-path-handle @pointerdown="beginPointerDrag(indexFor({{ $module->id }}), $event)" @keydown="handleDragKeyById({{ $module->id }}, $event)" :aria-pressed="draggedId === {{ $module->id }}" aria-label="Reorder {{ $module->title }}" class="learning-path-drag-handle inline-flex h-11 w-11 shrink-0 cursor-grab items-center justify-center rounded-lg border border-gray-200 text-lg text-gray-600 hover:border-purple-300 hover:text-purple-700">↕</button>
                             <input type="hidden" name="module_ids[]" value="{{ $module->id }}">
                             <span class="min-w-0 flex-1">{{ $module->title }} — {{ $module->creator?->name ?? ($module->content_owner_type === 'admin' ? 'Platform' : 'Former instructor') }} @if($module->trashed() || !$module->isLearnerVisible())<span class="ml-2 text-xs font-semibold text-amber-800">No longer learner-visible — remove to save</span>@endif</span>
@@ -130,6 +131,13 @@
                     <p class="font-semibold">Review selected modules</p>
                     <p class="mt-1">These modules no longer support every selected learner category:</p>
                     <ul class="mt-2 list-inside list-disc"><template x-for="id in mismatchedModuleIds" :key="`mismatch-${id}`"><li x-text="moduleLabel(moduleFor(id))"></li></template></ul>
+                </div>
+            </template>
+            <template x-if="unavailableModuleIds.length > 0">
+                <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700" role="alert">
+                    <p class="font-semibold">Unavailable selected modules</p>
+                    <p class="mt-1">These modules are no longer available to new learners. Remove or replace them before saving.</p>
+                    <ul class="mt-2 list-inside list-disc"><template x-for="id in unavailableModuleIds" :key="`unavailable-${id}`"><li x-text="moduleLabel(moduleFor(id))"></li></template></ul>
                 </div>
             </template>
             <div class="sr-only" aria-live="polite" x-text="dragAnnouncement"></div>
