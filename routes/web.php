@@ -13,6 +13,7 @@ use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstr
 use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
 use App\Http\Controllers\Learner\InteractiveActivityController as LearnerInteractiveActivityController;
 use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
+use App\Http\Controllers\Learner\LearningPathController as LearnerLearningPathController;
 use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
 use App\Http\Controllers\Learner\ModuleFeedbackController as LearnerModuleFeedbackController;
 use App\Http\Controllers\Learner\ModuleReviewPageController as LearnerModuleReviewPageController;
@@ -330,6 +331,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Learner\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
         Route::post('/notifications/dropdown-open', [\App\Http\Controllers\Learner\NotificationController::class, 'markDropdownRead'])->name('notifications.dropdown-open');
         Route::get('/notifications/{id}/read', [\App\Http\Controllers\Learner\NotificationController::class, 'markRead'])->name('notifications.read');
+
+        // Guided learning paths stay ahead of broader module routes.
+        Route::get('/learning-paths', [LearnerLearningPathController::class, 'index'])->name('learning-paths.index');
+        Route::get('/learning-paths/{learningPath}', [LearnerLearningPathController::class, 'show'])
+            ->whereNumber('learningPath')
+            ->name('learning-paths.show');
 
         // Module browsing and enrollment
         Route::get('/modules', [LearnerModuleController::class, 'index'])->name('modules.index');
