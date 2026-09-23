@@ -322,6 +322,23 @@ class LearningPathPresentationServiceTest extends TestCase
         $this->assertStringContainsString('no longer available', strtolower($node['reason']));
     }
 
+    public function test_approved_incomplete_unavailable_modules_are_not_current_or_actionable(): void
+    {
+        $learner = $this->learner();
+        $module = $this->module('Unavailable incomplete');
+        $this->enroll($learner, $module, ['completion_percentage' => 25]);
+        $module->update(['is_published' => false]);
+        [$path] = $this->pathWithModules(0, [$module]);
+
+        $view = $this->service()->presentFor($learner, $path);
+
+        $this->assertSame('unavailable', $view['nodes'][0]['state']);
+        $this->assertFalse($view['nodes'][0]['is_current']);
+        $this->assertNull($view['nodes'][0]['action_url']);
+        $this->assertSame(0, $view['actionable_modules']);
+        $this->assertNull($view['current']);
+    }
+
     public function test_completed_out_of_order_is_current_safe_and_all_complete_has_review_action(): void
     {
         $learner = $this->learner();

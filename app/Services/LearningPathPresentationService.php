@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Enums\EnrollmentStatus;
 use App\Models\LearningPath;
 use App\Models\Lesson;
+use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\ModulePurchase;
 use App\Models\User;
@@ -124,9 +125,7 @@ class LearningPathPresentationService
                 $enrollment = $enrollments->get((int) $module->id);
                 $status = $this->enrollmentStatus($enrollment);
                 $approved = $status === EnrollmentStatus::Approved->value;
-                $activeVisible = ! $module->trashed()
-                    && $module->isLearnerVisible()
-                    && $this->isAgeAppropriate($module, $ageBracket);
+                $activeVisible = $this->isActiveLearnerModule($module, $ageBracket);
 
                 // Hidden modules without approved historical access must not leak into a path.
                 if (! $approved && ! $activeVisible) {
@@ -337,7 +336,14 @@ class LearningPathPresentationService
         return $status instanceof EnrollmentStatus ? $status->value : ($status === null ? null : (string) $status);
     }
 
-    private function isAgeAppropriate($module, ?string $ageBracket): bool
+    private function isActiveLearnerModule(Module $module, ?string $ageBracket): bool
+    {
+        return ! $module->trashed()
+            && $module->isLearnerVisible()
+            && $this->isAgeAppropriate($module, $ageBracket);
+    }
+
+    private function isAgeAppropriate(Module $module, ?string $ageBracket): bool
     {
         if ($ageBracket === null) {
             return false;
@@ -346,7 +352,7 @@ class LearningPathPresentationService
         return in_array($ageBracket, $module->learnerCategoryKeys(), true);
     }
 
-    private function unavailableReason(?string $status, bool $approved, bool $activeVisible, $module): ?string
+    private function unavailableReason(?string $status, bool $approved, bool $activeVisible, Module $module): ?string
     {
         if ($status === EnrollmentStatus::Pending->value) {
             return 'Enrollment is awaiting approval.';

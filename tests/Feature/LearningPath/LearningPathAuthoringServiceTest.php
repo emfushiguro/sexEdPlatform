@@ -148,6 +148,24 @@ class LearningPathAuthoringServiceTest extends TestCase
         $this->assertLearnerRecordsUnchanged($before);
     }
 
+    public function test_force_deleting_a_module_cascades_only_its_path_membership(): void
+    {
+        [$path, $modules] = $this->pathWithModules(2);
+        [$deleted, $retained] = $modules;
+
+        $deleted->forceDelete();
+
+        $this->assertDatabaseMissing('modules', ['id' => $deleted->id]);
+        $this->assertDatabaseMissing('learning_path_modules', [
+            'learning_path_id' => $path->id,
+            'module_id' => $deleted->id,
+        ]);
+        $this->assertDatabaseHas('learning_path_modules', [
+            'learning_path_id' => $path->id,
+            'module_id' => $retained->id,
+        ]);
+    }
+
     public function test_duplicate_module_ids_are_rejected_without_changes(): void
     {
         [$path, $modules] = $this->pathWithModules(1);

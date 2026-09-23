@@ -447,7 +447,8 @@ class AdminLearningPathManagementTest extends TestCase
         $this->get(route('admin.learning-paths.edit', $path))
             ->assertOk()
             ->assertSee($module->title)
-            ->assertSee('No longer learner-visible', false);
+            ->assertSee('Deleted module', false)
+            ->assertSee('no longer learner-visible', false);
 
         $this->put(route('admin.learning-paths.update', $path), $this->payload([
             'module_ids' => [$module->id],
