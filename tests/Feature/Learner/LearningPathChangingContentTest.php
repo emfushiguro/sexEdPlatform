@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Learner;
 
 use App\Enums\EnrollmentStatus;
-use App\Models\LearningPath;
 use App\Models\LearnerProfile;
+use App\Models\LearningPath;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\User;

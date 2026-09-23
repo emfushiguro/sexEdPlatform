@@ -15,7 +15,7 @@ class SaveLearningPathRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        if (!$this->exists('module_ids')) {
+        if (! $this->exists('module_ids')) {
             $this->merge(['module_ids' => []]);
         }
     }
@@ -63,7 +63,7 @@ class SaveLearningPathRequest extends FormRequest
             }
 
             if ($status === LearningPath::STATUS_PUBLISHED
-                && !Gate::allows('publish', $this->route('learningPath') ?? LearningPath::class)) {
+                && ! Gate::allows('publish', $this->route('learningPath') ?? LearningPath::class)) {
                 $validator->errors()->add('status', 'You are not allowed to publish learning paths.');
             }
 

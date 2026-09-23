@@ -14,8 +14,7 @@ class LearningPathController extends Controller
 {
     public function __construct(
         private readonly LearningPathPresentationService $presentation,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): View
     {

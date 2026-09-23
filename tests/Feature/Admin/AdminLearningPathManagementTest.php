@@ -10,15 +10,15 @@ use App\Models\ModuleEnrollment;
 use App\Models\ModulePurchase;
 use App\Models\User;
 use App\Models\UserProgress;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
-use RuntimeException;
 use Tests\TestCase;
 
 class AdminLearningPathManagementTest extends TestCase

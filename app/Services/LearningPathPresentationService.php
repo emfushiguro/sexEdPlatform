@@ -19,8 +19,7 @@ class LearningPathPresentationService
 {
     public function __construct(
         private readonly LearnerModuleCompletionService $completionService,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  Collection<int, LearningPath>  $paths
@@ -321,6 +320,7 @@ class LearningPathPresentationService
         }
         if ($instructionalTopics->isNotEmpty()) {
             $topicIds = $instructionalTopics->pluck('id')->map(fn ($id): int => (int) $id);
+
             return (int) round(($completedTopicIds->intersect($topicIds)->count() / $topicIds->count()) * 100);
         }
         if ($lessonIds->isNotEmpty()) {
@@ -333,6 +333,7 @@ class LearningPathPresentationService
     private function enrollmentStatus(?ModuleEnrollment $enrollment): ?string
     {
         $status = $enrollment?->status;
+
         return $status instanceof EnrollmentStatus ? $status->value : ($status === null ? null : (string) $status);
     }
 
