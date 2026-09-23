@@ -417,3 +417,153 @@
         @apply text-sm text-gray-500;
     }
 }
+
+/* Learning Path journey */
+@layer components {
+    .learning-path-route {
+        @apply mx-auto grid max-w-4xl list-none gap-0 p-0;
+    }
+
+    .learning-path-node {
+        @apply relative min-w-0;
+    }
+
+    .learning-path-node__card {
+        @apply min-w-0 rounded-3xl border bg-white p-5 shadow-sm transition dark:bg-gray-800 sm:p-6;
+    }
+
+    .learning-path-node__icon {
+        @apply inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border-2;
+    }
+
+    .learning-path-node__icon svg {
+        @apply h-6 w-6;
+    }
+
+    .learning-path-node__progress,
+    .learning-path-overall-progress {
+        @apply block h-full rounded-full bg-current transition-[width] duration-500 ease-out;
+    }
+
+    .learning-path-node--completed .learning-path-node__card {
+        @apply border-emerald-200 dark:border-emerald-800/70;
+    }
+
+    .learning-path-node--completed .learning-path-node__icon,
+    .learning-path-node--completed .learning-path-node__progress {
+        @apply border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400;
+    }
+
+    .learning-path-node--in_progress .learning-path-node__card {
+        @apply border-violet-300 dark:border-violet-700;
+    }
+
+    .learning-path-node--in_progress .learning-path-node__icon,
+    .learning-path-node--in_progress .learning-path-node__progress {
+        @apply border-violet-600 text-violet-600 dark:border-violet-400 dark:text-violet-400;
+    }
+
+    .learning-path-node--recommended .learning-path-node__card {
+        @apply border-amber-300 bg-amber-50/40 dark:border-amber-700 dark:bg-amber-950/20;
+    }
+
+    .learning-path-node--recommended .learning-path-node__icon,
+    .learning-path-node--recommended .learning-path-node__progress {
+        @apply border-amber-600 text-amber-600 dark:border-amber-400 dark:text-amber-400;
+    }
+
+    .learning-path-node--available .learning-path-node__card {
+        @apply border-gray-200 dark:border-gray-700;
+    }
+
+    .learning-path-node--available .learning-path-node__icon,
+    .learning-path-node--available .learning-path-node__progress {
+        @apply border-indigo-500 text-indigo-500 dark:border-indigo-400 dark:text-indigo-400;
+    }
+
+    .learning-path-node--unavailable .learning-path-node__card {
+        @apply border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/70;
+    }
+
+    .learning-path-node--unavailable .learning-path-node__icon,
+    .learning-path-node--unavailable .learning-path-node__progress {
+        @apply border-gray-500 text-gray-500 dark:border-gray-400 dark:text-gray-400;
+    }
+
+    .learning-path-node--current .learning-path-node__card {
+        box-shadow: 0 0 0 4px rgb(124 58 237 / 0.16), 0 12px 30px -18px rgb(76 29 149 / 0.45);
+        animation: learning-path-current-pulse 2.8s ease-in-out infinite;
+    }
+
+    .learning-path-node__connector {
+        @apply flex h-10 items-center justify-center;
+    }
+
+    .learning-path-node__connector svg {
+        @apply h-10 w-6 text-purple-300 dark:text-purple-700;
+    }
+
+    .learning-path-node__connector path {
+        stroke: currentColor;
+        stroke-dasharray: 3 4;
+        stroke-width: 1.5;
+    }
+
+    .learning-path-completion-card,
+    .learning-path-continue-card {
+        min-width: 0;
+    }
+
+    .overflow-wrap-anywhere {
+        overflow-wrap: anywhere;
+    }
+
+    @media (min-width: 768px) {
+        .learning-path-node:nth-child(odd) .learning-path-node__card {
+            transform: translateX(-1.25rem);
+        }
+
+        .learning-path-node:nth-child(even) .learning-path-node__card {
+            transform: translateX(1.25rem);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .learning-path-node__card,
+        .learning-path-node__progress,
+        .learning-path-overall-progress {
+            transition: none;
+        }
+
+        .learning-path-node--current .learning-path-node__card,
+        .learning-path-node:nth-child(odd) .learning-path-node__card,
+        .learning-path-node:nth-child(even) .learning-path-node__card {
+            animation: none;
+            transform: none;
+        }
+    }
+
+    @media (forced-colors: active) {
+        .learning-path-node__card,
+        .learning-path-continue-card,
+        .learning-path-completion-card {
+            border: 2px solid CanvasText;
+            background: Canvas;
+            color: CanvasText;
+            box-shadow: none;
+        }
+
+        .learning-path-node__icon,
+        .learning-path-node__progress,
+        .learning-path-overall-progress {
+            border-color: CanvasText;
+            color: CanvasText;
+            background: CanvasText;
+        }
+    }
+
+    @keyframes learning-path-current-pulse {
+        0%, 100% { box-shadow: 0 0 0 4px rgb(124 58 237 / 0.14), 0 12px 30px -18px rgb(76 29 149 / 0.45); }
+        50% { box-shadow: 0 0 0 6px rgb(124 58 237 / 0.08), 0 12px 30px -18px rgb(76 29 149 / 0.45); }
+    }
+}

@@ -169,7 +169,7 @@ class LearningPathPresentationService
                     'total_lessons' => $totalLessons,
                     'is_current' => false,
                     'action_url' => $actionUrl,
-                    'action_label' => $canonical ? 'Review module' : 'View module',
+                    'action_label' => $canonical ? 'Review module' : 'Module Details',
                     'has_purchased' => $purchases->has((int) $module->id),
                 ];
 
