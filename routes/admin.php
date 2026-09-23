@@ -87,6 +87,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     });
 
     // Shared learning content authoring (reuses instructor content controllers)
+    Route::patch('learning-paths/{learningPath}/archive', [Admin\LearningPathController::class, 'archive'])
+        ->name('learning-paths.archive');
+    Route::patch('learning-paths/{learningPath}/restore', [Admin\LearningPathController::class, 'restore'])
+        ->name('learning-paths.restore');
+    Route::resource('learning-paths', Admin\LearningPathController::class)
+        ->except(['show', 'destroy'])
+        ->parameters(['learning-paths' => 'learningPath']);
+
     Route::resource('modules', Instructor\ModuleController::class);
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
         ->name('modules.activate');

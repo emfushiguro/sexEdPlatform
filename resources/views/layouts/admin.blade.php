@@ -423,6 +423,17 @@
                             Learning Contents
                         </h2>
                         <ul class="flex flex-col gap-1">
+                            @can('viewAny', \App\Models\LearningPath::class)
+                            <li>
+                                <a href="{{ route('admin.learning-paths.index') }}"
+                                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap {{ request()->routeIs('admin.learning-paths.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                   @if(request()->routeIs('admin.learning-paths.*')) style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);" @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                    <span class="flex-shrink-0 text-gray-500 group-hover:text-purple-600" aria-hidden="true"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h11M4 18h7m11-7-3 3-2-2"/></svg></span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Learning Paths</span>
+                                </a>
+                            </li>
+                            @endcan
                             <li>
                                 <a href="{{ route('admin.modules.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
