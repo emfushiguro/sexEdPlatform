@@ -1,6 +1,7 @@
 import './bootstrap';
 import './video-upload-form';
 import './caption-tracks-form';
+import './logout-confirmation';
 import { plyrOptionsFor } from './video-player';
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';

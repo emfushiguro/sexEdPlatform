@@ -341,6 +341,7 @@
                     <form
                         method="POST"
                         action="{{ route('instructor.logout') }}"
+                        data-logout-form
                         x-show="$store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered || $store.instructorSidebar.isMobileOpen"
                         x-cloak
                     >

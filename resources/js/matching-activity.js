@@ -307,6 +307,10 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             return this;
         },
 
+        destroy() {
+            return this.teardownConnectors();
+        },
+
         startConnection(side, id, event) {
             if (!this.isEndpointAvailable(side, id)) return this;
             this.detachEndpoint(side, id);

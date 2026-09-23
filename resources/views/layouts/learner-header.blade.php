@@ -322,7 +322,7 @@
                     </a>
                     @include('partials.chat-status-selector')
                     <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
-                    <form method="POST" action="{{ route('logout') }}">
+                    <form method="POST" action="{{ route('logout') }}" data-logout-form>
                         @csrf
                         <button
                             type="submit"

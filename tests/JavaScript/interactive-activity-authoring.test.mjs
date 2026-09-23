@@ -166,6 +166,24 @@ test('pending uploads disable and restore the owning activity form submit contro
     assert.equal(submit.disabled, false);
 });
 
+test('destroy releases local media previews for Alpine component teardown', () => {
+    const originalUrl = globalThis.URL;
+    const revoked = [];
+    globalThis.URL = { revokeObjectURL: (url) => revoked.push(url) };
+
+    try {
+        const authoring = createInteractiveActivityAuthoring();
+        authoring.pairs[0].left.localPreviewUrl = 'blob:left';
+        authoring.items[0].localPreviewUrl = 'blob:item';
+
+        authoring.destroy();
+
+        assert.deepEqual(revoked, ['blob:left', 'blob:item']);
+    } finally {
+        globalThis.URL = originalUrl;
+    }
+});
+
 test('uploadImage attaches the returned reusable library asset and restores failures safely', async () => {
     const originalFormData = globalThis.FormData;
     const originalUrl = globalThis.URL;

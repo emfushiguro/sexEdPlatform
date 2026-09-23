@@ -13,7 +13,7 @@
     $enrollment      = $moduleData['enrollment'];
     $totalLessons    = $moduleData['total_lessons'];
     $completedLessons = $moduleData['completed_lessons'];
-    $pct             = $moduleData['progress_percent'];
+    $pct             = max(0, min(100, (int) $moduleData['progress_percent']));
     $nextLesson      = $moduleData['next_lesson'];
     $thumbnail       = $module->thumbnail ? asset('storage/' . $module->thumbnail) : null;
     $continueUrl     = $nextLesson
@@ -105,6 +105,11 @@
                 <div
                     class="h-full rounded-full transition-all duration-500"
                     style="width: {{ $pct }}%; background: linear-gradient(90deg, #A30EB2, #3B0CB1);"
+                    role="progressbar"
+                    aria-label="{{ $module->title }} progress"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="{{ $pct }}"
                 ></div>
             </div>
         </div>

@@ -58,6 +58,33 @@ class ModuleInteractionCompletionTest extends TestCase
             ->assertSee('Interactive Checkpoint', false);
     }
 
+    public function test_module_overview_previews_standalone_interactions_without_starting_them(): void
+    {
+        [$learner, $module] = $this->completedModuleWithStandaloneInteractions();
+
+        $this->actingAs($learner)
+            ->get(route('learner.modules.show', $module))
+            ->assertOk()
+            ->assertSee('Preview activity', false)
+            ->assertSee('Match boundaries', false)
+            ->assertSee('Preview checkpoint', false)
+            ->assertSee('Perspective checkpoint question', false);
+
+        $this->assertDatabaseCount('interactive_activity_progress', 1);
+        $this->assertDatabaseCount('interactive_checkpoint_progress', 1);
+    }
+
+    public function test_dashboard_progress_includes_completed_interactions(): void
+    {
+        [$learner, $module] = $this->completedModuleWithStandaloneInteractions();
+
+        $this->actingAs($learner)
+            ->get(route('learner.dashboard'))
+            ->assertOk()
+            ->assertSee('100%', false)
+            ->assertSee('aria-valuenow="100"', false);
+    }
+
     public function test_completed_perspective_feedback_counts_as_a_resolved_checkpoint(): void
     {
         [$learner, $module] = $this->completedModuleWithStandaloneInteractions();
@@ -137,6 +164,15 @@ class ModuleInteractionCompletionTest extends TestCase
         $activity = InteractiveActivity::factory()->betweenTopics()->create([
             'lesson_topic_id' => $activityTopic->id,
             'activity_type' => InteractiveActivityType::MATCHING,
+            'title' => 'Match boundaries',
+            'instructions' => 'Connect each boundary pair.',
+            'configuration' => [
+                'schema_version' => 1,
+                'pairs' => [[
+                    'left' => ['kind' => 'text', 'value' => 'Say no'],
+                    'right' => ['kind' => 'text', 'value' => 'Set a boundary'],
+                ]],
+            ],
             'revision' => 1,
         ]);
         InteractiveActivityProgress::create([

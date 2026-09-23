@@ -203,7 +203,7 @@
         </a>
 
         {{-- Logout --}}
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST" action="{{ route('logout') }}" data-logout-form>
             @csrf
             <button
                 type="submit"

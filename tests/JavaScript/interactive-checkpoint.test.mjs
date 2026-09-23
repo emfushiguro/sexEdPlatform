@@ -239,6 +239,31 @@ test('resolved inside checkpoint claims then releases footer ownership', async (
     ]);
 });
 
+test('continuation releases the current interaction before navigating to the next item', () => {
+    const previousWindow = globalThis.window;
+    const navigatedTo = [];
+    globalThis.window = { location: { assign: (url) => navigatedTo.push(url) } };
+
+    try {
+        const checkpoint = createInteractiveCheckpoint({
+            type: 'identification',
+            questionId: 17,
+            continueUrl: '/learn/lessons/4?topic=2',
+        });
+        const events = [];
+        checkpoint.$dispatch = (name, detail) => events.push([name, detail]);
+
+        checkpoint.continueLearning();
+
+        assert.deepEqual(events, [
+            ['checkpoint-continued', { questionId: 17, token: 'checkpoint:17' }],
+        ]);
+        assert.deepEqual(navigatedTo, ['/learn/lessons/4?topic=2']);
+    } finally {
+        globalThis.window = previousWindow;
+    }
+});
+
 test('optional interaction coordinator accepts string tokens and checkpoint alias remains compatible', () => {
     const coordinator = createCheckpointCoordinator();
 

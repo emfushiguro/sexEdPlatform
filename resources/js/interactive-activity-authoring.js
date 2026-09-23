@@ -284,6 +284,10 @@ export function createInteractiveActivityAuthoring(options = {}) {
             return this;
         },
 
+        destroy() {
+            return this.cleanupMedia();
+        },
+
         errorFor(key) {
             const messages = this.validationErrors[key];
             return Array.isArray(messages) ? (messages[0] ?? '') : '';

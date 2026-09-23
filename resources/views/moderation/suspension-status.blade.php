@@ -62,7 +62,7 @@
                     </a>
                 @endif
 
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout') }}" data-logout-form>
                     @csrf
                     <button type="submit" class="inline-flex items-center rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-900">
                         Log Out

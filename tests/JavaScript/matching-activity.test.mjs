@@ -536,3 +536,11 @@ test('matching exposes drawable SVG paths for each connector state', () => {
     assert.equal(activity.linePath('correct'), '');
     assert.equal(activity.linePath('incorrect'), 'M 40 50 L 120 50');
 });
+
+test('matching exposes Alpine destroy cleanup', () => {
+    const activity = createMatchingActivity();
+
+    assert.equal(activity.destroy(), activity);
+    assert.equal(activity.connectorContainer, null);
+    assert.equal(activity.connectorRefreshHandler, null);
+});

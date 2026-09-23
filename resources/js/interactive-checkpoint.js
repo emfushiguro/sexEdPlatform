@@ -102,11 +102,13 @@ export function createInteractiveCheckpoint(config = {}, request = globalThis.fe
             }
         },
         continueLearning() {
+            const detail = { questionId: config.questionId, token: `checkpoint:${config.questionId}` };
+            this.$dispatch?.('checkpoint-continued', detail);
+
             if (config.continueUrl) {
                 window.location.assign(config.continueUrl);
                 return;
             }
-            this.$dispatch?.('checkpoint-continued', { questionId: config.questionId, token: `checkpoint:${config.questionId}` });
         },
         claimForward() {
             this.$dispatch?.('checkpoint-active', { questionId: config.questionId, token: `checkpoint:${config.questionId}` });

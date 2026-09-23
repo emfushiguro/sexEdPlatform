@@ -339,6 +339,71 @@
                                                     @endif
                                                 </div>
                                             </div>
+
+                                            @foreach($topic->interactiveActivities as $activity)
+                                                @php
+                                                    $activityType = $activity->activity_type?->value ?? (string) $activity->activity_type;
+                                                    $activityConfiguration = is_array($activity->configuration) ? $activity->configuration : [];
+                                                @endphp
+                                                <details class="mx-6 mb-2 rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-2 dark:border-orange-900/40 dark:bg-orange-900/10 sm:mx-8">
+                                                    <summary class="cursor-pointer list-none text-xs font-semibold text-orange-800 dark:text-orange-200">
+                                                        <span class="inline-flex items-center gap-1.5">
+                                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 12h8M8 17h5M5 3.75h14A1.25 1.25 0 0 1 20.25 5v14A1.25 1.25 0 0 1 19 20.25H5A1.25 1.25 0 0 1 3.75 19V5A1.25 1.25 0 0 1 5 3.75Z"/>
+                                                            </svg>
+                                                            Preview activity
+                                                        </span>
+                                                        <span class="ml-2 font-medium text-orange-700 dark:text-orange-300">{{ $activity->title }}</span>
+                                                    </summary>
+                                                    <div class="mt-3 space-y-2 border-t border-orange-100 pt-3 text-xs text-gray-600 dark:border-orange-900/40 dark:text-gray-300">
+                                                        <p class="font-semibold text-gray-800 dark:text-gray-100">{{ ucfirst($activityType) }} activity</p>
+                                                        @if($activity->instructions)
+                                                            <p class="whitespace-pre-line">{{ strip_tags($activity->instructions) }}</p>
+                                                        @endif
+                                                        @if($activityType === 'matching' && !empty($activityConfiguration['pairs']))
+                                                            <ul class="space-y-1">
+                                                                @foreach($activityConfiguration['pairs'] as $pair)
+                                                                    <li>{{ data_get($pair, 'left.value', 'Left item') }} <span class="text-orange-500">&harr;</span> {{ data_get($pair, 'right.value', 'Right item') }}</li>
+                                                                @endforeach
+                                                            </ul>
+                                                        @elseif($activityType === 'sequencing' && !empty($activityConfiguration['items']))
+                                                            <ol class="list-decimal space-y-1 pl-4">
+                                                                @foreach($activityConfiguration['items'] as $item)
+                                                                    <li>{{ data_get($item, 'value', 'Sequence item') }}</li>
+                                                                @endforeach
+                                                            </ol>
+                                                        @else
+                                                            <p class="text-gray-500 dark:text-gray-400">This activity has no preview items yet.</p>
+                                                        @endif
+                                                        <p class="text-[11px] font-medium text-orange-700 dark:text-orange-300">Preview only. Your learner progress is not changed.</p>
+                                                    </div>
+                                                </details>
+                                            @endforeach
+
+                                            @foreach($topic->checkpointQuestions as $checkpoint)
+                                                <details class="mx-6 mb-2 rounded-xl border border-purple-100 bg-purple-50/70 px-3 py-2 dark:border-purple-900/40 dark:bg-purple-900/10 sm:mx-8">
+                                                    <summary class="cursor-pointer list-none text-xs font-semibold text-purple-800 dark:text-purple-200">
+                                                        <span class="inline-flex items-center gap-1.5">
+                                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 17.25h.01M9.75 9.25a2.25 2.25 0 1 1 3.82 1.62c-.88.84-1.57 1.28-1.57 2.63M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                                                            </svg>
+                                                            Preview checkpoint
+                                                        </span>
+                                                        <span class="ml-2 font-medium text-purple-700 dark:text-purple-300">{{ \Illuminate\Support\Str::limit(strip_tags($checkpoint->question_text), 80) }}</span>
+                                                    </summary>
+                                                    <div class="mt-3 space-y-2 border-t border-purple-100 pt-3 text-xs text-gray-600 dark:border-purple-900/40 dark:text-gray-300">
+                                                        <p class="font-medium text-gray-800 dark:text-gray-100">{{ strip_tags($checkpoint->question_text) }}</p>
+                                                        @if($checkpoint->options->isNotEmpty())
+                                                            <ul class="space-y-1">
+                                                                @foreach($checkpoint->options as $option)
+                                                                    <li class="rounded-lg bg-white/70 px-2 py-1 dark:bg-gray-900/30">{{ $option->option_text }}</li>
+                                                                @endforeach
+                                                            </ul>
+                                                        @endif
+                                                        <p class="text-[11px] font-medium text-purple-700 dark:text-purple-300">Preview only. Your learner progress is not changed.</p>
+                                                    </div>
+                                                </details>
+                                            @endforeach
                                         @endforeach
                                     </div>
                                 </div>

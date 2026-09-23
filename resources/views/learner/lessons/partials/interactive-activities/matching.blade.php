@@ -13,7 +13,7 @@
     'leftItems' => $activity['payload']['left_items'] ?? [],
     'rightItems' => $activity['payload']['right_items'] ?? [],
 ]))"
-    x-init="$nextTick(() => setupConnectors($el)); return () => teardownConnectors()"
+    x-init="$nextTick(() => setupConnectors($el))"
     @pointermove.window="moveConnection($event)"
     @pointercancel.window="cancelConnection()"
     @keydown.escape.window="cancelConnection()"

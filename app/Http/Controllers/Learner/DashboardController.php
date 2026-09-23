@@ -14,6 +14,7 @@ use App\Models\InstructorApplication;
 use App\Models\ParentChildInvitation;
 use App\Models\User;
 use App\Services\Gamification\GamificationPolicyResolver;
+use App\Services\LearnerModuleCompletionService;
 use App\Services\SubscriptionService;
 use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,7 @@ class DashboardController extends Controller
     public function __construct(
         private readonly SubscriptionService $subscriptionService,
         private readonly GamificationPolicyResolver $gamificationPolicyResolver,
+        private readonly LearnerModuleCompletionService $completionService,
     ) {
     }
 
@@ -66,14 +68,14 @@ class DashboardController extends Controller
 
             // Topic-based progress — reflects partial lesson progress accurately
             $lessonIds = $module->lessons()->where('is_published', true)->pluck('id');
-            $totalTopics = LessonTopic::whereIn('lesson_id', $lessonIds)->count();
+            $topics = LessonTopic::query()
+                ->whereIn('lesson_id', $lessonIds)
+                ->get();
+            $totalTopics = $topics->count();
 
             if ($totalTopics > 0) {
-                $completedTopics = LessonTopicProgress::where('user_id', $user->id)
-                    ->whereIn('lesson_topic_id', function ($q) use ($lessonIds) {
-                        $q->select('id')->from('lesson_topics')->whereIn('lesson_id', $lessonIds);
-                    })
-                    ->where('completed', true)
+                $completedTopics = $this->completionService
+                    ->completedTopicIds($user, $topics)
                     ->count();
                 $progressPercent = round(($completedTopics / $totalTopics) * 100);
             } else {

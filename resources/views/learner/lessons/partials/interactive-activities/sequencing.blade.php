@@ -13,7 +13,6 @@
     'items' => $activity['payload']['items'] ?? [],
     'initialOrder' => collect($activity['payload']['items'] ?? [])->pluck('id')->values()->all(),
 ]))"
-    x-init="return () => teardown()"
     @interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"
     @interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status, $event.detail.previewToken)"
     @interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status, $event.detail.previewToken) : resetPractice())"

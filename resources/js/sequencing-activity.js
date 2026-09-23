@@ -289,6 +289,10 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             return this;
         },
 
+        destroy() {
+            return this.teardown();
+        },
+
         startItemDrag(index, event = null) {
             return this.beginPointerDrag(index, event);
         },

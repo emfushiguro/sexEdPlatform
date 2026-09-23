@@ -68,6 +68,7 @@
                             list="caption-language-codes"
                             maxlength="35"
                             placeholder="en"
+                            required
                             class="w-full px-3 py-2 border border-gray-200 rounded-lg"
                         >
                         @error('captions.'.$index.'.language_code')
@@ -84,6 +85,7 @@
                             value="{{ old('captions.'.$index.'.label', $captionLabel) }}"
                             maxlength="100"
                             placeholder="English"
+                            required
                             class="w-full px-3 py-2 border border-gray-200 rounded-lg"
                         >
                         @error('captions.'.$index.'.label')
@@ -102,6 +104,7 @@
                         name="captions[{{ $index }}][file]"
                         accept=".vtt,text/vtt,text/plain"
                         data-caption-file
+                        @if(! $captionId) required @endif
                         aria-describedby="caption_file_name_{{ $index }} caption_file_error_{{ $index }}"
                         class="w-full px-3 py-2 border border-gray-200 rounded-lg"
                     >
@@ -152,16 +155,16 @@
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label for="caption_language___INDEX__" class="block mb-1 text-sm font-medium text-gray-700">Language code</label>
-                    <input type="text" id="caption_language___INDEX__" name="captions[__INDEX__][language_code]" list="caption-language-codes" maxlength="35" placeholder="en" class="w-full px-3 py-2 border border-gray-200 rounded-lg">
+                    <input type="text" id="caption_language___INDEX__" name="captions[__INDEX__][language_code]" list="caption-language-codes" maxlength="35" placeholder="en" required class="w-full px-3 py-2 border border-gray-200 rounded-lg">
                 </div>
                 <div>
                     <label for="caption_label___INDEX__" class="block mb-1 text-sm font-medium text-gray-700">Label</label>
-                    <input type="text" id="caption_label___INDEX__" name="captions[__INDEX__][label]" maxlength="100" placeholder="English" class="w-full px-3 py-2 border border-gray-200 rounded-lg">
+                    <input type="text" id="caption_label___INDEX__" name="captions[__INDEX__][label]" maxlength="100" placeholder="English" required class="w-full px-3 py-2 border border-gray-200 rounded-lg">
                 </div>
             </div>
             <div class="mt-4">
                 <label for="caption_file___INDEX__" class="block mb-1 text-sm font-medium text-gray-700">Caption file</label>
-                <input type="file" id="caption_file___INDEX__" name="captions[__INDEX__][file]" accept=".vtt,text/vtt,text/plain" data-caption-file aria-describedby="caption_file_name___INDEX__ caption_file_error___INDEX__" class="w-full px-3 py-2 border border-gray-200 rounded-lg">
+                <input type="file" id="caption_file___INDEX__" name="captions[__INDEX__][file]" accept=".vtt,text/vtt,text/plain" data-caption-file required aria-describedby="caption_file_name___INDEX__ caption_file_error___INDEX__" class="w-full px-3 py-2 border border-gray-200 rounded-lg">
                 <p id="caption_file_name___INDEX__" data-caption-file-name class="mt-1 text-xs text-gray-500"></p>
                 <p id="caption_file_error___INDEX__" data-caption-file-error class="hidden mt-1 text-sm text-red-600" role="alert"></p>
             </div>

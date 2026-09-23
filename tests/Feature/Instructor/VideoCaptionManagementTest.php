@@ -480,7 +480,21 @@ class VideoCaptionManagementTest extends TestCase
                 ->assertSee('name="caption_default"', false)
                 ->assertSee('accept=".vtt,text/vtt,text/plain"', false)
                 ->assertSee('WebVTT up to 2 MB', false);
+
+            $this->assertMatchesRegularExpression(
+                '/name="captions\\[__INDEX__\\]\\[language_code\\]"[^>]*required/',
+                $response->getContent(),
+            );
+            $this->assertMatchesRegularExpression(
+                '/name="captions\\[__INDEX__\\]\\[label\\]"[^>]*required/',
+                $response->getContent(),
+            );
         }
+
+        $this->assertStringNotContainsString(
+            'x-init="return () => cleanupMedia()"',
+            $responses[0]->getContent(),
+        );
 
         $this->actingAs($other)
             ->get(route('instructor.topics.edit', $topic))

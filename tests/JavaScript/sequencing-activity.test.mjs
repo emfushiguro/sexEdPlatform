@@ -433,3 +433,10 @@ test('checkAnswer commits an active pointer drag without playing selection audio
     assert.deepEqual(played, []);
     assert.equal(events.find(({ name }) => name === 'interactive-activity-result')?.detail.activityId, 'sequencing-43');
 });
+
+test('sequencing exposes Alpine destroy cleanup', () => {
+    const activity = createSequencingActivity();
+
+    assert.equal(activity.destroy(), activity);
+    assert.equal(activity.autoScrollFrame, null);
+});

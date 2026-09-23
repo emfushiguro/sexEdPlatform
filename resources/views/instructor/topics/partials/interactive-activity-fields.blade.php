@@ -60,7 +60,6 @@
          pairs: @js($activityPairs),
          items: @js($activityItems),
      })"
-     x-init="return () => cleanupMedia()"
      @pointerup.window="dropAuthoringDrag()"
      @pointercancel.window="cancelAuthoringDrag()"
      @keydown.escape.window="if (authoringReorder.active()) cancelAuthoringDrag()"

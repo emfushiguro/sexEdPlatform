@@ -169,6 +169,7 @@
     </script>
     <!-- Legal + Help Modals (available on every auth page) -->
     <x-legal-modals />
+    <x-logout-confirmation-modal />
     
 </body>
 </html>

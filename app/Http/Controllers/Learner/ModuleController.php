@@ -166,7 +166,9 @@ class ModuleController extends Controller
             ->where('is_published', true)
             ->orderBy('order')
             ->with([
-                'topics' => fn($query) => $query->ordered(),
+                'topics' => fn($query) => $query
+                    ->ordered()
+                    ->with(['interactiveActivities', 'checkpointQuestions.options']),
                 'quiz' => fn($query) => $query->where('is_active', true)->with('questions'),
             ])
             ->get();
