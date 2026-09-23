@@ -24,7 +24,7 @@
           x-data="{
             add() {
                 const option = this.$refs.available.selectedOptions[0];
-                if (!option || !option.value || this.$refs.selected.querySelector('[data-module-id=\"' + option.value + '\"]')) return;
+                if (!option || !option.value || this.$refs.selected.querySelector(`[data-module-id='${option.value}']`)) return;
                 const row = document.createElement('div');
                 row.className = 'flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm';
                 row.dataset.moduleId = option.value;
@@ -73,14 +73,14 @@
         <fieldset aria-invalid="{{ $categoryError ? 'true' : 'false' }}" @if($categoryError) aria-describedby="categories-error" @endif>
             <legend class="text-sm font-semibold text-gray-800">Learner categories</legend>
             <div class="mt-2 flex flex-wrap gap-4">@foreach(['kids' => 'Kids', 'teens' => 'Teens', 'adults' => 'Adults'] as $key => $label)
-                <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="categories[]" value="{{ $key }}" @checked(in_array($key, $categories, true)) class="rounded border-gray-300 text-purple-700 focus:ring-purple-600">{{ $label }}</label>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="categories[]" value="{{ $key }}" @checked(in_array($key, $categories, true)) aria-invalid="{{ $categoryError ? 'true' : 'false' }}" @if($categoryError) aria-describedby="categories-error" @endif class="rounded border-gray-300 text-purple-700 focus:ring-purple-600">{{ $label }}</label>
             @endforeach</div>
             @if($categoryError)<p id="categories-error" class="mt-1 text-sm text-rose-700">{{ $categoryError }}</p>@endif
         </fieldset>
 
         <div>
             <label for="available-module" class="mb-1.5 block text-sm font-semibold text-gray-800">Add a learner-visible module</label>
-            <div class="flex gap-2"><select id="available-module" x-ref="available" class="min-w-0 flex-1 rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-purple-600 focus:ring-purple-600"><option value="">Choose a module</option>
+            <div class="flex gap-2"><select id="available-module" x-ref="available" aria-invalid="{{ $moduleError ? 'true' : 'false' }}" @if($moduleError) aria-describedby="modules-error" @endif class="min-w-0 flex-1 rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-purple-600 focus:ring-purple-600"><option value="">Choose a module</option>
                 @foreach($candidates as $candidate)<option value="{{ $candidate->id }}">{{ $candidate->title }} — {{ $candidate->creator?->name ?? ($candidate->content_owner_type === 'admin' ? 'Platform' : 'Former instructor') }} ({{ implode(', ', $candidate->learnerCategoryLabels()) }})</option>@endforeach
             </select><button type="button" @click="add()" class="rounded-xl border border-purple-200 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50">Add</button></div>
             <div class="mt-4" aria-invalid="{{ $moduleError ? 'true' : 'false' }}" @if($moduleError) aria-describedby="modules-error" @endif>

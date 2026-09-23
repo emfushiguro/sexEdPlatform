@@ -306,6 +306,24 @@ class AdminLearningPathManagementTest extends TestCase
         Storage::disk('public')->assertExists($path->thumbnail);
     }
 
+    public function test_update_without_thumbnail_preserves_existing_thumbnail(): void
+    {
+        Storage::fake('public');
+        $this->actingAs($this->user('admin'));
+        $this->post(route('admin.learning-paths.store'), $this->payload([
+            'thumbnail' => $this->fakeImage('existing.png'),
+        ]))->assertRedirect();
+        $path = LearningPath::query()->firstOrFail();
+        $existing = $path->thumbnail;
+
+        $this->put(route('admin.learning-paths.update', $path), $this->payload([
+            'title' => 'Keep image',
+        ]))->assertRedirect();
+
+        $this->assertSame($existing, $path->fresh()->thumbnail);
+        Storage::disk('public')->assertExists($existing);
+    }
+
     private function user(string $role): User
     {
         $user = User::withoutEvents(fn (): User => User::factory()->create(['role' => $role, 'status' => 'active']));

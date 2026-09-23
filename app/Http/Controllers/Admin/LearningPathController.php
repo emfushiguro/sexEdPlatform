@@ -36,6 +36,8 @@ class LearningPathController extends Controller
         $attributes = $request->validated();
         if ($request->hasFile('thumbnail')) {
             $attributes['thumbnail'] = $request->file('thumbnail')->store('learning-paths', 'public');
+        } else {
+            unset($attributes['thumbnail']);
         }
         $authoring->save(null, $attributes, $request->user());
 
@@ -54,6 +56,8 @@ class LearningPathController extends Controller
         $attributes = $request->validated();
         if ($request->hasFile('thumbnail')) {
             $attributes['thumbnail'] = $request->file('thumbnail')->store('learning-paths', 'public');
+        } else {
+            unset($attributes['thumbnail']);
         }
         $authoring->save($learningPath, $attributes, $request->user());
 
@@ -80,7 +84,7 @@ class LearningPathController extends Controller
     {
         $path?->load(['learnerCategories', 'pathModules']);
         $candidates = Module::query()->learnerVisible()->with(['learnerCategories', 'creator'])
-            ->orderBy('title')->get(['id', 'title', 'created_by', 'min_age', 'max_age', 'content_owner_type']);
+            ->orderBy('title')->get(['id', 'title', 'thumbnail', 'created_by', 'min_age', 'max_age', 'content_owner_type']);
         $ids = old('module_ids', $path?->pathModules->pluck('module_id')->all() ?? []);
         $ids = is_array($ids) ? $ids : [];
         $selectedModules = collect($ids)->map(fn ($id) => $candidates->firstWhere('id', (int) $id))
