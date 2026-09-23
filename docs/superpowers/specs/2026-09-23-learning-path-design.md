@@ -146,7 +146,10 @@ replacement is part of this feature.
 learner-category rows, and its creator. It exposes status constants and focused
 `published()` and `forLearnerCategory()` scopes.
 
-`LearningPathModule` belongs to one path and one existing `Module`.
+`LearningPathModule` belongs to one path and one existing `Module`. Its module
+relation includes soft-deleted records so admin warnings and completed learner
+history remain explainable; presentation rules still decide whether to omit the
+node or show it without an action.
 `LearningPathLearnerCategory` belongs to one path. `Module` gains only the
 inverse path-membership relationship.
 
@@ -226,6 +229,8 @@ The selected-module list matches the Sequencing interaction contract:
 
 - a 44-by-44-pixel drag handle;
 - pointer and touch dragging;
+- visible Move Up and Move Down buttons as a non-drag single-pointer
+  alternative;
 - source-row emphasis, insertion marker, and floating overlay;
 - viewport-edge auto-scroll;
 - cancellation when dropped outside a valid target;
@@ -370,8 +375,10 @@ navigation or essential state.
 The visual path is one semantic `<ol>` of `<li>` module cards, so visual and
 assistive representations cannot drift. Node status never relies on color.
 Links and drag handles expose visible focus, meaningful labels, and at least
-44-by-44-pixel targets. Progress elements expose labels, minimum, maximum, and
-current values.
+44-by-44-pixel targets. Move Up and Move Down buttons make ordering operable
+without a dragging gesture. Progress elements expose labels, minimum, maximum,
+and current values. Normal text meets 4.5:1 contrast and controls, focus
+indicators, and essential graphics meet 3:1 contrast in light and dark themes.
 
 Admin drag ordering supplies screen-reader instructions, `aria-pressed`, item
 position metadata, and live pickup/move/drop/cancel announcements. Learner
@@ -387,10 +394,11 @@ If an assigned module later becomes unpublished, deleted, or category
 incompatible, the admin edit page shows a warning.
 
 For learners without approved historical access, that node is omitted and does
-not enter the progress denominator. For approved learners, current module rules
-continue to decide whether the module can be reviewed. Completed history remains
-completed. An incomplete deactivated module appears unavailable and cannot
-become the primary continuation target.
+not enter the progress denominator. Remaining visible nodes receive contiguous
+display ordinals so a hidden module does not expose a numbering gap. For
+approved learners, current module rules continue to decide whether the module
+can be reviewed. Completed history remains completed. An incomplete deactivated
+module appears unavailable and cannot become the primary continuation target.
 
 Archiving a path changes only path status. It does not delete membership or any
 learner data. Restoring an archived path returns it to draft so an administrator
@@ -440,7 +448,8 @@ Automated coverage will include:
   category-compatibility validation;
 - platform- and instructor-owned module selection;
 - pointer/touch reorder state, keyboard pickup/move/drop/cancel, edge-scroll
-  calculation reuse, announcements, and submitted ordering;
+  calculation reuse, single-pointer Move Up/Down controls, announcements, and
+  submitted ordering;
 - persisted order after reopening edit;
 - module removal preserving module, enrollment, purchase, progress, quiz
   attempt, activity, and certificate records;
@@ -454,7 +463,7 @@ Automated coverage will include:
 - overall progress, module progress, current selection, recommendation, and
   Continue Learning destinations;
 - semantic list, state labels, progress accessibility, drag instructions,
-  focus hooks, and reduced-motion rules;
+  focus hooks, contrast, 200-percent zoom, and reduced-motion rules;
 - existing module browsing, details, enrollment, payment, lesson, topic,
   activity, checkpoint, quiz, certificate, progress, governance, and RBAC
   regressions;
