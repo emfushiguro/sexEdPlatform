@@ -6,7 +6,10 @@ namespace Tests\Feature\Admin;
 
 use App\Models\LearningPath;
 use App\Models\Module;
+use App\Models\ModuleEnrollment;
+use App\Models\ModulePurchase;
 use App\Models\User;
+use App\Models\UserProgress;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Gate;
@@ -136,6 +139,12 @@ class AdminLearningPathManagementTest extends TestCase
             $table->boolean('show_individual_attribution')->default(true);
             $table->timestamps();
         });
+        foreach (['module_enrollments', 'module_purchases', 'user_progress'] as $name) {
+            Schema::create($name, function (Blueprint $table): void {
+                $table->id();
+                $table->timestamps();
+            });
+        }
     }
 
     public function test_policy_maps_existing_module_permissions_for_a_non_admin_subject(): void
@@ -174,6 +183,79 @@ class AdminLearningPathManagementTest extends TestCase
             $this->actingAs($user)->post(route('admin.learning-paths.store'), $this->payload())->assertForbidden();
             $this->actingAs($user)->patch(route('admin.learning-paths.archive', $path))->assertForbidden();
         }
+    }
+
+    public function test_admin_preview_is_neutral_and_does_not_mutate_learner_state(): void
+    {
+        $admin = $this->user('admin');
+        $modules = [
+            $this->module(['teens'], ['title' => 'Preview Foundations']),
+            $this->module(['teens'], ['title' => 'Preview Practice']),
+            $this->module(['teens'], ['title' => 'Preview Reflection']),
+        ];
+        $path = LearningPath::factory()->published()->create([
+            'title' => 'Administrator Preview Path',
+            'description' => 'A neutral view for administrators.',
+        ]);
+        $path->learnerCategories()->create(['category' => 'teens']);
+        foreach ($modules as $position => $module) {
+            $path->pathModules()->create(['module_id' => $module->id, 'position' => $position + 1]);
+        }
+
+        $before = [
+            ModuleEnrollment::query()->count(),
+            ModulePurchase::query()->count(),
+            UserProgress::query()->count(),
+        ];
+
+        $response = $this->actingAs($admin)->get(route('admin.learning-paths.preview', $path));
+
+        $response->assertOk()
+            ->assertSee('Administrator Preview')
+            ->assertSee('Progress and recommendation are illustrative', false)
+            ->assertSee('0%')
+            ->assertSee('0 of 3 modules completed')
+            ->assertSee('Recommended Next')
+            ->assertSee('Available')
+            ->assertDontSee('Continue Learning')
+            ->assertDontSee('Module Details')
+            ->assertDontSee('View module')
+            ->assertDontSee(route('learner.modules.show', $modules[0]), false);
+
+        $this->assertSame($before, [
+            ModuleEnrollment::query()->count(),
+            ModulePurchase::query()->count(),
+            UserProgress::query()->count(),
+        ]);
+    }
+
+    public function test_admin_preview_is_linked_from_index_and_edit_pages(): void
+    {
+        $admin = $this->user('admin');
+        $module = $this->module(['teens']);
+        $path = LearningPath::factory()->create();
+        $path->learnerCategories()->create(['category' => 'teens']);
+        $path->pathModules()->create(['module_id' => $module->id, 'position' => 1]);
+        $previewUrl = route('admin.learning-paths.preview', $path);
+
+        $this->actingAs($admin)->get(route('admin.learning-paths.index'))
+            ->assertOk()
+            ->assertSee($previewUrl, false)
+            ->assertSee('Preview', false);
+        $this->actingAs($admin)->get(route('admin.learning-paths.edit', $path))
+            ->assertOk()
+            ->assertSee($previewUrl, false)
+            ->assertSee('Preview learning path', false);
+    }
+
+    public function test_non_admin_cannot_open_learning_path_preview(): void
+    {
+        $path = LearningPath::factory()->published()->create();
+        $path->learnerCategories()->create(['category' => 'teens']);
+
+        $this->actingAs($this->user('instructor'))
+            ->get(route('admin.learning-paths.preview', $path))
+            ->assertForbidden();
     }
 
     public function test_draft_with_zero_modules_is_saved_and_published_path_requires_a_module(): void

@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\SaveLearningPathRequest;
 use App\Models\LearningPath;
 use App\Models\Module;
 use App\Services\LearningPathAuthoringService;
+use App\Services\LearningPathPresentationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -78,6 +79,16 @@ class LearningPathController extends Controller
         $learningPath->update(['status' => LearningPath::STATUS_DRAFT]);
 
         return redirect()->route('admin.learning-paths.index')->with('success', 'Learning path restored as a draft.');
+    }
+
+    public function preview(LearningPath $learningPath, LearningPathPresentationService $presentation): View
+    {
+        $this->authorize('view', $learningPath);
+        $learningPath->load(['learnerCategories', 'pathModules.module']);
+
+        return view('admin.learning-paths.preview', [
+            'path' => $presentation->preview($learningPath),
+        ]);
     }
 
     private function formData(?LearningPath $path = null): array

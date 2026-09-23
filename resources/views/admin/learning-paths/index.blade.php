@@ -28,6 +28,7 @@
                         <td class="px-5 py-4 text-gray-600">{{ $path->path_modules_count }}</td>
                         <td class="px-5 py-4"><span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $path->status === 'published' ? 'bg-emerald-50 text-emerald-700' : ($path->status === 'archived' ? 'bg-gray-100 text-gray-600' : 'bg-amber-50 text-amber-700') }}">{{ ucfirst($path->status) }}</span></td>
                         <td class="px-5 py-4"><div class="flex flex-wrap items-center gap-3">
+                            @can('view', $path)<a class="font-medium text-indigo-700 hover:underline" href="{{ route('admin.learning-paths.preview', $path) }}">Preview</a>@endcan
                             @can('update', $path)<a class="font-medium text-purple-700 hover:underline" href="{{ route('admin.learning-paths.edit', $path) }}">Edit</a>@endcan
                             @can('archive', $path)
                                 @if($path->status === 'archived')

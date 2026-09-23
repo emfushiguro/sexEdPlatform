@@ -91,6 +91,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         ->name('learning-paths.archive');
     Route::patch('learning-paths/{learningPath}/restore', [Admin\LearningPathController::class, 'restore'])
         ->name('learning-paths.restore');
+    Route::get('learning-paths/{learningPath}/preview', [Admin\LearningPathController::class, 'preview'])
+        ->name('learning-paths.preview');
     Route::resource('learning-paths', Admin\LearningPathController::class)
         ->except(['show', 'destroy'])
         ->parameters(['learning-paths' => 'learningPath']);
