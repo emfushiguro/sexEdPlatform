@@ -257,8 +257,39 @@ class AdminLearningPathManagementTest extends TestCase
         $response = $this->get(route('admin.learning-paths.create'));
         $response->assertOk()->assertSee('role="alert"', false)->assertSee('aria-invalid="true"', false);
         $html = $response->getContent();
+        $this->assertStringContainsString('id="available-module" x-ref="available"', $html);
+        $this->assertStringContainsString('aria-invalid="true"', $html);
+        $this->assertStringContainsString('aria-describedby="modules-error"', $html);
+        $this->assertStringContainsString('name="categories[]" value="teens"', $html);
         $this->assertLessThan(strpos($html, 'name="module_ids[]" value="'.$first->id.'"'), strpos($html, 'name="module_ids[]" value="'.$second->id.'"'));
         $this->assertStringNotContainsString('name="module_ids[]" value="999999"', $html);
+    }
+
+    public function test_category_validation_is_associated_with_category_controls(): void
+    {
+        $this->actingAs($this->user('admin'));
+        $this->from(route('admin.learning-paths.create'))->post(route('admin.learning-paths.store'), $this->payload([
+            'categories' => [],
+            'module_ids' => [],
+        ]))->assertRedirect(route('admin.learning-paths.create'));
+
+        $html = $this->get(route('admin.learning-paths.create'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<input[^>]+name="categories\[\]"[^>]+value="teens"[^>]+aria-invalid="true"[^>]+aria-describedby="categories-error"/s', $html);
+    }
+
+    public function test_form_uses_html_safe_builder_selector_and_exposes_candidate_thumbnail_metadata(): void
+    {
+        $admin = $this->user('admin');
+        $module = $this->module(['teens'], ['thumbnail' => 'learning-paths/candidate.png']);
+
+        $response = $this->actingAs($admin)->get(route('admin.learning-paths.create'));
+
+        $response->assertOk()
+            ->assertSee('querySelector(`[data-module-id=\'${option.value}\']`)', false)
+            ->assertViewHas('candidates', function ($candidates) use ($module): bool {
+                return $candidates->firstWhere('id', $module->id)?->thumbnail === 'learning-paths/candidate.png';
+            });
     }
 
     public function test_edit_persists_reordered_modules_and_archive_restore_only_change_status(): void
