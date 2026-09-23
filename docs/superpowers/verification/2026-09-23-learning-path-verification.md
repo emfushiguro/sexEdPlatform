@@ -1,7 +1,7 @@
 # Learning Path Verification
 
-Date: 2026-09-23  
-Branch: `learningPath`  
+Date: 2026-09-23
+Branch: `learningPath`
 Execution mode: existing working tree, no separate worktree
 
 ## Feature verification
