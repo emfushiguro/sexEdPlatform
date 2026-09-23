@@ -307,6 +307,21 @@ class LearningPathPresentationServiceTest extends TestCase
         $this->assertStringContainsString('/learn/modules/'.$paid->id, $nodes[2]['action_url']);
     }
 
+    public function test_soft_deleted_historical_module_is_visible_without_an_action_link(): void
+    {
+        $learner = $this->learner();
+        $module = $this->module('Removed from catalog');
+        $this->enroll($learner, $module);
+        $module->delete();
+        [$path] = $this->pathWithModules(0, [$module]);
+
+        $node = $this->service()->presentFor($learner, $path)['nodes'][0];
+
+        $this->assertSame('unavailable', $node['state']);
+        $this->assertNull($node['action_url']);
+        $this->assertStringContainsString('no longer available', strtolower($node['reason']));
+    }
+
     public function test_completed_out_of_order_is_current_safe_and_all_complete_has_review_action(): void
     {
         $learner = $this->learner();

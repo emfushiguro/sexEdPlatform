@@ -155,6 +155,9 @@ class LearningPathPresentationService
                 );
 
                 $reason = $this->unavailableReason($status, $approved, $activeVisible, $module);
+                $actionUrl = $reason === null
+                    ? $this->routeIfAvailable('learner.modules.show', $module)
+                    : null;
                 $node = [
                     'module' => $module,
                     'position' => count($nodes) + 1,
@@ -165,7 +168,7 @@ class LearningPathPresentationService
                     'completed_lessons' => $completedLessons,
                     'total_lessons' => $totalLessons,
                     'is_current' => false,
-                    'action_url' => $this->routeIfAvailable('learner.modules.show', $module),
+                    'action_url' => $actionUrl,
                     'action_label' => $canonical ? 'Review module' : 'View module',
                     'has_purchased' => $purchases->has((int) $module->id),
                 ];
@@ -259,9 +262,12 @@ class LearningPathPresentationService
         }
 
         return Lesson::query()
+            ->select(['id', 'module_id', 'order'])
             ->whereIn('module_id', $moduleIds)
             ->where('is_published', true)
-            ->with(['topics' => fn ($query) => $query->orderBy('order')])
+            ->with(['topics' => fn ($query) => $query
+                ->select(['id', 'lesson_id', 'type', 'order'])
+                ->orderBy('order')])
             ->orderBy('order')
             ->get()
             ->groupBy('module_id');
