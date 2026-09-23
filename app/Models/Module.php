@@ -135,6 +135,11 @@ class Module extends Model
         return $this->hasMany(ModuleLearnerCategory::class);
     }
 
+    public function learningPathMemberships(): HasMany
+    {
+        return $this->hasMany(LearningPathModule::class);
+    }
+
     public function publishedRevision(): BelongsTo
     {
         return $this->belongsTo(ModuleRevision::class, 'published_revision_id');
