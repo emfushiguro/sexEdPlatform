@@ -257,6 +257,13 @@ class AdminLearningPathManagementTest extends TestCase
         $response = $this->get(route('admin.learning-paths.create'));
         $response->assertOk()->assertSee('role="alert"', false)->assertSee('aria-invalid="true"', false);
         $html = $response->getContent();
+        $this->assertStringContainsString('data-learning-path-index', $html);
+        $this->assertStringContainsString('aria-posinset', $html);
+        $this->assertStringContainsString('aria-live="polite"', $html);
+        $this->assertStringContainsString('@pointermove.window', $html);
+        $this->assertStringContainsString('@pointerup.window', $html);
+        $this->assertStringContainsString('@pointercancel.window', $html);
+        $this->assertStringContainsString('@keydown', $html);
         $this->assertStringContainsString('id="available-module" x-ref="available"', $html);
         $this->assertStringContainsString('aria-invalid="true"', $html);
         $this->assertStringContainsString('aria-describedby="modules-error"', $html);
@@ -286,7 +293,8 @@ class AdminLearningPathManagementTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.learning-paths.create'));
 
         $response->assertOk()
-            ->assertSee('querySelector(`[data-module-id=\'${option.value}\']`)', false)
+            ->assertSee('learningPathBuilder', false)
+            ->assertSee('thumbnail', false)
             ->assertViewHas('candidates', function ($candidates) use ($module): bool {
                 return $candidates->firstWhere('id', $module->id)?->thumbnail === 'learning-paths/candidate.png';
             });
@@ -315,6 +323,58 @@ class AdminLearningPathManagementTest extends TestCase
         $this->assertSame($before, $path->fresh()->pathModules->pluck('id')->all());
         $this->assertSame('Revised', $path->fresh()->title);
         $this->assertFalse(app('router')->has('admin.learning-paths.destroy'));
+    }
+
+    public function test_edit_keeps_later_unpublished_memberships_visible_until_explicitly_removed(): void
+    {
+        $admin = $this->user('admin');
+        $module = $this->module(['teens']);
+
+        $this->actingAs($admin)->post(route('admin.learning-paths.store'), $this->payload([
+            'module_ids' => [$module->id],
+        ]))->assertRedirect();
+        $path = LearningPath::query()->firstOrFail();
+        $module->update(['is_published' => false]);
+
+        $this->get(route('admin.learning-paths.edit', $path))
+            ->assertOk()
+            ->assertSee($module->title)
+            ->assertSee('No longer learner-visible', false);
+
+        $this->put(route('admin.learning-paths.update', $path), $this->payload([
+            'module_ids' => [$module->id],
+        ]))->assertInvalid(['module_ids']);
+
+        $this->assertDatabaseHas('learning_path_modules', [
+            'learning_path_id' => $path->id,
+            'module_id' => $module->id,
+        ]);
+    }
+
+    public function test_edit_keeps_soft_deleted_memberships_visible_until_explicitly_removed(): void
+    {
+        $admin = $this->user('admin');
+        $module = $this->module(['teens']);
+
+        $this->actingAs($admin)->post(route('admin.learning-paths.store'), $this->payload([
+            'module_ids' => [$module->id],
+        ]))->assertRedirect();
+        $path = LearningPath::query()->firstOrFail();
+        $module->delete();
+
+        $this->get(route('admin.learning-paths.edit', $path))
+            ->assertOk()
+            ->assertSee($module->title)
+            ->assertSee('No longer learner-visible', false);
+
+        $this->put(route('admin.learning-paths.update', $path), $this->payload([
+            'module_ids' => [$module->id],
+        ]))->assertInvalid(['module_ids']);
+
+        $this->assertDatabaseHas('learning_path_modules', [
+            'learning_path_id' => $path->id,
+            'module_id' => $module->id,
+        ]);
     }
 
     public function test_thumbnail_is_stored_and_replaced_on_update(): void
@@ -349,6 +409,7 @@ class AdminLearningPathManagementTest extends TestCase
 
         $this->put(route('admin.learning-paths.update', $path), $this->payload([
             'title' => 'Keep image',
+            'thumbnail' => null,
         ]))->assertRedirect();
 
         $this->assertSame($existing, $path->fresh()->thumbnail);

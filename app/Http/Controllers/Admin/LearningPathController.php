@@ -82,12 +82,18 @@ class LearningPathController extends Controller
 
     private function formData(?LearningPath $path = null): array
     {
-        $path?->load(['learnerCategories', 'pathModules']);
+        $path?->load(['learnerCategories', 'pathModules.module.learnerCategories', 'pathModules.module.creator']);
         $candidates = Module::query()->learnerVisible()->with(['learnerCategories', 'creator'])
             ->orderBy('title')->get(['id', 'title', 'thumbnail', 'created_by', 'min_age', 'max_age', 'content_owner_type']);
+        $modulePool = $candidates->keyBy('id');
+        $path?->pathModules->each(function ($membership) use ($modulePool): void {
+            if ($membership->module) {
+                $modulePool->put($membership->module->id, $membership->module);
+            }
+        });
         $ids = old('module_ids', $path?->pathModules->pluck('module_id')->all() ?? []);
         $ids = is_array($ids) ? $ids : [];
-        $selectedModules = collect($ids)->map(fn ($id) => $candidates->firstWhere('id', (int) $id))
+        $selectedModules = collect($ids)->map(fn ($id) => $modulePool->get((int) $id))
             ->filter()->unique('id')->values();
 
         return compact('path', 'candidates', 'selectedModules');
