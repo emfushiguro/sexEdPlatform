@@ -187,6 +187,28 @@
         .interactive-authoring-pair,
         .interactive-authoring-sequence-row { transition: none; }
     }
+
+    .learning-path-order-row {
+        min-height: 4.25rem;
+        transition: opacity 120ms ease, box-shadow 120ms ease, transform 120ms ease, min-height 120ms ease;
+    }
+
+    .learning-path-order-row--dragged {
+        @apply border-purple-400 bg-purple-50 shadow-lg outline outline-2 outline-purple-300;
+        opacity: 0.45;
+    }
+
+    .learning-path-drag-handle { touch-action: none; }
+
+    .learning-path-order-overlay {
+        pointer-events: none;
+        transform: rotate(1deg) scale(1.02);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .learning-path-order-row,
+        .learning-path-order-overlay { transition: none; transform: none; }
+    }
 }
 
 /* Button Variants */

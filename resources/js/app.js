@@ -13,6 +13,7 @@ import { createInteractiveActivityAuthoring } from './interactive-activity-autho
 import { createInteractiveActivity } from './interactive-activity';
 import { createMatchingActivity } from './matching-activity';
 import { createSequencingActivity } from './sequencing-activity';
+import { createLearningPathBuilder } from './learning-path-builder';
 import { initializeLearningAudioPage, learningAudio } from './learning-audio';
 import './toast'; // Toast notification system
 import './admin-community';
@@ -92,6 +93,7 @@ window.interactiveActivityAuthoring = createInteractiveActivityAuthoring;
 window.interactiveActivity = createInteractiveActivity;
 window.matchingActivity = createMatchingActivity;
 window.sequencingActivity = createSequencingActivity;
+window.learningPathBuilder = createLearningPathBuilder;
 
 // Heavy libraries are loaded on-demand to keep the main bundle small.
 let cachedPdfJsLib = null;
