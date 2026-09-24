@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\TestCase;
+use LogicException;
 
 class LearnerIdentitySchemaTest extends TestCase
 {
@@ -102,5 +103,35 @@ class LearnerIdentitySchemaTest extends TestCase
         LearnerIdentityVerification::query()->create(['user_id' => $user->id, 'pathway' => 'adult']);
 
         $this->assertCount(2, $user->identityVerifications);
+    }
+
+    public function test_audit_rows_cannot_be_updated(): void
+    {
+        $audit = $this->createAudit();
+
+        $this->expectException(LogicException::class);
+        $audit->update(['reason' => 'changed']);
+    }
+
+    public function test_audit_rows_cannot_be_deleted(): void
+    {
+        $audit = $this->createAudit();
+
+        $this->expectException(LogicException::class);
+        $audit->delete();
+    }
+
+    private function createAudit(): LearnerIdentityAudit
+    {
+        $case = LearnerIdentityVerification::query()->create([
+            'user_id' => User::factory()->create()->id,
+            'pathway' => 'teen',
+        ]);
+
+        return $case->audits()->create([
+            'action' => 'submitted',
+            'submission_round' => 1,
+            'created_at' => now(),
+        ]);
     }
 }

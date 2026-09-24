@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -26,6 +27,16 @@ class LearnerIdentityAudit extends Model
             'submission_round' => 'integer',
             'created_at' => 'datetime',
         ];
+    }
+
+    protected function performUpdate(Builder $query)
+    {
+        throw new \LogicException('Learner identity audit records are append-only.');
+    }
+
+    protected function performDeleteOnModel()
+    {
+        throw new \LogicException('Learner identity audit records are append-only.');
     }
 
     public function verification(): BelongsTo
