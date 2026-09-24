@@ -73,8 +73,27 @@ class LearnerIdentityAccessTest extends TestCase
         [$legacy] = $this->learner(covered: false);
         $this->actingAs($legacy)->get(route('profile.complete'))->assertOk();
 
+        $guardian = User::factory()->create([
+            'role' => 'learner', 'is_parent_registration' => true,
+            'parent_verification_status' => 'approved', 'email_verified_at' => now(),
+        ]);
+        $guardian->assignRole('learner');
         [$child] = $this->learner(birthdate: '2016-01-01', covered: false);
+        $relationship = ParentChildAccount::create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'relationship_type' => 'mother',
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'relationship_verified_at' => now(),
+            'verification_status' => ParentChildAccount::VERIFICATION_PENDING,
+            'verification_document_path' => 'child-verifications/temp/dependent-id.png',
+        ]);
+
+        $this->assertSame($child->id, $relationship->child_user_id);
+        $this->assertFalse($child->identityVerifications()->exists());
         $this->actingAs($child)->get(route('profile.complete'))->assertOk();
+        $this->get(route('learner.dashboard'))->assertRedirect(route('child.verification.status'));
     }
 
     public function test_age_correction_below_thirteen_renders_support_hold_without_loop(): void
@@ -84,6 +103,20 @@ class LearnerIdentityAccessTest extends TestCase
         $this->actingAs($user)->get(route('learner.dashboard'))->assertRedirect(route('learner.identity.status'));
         $this->get(route('learner.identity.status'))->assertOk()->assertSee('support');
         $this->get(route('learner.identity.create'))->assertRedirect(route('learner.identity.status'));
+    }
+
+    public function test_missing_birthdate_on_existing_case_renders_support_hold_without_loop(): void
+    {
+        [$user, $case] = $this->learner();
+        $user->update(['birthdate' => null]);
+
+        $this->assertSame($user->id, $case->user_id);
+        $this->actingAs($user)->get(route('learner.dashboard'))
+            ->assertRedirect(route('learner.identity.status'));
+        $this->get(route('learner.identity.status'))
+            ->assertOk()->assertSee('guardian support')->assertSee('contact support');
+        $this->get(route('learner.identity.create'))
+            ->assertRedirect(route('learner.identity.status'));
     }
 
     public function test_identity_routes_require_an_owned_case(): void
