@@ -30,7 +30,8 @@ class SubmitLearnerIdentityRequest extends FormRequest
         $subtype = (string) $this->input('government_id_type');
         $governmentTypes = config('guardian_identity.id_types', []);
         $requiresBack = $type === 'government_id' && (bool) data_get($governmentTypes, $subtype.'.requires_back', false);
-        $documentChanged = $case?->document_type !== $type;
+        $documentChanged = $case?->document_type !== $type
+            || ($type === 'government_id' && $case?->government_id_type !== $subtype);
         $image = ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:min_width=320,min_height=320,max_width=6000,max_height=6000'];
         $types = $case?->pathway === 'teen'
             ? ['school_id', 'institution_id', 'government_id']

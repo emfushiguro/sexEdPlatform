@@ -107,6 +107,22 @@ class LearnerIdentitySubmission
                     'created_at' => now(),
                 ]);
 
+                if ($oldPaths) {
+                    $pathsToDelete = $oldPaths;
+                    DB::afterCommit(function () use ($pathsToDelete): void {
+                        try {
+                            if (! Storage::disk('local')->delete($pathsToDelete)) {
+                                Log::warning('Learner identity evidence deletion failed.', ['paths' => $pathsToDelete]);
+                            }
+                        } catch (Throwable $e) {
+                            Log::warning('Learner identity evidence deletion failed.', [
+                                'paths' => $pathsToDelete,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    });
+                }
+
                 return $case->load('evidence');
             });
         } catch (Throwable $e) {
@@ -114,16 +130,6 @@ class LearnerIdentitySubmission
                 Storage::disk('local')->delete($newPaths);
             }
             throw $e;
-        }
-
-        if ($oldPaths) {
-            try {
-                if (! Storage::disk('local')->delete($oldPaths)) {
-                    Log::warning('Learner identity evidence deletion failed.', ['paths' => $oldPaths]);
-                }
-            } catch (Throwable $e) {
-                Log::warning('Learner identity evidence deletion failed.', ['paths' => $oldPaths, 'error' => $e->getMessage()]);
-            }
         }
 
         return $submitted;

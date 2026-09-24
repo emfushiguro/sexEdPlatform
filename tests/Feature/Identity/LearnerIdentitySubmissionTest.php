@@ -7,9 +7,11 @@ use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
 use App\Services\Identity\LearnerIdentitySubmission;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class LearnerIdentitySubmissionTest extends TestCase
@@ -109,7 +111,7 @@ class LearnerIdentitySubmissionTest extends TestCase
         }
     }
 
-    public function test_rejection_allows_selective_replacement_and_deletes_old_bytes(): void
+    public function test_rejection_allows_selective_replacement_and_deletes_old_bytes_after_commit(): void
     {
         [$adult, $case] = $this->case('2000-01-01');
         $first = $this->submit($adult, $case);
@@ -136,6 +138,57 @@ class LearnerIdentitySubmissionTest extends TestCase
         $second = app(LearnerIdentitySubmission::class)->submit($teen, $case, $this->data('school_id'), ['identity_front' => $this->image('new-front.jpg')]);
         $this->assertEqualsCanonicalizing(['identity_front', 'selfie'], $second->evidence->pluck('slot')->all());
         Storage::disk('local')->assertMissing([$old['identity_front'], $old['identity_back']]);
+        Storage::disk('local')->assertExists($old['selfie']);
+    }
+
+    public function test_government_subtype_change_requires_new_front_and_back(): void
+    {
+        [$adult, $case] = $this->case('2000-01-01');
+        $first = $this->submit($adult, $case, 'government_id', 'philhealth');
+        $oldFront = $first->evidence->firstWhere('slot', 'identity_front')->storage_path;
+        $case->update(['status' => 'rejected']);
+
+        $passport = $this->data('government_id', 'passport');
+        $this->assertFalse($this->valid($adult, $case, $passport, ['identity_back' => $this->image('passport-back.png')]));
+        $this->assertFalse($this->valid($adult, $case, $passport, ['identity_front' => $this->image('passport-front.png')]));
+        try {
+            app(LearnerIdentitySubmission::class)->submit($adult, $case, $passport, ['identity_back' => $this->image('passport-back.png')]);
+            $this->fail('Government subtype changed without a new front.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('identity_front', $e->errors());
+        }
+        $this->assertSame('philhealth', $case->fresh()->government_id_type);
+        $this->assertSame($oldFront, $case->fresh()->evidence->firstWhere('slot', 'identity_front')->storage_path);
+
+        $second = app(LearnerIdentitySubmission::class)->submit($adult, $case, $passport, [
+            'identity_front' => $this->image('passport-front.png'),
+            'identity_back' => $this->image('passport-back.png'),
+        ]);
+        $this->assertSame('passport', $second->government_id_type);
+        $this->assertNotSame($oldFront, $second->evidence->firstWhere('slot', 'identity_front')->storage_path);
+    }
+
+    public function test_outer_transaction_rollback_preserves_replaced_evidence_bytes(): void
+    {
+        [$adult, $case] = $this->case('2000-01-01');
+        $first = $this->submit($adult, $case);
+        $old = $first->evidence->pluck('storage_path', 'slot');
+        $case->update(['status' => 'rejected']);
+
+        try {
+            DB::transaction(function () use ($adult, $case): void {
+                app(LearnerIdentitySubmission::class)->submit($adult, $case, $this->data(), [
+                    'identity_front' => $this->image('replacement-front.png'),
+                ]);
+                throw new \RuntimeException('Outer caller rolled back.');
+            });
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Outer caller rolled back.', $e->getMessage());
+        }
+
+        $this->assertSame('rejected', $case->fresh()->status);
+        $this->assertSame($old['identity_front'], $case->fresh()->evidence->firstWhere('slot', 'identity_front')->storage_path);
+        Storage::disk('local')->assertExists($old['identity_front']);
         Storage::disk('local')->assertExists($old['selfie']);
     }
 
