@@ -142,6 +142,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(LearnerProfile::class);
     }
 
+    public function identityVerifications(): HasMany
+    {
+        return $this->hasMany(LearnerIdentityVerification::class);
+    }
+
     public function adminCreatorProfile()
     {
         return $this->hasOne(AdminCreatorProfile::class);
