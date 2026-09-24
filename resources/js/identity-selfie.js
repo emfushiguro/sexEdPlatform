@@ -52,9 +52,11 @@ export function createIdentitySelfie(dependencies = {}) {
                 if (!this.$refs?.video) throw new Error('Video preview unavailable');
                 this.$refs.video.srcObject = stream;
                 await this.$refs.video.play();
+                if (request !== this.requestId) return;
                 this.cameraActive = true;
                 this.status = 'Camera ready. Capture your selfie.';
             } catch {
+                if (request !== this.requestId) return;
                 this.stopCamera();
                 this.cameraError = 'Camera could not start. Please upload a selfie instead.';
             }

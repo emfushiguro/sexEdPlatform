@@ -123,3 +123,45 @@ test('cancel during image encoding discards late candidate', async () => {
     assert.equal(component.previewUrl, null);
     assert.equal(input.files.length, 0);
 });
+
+test('cancel while video play is pending cannot reactivate the camera', async () => {
+    let resolvePlay;
+    const { component, video, stopped } = fixture();
+    video.play = () => new Promise((resolve) => { resolvePlay = resolve; });
+    const starting = component.startCamera();
+    await Promise.resolve();
+    component.cancel();
+    resolvePlay();
+    await starting;
+    assert.equal(component.cameraActive, false);
+    assert.equal(component.status, 'Selfie selection cleared.');
+    assert.equal(video.srcObject, null);
+    assert.deepEqual(stopped, [1, 2]);
+});
+
+test('rejected old video play cannot stop or overwrite a newer camera', async () => {
+    let rejectOldPlay;
+    let cameraNumber = 0;
+    const stopped = [];
+    const streams = [1, 2].map((number) => ({
+        getTracks: () => [{ stop: () => stopped.push(number) }],
+    }));
+    const { component, video } = fixture({
+        mediaDevices: { getUserMedia: async () => streams[cameraNumber++] },
+    });
+    let playNumber = 0;
+    video.play = () => ++playNumber === 1
+        ? new Promise((_, reject) => { rejectOldPlay = reject; })
+        : Promise.resolve();
+    const oldStart = component.startCamera();
+    await Promise.resolve();
+    await component.startCamera();
+    assert.equal(component.cameraActive, true);
+    rejectOldPlay(new Error('Old playback failed'));
+    await oldStart;
+    assert.equal(component.cameraActive, true);
+    assert.equal(component.cameraError, '');
+    assert.equal(component.status, 'Camera ready. Capture your selfie.');
+    assert.equal(video.srcObject, streams[1]);
+    assert.deepEqual(stopped, [1]);
+});
