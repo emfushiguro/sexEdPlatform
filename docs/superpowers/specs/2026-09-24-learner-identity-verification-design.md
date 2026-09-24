@@ -78,16 +78,17 @@ distinct. A selfie cannot satisfy an identity-document slot. The back slot is
 required only when the selected government-ID rule requires it; otherwise it
 is optional and cleared when no longer relevant.
 
-An audit entry records actor, action, pathway, submission round, old/new
-status, timestamp, and any review reason. Audit entries never contain raw
-images, public URLs, or uploaded file names. Current evidence paths may be
-replaced on resubmission; superseded raw files are removed only after the new
-files and database state are committed. Audit history remains.
+An audit entry records actor, action, submission round, old/new status,
+timestamp, and any review reason; its case supplies the pathway. Audit entries
+never contain raw images, public URLs, or uploaded file names. Current evidence
+paths may be replaced on resubmission; superseded raw files are removed only
+after the new files and database state are committed. Audit history remains.
 
 When a covered teen reaches 18, the service marks the teen case superseded
 and creates an unsubmitted adult case. The teen case and its decisions remain
-historical. A superseded pending teen case leaves the active review queue and
-cannot be approved. The adult case requires a new government ID and selfie.
+historical, while its raw evidence is removed after the transition commits.
+A superseded pending teen case leaves the active review queue and cannot be
+approved. The adult case requires a new government ID and selfie.
 An age-changing DOB correction for a covered account follows the same
 server-side pathway check; an approval for the wrong age category cannot
 grant access.
@@ -111,6 +112,11 @@ For new teens and adults the flow is:
 5. Preserve existing guardian relationship checks for linked teens. A
    pending relationship grants no guardian-specific permissions and does not
    replace the learner's identity decision.
+
+The learner registration stepper shows Identity Verification after Verify
+Email and before Profile for new registrations. Existing learner profile
+completion retains its previous stepper, and guardian/dependent steppers
+retain their own flows.
 
 A central server-side learner gate applies across authenticated learner
 entry points, including profile completion, learning, seminars, subscriptions,
@@ -163,10 +169,12 @@ guidance covers account/ID/DOB consistency, document readability and apparent
 validity, selfie clarity, and reasonable visual correspondence. The teen
 guidance covers document readability, submitted information and age
 consistency, selfie clarity, and linked guardian requirements when present.
-The checklists guide the reviewer; individual ticks are not persisted. Only
-an authorized administrator may
-approve or reject a pending, current-pathway case. A reviewer must supply a
-reason to reject. No upload or checklist state automatically decides a case.
+The checklists guide the reviewer; individual ticks are not persisted. For an
+adult Other ID, the approval action requires an explicit confirmation that the
+reviewer determined the document is government-issued. Only an authorized
+administrator may approve or reject a pending, current-pathway case. A reviewer
+must supply a reason to reject. No upload or checklist state automatically
+decides a case.
 
 The learner status page shows a rejection reason and allows selective
 replacement of corrected ID sides or selfie. The service validates the
