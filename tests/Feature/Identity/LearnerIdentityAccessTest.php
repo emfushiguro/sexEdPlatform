@@ -137,6 +137,23 @@ class LearnerIdentityAccessTest extends TestCase
         $this->assertNull($case->fresh()->status);
     }
 
+    public function test_selfie_form_offers_camera_upload_guidance_and_accessible_controls(): void
+    {
+        [$user] = $this->learner();
+        $this->actingAs($user)->get(route('learner.identity.create'))
+            ->assertOk()
+            ->assertSee('data-testid="selfie-capture"', false)
+            ->assertSee('Take a selfie')
+            ->assertSee('Upload a selfie')
+            ->assertSee('Use Photo')
+            ->assertSee('Retake')
+            ->assertSee('Replace')
+            ->assertSee('Cancel')
+            ->assertSee('aria-live="polite"', false)
+            ->assertSee('playsinline', false)
+            ->assertSee('manual review');
+    }
+
     public function test_submission_uploads_to_private_disk_and_moves_to_pending_status(): void
     {
         Storage::fake('local');

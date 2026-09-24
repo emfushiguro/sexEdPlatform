@@ -14,6 +14,7 @@ import { createInteractiveActivity } from './interactive-activity';
 import { createMatchingActivity } from './matching-activity';
 import { createSequencingActivity } from './sequencing-activity';
 import { createLearningPathBuilder } from './learning-path-builder';
+import { createIdentitySelfie } from './identity-selfie';
 import { initializeLearningAudioPage, learningAudio } from './learning-audio';
 import './toast'; // Toast notification system
 import './admin-community';
@@ -140,6 +141,7 @@ Alpine.plugin(collapse);
 Alpine.plugin(persist);
 Alpine.data('instructorSearch', createInstructorSearch);
 Alpine.data('questionAuthoring', createQuestionAuthoring);
+Alpine.data('identitySelfie', createIdentitySelfie);
 
 // Theme store — dark / light mode, persisted in localStorage
 Alpine.store('theme', {
