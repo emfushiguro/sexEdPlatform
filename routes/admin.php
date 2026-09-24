@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Instructor;
+use App\Http\Middleware\EnsureLearnerIdentityVerified;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -328,6 +329,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     Route::prefix('parent-verifications')->name('parent-verifications.')->group(function () {
         Route::get('/', [Admin\ParentChildVerificationController::class, 'index'])->name('index');
+        Route::get('/learners/{case}', [Admin\LearnerIdentityVerificationController::class, 'show'])
+            ->withoutMiddleware(EnsureLearnerIdentityVerified::class)->name('learners.show');
+        Route::get('/learners/{case}/evidence/{slot}', [Admin\LearnerIdentityVerificationController::class, 'evidence'])
+            ->whereIn('slot', ['identity_front', 'identity_back', 'selfie'])
+            ->withoutMiddleware(EnsureLearnerIdentityVerified::class)->name('learners.evidence');
+        Route::post('/learners/{case}/approve', [Admin\LearnerIdentityVerificationController::class, 'approve'])
+            ->withoutMiddleware(EnsureLearnerIdentityVerified::class)->name('learners.approve');
+        Route::post('/learners/{case}/reject', [Admin\LearnerIdentityVerificationController::class, 'reject'])
+            ->withoutMiddleware(EnsureLearnerIdentityVerified::class)->name('learners.reject');
         Route::get('/parents/{user}', [Admin\ParentChildVerificationController::class, 'showParent'])
             ->name('parents.show');
         Route::get('/parents/{user}/document/{side}', [Admin\ParentChildVerificationController::class, 'parentDocument'])

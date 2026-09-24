@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\ReviewGuardianRelationshipVerificationRequest;
 use App\Http\Requests\Admin\RejectChildVerificationRequest;
 use App\Http\Requests\Admin\RejectParentVerificationRequest;
 use App\Models\GuardianRelationshipVerificationDocument;
+use App\Models\LearnerIdentityVerification;
 use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Services\GuardianRelationshipVerificationService;
@@ -32,7 +33,7 @@ class ParentChildVerificationController extends Controller
     public function index(Request $request): View
     {
         $type = $request->string('type')->toString() ?: 'children';
-        if (! in_array($type, ['parents', 'children', 'relationships'], true)) {
+        if (! in_array($type, ['parents', 'children', 'relationships', 'learners'], true)) {
             $type = 'children';
         }
 
@@ -49,6 +50,23 @@ class ParentChildVerificationController extends Controller
             'relationship_verified_status' => $request->string('relationship_verified_status')->toString() ?: 'all',
         ];
         $relationshipApplications = $this->relationshipApplications($status, $relationshipFilters);
+        $learnerPathway = $request->string('pathway')->toString();
+        if (! in_array($learnerPathway, ['teen', 'adult'], true)) {
+            $learnerPathway = 'all';
+        }
+        $learnerApplications = LearnerIdentityVerification::query()
+            ->with('learner')
+            ->whereNull('superseded_at')
+            ->where('status', $status)
+            ->when($learnerPathway !== 'all', fn ($query) => $query->where('pathway', $learnerPathway))
+            ->orderByDesc('submitted_at')
+            ->limit(100)
+            ->get();
+        $learnerCounts = LearnerIdentityVerification::query()
+            ->whereNull('superseded_at')
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
 
         return view('admin.parent-verifications.index', [
             'type' => $type,
@@ -56,6 +74,13 @@ class ParentChildVerificationController extends Controller
             'parentApplications' => $parentApplications,
             'childApplications' => $childApplications,
             'relationshipApplications' => $relationshipApplications,
+            'learnerApplications' => $learnerApplications,
+            'learnerPathway' => $learnerPathway,
+            'learnerStatusCounts' => [
+                'pending' => (int) ($learnerCounts['pending'] ?? 0),
+                'approved' => (int) ($learnerCounts['approved'] ?? 0),
+                'rejected' => (int) ($learnerCounts['rejected'] ?? 0),
+            ],
             'pendingParentCount' => User::query()
                 ->where('is_parent_registration', true)
                 ->where('parent_verification_status', VerificationStatus::Pending->value)

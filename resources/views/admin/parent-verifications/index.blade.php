@@ -21,6 +21,11 @@
         'approved' => (int) $approvedRelationshipCount,
         'rejected' => (int) $rejectedRelationshipCount,
     ];
+    $learnerSearchRows = $learnerApplications->map(fn ($application) => [
+        'id' => (int) $application->id,
+        'status' => $application->status,
+        'search' => strtolower(trim(($application->learner?->full_name ?? '').' '.($application->learner?->email ?? '').' '.$application->pathway)),
+    ])->values();
     $parentSearchRows = $parentApplications->map(function ($application) {
         $statusValue = $application->parent_verification_status ?: 'pending';
         $search = strtolower(trim(implode(' ', array_filter([
@@ -85,6 +90,9 @@
         parentCounts: @js($parentStatusCounts),
         childCounts: @js($childStatusCounts),
         relationshipCounts: @js($relationshipStatusCounts),
+        learnerCounts: @js($learnerStatusCounts),
+        learnerSearchRows: @js($learnerSearchRows),
+        learnerPathway: @js($learnerPathway),
         parentSearchRows: @js($parentSearchRows),
         childSearchRows: @js($childSearchRows),
         relationshipSearchRows: @js($relationshipSearchRows),
@@ -121,6 +129,9 @@
                 params.set('relationship_status', this.relationshipStatus);
                 params.set('relationship_verified_status', this.relationshipVerificationStatus);
             }
+            if (this.activeType === 'learners') {
+                params.set('pathway', this.learnerPathway);
+            }
             window.location.assign(window.location.pathname + '?' + params.toString());
         },
         setRelationshipFilter() {
@@ -146,6 +157,9 @@
 
             if (type === 'relationships') {
                 return this.relationshipSearchRows;
+            }
+            if (type === 'learners') {
+                return this.learnerSearchRows;
             }
 
             return this.childSearchRows;
@@ -177,11 +191,11 @@
                 return this.filteredCountFor(type, status);
             }
 
-            const counts = type === 'parents' ? this.parentCounts : (type === 'relationships' ? this.relationshipCounts : this.childCounts);
+            const counts = type === 'parents' ? this.parentCounts : (type === 'relationships' ? this.relationshipCounts : (type === 'learners' ? this.learnerCounts : this.childCounts));
             return Number(counts[status] || 0);
         },
         totalCountFor(type) {
-            const counts = type === 'parents' ? this.parentCounts : (type === 'relationships' ? this.relationshipCounts : this.childCounts);
+            const counts = type === 'parents' ? this.parentCounts : (type === 'relationships' ? this.relationshipCounts : (type === 'learners' ? this.learnerCounts : this.childCounts));
 
             return Number(counts.pending || 0)
                 + Number(counts.approved || 0)
@@ -307,7 +321,7 @@
         <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
             <article class="min-h-[116px] rounded-[28px] border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100/70 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700" x-text="activeType === 'parents' ? 'Guardian Applications' : (activeType === 'relationships' ? 'Relationship Verifications' : 'Dependent Applications')">Guardian Applications</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700" x-text="activeType === 'parents' ? 'Guardian Applications' : (activeType === 'relationships' ? 'Relationship Verifications' : (activeType === 'learners' ? 'Learner Identity Verifications' : 'Dependent Applications'))">Guardian Applications</p>
                     <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-700 to-brand-900 text-white shadow-lg shadow-brand-200">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </span>
@@ -357,6 +371,15 @@
                                 <option value="children">Dependent Verifications</option>
                                 <option value="parents">Guardian Verifications</option>
                                 <option value="relationships">Relationship Verifications</option>
+                                <option value="learners">Learner Identity Verifications</option>
+                            </select>
+                        </label>
+                        <label x-show="activeType === 'learners'" x-cloak class="block">
+                            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Age pathway</span>
+                            <select x-model="learnerPathway" @change="navigate()" class="w-full px-4 py-3 text-sm text-gray-900 bg-white border border-brand-100 rounded-2xl">
+                                <option value="all">All learners</option>
+                                <option value="teen">Teens</option>
+                                <option value="adult">Adults</option>
                             </select>
                         </label>
                         <label x-show="activeType === 'relationships'" x-cloak class="block">
@@ -403,6 +426,32 @@
                         <div class="hidden xl:block"></div>
                     </div>
                 </div>
+            </div>
+
+            <div class="overflow-x-auto" x-show="activeType === 'learners'" x-cloak>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-brand-50/45"><tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">No. #</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">Learner</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">Pathway</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">Submitted</th>
+                        <th class="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">Status</th>
+                        <th class="px-4 py-3 text-right text-xs font-bold uppercase text-gray-500">Actions</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        @foreach($learnerApplications as $application)
+                            <tr x-show="rowOnCurrentPage('learners', {{ (int) $application->id }})" x-cloak>
+                                <td class="px-4 py-4 text-sm text-gray-500" x-text="rowNumberFor('learners', {{ (int) $application->id }})"></td>
+                                <td class="px-4 py-4 text-sm"><strong>{{ $application->learner?->full_name }}</strong><div class="text-xs text-gray-500">{{ $application->learner?->email }}</div></td>
+                                <td class="px-4 py-4 text-sm capitalize">{{ $application->pathway }}</td>
+                                <td class="px-4 py-4 text-sm">{{ $application->submitted_at?->format('M d, Y h:i A') }}</td>
+                                <td class="px-4 py-4 text-sm capitalize">{{ $application->status }}</td>
+                                <td class="px-4 py-4 text-right"><a class="inline-flex rounded-xl border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700" href="{{ route('admin.parent-verifications.learners.show', $application) }}">Review</a></td>
+                            </tr>
+                        @endforeach
+                        <tr x-show="!hasRowsForCurrent()"><td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">No learner identity cases for this filter.</td></tr>
+                    </tbody>
+                </table>
             </div>
 
             <div class="overflow-x-auto" x-show="activeType === 'parents'" x-cloak>
