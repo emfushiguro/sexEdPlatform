@@ -6,13 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\AccountInfoRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use App\Services\Identity\LearnerIdentityRequirement;
+use Carbon\Carbon;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
-use Carbon\Carbon;
 use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
@@ -43,9 +45,9 @@ class RegisteredUserController extends Controller
 
         if ($age < 13) {
             session([
-                'pending_child_registration'   => $validated,
+                'pending_child_registration' => $validated,
                 'child_registration_timestamp' => now()->timestamp,
-                'is_parent_registration'       => true,
+                'is_parent_registration' => true,
             ]);
 
             return redirect()->route('parent.registration.required')
@@ -73,7 +75,7 @@ class RegisteredUserController extends Controller
     /**
      * Step 2 POST: Create the user account from session + submitted data.
      */
-    public function storeAccount(AccountInfoRequest $request): RedirectResponse
+    public function storeAccount(AccountInfoRequest $request, LearnerIdentityRequirement $requirement): RedirectResponse
     {
         $personal = session('pending_personal_info');
 
@@ -83,20 +85,25 @@ class RegisteredUserController extends Controller
 
         $account = $request->validated();
 
-        $user = User::create([
-            'name'           => trim($personal['first_name'] . ' ' . $personal['last_name']),
-            'first_name'     => $personal['first_name'],
-            'middle_initial' => $personal['middle_initial'] ?? null,
-            'last_name'      => $personal['last_name'],
-            'suffix'         => $personal['suffix'] ?? null,
-            'email'          => $account['email'],
-            'birthdate'      => $personal['birthdate'],
-            'age'            => $personal['age'],
-            'password'       => Hash::make($account['password']),
-        ]);
+        $user = DB::transaction(function () use ($personal, $account, $requirement): User {
+            $user = User::create([
+                'name' => trim($personal['first_name'].' '.$personal['last_name']),
+                'first_name' => $personal['first_name'],
+                'middle_initial' => $personal['middle_initial'] ?? null,
+                'last_name' => $personal['last_name'],
+                'suffix' => $personal['suffix'] ?? null,
+                'email' => $account['email'],
+                'birthdate' => $personal['birthdate'],
+                'age' => $personal['age'],
+                'password' => Hash::make($account['password']),
+            ]);
 
-        Role::findOrCreate('learner', 'web');
-        $user->assignRole('learner');
+            Role::findOrCreate('learner', 'web');
+            $user->assignRole('learner');
+            $requirement->createForNewLearner($user);
+
+            return $user;
+        });
 
         $verificationDispatchFailed = false;
 
