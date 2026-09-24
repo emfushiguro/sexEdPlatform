@@ -13,6 +13,7 @@ class WizardStepper extends Component
         ['label' => 'Personal Info', 'route' => 'register'],
         ['label' => 'Account Info',  'route' => 'register.account'],
         ['label' => 'Verify Email',  'route' => 'verification.notice'],
+        ['label' => 'Identity Verification', 'routes' => ['learner.identity.create', 'learner.identity.status']],
         ['label' => 'Profile',       'route' => 'profile.complete'],
     ];
 
@@ -58,6 +59,11 @@ class WizardStepper extends Component
         $map = $this->flow === 'dependent'
             ? self::DEPENDENT_FLOW
             : ($this->isParentFlow ? self::PARENT_FLOW : self::LEARNER_FLOW);
+
+        if (! $this->isParentFlow && $this->flow !== 'dependent' && $this->currentRoute === 'profile.complete'
+            && auth()->check() && ! auth()->user()->identityVerifications()->exists()) {
+            $map = array_values(array_filter($map, fn (array $step) => $step['label'] !== 'Identity Verification'));
+        }
 
         $activeIndex = null;
         foreach ($map as $i => $step) {

@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\GuardianIdentityVerificationController;
 use App\Http\Controllers\Auth\GuardianOnboardingController;
 use App\Http\Controllers\Auth\InstructorAuthController;
+use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
@@ -98,6 +99,12 @@ Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
     ->name('parent.verification.approval-link');
 
 Route::middleware('auth')->group(function () {
+    Route::middleware('verified')->group(function () {
+        Route::get('learner/identity', [LearnerIdentityVerificationController::class, 'create'])->name('learner.identity.create');
+        Route::post('learner/identity', [LearnerIdentityVerificationController::class, 'store'])->name('learner.identity.store');
+        Route::get('learner/identity/status', [LearnerIdentityVerificationController::class, 'status'])->name('learner.identity.status');
+    });
+
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

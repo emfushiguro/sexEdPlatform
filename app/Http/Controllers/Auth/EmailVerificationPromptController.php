@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\Identity\LearnerIdentityRequirement;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -12,7 +14,7 @@ class EmailVerificationPromptController extends Controller
     /**
      * Display the email verification prompt.
      */
-    public function __invoke(Request $request): RedirectResponse|View
+    public function __invoke(Request $request, LearnerIdentityRequirement $requirement): RedirectResponse|View
     {
         $user = $request->user();
 
@@ -33,6 +35,18 @@ class EmailVerificationPromptController extends Controller
                 return redirect()->route('learner.dashboard')
                     ->with('success', 'Guardian verification approved.')
                     ->with('show_parent_approved_dashboard_modal', true);
+            }
+
+            if ($user->isLearner()) {
+                try {
+                    $case = $requirement->current($user);
+                } catch (DomainException) {
+                    return redirect()->route('learner.identity.status');
+                }
+                if ($case && $case->status !== 'approved') {
+                    return redirect()->route($case->status === null
+                        ? 'learner.identity.create' : 'learner.identity.status');
+                }
             }
 
             if ($user->hasCompletedProfile()) {

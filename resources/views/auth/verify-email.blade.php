@@ -53,7 +53,8 @@
                 ['label' => 'Personal Info', 'isCompleted' => true,  'isActive' => false, 'isUpcoming' => false],
                 ['label' => 'Account Info',  'isCompleted' => true,  'isActive' => false, 'isUpcoming' => false],
                 ['label' => 'Verify Email',  'isCompleted' => true,  'isActive' => false, 'isUpcoming' => false],
-                ['label' => 'Profile',       'isCompleted' => false, 'isActive' => true,  'isUpcoming' => false],
+                ...(!session('is_parent_registration') ? [['label' => 'Identity Verification', 'isCompleted' => false, 'isActive' => true, 'isUpcoming' => false]] : []),
+                ['label' => 'Profile',       'isCompleted' => false, 'isActive' => (bool) session('is_parent_registration'), 'isUpcoming' => !session('is_parent_registration')],
             ];
         @endphp
         <x-wizard-stepper :steps="$successSteps" />
