@@ -174,12 +174,15 @@ class LearnerIdentitySubmissionTest extends TestCase
         $first = $this->submit($adult, $case);
         $old = $first->evidence->pluck('storage_path', 'slot');
         $case->update(['status' => 'rejected']);
+        $newFrontPath = null;
 
         try {
-            DB::transaction(function () use ($adult, $case): void {
-                app(LearnerIdentitySubmission::class)->submit($adult, $case, $this->data(), [
+            DB::transaction(function () use ($adult, $case, &$newFrontPath): void {
+                $submitted = app(LearnerIdentitySubmission::class)->submit($adult, $case, $this->data(), [
                     'identity_front' => $this->image('replacement-front.png'),
                 ]);
+                $newFrontPath = $submitted->evidence->firstWhere('slot', 'identity_front')->storage_path;
+                Storage::disk('local')->assertExists($newFrontPath);
                 throw new \RuntimeException('Outer caller rolled back.');
             });
         } catch (\RuntimeException $e) {
@@ -190,6 +193,7 @@ class LearnerIdentitySubmissionTest extends TestCase
         $this->assertSame($old['identity_front'], $case->fresh()->evidence->firstWhere('slot', 'identity_front')->storage_path);
         Storage::disk('local')->assertExists($old['identity_front']);
         Storage::disk('local')->assertExists($old['selfie']);
+        Storage::disk('local')->assertMissing($newFrontPath);
     }
 
     public function test_failed_storage_cleans_new_files_and_preserves_rejected_evidence(): void

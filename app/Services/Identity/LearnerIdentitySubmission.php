@@ -125,6 +125,21 @@ class LearnerIdentitySubmission
 
                 return $case->load('evidence');
             });
+
+            if ($newPaths && DB::transactionLevel() > 0) {
+                DB::afterRollBack(function () use ($newPaths): void {
+                    try {
+                        if (! Storage::disk('local')->delete($newPaths)) {
+                            Log::warning('Learner identity rollback evidence cleanup failed.', ['paths' => $newPaths]);
+                        }
+                    } catch (Throwable $e) {
+                        Log::warning('Learner identity rollback evidence cleanup failed.', [
+                            'paths' => $newPaths,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                });
+            }
         } catch (Throwable $e) {
             if ($newPaths) {
                 Storage::disk('local')->delete($newPaths);
