@@ -80,8 +80,8 @@ class SaveLearningPathRequest extends FormRequest
             }
 
             foreach ($modules as $module) {
-                if (array_diff($categories, $module->learnerCategoryKeys()) !== []) {
-                    $validator->errors()->add('module_ids', 'Each selected module must support every path category.');
+                if (array_intersect($categories, $module->learnerCategoryKeys()) === []) {
+                    $validator->errors()->add('module_ids', 'Each selected module must support at least one path category.');
 
                     return;
                 }

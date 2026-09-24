@@ -60,8 +60,9 @@ export function createLearningPathBuilder(config = {}) {
 
         eligible(module) {
             return Boolean(module)
+                && this.categories.length > 0
                 && module.learnerVisible !== false
-                && this.categories.every((category) => module.categories.includes(category));
+                && this.categories.some((category) => module.categories.includes(category));
         },
 
         get eligibleModules() {

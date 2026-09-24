@@ -95,7 +95,10 @@ class LearningPathController extends Controller
     {
         $path?->load(['learnerCategories', 'pathModules.module.learnerCategories', 'pathModules.module.creator']);
         $candidates = Module::query()->learnerVisible()->with(['learnerCategories', 'creator'])
-            ->orderBy('title')->get(['id', 'title', 'thumbnail', 'created_by', 'min_age', 'max_age', 'content_owner_type']);
+            ->orderBy('title')->get([
+                'id', 'title', 'thumbnail', 'created_by', 'min_age', 'max_age', 'content_owner_type',
+                'is_published', 'published_revision_id', 'current_review_status',
+            ]);
         $modulePool = $candidates->keyBy('id');
         $path?->pathModules->each(function ($membership) use ($modulePool): void {
             if ($membership->module) {

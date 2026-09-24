@@ -301,14 +301,25 @@ class AdminLearningPathManagementTest extends TestCase
         $this->assertSame(0, LearningPath::query()->count());
     }
 
-    public function test_publishing_requires_eligible_modules_for_every_path_category(): void
+    public function test_publishing_accepts_only_modules_matching_any_path_category(): void
     {
         $this->actingAs($this->user('admin'));
+        $kidsOnly = $this->module(['kids']);
+        $this->post(route('admin.learning-paths.store'), $this->payload([
+            'status' => 'published', 'categories' => ['teens', 'adults'], 'module_ids' => [$kidsOnly->id],
+        ]))->assertInvalid(['module_ids']);
+        $this->assertDatabaseMissing('learning_paths', ['title' => 'Healthy Connections']);
+
         $teensOnly = $this->module(['teens']);
         $this->post(route('admin.learning-paths.store'), $this->payload([
             'status' => 'published', 'categories' => ['teens', 'adults'], 'module_ids' => [$teensOnly->id],
-        ]))->assertInvalid(['module_ids']);
-        $this->assertDatabaseMissing('learning_paths', ['title' => 'Healthy Connections']);
+        ]))->assertRedirect(route('admin.learning-paths.index'));
+
+        $path = LearningPath::query()->where('title', 'Healthy Connections')->firstOrFail();
+        $this->assertDatabaseHas('learning_path_modules', [
+            'learning_path_id' => $path->id,
+            'module_id' => $teensOnly->id,
+        ]);
     }
 
     public function test_platform_and_instructor_owned_visible_modules_can_be_selected_in_order(): void

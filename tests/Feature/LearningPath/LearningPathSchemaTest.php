@@ -81,6 +81,35 @@ class LearningPathSchemaTest extends TestCase
         $this->assertSame('varchar', Schema::getColumnType('learning_path_learner_categories', 'category'));
     }
 
+    public function test_pending_migration_repairs_existing_tables_without_losing_rows(): void
+    {
+        $path = LearningPath::factory()->create();
+        LearningPathLearnerCategory::create([
+            'learning_path_id' => $path->id,
+            'category' => 'kids',
+        ]);
+
+        Schema::table('learning_path_learner_categories', function (Blueprint $table): void {
+            $table->dropUnique('lplc_path_category_unique');
+            $table->dropIndex('lplc_category_path_index');
+        });
+
+        (require base_path('database/migrations/2026_09_23_000001_create_learning_path_tables.php'))->up();
+
+        $this->assertDatabaseHas('learning_path_learner_categories', [
+            'learning_path_id' => $path->id,
+            'category' => 'kids',
+        ]);
+        $this->assertTrue(Schema::hasIndex(
+            'learning_path_learner_categories',
+            'lplc_path_category_unique',
+        ));
+        $this->assertTrue(Schema::hasIndex(
+            'learning_path_learner_categories',
+            'lplc_category_path_index',
+        ));
+    }
+
     public function test_path_defaults_to_draft_and_creator_can_be_deleted(): void
     {
         $creator = User::withoutEvents(fn (): User => User::factory()->create());

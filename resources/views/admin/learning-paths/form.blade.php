@@ -100,14 +100,16 @@
 
             <div class="mt-4 flex gap-2">
                 <label for="available-module" class="sr-only">Add a learner-visible module</label>
-                <select id="available-module" x-ref="available" aria-invalid="{{ $moduleError ? 'true' : 'false' }}" @if($moduleError) aria-describedby="modules-error" @endif class="min-w-0 flex-1 rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-purple-600 focus:ring-purple-600">
+                <select id="available-module" x-ref="available" :disabled="categories.length === 0" aria-invalid="{{ $moduleError ? 'true' : 'false' }}" @if($moduleError) aria-describedby="modules-error" @endif class="min-w-0 flex-1 rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:border-purple-600 focus:ring-purple-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500">
                     <option value="">Choose a module</option>
                     <template x-for="module in eligibleModules" :key="module.id">
                         <option :value="module.id" x-text="moduleOptionLabel(module)"></option>
                     </template>
                 </select>
-                <button type="button" @click="add($refs.available.value); $refs.available.value = ''" class="min-h-11 rounded-xl border border-purple-200 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50">Add</button>
+                <button type="button" :disabled="categories.length === 0" @click="add($refs.available.value); $refs.available.value = ''" class="min-h-11 rounded-xl border border-purple-200 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-50">Add</button>
             </div>
+            <p x-show="categories.length === 0" role="status" class="mt-2 text-sm text-gray-600">Choose at least one learner category to see matching modules.</p>
+            <p x-show="categories.length > 0 && eligibleModules.length === 0" role="status" class="mt-2 text-sm text-gray-600">No learner-visible modules match the selected categories and search.</p>
 
             <div class="mt-4" aria-invalid="{{ $moduleError ? 'true' : 'false' }}" @if($moduleError) aria-describedby="modules-error" @endif>
                 <ol x-ref="selected" aria-label="Selected modules" aria-describedby="learning-path-order-instructions" class="learning-path-order-list space-y-2">
@@ -129,7 +131,7 @@
             <template x-if="mismatchedModuleIds.length > 0">
                 <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
                     <p class="font-semibold">Review selected modules</p>
-                    <p class="mt-1">These modules no longer support every selected learner category:</p>
+                    <p class="mt-1">These modules no longer match any selected learner category:</p>
                     <ul class="mt-2 list-inside list-disc"><template x-for="id in mismatchedModuleIds" :key="`mismatch-${id}`"><li x-text="moduleLabel(moduleFor(id))"></li></template></ul>
                 </div>
             </template>

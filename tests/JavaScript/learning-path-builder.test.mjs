@@ -21,22 +21,22 @@ const pointerEvent = (overrides = {}) => ({
     ...overrides,
 });
 
-test('adds only eligible modules and filters candidates without duplicates', () => {
+test('adds modules matching any selected category and filters candidates without duplicates', () => {
     const builder = createLearningPathBuilder({
         modules: fixtures,
         selectedIds: [11],
-        categories: ['teens'],
+        categories: ['teens', 'kids'],
     });
 
-    assert.deepEqual(builder.eligibleModules.map((module) => module.id), [22]);
+    assert.deepEqual(builder.eligibleModules.map((module) => module.id), [22, 33]);
     builder.add(22);
     builder.add(22);
     builder.add(33);
 
-    assert.deepEqual(builder.moduleIds, [11, 22]);
+    assert.deepEqual(builder.moduleIds, [11, 22, 33]);
     assert.deepEqual(builder.eligibleModules, []);
     builder.remove(11);
-    assert.deepEqual(builder.moduleIds, [22]);
+    assert.deepEqual(builder.moduleIds, [22, 33]);
 });
 
 test('category changes expose selected modules that no longer match', () => {
