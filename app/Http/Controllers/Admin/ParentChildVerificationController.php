@@ -60,8 +60,9 @@ class ParentChildVerificationController extends Controller
             ->where('status', $status)
             ->when($learnerPathway !== 'all', fn ($query) => $query->where('pathway', $learnerPathway))
             ->orderByDesc('submitted_at')
-            ->limit(100)
-            ->get();
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
         $learnerCounts = LearnerIdentityVerification::query()
             ->whereNull('superseded_at')
             ->selectRaw('status, count(*) as total')

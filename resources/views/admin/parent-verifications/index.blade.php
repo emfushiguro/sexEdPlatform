@@ -21,7 +21,7 @@
         'approved' => (int) $approvedRelationshipCount,
         'rejected' => (int) $rejectedRelationshipCount,
     ];
-    $learnerSearchRows = $learnerApplications->map(fn ($application) => [
+    $learnerSearchRows = $learnerApplications->getCollection()->map(fn ($application) => [
         'id' => (int) $application->id,
         'status' => $application->status,
         'search' => strtolower(trim(($application->learner?->full_name ?? '').' '.($application->learner?->email ?? '').' '.$application->pathway)),
@@ -440,8 +440,8 @@
                     </tr></thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
                         @foreach($learnerApplications as $application)
-                            <tr x-show="rowOnCurrentPage('learners', {{ (int) $application->id }})" x-cloak>
-                                <td class="px-4 py-4 text-sm text-gray-500" x-text="rowNumberFor('learners', {{ (int) $application->id }})"></td>
+                            <tr x-show="rowMatchesSearch(@js(($application->learner?->full_name ?? '').' '.($application->learner?->email ?? '').' '.$application->pathway))" x-cloak>
+                                <td class="px-4 py-4 text-sm text-gray-500">{{ ($learnerApplications->firstItem() ?? 1) + $loop->index }}</td>
                                 <td class="px-4 py-4 text-sm"><strong>{{ $application->learner?->full_name }}</strong><div class="text-xs text-gray-500">{{ $application->learner?->email }}</div></td>
                                 <td class="px-4 py-4 text-sm capitalize">{{ $application->pathway }}</td>
                                 <td class="px-4 py-4 text-sm">{{ $application->submitted_at?->format('M d, Y h:i A') }}</td>
@@ -1365,7 +1365,10 @@
                 </table>
             </div>
 
-            <div class="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
+            <div x-show="activeType === 'learners'" x-cloak class="border-t border-gray-100 px-6 py-4">
+                {{ $learnerApplications->links() }}
+            </div>
+            <div x-show="activeType !== 'learners'" class="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
                 <div class="flex items-center gap-2">
                     <button type="button"
                             @click="prevPage()"

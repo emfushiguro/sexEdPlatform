@@ -41,6 +41,41 @@ class LearnerIdentityReviewTest extends TestCase
             ->assertOk()->assertSee($rejectedAdult->learner->full_name)->assertDontSee($pendingTeen->learner->full_name);
     }
 
+    public function test_filtered_learner_queue_reaches_page_two_with_bounded_eager_loading(): void
+    {
+        $admin = $this->admin();
+        $older = $this->case('2000-01-01', 'pending', 'OlderPending');
+        $older->update(['submitted_at' => now()->subDay()]);
+        for ($index = 0; $index < 25; $index++) {
+            $this->case('2000-01-01', 'pending', 'NewerPending'.$index);
+        }
+        $teen = $this->case('2010-01-01', 'pending', 'ExcludedTeen');
+        $rejected = $this->case('2000-01-01', 'rejected', 'ExcludedRejected');
+        $url = route('admin.parent-verifications.index', [
+            'type' => 'learners', 'status' => 'pending', 'pathway' => 'adult',
+        ]);
+
+        $firstPage = $this->actingAs($admin)->get($url)->assertOk()
+            ->assertDontSee($older->learner->full_name)
+            ->assertDontSee($teen->learner->full_name)
+            ->assertDontSee($rejected->learner->full_name)
+            ->assertViewHas('learnerApplications', fn ($page) => $page->count() === 25
+                && $page->total() === 26
+                && $page->getCollection()->every(fn ($case) => $case->relationLoaded('learner')));
+        $nextUrl = $firstPage->viewData('learnerApplications')->nextPageUrl();
+        parse_str(parse_url($nextUrl, PHP_URL_QUERY), $nextQuery);
+        $this->assertSame(['type' => 'learners', 'status' => 'pending', 'pathway' => 'adult', 'page' => '2'], $nextQuery);
+        $firstPage->assertSee('href="'.e($nextUrl).'"', false);
+
+        $this->get($nextUrl)->assertOk()
+            ->assertSee($older->learner->full_name)
+            ->assertDontSee($teen->learner->full_name)
+            ->assertDontSee($rejected->learner->full_name)
+            ->assertViewHas('learnerApplications', fn ($page) => $page->count() === 1
+                && $page->currentPage() === 2
+                && $page->getCollection()->every(fn ($case) => $case->relationLoaded('learner')));
+    }
+
     public function test_only_admin_can_view_details_and_private_evidence(): void
     {
         $admin = $this->admin();
