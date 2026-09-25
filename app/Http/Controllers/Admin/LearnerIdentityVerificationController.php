@@ -16,13 +16,12 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LearnerIdentityVerificationController extends Controller
 {
-    public function __construct(private readonly LearnerIdentityReview $review)
-    {
-    }
+    public function __construct(private readonly LearnerIdentityReview $review) {}
 
     public function show(LearnerIdentityVerification $case): View
     {
         abort_if($case->superseded_at !== null, 404);
+
         return view('admin.parent-verifications.show-learner', [
             'case' => $case->load(['learner', 'evidence', 'audits.actor']),
             'reviewer' => $case->reviewed_by ? User::find($case->reviewed_by) : null,
@@ -42,6 +41,7 @@ class LearnerIdentityVerificationController extends Controller
             'image/png' => 'png',
             'image/webp' => 'webp',
         };
+
         return new BinaryFileResponse(Storage::disk('local')->path($evidence->storage_path), 200, [
             'Content-Type' => $evidence->mime_type,
             'X-Content-Type-Options' => 'nosniff',
@@ -52,19 +52,30 @@ class LearnerIdentityVerificationController extends Controller
 
     public function approve(Request $request, LearnerIdentityVerification $case): RedirectResponse
     {
-        $request->validate([
+        $data = $request->validate([
+            'submission_round' => ['required', 'integer', 'min:1'],
             'confirm_government_issued' => $case->pathway === 'adult' && $case->government_id_type === 'other'
                 ? ['accepted'] : ['sometimes', 'accepted'],
         ]);
-        $this->review->approve($request->user(), $case);
+        $this->review->approve($request->user(), $case, (int) $data['submission_round']);
+
         return redirect()->route('admin.parent-verifications.learners.show', $case)
             ->with('success', 'Learner identity approved.');
     }
 
     public function reject(Request $request, LearnerIdentityVerification $case): RedirectResponse
     {
-        $data = $request->validate(['reason' => ['required', new Enum(LearnerIdentityRejectionReason::class)]]);
-        $this->review->reject($request->user(), $case, LearnerIdentityRejectionReason::from($data['reason']));
+        $data = $request->validate([
+            'submission_round' => ['required', 'integer', 'min:1'],
+            'reason' => ['required', new Enum(LearnerIdentityRejectionReason::class)],
+        ]);
+        $this->review->reject(
+            $request->user(),
+            $case,
+            LearnerIdentityRejectionReason::from($data['reason']),
+            (int) $data['submission_round'],
+        );
+
         return redirect()->route('admin.parent-verifications.learners.show', $case)
             ->with('success', 'Learner identity rejected.');
     }

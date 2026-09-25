@@ -39,8 +39,8 @@ class SubmitLearnerIdentityRequest extends FormRequest
 
         return [
             'document_type' => ['required', Rule::in($types)],
-            'government_id_type' => [$type === 'government_id' ? 'required' : 'prohibited', Rule::in(array_keys($governmentTypes))],
-            'government_id_type_other' => [$subtype === 'other' && $type === 'government_id' ? 'required' : 'prohibited', 'string', 'max:80'],
+            'government_id_type' => [$type === 'government_id' ? 'required' : 'prohibited', 'nullable', Rule::in(array_keys($governmentTypes))],
+            'government_id_type_other' => [$subtype === 'other' && $type === 'government_id' ? 'required' : 'prohibited', 'nullable', 'string', 'max:80'],
             'identity_front' => [$documentChanged || ! $this->hasValidSlot($case, 'identity_front') ? 'required' : 'sometimes', ...$image],
             'identity_back' => [$requiresBack
                 ? ($documentChanged || ! $this->hasValidSlot($case, 'identity_back') ? 'required' : 'sometimes')

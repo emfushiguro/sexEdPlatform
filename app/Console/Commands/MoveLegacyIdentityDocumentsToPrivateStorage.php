@@ -19,6 +19,7 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
         'registration-temp/',
         'parent-verifications/',
         'guardian-verifications/',
+        'guardian-relationship-verifications/',
         'child-verifications/',
     ];
 
@@ -33,14 +34,14 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
             $paths[] = $path;
         }
 
-        foreach (User::query()->get(['parent_id_document_path', 'parent_id_document_back_path']) as $user) {
+        foreach (User::withTrashed()->get(['parent_id_document_path', 'parent_id_document_back_path']) as $user) {
             $paths[] = $user->parent_id_document_path;
             $paths[] = $user->parent_id_document_back_path;
         }
 
         $paths = array_merge(
             $paths,
-            ParentChildAccount::query()->whereNotNull('verification_document_path')->pluck('verification_document_path')->all(),
+            ParentChildAccount::withTrashed()->whereNotNull('verification_document_path')->pluck('verification_document_path')->all(),
             GuardianRelationshipVerificationDocument::query()->pluck('path')->all(),
         );
 
@@ -48,6 +49,7 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
         foreach (array_unique(array_filter($paths, fn (mixed $path): bool => is_string($path) && $path !== '')) as $path) {
             if (! $this->isAllowedPath($path)) {
                 $unsafe[] = $path;
+
                 continue;
             }
 
@@ -71,6 +73,7 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
             if (! $publicExists) {
                 if (! $localExists) {
                     $missing[] = $path;
+
                     continue;
                 }
 
@@ -78,6 +81,7 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
                     $updatedRows = $this->updateGuardianDocumentDisk($path);
                     if ($updatedRows === false) {
                         $failures[] = $path;
+
                         continue;
                     }
 
@@ -90,6 +94,7 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
             $publicHash = $this->sha256($public->path($path));
             if ($publicHash === null) {
                 $failures[] = $path;
+
                 continue;
             }
 
@@ -97,10 +102,12 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
                 $localHash = $this->sha256($local->path($path));
                 if ($localHash === null) {
                     $failures[] = $path;
+
                     continue;
                 }
                 if (! hash_equals($publicHash, $localHash)) {
                     $conflicts[] = $path;
+
                     continue;
                 }
             }
@@ -112,12 +119,14 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
 
             if (! $localExists && ! $this->copyAndVerify($path, $publicHash)) {
                 $failures[] = $path;
+
                 continue;
             }
 
             $updatedRows = $this->updateGuardianDocumentDisk($path);
             if ($updatedRows === false) {
                 $failures[] = $path;
+
                 continue;
             }
 
@@ -125,6 +134,7 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
 
             if (! $public->delete($path)) {
                 $failures[] = $path;
+
                 continue;
             }
 

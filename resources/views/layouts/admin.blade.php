@@ -342,7 +342,7 @@
                                 @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
                                     @php
-                                        $pendingVerificationTotal = (int) (($adminModerationCounts['pending_parent_verifications'] ?? 0) + ($adminModerationCounts['pending_child_verifications'] ?? 0));
+                                        $pendingVerificationTotal = (int) (($adminModerationCounts['pending_parent_verifications'] ?? 0) + ($adminModerationCounts['pending_child_verifications'] ?? 0) + ($adminModerationCounts['pending_learner_identity_verifications'] ?? 0));
                                     @endphp
                                  <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.parent-verifications.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

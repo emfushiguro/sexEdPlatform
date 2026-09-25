@@ -2,8 +2,8 @@
 
 namespace App\Services\Identity;
 
-use App\Enums\VerificationStatus;
 use App\Enums\LearnerIdentityRejectionReason;
+use App\Enums\VerificationStatus;
 use App\Models\LearnerIdentityVerification;
 use App\Models\User;
 use App\Notifications\LearnerIdentityApprovedNotification;
@@ -15,27 +15,27 @@ use Illuminate\Support\Facades\Storage;
 
 class LearnerIdentityReview
 {
-    public function __construct(private readonly LearnerIdentityRequirement $requirement)
+    public function __construct(private readonly LearnerIdentityRequirement $requirement) {}
+
+    public function approve(User $reviewer, LearnerIdentityVerification $case, int $submissionRound): void
     {
+        $this->decide($reviewer, $case, VerificationStatus::Approved, null, $submissionRound);
     }
 
-    public function approve(User $reviewer, LearnerIdentityVerification $case): void
+    public function reject(User $reviewer, LearnerIdentityVerification $case, LearnerIdentityRejectionReason $reason, int $submissionRound): void
     {
-        $this->decide($reviewer, $case, VerificationStatus::Approved, null);
+        $this->decide($reviewer, $case, VerificationStatus::Rejected, $reason, $submissionRound);
     }
 
-    public function reject(User $reviewer, LearnerIdentityVerification $case, LearnerIdentityRejectionReason $reason): void
-    {
-        $this->decide($reviewer, $case, VerificationStatus::Rejected, $reason);
-    }
-
-    private function decide(User $reviewer, LearnerIdentityVerification $case, VerificationStatus $decision, ?LearnerIdentityRejectionReason $reason): void
+    private function decide(User $reviewer, LearnerIdentityVerification $case, VerificationStatus $decision, ?LearnerIdentityRejectionReason $reason, int $submissionRound): void
     {
         abort_unless($reviewer->hasRole('admin'), 403);
 
-        DB::transaction(function () use ($reviewer, $case, $decision, $reason): void {
+        DB::transaction(function () use ($reviewer, $case, $decision, $reason, $submissionRound): void {
             $locked = LearnerIdentityVerification::query()->lockForUpdate()->findOrFail($case->id);
             $learner = $locked->learner;
+            abort_if((int) $locked->submission_round !== $submissionRound,
+                409, 'A newer evidence round has been submitted. Reload this case before reviewing.');
             try {
                 $currentPathway = $this->requirement->pathwayFor($learner);
             } catch (DomainException) {
@@ -102,6 +102,7 @@ class LearnerIdentityReview
                 return false;
             }
         }
+
         return true;
     }
 }

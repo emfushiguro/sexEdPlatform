@@ -119,6 +119,33 @@ class LearnerIdentitySubmissionTest extends TestCase
         $this->assertFalse($this->valid($adult, $case, $this->data('government_id', 'philhealth'), ['identity_front' => $this->image('front.jpg')]));
     }
 
+    public function test_browser_form_accepts_null_inactive_government_id_fields(): void
+    {
+        Notification::fake();
+
+        foreach ([
+            ['school_id', null],
+            ['institution_id', null],
+            ['government_id', 'philhealth'],
+        ] as [$type, $governmentIdType]) {
+            [$learner, $case] = $this->case('2010-01-01');
+
+            $this->actingAs($learner)
+                ->from(route('learner.identity.create'))
+                ->post(route('learner.identity.store'), [
+                    'document_type' => $type,
+                    'government_id_type' => $governmentIdType,
+                    'government_id_type_other' => null,
+                    'identity_front' => $this->image('front.png'),
+                    'selfie' => $this->image('selfie.png'),
+                    'confirm_submission' => '1',
+                ])
+                ->assertRedirect(route('learner.identity.status'));
+
+            $this->assertSame($type, $case->fresh()->document_type);
+        }
+    }
+
     public function test_image_validation_rejects_invalid_files(): void
     {
         [$adult, $case] = $this->case('2000-01-01');
@@ -257,7 +284,8 @@ class LearnerIdentitySubmissionTest extends TestCase
         $case->update(['status' => 'rejected', 'rejection_reason' => 'Blurry']);
 
         $valid = $this->image('failing.png');
-        $failing = new class($valid->getRealPath()) extends UploadedFile {
+        $failing = new class($valid->getRealPath()) extends UploadedFile
+        {
             public function __construct(string $path)
             {
                 parent::__construct($path, 'failing.png', 'image/png', null, true);

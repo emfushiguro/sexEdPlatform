@@ -107,7 +107,9 @@ class LearnerIdentityReviewTest extends TestCase
     {
         $admin = $this->admin();
         $case = $this->case('2000-01-01');
-        $this->actingAs($admin)->post(route('admin.parent-verifications.learners.approve', $case))->assertRedirect();
+        $this->actingAs($admin)->post(route('admin.parent-verifications.learners.approve', $case), [
+            'submission_round' => $case->submission_round,
+        ])->assertRedirect();
         $case->refresh();
         $this->assertSame('approved', $case->status);
         $this->assertSame($admin->id, $case->reviewed_by);
@@ -115,7 +117,9 @@ class LearnerIdentityReviewTest extends TestCase
         $this->assertNotNull($case->approved_at);
         $this->assertNull($case->rejection_reason);
         $this->assertSame('approved', $case->audits()->latest('id')->firstOrFail()->action);
-        $this->actingAs($admin)->postJson(route('admin.parent-verifications.learners.approve', $case))->assertStatus(409);
+        $this->actingAs($admin)->postJson(route('admin.parent-verifications.learners.approve', $case), [
+            'submission_round' => $case->submission_round,
+        ])->assertStatus(409);
         $this->assertSame(1, $case->audits()->where('action', 'approved')->count());
     }
 
@@ -124,9 +128,15 @@ class LearnerIdentityReviewTest extends TestCase
         $admin = $this->admin();
         $case = $this->case('2010-01-01');
         $url = route('admin.parent-verifications.learners.reject', $case);
-        $this->actingAs($admin)->post($url, ['reason' => ''])->assertSessionHasErrors('reason');
+        $this->actingAs($admin)->post($url, [
+            'reason' => '',
+            'submission_round' => $case->submission_round,
+        ])->assertSessionHasErrors('reason');
         $this->assertSame('pending', $case->fresh()->status);
-        $this->post($url, ['reason' => LearnerIdentityRejectionReason::UnclearId->value])->assertRedirect();
+        $this->post($url, [
+            'reason' => LearnerIdentityRejectionReason::UnclearId->value,
+            'submission_round' => $case->submission_round,
+        ])->assertRedirect();
         $case->refresh();
         $this->assertSame('rejected', $case->status);
         $this->assertSame($admin->id, $case->reviewed_by);
@@ -148,7 +158,10 @@ class LearnerIdentityReviewTest extends TestCase
             'The birthdate on your ID does not match your profile.',
         ] as $reason) {
             $case = $this->case('2000-01-01');
-            $this->actingAs($admin)->post(route('admin.parent-verifications.learners.reject', $case), ['reason' => $reason])
+            $this->actingAs($admin)->post(route('admin.parent-verifications.learners.reject', $case), [
+                'reason' => $reason,
+                'submission_round' => $case->submission_round,
+            ])
                 ->assertSessionHasErrors('reason');
             $this->assertSame('pending', $case->fresh()->status);
             $this->assertSame(0, $case->audits()->where('action', 'rejected')->count());
@@ -166,7 +179,10 @@ class LearnerIdentityReviewTest extends TestCase
         $this->actingAs($admin)->get(route('admin.parent-verifications.learners.show', $case))->assertOk()
             ->assertSee('value="birthdate_mismatch"', false)
             ->assertDontSee('<textarea id="reason"', false);
-        $this->post(route('admin.parent-verifications.learners.reject', $case), ['reason' => 'birthdate_mismatch'])
+        $this->post(route('admin.parent-verifications.learners.reject', $case), [
+            'reason' => 'birthdate_mismatch',
+            'submission_round' => $case->submission_round,
+        ])
             ->assertRedirect();
 
         $this->assertSame($label, $case->fresh()->rejection_reason);
@@ -186,8 +202,8 @@ class LearnerIdentityReviewTest extends TestCase
         $admin = $this->admin();
         $approved = $this->case('2000-01-01');
         $rejected = $this->case('2010-01-01');
-        app(LearnerIdentityReview::class)->approve($admin, $approved);
-        app(LearnerIdentityReview::class)->reject($admin, $rejected, LearnerIdentityRejectionReason::UnclearId);
+        app(LearnerIdentityReview::class)->approve($admin, $approved, (int) $approved->submission_round);
+        app(LearnerIdentityReview::class)->reject($admin, $rejected, LearnerIdentityRejectionReason::UnclearId, (int) $rejected->submission_round);
 
         Notification::assertSentToTimes($approved->learner, \App\Notifications\LearnerIdentityApprovedNotification::class, 1);
         Notification::assertSentToTimes($rejected->learner, \App\Notifications\LearnerIdentityRejectedNotification::class, 1);
@@ -210,7 +226,7 @@ class LearnerIdentityReviewTest extends TestCase
         $admin = $this->admin();
         foreach (LearnerIdentityRejectionReason::cases() as $reason) {
             $case = $this->case('2000-01-01');
-            app(LearnerIdentityReview::class)->reject($admin, $case, $reason);
+            app(LearnerIdentityReview::class)->reject($admin, $case, $reason, (int) $case->submission_round);
             $this->assertSame($reason->label(), $case->fresh()->rejection_reason);
             $this->assertSame($reason->label(), $case->audits()->latest('id')->firstOrFail()->reason);
             Notification::assertSentTo($case->learner, \App\Notifications\LearnerIdentityRejectedNotification::class,
@@ -236,7 +252,7 @@ class LearnerIdentityReviewTest extends TestCase
         $case = $this->case('2000-01-01');
         $reason = LearnerIdentityRejectionReason::BirthdateMismatch;
 
-        app(LearnerIdentityReview::class)->reject($admin, $case, $reason);
+        app(LearnerIdentityReview::class)->reject($admin, $case, $reason, (int) $case->submission_round);
 
         Notification::assertSentTo($case->learner, \App\Notifications\LearnerIdentityRejectedNotification::class,
             function ($notification) use ($case, $reason): bool {
@@ -254,7 +270,7 @@ class LearnerIdentityReviewTest extends TestCase
         $case = $this->case('2000-01-01');
         try {
             DB::transaction(function () use ($admin, $case): void {
-                app(LearnerIdentityReview::class)->approve($admin, $case);
+                app(LearnerIdentityReview::class)->approve($admin, $case, (int) $case->submission_round);
                 Notification::assertNothingSent();
                 throw new \RuntimeException('rollback');
             });
@@ -269,10 +285,16 @@ class LearnerIdentityReviewTest extends TestCase
         $admin = $this->admin();
         $case = $this->case('2000-01-01', 'pending', 'OtherAdult', 'other');
         $url = route('admin.parent-verifications.learners.approve', $case);
-        $this->actingAs($admin)->post($url, ['checklist' => ['government_issued' => '1']])
+        $this->actingAs($admin)->post($url, [
+            'checklist' => ['government_issued' => '1'],
+            'submission_round' => $case->submission_round,
+        ])
             ->assertSessionHasErrors('confirm_government_issued');
         $this->assertSame('pending', $case->fresh()->status);
-        $this->post($url, ['confirm_government_issued' => '1'])->assertRedirect();
+        $this->post($url, [
+            'confirm_government_issued' => '1',
+            'submission_round' => $case->submission_round,
+        ])->assertRedirect();
         $this->assertSame('approved', $case->fresh()->status);
     }
 
@@ -281,11 +303,14 @@ class LearnerIdentityReviewTest extends TestCase
         $admin = $this->admin();
         $superseded = $this->case('2010-01-01');
         $superseded->update(['superseded_at' => now()]);
-        $this->actingAs($admin)->postJson(route('admin.parent-verifications.learners.approve', $superseded))->assertStatus(409);
+        $this->actingAs($admin)->postJson(route('admin.parent-verifications.learners.approve', $superseded), [
+            'submission_round' => $superseded->submission_round,
+        ])->assertStatus(409);
         $mismatch = $this->case('2010-01-01');
         $mismatch->learner->update(['birthdate' => '2000-01-01']);
         $this->postJson(route('admin.parent-verifications.learners.reject', $mismatch), [
             'reason' => LearnerIdentityRejectionReason::InformationMismatch->value,
+            'submission_round' => $mismatch->submission_round,
         ])->assertStatus(409);
         $this->assertSame('pending', $mismatch->fresh()->status);
     }
@@ -295,7 +320,9 @@ class LearnerIdentityReviewTest extends TestCase
         $admin = $this->admin();
         $case = $this->case('2000-01-01');
         Storage::disk('local')->delete($case->evidence()->where('slot', 'selfie')->firstOrFail()->storage_path);
-        $this->actingAs($admin)->postJson(route('admin.parent-verifications.learners.approve', $case))->assertStatus(422);
+        $this->actingAs($admin)->postJson(route('admin.parent-verifications.learners.approve', $case), [
+            'submission_round' => $case->submission_round,
+        ])->assertStatus(422);
         $this->assertSame('pending', $case->fresh()->status);
     }
 
@@ -304,21 +331,53 @@ class LearnerIdentityReviewTest extends TestCase
         $admin = $this->admin();
         $case = $this->case('2000-01-01');
         $case->update(['document_type' => 'school_id']);
-        $this->actingAs($admin)->postJson(route('admin.parent-verifications.learners.approve', $case))->assertStatus(422);
+        $this->actingAs($admin)->postJson(route('admin.parent-verifications.learners.approve', $case), [
+            'submission_round' => $case->submission_round,
+        ])->assertStatus(422);
         $this->assertSame('pending', $case->fresh()->status);
+    }
+
+    public function test_stale_review_form_cannot_decide_a_newer_submission_round(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $case = $this->case('2000-01-01');
+        $staleRound = (int) $case->submission_round;
+        $reviewPage = $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.learners.show', $case))
+            ->assertOk();
+        $this->assertSame(2, preg_match_all('/name="submission_round" value="1"/', $reviewPage->getContent()));
+        $case->forceFill(['submission_round' => $staleRound + 1])->save();
+
+        $this->actingAs($admin)
+            ->post(route('admin.parent-verifications.learners.approve', $case), ['submission_round' => $staleRound])
+            ->assertStatus(409);
+        $this->post(route('admin.parent-verifications.learners.reject', $case), [
+            'submission_round' => $staleRound,
+            'reason' => LearnerIdentityRejectionReason::InformationMismatch->value,
+        ])->assertStatus(409);
+
+        $this->assertSame('pending', $case->fresh()->status);
+        $this->assertSame($staleRound + 1, $case->fresh()->submission_round);
+        $this->assertDatabaseMissing('learner_identity_audits', [
+            'verification_id' => $case->id,
+            'action' => 'approved',
+        ]);
+        Notification::assertNothingSent();
     }
 
     public function test_review_service_denies_non_admin_even_when_called_directly(): void
     {
         $case = $this->case('2000-01-01');
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
-        app(LearnerIdentityReview::class)->approve($case->learner, $case);
+        app(LearnerIdentityReview::class)->approve($case->learner, $case, (int) $case->submission_round);
     }
 
     private function admin(): User
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $admin->assignRole('admin');
+
         return $admin;
     }
 
@@ -340,6 +399,7 @@ class LearnerIdentityReviewTest extends TestCase
             $case->evidence()->create(['slot' => $slot, 'storage_path' => $path, 'mime_type' => 'image/png',
                 'byte_size' => 19, 'width' => 800, 'height' => 600, 'submitted_at' => now()]);
         }
+
         return $case->load('learner');
     }
 }

@@ -15,9 +15,10 @@ use App\Models\ContentReport;
 use App\Models\DependentSupportProfile;
 use App\Models\InstructorApplication;
 use App\Models\InstructorProfile;
+use App\Models\LearnerIdentityVerification;
+use App\Models\LearningPath;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
-use App\Models\LearningPath;
 use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ParentChildAccount;
@@ -30,8 +31,8 @@ use App\Observers\PaymentObserver;
 use App\Policies\AdminCreatorProfilePolicy;
 use App\Policies\DependentSupportProfilePolicy;
 use App\Policies\InstructorProfilePolicy;
-use App\Policies\LessonPolicy;
 use App\Policies\LearningPathPolicy;
+use App\Policies\LessonPolicy;
 use App\Policies\ModulePolicy;
 use App\Policies\ParentChildPolicy;
 use App\Policies\QuizPolicy;
@@ -123,6 +124,10 @@ class AppServiceProvider extends ServiceProvider
                 'pending_child_verifications' => ParentChildAccount::query()
                     ->whereNotNull('verification_document_path')
                     ->where('verification_status', 'pending')
+                    ->count(),
+                'pending_learner_identity_verifications' => LearnerIdentityVerification::query()
+                    ->where('status', 'pending')
+                    ->whereNull('superseded_at')
                     ->count(),
                 'pending_learner_reports' => ContentReport::query()->whereIn('status', ['submitted', 'under_review'])->count(),
             ];

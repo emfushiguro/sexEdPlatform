@@ -64,6 +64,7 @@
             <div class="mt-6 grid gap-6 border-t border-gray-100 pt-6 lg:grid-cols-2">
                 <form method="POST" action="{{ route('admin.parent-verifications.learners.approve', $case) }}" class="space-y-4">
                     @csrf
+                    <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
                     @if($case->pathway === 'adult' && $case->government_id_type === 'other')
                         <label class="flex items-start gap-3 text-sm text-gray-700"><input type="checkbox" name="confirm_government_issued" value="1" required class="mt-0.5 rounded border-gray-300">I confirm that I determined this Other ID is government-issued.</label>
                     @endif
@@ -71,6 +72,7 @@
                 </form>
                 <form method="POST" action="{{ route('admin.parent-verifications.learners.reject', $case) }}" class="space-y-3">
                     @csrf
+                    <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
                     <label for="reason" class="block text-sm font-semibold text-gray-700">Rejection reason</label>
                     <select id="reason" name="reason" required class="w-full rounded-xl border border-gray-300 p-3 text-sm">
                         <option value="">Select a reason</option>

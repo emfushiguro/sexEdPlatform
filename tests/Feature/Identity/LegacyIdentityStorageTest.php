@@ -145,7 +145,7 @@ class LegacyIdentityStorageTest extends TestCase
         $parentPath = 'parent-verifications/parent/front.pdf';
         $backPath = 'parent-verifications/parent/back.pdf';
         $childPath = 'child-verifications/parent/child.pdf';
-        $relationshipPath = 'guardian-verifications/parent/relationship.pdf';
+        $relationshipPath = 'guardian-relationship-verifications/parent/round-1/relationship.pdf';
         foreach ([$parentPath, $backPath, $childPath, $relationshipPath] as $path) {
             Storage::disk('public')->put($path, $path);
         }
@@ -208,6 +208,45 @@ class LegacyIdentityStorageTest extends TestCase
         $this->assertSame('local', $relationshipDocument->fresh()->disk);
     }
 
+    public function test_migration_includes_references_from_soft_deleted_guardians_and_relationships(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $guardianPath = 'parent-verifications/deleted-guardian/front.pdf';
+        $childPath = 'child-verifications/deleted-link/document.pdf';
+        Storage::disk('public')->put($guardianPath, 'deleted-guardian-evidence');
+        Storage::disk('public')->put($childPath, 'deleted-child-evidence');
+
+        $guardian = $this->createApprovedGuardian();
+        $guardian->forceFill(['parent_id_document_path' => $guardianPath])->save();
+        $guardian->delete();
+        $child = User::factory()->create();
+        $child->assignRole('learner');
+        $relationship = ParentChildAccount::query()->create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => false,
+            'verification_document_path' => $childPath,
+        ]);
+        $relationship->delete();
+
+        $this->artisan('identity:move-legacy-documents')
+            ->expectsOutputToContain('candidates=2 ready=2 moved=0 missing=0 conflicts=0 unsafe=0')
+            ->assertExitCode(0);
+        $this->artisan('identity:move-legacy-documents --apply')
+            ->expectsOutputToContain('candidates=2 ready=2 moved=2 missing=0 conflicts=0 unsafe=0')
+            ->assertExitCode(0);
+
+        foreach ([$guardianPath, $childPath] as $path) {
+            Storage::disk('public')->assertMissing($path);
+            Storage::disk('local')->assertExists($path);
+        }
+        $this->assertTrue(User::withTrashed()->findOrFail($guardian->id)->trashed());
+        $this->assertTrue(ParentChildAccount::withTrashed()->findOrFail($relationship->id)->trashed());
+    }
+
     public function test_migration_repairs_public_metadata_when_local_copy_already_exists(): void
     {
         Storage::fake('local');
@@ -226,7 +265,7 @@ class LegacyIdentityStorageTest extends TestCase
             'can_view_quiz_answers' => true,
             'can_approve_content' => false,
         ]);
-        $path = 'guardian-verifications/'.$parent->id.'/already-private.pdf';
+        $path = 'guardian-relationship-verifications/'.$parent->id.'/round-1/already-private.pdf';
         Storage::disk('local')->put($path, 'already-copied-evidence');
         $document = $this->createGuardianDocument($relationship, $parent, $path);
 
@@ -257,7 +296,7 @@ class LegacyIdentityStorageTest extends TestCase
             'can_view_quiz_answers' => true,
             'can_approve_content' => false,
         ]);
-        $path = 'guardian-verifications/'.$parent->id.'/update-failure.pdf';
+        $path = 'guardian-relationship-verifications/'.$parent->id.'/round-1/update-failure.pdf';
         Storage::disk('public')->put($path, 'evidence-to-preserve');
         $document = $this->createGuardianDocument($relationship, $parent, $path);
         $failNextUpdate = true;
