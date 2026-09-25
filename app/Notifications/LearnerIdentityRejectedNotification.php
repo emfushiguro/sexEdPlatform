@@ -11,7 +11,16 @@ class LearnerIdentityRejectedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly LearnerIdentityVerification $case, private readonly string $reason) {}
+    private readonly string $reason;
+
+    public function __construct(private readonly LearnerIdentityVerification $case, string $reason)
+    {
+        $this->reason = in_array(trim($reason), [
+            'Please upload a clearer ID photo.',
+            'Please upload a clearer selfie photo.',
+            'Document is unreadable.',
+        ], true) ? trim($reason) : 'Please check your identity submission and upload clearer images.';
+    }
 
     public function via(object $notifiable): array
     {

@@ -154,8 +154,45 @@ class LearnerIdentityReviewTest extends TestCase
         Notification::assertSentTo($rejected->learner, \App\Notifications\LearnerIdentityRejectedNotification::class,
             fn ($notification) => ($payload = $notification->toArray($rejected->learner))
                 && $payload['reason'] === 'Please upload a clearer ID photo.'
+                && in_array('Reason: Please upload a clearer ID photo.', $notification->toMail($rejected->learner)->viewData['details'], true)
                 && $payload['action_url'] === route('learner.identity.status')
                 && ! str_contains(json_encode($payload), 'learner-verifications/'));
+    }
+
+    public function test_rejection_notifications_keep_private_paths_and_filenames_out_of_both_channels(): void
+    {
+        $admin = $this->admin();
+        foreach ([
+            'Please replace learner-verifications/42/adult/identity_front.png.',
+            'Please replace C:\\private\\learner-verifications\\42\\selfie.png.',
+            'Please replace passport-scan.jpg.',
+        ] as $reason) {
+            Notification::fake();
+            $case = $this->case('2000-01-01');
+            app(LearnerIdentityReview::class)->reject($admin, $case, $reason);
+
+            $this->assertSame($reason, $case->fresh()->rejection_reason);
+            Notification::assertSentTo($case->learner, \App\Notifications\LearnerIdentityRejectedNotification::class,
+                function ($notification) use ($case, $reason): bool {
+                    $database = json_encode($notification->toArray($case->learner));
+                    $mailData = $notification->toMail($case->learner)->viewData;
+                    $mail = json_encode($mailData);
+
+                    $this->assertSame('Please check your identity submission and upload clearer images.',
+                        $notification->toArray($case->learner)['reason']);
+                    $this->assertContains('Reason: Please check your identity submission and upload clearer images.',
+                        $mailData['details']);
+
+                    $this->assertStringNotContainsString($reason, $database);
+                    $this->assertStringNotContainsString($reason, $mail);
+                    foreach (['learner-verifications', 'identity_front.png', 'selfie.png', 'passport-scan.jpg'] as $sensitive) {
+                        $this->assertStringNotContainsString($sensitive, $database);
+                        $this->assertStringNotContainsString($sensitive, $mail);
+                    }
+
+                    return true;
+                });
+        }
     }
 
     public function test_outer_rollback_does_not_notify_learner_of_decision(): void
