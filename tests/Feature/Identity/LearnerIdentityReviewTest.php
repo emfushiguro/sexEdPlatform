@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Identity;
 
+use App\Enums\LearnerIdentityRejectionReason;
 use App\Models\LearnerIdentityVerification;
 use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
@@ -125,14 +126,58 @@ class LearnerIdentityReviewTest extends TestCase
         $url = route('admin.parent-verifications.learners.reject', $case);
         $this->actingAs($admin)->post($url, ['reason' => ''])->assertSessionHasErrors('reason');
         $this->assertSame('pending', $case->fresh()->status);
-        $this->post($url, ['reason' => 'Document is unreadable.'])->assertRedirect();
+        $this->post($url, ['reason' => LearnerIdentityRejectionReason::UnclearId->value])->assertRedirect();
         $case->refresh();
         $this->assertSame('rejected', $case->status);
         $this->assertSame($admin->id, $case->reviewed_by);
         $this->assertNotNull($case->reviewed_at);
         $this->assertNull($case->approved_at);
-        $this->assertSame('Document is unreadable.', $case->rejection_reason);
-        $this->assertSame('Document is unreadable.', $case->audits()->latest('id')->firstOrFail()->reason);
+        $this->assertSame(LearnerIdentityRejectionReason::UnclearId->label(), $case->rejection_reason);
+        $this->assertSame(LearnerIdentityRejectionReason::UnclearId->label(), $case->audits()->latest('id')->firstOrFail()->reason);
+    }
+
+    public function test_reject_request_refuses_free_text_paths_filenames_and_data_uris(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        foreach ([
+            'Please replace learner-verifications/42/adult/identity_front.png.',
+            'Please replace C:\\private\\learner-verifications\\42\\selfie.png.',
+            'Please replace portrait.avif.',
+            'data:image/png;base64,aGVsbG8=',
+            'The birthdate on your ID does not match your profile.',
+        ] as $reason) {
+            $case = $this->case('2000-01-01');
+            $this->actingAs($admin)->post(route('admin.parent-verifications.learners.reject', $case), ['reason' => $reason])
+                ->assertSessionHasErrors('reason');
+            $this->assertSame('pending', $case->fresh()->status);
+            $this->assertSame(0, $case->audits()->where('action', 'rejected')->count());
+            Notification::assertNothingSent();
+        }
+    }
+
+    public function test_birthdate_mismatch_option_persists_safe_label_and_uses_it_in_both_channels(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $case = $this->case('2000-01-01');
+        $label = 'The birthdate on your ID does not match your profile.';
+
+        $this->actingAs($admin)->get(route('admin.parent-verifications.learners.show', $case))->assertOk()
+            ->assertSee('value="birthdate_mismatch"', false)
+            ->assertDontSee('<textarea id="reason"', false);
+        $this->post(route('admin.parent-verifications.learners.reject', $case), ['reason' => 'birthdate_mismatch'])
+            ->assertRedirect();
+
+        $this->assertSame($label, $case->fresh()->rejection_reason);
+        $this->assertSame($label, $case->audits()->latest('id')->firstOrFail()->reason);
+        Notification::assertSentTo($case->learner, \App\Notifications\LearnerIdentityRejectedNotification::class,
+            function ($notification) use ($case, $label): bool {
+                $this->assertSame($label, $notification->toArray($case->learner)['reason']);
+                $this->assertContains('Reason: '.$label, $notification->toMail($case->learner)->viewData['details']);
+
+                return true;
+            });
     }
 
     public function test_decisions_notify_learner_once_with_safe_payload_and_rejection_reason(): void
@@ -142,7 +187,7 @@ class LearnerIdentityReviewTest extends TestCase
         $approved = $this->case('2000-01-01');
         $rejected = $this->case('2010-01-01');
         app(LearnerIdentityReview::class)->approve($admin, $approved);
-        app(LearnerIdentityReview::class)->reject($admin, $rejected, 'Please upload a clearer ID photo.');
+        app(LearnerIdentityReview::class)->reject($admin, $rejected, LearnerIdentityRejectionReason::UnclearId);
 
         Notification::assertSentToTimes($approved->learner, \App\Notifications\LearnerIdentityApprovedNotification::class, 1);
         Notification::assertSentToTimes($rejected->learner, \App\Notifications\LearnerIdentityRejectedNotification::class, 1);
@@ -159,36 +204,24 @@ class LearnerIdentityReviewTest extends TestCase
                 && ! str_contains(json_encode($payload), 'learner-verifications/'));
     }
 
-    public function test_rejection_notifications_keep_private_paths_and_filenames_out_of_both_channels(): void
+    public function test_every_rejection_option_uses_only_its_safe_label_in_case_audit_mail_and_database(): void
     {
+        Notification::fake();
         $admin = $this->admin();
-        foreach ([
-            'Please replace learner-verifications/42/adult/identity_front.png before trying again.',
-            'Please replace C:\\private\\learner-verifications\\42\\selfie.png before trying again.',
-            'Please replace passport-scan.jpg before trying again.',
-        ] as $reason) {
-            Notification::fake();
+        foreach (LearnerIdentityRejectionReason::cases() as $reason) {
             $case = $this->case('2000-01-01');
             app(LearnerIdentityReview::class)->reject($admin, $case, $reason);
-
-            $this->assertSame($reason, $case->fresh()->rejection_reason);
+            $this->assertSame($reason->label(), $case->fresh()->rejection_reason);
+            $this->assertSame($reason->label(), $case->audits()->latest('id')->firstOrFail()->reason);
             Notification::assertSentTo($case->learner, \App\Notifications\LearnerIdentityRejectedNotification::class,
                 function ($notification) use ($case, $reason): bool {
-                    $database = json_encode($notification->toArray($case->learner));
+                    $database = $notification->toArray($case->learner);
                     $mailData = $notification->toMail($case->learner)->viewData;
-                    $mail = json_encode($mailData);
-
-                    $sanitizedReason = $notification->toArray($case->learner)['reason'];
-                    $this->assertStringStartsWith('Please replace ', $sanitizedReason);
-                    $this->assertStringContainsString('[private file]', $sanitizedReason);
-                    $this->assertStringEndsWith(' before trying again.', $sanitizedReason);
-                    $this->assertContains('Reason: '.$sanitizedReason, $mailData['details']);
-
-                    $this->assertStringNotContainsString($reason, $database);
-                    $this->assertStringNotContainsString($reason, $mail);
-                    foreach (['learner-verifications', 'identity_front.png', 'selfie.png', 'passport-scan.jpg'] as $sensitive) {
-                        $this->assertStringNotContainsString($sensitive, $database);
-                        $this->assertStringNotContainsString($sensitive, $mail);
+                    $this->assertSame($reason->label(), $database['reason']);
+                    $this->assertContains('Reason: '.$reason->label(), $mailData['details']);
+                    foreach (['learner-verifications', 'passport-scan.jpg', 'portrait.avif', 'data:image'] as $sensitive) {
+                        $this->assertStringNotContainsString($sensitive, json_encode($database));
+                        $this->assertStringNotContainsString($sensitive, json_encode($mailData));
                     }
 
                     return true;
@@ -201,14 +234,14 @@ class LearnerIdentityReviewTest extends TestCase
         Notification::fake();
         $admin = $this->admin();
         $case = $this->case('2000-01-01');
-        $reason = 'The birthdate on your ID does not match your profile.';
+        $reason = LearnerIdentityRejectionReason::BirthdateMismatch;
 
         app(LearnerIdentityReview::class)->reject($admin, $case, $reason);
 
         Notification::assertSentTo($case->learner, \App\Notifications\LearnerIdentityRejectedNotification::class,
             function ($notification) use ($case, $reason): bool {
-                $this->assertSame($reason, $notification->toArray($case->learner)['reason']);
-                $this->assertContains('Reason: '.$reason, $notification->toMail($case->learner)->viewData['details']);
+                $this->assertSame($reason->label(), $notification->toArray($case->learner)['reason']);
+                $this->assertContains('Reason: '.$reason->label(), $notification->toMail($case->learner)->viewData['details']);
 
                 return true;
             });
@@ -251,7 +284,9 @@ class LearnerIdentityReviewTest extends TestCase
         $this->actingAs($admin)->postJson(route('admin.parent-verifications.learners.approve', $superseded))->assertStatus(409);
         $mismatch = $this->case('2010-01-01');
         $mismatch->learner->update(['birthdate' => '2000-01-01']);
-        $this->postJson(route('admin.parent-verifications.learners.reject', $mismatch), ['reason' => 'Invalid'])->assertStatus(409);
+        $this->postJson(route('admin.parent-verifications.learners.reject', $mismatch), [
+            'reason' => LearnerIdentityRejectionReason::InformationMismatch->value,
+        ])->assertStatus(409);
         $this->assertSame('pending', $mismatch->fresh()->status);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Services\Identity;
 
 use App\Enums\VerificationStatus;
+use App\Enums\LearnerIdentityRejectionReason;
 use App\Models\LearnerIdentityVerification;
 use App\Models\User;
 use App\Notifications\LearnerIdentityApprovedNotification;
@@ -23,16 +24,12 @@ class LearnerIdentityReview
         $this->decide($reviewer, $case, VerificationStatus::Approved, null);
     }
 
-    public function reject(User $reviewer, LearnerIdentityVerification $case, string $reason): void
+    public function reject(User $reviewer, LearnerIdentityVerification $case, LearnerIdentityRejectionReason $reason): void
     {
-        $reason = trim($reason);
-        if ($reason === '') {
-            throw new \InvalidArgumentException('A rejection reason is required.');
-        }
         $this->decide($reviewer, $case, VerificationStatus::Rejected, $reason);
     }
 
-    private function decide(User $reviewer, LearnerIdentityVerification $case, VerificationStatus $decision, ?string $reason): void
+    private function decide(User $reviewer, LearnerIdentityVerification $case, VerificationStatus $decision, ?LearnerIdentityRejectionReason $reason): void
     {
         abort_unless($reviewer->hasRole('admin'), 403);
 
@@ -56,7 +53,7 @@ class LearnerIdentityReview
                 'reviewed_by' => $reviewer->id,
                 'reviewed_at' => now(),
                 'approved_at' => $decision === VerificationStatus::Approved ? now() : null,
-                'rejection_reason' => $reason,
+                'rejection_reason' => $reason?->label(),
             ])->save();
             $locked->audits()->create([
                 'actor_id' => $reviewer->id,
@@ -64,7 +61,7 @@ class LearnerIdentityReview
                 'from_status' => VerificationStatus::Pending->value,
                 'to_status' => $decision->value,
                 'submission_round' => $locked->submission_round,
-                'reason' => $reason,
+                'reason' => $reason?->label(),
                 'created_at' => now(),
             ]);
             DB::afterCommit(function () use ($learner, $locked, $decision, $reason): void {

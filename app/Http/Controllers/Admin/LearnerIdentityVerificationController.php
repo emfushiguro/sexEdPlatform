@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\LearnerIdentityRejectionReason;
 use App\Http\Controllers\Controller;
 use App\Models\LearnerIdentityVerification;
 use App\Models\User;
@@ -9,6 +10,7 @@ use App\Services\Identity\LearnerIdentityReview;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\Enum;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -61,8 +63,8 @@ class LearnerIdentityVerificationController extends Controller
 
     public function reject(Request $request, LearnerIdentityVerification $case): RedirectResponse
     {
-        $data = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
-        $this->review->reject($request->user(), $case, $data['reason']);
+        $data = $request->validate(['reason' => ['required', new Enum(LearnerIdentityRejectionReason::class)]]);
+        $this->review->reject($request->user(), $case, LearnerIdentityRejectionReason::from($data['reason']));
         return redirect()->route('admin.parent-verifications.learners.show', $case)
             ->with('success', 'Learner identity rejected.');
     }

@@ -72,7 +72,12 @@
                 <form method="POST" action="{{ route('admin.parent-verifications.learners.reject', $case) }}" class="space-y-3">
                     @csrf
                     <label for="reason" class="block text-sm font-semibold text-gray-700">Rejection reason</label>
-                    <textarea id="reason" name="reason" required maxlength="1000" rows="3" class="w-full rounded-xl border border-gray-300 p-3 text-sm">{{ old('reason') }}</textarea>
+                    <select id="reason" name="reason" required class="w-full rounded-xl border border-gray-300 p-3 text-sm">
+                        <option value="">Select a reason</option>
+                        @foreach(\App\Enums\LearnerIdentityRejectionReason::cases() as $reason)
+                            <option value="{{ $reason->value }}" @selected(old('reason') === $reason->value)>{{ $reason->label() }}</option>
+                        @endforeach
+                    </select>
                     <button class="rounded-xl bg-rose-700 px-5 py-3 text-sm font-semibold text-white hover:bg-rose-800">Reject identity</button>
                 </form>
             </div>

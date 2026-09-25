@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\LearnerIdentityRejectionReason;
 use App\Models\LearnerIdentityVerification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -11,17 +12,10 @@ class LearnerIdentityRejectedNotification extends Notification
 {
     use Queueable;
 
-    private readonly string $reason;
-
-    public function __construct(private readonly LearnerIdentityVerification $case, string $reason)
-    {
-        $safe = preg_replace(
-            '~(?:\S*[/\\\\]){2,}\S*|\S*[A-Za-z0-9_-]\.(?:jpe?g|png|webp|pdf|gif|heic|bmp|tiff?)(?![A-Za-z0-9])~iu',
-            '[private file]',
-            trim($reason),
-        );
-        $this->reason = trim($safe ?? '') ?: 'Please review your identity submission and try again.';
-    }
+    public function __construct(
+        private readonly LearnerIdentityVerification $case,
+        private readonly LearnerIdentityRejectionReason $reason,
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -39,7 +33,7 @@ class LearnerIdentityRejectedNotification extends Notification
                 'subtitle' => 'Please update your submission',
                 'greetingName' => $notifiable->first_name ?? 'Learner',
                 'intro' => 'We could not approve your identity verification yet.',
-                'details' => ['Reason: '.$this->reason, 'Please update your ID or selfie and send it again.'],
+                'details' => ['Reason: '.$this->reason->label(), 'Please review the reason and submit updated evidence.'],
                 'actionUrl' => route('learner.identity.status'),
                 'actionText' => 'View next steps',
             ]);
@@ -52,7 +46,7 @@ class LearnerIdentityRejectedNotification extends Notification
             'status' => 'rejected',
             'title' => 'Identity verification needs an update',
             'message' => 'Please review the reason and update your identity evidence.',
-            'reason' => $this->reason,
+            'reason' => $this->reason->label(),
             'verification_id' => $this->case->id,
             'action_url' => route('learner.identity.status'),
             'severity' => 'error',
