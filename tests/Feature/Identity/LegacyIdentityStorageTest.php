@@ -6,6 +6,7 @@ use App\Models\GuardianRelationshipVerificationDocument;
 use App\Models\ParentChildAccount;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -149,12 +150,13 @@ class LegacyIdentityStorageTest extends TestCase
             Storage::disk('public')->put($path, $path);
         }
 
-        $parent = User::factory()->create([
-            'is_parent_registration' => true,
+        $parent = $this->createApprovedGuardian();
+        $parent->forceFill([
             'parent_id_document_path' => $parentPath,
             'parent_id_document_back_path' => $backPath,
-        ]);
-        $parent->assignRole('learner');
+            'guardian_onboarding_status' => 'completed',
+            'guardian_onboarding_completed_at' => now(),
+        ])->save();
         $child = User::factory()->create();
         $child->assignRole('learner');
         $verification = ParentChildAccount::query()->create([
@@ -165,16 +167,7 @@ class LegacyIdentityStorageTest extends TestCase
             'can_approve_content' => false,
             'verification_document_path' => $childPath,
         ]);
-        GuardianRelationshipVerificationDocument::query()->create([
-            'parent_child_account_id' => $verification->id,
-            'uploaded_by_user_id' => $parent->id,
-            'document_type' => 'care_arrangement',
-            'disk' => 'public',
-            'path' => $relationshipPath,
-            'original_name' => 'relationship.pdf',
-            'mime_type' => 'application/pdf',
-            'size_bytes' => strlen($relationshipPath),
-        ]);
+        $relationshipDocument = $this->createGuardianDocument($verification, $parent, $relationshipPath);
         $unsafeParent = User::factory()->create([
             'is_parent_registration' => true,
             'parent_id_document_path' => '../outside/identity.pdf',
@@ -197,6 +190,94 @@ class LegacyIdentityStorageTest extends TestCase
             Storage::disk('local')->assertExists($path);
             $this->assertSame($path, Storage::disk('local')->get($path));
         }
+
+        $this->actingAs($parent)
+            ->get(route('parent.relationship-verifications.documents.show', [
+                'parentChildAccount' => $verification,
+                'document' => $relationshipDocument,
+            ]))
+            ->assertOk();
+
+        $this->actingAs($this->createAdmin())
+            ->get(route('admin.parent-verifications.relationships.documents.show', [
+                'parentChildAccount' => $verification,
+                'document' => $relationshipDocument,
+            ]))
+            ->assertOk();
+
+        $this->assertSame('local', $relationshipDocument->fresh()->disk);
+    }
+
+    public function test_migration_repairs_public_metadata_when_local_copy_already_exists(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $parent = $this->createApprovedGuardian();
+        $parent->forceFill([
+            'guardian_onboarding_status' => 'completed',
+            'guardian_onboarding_completed_at' => now(),
+        ])->save();
+        $child = User::factory()->create();
+        $child->assignRole('learner');
+        $relationship = ParentChildAccount::query()->create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => false,
+        ]);
+        $path = 'guardian-verifications/'.$parent->id.'/already-private.pdf';
+        Storage::disk('local')->put($path, 'already-copied-evidence');
+        $document = $this->createGuardianDocument($relationship, $parent, $path);
+
+        $this->artisan('identity:move-legacy-documents --apply')->assertExitCode(0);
+
+        $this->assertSame('local', $document->fresh()->disk);
+        Storage::disk('local')->assertExists($path);
+        Storage::disk('public')->assertMissing($path);
+        $this->actingAs($parent)
+            ->get(route('parent.relationship-verifications.documents.show', [
+                'parentChildAccount' => $relationship,
+                'document' => $document,
+            ]))
+            ->assertOk();
+    }
+
+    public function test_migration_keeps_public_file_when_guardian_metadata_update_fails(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $parent = $this->createApprovedGuardian();
+        $child = User::factory()->create();
+        $child->assignRole('learner');
+        $relationship = ParentChildAccount::query()->create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => false,
+        ]);
+        $path = 'guardian-verifications/'.$parent->id.'/update-failure.pdf';
+        Storage::disk('public')->put($path, 'evidence-to-preserve');
+        $document = $this->createGuardianDocument($relationship, $parent, $path);
+        $failNextUpdate = true;
+        DB::connection()->beforeExecuting(function (string $query) use (&$failNextUpdate): void {
+            if ($failNextUpdate
+                && str_starts_with(strtolower(ltrim($query)), 'update')
+                && str_contains(strtolower($query), 'guardian_relationship_verification_documents')) {
+                $failNextUpdate = false;
+                throw new \RuntimeException('Simulated guardian document metadata update failure.');
+            }
+        });
+
+        $this->artisan('identity:move-legacy-documents --apply')
+            ->expectsOutputToContain('failures=1')
+            ->expectsOutputToContain('failures: '.$path)
+            ->assertExitCode(0);
+
+        $this->assertSame('public', $document->fresh()->disk);
+        Storage::disk('local')->assertExists($path);
+        Storage::disk('public')->assertExists($path);
     }
 
     public function test_migration_command_preserves_conflicts_and_reports_missing_files(): void
@@ -223,6 +304,11 @@ class LegacyIdentityStorageTest extends TestCase
             ]);
         }
 
+        $parentRelationship = ParentChildAccount::query()->where('child_user_id', $firstChild->id)->firstOrFail();
+        $missingRelationship = ParentChildAccount::query()->where('child_user_id', $secondChild->id)->firstOrFail();
+        $conflictDocument = $this->createGuardianDocument($parentRelationship, $parent, $conflict);
+        $missingDocument = $this->createGuardianDocument($missingRelationship, $parent, $missing);
+
         $this->artisan('identity:move-legacy-documents --apply')
             ->expectsOutputToContain('conflicts=1 unsafe=0 failures=0')
             ->assertExitCode(0);
@@ -231,6 +317,8 @@ class LegacyIdentityStorageTest extends TestCase
         $this->assertSame('public-version', Storage::disk('public')->get($conflict));
         Storage::disk('local')->assertMissing($missing);
         Storage::disk('public')->assertMissing($missing);
+        $this->assertSame('public', $conflictDocument->fresh()->disk);
+        $this->assertSame('public', $missingDocument->fresh()->disk);
     }
 
     private function metadata(string $path): array
@@ -255,6 +343,23 @@ class LegacyIdentityStorageTest extends TestCase
         $guardian->assignRole('learner');
 
         return $guardian;
+    }
+
+    private function createGuardianDocument(
+        ParentChildAccount $relationship,
+        User $guardian,
+        string $path,
+    ): GuardianRelationshipVerificationDocument {
+        return GuardianRelationshipVerificationDocument::query()->create([
+            'parent_child_account_id' => $relationship->id,
+            'uploaded_by_user_id' => $guardian->id,
+            'document_type' => 'care_arrangement',
+            'disk' => 'public',
+            'path' => $path,
+            'original_name' => basename($path),
+            'mime_type' => 'application/pdf',
+            'size_bytes' => strlen($path),
+        ]);
     }
 
     private function createAdmin(): User

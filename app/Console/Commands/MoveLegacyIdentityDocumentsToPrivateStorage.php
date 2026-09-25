@@ -59,6 +59,7 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
         $apply = (bool) $this->option('apply');
         $ready = 0;
         $moved = 0;
+        $guardianMetadataUpdated = 0;
         $missing = [];
         $conflicts = [];
         $failures = [];
@@ -70,7 +71,19 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
             if (! $publicExists) {
                 if (! $localExists) {
                     $missing[] = $path;
+                    continue;
                 }
+
+                if ($apply) {
+                    $updatedRows = $this->updateGuardianDocumentDisk($path);
+                    if ($updatedRows === false) {
+                        $failures[] = $path;
+                        continue;
+                    }
+
+                    $guardianMetadataUpdated += $updatedRows;
+                }
+
                 continue;
             }
 
@@ -102,6 +115,14 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
                 continue;
             }
 
+            $updatedRows = $this->updateGuardianDocumentDisk($path);
+            if ($updatedRows === false) {
+                $failures[] = $path;
+                continue;
+            }
+
+            $guardianMetadataUpdated += $updatedRows;
+
             if (! $public->delete($path)) {
                 $failures[] = $path;
                 continue;
@@ -111,7 +132,7 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
         }
 
         $this->line(sprintf(
-            'identity document migration: candidates=%d ready=%d moved=%d missing=%d conflicts=%d unsafe=%d failures=%d mode=%s',
+            'identity document migration: candidates=%d ready=%d moved=%d missing=%d conflicts=%d unsafe=%d failures=%d mode=%s guardian-metadata-updated=%d',
             count($candidates),
             $ready,
             $moved,
@@ -120,6 +141,7 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
             count($unsafe),
             count($failures),
             $apply ? 'apply' : 'dry-run',
+            $guardianMetadataUpdated,
         ));
 
         foreach ([
@@ -134,6 +156,18 @@ class MoveLegacyIdentityDocumentsToPrivateStorage extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    private function updateGuardianDocumentDisk(string $path): int|false
+    {
+        try {
+            return GuardianRelationshipVerificationDocument::query()
+                ->where('path', $path)
+                ->where('disk', 'public')
+                ->update(['disk' => 'local']);
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private function copyAndVerify(string $path, string $expectedHash): bool
