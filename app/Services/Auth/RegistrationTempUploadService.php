@@ -94,7 +94,10 @@ class RegistrationTempUploadService
             return null;
         }
 
-        $public->delete($path);
+        if (! $public->delete($path)) {
+            throw new \RuntimeException('Unable to remove the legacy public registration upload.');
+        }
+
         $value['disk'] = 'local';
         session([$key => $value]);
 

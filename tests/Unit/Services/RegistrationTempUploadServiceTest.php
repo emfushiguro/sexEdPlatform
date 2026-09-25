@@ -110,6 +110,112 @@ class RegistrationTempUploadServiceTest extends TestCase
         Storage::disk('public')->assertMissing($path);
     }
 
+    public function test_get_keeps_legacy_metadata_when_public_delete_fails(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $path = 'registration-temp/parent/government_id/legacy-id.pdf';
+        $contents = 'legacy-private-content';
+        $publicDisk = Storage::disk('public');
+        $localDisk = Storage::disk('local');
+        $publicDisk->put($path, $contents);
+        $metadata = [
+            'path' => $path,
+            'original_name' => 'identity.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => strlen($contents),
+            'disk' => 'public',
+        ];
+        session(['registration_temp_uploads.parent.government_id' => $metadata]);
+        $this->mockPublicDiskDeleteFailure($path, $publicDisk, $localDisk);
+
+        $exception = null;
+        try {
+            app(RegistrationTempUploadService::class)->get('parent', 'government_id');
+        } catch (\RuntimeException $caught) {
+            $exception = $caught;
+        }
+
+        $this->assertInstanceOf(\RuntimeException::class, $exception);
+        $this->assertSame($metadata, session('registration_temp_uploads.parent.government_id'));
+        $this->assertSame($contents, $localDisk->get($path));
+        $this->assertSame($contents, $publicDisk->get($path));
+    }
+
+    public function test_store_does_not_replace_legacy_metadata_when_public_delete_fails(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $path = 'registration-temp/parent/government_id/legacy-id.pdf';
+        $contents = 'legacy-private-content';
+        $publicDisk = Storage::disk('public');
+        $localDisk = Storage::disk('local');
+        $publicDisk->put($path, $contents);
+        $metadata = [
+            'path' => $path,
+            'original_name' => 'identity.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => strlen($contents),
+            'disk' => 'public',
+        ];
+        session(['registration_temp_uploads.parent.government_id' => $metadata]);
+        $this->mockPublicDiskDeleteFailure($path, $publicDisk, $localDisk);
+
+        $exception = null;
+        try {
+            app(RegistrationTempUploadService::class)->store(
+                'parent',
+                'government_id',
+                UploadedFile::fake()->create('replacement.pdf', 100, 'application/pdf')
+            );
+        } catch (\RuntimeException $caught) {
+            $exception = $caught;
+        }
+
+        $this->assertInstanceOf(\RuntimeException::class, $exception);
+        $this->assertSame($metadata, session('registration_temp_uploads.parent.government_id'));
+        $this->assertSame($contents, $localDisk->get($path));
+        $this->assertSame($contents, $publicDisk->get($path));
+    }
+
+    public function test_finalize_does_not_clear_legacy_metadata_when_public_delete_fails(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $path = 'registration-temp/child/verification_document/legacy-proof.pdf';
+        $contents = 'legacy-child-evidence';
+        $publicDisk = Storage::disk('public');
+        $localDisk = Storage::disk('local');
+        $publicDisk->put($path, $contents);
+        $metadata = [
+            'path' => $path,
+            'original_name' => 'proof.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => strlen($contents),
+            'disk' => 'public',
+        ];
+        session(['registration_temp_uploads.child.verification_document' => $metadata]);
+        $this->mockPublicDiskDeleteFailure($path, $publicDisk, $localDisk);
+
+        $exception = null;
+        try {
+            app(RegistrationTempUploadService::class)->finalize(
+                'child',
+                'verification_document',
+                'child-verifications/55',
+                'verification-document'
+            );
+        } catch (\RuntimeException $caught) {
+            $exception = $caught;
+        }
+
+        $this->assertInstanceOf(\RuntimeException::class, $exception);
+        $this->assertSame($metadata, session('registration_temp_uploads.child.verification_document'));
+        $this->assertSame($contents, $localDisk->get($path));
+        $this->assertSame($contents, $publicDisk->get($path));
+        $this->assertSame([], $localDisk->files('child-verifications/55'));
+    }
+
     public function test_finalize_clears_session_metadata_when_private_temp_file_is_missing(): void
     {
         Storage::fake('public');
@@ -131,5 +237,27 @@ class RegistrationTempUploadServiceTest extends TestCase
 
         $this->assertNull($finalPath);
         $this->assertNull(session('registration_temp_uploads.child.verification_document'));
+    }
+
+    private function mockPublicDiskDeleteFailure(string $path, object $publicDisk, object $localDisk): void
+    {
+        $failingPublicDisk = new class($publicDisk, $path) {
+            public function __construct(private object $disk, private string $failingPath)
+            {
+            }
+
+            public function delete(string $path): bool
+            {
+                return $path === $this->failingPath ? false : $this->disk->delete($path);
+            }
+
+            public function __call(string $method, array $arguments): mixed
+            {
+                return $this->disk->{$method}(...$arguments);
+            }
+        };
+
+        Storage::shouldReceive('disk')->with('public')->andReturn($failingPublicDisk);
+        Storage::shouldReceive('disk')->with('local')->andReturn($localDisk);
     }
 }
