@@ -5,6 +5,8 @@ namespace App\Services\Identity;
 use App\Http\Requests\Auth\SubmitLearnerIdentityRequest;
 use App\Models\LearnerIdentityVerification;
 use App\Models\User;
+use App\Notifications\Admin\LearnerIdentitySubmittedNotification as AdminLearnerIdentitySubmittedNotification;
+use App\Notifications\LearnerIdentitySubmittedNotification;
 use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -122,6 +124,34 @@ class LearnerIdentitySubmission
                         }
                     });
                 }
+
+                DB::afterCommit(function () use ($actor, $case): void {
+                    try {
+                        $actor->notify(new LearnerIdentitySubmittedNotification($case));
+                    } catch (Throwable) {
+                        Log::warning('Learner identity notification failed.', [
+                            'user_id' => $actor->id, 'case_id' => $case->id,
+                            'notification' => LearnerIdentitySubmittedNotification::class,
+                        ]);
+                    }
+                    try {
+                        User::query()->role('admin')->get()->each(function (User $admin) use ($case): void {
+                            try {
+                                $admin->notify(new AdminLearnerIdentitySubmittedNotification($case));
+                            } catch (Throwable) {
+                                Log::warning('Learner identity notification failed.', [
+                                    'user_id' => $admin->id, 'case_id' => $case->id,
+                                    'notification' => AdminLearnerIdentitySubmittedNotification::class,
+                                ]);
+                            }
+                        });
+                    } catch (Throwable) {
+                        Log::warning('Learner identity notification failed.', [
+                            'case_id' => $case->id,
+                            'notification' => AdminLearnerIdentitySubmittedNotification::class,
+                        ]);
+                    }
+                });
 
                 return $case->load('evidence');
             });

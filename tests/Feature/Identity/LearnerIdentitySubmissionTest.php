@@ -7,8 +7,9 @@ use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
 use App\Services\Identity\LearnerIdentitySubmission;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -48,6 +49,58 @@ class LearnerIdentitySubmissionTest extends TestCase
         $this->assertSame(['created', 'submitted'], $case->audits()->pluck('action')->all());
         $this->assertSame($adult->id, $case->audits()->where('action', 'submitted')->firstOrFail()->actor_id);
         $this->assertSame([], Storage::disk('public')->allFiles('learner-verifications'));
+    }
+
+    public function test_submission_and_resubmission_notify_learner_and_admins_without_private_paths(): void
+    {
+        Notification::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->assignRole('admin');
+        [$adult, $case] = $this->case('2000-01-01');
+
+        $this->submit($adult, $case);
+        $case->update(['status' => 'rejected']);
+        $this->submit($adult, $case);
+
+        Notification::assertSentToTimes($adult, \App\Notifications\LearnerIdentitySubmittedNotification::class, 2);
+        Notification::assertSentToTimes($admin, \App\Notifications\Admin\LearnerIdentitySubmittedNotification::class, 2);
+        Notification::assertSentTo($adult, \App\Notifications\LearnerIdentitySubmittedNotification::class,
+            fn ($notification) => $notification->via($adult) === ['mail', 'database']
+                && ($payload = $notification->toArray($adult))['verification_id'] === $case->id
+                && $payload['action_url'] === route('learner.identity.status')
+                && ! str_contains(json_encode($payload), 'learner-verifications/'));
+        Notification::assertSentTo($admin, \App\Notifications\Admin\LearnerIdentitySubmittedNotification::class,
+            fn ($notification) => $notification->via($admin) === ['database']
+                && ($payload = $notification->toDatabase($admin))['verification_id'] === $case->id
+                && $payload['action_url'] === route('admin.parent-verifications.learners.show', $case)
+                && ! str_contains(json_encode($payload), 'learner-verifications/'));
+    }
+
+    public function test_outer_rollback_does_not_send_submission_notifications(): void
+    {
+        Notification::fake();
+        [$adult, $case] = $this->case('2000-01-01');
+        try {
+            DB::transaction(function () use ($adult, $case): void {
+                $this->submit($adult, $case);
+                Notification::assertNothingSent();
+                throw new \RuntimeException('rollback');
+            });
+        } catch (\RuntimeException $e) {
+            $this->assertSame('rollback', $e->getMessage());
+        }
+        Notification::assertNothingSent();
+    }
+
+    public function test_form_and_privacy_explain_manual_identity_review_and_retention(): void
+    {
+        [$adult] = $this->case('2000-01-01');
+        $this->actingAs($adult)->get(route('learner.identity.create'))->assertOk()
+            ->assertSee('manual review')->assertSee('authorized reviewers')
+            ->assertSee(route('privacy'));
+        $this->get(route('privacy'))->assertOk()->assertSee('ID and selfie')
+            ->assertSee('manual review')->assertSee('authorized reviewers')
+            ->assertDontSee('automated biometrics');
     }
 
     public function test_document_choices_and_back_requirements(): void

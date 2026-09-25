@@ -89,7 +89,7 @@
                         <li>Avoid sunglasses, face coverings, and heavy filters.</li>
                     </ul>
                 </div>
-                <p class="text-sm text-gray-700">Your images are used for private manual review. Read our <a href="{{ route('privacy') }}" class="font-semibold text-purple-800 underline focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">privacy policy</a> for details.</p>
+                <p class="text-sm text-gray-700">We collect your ID and selfie to check that this learner account belongs to you. Only authorized reviewers can see these images for manual review. The <a href="{{ route('privacy') }}" class="font-semibold text-purple-800 underline focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">privacy policy</a> explains how long personal information is kept and when it may be deleted.</p>
             </section>
             <div class="flex items-start gap-3">
                 <input id="confirm_submission" name="confirm_submission" type="checkbox" value="1" required class="mt-1 h-5 w-5 accent-purple-700">

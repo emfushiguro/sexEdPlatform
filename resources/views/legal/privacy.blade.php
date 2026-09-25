@@ -215,6 +215,9 @@
                         <p class="leading-relaxed mt-4">
                             Guardians can request immediate deletion of child accounts at any time.
                         </p>
+                        <p class="leading-relaxed mt-4">
+                            For learner identity verification, we collect an ID and selfie to check that the account belongs to the learner. Only authorized reviewers can access these images for manual review. Identity evidence follows the personal-information retention and deletion rules above, including any legal requirements.
+                        </p>
                     </div>
                 </section>
 

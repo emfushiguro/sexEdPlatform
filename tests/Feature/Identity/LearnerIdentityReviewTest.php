@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
 use App\Services\Identity\LearnerIdentityReview;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -131,6 +133,46 @@ class LearnerIdentityReviewTest extends TestCase
         $this->assertNull($case->approved_at);
         $this->assertSame('Document is unreadable.', $case->rejection_reason);
         $this->assertSame('Document is unreadable.', $case->audits()->latest('id')->firstOrFail()->reason);
+    }
+
+    public function test_decisions_notify_learner_once_with_safe_payload_and_rejection_reason(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $approved = $this->case('2000-01-01');
+        $rejected = $this->case('2010-01-01');
+        app(LearnerIdentityReview::class)->approve($admin, $approved);
+        app(LearnerIdentityReview::class)->reject($admin, $rejected, 'Please upload a clearer ID photo.');
+
+        Notification::assertSentToTimes($approved->learner, \App\Notifications\LearnerIdentityApprovedNotification::class, 1);
+        Notification::assertSentToTimes($rejected->learner, \App\Notifications\LearnerIdentityRejectedNotification::class, 1);
+        Notification::assertSentTo($approved->learner, \App\Notifications\LearnerIdentityApprovedNotification::class,
+            fn ($notification) => $notification->via($approved->learner) === ['mail', 'database']
+                && ($payload = $notification->toArray($approved->learner))['verification_id'] === $approved->id
+                && $payload['action_url'] === route('learner.identity.status')
+                && ! str_contains(json_encode($payload), 'learner-verifications/'));
+        Notification::assertSentTo($rejected->learner, \App\Notifications\LearnerIdentityRejectedNotification::class,
+            fn ($notification) => ($payload = $notification->toArray($rejected->learner))
+                && $payload['reason'] === 'Please upload a clearer ID photo.'
+                && $payload['action_url'] === route('learner.identity.status')
+                && ! str_contains(json_encode($payload), 'learner-verifications/'));
+    }
+
+    public function test_outer_rollback_does_not_notify_learner_of_decision(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $case = $this->case('2000-01-01');
+        try {
+            DB::transaction(function () use ($admin, $case): void {
+                app(LearnerIdentityReview::class)->approve($admin, $case);
+                Notification::assertNothingSent();
+                throw new \RuntimeException('rollback');
+            });
+        } catch (\RuntimeException $e) {
+            $this->assertSame('rollback', $e->getMessage());
+        }
+        Notification::assertNothingSent();
     }
 
     public function test_other_adult_id_needs_separate_government_issued_confirmation(): void

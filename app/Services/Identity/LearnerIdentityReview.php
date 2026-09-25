@@ -5,8 +5,11 @@ namespace App\Services\Identity;
 use App\Enums\VerificationStatus;
 use App\Models\LearnerIdentityVerification;
 use App\Models\User;
+use App\Notifications\LearnerIdentityApprovedNotification;
+use App\Notifications\LearnerIdentityRejectedNotification;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class LearnerIdentityReview
@@ -64,6 +67,19 @@ class LearnerIdentityReview
                 'reason' => $reason,
                 'created_at' => now(),
             ]);
+            DB::afterCommit(function () use ($learner, $locked, $decision, $reason): void {
+                $notification = $decision === VerificationStatus::Approved
+                    ? new LearnerIdentityApprovedNotification($locked)
+                    : new LearnerIdentityRejectedNotification($locked, $reason);
+                try {
+                    $learner->notify($notification);
+                } catch (\Throwable) {
+                    Log::warning('Learner identity notification failed.', [
+                        'user_id' => $learner->id, 'case_id' => $locked->id,
+                        'notification' => $notification::class,
+                    ]);
+                }
+            });
         });
     }
 
