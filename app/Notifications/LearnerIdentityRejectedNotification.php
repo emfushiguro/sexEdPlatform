@@ -15,11 +15,12 @@ class LearnerIdentityRejectedNotification extends Notification
 
     public function __construct(private readonly LearnerIdentityVerification $case, string $reason)
     {
-        $this->reason = in_array(trim($reason), [
-            'Please upload a clearer ID photo.',
-            'Please upload a clearer selfie photo.',
-            'Document is unreadable.',
-        ], true) ? trim($reason) : 'Please check your identity submission and upload clearer images.';
+        $safe = preg_replace(
+            '~(?:\S*[/\\\\]){2,}\S*|\S*[A-Za-z0-9_-]\.(?:jpe?g|png|webp|pdf|gif|heic|bmp|tiff?)(?![A-Za-z0-9])~iu',
+            '[private file]',
+            trim($reason),
+        );
+        $this->reason = trim($safe ?? '') ?: 'Please review your identity submission and try again.';
     }
 
     public function via(object $notifiable): array

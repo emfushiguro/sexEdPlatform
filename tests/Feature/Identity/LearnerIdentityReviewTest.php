@@ -163,9 +163,9 @@ class LearnerIdentityReviewTest extends TestCase
     {
         $admin = $this->admin();
         foreach ([
-            'Please replace learner-verifications/42/adult/identity_front.png.',
-            'Please replace C:\\private\\learner-verifications\\42\\selfie.png.',
-            'Please replace passport-scan.jpg.',
+            'Please replace learner-verifications/42/adult/identity_front.png before trying again.',
+            'Please replace C:\\private\\learner-verifications\\42\\selfie.png before trying again.',
+            'Please replace passport-scan.jpg before trying again.',
         ] as $reason) {
             Notification::fake();
             $case = $this->case('2000-01-01');
@@ -178,10 +178,11 @@ class LearnerIdentityReviewTest extends TestCase
                     $mailData = $notification->toMail($case->learner)->viewData;
                     $mail = json_encode($mailData);
 
-                    $this->assertSame('Please check your identity submission and upload clearer images.',
-                        $notification->toArray($case->learner)['reason']);
-                    $this->assertContains('Reason: Please check your identity submission and upload clearer images.',
-                        $mailData['details']);
+                    $sanitizedReason = $notification->toArray($case->learner)['reason'];
+                    $this->assertStringStartsWith('Please replace ', $sanitizedReason);
+                    $this->assertStringContainsString('[private file]', $sanitizedReason);
+                    $this->assertStringEndsWith(' before trying again.', $sanitizedReason);
+                    $this->assertContains('Reason: '.$sanitizedReason, $mailData['details']);
 
                     $this->assertStringNotContainsString($reason, $database);
                     $this->assertStringNotContainsString($reason, $mail);
@@ -193,6 +194,24 @@ class LearnerIdentityReviewTest extends TestCase
                     return true;
                 });
         }
+    }
+
+    public function test_safe_rejection_reason_keeps_useful_guidance_in_mail_and_database(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $case = $this->case('2000-01-01');
+        $reason = 'The birthdate on your ID does not match your profile.';
+
+        app(LearnerIdentityReview::class)->reject($admin, $case, $reason);
+
+        Notification::assertSentTo($case->learner, \App\Notifications\LearnerIdentityRejectedNotification::class,
+            function ($notification) use ($case, $reason): bool {
+                $this->assertSame($reason, $notification->toArray($case->learner)['reason']);
+                $this->assertContains('Reason: '.$reason, $notification->toMail($case->learner)->viewData['details']);
+
+                return true;
+            });
     }
 
     public function test_outer_rollback_does_not_notify_learner_of_decision(): void
