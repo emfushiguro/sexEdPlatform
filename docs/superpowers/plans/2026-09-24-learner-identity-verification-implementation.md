@@ -10,6 +10,14 @@
 
 **Design reference:** docs/superpowers/specs/2026-09-24-learner-identity-verification-design.md
 
+**Post-implementation usability revision (2026-09-25):** Learner ID upload and
+selfie capture are separate pages within the Identity Verification step. The
+ID page uses the guardian-style grouped ID choice, conditional fields, and
+local image previews. Private session-bound ID staging is finalized with the
+selfie and consent on the second page. The Vite browser assets must include
+the selfie camera component; a source-only build is insufficient when the app
+serves the committed public/build manifest.
+
 ## Global Constraints
 
 - Preserve existing development data. Use additive migrations and ordinary php artisan migrate only. Never run migrate:fresh, db:wipe, TRUNCATE, DROP, destructive seeders, or tests against the development database.

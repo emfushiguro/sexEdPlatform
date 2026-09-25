@@ -127,14 +127,27 @@ receive the same gate as navigation links.
 
 ## Evidence submission and selfie experience
 
-One responsive Blade and Alpine component handles selfie capture and upload
-on phone, tablet, laptop, and desktop. Camera access starts only on an
+The learner submits identity evidence in two pages. The first page has one
+grouped ID selector for school, institution, and government choices as allowed
+by the learner's age pathway. It reveals the Other description and back-side
+upload only when the selected ID needs them, and previews chosen ID images.
+ID images are staged on the private local disk for the current learner, case,
+and submission round. Staging does not create review evidence, mark a case
+pending, or notify reviewers. Returning from the selfie page retains the
+staged ID until final submission; an expired or mismatched draft requires a
+new ID upload.
+
+The second page handles selfie capture and upload on phone, tablet, laptop,
+and desktop. Camera access starts only on an
 explicit action. It prefers the front camera when available, previews the
 image, and offers Retake, Use Photo, Replace, and Cancel. Camera streams stop
 on completion, cancellation, or component teardown. File upload remains
 visible and usable when a camera is absent, denied, disconnected, or fails.
 Captures and replacements stay in browser memory until final submission, so
 retakes create no server duplicates.
+The final consent and submission occur on the selfie page. The server combines
+the staged ID with the selfie and revalidates the complete evidence set before
+changing the case status.
 
 The form asks for one person, a recent clear photo, good lighting, a visible
 face, no sunglasses or face covering, and no heavy filters. It explains that

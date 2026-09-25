@@ -15,8 +15,8 @@ use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegistrationTempDocumentController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\RegistrationTempDocumentController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -106,7 +106,9 @@ Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
 Route::middleware('auth')->group(function () {
     Route::middleware('verified')->group(function () {
         Route::get('learner/identity', [LearnerIdentityVerificationController::class, 'create'])->name('learner.identity.create');
-        Route::post('learner/identity', [LearnerIdentityVerificationController::class, 'store'])->name('learner.identity.store');
+        Route::post('learner/identity', [LearnerIdentityVerificationController::class, 'storeDocument'])->name('learner.identity.document.store');
+        Route::get('learner/identity/selfie', [LearnerIdentityVerificationController::class, 'selfie'])->name('learner.identity.selfie.create');
+        Route::post('learner/identity/selfie', [LearnerIdentityVerificationController::class, 'store'])->name('learner.identity.store');
         Route::get('learner/identity/status', [LearnerIdentityVerificationController::class, 'status'])->name('learner.identity.status');
     });
 

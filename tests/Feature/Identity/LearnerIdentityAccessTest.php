@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Identity;
 
-use App\Models\User;
 use App\Models\ParentChildAccount;
+use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -123,24 +123,161 @@ class LearnerIdentityAccessTest extends TestCase
     {
         [$legacy] = $this->learner(covered: false);
         $this->actingAs($legacy)->get(route('learner.identity.create'))->assertForbidden();
+        $this->get(route('learner.identity.selfie.create'))->assertForbidden();
         $this->get(route('learner.identity.status'))->assertForbidden();
+        $this->post(route('learner.identity.document.store'), [])->assertForbidden();
         $this->post(route('learner.identity.store'), [])->assertForbidden();
+    }
+
+    public function test_document_step_stages_id_privately_before_selfie_submission(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        [$user, $case] = $this->learner();
+
+        $this->actingAs($user)->get(route('learner.identity.create'))
+            ->assertOk()
+            ->assertSee('name="id_selection"', false)
+            ->assertSee('data-testid="learner-id-front-preview"', false)
+            ->assertDontSee('name="selfie"', false);
+
+        $this->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:philhealth',
+            'identity_front' => $this->image('front.png'),
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+
+        $tempPath = session('registration_temp_uploads.learner.identity_front.path');
+        $this->assertIsString($tempPath);
+        Storage::disk('local')->assertExists($tempPath);
+        $this->assertNull($case->fresh()->status);
+        $this->assertSame(0, $case->evidence()->count());
+
+        $this->get(route('learner.identity.selfie.create'))
+            ->assertOk()
+            ->assertSee('data-testid="selfie-capture"', false)
+            ->assertSee('Take a selfie');
+        $this->post(route('learner.identity.store'), [
+            'selfie' => $this->image('selfie.png'),
+            'confirm_submission' => '1',
+        ])->assertRedirect(route('learner.identity.status'));
+
+        $submitted = $case->fresh('evidence');
+        $this->assertSame('pending', $submitted->status);
+        $this->assertEqualsCanonicalizing(['identity_front', 'selfie'], $submitted->evidence->pluck('slot')->all());
+        Storage::disk('local')->assertMissing($tempPath);
+        Storage::disk('public')->assertMissing($submitted->evidence->pluck('storage_path')->all());
+    }
+
+    public function test_selfie_step_requires_an_owned_document_draft(): void
+    {
+        [$user, $case] = $this->learner();
+
+        $this->actingAs($user)->get(route('learner.identity.selfie.create'))
+            ->assertRedirect(route('learner.identity.create'));
+        $this->post(route('learner.identity.store'), [
+            'selfie' => $this->image('selfie.png'),
+            'confirm_submission' => '1',
+        ])->assertRedirect(route('learner.identity.create'));
+        $this->assertNull($case->fresh()->status);
+    }
+
+    public function test_id_choice_controls_back_requirement_and_saved_images_can_be_reused(): void
+    {
+        Storage::fake('local');
+        [$user, $case] = $this->learner();
+        $this->actingAs($user)->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:national_id',
+            'identity_front' => $this->image('front.png'),
+        ])->assertSessionHasErrors(['identity_back']);
+        $this->assertNull(session('learner_identity_document_draft'));
+
+        $this->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:national_id',
+            'identity_front' => $this->image('front.png'),
+            'identity_back' => $this->image('back.png'),
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+        $frontPath = session('registration_temp_uploads.learner.identity_front.path');
+        $backPath = session('registration_temp_uploads.learner.identity_back.path');
+
+        $this->get(route('learner.identity.create'))->assertOk()->assertSee('Saved image available');
+        $this->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:national_id',
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+        Storage::disk('local')->assertExists([$frontPath, $backPath]);
+
+        $this->post(route('learner.identity.store'), [
+            'selfie' => $this->image('selfie.png'),
+            'confirm_submission' => '1',
+        ])->assertRedirect(route('learner.identity.status'));
+        $this->assertEqualsCanonicalizing(['identity_front', 'identity_back', 'selfie'], $case->fresh()->evidence->pluck('slot')->all());
+    }
+
+    public function test_id_choice_cannot_be_changed_without_a_new_front_image(): void
+    {
+        Storage::fake('local');
+        [$user, $case] = $this->learner();
+        $this->actingAs($user)->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:philhealth',
+            'identity_front' => $this->image('front.png'),
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+
+        $this->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:passport',
+            'identity_back' => $this->image('back.png'),
+        ])->assertSessionHasErrors(['identity_front']);
+        $this->assertSame('government_id:philhealth', session('learner_identity_document_draft.id_selection'));
+        $this->assertNull($case->fresh()->status);
+    }
+
+    public function test_other_government_id_requires_description_and_back_image(): void
+    {
+        [$user, $case] = $this->learner();
+        $this->actingAs($user)->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:other',
+            'identity_front' => $this->image('front.png'),
+        ])->assertSessionHasErrors(['government_id_type_other', 'identity_back']);
+        $this->assertNull($case->fresh()->status);
+
+        $this->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:other',
+            'government_id_type_other' => 'Government-issued service card',
+            'identity_front' => $this->image('front.png'),
+            'identity_back' => $this->image('back.png'),
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+        $this->post(route('learner.identity.store'), [
+            'selfie' => $this->image('selfie.png'),
+            'confirm_submission' => '1',
+        ])->assertRedirect(route('learner.identity.status'));
+        $this->assertSame('other', $case->fresh()->government_id_type);
+        $this->assertSame('Government-issued service card', $case->fresh()->government_id_type_other);
     }
 
     public function test_post_requires_images_and_keeps_case_unsubmitted(): void
     {
         [$user, $case] = $this->learner();
-        $this->actingAs($user)->post(route('learner.identity.store'), [
-            'document_type' => 'government_id', 'government_id_type' => 'philhealth',
+        $this->actingAs($user)->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:philhealth',
+        ])->assertSessionHasErrors(['identity_front']);
+        $this->assertNull($case->fresh()->status);
+
+        $this->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:philhealth',
+            'identity_front' => $this->image('front.png'),
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+        $this->post(route('learner.identity.store'), [
             'confirm_submission' => '1',
-        ])->assertSessionHasErrors(['identity_front', 'selfie']);
+        ])->assertSessionHasErrors(['selfie']);
         $this->assertNull($case->fresh()->status);
     }
 
     public function test_selfie_form_offers_camera_upload_guidance_and_accessible_controls(): void
     {
         [$user] = $this->learner();
-        $this->actingAs($user)->get(route('learner.identity.create'))
+        $this->actingAs($user)->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:philhealth',
+            'identity_front' => $this->image('front.png'),
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+        $this->get(route('learner.identity.selfie.create'))
             ->assertOk()
             ->assertSee('data-testid="selfie-capture"', false)
             ->assertSee('Take a selfie')
@@ -158,10 +295,12 @@ class LearnerIdentityAccessTest extends TestCase
     {
         Storage::fake('local');
         [$user, $case] = $this->learner();
-        $this->actingAs($user)->post(route('learner.identity.store'), [
-            'document_type' => 'government_id', 'government_id_type' => 'philhealth',
-            'confirm_submission' => '1',
-            'identity_front' => $this->image('front.png'), 'selfie' => $this->image('selfie.png'),
+        $this->actingAs($user)->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:philhealth',
+            'identity_front' => $this->image('front.png'),
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+        $this->post(route('learner.identity.store'), [
+            'confirm_submission' => '1', 'selfie' => $this->image('selfie.png'),
         ])->assertRedirect(route('learner.identity.status'));
         $this->assertSame('pending', $case->fresh()->status);
         $this->assertCount(2, $case->fresh()->evidence);

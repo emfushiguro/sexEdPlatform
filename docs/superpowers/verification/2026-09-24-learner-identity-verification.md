@@ -38,3 +38,31 @@ The apply run reported `candidates=25 ready=10 moved=10 missing=0 conflicts=0 un
 The in-app browser runtime reported no available browsers, so an interactive desktop smoke test could not be performed. Physical mobile, tablet, laptop webcam, desktop-without-webcam, and screen-reader checks were also unavailable. A live browser network trace was not available.
 
 Automated camera tests cover capture, permission denial, upload fallback, preview, retake, cancel, stream cleanup, and stale camera requests. Source inspection shows camera capture stays in a local Blob/File until the learner chooses to use it, and the form submits to the application's same-origin `learner.identity.store` route. No third-party AI endpoint is present in this flow. This source inspection does not replace live device, accessibility, or network-trace checks.
+
+## Follow-up: separate ID and selfie steps
+
+After the initial implementation, the learner registration screen was reviewed
+in the browser. The single long form exposed inactive ID fields and showed
+native file inputs without ID image previews. The source camera component was
+present, but the committed Vite bundle did not contain it, so the camera button
+on the served page could not start capture.
+
+The ID page now has one grouped selection, conditional Other and back-side
+fields, local ID image previews with enlargement, and a Continue to selfie
+action. It stages files privately in a session-bound draft without changing
+review status. A separate selfie page presents the direct camera action,
+upload fallback, preview/retake controls, consent, and final submission.
+The new Vite bundle is committed so the served application includes the
+camera component. No database migration was needed.
+
+| Follow-up check | Result |
+|---|---:|
+| `vendor/bin/phpunit --do-not-cache-result tests/Feature/Identity` | 69 tests, 600 assertions passed |
+| Registration, email, guardian, child, and wizard regression set | 53 tests, 253 assertions passed; 2 existing PHPUnit deprecations |
+| `node --test tests/JavaScript/identity-selfie.test.mjs` | 11 tests passed |
+| `npm.cmd run build` | Passed; manifest now references the app bundle containing `identitySelfie` |
+| `php artisan route:list --name=learner.identity` | Five learner-owned routes: ID page/save, selfie page/submit, status |
+| `php artisan view:cache` | Blade templates compiled |
+
+The follow-up was verified with automated checks and the supplied screenshots.
+Physical camera/device and screen-reader checks remain unperformed.

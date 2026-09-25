@@ -95,7 +95,11 @@ class LearnerIdentitySubmissionTest extends TestCase
     public function test_form_and_privacy_explain_manual_identity_review_and_retention(): void
     {
         [$adult] = $this->case('2000-01-01');
-        $this->actingAs($adult)->get(route('learner.identity.create'))->assertOk()
+        $this->actingAs($adult)->post(route('learner.identity.document.store'), [
+            'id_selection' => 'government_id:philhealth',
+            'identity_front' => $this->image('front.png'),
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+        $this->get(route('learner.identity.selfie.create'))->assertOk()
             ->assertSee('manual review')->assertSee('authorized reviewers')
             ->assertSee(route('privacy'));
         $this->get(route('privacy'))->assertOk()->assertSee('ID and selfie')
@@ -132,14 +136,16 @@ class LearnerIdentitySubmissionTest extends TestCase
 
             $this->actingAs($learner)
                 ->from(route('learner.identity.create'))
-                ->post(route('learner.identity.store'), [
-                    'document_type' => $type,
-                    'government_id_type' => $governmentIdType,
+                ->post(route('learner.identity.document.store'), [
+                    'id_selection' => $governmentIdType ? 'government_id:'.$governmentIdType : $type,
                     'government_id_type_other' => null,
                     'identity_front' => $this->image('front.png'),
-                    'selfie' => $this->image('selfie.png'),
-                    'confirm_submission' => '1',
                 ])
+                ->assertRedirect(route('learner.identity.selfie.create'));
+            $this->post(route('learner.identity.store'), [
+                'selfie' => $this->image('selfie.png'),
+                'confirm_submission' => '1',
+            ])
                 ->assertRedirect(route('learner.identity.status'));
 
             $this->assertSame($type, $case->fresh()->document_type);

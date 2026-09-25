@@ -13,7 +13,7 @@ class WizardStepper extends Component
         ['label' => 'Personal Info', 'route' => 'register'],
         ['label' => 'Account Info',  'route' => 'register.account'],
         ['label' => 'Verify Email',  'route' => 'verification.notice'],
-        ['label' => 'Identity Verification', 'routes' => ['learner.identity.create', 'learner.identity.status']],
+        ['label' => 'Identity Verification', 'routes' => ['learner.identity.create', 'learner.identity.selfie.create', 'learner.identity.status']],
         ['label' => 'Profile',       'route' => 'profile.complete'],
     ];
 

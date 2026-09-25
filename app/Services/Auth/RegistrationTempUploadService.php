@@ -13,7 +13,7 @@ class RegistrationTempUploadService
     public function store(string $flow, string $step, UploadedFile $file): array
     {
         $existing = $this->get($flow, $step);
-        if (is_array($existing) && !empty($existing['path'])) {
+        if (is_array($existing) && ! empty($existing['path'])) {
             Storage::disk('local')->delete((string) $existing['path']);
         }
 
@@ -107,7 +107,7 @@ class RegistrationTempUploadService
     public function remove(string $flow, string $step): void
     {
         $existing = $this->get($flow, $step);
-        if (is_array($existing) && !empty($existing['path'])) {
+        if (is_array($existing) && ! empty($existing['path'])) {
             Storage::disk('local')->delete((string) $existing['path']);
         }
 
@@ -117,7 +117,7 @@ class RegistrationTempUploadService
     public function finalize(string $flow, string $step, string $targetDir, string $targetPrefix): ?string
     {
         $existing = $this->get($flow, $step);
-        if (!is_array($existing) || empty($existing['path'])) {
+        if (! is_array($existing) || empty($existing['path'])) {
             session()->forget($this->sessionKey($flow, $step));
 
             return null;
@@ -131,7 +131,7 @@ class RegistrationTempUploadService
         }
 
         $extension = strtolower(pathinfo($sourcePath, PATHINFO_EXTENSION));
-        if ($extension === '' && !empty($existing['original_name'])) {
+        if ($extension === '' && ! empty($existing['original_name'])) {
             $extension = strtolower(pathinfo((string) $existing['original_name'], PATHINFO_EXTENSION));
         }
 
@@ -169,6 +169,8 @@ class RegistrationTempUploadService
         return in_array([$flow, $step], [
             ['parent', 'government_id'],
             ['child', 'verification_document'],
+            ['learner', 'identity_front'],
+            ['learner', 'identity_back'],
         ], true);
     }
 
