@@ -823,7 +823,7 @@
                                 $statusValue = $application->verification_status ?: 'pending';
                                 $verificationDocumentPath = (string) ($application->verification_document_path ?? '');
                                 $hasVerificationDocument = $verificationDocumentPath !== '';
-                                $verificationDocumentUrl = $hasVerificationDocument ? asset('storage/' . $verificationDocumentPath) : null;
+                                $verificationDocumentUrl = $hasVerificationDocument ? route('admin.parent-verifications.children.document', $application) : null;
                                 $verificationDocumentExtension = $hasVerificationDocument ? strtolower(pathinfo($verificationDocumentPath, PATHINFO_EXTENSION)) : null;
                                 $verificationPreviewType = $hasVerificationDocument
                                     ? (in_array($verificationDocumentExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)

@@ -15,6 +15,7 @@ use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegistrationTempDocumentController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Http\Request;
@@ -89,6 +90,10 @@ Route::middleware('guest')->group(function () {
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
 });
+
+Route::get('registration/temp-document/{flow}/{step}', [RegistrationTempDocumentController::class, 'show'])
+    ->whereIn('flow', ['parent', 'child'])
+    ->name('registration.temp-document.preview');
 
 Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
     ->middleware(['auth', 'signed', 'throttle:6,1'])

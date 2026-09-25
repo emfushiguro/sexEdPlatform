@@ -63,7 +63,7 @@ class ParentRegistrationController extends Controller
         RegistrationTempUploadService $tempUploadService
     ): JsonResponse {
         $upload = $tempUploadService->store('parent', 'government_id', $request->file('government_id'));
-        $upload['preview_url'] = asset('storage/'.$upload['path']);
+        $upload['preview_url'] = route('registration.temp-document.preview', ['parent', 'government_id']);
 
         return response()->json([
             'message' => 'Temporary upload saved.',
@@ -97,7 +97,7 @@ class ParentRegistrationController extends Controller
         }
 
         $upload = $tempUploadService->store('child', 'verification_document', $request->file('verification_document'));
-        $upload['preview_url'] = asset('storage/'.$upload['path']);
+        $upload['preview_url'] = route('registration.temp-document.preview', ['child', 'verification_document']);
 
         return response()->json([
             'message' => 'Temporary upload saved.',
@@ -436,7 +436,7 @@ class ParentRegistrationController extends Controller
 
         $tempUpload = app(RegistrationTempUploadService::class)->get('child', 'verification_document');
         if (is_array($tempUpload) && ! empty($tempUpload['path'])) {
-            $tempUpload['preview_url'] = asset('storage/'.$tempUpload['path']);
+            $tempUpload['preview_url'] = route('registration.temp-document.preview', ['child', 'verification_document']);
         }
 
         return view('auth.child.step4-validation', [
@@ -650,7 +650,7 @@ class ParentRegistrationController extends Controller
                 return [$child, $verification->fresh()];
             });
         } catch (Throwable $exception) {
-            Storage::disk('public')->delete($verificationDocumentPath);
+            Storage::disk('local')->delete($verificationDocumentPath);
             app(GuardianRelationshipEvidenceService::class)->deleteStoredPaths($relationshipEvidencePaths);
 
             throw $exception;

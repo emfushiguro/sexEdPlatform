@@ -27,11 +27,11 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
             ->get(route('parent.create-child.relationship-verification'))
             ->assertOk()
             ->assertSee('x-data="guardianEvidenceForm', false)
-            ->assertSee('Add back side', false)
+            ->assertSee('Add another document', false)
             ->assertSee('data-testid="relationship-evidence-dropzone"', false)
             ->assertSee('Drop a file here or', false)
             ->assertSee('>browse</span>', false)
-            ->assertSee('Required core evidence:', false)
+            ->assertSee('Required</span>', false)
             ->assertSee('data-testid="relationship-evidence-clear"', false)
             ->assertSee('data-testid="relationship-evidence-preview"', false)
             ->assertSee('Selected preview', false)
@@ -96,6 +96,7 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
     public function test_child_temp_upload_accepts_only_allowed_psa_document_types(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $parent = $this->createApprovedParent();
 
@@ -120,12 +121,17 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
                     'size',
                     'preview_url',
                 ],
-            ]);
+            ])
+            ->assertJsonPath(
+                'upload.preview_url',
+                route('registration.temp-document.preview', ['child', 'verification_document'])
+            );
     }
 
     public function test_child_credentials_page_rehydrates_preview_from_temp_session(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $parent = $this->createApprovedParent();
 
@@ -137,6 +143,8 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
         $path = $uploadResponse->json('upload.path');
 
         $this->assertSame($path, session('registration_temp_uploads.child.verification_document.path'));
+        Storage::disk('local')->assertExists($path);
+        Storage::disk('public')->assertMissing($path);
 
         $this->actingAs($parent)
             ->withSession($this->childWizardSession())
@@ -144,12 +152,14 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
             ->get(route('parent.create-child.validation'))
             ->assertOk()
             ->assertSee('data-testid="child-verification-preview"', false)
-            ->assertSee('birth-cert.pdf', false);
+            ->assertSee('birth-cert.pdf', false)
+            ->assertDontSee('storage/registration-temp/', false);
     }
 
     public function test_child_temp_remove_and_replace_keep_session_metadata_in_sync(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
 
         $parent = $this->createApprovedParent();
@@ -169,21 +179,23 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
         $secondPath = $secondUpload->json('upload.path');
 
         $this->assertNotSame($firstPath, $secondPath);
-        Storage::disk('public')->assertMissing($firstPath);
-        Storage::disk('public')->assertExists($secondPath);
+        Storage::disk('local')->assertMissing($firstPath);
+        Storage::disk('local')->assertExists($secondPath);
+        Storage::disk('public')->assertMissing($secondPath);
         $this->assertSame($secondPath, session('registration_temp_uploads.child.verification_document.path'));
 
         $this->actingAs($parent)
             ->deleteJson(route('parent.create-child.credentials.temp-upload.remove'))
             ->assertOk();
 
-        Storage::disk('public')->assertMissing($secondPath);
+        Storage::disk('local')->assertMissing($secondPath);
         $this->assertNull(session('registration_temp_uploads.child.verification_document'));
     }
 
     public function test_child_credentials_submit_requires_preview_ready_temp_upload_state(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $parent = $this->createApprovedParent();
 
@@ -230,7 +242,8 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
         $this->assertNotNull($link);
         $this->assertNotEmpty($link->verification_document_path);
         $this->assertStringStartsWith('child-verifications/'.$parent->id.'/', $link->verification_document_path);
-        Storage::disk('public')->assertExists($link->verification_document_path);
+        Storage::disk('local')->assertExists($link->verification_document_path);
+        Storage::disk('public')->assertMissing($link->verification_document_path);
         $this->assertNull(session('registration_temp_uploads.child.verification_document'));
     }
 

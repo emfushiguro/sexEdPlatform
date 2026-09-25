@@ -200,6 +200,32 @@ class ParentChildVerificationController extends Controller
         );
     }
 
+    public function childDocument(ParentChildAccount $parentChildAccount): BinaryFileResponse
+    {
+        $path = (string) $parentChildAccount->verification_document_path;
+        $segments = explode('/', $path);
+        abort_unless(
+            str_starts_with($path, 'child-verifications/')
+                && ! str_contains($path, '\\')
+                && ! str_starts_with($path, '/')
+                && ! in_array('..', $segments, true)
+                && ! in_array('.', $segments, true),
+            404
+        );
+
+        $disk = Storage::disk('local');
+        if (! $disk->exists($path)) {
+            $disk = Storage::disk('public');
+        }
+        abort_unless($disk->exists($path), 404);
+
+        $response = response()->file($disk->path($path));
+        $response->headers->set('Cache-Control', 'private, no-store');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+
+        return $response;
+    }
+
     public function resetGuardianOnboarding(User $user): RedirectResponse
     {
         abort_unless($user->isParentRegistration(), 404);

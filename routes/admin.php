@@ -343,6 +343,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/parents/{user}/document/{side}', [Admin\ParentChildVerificationController::class, 'parentDocument'])
             ->whereIn('side', ['front', 'back'])
             ->name('parents.document');
+        Route::get('/children/{parentChildAccount}/document', [Admin\ParentChildVerificationController::class, 'childDocument'])
+            ->name('children.document');
         Route::post('/parents/{user}/reset-onboarding', [Admin\ParentChildVerificationController::class, 'resetGuardianOnboarding'])
             ->name('parents.reset-onboarding');
 

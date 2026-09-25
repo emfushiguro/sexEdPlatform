@@ -166,6 +166,7 @@ class ParentChildVerificationService
             ]);
 
             if (! empty($oldPath) && $oldPath !== $newDocumentPath) {
+                Storage::disk('local')->delete((string) $oldPath);
                 Storage::disk('public')->delete((string) $oldPath);
             }
 
