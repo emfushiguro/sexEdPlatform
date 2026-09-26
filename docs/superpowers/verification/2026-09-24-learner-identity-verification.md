@@ -66,3 +66,27 @@ camera component. No database migration was needed.
 
 The follow-up was verified with automated checks and the supplied screenshots.
 Physical camera/device and screen-reader checks remain unperformed.
+
+## Follow-up: reviewer and pending status usability (2026-09-26)
+
+The admin review summary now shows the learner's formatted birthdate with age
+calculated from the stored birthdate. Approval and rejection use separate
+confirmation dialogs. The approval dialog retains the adult Other-ID
+government-issued confirmation; the rejection dialog lists the existing
+approved reason choices and reopens after a missing-reason validation error.
+
+The learner's pending page now identifies the email address that receives the
+review result and offers Refresh review status and Log out actions. The
+existing mail notification channel is used; no new notification channel or
+database change was needed.
+
+| Check | Result |
+|---|---:|
+| `vendor/bin/phpunit --do-not-cache-result tests/Feature/Identity` | 71 tests, 621 assertions passed |
+| Focused access and review tests | 36 tests, 355 assertions passed |
+| Laravel Pint on changed PHP tests | Passed |
+| `php artisan view:cache` | Blade templates compiled |
+| `npm.cmd run build` | Passed; updated modal styles are in the manifest CSS |
+
+Browser interaction with the admin dialogs and pending-page buttons has not
+been manually exercised in this run.

@@ -103,6 +103,24 @@ class LearnerIdentityReviewTest extends TestCase
         $this->get('/admin/parent-verifications/learners/'.$case->id.'/evidence/../selfie')->assertNotFound();
     }
 
+    public function test_learner_review_shows_age_and_modal_decision_controls(): void
+    {
+        $admin = $this->admin();
+        $case = $this->case('2010-01-01', 'pending', 'AgeShown');
+
+        $this->actingAs($admin)->get(route('admin.parent-verifications.learners.show', $case))
+            ->assertOk()
+            ->assertSee('Jan 1, 2010 (16)')
+            ->assertSee('data-testid="approve-identity-trigger"', false)
+            ->assertSee('data-testid="reject-identity-trigger"', false)
+            ->assertSee('data-testid="approve-identity-dialog"', false)
+            ->assertSee('data-testid="reject-identity-dialog"', false)
+            ->assertSee('role="dialog"', false)
+            ->assertSee('name="reason"', false)
+            ->assertSee(LearnerIdentityRejectionReason::BirthdateMismatch->label())
+            ->assertSee(LearnerIdentityRejectionReason::UnclearSelfie->label());
+    }
+
     public function test_approval_records_manual_decision_and_audit_then_conflicts_on_repeat(): void
     {
         $admin = $this->admin();
@@ -132,6 +150,8 @@ class LearnerIdentityReviewTest extends TestCase
             'reason' => '',
             'submission_round' => $case->submission_round,
         ])->assertSessionHasErrors('reason');
+        $this->get(route('admin.parent-verifications.learners.show', $case))->assertOk()
+            ->assertSee('x-init="$nextTick(() => $refs.rejectDialog.showModal())"', false);
         $this->assertSame('pending', $case->fresh()->status);
         $this->post($url, [
             'reason' => LearnerIdentityRejectionReason::UnclearId->value,

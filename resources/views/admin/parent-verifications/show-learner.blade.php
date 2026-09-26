@@ -6,6 +6,8 @@
 @section('content')
 @php
     $images = $case->evidence->keyBy('slot');
+    $dateOfBirth = $case->learner?->birthdate;
+    $learnerAge = $case->learner?->calculateAge();
     $documentLabel = match ($case->document_type) {
         'school_id' => 'School ID',
         'institution_id' => 'Institution ID',
@@ -26,7 +28,10 @@
         <h1 class="text-2xl font-bold text-gray-900">{{ $case->learner?->full_name }}</h1>
         <p class="mt-1 text-sm text-gray-600">{{ $case->learner?->email }}</p>
         <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div><dt class="font-semibold text-gray-500">Date of birth</dt><dd>{{ $case->learner?->birthdate?->format('M d, Y') ?? 'Missing' }}</dd></div>
+            <div>
+                <dt class="font-semibold text-gray-500">Date of birth</dt>
+                <dd>{{ $dateOfBirth?->format('M j, Y') ?? 'Missing' }}@if($learnerAge !== null) ({{ $learnerAge }})@endif</dd>
+            </div>
             <div><dt class="font-semibold text-gray-500">Pathway</dt><dd class="capitalize">{{ $case->pathway }}</dd></div>
             <div><dt class="font-semibold text-gray-500">Status</dt><dd class="capitalize">{{ $case->status }}</dd></div>
             <div><dt class="font-semibold text-gray-500">Document</dt><dd>{{ $documentLabel }}@if($case->government_id_type === 'other') — {{ $case->government_id_type_other }} @endif</dd></div>
@@ -52,7 +57,9 @@
         @endforeach
     </section>
 
-    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" x-data
+             @if($errors->has('confirm_government_issued')) x-init="$nextTick(() => $refs.approveDialog.showModal())"
+             @elseif($errors->has('reason')) x-init="$nextTick(() => $refs.rejectDialog.showModal())" @endif>
         <h2 class="text-lg font-bold text-gray-900">Manual review guidance</h2>
         <p class="mt-1 text-sm text-gray-600">Use these checks to guide your decision. Checks are not saved and never approve a case.</p>
         <ul class="mt-4 space-y-3">
@@ -61,28 +68,96 @@
             @endforeach
         </ul>
         @if($case->status === 'pending' && $case->superseded_at === null)
-            <div class="mt-6 grid gap-6 border-t border-gray-100 pt-6 lg:grid-cols-2">
-                <form method="POST" action="{{ route('admin.parent-verifications.learners.approve', $case) }}" class="space-y-4">
-                    @csrf
-                    <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
-                    @if($case->pathway === 'adult' && $case->government_id_type === 'other')
-                        <label class="flex items-start gap-3 text-sm text-gray-700"><input type="checkbox" name="confirm_government_issued" value="1" required class="mt-0.5 rounded border-gray-300">I confirm that I determined this Other ID is government-issued.</label>
-                    @endif
-                    <button class="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-800">Approve identity</button>
-                </form>
-                <form method="POST" action="{{ route('admin.parent-verifications.learners.reject', $case) }}" class="space-y-3">
-                    @csrf
-                    <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
-                    <label for="reason" class="block text-sm font-semibold text-gray-700">Rejection reason</label>
-                    <select id="reason" name="reason" required class="w-full rounded-xl border border-gray-300 p-3 text-sm">
-                        <option value="">Select a reason</option>
-                        @foreach(\App\Enums\LearnerIdentityRejectionReason::cases() as $reason)
-                            <option value="{{ $reason->value }}" @selected(old('reason') === $reason->value)>{{ $reason->label() }}</option>
-                        @endforeach
-                    </select>
-                    <button class="rounded-xl bg-rose-700 px-5 py-3 text-sm font-semibold text-white hover:bg-rose-800">Reject identity</button>
-                </form>
+            <div class="mt-6 flex flex-wrap gap-3 border-t border-gray-100 pt-6">
+                <button type="button" data-testid="approve-identity-trigger" @click="$refs.approveDialog.showModal()"
+                        class="min-h-11 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2">
+                    Approve identity
+                </button>
+                <button type="button" data-testid="reject-identity-trigger" @click="$refs.rejectDialog.showModal()"
+                        class="min-h-11 rounded-xl bg-rose-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-700 focus:ring-offset-2">
+                    Reject identity
+                </button>
             </div>
+
+            <dialog x-ref="approveDialog" role="dialog" aria-modal="true" data-testid="approve-identity-dialog" @click.self="$refs.approveDialog.close()"
+                    aria-labelledby="approve-identity-title" aria-describedby="approve-identity-description"
+                    class="m-auto max-h-[90vh] w-[min(92vw,34rem)] overflow-y-auto rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
+                <div class="p-6 sm:p-7">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Confirm decision</p>
+                            <h3 id="approve-identity-title" class="mt-2 text-xl font-bold text-gray-900">Approve this identity?</h3>
+                            <p id="approve-identity-description" class="mt-2 text-sm leading-6 text-gray-600">
+                                This will approve {{ $case->learner?->full_name }}’s current evidence and notify the learner.
+                            </p>
+                        </div>
+                        <button type="button" @click="$refs.approveDialog.close()" aria-label="Close approval dialog"
+                                class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-700">×</button>
+                    </div>
+                    @if($case->pathway === 'adult' && $case->government_id_type === 'other')
+                        <form method="POST" action="{{ route('admin.parent-verifications.learners.approve', $case) }}" class="mt-6 space-y-5">
+                            @csrf
+                            <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
+                            <label class="flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-sm text-gray-700">
+                                <input type="checkbox" name="confirm_government_issued" value="1" required @checked(old('confirm_government_issued'))
+                                       class="mt-0.5 h-5 w-5 rounded border-gray-300 text-emerald-700 focus:ring-emerald-700">
+                                <span>I confirm I determined this Other ID is government-issued.</span>
+                            </label>
+                            @error('confirm_government_issued')<p class="text-sm text-rose-700">{{ $message }}</p>@enderror
+                            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <button type="button" @click="$refs.approveDialog.close()" class="min-h-11 rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">Cancel</button>
+                                <button type="submit" class="min-h-11 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2">Confirm approval</button>
+                            </div>
+                        </form>
+                    @else
+                        <form method="POST" action="{{ route('admin.parent-verifications.learners.approve', $case) }}" class="mt-6">
+                            @csrf
+                            <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
+                            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <button type="button" @click="$refs.approveDialog.close()" class="min-h-11 rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">Cancel</button>
+                                <button type="submit" class="min-h-11 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2">Confirm approval</button>
+                            </div>
+                        </form>
+                    @endif
+                </div>
+            </dialog>
+
+            <dialog x-ref="rejectDialog" role="dialog" aria-modal="true" data-testid="reject-identity-dialog" @click.self="$refs.rejectDialog.close()"
+                    aria-labelledby="reject-identity-title" aria-describedby="reject-identity-description"
+                    class="m-auto max-h-[90vh] w-[min(92vw,34rem)] overflow-y-auto rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
+                <div class="p-6 sm:p-7">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">Confirm decision</p>
+                            <h3 id="reject-identity-title" class="mt-2 text-xl font-bold text-gray-900">Reject this identity?</h3>
+                            <p id="reject-identity-description" class="mt-2 text-sm leading-6 text-gray-600">
+                                Choose a reason the learner can use to correct their submission.
+                            </p>
+                        </div>
+                        <button type="button" @click="$refs.rejectDialog.close()" aria-label="Close rejection dialog"
+                                class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-700">×</button>
+                    </div>
+                    <form method="POST" action="{{ route('admin.parent-verifications.learners.reject', $case) }}" class="mt-6 space-y-5">
+                        @csrf
+                        <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
+                        <div>
+                            <label for="reason" class="block text-sm font-semibold text-gray-800">Rejection reason</label>
+                            <select id="reason" name="reason" required aria-invalid="{{ $errors->has('reason') ? 'true' : 'false' }}"
+                                    class="mt-2 w-full rounded-xl border border-gray-300 bg-white p-3 text-sm focus:border-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-600/20">
+                                <option value="">Select a reason</option>
+                                @foreach(\App\Enums\LearnerIdentityRejectionReason::cases() as $reason)
+                                    <option value="{{ $reason->value }}" @selected(old('reason') === $reason->value)>{{ $reason->label() }}</option>
+                                @endforeach
+                            </select>
+                            @error('reason')<p class="mt-2 text-sm text-rose-700">{{ $message }}</p>@enderror
+                        </div>
+                        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <button type="button" @click="$refs.rejectDialog.close()" class="min-h-11 rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">Cancel</button>
+                            <button type="submit" class="min-h-11 rounded-xl bg-rose-700 px-5 py-3 text-sm font-semibold text-white hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-700 focus:ring-offset-2">Confirm rejection</button>
+                        </div>
+                    </form>
+                </div>
+            </dialog>
         @endif
     </section>
 

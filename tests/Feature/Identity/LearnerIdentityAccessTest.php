@@ -68,6 +68,23 @@ class LearnerIdentityAccessTest extends TestCase
         $this->deleteJson(route('profile.account.delete'))->assertStatus(403);
     }
 
+    public function test_pending_identity_status_offers_refresh_and_logout_actions(): void
+    {
+        [$user, $case] = $this->learner();
+        $case->update(['status' => 'pending']);
+
+        $this->actingAs($user)->get(route('learner.identity.status'))
+            ->assertOk()
+            ->assertSee('We’ll email you at')
+            ->assertSee('Refresh review status')
+            ->assertSee(route('learner.identity.status'))
+            ->assertSee('Log out')
+            ->assertSee(route('logout'));
+
+        $this->post(route('logout'))->assertRedirect('/');
+        $this->assertGuest();
+    }
+
     public function test_legacy_learner_and_guardian_created_child_are_exempt(): void
     {
         [$legacy] = $this->learner(covered: false);

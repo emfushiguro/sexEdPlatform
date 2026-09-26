@@ -196,6 +196,18 @@ clears the current review decision, appends audit history, and notifies the
 learner and admins through existing notification conventions. Approved cases
 cannot be silently replaced.
 
+The learner review summary shows the birthdate with the current age calculated
+from that birthdate (for example, “Jan 1, 2010 (16)”). Pending cases expose
+Approve and Reject actions that open separate confirmation dialogs. The
+approval dialog retains the explicit government-issued confirmation for adult
+Other IDs. The rejection dialog presents only the built-in learner rejection
+reasons; a missing reason returns the reviewer to that dialog.
+
+After submission, the learner's pending status page says which email address
+will receive the review result and offers Refresh review status and Log out
+actions. The page does not promise that protected learner features are
+available while the case is pending.
+
 ## Privacy, authorization, and existing public files
 
 All new learner evidence uses the private local disk with random storage

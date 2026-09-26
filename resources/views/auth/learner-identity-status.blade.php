@@ -11,7 +11,27 @@
         @if($supportHold)
             <p class="text-gray-800">This account needs guardian support before identity verification can continue. Please contact support.</p>
         @elseif($case->status === 'pending')
-            <p class="text-gray-800">Your identity verification is pending review. We will let you know when the review is complete.</p>
+            <section class="space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5" aria-labelledby="pending-review-title">
+                <div>
+                    <h2 id="pending-review-title" class="text-lg font-semibold text-amber-950">Your identity verification is under review</h2>
+                    <p class="mt-2 text-sm leading-6 text-gray-700">
+                        We’ll email you at <span class="font-semibold">{{ $case->learner?->email ?? auth()->user()->email }}</span> when the review is complete.
+                        You can return here to check your status.
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <a href="{{ route('learner.identity.status') }}" data-testid="refresh-identity-status"
+                       class="inline-flex min-h-11 items-center justify-center rounded-xl bg-purple-800 px-5 py-3 text-sm font-semibold text-white hover:bg-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">
+                        Refresh review status
+                    </a>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                            Log out
+                        </button>
+                    </form>
+                </div>
+            </section>
         @elseif($case->status === 'rejected')
             <p class="text-gray-800">Your identity verification needs another submission.</p>
             @if($case->rejection_reason)
