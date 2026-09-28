@@ -14,6 +14,7 @@ class Seminar extends Model
     protected $fillable = [
         'connector_id',
         'type',
+        'event_format',
         'title',
         'description',
         'purpose',
@@ -21,6 +22,23 @@ class Seminar extends Model
         'custom_category',
         'status',
         'location',
+        'venue_address',
+        'venue_room',
+        'delivery_instructions',
+        'external_platform',
+        'external_platform_name',
+        'external_url',
+        'external_link_visible_at',
+        'external_link_expiry_mode',
+        'external_link_expires_at',
+        'registration_deadline_at',
+        'attendance_code_hash',
+        'attendance_code_enabled',
+        'attendance_code_generated_at',
+        'attendance_start_at',
+        'attendance_end_at',
+        'reminder_sent_for_starts_at',
+        'link_available_sent_for_visible_at',
         'schedule',
         'starts_at',
         'ends_at',
@@ -54,12 +72,23 @@ class Seminar extends Model
         'archived_by',
     ];
 
+    protected $hidden = ['external_url', 'attendance_code_hash'];
+
     protected function casts(): array
     {
         return [
             'schedule' => 'datetime',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'external_link_visible_at' => 'datetime',
+            'external_link_expires_at' => 'datetime',
+            'registration_deadline_at' => 'datetime',
+            'attendance_code_enabled' => 'boolean',
+            'attendance_code_generated_at' => 'datetime',
+            'attendance_start_at' => 'datetime',
+            'attendance_end_at' => 'datetime',
+            'reminder_sent_for_starts_at' => 'datetime',
+            'link_available_sent_for_visible_at' => 'datetime',
             'learner_age_categories' => 'array',
             'is_premium' => 'boolean',
             'livestream_started_at' => 'datetime',
@@ -72,6 +101,16 @@ class Seminar extends Model
             'published_at' => 'datetime',
             'archived_at' => 'datetime',
         ];
+    }
+
+    public function isNativeDelivery(): bool
+    {
+        return $this->event_format === 'native';
+    }
+
+    public function isExternalDelivery(): bool
+    {
+        return $this->event_format === 'external';
     }
 
     public function connector(): BelongsTo

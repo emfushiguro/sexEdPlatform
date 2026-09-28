@@ -15,6 +15,8 @@ class SeminarAttendance extends Model
         'left_at',
         'total_seconds',
         'status',
+        'attendance_method',
+        'attended_at',
     ];
 
     protected function casts(): array
@@ -22,6 +24,7 @@ class SeminarAttendance extends Model
         return [
             'joined_at' => 'datetime',
             'left_at' => 'datetime',
+            'attended_at' => 'datetime',
             'total_seconds' => 'integer',
         ];
     }
