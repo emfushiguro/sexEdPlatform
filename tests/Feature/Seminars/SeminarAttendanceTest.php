@@ -14,6 +14,30 @@ class SeminarAttendanceTest extends TestCase
 {
     use ConnectorTestHelpers;
 
+    public function test_finalize_preserves_migrated_legacy_attendance_on_native_webinar(): void
+    {
+        $connector = $this->connector();
+        $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $native = $this->seminar($connector);
+        $attendedAt = now()->subDay();
+        $legacy = $native->attendances()->create([
+            'user_id' => $learner->id,
+            'status' => 'attended',
+            'attendance_method' => 'legacy',
+            'attended_at' => $attendedAt,
+            'total_seconds' => 0,
+        ]);
+
+        app(SeminarAttendanceService::class)->finalize($native);
+
+        $legacy->refresh();
+        $this->assertSame('attended', $legacy->status);
+        $this->assertSame('legacy', $legacy->attendance_method);
+        $this->assertSame($attendedAt->timestamp, $legacy->attended_at->timestamp);
+        $this->assertSame(0, $legacy->total_seconds);
+        $this->assertNull($legacy->left_at);
+    }
+
     public function test_finalize_preserves_manual_decisions_and_skips_external_events(): void
     {
         $connector = $this->connector();
@@ -103,6 +127,7 @@ class SeminarAttendanceTest extends TestCase
             'joined_at' => now()->subMinutes(6),
             'total_seconds' => 0,
             'status' => 'joined',
+            'attendance_method' => 'native',
         ]);
 
         $this->actingAs($owner)
@@ -137,6 +162,7 @@ class SeminarAttendanceTest extends TestCase
             'left_at' => now(),
             'total_seconds' => 480,
             'status' => 'attended',
+            'attendance_method' => 'native',
         ]);
 
         $response = $this->actingAs($owner)

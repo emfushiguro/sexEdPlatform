@@ -22,3 +22,12 @@
 - Checked every Task 2 route: learner join/token/attendance, owner livestream page/token/prepare/start/end/status, and participant comment/question creation. The external webinar test confirms 403 and unchanged stream state. Existing native tests still cover token issuance, participant join, stream lifecycle, interactions, and attendance duration.
 - Confirmed no development migration, database reset, destructive seeder, or full test suite was run. The unrelated untracked plan remains outside this task's commit.
 - Task 2 does not add external access or authoring; those are separate tasks in the approved plan.
+
+## Follow-up: preserve migrated legacy attendance
+
+- Review found that completing a native webinar recalculated a migrated `legacy` attendance row from `attended` to `left` when its native duration was zero. Finalization now updates only `native` and `manual` rows. Manual rows continue to gain duration and a leave time while retaining their decision fields; `legacy` and `attendance_code` rows are left intact.
+- Added a regression for a native webinar with a `legacy` row already marked `attended`, including `attended_at` and zero duration. Updated the two older native attendance fixtures to identify their method explicitly.
+- RED: `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Seminars/SeminarAttendanceTest.php` — 5 tests, 31 assertions before the failure; the new regression expected `attended` but received `left`.
+- An intermediate run after the service change showed that an older methodless native fixture expected duration finalization. After marking that fixture `native`, the focused file passed: **5 tests, 35 assertions**.
+- GREEN: `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Seminars/SeminarLivestreamAccessTest.php tests/Feature/Seminars/SeminarAttendanceTest.php tests/Feature/Seminars/SeminarInteractionTest.php tests/Unit/Services/Seminars/AgoraTokenServiceTest.php` — **18 tests, 120 assertions, 0 failures** on isolated `cc_db_test`.
+- Commit subject: `fix: preserve migrated seminar attendance` on `WebinarEnhancementv1`; includes only this service, attendance test, and report. The unrelated untracked plan is excluded.

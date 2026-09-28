@@ -75,6 +75,10 @@ class SeminarAttendanceService
         }
 
         $seminar->attendances()->each(function (SeminarAttendance $attendance): void {
+            if (! in_array($attendance->attendance_method, ['native', 'manual'], true)) {
+                return;
+            }
+
             $total = (int) $attendance->total_seconds;
 
             if ($attendance->joined_at && $attendance->left_at === null) {
