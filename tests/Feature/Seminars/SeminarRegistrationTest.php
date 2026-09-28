@@ -63,7 +63,7 @@ class SeminarRegistrationTest extends TestCase
             'ends_at' => now()->addDays(2)->addHour(),
             'schedule' => now()->addDays(2),
         ]);
-        $this->seminar($connector, ['title' => 'Physical Health Session', 'type' => 'physical', 'category' => 'health', 'location' => 'Hall']);
+        $this->seminar($connector, ['title' => 'Physical Health Session', 'type' => 'seminar', 'event_format' => 'in_person', 'category' => 'health', 'location' => 'Hall']);
         $this->seminar($connector, ['title' => 'Community Webinar', 'type' => 'webinar', 'category' => 'community']);
         $this->seminar($connector, [
             'title' => 'Past Health Webinar',

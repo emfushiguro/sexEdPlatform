@@ -28,7 +28,7 @@ class SeminarPublicationValidator
             'learner_age_categories' => ['array'],
             'learner_age_categories.*' => [Rule::in(array_keys(config('seminars.learner_age_categories')))],
             'location' => ['exclude_unless:event_format,in_person', 'required', 'string', 'max:255'],
-            'venue_address' => ['exclude_unless:event_format,in_person', 'required', 'string', 'max:500'],
+            'venue_address' => ['exclude_unless:event_format,in_person', 'required', 'string', 'max:255'],
             'venue_room' => ['exclude_unless:event_format,in_person', 'nullable', 'string', 'max:255'],
             'delivery_instructions' => ['nullable', 'string'],
             'external_platform' => ['exclude_unless:event_format,external', 'required', Rule::in(['google_meet', 'zoom', 'microsoft_teams', 'google_classroom', 'other'])],

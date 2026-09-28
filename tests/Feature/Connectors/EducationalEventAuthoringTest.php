@@ -87,6 +87,20 @@ class EducationalEventAuthoringTest extends TestCase
         $this->assertNull($seminar->external_url);
     }
 
+    public function test_in_person_venue_address_rejects_values_longer_than_column_limit(): void
+    {
+        [$owner, $connector] = $this->ownerAndConnector();
+
+        $this->actingAs($owner)->post(route('connector.seminars.store', $connector), $this->educationalEventPayload([
+            'type' => 'seminar',
+            'event_format' => 'in_person',
+            'location' => 'Community Hall',
+            'venue_address' => str_repeat('A', 256),
+        ]))->assertSessionHasErrors('venue_address');
+
+        $this->assertSame(0, $connector->seminars()->count());
+    }
+
     public function test_converts_optional_local_times_to_utc_and_validates_boundaries(): void
     {
         [$owner, $connector] = $this->ownerAndConnector();
