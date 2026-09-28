@@ -67,10 +67,6 @@ class SeminarController extends Controller
             'status' => SeminarStatus::Draft->value,
         ]);
 
-        if ($seminar->type === SeminarType::Webinar->value && blank($seminar->livestream_channel)) {
-            $seminar->forceFill(['livestream_channel' => 'seminar-'.$seminar->id.'-'.Str::lower(Str::random(8))])->save();
-        }
-
         return redirect()
             ->route('connector.seminars.show', [$connector, $seminar])
             ->with('success', 'Seminar draft created.');
@@ -115,12 +111,27 @@ class SeminarController extends Controller
         $data = $this->payload($request->validated());
         $activeRegistrantCount = $this->access->activeRegistrantCount($seminar);
 
+        if ($seminar->registrants()->exists()) {
+            foreach (['type', 'event_format', 'starts_at', 'ends_at'] as $field) {
+                $old = $seminar->$field instanceof \DateTimeInterface ? $seminar->$field->format('Y-m-d H:i:s') : $seminar->$field;
+                abort_if($data[$field] !== $old, 422, 'Event type, format, and schedule cannot change after registration exists.');
+            }
+        }
+
         if ($activeRegistrantCount > 0) {
-            abort_if(($data['type'] ?? $seminar->type) !== $seminar->type, 422, 'Seminar type cannot change after registration exists.');
             abort_if(($data['capacity'] ?? null) !== null && (int) $data['capacity'] < $activeRegistrantCount, 422, 'Capacity cannot be lower than active registrations.');
+            $proposed = clone $seminar;
+            $proposed->forceFill(Arr::only($data, ['target_participants', 'learner_age_categories']));
+            $registrationService = app(\App\Services\Seminars\SeminarRegistrationService::class);
+            foreach ($seminar->registrants()->active()->with('user.learnerProfile')->get() as $registrant) {
+                abort_if(! $registrant->user || ! $registrationService->matchesParticipantEligibility($registrant->user, $proposed), 422, 'Audience cannot exclude an active registrant.');
+            }
         }
 
         $seminar->update($data);
+        if ($seminar->isNativeDelivery() && blank($seminar->livestream_channel)) {
+            $seminar->forceFill(['livestream_channel' => 'seminar-'.$seminar->id.'-'.Str::lower(Str::random(8))])->save();
+        }
 
         return redirect()
             ->route('connector.seminars.show', [$connector, $seminar])
@@ -203,13 +214,14 @@ class SeminarController extends Controller
     private function payload(array $validated): array
     {
         $startsAt = $validated['starts_at'];
-        $type = $validated['type'];
 
-        return [
+        $payload = [
             ...Arr::only($validated, [
                 'title',
+                'description',
                 'purpose',
                 'type',
+                'event_format',
                 'category',
                 'custom_category',
                 'starts_at',
@@ -218,13 +230,41 @@ class SeminarController extends Controller
                 'registration_approval_mode',
                 'target_participants',
                 'location',
+                'venue_address',
+                'venue_room',
+                'delivery_instructions',
+                'external_platform',
+                'external_platform_name',
+                'external_url',
+                'external_link_visible_at',
+                'external_link_expiry_mode',
+                'external_link_expires_at',
+                'registration_deadline_at',
+                'attendance_start_at',
+                'attendance_end_at',
             ]),
             'custom_category' => $this->categories->normalizeCustomCategory($validated['category'] ?? null, $validated['custom_category'] ?? null),
             'learner_age_categories' => array_values((array) ($validated['learner_age_categories'] ?? [])),
-            'location' => $type === SeminarType::Physical->value ? ($validated['location'] ?? null) : ($validated['location'] ?? null),
+            'location' => $validated['event_format'] === 'in_person' ? ($validated['location'] ?? null) : null,
+            'venue_address' => $validated['event_format'] === 'in_person' ? ($validated['venue_address'] ?? null) : null,
+            'venue_room' => $validated['event_format'] === 'in_person' ? ($validated['venue_room'] ?? null) : null,
+            'external_platform' => $validated['event_format'] === 'external' ? ($validated['external_platform'] ?? null) : null,
+            'external_platform_name' => $validated['event_format'] === 'external' && ($validated['external_platform'] ?? null) === 'other' ? ($validated['external_platform_name'] ?? null) : null,
+            'external_url' => $validated['event_format'] === 'external' ? ($validated['external_url'] ?? null) : null,
+            'external_link_visible_at' => $validated['event_format'] === 'external' ? ($validated['external_link_visible_at'] ?? null) : null,
+            'external_link_expiry_mode' => $validated['event_format'] === 'external' ? ($validated['external_link_expiry_mode'] ?? 'ongoing') : 'ongoing',
+            'external_link_expires_at' => $validated['event_format'] === 'external' && ($validated['external_link_expiry_mode'] ?? 'ongoing') === 'custom' ? ($validated['external_link_expires_at'] ?? null) : null,
             'schedule' => $startsAt,
             'is_premium' => false,
         ];
+
+        if ($validated['event_format'] === 'native') {
+            foreach (['location', 'venue_address', 'venue_room', 'delivery_instructions', 'external_platform', 'external_platform_name', 'external_url', 'external_link_visible_at', 'external_link_expiry_mode', 'external_link_expires_at'] as $field) {
+                unset($payload[$field]);
+            }
+        }
+
+        return $payload;
     }
 
     private function notifyActiveRegistrantsAboutCancellation(Seminar $seminar, string $reason): void

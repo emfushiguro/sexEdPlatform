@@ -179,7 +179,8 @@ class AdminSeminarModerationTest extends TestCase
         $this->seminar($connector, [
             'title' => 'Archived Wellness Meetup',
             'status' => 'approved',
-            'type' => 'physical',
+            'type' => 'seminar',
+            'event_format' => 'in_person',
         ]);
 
         $this->actingAs($admin)
@@ -244,6 +245,7 @@ class AdminSeminarModerationTest extends TestCase
         return Seminar::query()->create([
             'connector_id' => $connector->id,
             'type' => 'webinar',
+            'event_format' => 'native',
             'title' => 'Moderated Webinar',
             'description' => 'A free community session.',
             'purpose' => 'Support learner wellness.',

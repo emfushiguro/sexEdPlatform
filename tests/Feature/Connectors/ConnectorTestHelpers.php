@@ -11,6 +11,26 @@ use Illuminate\Support\Facades\DB;
 
 trait ConnectorTestHelpers
 {
+    private function educationalEventPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'title' => 'Community learning event',
+            'description' => 'A guided education session.',
+            'purpose' => 'Learn practical safety skills.',
+            'type' => 'webinar',
+            'event_format' => 'external',
+            'category' => 'health',
+            'starts_at' => now()->addDays(3)->timezone(config('app.display_timezone'))->format('Y-m-d H:i:s'),
+            'ends_at' => now()->addDays(3)->addHour()->timezone(config('app.display_timezone'))->format('Y-m-d H:i:s'),
+            'capacity' => 50,
+            'registration_approval_mode' => 'auto_approve',
+            'target_participants' => 'learners_and_instructors',
+            'learner_age_categories' => ['kids', 'teen', 'adult'],
+            'external_platform' => 'zoom',
+            'external_url' => 'https://zoom.example.test/j/123',
+        ], $overrides);
+    }
+
     private function seedCaviteAddress(): void
     {
         DB::table('cities')->updateOrInsert(

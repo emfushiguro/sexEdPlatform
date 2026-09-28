@@ -2,11 +2,9 @@
 
 namespace App\Http\Requests\Connector;
 
-use App\Enums\SeminarParticipantType;
-use App\Enums\SeminarType;
+use App\Services\Seminars\SeminarPublicationValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
-use Illuminate\Validation\Rule;
 use Throwable;
 
 class StoreSeminarRequest extends FormRequest
@@ -22,7 +20,7 @@ class StoreSeminarRequest extends FormRequest
     {
         $data = parent::validationData();
 
-        foreach (['starts_at', 'ends_at'] as $field) {
+        foreach (['starts_at', 'ends_at', 'registration_deadline_at', 'external_link_visible_at', 'external_link_expires_at', 'attendance_start_at', 'attendance_end_at'] as $field) {
             if (blank($data[$field] ?? null)) {
                 continue;
             }
@@ -46,37 +44,16 @@ class StoreSeminarRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'title' => ['required', 'string', 'max:255'],
-            'purpose' => ['nullable', 'string'],
-            'type' => ['required', Rule::in(array_column(SeminarType::cases(), 'value'))],
-            'category' => ['required', Rule::in(array_keys(config('seminars.categories')))],
-            'custom_category' => ['nullable', 'string', 'max:80', 'required_if:category,other'],
-            'starts_at' => ['required', 'date', 'after:now'],
-            'ends_at' => ['required', 'date', 'after:starts_at'],
-            'capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
-            'registration_approval_mode' => ['required', Rule::in(['auto_approve', 'manual'])],
-            'target_participants' => ['required', Rule::in(array_column(SeminarParticipantType::cases(), 'value'))],
-            'learner_age_categories' => ['array'],
-            'learner_age_categories.*' => [Rule::in(array_keys(config('seminars.learner_age_categories')))],
-            'location' => ['nullable', 'string', 'max:255'],
-        ];
+        return SeminarPublicationValidator::rules(creating: true);
     }
 
     public function withValidator($validator): void
     {
-        $validator->after(function ($validator): void {
-            $target = (string) $this->input('target_participants');
-            $type = (string) $this->input('type');
-            $ageCategories = array_filter((array) $this->input('learner_age_categories', []));
-
-            if (in_array($target, ['learners', 'learners_and_instructors'], true) && $ageCategories === []) {
-                $validator->errors()->add('learner_age_categories', 'Select at least one learner age category.');
-            }
-
-            if ($type === 'physical' && trim((string) $this->input('location')) === '') {
-                $validator->errors()->add('location', 'Physical seminars require a location.');
-            }
-        });
+        $validator->after(fn ($validator) => SeminarPublicationValidator::addContextErrors(
+            $validator,
+            $this->route('seminar')?->isNativeDelivery() === true
+                && $this->input('type') === 'webinar'
+                && $this->input('event_format') === 'native'
+        ));
     }
 }

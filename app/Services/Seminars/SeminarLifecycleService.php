@@ -11,7 +11,10 @@ use App\Notifications\Seminars\SeminarModerationDecisionNotification;
 
 class SeminarLifecycleService
 {
-    public function __construct(private readonly SeminarRegistrationService $registrations) {}
+    public function __construct(
+        private readonly SeminarRegistrationService $registrations,
+        private readonly SeminarPublicationValidator $publicationValidator,
+    ) {}
 
     public function submitForReview(Seminar $seminar, User $user): Seminar
     {
@@ -19,6 +22,8 @@ class SeminarLifecycleService
             SeminarStatus::Draft->value,
             SeminarStatus::Rejected->value,
         ], true), 422, 'Only draft or rejected seminars can be submitted for review.');
+
+        $this->publicationValidator->assertReady($seminar);
 
         $seminar->forceFill([
             'status' => SeminarStatus::PendingReview->value,
@@ -36,14 +41,21 @@ class SeminarLifecycleService
     {
         abort_unless($seminar->status === SeminarStatus::Approved->value, 422, 'Only approved seminars can be published.');
 
-        $seminar->forceFill([
+        $this->publicationValidator->assertReady($seminar);
+
+        $changes = [
             'status' => SeminarStatus::Published->value,
             'published_at' => now(),
             'published_by' => $user->id,
-            'livestream_status' => 'scheduled',
-            'livestream_started_at' => null,
-            'livestream_ended_at' => null,
-        ])->save();
+        ];
+        if ($seminar->isNativeDelivery()) {
+            $changes += [
+                'livestream_status' => 'scheduled',
+                'livestream_started_at' => null,
+                'livestream_ended_at' => null,
+            ];
+        }
+        $seminar->forceFill($changes)->save();
 
         $seminar = $seminar->fresh(['connector']);
         $this->notifyEligibleMembersAboutPublication($seminar);
