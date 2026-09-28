@@ -42,14 +42,14 @@
         }
     });
 
-    function previewTopicModal(topicId) {
+    function previewTopicModal(topicId, previewKind = null, previewItemId = null) {
         const modal = document.getElementById('topicPreviewModal');
         const previewContent = document.getElementById('previewContent');
         modal.classList.remove('hidden');
         previewContent.innerHTML = `<div class="flex justify-center items-center py-12"><svg class="animate-spin h-8 w-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`;
         fetch(`/{{ $contentRoutePrefix ?? 'instructor' }}/topics/${topicId}/preview`)
             .then(r => r.json())
-            .then(data => { previewContent.innerHTML = renderTopicPreview(data); })
+            .then(data => { previewContent.innerHTML = renderTopicPreview(data, previewKind, previewItemId); })
             .catch(err => { previewContent.innerHTML = `<p class="text-center text-sm text-red-500 py-8">${err.message}</p>`; });
     }
 
@@ -57,7 +57,70 @@
         document.getElementById('topicPreviewModal').classList.add('hidden');
     }
 
-    function renderTopicPreview(topic) {
+    function renderTopicPreview(topic, previewKind = null, previewItemId = null) {
+        if (previewKind === null && topic.type === 'interactive_checkpoint') {
+            const checkpoint = (topic.checkpoint_questions || [])[0];
+            if (checkpoint) return renderTopicPreview(topic, 'checkpoint', checkpoint.id);
+        }
+
+        if (previewKind === 'checkpoint') {
+            const checkpoint = (topic.checkpoint_questions || []).find(item => Number(item.id) === Number(previewItemId));
+            if (!checkpoint) return '<p class="py-8 text-center text-sm text-gray-500">Checkpoint preview is unavailable.</p>';
+
+            const options = (checkpoint.options || []).map(option => `
+                <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
+                    <span class="h-4 w-4 rounded-full border border-gray-300"></span>
+                    <span class="text-sm text-gray-700">${escapeHtml(option.text || '')}</span>
+                </div>
+            `).join('');
+            const responseHint = options
+                ? `<div class="mt-4 space-y-2">${options}</div>`
+                : '<div class="mt-4 rounded-xl border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500">Learners will enter a response here.</div>';
+
+            return `<div class="space-y-4">
+                <div class="rounded-xl bg-purple-50 p-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-purple-700">${escapeHtml((checkpoint.question_type || 'checkpoint').replaceAll('_', ' '))}</p>
+                    <div class="mt-2 text-sm leading-6 text-gray-900">${escapeHtml(checkpoint.question_text || '')}</div>
+                    ${checkpoint.context_description ? `<p class="mt-3 whitespace-pre-line text-sm text-gray-600">${escapeHtml(checkpoint.context_description)}</p>` : ''}
+                    ${checkpoint.perspective_prompt ? `<p class="mt-3 text-sm font-semibold text-gray-800">${escapeHtml(checkpoint.perspective_prompt)}</p>` : ''}
+                    ${checkpoint.image_url ? `<img src="${escapeHtml(checkpoint.image_url)}" alt="Checkpoint image" class="mt-4 max-h-56 rounded-xl border object-contain">` : ''}
+                    ${responseHint}
+                </div>
+                <p class="text-xs font-medium text-purple-700">Preview only. Learner progress is not changed.</p>
+            </div>`;
+        }
+
+        if (previewKind === 'activity') {
+            const activity = (topic.interactive_activities || []).find(item => Number(item.id) === Number(previewItemId));
+            if (!activity) return '<p class="py-8 text-center text-sm text-gray-500">Activity preview is unavailable.</p>';
+
+            const configuration = activity.configuration || {};
+            const itemLabel = item => {
+                if (typeof item === 'string') return escapeHtml(item);
+                if (item?.image_url) return `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.image_alt || '')}" class="mx-auto max-h-28 rounded-lg object-contain">`;
+                return escapeHtml(item?.value || item?.text || item?.label || 'Activity item');
+            };
+            let exercisePreview = '';
+            if (activity.type === 'matching' && Array.isArray(configuration.pairs)) {
+                const leftItems = configuration.pairs.map(pair => `<li class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">${itemLabel(pair.left)}</li>`).join('');
+                const rightItems = configuration.pairs.map(pair => `<li class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">${itemLabel(pair.right)}</li>`).join('');
+                exercisePreview = `<div class="grid gap-4 sm:grid-cols-2"><div><p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Match these</p><ul class="space-y-2">${leftItems}</ul></div><div><p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">With these</p><ul class="space-y-2">${rightItems}</ul></div></div>`;
+            } else if (activity.type === 'sequencing' && Array.isArray(configuration.items)) {
+                const items = configuration.items.map((item, index) => `<li class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"><span class="text-xs font-semibold text-gray-400">${index + 1}</span>${itemLabel(item)}</li>`).join('');
+                exercisePreview = `<ol class="space-y-2">${items}</ol>`;
+            }
+
+            return `<div class="space-y-4">
+                <div class="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-orange-700">${escapeHtml((activity.type || 'interactive').replaceAll('_', ' '))} activity</p>
+                    <h4 class="mt-1 text-lg font-semibold text-gray-900">${escapeHtml(activity.title || '')}</h4>
+                    ${activity.instructions ? `<p class="mt-2 whitespace-pre-line text-sm leading-6 text-gray-700">${escapeHtml(activity.instructions)}</p>` : ''}
+                </div>
+                ${exercisePreview ? `<div class="space-y-2">${exercisePreview}</div>` : '<p class="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-500">No activity items are available to preview.</p>'}
+                <p class="text-xs font-medium text-orange-700">Preview only. Learner progress is not changed.</p>
+            </div>`;
+        }
+
         let content = `<div class="space-y-4"><div class="bg-gray-50 p-4 rounded-xl"><h4 class="text-lg font-semibold text-gray-900">${escapeHtml(topic.title || '')}</h4><div class="flex gap-3 mt-2"><span class="px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(topic.type)}">${capitalizeFirst(topic.type || 'topic')}</span><span class="text-sm text-gray-500">${topic.duration || 0} min</span></div></div>`;
 
         if (topic.type === 'video') {
@@ -406,6 +469,8 @@
                             <p class="truncate text-sm font-semibold text-gray-800">{{ $activity->title }}</p>
                         </div>
                         <div class="flex items-center gap-2">
+                            <button type="button" onclick="previewTopicModal({{ $topic->id }}, 'activity', {{ $activity->id }})"
+                                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100">Preview</button>
                             <a href="{{ $isReadOnlyAdminPanel ? '#' : route($contentRoutePrefix . '.interactive-activities.edit', $activity) }}"
                                @if($isReadOnlyAdminPanel) aria-disabled="true" tabindex="-1" @click.prevent @endif
                                title="{{ $isReadOnlyAdminPanel ? $ownershipRestrictionTooltip : 'Edit activity' }}"
@@ -418,11 +483,16 @@
                     </div>
                 @endforeach
                 @foreach($topic->checkpointQuestions->whereNotNull('checkpoint_block_uuid') as $checkpoint)
-                    <a href="{{ $isReadOnlyAdminPanel ? '#' : route($contentRoutePrefix . '.topics.checkpoints.edit', [$topic, $checkpoint]) }}"
-                        @if($isReadOnlyAdminPanel) aria-disabled="true" tabindex="-1" @click.prevent @endif
-                        class="basis-full rounded-xl border border-purple-100 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 {{ $isReadOnlyAdminPanel ? 'pointer-events-none opacity-50' : 'hover:bg-purple-100' }}">
-                        Edit checkpoint: {{ \Illuminate\Support\Str::limit(strip_tags($checkpoint->question_text), 55) }}
-                    </a>
+                    <div class="basis-full flex flex-wrap items-center justify-between gap-3 rounded-xl border border-purple-100 bg-purple-50 px-3 py-2">
+                        <span class="min-w-0 text-xs font-semibold text-purple-700">Checkpoint: {{ \Illuminate\Support\Str::limit(strip_tags($checkpoint->question_text), 55) }}</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="previewTopicModal({{ $topic->id }}, 'checkpoint', {{ $checkpoint->id }})"
+                                    class="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100">Preview</button>
+                            <a href="{{ $isReadOnlyAdminPanel ? '#' : route($contentRoutePrefix . '.topics.checkpoints.edit', [$topic, $checkpoint]) }}"
+                               @if($isReadOnlyAdminPanel) aria-disabled="true" tabindex="-1" @click.prevent @endif
+                               class="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-purple-700 {{ $isReadOnlyAdminPanel ? 'pointer-events-none opacity-50' : 'hover:bg-purple-100' }}">Edit</a>
+                        </div>
+                    </div>
                 @endforeach
             </li>
             @endforeach

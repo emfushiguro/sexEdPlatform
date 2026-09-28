@@ -1000,6 +1000,7 @@ class TopicController extends Controller
     public function preview(LessonTopic $topic)
     {
         $this->authorize('view', $topic);
+        $topic->loadMissing(['interactiveActivities', 'checkpointQuestions.options']);
 
         $worksheetFiles = [];
 
@@ -1062,8 +1063,46 @@ class TopicController extends Controller
             'interactive_type' => $topic->interactive_config['type'] ?? null,
             'interactive_instructions' => $topic->interactive_instructions,
             'interactive_config' => $topic->interactive_config,
+            'interactive_activities' => $topic->interactiveActivities->map(fn ($activity) => [
+                'id' => $activity->id,
+                'title' => $activity->title,
+                'type' => $activity->activity_type?->value ?? (string) $activity->activity_type,
+                'instructions' => $activity->instructions,
+                'configuration' => [
+                    'pairs' => collect($activity->configuration['pairs'] ?? [])->map(fn ($pair) => [
+                        'left' => $this->previewActivityItem($pair['left'] ?? []),
+                        'right' => $this->previewActivityItem($pair['right'] ?? []),
+                    ])->values(),
+                    'items' => collect($activity->configuration['items'] ?? [])
+                        ->map(fn ($item) => $this->previewActivityItem($item))
+                        ->values(),
+                ],
+            ])->values(),
+            'checkpoint_questions' => $topic->checkpointQuestions->map(fn ($question) => [
+                'id' => $question->id,
+                'question_type' => $question->question_type,
+                'question_text' => $question->question_text,
+                'context_description' => $question->context_description,
+                'perspective_prompt' => $question->perspective_prompt,
+                'image_url' => $question->image_url,
+                'options' => $question->options->map(fn ($option) => [
+                    'text' => $option->option_text,
+                ])->values(),
+            ])->values(),
             'slideshow_data' => $topic->slideshow_data,
         ]);
+    }
+
+    private function previewActivityItem(array $item): array
+    {
+        $imagePath = trim((string) ($item['image_path'] ?? ''));
+
+        return [
+            'kind' => $item['kind'] ?? 'text',
+            'value' => $item['value'] ?? '',
+            'image_url' => $imagePath !== '' ? Storage::disk('public')->url($imagePath) : null,
+            'image_alt' => $item['image_alt'] ?? '',
+        ];
     }
 
     /**

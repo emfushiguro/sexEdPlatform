@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
-use App\Models\LessonTopic;
 use App\Models\LessonTopicProgress;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
@@ -14,7 +13,6 @@ use App\Models\InstructorApplication;
 use App\Models\ParentChildInvitation;
 use App\Models\User;
 use App\Services\Gamification\GamificationPolicyResolver;
-use App\Services\LearnerModuleCompletionService;
 use App\Services\SubscriptionService;
 use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +22,6 @@ class DashboardController extends Controller
     public function __construct(
         private readonly SubscriptionService $subscriptionService,
         private readonly GamificationPolicyResolver $gamificationPolicyResolver,
-        private readonly LearnerModuleCompletionService $completionService,
     ) {
     }
 
@@ -66,24 +63,9 @@ class DashboardController extends Controller
                 ->where('completed', true)
                 ->count();
 
-            // Topic-based progress — reflects partial lesson progress accurately
-            $lessonIds = $module->lessons()->where('is_published', true)->pluck('id');
-            $topics = LessonTopic::query()
-                ->whereIn('lesson_id', $lessonIds)
-                ->get();
-            $totalTopics = $topics->count();
-
-            if ($totalTopics > 0) {
-                $completedTopics = $this->completionService
-                    ->completedTopicIds($user, $topics)
-                    ->count();
-                $progressPercent = round(($completedTopics / $totalTopics) * 100);
-            } else {
-                // No topics: fall back to lesson-level completion
-                $progressPercent = $totalLessons > 0
-                    ? round(($completedLessons / $totalLessons) * 100)
-                    : 0;
-            }
+            $progressPercent = $totalLessons > 0
+                ? round(($completedLessons / $totalLessons) * 100)
+                : 0;
 
             // Find the first incomplete lesson for "Continue Learning"
             $nextLesson = $module->lessons()

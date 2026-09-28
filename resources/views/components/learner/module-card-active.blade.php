@@ -101,7 +101,7 @@
                 <span>Progress</span>
                 <span class="font-medium text-purple-600 dark:text-purple-400">{{ $pct }}%</span>
             </div>
-            <div class="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div class="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
                     class="h-full rounded-full transition-all duration-500"
                     style="width: {{ $pct }}%; background: linear-gradient(90deg, #A30EB2, #3B0CB1);"
