@@ -1,7 +1,7 @@
 @extends('layouts.connector-app')
 
 @section('title', $seminar->title)
-@section('page-title', 'Seminar Details')
+@section('page-title', 'Educational Event Details')
 
 @section('content')
     @php
@@ -60,10 +60,12 @@
                 <div>
                     <div class="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide">
                         <span class="rounded-full border px-2.5 py-1 {{ $statusStyles[$seminar->status] ?? 'bg-gray-100 text-gray-700 border-gray-200' }}">{{ $statusLabel }}</span>
-                        <span class="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700">{{ $seminar->type }}</span>
+                        <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-indigo-700">{{ ucfirst($seminar->type) }}</span>
+                        <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">{{ match ($seminar->event_format) { 'in_person' => 'In Person', 'external' => 'External Platform', 'native' => 'Native (Agora)', default => 'Unspecified' } }}</span>
                     </div>
                     <h2 class="mt-3 text-2xl font-bold text-gray-900">{{ $seminar->title }}</h2>
-                    <p class="mt-2 text-sm text-gray-600">{{ $seminar->purpose }}</p>
+                    <p class="mt-2 text-sm text-gray-600">{{ $seminar->description }}</p>
+                    <p class="mt-2 text-sm text-gray-600"><span class="font-semibold">Objectives:</span> {{ $seminar->purpose }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     @if($seminar->isNativeDelivery() && $seminar->type === 'webinar' && $seminar->livestream_channel && $seminar->status === 'published')
