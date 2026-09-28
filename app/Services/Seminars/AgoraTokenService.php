@@ -24,6 +24,7 @@ class AgoraTokenService
     {
         $role = strtolower($role);
 
+        abort_unless($seminar->isNativeDelivery(), 403);
         $this->ensureConfigured();
         if ($role === 'audience') {
             abort_unless($this->canJoinAsAudience($user, $seminar) && $this->isLive($seminar), 403);
@@ -107,7 +108,7 @@ class AgoraTokenService
 
     public function isInJoinWindow(Seminar $seminar): bool
     {
-        if ($seminar->type !== SeminarType::Webinar->value || $seminar->status !== SeminarStatus::Published->value) {
+        if (! $seminar->isNativeDelivery() || $seminar->type !== SeminarType::Webinar->value || $seminar->status !== SeminarStatus::Published->value) {
             return false;
         }
 

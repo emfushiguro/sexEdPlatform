@@ -66,7 +66,7 @@
                     <p class="mt-2 text-sm text-gray-600">{{ $seminar->purpose }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    @if($seminar->type === 'webinar' && $seminar->livestream_channel && $seminar->status === 'published')
+                    @if($seminar->isNativeDelivery() && $seminar->type === 'webinar' && $seminar->livestream_channel && $seminar->status === 'published')
                         <a href="{{ route('connector.seminars.livestream', [$connector, $seminar]) }}" class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black">Host Livestream</a>
                     @endif
                     <a href="{{ route('connector.seminars.attendance', [$connector, $seminar]) }}" class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50" title="Attendance" aria-label="Attendance">

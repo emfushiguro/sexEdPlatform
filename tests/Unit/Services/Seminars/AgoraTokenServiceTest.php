@@ -37,6 +37,7 @@ class AgoraTokenServiceTest extends UnitTestCase
         $user->id = 55;
         $seminar = new Seminar([
             'type' => 'webinar',
+            'event_format' => 'native',
             'status' => 'published',
             'livestream_status' => 'live',
             'livestream_started_at' => now(),

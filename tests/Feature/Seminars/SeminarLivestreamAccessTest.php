@@ -14,6 +14,38 @@ class SeminarLivestreamAccessTest extends TestCase
 {
     use ConnectorTestHelpers;
 
+    public function test_external_webinar_cannot_use_native_livestream_routes(): void
+    {
+        config()->set('services.agora.app_id', null);
+        config()->set('services.agora.app_certificate', null);
+
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+        $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $external = $this->seminar($connector, [
+            'event_format' => 'external',
+            'external_url' => 'https://meet.example.test/room',
+            'livestream_status' => 'live',
+        ]);
+        $external->registrants()->create(['user_id' => $learner->id, 'status' => 'registered', 'participant_type' => 'learner', 'registered_at' => now()]);
+
+        $this->actingAs($learner)->get(route('seminars.join', $external))->assertForbidden();
+        $this->actingAs($learner)->postJson(route('seminars.agora-token', $external))->assertForbidden();
+        $this->actingAs($learner)->postJson(route('seminars.attendance.join', $external))->assertForbidden();
+        $this->actingAs($learner)->postJson(route('seminars.attendance.heartbeat', $external))->assertForbidden();
+        $this->actingAs($learner)->postJson(route('seminars.attendance.leave', $external))->assertForbidden();
+        $this->actingAs($learner)->get(route('seminars.show', $external))->assertOk()->assertDontSee('Join Livestream');
+        $this->actingAs($owner)->get(route('connector.seminars.livestream', [$connector, $external]))->assertForbidden();
+        $this->actingAs($owner)->get(route('connector.seminars.show', [$connector, $external]))->assertOk()->assertDontSee('Host Livestream');
+        $this->actingAs($owner)->postJson(route('connector.seminars.agora-token', [$connector, $external]))->assertForbidden();
+        $this->actingAs($owner)->postJson(route('connector.seminars.livestream.prepare', [$connector, $external]))->assertForbidden();
+        $this->actingAs($owner)->postJson(route('connector.seminars.livestream.start', [$connector, $external]))->assertForbidden();
+        $this->actingAs($owner)->postJson(route('connector.seminars.livestream.end', [$connector, $external]))->assertForbidden();
+        $this->actingAs($owner)->getJson(route('connector.seminars.livestream.status', [$connector, $external]))->assertForbidden();
+        $this->assertSame('live', $external->fresh()->livestream_status);
+    }
+
     public function test_registered_audience_can_join_during_window_but_cannot_publish(): void
     {
         config()->set('services.agora.app_id', 'agora-app');
@@ -179,6 +211,7 @@ class SeminarLivestreamAccessTest extends TestCase
         return Seminar::query()->create(array_merge([
             'connector_id' => $connector->id,
             'type' => 'webinar',
+            'event_format' => 'native',
             'title' => 'Live Webinar',
             'description' => 'A free community session.',
             'purpose' => 'Support learner wellness.',

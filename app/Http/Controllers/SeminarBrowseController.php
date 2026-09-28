@@ -79,6 +79,7 @@ class SeminarBrowseController extends Controller
 
     public function join(Request $request, Seminar $seminar): View
     {
+        abort_unless($seminar->isNativeDelivery(), 403);
         $role = $this->tokens->roleFor($request->user(), $seminar);
         $canPublish = in_array($role, ['host', 'speaker'], true);
 

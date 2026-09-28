@@ -16,13 +16,13 @@ class SeminarAttendanceService
 
         $attendance = SeminarAttendance::query()->firstOrCreate(
             ['seminar_id' => $seminar->id, 'user_id' => $user->id],
-            ['status' => 'registered', 'total_seconds' => 0]
+            ['status' => 'registered', 'total_seconds' => 0, 'attendance_method' => 'native']
         );
 
         $attendance->update([
             'joined_at' => now(),
             'left_at' => null,
-            'status' => 'joined',
+            'status' => $attendance->attendance_method === 'manual' ? $attendance->status : 'joined',
             'role' => $this->tokens->roleFor($user, $seminar),
         ]);
 
@@ -35,14 +35,14 @@ class SeminarAttendanceService
 
         $attendance = SeminarAttendance::query()->firstOrCreate(
             ['seminar_id' => $seminar->id, 'user_id' => $user->id],
-            ['joined_at' => now(), 'status' => 'joined', 'total_seconds' => 0]
+            ['joined_at' => now(), 'status' => 'joined', 'total_seconds' => 0, 'attendance_method' => 'native']
         );
 
         $elapsed = $attendance->joined_at ? $attendance->joined_at->diffInSeconds(now()) : 0;
         $attendance->update([
             'joined_at' => now(),
             'total_seconds' => (int) $attendance->total_seconds + $elapsed,
-            'status' => $this->statusForSeconds((int) $attendance->total_seconds + $elapsed, true),
+            'status' => $attendance->attendance_method === 'manual' ? $attendance->status : $this->statusForSeconds((int) $attendance->total_seconds + $elapsed, true),
         ]);
 
         return $attendance->fresh();
@@ -54,7 +54,7 @@ class SeminarAttendanceService
 
         $attendance = SeminarAttendance::query()->firstOrCreate(
             ['seminar_id' => $seminar->id, 'user_id' => $user->id],
-            ['status' => 'registered', 'total_seconds' => 0]
+            ['status' => 'registered', 'total_seconds' => 0, 'attendance_method' => 'native']
         );
         $elapsed = $attendance->joined_at ? $attendance->joined_at->diffInSeconds(now()) : 0;
         $total = (int) $attendance->total_seconds + $elapsed;
@@ -62,7 +62,7 @@ class SeminarAttendanceService
         $attendance->update([
             'left_at' => now(),
             'total_seconds' => $total,
-            'status' => $this->statusForSeconds($total, false),
+            'status' => $attendance->attendance_method === 'manual' ? $attendance->status : $this->statusForSeconds($total, false),
         ]);
 
         return $attendance->fresh();
@@ -70,6 +70,10 @@ class SeminarAttendanceService
 
     public function finalize(Seminar $seminar): void
     {
+        if (! $seminar->isNativeDelivery()) {
+            return;
+        }
+
         $seminar->attendances()->each(function (SeminarAttendance $attendance): void {
             $total = (int) $attendance->total_seconds;
 
@@ -80,7 +84,7 @@ class SeminarAttendanceService
             $attendance->update([
                 'left_at' => $attendance->left_at ?? now(),
                 'total_seconds' => $total,
-                'status' => $this->statusForSeconds($total, false),
+                'status' => $attendance->attendance_method === 'manual' ? $attendance->status : $this->statusForSeconds($total, false),
             ]);
         });
     }
@@ -98,6 +102,7 @@ class SeminarAttendanceService
 
     private function authorizeAttendance(User $user, Seminar $seminar): void
     {
+        abort_unless($seminar->isNativeDelivery(), 403);
         abort_unless($this->tokens->canJoinLivestream($user, $seminar), 403);
     }
 }

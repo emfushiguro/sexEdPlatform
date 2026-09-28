@@ -1,47 +1,24 @@
-# Task 2 TDD Report: Validate Image Library ownership in authoring and Preview
+# Task 2 report: isolate native seminar delivery
 
-## Scope
+## Implementation
 
-- Modified only `app/Services/Learning/InteractiveActivities/InteractiveActivityAuthoringService.php` and `tests/Feature/Instructor/InteractiveActivityAuthoringTest.php` for Task 2.
-- Did not stage unrelated dirty work. No development database command, reset, wipe, seed, or migration was run.
+- Added `Seminar::isNativeDelivery()` checks before Agora credential validation and to the join-window decision. External webinars return HTTP 403 from token issuance even when Agora secrets are unset.
+- Guarded native livestream preparation, start, end, status, connector host access, and participant join. Kept the published webinar requirement for starting a native stream.
+- Guarded native attendance join, heartbeat, and leave, plus participant comments and questions. The native attendance service marks newly created rows with `attendance_method = native`.
+- Restricted attendance finalization to native events. It still records duration and leave time on native rows while preserving manual `status`, `attended_at`, and `attendance_method`. Join, heartbeat, and leave also preserve an existing manual status.
+- Hid Host Livestream and Join Livestream links for external delivery.
 
-## RED evidence
+## TDD and verification
 
-Added the four prescribed feature tests before production changes:
-
-1. Image-only matching items can Preview and persist from the current instructor's Image Library.
-2. A new foreign-library image path is rejected at `configuration.pairs.0.left.image_path`.
-3. An exact existing legacy path survives an authorized edit without requiring ownership or current storage existence.
-4. Supporting images do not change revision, while image-only content and an image replacement do.
-
-The requested `php artisan test ... --filter='image|media'` cannot start its subprocess in this Windows environment because Symfony rejects the Windows-style project CWD. A direct PHPUnit fallback ran the four tests (`--filter=image --debug`): three passed and the foreign-path test failed exactly as expected, with `Session is missing expected key [errors]`.
-
-## GREEN implementation
-
-After handler normalization in `InteractiveActivityAuthoringService::validate()`, validation now:
-
-- collects exact existing image paths from the authorized activity;
-- permits those exact paths without an ownership or existence check;
-- requires every new path to begin with `quiz-images/user-{author-id}/` and exist on the public disk;
-- reports failures against the relevant normalized matching/sequence item image path.
-
-## Verification
-
-- `php -l app/Services/Learning/InteractiveActivities/InteractiveActivityAuthoringService.php`: passed.
-- `php -l tests/Feature/Instructor/InteractiveActivityAuthoringTest.php`: passed.
-- `git diff --check`: passed with no whitespace errors.
-- `git show --check 0f6355d`: passed; the commit contains only the two Task 2 files.
-- Direct PHPUnit GREEN attempt (`--filter=image --do-not-cache-result`) was blocked before assertions: the isolated `cc_db_test` schema is incomplete (`migrations` missing, then `cache` already exists). No database repair/reset was attempted because the task explicitly prohibits destructive database operations.
+1. Added an external webinar regression with registered learner and connector owner access, while setting Agora credentials to null. Explicitly marked the existing native fixtures as `event_format = native`.
+2. Ran the four focused test files before implementation: **15 tests, 85 assertions, 1 expected failure**. The external webinar participant join route returned 200 instead of the expected 403.
+3. Added attendance finalization and interaction regressions before implementation. Both failed as expected: finalization replaced a manual status with `attended`, and an external webinar comment request returned 302 instead of 403.
+4. Applied the shared guards and reran the four focused files. One test assertion needed timestamp precision adjustment because persisted database timestamps omit subsecond precision; application behavior had passed the other assertions.
+5. Final command: `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Seminars/SeminarLivestreamAccessTest.php tests/Feature/Seminars/SeminarAttendanceTest.php tests/Feature/Seminars/SeminarInteractionTest.php tests/Unit/Services/Seminars/AgoraTokenServiceTest.php` — **17 tests, 115 assertions, 0 failures**. `phpunit.xml` targets isolated `cc_db_test`.
+6. `git diff --check` and `php -l` on the six changed PHP application files passed.
 
 ## Self-review
 
-- Validation is at the shared authoring trust boundary used by persistence and Preview input validation.
-- Exact comparisons prevent an admin/editor from losing a stored reference outside their directory.
-- New references require both authorization-by-directory and actual public-disk presence.
-- The implementation also handles sequencing `configuration.items` without adding a separate abstraction.
-
-## Concerns
-
-The final feature-suite GREEN verification remains blocked by the broken isolated test schema and the Artisan subprocess CWD incompatibility. Restore `cc_db_test` through the project's approved test-environment setup before rerunning the required authoring suite; do not reset the development database.
-
-No Task 2 test process remained running at handoff; the two running PHP processes predated this task and were left untouched.
+- Checked every Task 2 route: learner join/token/attendance, owner livestream page/token/prepare/start/end/status, and participant comment/question creation. The external webinar test confirms 403 and unchanged stream state. Existing native tests still cover token issuance, participant join, stream lifecycle, interactions, and attendance duration.
+- Confirmed no development migration, database reset, destructive seeder, or full test suite was run. The unrelated untracked plan remains outside this task's commit.
+- Task 2 does not add external access or authoring; those are separate tasks in the approved plan.
