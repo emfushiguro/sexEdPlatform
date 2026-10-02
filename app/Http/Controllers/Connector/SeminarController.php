@@ -13,6 +13,7 @@ use App\Notifications\Seminars\SeminarCancelledNotification;
 use App\Services\Seminars\SeminarAccessService;
 use App\Services\Seminars\SeminarAttendanceService;
 use App\Services\Seminars\SeminarCategoryService;
+use App\Services\Seminars\SeminarDiscoveryService;
 use App\Services\Seminars\SeminarLifecycleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,9 +27,9 @@ class SeminarController extends Controller
         private readonly SeminarAccessService $access,
         private readonly SeminarAttendanceService $attendance,
         private readonly SeminarCategoryService $categories,
+        private readonly SeminarDiscoveryService $discovery,
         private readonly SeminarLifecycleService $lifecycle,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request, Connector $connector): View
     {
@@ -77,7 +78,7 @@ class SeminarController extends Controller
         $this->access->abortUnlessWorkspace($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
         if (! $this->access->canManageConnectorSeminars($request->user(), $connector)) {
-            abort_unless($seminar->status === SeminarStatus::Published->value, 403);
+            abort_unless($this->discovery->canView($request->user(), $seminar), 403);
 
             return view('seminars.show', [
                 'seminar' => $seminar->load(['connector', 'speakers.user']),

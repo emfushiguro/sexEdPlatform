@@ -203,6 +203,30 @@ class SeminarRegistrationTest extends TestCase
             ->assertSessionHasErrors('seminar');
     }
 
+    public function test_registration_closes_at_explicit_deadline_while_cancellation_remains_open_until_start(): void
+    {
+        Notification::fake();
+        $connector = $this->connector();
+        $registered = $this->learnerWithAge('adults', now()->subYears(21));
+        $late = $this->learnerWithAge('adults', now()->subYears(22));
+        $seminar = $this->seminar($connector, [
+            'registration_deadline_at' => now()->addMinute(),
+            'starts_at' => now()->addHour(),
+            'schedule' => now()->addHour(),
+            'ends_at' => now()->addHours(2),
+        ]);
+
+        $this->actingAs($registered)->post(route('seminars.register', $seminar))->assertRedirect();
+        $this->travel(60)->seconds();
+        $this->actingAs($late)->post(route('seminars.register', $seminar))->assertSessionHasErrors('seminar');
+        $this->actingAs($registered)->post(route('seminars.cancel-registration', $seminar))->assertRedirect();
+        $this->assertDatabaseHas('seminar_registrants', [
+            'seminar_id' => $seminar->id,
+            'user_id' => $registered->id,
+            'status' => 'cancelled',
+        ]);
+    }
+
     private function connector(): Connector
     {
         $owner = User::factory()->create(['role' => 'learner']);

@@ -169,8 +169,9 @@ class SeminarRegistrationService
             return 'Registration is not open for this seminar.';
         }
 
-        if ($this->hasStarted($seminar)) {
-            return 'Registration is closed because this seminar has already started.';
+        $deadline = $seminar->registration_deadline_at ?? $seminar->starts_at ?? $seminar->schedule;
+        if ($deadline !== null && now()->greaterThanOrEqualTo($deadline)) {
+            return 'Registration for this event has closed.';
         }
 
         if (! $this->matchesParticipantEligibility($user, $seminar)) {

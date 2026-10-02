@@ -3,17 +3,26 @@
 @section('title', $seminar->title.' | '.config('app.name', 'Conscious Connections'))
 
 @section('content')
-    @php($speakerApplication = $speakerApplication ?? null)
+    @php
+        $speakerApplication = $speakerApplication ?? null;
+        $formatLabel = match ($seminar->event_format) {
+            'in_person' => 'In Person',
+            'external' => 'External Platform',
+            'native' => 'Native Livestream',
+            default => 'Format to be announced',
+        };
+    @endphp
     <div class="mx-auto max-w-6xl space-y-6">
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900">
             <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                     <div class="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide">
                         <span class="rounded-full bg-purple-50 px-2.5 py-1 text-purple-700">{{ $seminar->status }}</span>
-                        <span class="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700">{{ $seminar->type }}</span>
+                        <span class="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700">{{ ucfirst($seminar->type) }}</span>
+                        <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">{{ $formatLabel }}</span>
                     </div>
                     <h1 class="mt-3 text-3xl font-bold text-gray-900 dark:text-white">{{ $seminar->title }}</h1>
-                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ $seminar->connector?->name }}</p>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Organizer: {{ $seminar->connector?->name }}</p>
                 </div>
 
                 <div class="w-full rounded-2xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950 lg:w-72">
@@ -24,11 +33,13 @@
                     <div class="mt-4">
                         @if($seminar->isNativeDelivery() && $canJoinLivestream)
                             <a href="{{ route('seminars.join', $seminar) }}" class="block w-full rounded-lg bg-gray-900 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-black">Join Livestream</a>
-                        @elseif($registration)
+                        @elseif($registration && $seminar->status === 'published' && now()->lessThan($seminar->starts_at ?? $seminar->schedule))
                             <form method="POST" action="{{ route('seminars.cancel-registration', $seminar) }}">
                                 @csrf
                                 <button class="w-full rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Cancel Registration</button>
                             </form>
+                        @elseif($registration)
+                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">Registered</div>
                         @elseif($canRegister)
                             <form method="POST" action="{{ route('seminars.register', $seminar) }}">
                                 @csrf
@@ -45,8 +56,11 @@
                 <div>
                     <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">About</h2>
                     <div class="mt-2 space-y-4 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                        @if($seminar->description)
+                            <p>{{ $seminar->description }}</p>
+                        @endif
                         @if($seminar->purpose)
-                            <p>{{ $seminar->purpose }}</p>
+                            <p><strong>Objectives:</strong> {{ $seminar->purpose }}</p>
                         @endif
                     </div>
                 </div>
@@ -60,15 +74,30 @@
                         <dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $seminar->speakers->pluck('display_name')->filter()->join(', ') ?: 'To be announced' }}</dd>
                     </div>
                     <div>
+                        <dt class="font-semibold text-gray-900 dark:text-white">Format</dt>
+                        <dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $formatLabel }}</dd>
+                    </div>
+                    <div>
                         <dt class="font-semibold text-gray-900 dark:text-white">Audience</dt>
                         <dd class="mt-1 text-gray-600 dark:text-gray-300">{{ str_replace('_', ' ', $seminar->target_participants) }}</dd>
                     </div>
-                    @if($seminar->location)
+                    @if($seminar->event_format === 'in_person' && $seminar->location)
                         <div>
-                            <dt class="font-semibold text-gray-900 dark:text-white">Location</dt>
+                            <dt class="font-semibold text-gray-900 dark:text-white">Venue</dt>
                             <dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $seminar->location }}</dd>
+                            @if($seminar->venue_address)<dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $seminar->venue_address }}</dd>@endif
+                            @if($seminar->venue_room)<dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $seminar->venue_room }}</dd>@endif
+                        </div>
+                    @elseif($seminar->event_format === 'external')
+                        <div>
+                            <dt class="font-semibold text-gray-900 dark:text-white">Platform</dt>
+                            <dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $seminar->external_platform === 'other' ? $seminar->external_platform_name : ucwords(str_replace('_', ' ', $seminar->external_platform ?? 'To be announced')) }}</dd>
                         </div>
                     @endif
+                    <div>
+                        <dt class="font-semibold text-gray-900 dark:text-white">Attendance</dt>
+                        <dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $seminar->isNativeDelivery() ? 'Attendance is recorded when you join the livestream.' : 'Attendance information is provided by the organizer.' }}</dd>
+                    </div>
                 </dl>
             </div>
 
