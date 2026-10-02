@@ -166,3 +166,25 @@ Final verification:
 | PHPStan | unavailable | `vendor\\bin\\phpstan` and `.bat` do not exist |
 
 The final fix could not be staged/committed because `.git` is read-only in the sandbox and the escalated Git write request was rejected after the session authentication changed. All code remains applied on the current main working tree; prior Task 7 commits remain at `6872c68`.
+
+---
+
+# Educational Events Task 7: Delivery link management and notices
+
+## Scope
+
+- Added narrow connector and admin delivery updates for published or completed external events only.
+- Validated HTTP(S) links and release/expiry times in Philippine local time, stored in UTC.
+- Added a shared management form and safe queued mail/database notices. Notice payloads contain the protected event page route, never the external URL.
+- Recipient selection includes currently eligible confirmed registrants and accepted speakers, deduplicated by user ID. Admin changes also copy the connector organizer.
+- The update locks the event row, changes only five delivery fields, resets the availability marker when release time changes, and logs notification dispatch failures after saving.
+
+## TDD evidence
+
+- RED: `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Connectors/SeminarDeliveryManagementTest.php tests/Feature/Admin/AdminSeminarDeliveryTest.php` returned five expected `RouteNotFoundException` errors for the missing delivery actions.
+- GREEN: `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Connectors/SeminarDeliveryManagementTest.php tests/Feature/Admin/AdminSeminarDeliveryTest.php tests/Feature/Seminars/SeminarExternalAccessTest.php` returned `OK (15 tests, 98 assertions)`.
+- PHP syntax checks passed for all new PHP files. `git diff --check` reported no whitespace errors.
+
+## Boundary
+
+The separate action rejects draft, pending-review, approved, cancelled, archived, native, and in-person events. Prepublication delivery edits remain in the existing authoring form and do not trigger this notice flow.

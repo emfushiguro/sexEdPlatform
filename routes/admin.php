@@ -390,6 +390,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::prefix('seminars')->name('seminars.')->group(function () {
         Route::get('/', [Admin\SeminarModerationController::class, 'index'])->name('index');
         Route::get('/{seminar}', [Admin\SeminarModerationController::class, 'show'])->name('show');
+        Route::put('/{seminar}/delivery', [Admin\SeminarDeliveryController::class, 'update'])->name('delivery.update');
         Route::post('/{seminar}/approve', [Admin\SeminarModerationController::class, 'approve'])->name('approve');
         Route::post('/{seminar}/reject', [Admin\SeminarModerationController::class, 'reject'])->name('reject');
         Route::post('/{seminar}/cancel', [Admin\SeminarModerationController::class, 'cancel'])->name('cancel');

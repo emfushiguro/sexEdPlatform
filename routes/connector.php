@@ -17,6 +17,7 @@ use App\Http\Controllers\Connector\NotificationController;
 use App\Http\Controllers\Connector\RegistrationController;
 use App\Http\Controllers\Connector\RoleController;
 use App\Http\Controllers\Connector\SeminarAttendanceController;
+use App\Http\Controllers\Connector\SeminarDeliveryController;
 use App\Http\Controllers\Connector\SeminarController;
 use App\Http\Controllers\Connector\SeminarInteractionController;
 use App\Http\Controllers\Connector\SeminarLivestreamController;
@@ -74,6 +75,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connector/{connector}/seminars/{seminar}', [SeminarController::class, 'show'])->name('connector.seminars.show');
     Route::get('/connector/{connector}/seminars/{seminar}/edit', [SeminarController::class, 'edit'])->name('connector.seminars.edit');
     Route::put('/connector/{connector}/seminars/{seminar}', [SeminarController::class, 'update'])->name('connector.seminars.update');
+    Route::put('/connector/{connector}/seminars/{seminar}/delivery', [SeminarDeliveryController::class, 'update'])->name('connector.seminars.delivery.update');
     Route::delete('/connector/{connector}/seminars/{seminar}', [SeminarController::class, 'destroy'])->name('connector.seminars.destroy');
     Route::post('/connector/{connector}/seminars/{seminar}/submit-review', [SeminarController::class, 'submitForReview'])->name('connector.seminars.submit-review');
     Route::post('/connector/{connector}/seminars/{seminar}/publish', [SeminarController::class, 'publish'])->name('connector.seminars.publish');

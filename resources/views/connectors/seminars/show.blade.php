@@ -55,6 +55,9 @@
         })->values();
     @endphp
     <div class="space-y-6">
+        @if($seminar->isExternalDelivery() && in_array($seminar->status, ['published', 'completed'], true))
+            @include('seminars._delivery-form', ['action' => route('connector.seminars.delivery.update', [$connector, $seminar])])
+        @endif
         <div class="rounded-lg border border-gray-200 bg-white p-6" x-data="{ statusOpen: false, cancelOpen: false, archiveOpen: false, completeOpen: false, cancelReason: 'Speaker unavailable', customCancelReason: '' }">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
