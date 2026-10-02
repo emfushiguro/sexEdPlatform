@@ -31,6 +31,13 @@
                     <div class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ $seminar->capacity ? $seminar->registrants()->active()->count().' / '.$seminar->capacity.' registered' : 'Open capacity' }}</div>
 
                     <div class="mt-4">
+                        @if($seminar->isExternalDelivery())
+                            @if($canJoinExternal)
+                                <a href="{{ route('seminars.external.join', $seminar) }}" rel="noreferrer" class="mb-3 block w-full rounded-lg bg-purple-700 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-purple-800">Join External Platform</a>
+                            @else
+                                <div class="mb-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">{{ $externalJoinMessage }}</div>
+                            @endif
+                        @endif
                         @if($seminar->isNativeDelivery() && $canJoinLivestream)
                             <a href="{{ route('seminars.join', $seminar) }}" class="block w-full rounded-lg bg-gray-900 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-black">Join Livestream</a>
                         @elseif($registration && $seminar->status === 'published' && now()->lessThan($seminar->starts_at ?? $seminar->schedule))

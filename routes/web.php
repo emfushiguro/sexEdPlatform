@@ -28,6 +28,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeminarAttendanceController;
 use App\Http\Controllers\SeminarBrowseController;
+use App\Http\Controllers\SeminarExternalJoinController;
 use App\Http\Controllers\SeminarInteractionController;
 use App\Models\Conversation;
 use App\Services\Chat\ChatAuthorizationService;
@@ -264,6 +265,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('verified')->group(function () {
         Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
+        Route::get('/seminars/{seminar}/external', SeminarExternalJoinController::class)->name('seminars.external.join');
         Route::post('/seminars/{seminar}/register', [SeminarBrowseController::class, 'register'])->name('seminars.register');
         Route::post('/seminars/{seminar}/apply-speaker', [SeminarBrowseController::class, 'applyAsSpeaker'])->name('seminars.apply-speaker');
         Route::post('/seminars/{seminar}/cancel-registration', [SeminarBrowseController::class, 'cancelRegistration'])->name('seminars.cancel-registration');

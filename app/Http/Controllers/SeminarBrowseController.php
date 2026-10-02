@@ -6,6 +6,7 @@ use App\Http\Requests\Seminars\RegisterSeminarRequest;
 use App\Models\Seminar;
 use App\Services\Seminars\AgoraTokenService;
 use App\Services\Seminars\SeminarDiscoveryService;
+use App\Services\Seminars\SeminarExternalAccessService;
 use App\Services\Seminars\SeminarRegistrationService;
 use App\Services\Seminars\SeminarSpeakerService;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,7 @@ class SeminarBrowseController extends Controller
         private readonly SeminarRegistrationService $registrations,
         private readonly AgoraTokenService $tokens,
         private readonly SeminarDiscoveryService $discovery,
+        private readonly SeminarExternalAccessService $externalAccess,
     ) {}
 
     public function index(Request $request): View
@@ -39,6 +41,8 @@ class SeminarBrowseController extends Controller
             'canRegister' => $this->registrations->canRegister($request->user(), $seminar),
             'registrationError' => $this->registrations->registrationError($request->user(), $seminar),
             'canJoinLivestream' => $this->tokens->canJoinLivestream($request->user(), $seminar),
+            'canJoinExternal' => $seminar->isExternalDelivery() && $this->externalAccess->canJoin($request->user(), $seminar),
+            'externalJoinMessage' => $seminar->isExternalDelivery() ? $this->externalAccess->messageFor($request->user(), $seminar) : null,
         ]);
     }
 
