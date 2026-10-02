@@ -27,6 +27,7 @@ use App\Http\Controllers\ParentInvitationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeminarAttendanceController;
+use App\Http\Controllers\SeminarCodeAttendanceController;
 use App\Http\Controllers\SeminarBrowseController;
 use App\Http\Controllers\SeminarExternalJoinController;
 use App\Http\Controllers\SeminarInteractionController;
@@ -276,6 +277,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/seminars/{seminar}/attendance/join', [SeminarAttendanceController::class, 'join'])->name('seminars.attendance.join');
         Route::post('/seminars/{seminar}/attendance/heartbeat', [SeminarAttendanceController::class, 'heartbeat'])->name('seminars.attendance.heartbeat');
         Route::post('/seminars/{seminar}/attendance/leave', [SeminarAttendanceController::class, 'leave'])->name('seminars.attendance.leave');
+        Route::post('/seminars/{seminar}/attendance/code', [SeminarCodeAttendanceController::class, 'submit'])->name('seminars.attendance.code.submit');
     });
 
     // PayMongo Subscription Routes (Legacy - kept for backward compatibility)

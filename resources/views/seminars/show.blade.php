@@ -103,10 +103,29 @@
                     @endif
                     <div>
                         <dt class="font-semibold text-gray-900 dark:text-white">Attendance</dt>
-                        <dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $seminar->isNativeDelivery() ? 'Attendance is recorded when you join the livestream.' : 'Attendance information is provided by the organizer.' }}</dd>
+                        <dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $seminar->isNativeDelivery() ? 'Attendance is recorded when you join the livestream.' : 'Attendance information is provided by the organizer. A submitted code does not prove full participation.' }}</dd>
                     </div>
                 </dl>
             </div>
+
+            @if($registration && ! $seminar->isNativeDelivery() && $seminar->attendance_code_enabled && in_array($seminar->status, ['published', 'completed'], true))
+                <section class="mt-8 rounded-2xl border border-gray-100 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950">
+                    <h2 class="font-bold text-gray-900 dark:text-white">Submit attendance code</h2>
+                    @if($seminar->attendances()->where('user_id', auth()->id())->where('attendance_method', 'attendance_code')->exists())
+                        <p class="mt-2 text-sm text-green-700">Attendance submitted</p>
+                    @else
+                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Enter the eight-digit code from the organizer. This confirms code submission, not full participation.</p>
+                        <form method="POST" action="{{ route('seminars.attendance.code.submit', $seminar) }}" class="mt-3 flex flex-wrap items-end gap-3">
+                            @csrf
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Attendance code
+                                <input name="code" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" required autocomplete="off" class="mt-1 block rounded-lg border-gray-300">
+                            </label>
+                            <button class="rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white">Submit code</button>
+                        </form>
+                        @error('code')<p class="mt-2 text-sm text-red-700">{{ $message }}</p>@enderror
+                    @endif
+                </section>
+            @endif
 
             @auth
                 @if(auth()->user()->isInstructor())

@@ -102,6 +102,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/connector/{connector}/seminars/{seminar}/registrants/{registrant}/reject', [SeminarRegistrantController::class, 'reject'])->name('connector.seminars.registrants.reject');
     Route::delete('/connector/{connector}/seminars/{seminar}/registrants/{registrant}', [SeminarRegistrantController::class, 'destroy'])->name('connector.seminars.registrants.destroy');
     Route::get('/connector/{connector}/seminars/{seminar}/attendance', [SeminarAttendanceController::class, 'index'])->name('connector.seminars.attendance');
+    Route::post('/connector/{connector}/seminars/{seminar}/attendance/code', [SeminarAttendanceController::class, 'generate'])->name('connector.seminars.attendance.code.generate');
+    Route::post('/connector/{connector}/seminars/{seminar}/attendance/code/disable', [SeminarAttendanceController::class, 'disable'])->name('connector.seminars.attendance.code.disable');
     Route::get('/connector/{connector}/seminars/{seminar}/attendance/export', [SeminarAttendanceController::class, 'export'])->name('connector.seminars.attendance.export');
 
     Route::get('/connector/{connector}/members', [MemberController::class, 'index'])->name('connector.members.index');
