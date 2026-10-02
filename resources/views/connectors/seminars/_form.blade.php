@@ -73,13 +73,13 @@
 
     <label class="block">
         <span class="text-sm font-semibold text-gray-700">Starts At (Philippine Time)</span>
-        <input type="datetime-local" name="starts_at" value="{{ old('starts_at', $seminar->localStartsAt()?->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+        <input type="datetime-local" name="starts_at" step="1" value="{{ old('starts_at', $seminar->localStartsAt()?->format('Y-m-d\TH:i:s')) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
         @error('starts_at') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
     </label>
 
     <label class="block">
         <span class="text-sm font-semibold text-gray-700">Ends At (Philippine Time)</span>
-        <input type="datetime-local" name="ends_at" value="{{ old('ends_at', $seminar->localEndsAt()?->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+        <input type="datetime-local" name="ends_at" step="1" value="{{ old('ends_at', $seminar->localEndsAt()?->format('Y-m-d\TH:i:s')) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
         @error('ends_at') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
     </label>
 

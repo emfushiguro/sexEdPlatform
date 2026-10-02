@@ -92,4 +92,35 @@ class EducationalEventFormTest extends TestCase
         $this->actingAs($owner)->get(route('connector.seminars.show', [$connector, $seminar]))
             ->assertOk()->assertSee('Webinar')->assertSee('External Platform')->assertDontSee('Host Livestream');
     }
+
+    public function test_registered_edit_preserves_schedule_seconds_for_unrelated_changes(): void
+    {
+        [$owner, $connector] = $this->ownerAndConnector();
+        $start = now()->addDays(3)->timezone(config('app.display_timezone'))->setTime(10, 0, 30);
+        $end = $start->copy()->addHour()->addSeconds(15);
+        $payload = $this->educationalEventPayload([
+            'starts_at' => $start->format('Y-m-d\TH:i:s'),
+            'ends_at' => $end->format('Y-m-d\TH:i:s'),
+        ]);
+        $this->actingAs($owner)->post(route('connector.seminars.store', $connector), $payload)->assertRedirect();
+        $seminar = $connector->seminars()->firstOrFail();
+        $learner = $this->createCompletedLearner();
+        $seminar->registrants()->create([
+            'user_id' => $learner->id,
+            'status' => 'registered',
+            'participant_type' => 'learner',
+            'registered_at' => now(),
+        ]);
+
+        $this->actingAs($owner)->get(route('connector.seminars.edit', [$connector, $seminar]))
+            ->assertOk()
+            ->assertSee('name="starts_at" step="1" value="'.$payload['starts_at'].'"', false)
+            ->assertSee('name="ends_at" step="1" value="'.$payload['ends_at'].'"', false);
+
+        $this->actingAs($owner)->put(route('connector.seminars.update', [$connector, $seminar]), [
+            ...$payload,
+            'description' => 'Updated description only.',
+        ])->assertRedirect();
+        $this->assertSame('Updated description only.', $seminar->fresh()->description);
+    }
 }
