@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Seminar;
 use App\Services\Seminars\SeminarNoticeService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SendSeminarNotices extends Command
@@ -71,15 +72,50 @@ class SendSeminarNotices extends Command
             return;
         }
 
+        $dispatchFailure = null;
         try {
-            $this->notices->{$method}($seminar->fresh());
+            DB::transaction(function () use ($seminar, $schedule, $marker, $method, $slot, &$dispatchFailure): void {
+                $current = Seminar::query()->lockForUpdate()->find($seminar->id);
+                if (! $current) {
+                    return;
+                }
+
+                $now = now();
+                $stillClaimed = $current->{$schedule}?->equalTo($slot)
+                    && $current->{$marker}?->equalTo($slot);
+                $due = $schedule === 'starts_at'
+                    ? $current->status === 'published' && $current->starts_at !== null
+                        && $current->starts_at->betweenIncluded($now, $now->copy()->addHour())
+                    : in_array($current->status, ['published', 'completed'], true)
+                        && $current->isExternalDelivery()
+                        && $current->external_link_visible_at !== null
+                        && $current->external_link_visible_at->lte($now)
+                        && $this->linkIsAvailable($current, $now);
+
+                if ($stillClaimed && $due) {
+                    try {
+                        $this->notices->{$method}($current);
+                    } catch (\Throwable $exception) {
+                        $dispatchFailure = $exception;
+                    }
+
+                    return;
+                }
+
+                if ($current->{$marker}?->equalTo($slot)) {
+                    $current->forceFill([$marker => null])->save();
+                }
+            });
+            if ($dispatchFailure) {
+                throw $dispatchFailure;
+            }
         } catch (\Throwable $exception) {
             Log::warning('Scheduled educational event notice dispatch failed', [
                 'seminar_id' => $seminar->id,
                 'notice' => $method,
                 'exception' => $exception,
             ]);
-            Seminar::query()->whereKey($seminar->id)->where($schedule, $slot)->where($marker, $slot)
+            Seminar::query()->whereKey($seminar->id)->where($marker, $slot)
                 ->update([$marker => null]);
         }
     }

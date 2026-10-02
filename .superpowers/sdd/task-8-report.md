@@ -25,3 +25,10 @@
 ## Delivery boundary
 
 The marker is per event and schedule timestamp. If a dispatch fails after some recipients have already been queued, retry can queue those recipients again. A per-recipient outbox would be needed for stronger guarantees across partial dispatch failure; it is outside this task's approved marker design.
+
+## Review follow-up: release edited after claim
+
+- Regression: a one-shot database query listener invokes the Task 7 delivery update immediately after the scheduler claims release A. It moves the release to future B and resets the marker before the scheduler can dispatch.
+- RED: the focused regression sent an `available` notification for future B (`Tests: 1, Assertions: 3, Failures: 1`).
+- Fix: after claiming, the command reloads the row with `lockForUpdate` and checks the claimed schedule and marker, current status and delivery format, due window, and link expiry. It dispatches while holding that row lock, serializing with the Task 7 delivery update. A stale claim clears only its old marker when still present. Dispatch failures keep the same conditional marker cleanup.
+- GREEN: the focused regression passed (`OK (1 test, 5 assertions)`). The scheduled notice and Task 7 delivery suites passed together (`OK (13 tests, 110 assertions)`).

@@ -8,6 +8,8 @@ use App\Notifications\Seminars\SeminarDeliveryNotification;
 use App\Notifications\Seminars\SeminarReminderNotification;
 use App\Services\Seminars\SeminarDeliveryService;
 use App\Services\Seminars\SeminarNoticeService;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\Feature\Connectors\ConnectorTestHelpers;
 use Tests\TestCase;
@@ -201,5 +203,35 @@ class SeminarScheduledNoticesTest extends TestCase
         $this->artisan('seminars:send-notices')->assertExitCode(0);
 
         $this->assertEquals($nextRelease, $seminar->fresh()->link_available_sent_for_visible_at);
+    }
+
+    public function test_release_moved_to_future_after_claim_sends_no_early_availability_notice(): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        Notification::fake();
+        $seminar = $this->event(['starts_at' => now()->addHours(3), 'external_link_visible_at' => now()]);
+        $registered = $this->registered($seminar);
+        $nextRelease = now()->addMinutes(10);
+        $releaseChanged = false;
+        DB::listen(function (QueryExecuted $query) use ($seminar, $nextRelease, &$releaseChanged): void {
+            if ($releaseChanged || ! str_contains(strtolower($query->sql), 'update `seminars`')
+                || ! str_contains($query->sql, 'link_available_sent_for_visible_at')) {
+                return;
+            }
+
+            $releaseChanged = true;
+            app(SeminarDeliveryService::class)->update(
+                $seminar,
+                ['external_link_visible_at' => $nextRelease->toDateTimeString()],
+                $seminar->connector->creator,
+            );
+        });
+
+        $this->artisan('seminars:send-notices')->assertExitCode(0);
+
+        $this->assertTrue($releaseChanged, 'The release edit must occur after the scheduler claim.');
+        Notification::assertNotSentTo($registered, SeminarDeliveryNotification::class, fn ($notice) => $notice->kind === 'available');
+        $this->assertEquals($nextRelease, $seminar->fresh()->external_link_visible_at);
+        $this->assertNull($seminar->fresh()->link_available_sent_for_visible_at);
     }
 }
