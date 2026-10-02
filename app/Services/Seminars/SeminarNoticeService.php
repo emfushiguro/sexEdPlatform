@@ -5,6 +5,7 @@ namespace App\Services\Seminars;
 use App\Models\Seminar;
 use App\Models\User;
 use App\Notifications\Seminars\SeminarDeliveryNotification;
+use App\Notifications\Seminars\SeminarReminderNotification;
 use Illuminate\Support\Collection;
 
 class SeminarNoticeService
@@ -29,6 +30,20 @@ class SeminarNoticeService
     {
         foreach ($this->recipients($seminar, $actor, $adminAction) as $recipient) {
             $recipient->notify(new SeminarDeliveryNotification((int) $seminar->id, $seminar->title, 'changed'));
+        }
+    }
+
+    public function sendReminder(Seminar $seminar): void
+    {
+        foreach ($this->recipients($seminar) as $recipient) {
+            $recipient->notify(new SeminarReminderNotification($seminar));
+        }
+    }
+
+    public function sendLinkAvailable(Seminar $seminar): void
+    {
+        foreach ($this->recipients($seminar) as $recipient) {
+            $recipient->notify(new SeminarDeliveryNotification((int) $seminar->id, $seminar->title, 'available'));
         }
     }
 }
