@@ -234,4 +234,26 @@ class SeminarScheduledNoticesTest extends TestCase
         $this->assertEquals($nextRelease, $seminar->fresh()->external_link_visible_at);
         $this->assertNull($seminar->fresh()->link_available_sent_for_visible_at);
     }
+
+    public function test_release_marker_is_written_inside_the_dispatch_transaction(): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        Notification::fake();
+        $seminar = $this->event(['starts_at' => now()->addHours(3), 'external_link_visible_at' => now()]);
+        $registered = $this->registered($seminar);
+        $outerLevel = DB::transactionLevel();
+        $markerWriteLevel = null;
+        DB::listen(function (QueryExecuted $query) use (&$markerWriteLevel): void {
+            if ($markerWriteLevel === null && str_contains(strtolower($query->sql), 'update `seminars`')
+                && str_contains($query->sql, 'link_available_sent_for_visible_at')) {
+                $markerWriteLevel = DB::transactionLevel();
+            }
+        });
+
+        $this->artisan('seminars:send-notices')->assertExitCode(0);
+
+        Notification::assertSentToTimes($registered, SeminarDeliveryNotification::class, 1);
+        $this->assertNotNull($markerWriteLevel);
+        $this->assertGreaterThan($outerLevel, $markerWriteLevel);
+    }
 }

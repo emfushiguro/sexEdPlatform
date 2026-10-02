@@ -32,3 +32,10 @@ The marker is per event and schedule timestamp. If a dispatch fails after some r
 - RED: the focused regression sent an `available` notification for future B (`Tests: 1, Assertions: 3, Failures: 1`).
 - Fix: after claiming, the command reloads the row with `lockForUpdate` and checks the claimed schedule and marker, current status and delivery format, due window, and link expiry. It dispatches while holding that row lock, serializing with the Task 7 delivery update. A stale claim clears only its old marker when still present. Dispatch failures keep the same conditional marker cleanup.
 - GREEN: the focused regression passed (`OK (1 test, 5 assertions)`). The scheduled notice and Task 7 delivery suites passed together (`OK (13 tests, 110 assertions)`).
+
+## Review follow-up: atomic claim and dispatch
+
+- A timestamp comparison could not distinguish an old release A claim from A being restored after A-to-B-to-A edits. The earlier claim update occurred before the row-lock transaction.
+- Regression: a query listener records the database transaction level at the availability-marker write. RED found it at level 1, equal to PHPUnit's outer test transaction (`Tests: 1, Assertions: 4, Failures: 1`), proving the claim was outside the dispatch transaction.
+- Fix: the command locks the event row first, verifies the current schedule, marker, status, due time, and link validity, then writes the marker and dispatches within the same transaction. Dispatch failure is logged and the marker is cleared under that lock before commit. The existing post-claim release-change regression remains covered by a recheck after the marker write.
+- GREEN: the focused transaction regression passed (`OK (1 test, 4 assertions)`). Scheduled notice and Task 7 delivery suites passed together (`OK (14 tests, 114 assertions)`).

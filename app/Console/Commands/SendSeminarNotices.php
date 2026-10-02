@@ -60,64 +60,56 @@ class SendSeminarNotices extends Command
     private function send(Seminar $seminar, string $schedule, string $marker, string $method): void
     {
         $slot = $seminar->{$schedule};
-        $claimed = Seminar::query()->whereKey($seminar->id)
-            ->where($schedule, $slot)
-            ->whereIn('status', $schedule === 'starts_at' ? ['published'] : ['published', 'completed'])
-            ->where(function ($query) use ($marker, $schedule): void {
-                $query->whereNull($marker)->orWhereColumn($marker, '!=', $schedule);
-            })
-            ->update([$marker => $slot]);
+        DB::transaction(function () use ($seminar, $schedule, $marker, $method, $slot): void {
+            $current = Seminar::query()->lockForUpdate()->find($seminar->id);
+            if (! $current || ! $current->{$schedule}?->equalTo($slot)
+                || $current->{$marker}?->equalTo($slot)
+                || ! $this->isDue($current, $schedule, now())) {
+                return;
+            }
 
-        if ($claimed !== 1) {
-            return;
-        }
+            $current->forceFill([$marker => $slot])->save();
 
-        $dispatchFailure = null;
-        try {
-            DB::transaction(function () use ($seminar, $schedule, $marker, $method, $slot, &$dispatchFailure): void {
-                $current = Seminar::query()->lockForUpdate()->find($seminar->id);
-                if (! $current) {
-                    return;
-                }
-
-                $now = now();
-                $stillClaimed = $current->{$schedule}?->equalTo($slot)
-                    && $current->{$marker}?->equalTo($slot);
-                $due = $schedule === 'starts_at'
-                    ? $current->status === 'published' && $current->starts_at !== null
-                        && $current->starts_at->betweenIncluded($now, $now->copy()->addHour())
-                    : in_array($current->status, ['published', 'completed'], true)
-                        && $current->isExternalDelivery()
-                        && $current->external_link_visible_at !== null
-                        && $current->external_link_visible_at->lte($now)
-                        && $this->linkIsAvailable($current, $now);
-
-                if ($stillClaimed && $due) {
-                    try {
-                        $this->notices->{$method}($current);
-                    } catch (\Throwable $exception) {
-                        $dispatchFailure = $exception;
-                    }
-
-                    return;
-                }
-
-                if ($current->{$marker}?->equalTo($slot)) {
+            // Re-read after the claim because same-connection hooks may have changed the slot.
+            $current = Seminar::query()->lockForUpdate()->find($seminar->id);
+            if (! $current || ! $current->{$schedule}?->equalTo($slot)
+                || ! $current->{$marker}?->equalTo($slot)
+                || ! $this->isDue($current, $schedule, now())) {
+                if ($current && $current->{$marker}?->equalTo($slot)) {
                     $current->forceFill([$marker => null])->save();
                 }
-            });
-            if ($dispatchFailure) {
-                throw $dispatchFailure;
+
+                return;
             }
-        } catch (\Throwable $exception) {
-            Log::warning('Scheduled educational event notice dispatch failed', [
-                'seminar_id' => $seminar->id,
-                'notice' => $method,
-                'exception' => $exception,
-            ]);
-            Seminar::query()->whereKey($seminar->id)->where($marker, $slot)
-                ->update([$marker => null]);
+
+            try {
+                $this->notices->{$method}($current);
+            } catch (\Throwable $exception) {
+                Log::warning('Scheduled educational event notice dispatch failed', [
+                    'seminar_id' => $seminar->id,
+                    'notice' => $method,
+                    'exception' => $exception,
+                ]);
+                $current = Seminar::query()->lockForUpdate()->find($seminar->id);
+                if ($current && $current->{$marker}?->equalTo($slot)) {
+                    $current->forceFill([$marker => null])->save();
+                }
+            }
+        });
+    }
+
+    private function isDue(Seminar $seminar, string $schedule, \Illuminate\Support\Carbon $now): bool
+    {
+        if ($schedule === 'starts_at') {
+            return $seminar->status === 'published' && $seminar->starts_at !== null
+                && $seminar->starts_at->betweenIncluded($now, $now->copy()->addHour());
         }
+
+        return in_array($seminar->status, ['published', 'completed'], true)
+            && $seminar->isExternalDelivery()
+            && $seminar->external_link_visible_at !== null
+            && $seminar->external_link_visible_at->lte($now)
+            && $this->linkIsAvailable($seminar, $now);
     }
 
     private function linkIsAvailable(Seminar $seminar, \Illuminate\Support\Carbon $now): bool
