@@ -21,7 +21,7 @@ class SeminarDeliveryController extends Controller
     {
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
-        $this->delivery->update($seminar, $request->validated(), $request->user());
+        $this->delivery->update($seminar, $request->validated(), $request->user(), false);
 
         return back()->with('success', 'Event access details updated.');
     }

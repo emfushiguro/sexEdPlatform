@@ -188,3 +188,9 @@ The final fix could not be staged/committed because `.git` is read-only in the s
 ## Boundary
 
 The separate action rejects draft, pending-review, approved, cancelled, archived, native, and in-person events. Prepublication delivery edits remain in the existing authoring form and do not trigger this notice flow.
+
+## Review follow-up
+
+- Added a stale-request regression: a release-time update succeeds, then a second update based on the old route model tries to set custom expiry before the new release. RED accepted the invalid expiry; GREEN rejects it with 422 and preserves the valid row. The delivery service now checks the merged proposed values while holding the row lock, including the event-end release boundary.
+- Added an admin-with-connector-permission regression through the connector route. RED sent an organizer notice; GREEN sends none. Only the admin route passes the explicit admin-action context that includes the organizer. The existing admin-route test still confirms one notice after deduplication.
+- Combined Task 7 management/admin and Task 6 external-access suites: `OK (17 tests, 106 assertions)`. PHP syntax checks and `git diff --check` passed.

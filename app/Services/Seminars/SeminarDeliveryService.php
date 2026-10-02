@@ -13,7 +13,7 @@ class SeminarDeliveryService
 
     public function __construct(private readonly SeminarNoticeService $notices) {}
 
-    public function update(Seminar $seminar, array $data, User $actor): Seminar
+    public function update(Seminar $seminar, array $data, User $actor, bool $adminAction = false): Seminar
     {
         [$updated, $changed] = DB::transaction(function () use ($seminar, $data): array {
             $locked = Seminar::query()->lockForUpdate()->findOrFail($seminar->id);
@@ -21,6 +21,19 @@ class SeminarDeliveryService
             $data = array_intersect_key($data, array_flip(self::FIELDS));
             if (array_key_exists('external_link_expiry_mode', $data) && $data['external_link_expiry_mode'] !== 'custom') {
                 $data['external_link_expires_at'] = null;
+            }
+            $proposed = clone $locked;
+            $proposed->fill($data);
+            $release = $proposed->external_link_visible_at;
+            if ($proposed->external_link_expiry_mode === 'custom') {
+                abort_unless(
+                    $proposed->external_link_expires_at && $proposed->external_link_expires_at->gt($release ?? now()),
+                    422,
+                    'Link expiry must be after release.'
+                );
+            }
+            if ($proposed->external_link_expiry_mode === 'event_end' && $release) {
+                abort_unless($locked->ends_at && $release->lt($locked->ends_at), 422, 'Link release must be before event end.');
             }
             $changed = false;
             foreach ($data as $field => $value) {
@@ -41,7 +54,7 @@ class SeminarDeliveryService
 
         if ($changed) {
             try {
-                $this->notices->notifyDeliveryChanged($updated, $actor);
+                $this->notices->notifyDeliveryChanged($updated, $actor, $adminAction);
             } catch (\Throwable $exception) {
                 Log::warning('Seminar delivery notice dispatch failed', ['seminar_id' => $updated->id, 'exception' => $exception]);
             }

@@ -5,7 +5,9 @@ namespace Tests\Feature\Connectors;
 use App\Models\Seminar;
 use App\Models\User;
 use App\Notifications\Seminars\SeminarDeliveryNotification;
+use App\Services\Seminars\SeminarDeliveryService;
 use Illuminate\Support\Facades\Notification;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class SeminarDeliveryManagementTest extends TestCase
@@ -122,5 +124,61 @@ class SeminarDeliveryManagementTest extends TestCase
         ])->assertRedirect();
         $this->assertNull($seminar->fresh()->external_link_visible_at);
         $this->assertNull($seminar->fresh()->link_available_sent_for_visible_at);
+    }
+
+    public function test_stale_validated_expiry_update_cannot_cross_newer_release(): void
+    {
+        Notification::fake();
+        $owner = $this->createCompletedLearner();
+        $connector = $this->createVerifiedConnector($owner);
+        $release = now()->addHour()->startOfMinute();
+        $expiry = now()->addHours(4)->startOfMinute();
+        $seminar = $this->event($connector, [
+            'external_link_visible_at' => $release,
+            'external_link_expiry_mode' => 'custom',
+            'external_link_expires_at' => $expiry,
+        ]);
+        $staleRouteModel = $seminar->fresh();
+        $newRelease = now()->addHours(3)->startOfMinute();
+        $staleExpiry = now()->addHours(2)->startOfMinute();
+        $this->assertTrue($staleExpiry->gt($staleRouteModel->external_link_visible_at));
+        $this->assertTrue($newRelease->lt($staleRouteModel->external_link_expires_at));
+
+        $delivery = app(SeminarDeliveryService::class);
+        $delivery->update($seminar, ['external_link_visible_at' => $newRelease->toDateTimeString()], $owner);
+        try {
+            $delivery->update($staleRouteModel, ['external_link_expires_at' => $staleExpiry->toDateTimeString()], $owner);
+            $this->fail('The stale expiry update should be rejected against the locked row.');
+        } catch (HttpException $exception) {
+            $this->assertSame(422, $exception->getStatusCode());
+        }
+
+        $this->assertSame($newRelease->toDateTimeString(), $seminar->fresh()->external_link_visible_at->toDateTimeString());
+        $this->assertSame($expiry->toDateTimeString(), $seminar->fresh()->external_link_expires_at->toDateTimeString());
+    }
+
+    public function test_admin_using_connector_action_does_not_copy_organizer(): void
+    {
+        Notification::fake();
+        $owner = $this->createCompletedLearner();
+        $connector = $this->createVerifiedConnector($owner);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->assignRole('admin');
+        $role = $this->createCustomRole($connector, ['connector.manage_seminars']);
+        $connector->memberships()->create([
+            'user_id' => $admin->id,
+            'connector_role_id' => $role->id,
+            'status' => 'active',
+            'accepted_at' => now(),
+        ]);
+        $seminar = $this->event($connector);
+
+        $this->actingAs($admin)->put(route('connector.seminars.delivery.update', [$connector, $seminar]), [
+            'external_url' => 'https://zoom.example.test/new',
+            'external_link_expiry_mode' => 'ongoing',
+        ])->assertRedirect();
+
+        $this->assertSame('https://zoom.example.test/new', $seminar->fresh()->external_url);
+        Notification::assertNotSentTo($owner, SeminarDeliveryNotification::class);
     }
 }
