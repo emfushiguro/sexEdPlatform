@@ -3,7 +3,11 @@
 namespace Tests\Feature\Connectors;
 
 use App\Models\ActivityLog;
+use App\Services\Seminars\SeminarAttendanceService;
 use App\Services\Seminars\SeminarCodeAttendanceService;
+use App\Services\Seminars\SeminarManualAttendanceService;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class SeminarManualAttendanceTest extends TestCase
@@ -170,6 +174,135 @@ class SeminarManualAttendanceTest extends TestCase
         $this->assertSame('attended', $attendance->fresh()->status);
         $this->assertSame($markedAt, $attendance->fresh()->attended_at->timestamp);
         $this->assertSame($markedAt, $registrant->fresh()->attended_at->timestamp);
+    }
+
+    public function test_native_join_rereads_attendance_after_a_manual_correction(): void
+    {
+        [$owner, $connector, $seminar, $registrant] = $this->event([
+            'type' => 'webinar', 'event_format' => 'native',
+            'livestream_channel' => 'manual-race-channel', 'livestream_status' => 'live', 'livestream_started_at' => now(),
+        ]);
+        $seminar->attendances()->create([
+            'user_id' => $registrant->user_id, 'role' => 'audience', 'joined_at' => now()->subMinutes(2),
+            'total_seconds' => 60, 'status' => 'left', 'attendance_method' => 'native',
+        ]);
+
+        $applyCorrection = true;
+        DB::listen(function (QueryExecuted $query) use (&$applyCorrection, $owner, $seminar, $registrant): void {
+            $sql = strtolower($query->sql);
+            if (! $applyCorrection || ! str_contains($sql, 'seminar_registrants') || ! str_contains($sql, 'for update')) {
+                return;
+            }
+
+            $applyCorrection = false;
+            app(SeminarManualAttendanceService::class)->set(
+                $seminar,
+                $registrant,
+                $owner,
+                false,
+                'Host confirmed the participant was absent',
+            );
+        });
+
+        app(SeminarAttendanceService::class)->recordJoin($registrant->user, $seminar);
+
+        $attendance = $seminar->attendances()->where('user_id', $registrant->user_id)->firstOrFail();
+        $this->assertFalse($applyCorrection);
+        $this->assertSame('manual', $attendance->attendance_method);
+        $this->assertSame('not_present', $attendance->status);
+    }
+
+    public function test_unregistered_host_attendance_creation_locks_the_seminar(): void
+    {
+        [$owner, , $seminar] = $this->event([
+            'type' => 'webinar', 'event_format' => 'native',
+            'livestream_channel' => 'native-host-lock-channel', 'livestream_status' => 'live', 'livestream_started_at' => now(),
+        ]);
+
+        $queries = [];
+        DB::listen(function (QueryExecuted $query) use (&$queries): void {
+            $sql = strtolower($query->sql);
+            if (str_contains($sql, 'seminars') || str_contains($sql, 'seminar_attendances')) {
+                $queries[] = $sql;
+            }
+        });
+
+        app(SeminarAttendanceService::class)->recordJoin($owner, $seminar);
+
+        $seminarLock = null;
+        $attendanceLookup = null;
+        foreach ($queries as $index => $sql) {
+            if ($seminarLock === null && str_contains($sql, 'seminars') && str_contains($sql, 'for update')) {
+                $seminarLock = $index;
+            }
+            if (str_contains($sql, 'seminar_attendances')) {
+                $attendanceLookup = $index;
+                break;
+            }
+        }
+
+        $this->assertNotNull($seminarLock);
+        $this->assertNotNull($attendanceLookup);
+        $this->assertLessThan($attendanceLookup, $seminarLock);
+    }
+
+    public function test_native_attendance_creation_locks_registration_before_lookup(): void
+    {
+        [, , $seminar, $registrant] = $this->event([
+            'type' => 'webinar', 'event_format' => 'native',
+            'livestream_channel' => 'native-registration-lock-channel', 'livestream_status' => 'live', 'livestream_started_at' => now(),
+        ]);
+
+        $queries = [];
+        DB::listen(function (QueryExecuted $query) use (&$queries): void {
+            $sql = strtolower($query->sql);
+            if (str_contains($sql, 'seminar_registrants') || str_contains($sql, 'seminar_attendances')) {
+                $queries[] = ['sql' => $sql, 'transaction_level' => $query->connection->transactionLevel()];
+            }
+        });
+
+        app(SeminarAttendanceService::class)->recordJoin($registrant->user, $seminar);
+
+        $registrationLock = null;
+        $attendanceLookup = null;
+        foreach ($queries as $index => $query) {
+            if ($registrationLock === null && str_contains($query['sql'], 'seminar_registrants') && str_contains($query['sql'], 'for update')) {
+                $registrationLock = $index;
+            }
+            if (str_contains($query['sql'], 'seminar_attendances')) {
+                $attendanceLookup = $index;
+                break;
+            }
+        }
+
+        $this->assertNotNull($registrationLock);
+        $this->assertNotNull($attendanceLookup);
+        $this->assertLessThan($attendanceLookup, $registrationLock);
+        $this->assertStringContainsString('for update', $queries[$attendanceLookup]['sql']);
+        $this->assertGreaterThan(1, $queries[$registrationLock]['transaction_level']);
+    }
+
+    public function test_native_finalization_reads_attendance_in_bounded_batches(): void
+    {
+        [, , $seminar] = $this->event([
+            'type' => 'webinar', 'event_format' => 'native',
+            'livestream_channel' => 'native-finalize-batch-channel', 'livestream_status' => 'live', 'livestream_started_at' => now(),
+        ]);
+
+        $queries = [];
+        DB::listen(function (QueryExecuted $query) use (&$queries): void {
+            $sql = strtolower($query->sql);
+            if (str_contains($sql, 'seminar_attendances')) {
+                $queries[] = $sql;
+            }
+        });
+
+        app(SeminarAttendanceService::class)->finalize($seminar);
+
+        $this->assertNotEmpty($queries);
+        preg_match('/\blimit\s+(\d+)/i', $queries[0], $matches);
+        $this->assertNotEmpty($matches);
+        $this->assertLessThanOrEqual(1000, (int) $matches[1]);
     }
 
     public function test_external_completion_does_not_finalize_manual_duration(): void
