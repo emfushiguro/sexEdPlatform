@@ -22,11 +22,13 @@ class SeminarAttendanceRosterTest extends TestCase
         $codeParticipant = User::factory()->create(['name' => 'Code Participant', 'role' => 'learner']);
         $manualParticipant = User::factory()->create(['name' => 'Manual Participant', 'role' => 'learner']);
         $pendingParticipant = User::factory()->create(['name' => 'Pending Participant', 'role' => 'learner']);
+        $nativeParticipant = User::factory()->create(['name' => 'Native Participant', 'role' => 'learner']);
 
         $notSubmittedRegistration = $this->register($seminar, $notSubmitted);
         $codeRegistration = $this->register($seminar, $codeParticipant);
         $manualRegistration = $this->register($seminar, $manualParticipant);
         $pendingRegistration = $this->register($seminar, $pendingParticipant, 'pending');
+        $nativeRegistration = $this->register($seminar, $nativeParticipant);
         $seminar->attendances()->create([
             'user_id' => $codeParticipant->id,
             'role' => 'audience',
@@ -39,6 +41,15 @@ class SeminarAttendanceRosterTest extends TestCase
             'role' => 'audience',
             'status' => 'not_present',
             'attendance_method' => 'manual',
+        ]);
+        $seminar->attendances()->create([
+            'user_id' => $nativeParticipant->id,
+            'role' => 'audience',
+            'joined_at' => now()->subMinutes(20),
+            'left_at' => now()->subMinutes(5),
+            'total_seconds' => 900,
+            'status' => 'attended',
+            'attendance_method' => 'native',
         ]);
         $orphan = User::factory()->create(['name' => 'Unregistered Attendance', 'role' => 'learner']);
         $seminar->attendances()->create([
@@ -61,10 +72,12 @@ class SeminarAttendanceRosterTest extends TestCase
             ->assertSee('Attendance submitted')
             ->assertSee($manualParticipant->name)
             ->assertSee('Not present')
+            ->assertSee($nativeParticipant->name)
+            ->assertSee('Livestream')
             ->assertSee($pendingParticipant->name)
             ->assertDontSee($orphan->name);
         $page->assertViewHas('registrants', function (LengthAwarePaginator $registrants): bool {
-            $this->assertSame(26, $registrants->total());
+            $this->assertSame(27, $registrants->total());
             $this->assertSame(25, $registrants->perPage());
 
             return true;
@@ -73,6 +86,7 @@ class SeminarAttendanceRosterTest extends TestCase
         $page->assertSee(route('connector.seminars.attendance.manual', [$connector, $seminar, $notSubmittedRegistration]));
         $page->assertSee(route('connector.seminars.attendance.manual', [$connector, $seminar, $codeRegistration]));
         $page->assertSee(route('connector.seminars.attendance.manual', [$connector, $seminar, $manualRegistration]));
+        $page->assertSee(route('connector.seminars.attendance.manual', [$connector, $seminar, $nativeRegistration]));
 
         $secondPage = $this->actingAs($owner)->get(route('connector.seminars.attendance', [$connector, $seminar]).'?page=2');
         $secondPage->assertOk()->assertSee($fillers->last()->name);
@@ -87,12 +101,22 @@ class SeminarAttendanceRosterTest extends TestCase
             'name', 'email', 'participant type', 'registration status', 'attendance status',
             'method', 'attended at', 'joined at', 'left at', 'total minutes',
         ], fgetcsv($csvHandle));
+        $csvRows = [];
+        while (($row = fgetcsv($csvHandle)) !== false) {
+            $csvRows[] = $row;
+        }
         fclose($csvHandle);
         $this->assertStringContainsString($notSubmitted->email, $csv);
         $this->assertStringContainsString($codeParticipant->email, $csv);
         $this->assertStringContainsString($manualParticipant->email, $csv);
         $this->assertStringContainsString('not_present', $csv);
         $this->assertStringNotContainsString($orphan->email, $csv);
+        $nativeCsvRow = collect($csvRows)->first(fn (array $row): bool => $row[1] === $nativeParticipant->email);
+        $this->assertNotNull($nativeCsvRow);
+        $this->assertSame('registered', $nativeCsvRow[3]);
+        $this->assertSame('attended', $nativeCsvRow[4]);
+        $this->assertSame('native', $nativeCsvRow[5]);
+        $this->assertSame('15.00', $nativeCsvRow[9]);
     }
 
     public function test_admin_can_open_complete_roster_and_csv_but_learners_cannot(): void
