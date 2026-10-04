@@ -37,6 +37,7 @@ class SeminarBrowseController extends Controller
         return view('seminars.show', [
             'seminar' => $seminar->load(['connector', 'speakers.user']),
             'registration' => $this->registrations->activeRegistration($request->user(), $seminar),
+            'attendance' => $seminar->attendances()->where('user_id', $request->user()->id)->first(),
             'speakerApplication' => $seminar->speakers()->where('user_id', $request->user()->id)->whereIn('status', ['applied', 'accepted', 'rejected'])->first(),
             'canRegister' => $this->registrations->canRegister($request->user(), $seminar),
             'registrationError' => $this->registrations->registrationError($request->user(), $seminar),

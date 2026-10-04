@@ -391,6 +391,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/', [Admin\SeminarModerationController::class, 'index'])->name('index');
         Route::get('/{seminar}', [Admin\SeminarModerationController::class, 'show'])->name('show');
         Route::put('/{seminar}/delivery', [Admin\SeminarDeliveryController::class, 'update'])->name('delivery.update');
+        Route::get('/{seminar}/attendance', [Admin\SeminarAttendanceController::class, 'index'])->name('attendance');
+        Route::get('/{seminar}/attendance/export', [Admin\SeminarAttendanceController::class, 'export'])->name('attendance.export');
         Route::post('/{seminar}/attendance/code', [Admin\SeminarAttendanceController::class, 'generate'])->name('attendance.code.generate');
         Route::post('/{seminar}/attendance/code/disable', [Admin\SeminarAttendanceController::class, 'disable'])->name('attendance.code.disable');
         Route::post('/{seminar}/attendance/{registrant}/manual', [Admin\SeminarAttendanceController::class, 'manual'])->name('attendance.manual');

@@ -43,13 +43,21 @@ class EducationalEventDiscoveryTest extends TestCase
         $seminar->registrants()->create(['user_id' => $workspaceMember->id, 'status' => 'registered', 'participant_type' => 'learner', 'registered_at' => now()]);
         $seminar->registrants()->create(['user_id' => $pending->id, 'status' => 'pending', 'participant_type' => 'learner', 'registered_at' => now()]);
         $seminar->speakers()->create(['user_id' => $speaker->id, 'display_name' => $speaker->name, 'role' => 'speaker', 'status' => 'accepted']);
+        $seminar->attendances()->create([
+            'user_id' => $workspaceMember->id,
+            'role' => 'audience',
+            'status' => 'attended',
+            'attendance_method' => 'attendance_code',
+            'attended_at' => now(),
+        ]);
 
         $this->actingAs($registered)->get(route('seminars.show', $seminar))
             ->assertOk()->assertSee('Registered')->assertDontSee('Cancel Registration');
         $this->actingAs($speaker)->get(route('seminars.show', $seminar))->assertOk();
         $this->actingAs($owner)->get(route('seminars.show', $seminar))->assertOk();
         $this->actingAs($admin)->get(route('seminars.show', $seminar))->assertOk();
-        $this->actingAs($workspaceMember)->get(route('connector.seminars.show', [$connector, $seminar]))->assertOk();
+        $this->actingAs($workspaceMember)->get(route('connector.seminars.show', [$connector, $seminar]))
+            ->assertOk()->assertSee('Attendance submitted');
         $this->actingAs($pending)->get(route('seminars.show', $seminar))->assertForbidden();
         $this->actingAs($unrelated)->get(route('seminars.show', $seminar))->assertForbidden();
         $this->actingAs($registered)->get(route('seminars.index'))->assertOk()->assertDontSee($seminar->title);

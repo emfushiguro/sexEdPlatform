@@ -8,18 +8,46 @@ use App\Http\Requests\Seminars\SetSeminarAttendanceRequest;
 use App\Models\Seminar;
 use App\Models\SeminarRegistrant;
 use App\Services\Seminars\SeminarCodeAttendanceService;
+use App\Services\Seminars\SeminarExportService;
 use App\Services\Seminars\SeminarManualAttendanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SeminarAttendanceController extends Controller
 {
     public function __construct(
         private readonly SeminarCodeAttendanceService $codes,
+        private readonly SeminarExportService $exports,
         private readonly SeminarManualAttendanceService $manualAttendance,
     ) {}
+
+    public function index(Request $request, Seminar $seminar): View
+    {
+        $this->authorizeAdmin($request);
+
+        $registrants = $seminar->registrants()
+            ->with('user')
+            ->orderBy('registered_at')
+            ->orderBy('id')
+            ->paginate(25);
+        $attendances = $seminar->attendances()
+            ->whereIn('user_id', $registrants->getCollection()->pluck('user_id'))
+            ->get()
+            ->keyBy('user_id');
+
+        return view('admin.seminars.attendance', compact('seminar', 'registrants', 'attendances'));
+    }
+
+    public function export(Request $request, Seminar $seminar): StreamedResponse
+    {
+        $this->authorizeAdmin($request);
+
+        return $this->exports->attendanceCsv($seminar);
+    }
 
     public function generate(ManageSeminarCodeRequest $request, Seminar $seminar): RedirectResponse
     {

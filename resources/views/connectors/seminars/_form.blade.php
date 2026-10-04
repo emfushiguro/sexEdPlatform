@@ -4,6 +4,10 @@
     $deliveryLocked = $seminar->exists && ($seminar->isNativeDelivery() || $seminar->registrants()->exists());
     $selectedType = $deliveryLocked ? $seminar->type : old('type', $seminar->type ?? 'webinar');
     $selectedFormat = $deliveryLocked ? $seminar->event_format : old('event_format', $seminar->event_format ?? 'external');
+    $localStartsAt = $seminar->localStartsAt();
+    $localEndsAt = $seminar->localEndsAt();
+    $startsAtFormat = $localStartsAt && $localStartsAt->second !== 0 ? 'Y-m-d\TH:i:s' : 'Y-m-d\TH:i';
+    $endsAtFormat = $localEndsAt && $localEndsAt->second !== 0 ? 'Y-m-d\TH:i:s' : 'Y-m-d\TH:i';
     $fieldClass = 'mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500';
 @endphp
 
@@ -73,13 +77,13 @@
 
     <label class="block">
         <span class="text-sm font-semibold text-gray-700">Starts At (Philippine Time)</span>
-        <input type="datetime-local" name="starts_at" step="1" value="{{ old('starts_at', $seminar->localStartsAt()?->format('Y-m-d\TH:i:s')) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+        <input type="datetime-local" name="starts_at" step="1" value="{{ old('starts_at', $localStartsAt?->format($startsAtFormat)) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
         @error('starts_at') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
     </label>
 
     <label class="block">
         <span class="text-sm font-semibold text-gray-700">Ends At (Philippine Time)</span>
-        <input type="datetime-local" name="ends_at" step="1" value="{{ old('ends_at', $seminar->localEndsAt()?->format('Y-m-d\TH:i:s')) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+        <input type="datetime-local" name="ends_at" step="1" value="{{ old('ends_at', $localEndsAt?->format($endsAtFormat)) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
         @error('ends_at') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
     </label>
 

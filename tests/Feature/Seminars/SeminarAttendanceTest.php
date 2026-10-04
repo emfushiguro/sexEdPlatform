@@ -122,6 +122,7 @@ class SeminarAttendanceTest extends TestCase
         $seminar = $this->seminar($connector);
         $otherSeminar = $this->seminar($otherConnector, ['title' => 'Other']);
         $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $this->register($seminar, $learner);
         $attendance = $seminar->attendances()->create([
             'user_id' => $learner->id,
             'joined_at' => now()->subMinutes(6),
@@ -155,6 +156,7 @@ class SeminarAttendanceTest extends TestCase
         $seminar = $this->seminar($connector);
         $otherSeminar = $this->seminar($otherConnector, ['title' => 'Other']);
         $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $this->register($seminar, $learner);
 
         $seminar->attendances()->create([
             'user_id' => $learner->id,

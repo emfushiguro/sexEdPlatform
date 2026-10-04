@@ -14,7 +14,9 @@ use App\Services\Seminars\SeminarAccessService;
 use App\Services\Seminars\SeminarAttendanceService;
 use App\Services\Seminars\SeminarCategoryService;
 use App\Services\Seminars\SeminarDiscoveryService;
+use App\Services\Seminars\SeminarExternalAccessService;
 use App\Services\Seminars\SeminarLifecycleService;
+use App\Services\Seminars\SeminarRegistrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -79,13 +81,19 @@ class SeminarController extends Controller
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
         if (! $this->access->canManageConnectorSeminars($request->user(), $connector)) {
             abort_unless($this->discovery->canView($request->user(), $seminar), 403);
+            $registrations = app(SeminarRegistrationService::class);
+            $externalAccess = app(SeminarExternalAccessService::class);
 
             return view('seminars.show', [
                 'seminar' => $seminar->load(['connector', 'speakers.user']),
-                'registration' => app(\App\Services\Seminars\SeminarRegistrationService::class)->activeRegistration($request->user(), $seminar),
-                'canRegister' => app(\App\Services\Seminars\SeminarRegistrationService::class)->canRegister($request->user(), $seminar),
-                'registrationError' => app(\App\Services\Seminars\SeminarRegistrationService::class)->registrationError($request->user(), $seminar),
+                'registration' => $registrations->activeRegistration($request->user(), $seminar),
+                'attendance' => $seminar->attendances()->where('user_id', $request->user()->id)->first(),
+                'speakerApplication' => $seminar->speakers()->where('user_id', $request->user()->id)->whereIn('status', ['applied', 'accepted', 'rejected'])->first(),
+                'canRegister' => $registrations->canRegister($request->user(), $seminar),
+                'registrationError' => $registrations->registrationError($request->user(), $seminar),
                 'canJoinLivestream' => false,
+                'canJoinExternal' => $seminar->isExternalDelivery() && $externalAccess->canJoin($request->user(), $seminar),
+                'externalJoinMessage' => $seminar->isExternalDelivery() ? $externalAccess->messageFor($request->user(), $seminar) : null,
             ]);
         }
 

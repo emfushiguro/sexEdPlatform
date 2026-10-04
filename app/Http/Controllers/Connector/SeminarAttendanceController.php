@@ -33,10 +33,21 @@ class SeminarAttendanceController extends Controller
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
 
+        $registrants = $seminar->registrants()
+            ->with('user')
+            ->orderBy('registered_at')
+            ->orderBy('id')
+            ->paginate(25);
+        $attendances = $seminar->attendances()
+            ->whereIn('user_id', $registrants->getCollection()->pluck('user_id'))
+            ->get()
+            ->keyBy('user_id');
+
         return view('connectors.seminars.attendance', [
             'connector' => $connector,
             'seminar' => $seminar,
-            'attendances' => $seminar->attendances()->with('user')->latest('updated_at')->paginate(25),
+            'registrants' => $registrants,
+            'attendances' => $attendances,
         ]);
     }
 
