@@ -5,6 +5,8 @@ namespace Tests\Feature\Seminars;
 use App\Models\Seminar;
 use App\Models\User;
 use App\Services\Seminars\SeminarCodeAttendanceService;
+use Illuminate\Cache\RateLimiter as CacheRateLimiter;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -170,6 +172,35 @@ class SeminarCodeAttendanceTest extends TestCase
         }
         $person = $this->registeredLearner($event);
         $this->actingAs($person)->post(route('seminars.attendance.code.submit', $event), ['code' => '00000000'])->assertStatus(429);
+    }
+
+    public function test_wrong_code_counter_survives_attendance_rollback_with_database_cache(): void
+    {
+        [, , $seminar, $learner] = $this->setupEvent();
+        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, null, null);
+        $originalStore = config('cache.default');
+        $originalLimiter = RateLimiter::getFacadeRoot();
+        $userKey = "seminar-code:{$seminar->id}:{$learner->id}";
+        $ipKey = 'seminar-code-ip:'.hash('sha256', '127.0.0.1');
+
+        try {
+            config()->set('cache.default', 'database');
+            RateLimiter::swap(new CacheRateLimiter(Cache::store('database')));
+            $this->actingAs($learner)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code === '00000000' ? '11111111' : '00000000'])
+                ->assertSessionHasErrors('code');
+
+            $this->assertSame(1, RateLimiter::attempts($userKey));
+            $this->assertSame(1, RateLimiter::attempts($ipKey));
+            $this->assertSame(0, $seminar->attendances()->where('user_id', $learner->id)->count());
+            $this->actingAs($learner)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code])->assertSessionHas('success');
+            $this->assertSame(0, RateLimiter::attempts($userKey));
+            $this->assertSame(0, RateLimiter::attempts($ipKey));
+        } finally {
+            RateLimiter::clear($userKey);
+            RateLimiter::clear($ipKey);
+            config()->set('cache.default', $originalStore);
+            RateLimiter::swap($originalLimiter);
+        }
     }
 
     private function setupEvent(array $overrides = []): array

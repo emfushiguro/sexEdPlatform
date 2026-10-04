@@ -54,7 +54,7 @@ class SeminarCodeAttendanceService
         $ipKey = 'seminar-code-ip:'.hash('sha256', $ip);
         abort_if(RateLimiter::tooManyAttempts($userKey, 5) || RateLimiter::tooManyAttempts($ipKey, 20), 429);
 
-        $attendance = DB::transaction(function () use ($user, $seminar, $code, $userKey, $ipKey): SeminarAttendance {
+        $attendance = DB::transaction(function () use ($user, $seminar, $code): ?SeminarAttendance {
             $current = Seminar::query()->lockForUpdate()->findOrFail($seminar->id);
             if (! $this->canSubmit($current)) {
                 throw ValidationException::withMessages(['code' => 'Attendance code is unavailable.']);
@@ -81,9 +81,7 @@ class SeminarCodeAttendanceService
             }
 
             if (! Hash::check($code, $current->attendance_code_hash)) {
-                RateLimiter::hit($userKey, 600);
-                RateLimiter::hit($ipKey, 600);
-                throw ValidationException::withMessages(['code' => 'The attendance code is incorrect.']);
+                return null;
             }
 
             $attendedAt = now();
@@ -98,11 +96,18 @@ class SeminarCodeAttendanceService
                 ]);
             }
             $registrant->update(['attended_at' => $attendedAt]);
-            RateLimiter::clear($userKey);
-            RateLimiter::clear($ipKey);
 
             return $attendance;
         });
+
+        if ($attendance === null) {
+            RateLimiter::hit($userKey, 600);
+            RateLimiter::hit($ipKey, 600);
+            throw ValidationException::withMessages(['code' => 'The attendance code is incorrect.']);
+        }
+
+        RateLimiter::clear($userKey);
+        RateLimiter::clear($ipKey);
 
         return $attendance;
     }
