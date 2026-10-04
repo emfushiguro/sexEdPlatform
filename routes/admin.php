@@ -393,6 +393,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::put('/{seminar}/delivery', [Admin\SeminarDeliveryController::class, 'update'])->name('delivery.update');
         Route::post('/{seminar}/attendance/code', [Admin\SeminarAttendanceController::class, 'generate'])->name('attendance.code.generate');
         Route::post('/{seminar}/attendance/code/disable', [Admin\SeminarAttendanceController::class, 'disable'])->name('attendance.code.disable');
+        Route::post('/{seminar}/attendance/{registrant}/manual', [Admin\SeminarAttendanceController::class, 'manual'])->name('attendance.manual');
         Route::post('/{seminar}/approve', [Admin\SeminarModerationController::class, 'approve'])->name('approve');
         Route::post('/{seminar}/reject', [Admin\SeminarModerationController::class, 'reject'])->name('reject');
         Route::post('/{seminar}/cancel', [Admin\SeminarModerationController::class, 'cancel'])->name('cancel');

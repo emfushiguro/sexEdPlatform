@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Seminars\ManageSeminarCodeRequest;
+use App\Http\Requests\Seminars\SetSeminarAttendanceRequest;
 use App\Models\Seminar;
+use App\Models\SeminarRegistrant;
 use App\Services\Seminars\SeminarCodeAttendanceService;
+use App\Services\Seminars\SeminarManualAttendanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -13,7 +16,10 @@ use Illuminate\Support\Facades\Crypt;
 
 class SeminarAttendanceController extends Controller
 {
-    public function __construct(private readonly SeminarCodeAttendanceService $codes) {}
+    public function __construct(
+        private readonly SeminarCodeAttendanceService $codes,
+        private readonly SeminarManualAttendanceService $manualAttendance,
+    ) {}
 
     public function generate(ManageSeminarCodeRequest $request, Seminar $seminar): RedirectResponse
     {
@@ -30,6 +36,15 @@ class SeminarAttendanceController extends Controller
         $this->codes->disable($seminar);
 
         return back()->with('success', 'Attendance code disabled.');
+    }
+
+    public function manual(SetSeminarAttendanceRequest $request, Seminar $seminar, SeminarRegistrant $registrant): RedirectResponse
+    {
+        $this->authorizeAdmin($request);
+        $data = $request->validated();
+        $this->manualAttendance->set($seminar, $registrant, $request->user(), (bool) $data['attended'], $data['reason'] ?? null);
+
+        return back()->with('success', 'Attendance updated.');
     }
 
     private function authorizeAdmin(Request $request): void

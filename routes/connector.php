@@ -17,8 +17,8 @@ use App\Http\Controllers\Connector\NotificationController;
 use App\Http\Controllers\Connector\RegistrationController;
 use App\Http\Controllers\Connector\RoleController;
 use App\Http\Controllers\Connector\SeminarAttendanceController;
-use App\Http\Controllers\Connector\SeminarDeliveryController;
 use App\Http\Controllers\Connector\SeminarController;
+use App\Http\Controllers\Connector\SeminarDeliveryController;
 use App\Http\Controllers\Connector\SeminarInteractionController;
 use App\Http\Controllers\Connector\SeminarLivestreamController;
 use App\Http\Controllers\Connector\SeminarRegistrantController;
@@ -104,6 +104,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connector/{connector}/seminars/{seminar}/attendance', [SeminarAttendanceController::class, 'index'])->name('connector.seminars.attendance');
     Route::post('/connector/{connector}/seminars/{seminar}/attendance/code', [SeminarAttendanceController::class, 'generate'])->name('connector.seminars.attendance.code.generate');
     Route::post('/connector/{connector}/seminars/{seminar}/attendance/code/disable', [SeminarAttendanceController::class, 'disable'])->name('connector.seminars.attendance.code.disable');
+    Route::post('/connector/{connector}/seminars/{seminar}/attendance/{registrant}/manual', [SeminarAttendanceController::class, 'manual'])->name('connector.seminars.attendance.manual');
     Route::get('/connector/{connector}/seminars/{seminar}/attendance/export', [SeminarAttendanceController::class, 'export'])->name('connector.seminars.attendance.export');
 
     Route::get('/connector/{connector}/members', [MemberController::class, 'index'])->name('connector.members.index');

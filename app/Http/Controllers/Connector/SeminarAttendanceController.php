@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Connector;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Seminars\ManageSeminarCodeRequest;
+use App\Http\Requests\Seminars\SetSeminarAttendanceRequest;
 use App\Models\Connector;
 use App\Models\Seminar;
+use App\Models\SeminarRegistrant;
 use App\Services\Seminars\SeminarAccessService;
 use App\Services\Seminars\SeminarCodeAttendanceService;
 use App\Services\Seminars\SeminarExportService;
+use App\Services\Seminars\SeminarManualAttendanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -22,6 +25,7 @@ class SeminarAttendanceController extends Controller
         private readonly SeminarAccessService $access,
         private readonly SeminarExportService $exports,
         private readonly SeminarCodeAttendanceService $codes,
+        private readonly SeminarManualAttendanceService $manualAttendance,
     ) {}
 
     public function index(Request $request, Connector $connector, Seminar $seminar): View
@@ -61,5 +65,15 @@ class SeminarAttendanceController extends Controller
         $this->codes->disable($seminar);
 
         return back()->with('success', 'Attendance code disabled.');
+    }
+
+    public function manual(SetSeminarAttendanceRequest $request, Connector $connector, Seminar $seminar, SeminarRegistrant $registrant): RedirectResponse
+    {
+        $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
+        $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
+        $data = $request->validated();
+        $this->manualAttendance->set($seminar, $registrant, $request->user(), (bool) $data['attended'], $data['reason'] ?? null);
+
+        return back()->with('success', 'Attendance updated.');
     }
 }

@@ -19,12 +19,15 @@ class SeminarAttendanceService
             ['status' => 'registered', 'total_seconds' => 0, 'attendance_method' => 'native']
         );
 
-        $attendance->update([
+        $updates = [
             'joined_at' => now(),
             'left_at' => null,
-            'status' => $attendance->attendance_method === 'manual' ? $attendance->status : 'joined',
             'role' => $this->tokens->roleFor($user, $seminar),
-        ]);
+        ];
+        if ($attendance->attendance_method !== 'manual') {
+            $updates['status'] = 'joined';
+        }
+        $attendance->update($updates);
 
         return $attendance->fresh();
     }
@@ -39,11 +42,14 @@ class SeminarAttendanceService
         );
 
         $elapsed = $attendance->joined_at ? $attendance->joined_at->diffInSeconds(now()) : 0;
-        $attendance->update([
+        $updates = [
             'joined_at' => now(),
             'total_seconds' => (int) $attendance->total_seconds + $elapsed,
-            'status' => $attendance->attendance_method === 'manual' ? $attendance->status : $this->statusForSeconds((int) $attendance->total_seconds + $elapsed, true),
-        ]);
+        ];
+        if ($attendance->attendance_method !== 'manual') {
+            $updates['status'] = $this->statusForSeconds($updates['total_seconds'], true);
+        }
+        $attendance->update($updates);
 
         return $attendance->fresh();
     }
@@ -59,11 +65,14 @@ class SeminarAttendanceService
         $elapsed = $attendance->joined_at ? $attendance->joined_at->diffInSeconds(now()) : 0;
         $total = (int) $attendance->total_seconds + $elapsed;
 
-        $attendance->update([
+        $updates = [
             'left_at' => now(),
             'total_seconds' => $total,
-            'status' => $attendance->attendance_method === 'manual' ? $attendance->status : $this->statusForSeconds($total, false),
-        ]);
+        ];
+        if ($attendance->attendance_method !== 'manual') {
+            $updates['status'] = $this->statusForSeconds($total, false);
+        }
+        $attendance->update($updates);
 
         return $attendance->fresh();
     }
@@ -85,11 +94,14 @@ class SeminarAttendanceService
                 $total += $attendance->joined_at->diffInSeconds(now());
             }
 
-            $attendance->update([
+            $updates = [
                 'left_at' => $attendance->left_at ?? now(),
                 'total_seconds' => $total,
-                'status' => $attendance->attendance_method === 'manual' ? $attendance->status : $this->statusForSeconds($total, false),
-            ]);
+            ];
+            if ($attendance->attendance_method !== 'manual') {
+                $updates['status'] = $this->statusForSeconds($total, false);
+            }
+            $attendance->update($updates);
         });
     }
 

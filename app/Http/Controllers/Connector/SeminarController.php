@@ -207,7 +207,9 @@ class SeminarController extends Controller
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
 
         $seminar = $this->lifecycle->complete($seminar, $request->user());
-        $this->attendance->finalize($seminar);
+        if ($seminar->isNativeDelivery()) {
+            $this->attendance->finalize($seminar);
+        }
 
         return back()->with('success', 'Seminar marked completed.');
     }
