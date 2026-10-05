@@ -13,6 +13,13 @@
 - GREEN: `php vendor/bin/phpunit --do-not-cache-result tests/Feature/Connectors/EducationalEventFormTest.php tests/Feature/Connectors/EducationalEventAuthoringTest.php tests/Feature/Connectors/ConnectorSeminarManagementTest.php` passed: 32 tests, 201 assertions.
 - `git diff --check` passed.
 
+## Review follow-up
+
+- Preserved seconds in start/end datetime-local inputs (`step="1"`) so editing a registered event does not alter immutable timestamps when changing unrelated fields.
+- Added a registered-event regression covering second-precision display and an unrelated description update.
+- Focused form + authoring verification passed: 13 tests, 119 assertions.
+- `git diff --check` passed.
+
 ## Scope note
 
 The feature tests check rendered markup and server behavior. They do not drive Alpine interactions in a browser; the form uses `x-model`, `x-show`, and conditional `:disabled` bindings for those interactions.
