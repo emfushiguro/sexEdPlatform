@@ -1,8 +1,8 @@
 # Connector Module Marketplace and Organization Learning Library Design
 
-**Date:** 2026-10-05  
-**Status:** Approved design  
-**Scope:** Connector marketplace purchase, organization entitlement, seat assignment, and reuse of the existing learner module experience
+- **Date:** 2026-10-05
+- **Status:** Approved design
+- **Scope:** Connector marketplace purchase, organization entitlement, seat assignment, and reuse of the existing learner module experience
 
 ## 1. Purpose, Scope, and Success Criteria
 
@@ -604,4 +604,3 @@ That future layer may decide whether a Connector can initiate a purchase or may 
 | Non-refundable by default | Versioned checkout acceptance and refund guard | Checkout/refund-scope test |
 | No Connector subscription dependency | No subscription FK/service lookup | Architecture/schema test |
 | Existing systems remain functional | Existing focused suites plus full regression | Regression commands in implementation plan |
-
