@@ -99,6 +99,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         ->parameters(['learning-paths' => 'learningPath']);
 
     Route::resource('modules', Instructor\ModuleController::class);
+    Route::put('modules/{module}/marketplace', [Instructor\ModuleMarketplaceListingController::class, 'update'])
+        ->name('modules.marketplace.update');
+    Route::delete('modules/{module}/marketplace', [Instructor\ModuleMarketplaceListingController::class, 'destroy'])
+        ->name('modules.marketplace.destroy');
+    Route::post('modules/{listing}/marketplace/suspend', [Instructor\ModuleMarketplaceListingController::class, 'suspend'])
+        ->name('modules.marketplace.suspend');
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
         ->name('modules.activate');
     Route::patch('modules/{module}/deactivate', [Instructor\ModuleController::class, 'deactivate'])

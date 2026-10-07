@@ -98,6 +98,10 @@ Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'permissio
 
     // Module Management
     Route::resource('modules', Instructor\ModuleController::class);
+    Route::put('modules/{module}/marketplace', [Instructor\ModuleMarketplaceListingController::class, 'update'])
+        ->name('modules.marketplace.update');
+    Route::delete('modules/{module}/marketplace', [Instructor\ModuleMarketplaceListingController::class, 'destroy'])
+        ->name('modules.marketplace.destroy');
     Route::post('modules/{module}/review/submit', [Instructor\ModuleReviewController::class, 'submit'])
         ->name('modules.review.submit');
     Route::post('modules/{module}/review/resubmit', [Instructor\ModuleReviewController::class, 'resubmit'])
