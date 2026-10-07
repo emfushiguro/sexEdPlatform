@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\Monetization\ModuleSaleLedgerService;
+use App\Services\Modules\ModuleAccessService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,6 +21,7 @@ class ModulePurchaseService
         private readonly PayMongoPaymentLinkService $payMongoPaymentLinkService,
         private readonly ModuleSaleLedgerService $moduleSaleLedgerService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
+        private readonly ModuleAccessService $moduleAccessService,
     ) {
     }
 
@@ -290,7 +292,16 @@ class ModulePurchaseService
             }
 
             if ($module) {
+                $this->moduleAccessService->grantIndividualPurchase($purchase);
                 $this->ensureEnrollmentAfterPurchase($payment->user_id, $module);
+
+                $enrollment = ModuleEnrollment::query()
+                    ->where('user_id', $payment->user_id)
+                    ->where('module_id', $module->id)
+                    ->first();
+                if ($enrollment) {
+                    $this->moduleAccessService->grantDirectEnrollment($enrollment);
+                }
             }
 
             try {

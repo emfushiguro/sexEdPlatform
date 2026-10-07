@@ -4,17 +4,23 @@ namespace App\Http\Controllers\Instructor;
 
 use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
+use App\Models\ModuleAccessGrant;
 use App\Models\ModuleEnrollment;
 use App\Models\ParentChildAccount;
 use App\Models\QuizAttempt;
 use App\Models\UserProgress;
 use App\Models\User;
+use App\Services\Modules\ModuleAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly ModuleAccessService $moduleAccessService)
+    {
+    }
+
     /**
      * Display a listing of learners enrolled in instructor-owned modules.
      */
@@ -219,17 +225,26 @@ class UserController extends Controller
 
         abort_unless($hasInstructorEnrollment, 403);
 
-        ModuleEnrollment::query()
+        $enrollments = ModuleEnrollment::query()
             ->where('user_id', $user->id)
             ->whereHas('module', fn ($query) => $query->where('created_by', $instructorId))
             ->whereIn('status', [EnrollmentStatus::Pending->value, EnrollmentStatus::Approved->value])
-            ->update([
+            ->get();
+
+        foreach ($enrollments as $enrollment) {
+            $enrollment->update([
                 'status' => EnrollmentStatus::Rejected->value,
                 'rejection_reason_code' => 'other',
                 'rejection_reason_note' => 'Archived by instructor from learner list.',
                 'rejected_by_instructor_id' => $instructorId,
                 'rejected_at' => now(),
             ]);
+            $this->moduleAccessService->deactivateSource(
+                ModuleAccessGrant::SOURCE_DIRECT_ENROLLMENT,
+                (int) $enrollment->id,
+                'archived',
+            );
+        }
 
         return redirect()->route('instructor.users.index')
             ->with('success', 'Learner archived from your active roster.');

@@ -6,18 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Instructor\RejectEnrollmentRequest;
 use App\Enums\EnrollmentStatus;
 use App\Models\Module;
+use App\Models\ModuleAccessGrant;
 use App\Models\ModuleEnrollment;
 use App\Models\UserProgress;
 use App\Notifications\Learner\EnrollmentApprovedNotification;
 use App\Notifications\Learner\EnrollmentRejectedNotification;
 use App\Services\Content\ContentOwnershipGuard;
+use App\Services\Modules\ModuleAccessService;
 use App\Support\ContentPanelContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class EnrollmentController extends Controller
 {
-    public function __construct(private readonly ContentOwnershipGuard $ownershipGuard)
+    public function __construct(
+        private readonly ContentOwnershipGuard $ownershipGuard,
+        private readonly ModuleAccessService $moduleAccessService,
+    )
     {
     }
 
@@ -238,6 +243,10 @@ class EnrollmentController extends Controller
             'rejected_by_instructor_id' => null,
             'rejected_at' => null,
         ]);
+        $this->moduleAccessService->activateSource(
+            ModuleAccessGrant::SOURCE_DIRECT_ENROLLMENT,
+            (int) $enrollment->id,
+        );
 
         $enrollment->user->notify(new EnrollmentApprovedNotification($enrollment));
 
@@ -290,6 +299,11 @@ class EnrollmentController extends Controller
             'rejected_by_instructor_id' => $instructor?->id,
             'rejected_at' => now(),
         ]);
+        $this->moduleAccessService->deactivateSource(
+            ModuleAccessGrant::SOURCE_DIRECT_ENROLLMENT,
+            (int) $enrollment->id,
+            'rejected',
+        );
 
         $enrollment->user->notify(new EnrollmentRejectedNotification($enrollment, $instructorName));
 
@@ -328,6 +342,11 @@ class EnrollmentController extends Controller
             'rejected_by_instructor_id' => Auth::id(),
             'rejected_at' => now(),
         ]);
+        $this->moduleAccessService->deactivateSource(
+            ModuleAccessGrant::SOURCE_DIRECT_ENROLLMENT,
+            (int) $enrollment->id,
+            'archived',
+        );
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Enrollment archived successfully.']);

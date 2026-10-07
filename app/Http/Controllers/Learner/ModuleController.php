@@ -21,6 +21,7 @@ use App\Notifications\Parent\ChildEnrollmentApprovalRequestedNotification;
 use App\Services\GamificationService;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\ModulePurchaseService;
+use App\Services\Modules\ModuleAccessService;
 use App\Services\LearnerModuleCompletionService;
 use App\Services\Content\AdminOwnershipDisplayService;
 use Illuminate\Http\Request;
@@ -34,6 +35,7 @@ class ModuleController extends Controller
         private readonly GamificationService $gamificationService,
         private readonly AdminOwnershipDisplayService $ownershipDisplayService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
+        private readonly ModuleAccessService $moduleAccessService,
     ) {
     }
 
@@ -501,6 +503,7 @@ class ModuleController extends Controller
                 'status'      => EnrollmentStatus::PendingParentApproval,
                 'enrolled_at' => null,
             ]);
+            $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
             $enrollment->loadMissing('module');
 
@@ -530,12 +533,13 @@ class ModuleController extends Controller
                 ->count() >= $effectiveEnrollmentLimit;
 
         if ($isAtCapacity) {
-            ModuleEnrollment::create([
+            $enrollment = ModuleEnrollment::create([
                 'user_id' => $user->id,
                 'module_id' => $module->id,
                 'status' => EnrollmentStatus::Pending,
                 'enrolled_at' => null,
             ]);
+            $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
             return redirect()->route('learner.modules.index')
                 ->with('success', 'Module capacity has been reached. Your enrollment is queued for manual review.');
@@ -544,24 +548,26 @@ class ModuleController extends Controller
         // Check enrollment mode
         if ($module->enrollment_mode === 'manual') {
             // Manual approval - create pending enrollment
-            ModuleEnrollment::create([
+            $enrollment = ModuleEnrollment::create([
                 'user_id' => $user->id,
                 'module_id' => $module->id,
                 'status' => EnrollmentStatus::Pending,
                 'enrolled_at' => null,
             ]);
+            $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
             return redirect()->route('learner.modules.index')
                 ->with('success', 'Your enrollment request has been submitted. Please wait for instructor approval.');
         }
 
         // Auto approval - create approved enrollment
-        ModuleEnrollment::create([
+        $enrollment = ModuleEnrollment::create([
             'user_id' => $user->id,
             'module_id' => $module->id,
             'status' => EnrollmentStatus::Approved,
             'enrolled_at' => now(),
         ]);
+        $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
         return redirect()->route('learner.modules.show', $module)
             ->with('success', 'Successfully enrolled in module!');
@@ -637,6 +643,7 @@ class ModuleController extends Controller
                     'status' => EnrollmentStatus::PendingParentApproval,
                     'enrolled_at' => null,
                 ]);
+                $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
                 $enrollment->loadMissing('module');
 

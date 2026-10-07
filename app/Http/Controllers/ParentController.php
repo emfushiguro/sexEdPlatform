@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\EnrollmentStatus;
 use App\Http\Requests\Parent\RejectEnrollmentRequest;
 use App\Models\ParentChildAccount;
+use App\Models\ModuleAccessGrant;
 use App\Models\ModuleEnrollment;
 use App\Models\QuizAttempt;
 use App\Models\User;
@@ -13,13 +14,17 @@ use App\Notifications\Learner\ParentEnrollmentRejectedNotification;
 use App\Notifications\Parent\ChildEnrollmentApprovedNotification;
 use App\Notifications\Parent\ChildEnrollmentRejectedNotification;
 use App\Services\ParentChildService;
+use App\Services\Modules\ModuleAccessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class ParentController extends Controller
 {
-    public function __construct(private ParentChildService $service) {}
+    public function __construct(
+        private ParentChildService $service,
+        private ModuleAccessService $moduleAccessService,
+    ) {}
 
     public function show(User $child)
     {
@@ -288,6 +293,10 @@ class ParentController extends Controller
             'rejection_reason_note' => null,
             'rejected_at' => null,
         ]);
+        $this->moduleAccessService->activateSource(
+            ModuleAccessGrant::SOURCE_DIRECT_ENROLLMENT,
+            (int) $enrollment->id,
+        );
 
         $freshEnrollment = $enrollment->fresh(['module']);
         $child->notify(new ParentEnrollmentApprovedNotification($freshEnrollment, $parent));
@@ -339,6 +348,11 @@ class ParentController extends Controller
             'rejection_reason_note' => $normalizedReason,
             'rejected_at' => now(),
         ]);
+        $this->moduleAccessService->deactivateSource(
+            ModuleAccessGrant::SOURCE_DIRECT_ENROLLMENT,
+            (int) $enrollment->id,
+            'guardian_rejected',
+        );
 
         $freshEnrollment = $enrollment->fresh(['module']);
         $child->notify(new ParentEnrollmentRejectedNotification($freshEnrollment, $parent, $normalizedReason));
