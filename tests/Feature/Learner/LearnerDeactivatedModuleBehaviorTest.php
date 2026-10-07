@@ -48,11 +48,11 @@ class LearnerDeactivatedModuleBehaviorTest extends TestCase
 
         $this->actingAs($learner)
             ->get(route('learner.lessons.show', $lesson))
-            ->assertRedirect(route('learner.modules.show', $module));
+            ->assertForbidden();
 
         $this->actingAs($learner)
             ->get(route('quizzes.start', $quiz))
-            ->assertRedirect(route('learner.modules.show', $module));
+            ->assertForbidden();
     }
 
     /**

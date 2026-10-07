@@ -13,6 +13,7 @@ use App\Notifications\Instructor\QuizAttemptActivityNotification;
 use App\Services\GamificationService;
 use App\Services\LearnerModuleCompletionService;
 use App\Services\Learning\QuestionEvaluator;
+use App\Services\Modules\ModuleAccessService;
 use App\Services\SubscriptionService;
 use App\Support\SubscriptionFeatureKeys;
 use Carbon\Carbon;
@@ -28,6 +29,7 @@ class QuizController extends Controller
         private SubscriptionService $subscriptionService,
         private LearnerModuleCompletionService $completionService,
         private QuestionEvaluator $questionEvaluator,
+        private ModuleAccessService $moduleAccessService,
     ) {}
 
     /**
@@ -47,18 +49,8 @@ class QuizController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // Check enrollment
-        $moduleId = $quiz->module_id ?? $quiz->lesson?->module_id;
-        if (!$user->moduleEnrollments()->where('module_id', $moduleId)->exists()) {
-            return redirect()->route('learner.modules.show', $moduleId)
-                ->with('error', 'You must enroll in the module first.');
-        }
-
-        $module = Module::find($moduleId);
-        if ($module && !$module->isLearnerVisible()) {
-            return redirect()->route('learner.modules.show', $module)
-                ->with('error', 'This module is currently deactivated. Quiz attempts are temporarily unavailable.');
-        }
+        $module = $this->authorizeQuizAccess($quiz, $user);
+        $moduleId = $module->id;
 
         if (!$this->canStartAttempt($quiz, $user->id)) {
             $latestAttempt = QuizAttempt::where('quiz_id', $quiz->id)
@@ -105,6 +97,9 @@ class QuizController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
+        $module = $this->authorizeQuizAccess($quiz, $user);
+        $moduleId = $module->id;
+
         if (!$this->canStartAttempt($quiz, $user->id)) {
             $latestAttempt = QuizAttempt::where('quiz_id', $quiz->id)
                 ->where('user_id', $user->id)
@@ -128,18 +123,6 @@ class QuizController extends Controller
         $request->validate([
             'answers' => $expired ? 'nullable|array' : 'required|array',
         ]);
-
-        // Verify enrollment
-        $moduleId = $quiz->module_id ?? $quiz->lesson?->module_id;
-        if (!$user->moduleEnrollments()->where('module_id', $moduleId)->exists()) {
-            abort(403);
-        }
-
-        $module = Module::find($moduleId);
-        if ($module && !$module->isLearnerVisible()) {
-            return redirect()->route('learner.modules.show', $module)
-                ->with('error', 'This module is currently deactivated. Quiz attempts are temporarily unavailable.');
-        }
 
         $hasUnlimitedShields = $this->subscriptionService->hasFeature(
             $user,
@@ -441,6 +424,20 @@ class QuizController extends Controller
         ]);
 
         return $this->gamificationService->awardConfiguredPoints($user, 'module_completed');
+    }
+
+    private function authorizeQuizAccess(Quiz $quiz, User $user): Module
+    {
+        $quiz->loadMissing(['module', 'lesson.module']);
+        $module = $quiz->module ?? $quiz->lesson?->module;
+
+        if (!$module instanceof Module) {
+            abort(404);
+        }
+
+        $this->moduleAccessService->assertCanLearn($user, $module);
+
+        return $module;
     }
 
     private function canStartAttempt(Quiz $quiz, int $userId): bool

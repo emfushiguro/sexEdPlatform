@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InstructorFeedback;
 use App\Models\Module;
 use App\Services\LearnerModuleCompletionService;
+use App\Services\Modules\ModuleAccessService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -13,11 +14,14 @@ class ModuleReviewPageController extends Controller
 {
     public function __construct(
         private readonly LearnerModuleCompletionService $completionService,
+        private readonly ModuleAccessService $moduleAccessService,
     ) {
     }
 
     public function index(Request $request, Module $module): View
     {
+        $this->moduleAccessService->assertCanLearn($request->user(), $module);
+
         $sort = (string) $request->string('sort', 'newest');
         $search = trim((string) $request->string('search'));
         $exactRating = $request->filled('rating') ? (int) $request->integer('rating') : null;

@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Learner;
 
-use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\InteractiveCheckpointProgress;
 use App\Models\QuizQuestion;
 use App\Services\Learning\QuestionEvaluator;
+use App\Services\Modules\ModuleAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class InteractiveCheckpointController extends Controller
 {
-    public function __construct(private QuestionEvaluator $questionEvaluator) {}
+    public function __construct(
+        private QuestionEvaluator $questionEvaluator,
+        private ModuleAccessService $moduleAccessService,
+    ) {}
 
     public function submit(Request $request, QuizQuestion $question): JsonResponse
     {
@@ -114,14 +117,7 @@ class InteractiveCheckpointController extends Controller
 
         abort_unless($topic && $lesson && $module, 404);
         abort_unless($lesson->is_published, 404);
-        abort_unless($module->isLearnerVisible(), 403);
-
-        $isEnrolled = Auth::user()->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved)
-            ->exists();
-
-        abort_unless($isEnrolled, 403);
+        $this->moduleAccessService->assertCanLearn(Auth::user(), $module);
     }
 
     private function submitPerspectiveFeedback(

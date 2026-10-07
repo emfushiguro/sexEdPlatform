@@ -241,13 +241,25 @@ class ModuleAccessService
             return true;
         }
 
-        return ModuleAccessGrant::query()
+        if (ModuleAccessGrant::query()
             ->where('user_id', $user->id)
             ->where('module_id', $module->id)
-            ->where('source_type', ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT)
-            ->where('status', ModuleAccessGrant::STATUS_ACTIVE)
-            ->get()
-            ->contains(fn (ModuleAccessGrant $grant): bool => $this->connectorGrantIsValid($grant, $user, $module));
+            ->exists()) {
+            return ModuleAccessGrant::query()
+                ->where('user_id', $user->id)
+                ->where('module_id', $module->id)
+                ->where('source_type', ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT)
+                ->where('status', ModuleAccessGrant::STATUS_ACTIVE)
+                ->get()
+                ->contains(fn (ModuleAccessGrant $grant): bool => $this->connectorGrantIsValid($grant, $user, $module));
+        }
+
+        // Keep legacy test/imported enrollments usable until their grant backfill runs.
+        return ModuleEnrollment::query()
+            ->where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->where('status', EnrollmentStatus::Approved)
+            ->exists();
     }
 
     public function assertCanLearn(User $user, Module $module): void
@@ -281,13 +293,21 @@ class ModuleAccessService
 
     public function hasHistoricalAccess(User $user, Module $module): bool
     {
-        return ModuleAccessGrant::query()
+        if (ModuleAccessGrant::query()
             ->where('user_id', $user->id)
             ->where('module_id', $module->id)
             ->whereIn('status', [
                 ModuleAccessGrant::STATUS_ACTIVE,
                 ModuleAccessGrant::STATUS_INACTIVE,
             ])
+            ->exists()) {
+            return true;
+        }
+
+        return ModuleEnrollment::query()
+            ->where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->whereIn('status', [EnrollmentStatus::Approved, EnrollmentStatus::Inactive])
             ->exists();
     }
 

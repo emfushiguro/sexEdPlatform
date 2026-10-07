@@ -11,12 +11,16 @@ use App\Notifications\Learner\CertificateIssuedNotification;
 use App\Services\CertificatePdfService;
 use App\Services\GamificationService;
 use App\Services\LearnerModuleCompletionService;
+use App\Services\Modules\ModuleAccessService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class CertificateController extends Controller
 {
-    public function __construct(private readonly LearnerModuleCompletionService $completionService)
+    public function __construct(
+        private readonly LearnerModuleCompletionService $completionService,
+        private readonly ModuleAccessService $moduleAccessService,
+    )
     {
     }
 
@@ -37,6 +41,7 @@ class CertificateController extends Controller
     public function check(Module $module)
     {
         $user = Auth::user();
+        $this->moduleAccessService->assertCanLearn($user, $module);
 
         // Check if already has certificate
         if (Certificate::where('user_id', $user->id)->where('module_id', $module->id)->exists()) {
@@ -102,12 +107,7 @@ class CertificateController extends Controller
 
         $certificate->loadMissing('module');
 
-        $eligibilityError = $this->getEligibilityError($user, $certificate->module);
-        if ($eligibilityError) {
-            return redirect()
-                ->route('learner.modules.show', $certificate->module)
-                ->with('error', $eligibilityError);
-        }
+        // Issued certificates are historical records; ownership is the only view guard.
 
         $templateImageUrl = app(CertificatePdfService::class)->getTemplatePublicUrl();
 

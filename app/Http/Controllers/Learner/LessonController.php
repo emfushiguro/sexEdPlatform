@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Learner;
 
-use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\InteractiveActivityProgress;
 use App\Models\InteractiveCheckpointProgress;
@@ -14,6 +13,7 @@ use App\Models\UserProgress;
 use App\Services\GamificationService;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityPresenter;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityProgressService;
+use App\Services\Modules\ModuleAccessService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -23,6 +23,7 @@ class LessonController extends Controller
         private GamificationService $gamificationService,
         private InteractiveActivityProgressService $interactiveActivityProgress,
         private InteractiveActivityPresenter $interactiveActivityPresenter,
+        private ModuleAccessService $moduleAccessService,
     ) {}
 
     /**
@@ -38,21 +39,8 @@ class LessonController extends Controller
             abort(404);
         }
 
-        if (! $module->isLearnerVisible()) {
-            return redirect()->route('learner.modules.show', $module)
-                ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
-        }
-
-        // Security: Check if user is enrolled
-        $isEnrolled = $user->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved)
-            ->exists();
-
-        if (! $isEnrolled) {
-            return redirect()->route('learner.modules.show', $module)
-                ->with('error', 'Please enroll in this module first.');
-        }
+        $this->moduleAccessService->assertCanLearn($user, $module);
+        $isEnrolled = true;
 
         // Get all lessons for navigation (with topics + quiz eager-loaded for sidebar)
         $allLessons = $module->lessons()
@@ -436,19 +424,7 @@ class LessonController extends Controller
             abort(404);
         }
 
-        if (! $module->isLearnerVisible()) {
-            return redirect()->route('learner.modules.show', $module)
-                ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
-        }
-
-        $isEnrolled = $user->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved)
-            ->exists();
-
-        if (! $isEnrolled) {
-            return back()->with('error', 'You are not enrolled in this module.');
-        }
+        $this->moduleAccessService->assertCanLearn($user, $module);
 
         // Check if already completed
         $existingProgress = UserProgress::where('user_id', $user->id)
@@ -493,19 +469,7 @@ class LessonController extends Controller
             abort(404);
         }
 
-        if (! $module->isLearnerVisible()) {
-            return redirect()->route('learner.modules.show', $module)
-                ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
-        }
-
-        $isEnrolled = $user->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved)
-            ->exists();
-
-        if (! $isEnrolled) {
-            return back()->with('error', 'You are not enrolled in this module.');
-        }
+        $this->moduleAccessService->assertCanLearn($user, $module);
 
         if ($topic->isOptionalInteraction()) {
             abort(404);
@@ -579,19 +543,7 @@ class LessonController extends Controller
             abort(404);
         }
 
-        if (! $module->isLearnerVisible()) {
-            return redirect()->route('learner.modules.show', $module)
-                ->with('error', 'This module is currently deactivated. Lesson progression is temporarily unavailable.');
-        }
-
-        $isEnrolled = $user->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved)
-            ->exists();
-
-        if (! $isEnrolled) {
-            return back()->with('error', 'You are not enrolled in this module.');
-        }
+        $this->moduleAccessService->assertCanLearn($user, $module);
 
         if ($topic->isOptionalInteraction()) {
             abort(404);

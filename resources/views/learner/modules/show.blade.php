@@ -4,7 +4,7 @@
 
 @section('content')
 @include('modules.partials.details-overview', ['module' => $module])
-@include('modules.partials.details-curriculum', ['lessons' => $lessons, 'canOpenLessons' => $isEnrolled ?? false])
+@include('modules.partials.details-curriculum', ['lessons' => $lessons, 'canOpenLessons' => $hasActiveAccess ?? ($isEnrolled ?? false)])
 
 @php
     use App\Services\EntitlementService;
@@ -16,6 +16,9 @@
     $hasUnlimitedShields = app(EntitlementService::class)->canAccessFeature($authUser, SubscriptionFeatureKeys::UNLIMITED_SHIELDS);
 
     $isPaidModule = $isPaidModule ?? $module->isPaidAccess();
+    $canLearn = $hasActiveAccess ?? ($isEnrolled ?? false);
+    $hasHistoricalAccess = $hasHistoricalAccess ?? false;
+    $activeConnectorSources = $activeConnectorSources ?? collect();
     $hasPurchased = $hasPurchased ?? false;
     $approvedEnrollmentsCount = $approvedEnrollmentsCount ?? 0;
     $isAtCapacity = $isAtCapacity ?? false;
@@ -202,6 +205,11 @@
                             @if(!empty($ownershipDisplay['individual_attribution_text']))
                                 <p class="text-xs text-purple-600 dark:text-purple-300 mt-0.5">{{ $ownershipDisplay['individual_attribution_text'] }}</p>
                             @endif
+                            @foreach($activeConnectorSources as $connectorSource)
+                                @if($connectorSource->connector)
+                                    <p class="text-xs text-indigo-600 dark:text-indigo-300 mt-0.5">Provided by {{ $connectorSource->connector->name }}</p>
+                                @endif
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -230,9 +238,9 @@
                         @foreach($lessons as $index => $lesson)
                             @php
                                 $isCompleted = in_array($lesson->id, $completedLessonIds);
-                                $topics      = $lesson->topics;
+                                $topics      = $canLearn ? $lesson->topics : collect();
                                 $topicsCount = $topics->count();
-                                $hasBreakdown = $topicsCount > 0 || (bool) $lesson->quiz;
+                                $hasBreakdown = $canLearn && ($topicsCount > 0 || (bool) $lesson->quiz);
                                 $completedTopicsCount = $topics->pluck('id')->intersect($completedTopicIds)->count();
                             @endphp
                             <div>
@@ -303,7 +311,7 @@
                                      class="bg-gray-50/70 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700"
                                      style="display: none;">
                                     <div class="py-1">
-                                        @if($lesson->quiz)
+                                        @if($canLearn && $lesson->quiz)
                                             <div data-lesson-quiz-indicator="lesson-{{ $lesson->id }}" class="px-6 sm:px-8 py-2.5">
                                                 <div class="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:border-purple-800/50 dark:bg-purple-900/30 dark:text-purple-300">
                                                     <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -417,7 +425,7 @@
                 @endif
             </div>
 
-            @if($isEnrolled)
+            @if($isEnrolled || $hasHistoricalAccess)
                 <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
                     <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                         <div class="flex items-center gap-2">
@@ -432,7 +440,7 @@
                     </div>
 
                     <div class="p-5">
-                        @if($moduleCertificate && $certificateEligible)
+                        @if($moduleCertificate)
                             <p class="text-sm text-gray-600 dark:text-gray-400">Certificate number</p>
                             <p class="text-sm font-mono font-semibold text-gray-800 dark:text-gray-100 mt-0.5">{{ $moduleCertificate->certificate_number }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Issued {{ $moduleCertificate->issued_at->format('F d, Y') }}</p>
@@ -515,7 +523,7 @@
 
                     {{-- Certificate section --}}
                     <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        @if($moduleCertificate && $certificateEligible)
+                        @if($moduleCertificate)
                             <a href="{{ route('learner.certificates.show', $moduleCertificate) }}"
                                class="flex items-center gap-2 w-full text-sm font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 px-4 py-2.5 rounded-xl hover:bg-amber-100 transition-colors justify-center">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
@@ -544,6 +552,11 @@
                         @endif
                     </div>
 
+                @elseif($hasHistoricalAccess)
+                    <div class="space-y-2">
+                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Past access</p>
+                        <p class="text-xs leading-5 text-gray-500 dark:text-gray-400">Your progress and issued certificates remain available, but learning actions are disabled because this access source is no longer active.</p>
+                    </div>
                 @elseif($enrollmentStatus === 'pending' && $isPaidModule && !$hasPurchased)
                     <div class="space-y-3">
                         <div class="flex items-start gap-3 p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/40 rounded-xl">
