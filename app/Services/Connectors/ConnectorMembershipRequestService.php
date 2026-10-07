@@ -14,6 +14,11 @@ use Illuminate\Validation\ValidationException;
 
 class ConnectorMembershipRequestService
 {
+    public function __construct(
+        private readonly ConnectorModuleAccessService $moduleAccess,
+    ) {
+    }
+
     public function request(Connector $connector, User $user): ConnectorMembershipRequest
     {
         if ($connector->status !== 'verified') {
@@ -69,6 +74,7 @@ class ConnectorMembershipRequestService
                 'reviewed_by' => $actor->id,
                 'reviewed_at' => now(),
             ]);
+            $this->moduleAccess->reconcileMember($membership->fresh(['connector', 'role', 'user']));
 
             $membershipRequest->user?->notify(new ConnectorMembershipRequestDecisionNotification($membershipRequest->fresh(['connector'])));
 

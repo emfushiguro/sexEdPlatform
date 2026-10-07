@@ -7,6 +7,7 @@ use App\Http\Requests\Parent\RejectEnrollmentRequest;
 use App\Models\ParentChildAccount;
 use App\Models\ModuleAccessGrant;
 use App\Models\ModuleEnrollment;
+use App\Models\ConnectorModuleSeatAssignment;
 use App\Models\QuizAttempt;
 use App\Models\User;
 use App\Notifications\Learner\ParentEnrollmentApprovedNotification;
@@ -297,6 +298,23 @@ class ParentController extends Controller
             ModuleAccessGrant::SOURCE_DIRECT_ENROLLMENT,
             (int) $enrollment->id,
         );
+        ConnectorModuleSeatAssignment::query()
+            ->where('user_id', $child->id)
+            ->where('status', ConnectorModuleSeatAssignment::STATUS_PENDING_GUARDIAN)
+            ->whereHas('entitlement', fn ($query) => $query->where('module_id', $enrollment->module_id))
+            ->get()
+            ->each(function (ConnectorModuleSeatAssignment $assignment): void {
+                $assignment->forceFill([
+                    'status' => ConnectorModuleSeatAssignment::STATUS_ACTIVE,
+                    'consumes_seat' => true,
+                    'released_at' => null,
+                    'inactive_reason' => null,
+                ])->save();
+                $this->moduleAccessService->activateSource(
+                    ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT,
+                    (int) $assignment->id,
+                );
+            });
 
         $freshEnrollment = $enrollment->fresh(['module']);
         $child->notify(new ParentEnrollmentApprovedNotification($freshEnrollment, $parent));
@@ -353,6 +371,24 @@ class ParentController extends Controller
             (int) $enrollment->id,
             'guardian_rejected',
         );
+        ConnectorModuleSeatAssignment::query()
+            ->where('user_id', $child->id)
+            ->where('status', ConnectorModuleSeatAssignment::STATUS_PENDING_GUARDIAN)
+            ->whereHas('entitlement', fn ($query) => $query->where('module_id', $enrollment->module_id))
+            ->get()
+            ->each(function (ConnectorModuleSeatAssignment $assignment): void {
+                $assignment->forceFill([
+                    'status' => ConnectorModuleSeatAssignment::STATUS_INACTIVE,
+                    'consumes_seat' => false,
+                    'released_at' => $assignment->released_at ?? now(),
+                    'inactive_reason' => 'guardian_rejected',
+                ])->save();
+                $this->moduleAccessService->deactivateSource(
+                    ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT,
+                    (int) $assignment->id,
+                    'guardian_rejected',
+                );
+            });
 
         $freshEnrollment = $enrollment->fresh(['module']);
         $child->notify(new ParentEnrollmentRejectedNotification($freshEnrollment, $parent, $normalizedReason));

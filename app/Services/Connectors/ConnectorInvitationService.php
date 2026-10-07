@@ -17,6 +17,7 @@ class ConnectorInvitationService
     public function __construct(
         private readonly ConnectorAccessService $access,
         private readonly ConnectorRoleService $roles,
+        private readonly ConnectorModuleAccessService $moduleAccess,
     ) {
     }
 
@@ -78,6 +79,7 @@ class ConnectorInvitationService
                 'status' => 'accepted',
                 'accepted_at' => now(),
             ]);
+            $this->moduleAccess->reconcileMember($membership->fresh(['connector', 'role', 'user']));
 
             $invitation->inviter?->notify(new ConnectorInvitationRespondedNotification(
                 $invitation->load(['connector', 'invitedUser'])
@@ -150,5 +152,6 @@ class ConnectorInvitationService
             'status' => 'removed',
             'removed_at' => now(),
         ]);
+        $this->moduleAccess->releaseMembership($membership->fresh(['connector', 'role', 'user']));
     }
 }

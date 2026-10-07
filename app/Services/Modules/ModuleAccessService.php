@@ -103,7 +103,25 @@ class ModuleAccessService
             status: $status,
         );
 
-        return $this->syncGrant($grant);
+        $grant = $this->syncGrant($grant);
+
+        if (!$isPending && $status === ModuleAccessGrant::STATUS_ACTIVE) {
+            $enrollment = ModuleEnrollment::query()
+                ->where('user_id', $grant->user_id)
+                ->where('module_id', $grant->module_id)
+                ->first();
+
+            if ($enrollment?->status === EnrollmentStatus::PendingParentApproval) {
+                $enrollment->forceFill([
+                    'status' => EnrollmentStatus::Approved,
+                    'enrolled_at' => $enrollment->enrolled_at ?? now(),
+                    'inactive_reason' => null,
+                    'inactivated_at' => null,
+                ])->save();
+            }
+        }
+
+        return $grant;
     }
 
     public function activateSource(string $sourceType, int $sourceId): ModuleAccessGrant
@@ -206,11 +224,30 @@ class ModuleAccessService
 
     public function hasActiveAccess(User $user, Module $module): bool
     {
-        return ModuleAccessGrant::query()
+        if (in_array($user->status, [
+            User::STATUS_SUSPENDED,
+            User::STATUS_INACTIVE,
+            User::STATUS_ARCHIVED,
+        ], true) || !$module->isLearnerVisible()) {
+            return false;
+        }
+
+        if (ModuleAccessGrant::query()
             ->where('user_id', $user->id)
             ->where('module_id', $module->id)
             ->where('status', ModuleAccessGrant::STATUS_ACTIVE)
-            ->exists();
+            ->where('source_type', '!=', ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT)
+            ->exists()) {
+            return true;
+        }
+
+        return ModuleAccessGrant::query()
+            ->where('user_id', $user->id)
+            ->where('module_id', $module->id)
+            ->where('source_type', ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT)
+            ->where('status', ModuleAccessGrant::STATUS_ACTIVE)
+            ->get()
+            ->contains(fn (ModuleAccessGrant $grant): bool => $this->connectorGrantIsValid($grant, $user, $module));
     }
 
     public function assertCanLearn(User $user, Module $module): void
@@ -237,7 +274,9 @@ class ModuleAccessService
             ->where('module_id', $module->id)
             ->where('source_type', ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT)
             ->where('status', ModuleAccessGrant::STATUS_ACTIVE)
-            ->get();
+            ->get()
+            ->filter(fn (ModuleAccessGrant $grant): bool => $this->connectorGrantIsValid($grant, $user, $module))
+            ->values();
     }
 
     public function hasHistoricalAccess(User $user, Module $module): bool
@@ -292,5 +331,28 @@ class ModuleAccessService
         );
 
         return $grant->fresh();
+    }
+
+    private function connectorGrantIsValid(
+        ModuleAccessGrant $grant,
+        User $user,
+        Module $module,
+    ): bool {
+        $assignment = ConnectorModuleSeatAssignment::query()
+            ->with(['entitlement.connector', 'membership'])
+            ->whereKey($grant->source_id)
+            ->first();
+
+        return $assignment !== null
+            && (int) $assignment->user_id === (int) $user->id
+            && $assignment->released_at === null
+            && in_array($assignment->status, [
+                ConnectorModuleSeatAssignment::STATUS_ACTIVE,
+                ConnectorModuleSeatAssignment::STATUS_INDEPENDENT,
+            ], true)
+            && $assignment->entitlement?->isUsable() === true
+            && $assignment->entitlement?->connector?->status === 'verified'
+            && $assignment->membership?->status === 'active'
+            && (int) $assignment->entitlement?->module_id === (int) $module->id;
     }
 }

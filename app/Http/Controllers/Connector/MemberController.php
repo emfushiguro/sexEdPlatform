@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\Connectors\ConnectorRoleUpdatedNotification;
 use App\Services\Connectors\ConnectorAccessService;
 use App\Services\Connectors\ConnectorInvitationService;
+use App\Services\Connectors\ConnectorModuleAccessService;
 use App\Services\Connectors\ConnectorRoleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class MemberController extends Controller
         private readonly ConnectorAccessService $access,
         private readonly ConnectorInvitationService $invitations,
         private readonly ConnectorRoleService $roles,
+        private readonly ConnectorModuleAccessService $moduleAccess,
     ) {
     }
 
@@ -68,6 +70,7 @@ class MemberController extends Controller
         $this->roles->assertCanChangeMembershipRole($membership->loadMissing('role'), $role);
         $membership->update(['connector_role_id' => $role->id]);
         $membership->refresh()->load(['connector', 'role', 'user']);
+        $this->moduleAccess->reconcileMember($membership);
         $membership->user?->notify(new ConnectorRoleUpdatedNotification($membership));
 
         return back()->with('success', 'Member role updated.');
