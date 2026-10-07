@@ -29,7 +29,7 @@
                 <div class="mt-4 flex items-center gap-2">
                     <a href="{{ route('connector.modules.marketplace.show', [$connector, $listing]) }}" class="flex-1 rounded-lg border border-brand-200 px-3 py-2 text-center text-sm font-semibold text-brand-700">View details</a>
                     @if($canManage)
-                        <span class="rounded-lg bg-brand-700 px-3 py-2 text-sm font-semibold text-white">Purchase for Connector</span>
+                        <a href="{{ route('connector.modules.purchase.checkout', [$connector, $listing]) }}" class="rounded-lg bg-brand-700 px-3 py-2 text-sm font-semibold text-white">Purchase for Connector</a>
                     @endif
                 </div>
             </article>
