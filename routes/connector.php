@@ -12,6 +12,7 @@ use App\Http\Controllers\Connector\HomeController;
 use App\Http\Controllers\Connector\InvitationController;
 use App\Http\Controllers\Connector\InvitationInboxController;
 use App\Http\Controllers\Connector\MemberController;
+use App\Http\Controllers\Connector\ModuleAccessController;
 use App\Http\Controllers\Connector\ModuleMarketplaceController;
 use App\Http\Controllers\Connector\ModulePurchaseController;
 use App\Http\Controllers\Connector\MembershipRequestController;
@@ -46,6 +47,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('connector.modules.purchase.checkout');
     Route::post('/connector/{connector}/modules/marketplace/{listing}/checkout', [ModulePurchaseController::class, 'store'])
         ->name('connector.modules.purchase.store');
+    Route::post('/connector/{connector}/modules/{entitlement}/access-rules', [ModuleAccessController::class, 'storeRule'])
+        ->name('connector.modules.access-rules.store');
+    Route::delete('/connector/{connector}/modules/{entitlement}/access-rules/{rule}', [ModuleAccessController::class, 'destroyRule'])
+        ->name('connector.modules.access-rules.destroy');
+    Route::post('/connector/{connector}/modules/{entitlement}/members/{learner}/revoke', [ModuleAccessController::class, 'revoke'])
+        ->name('connector.modules.access.revoke');
+    Route::delete('/connector/{connector}/modules/{entitlement}/members/{learner}/revoke', [ModuleAccessController::class, 'clearRevocation'])
+        ->name('connector.modules.access.revoke.clear');
     Route::get('/connector/{connector}/educators', [DashboardController::class, 'educators'])->name('connector.educators');
     Route::get('/connector/{connector}/notifications', [NotificationController::class, 'index'])->name('connector.notifications.index');
     Route::post('/connector/{connector}/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('connector.notifications.mark-all-read');
