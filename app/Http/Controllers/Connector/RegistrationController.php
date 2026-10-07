@@ -19,6 +19,46 @@ class RegistrationController extends Controller
 {
     public function create(ConnectorVerificationRequirements $verificationRequirements): View
     {
+        $organizationTypes = $verificationRequirements->organizationTypes();
+        $requirementCatalog = collect(config('connector_verification.requirements', []))
+            ->mapWithKeys(static function (array $definition, string $key): array {
+                return [$key => [
+                    'key' => $key,
+                    'label' => (string) ($definition['label'] ?? str($key)->headline()),
+                    'guidance' => (string) ($definition['guidance'] ?? ''),
+                    'required' => (bool) ($definition['required'] ?? false),
+                    'minimum_evidence_count' => max(1, (int) ($definition['minimum_evidence_count'] ?? 1)),
+                    'maximum_evidence_count' => max(1, (int) ($definition['maximum_evidence_count'] ?? 1)),
+                    'rule_group' => (string) ($definition['rule_group'] ?? $key),
+                    'metadata_fields' => array_values(array_intersect(
+                        ['issuer', 'document_number', 'issue_date', 'expiry_date'],
+                        array_values($definition['metadata_fields'] ?? []),
+                    )),
+                    'accepted_mime_types' => array_values($definition['accepted_mime_types'] ?? [
+                        'application/pdf',
+                        'image/jpeg',
+                        'image/png',
+                        'image/webp',
+                    ]),
+                    'max_kilobytes' => min(10240, max(1, (int) ($definition['max_kilobytes'] ?? 10240))),
+                    'issuing_authority' => $definition['issuing_authority'] ?? null,
+                    'source_url' => $definition['source_url'] ?? null,
+                ]];
+            })
+            ->all();
+
+        $initialRequirementKeys = [];
+        if (old('category') && old('organization_type')) {
+            try {
+                $initialRequirementKeys = array_column(
+                    $verificationRequirements->requirementsFor(old('category'), old('organization_type')),
+                    'key',
+                );
+            } catch (\InvalidArgumentException) {
+                $initialRequirementKeys = [];
+            }
+        }
+
         $cities = DB::table(config('psgc.tables.cities', 'cities'))
             ->where(function ($query): void {
                 $query->where('province_code', ConnectorOptions::CAVITE_PROVINCE_CODE)
@@ -37,7 +77,9 @@ class RegistrationController extends Controller
 
         return view('connectors.register', [
             'categories' => ConnectorOptions::categories(),
-            'organizationTypes' => $verificationRequirements->organizationTypes(),
+            'organizationTypes' => $organizationTypes,
+            'requirementCatalog' => $requirementCatalog,
+            'initialRequirementKeys' => $initialRequirementKeys,
             'cities' => $cities,
             'barangays' => $barangays,
         ]);
