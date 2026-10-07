@@ -333,6 +333,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::get('/{connector}', [Admin\ConnectorController::class, 'show'])->name('show');
         Route::get('/{connector}/verification/documents/{document}', VerificationDocumentController::class)
             ->name('verification.documents.show');
+        Route::post('/{connector}/verification/documents/{document}/review', [Admin\ConnectorVerificationController::class, 'reviewDocument'])
+            ->name('verification.documents.review');
+        Route::post('/{connector}/verification/requirements/{requirement}/resolve', [Admin\ConnectorVerificationController::class, 'resolveRequirement'])
+            ->name('verification.requirements.resolve');
+        Route::post('/{connector}/verification/request-evidence', [Admin\ConnectorVerificationController::class, 'requestEvidence'])
+            ->name('verification.request-evidence');
         Route::post('/{connector}/approve', [Admin\ConnectorController::class, 'approve'])->name('approve');
         Route::post('/{connector}/reject', [Admin\ConnectorController::class, 'reject'])->name('reject');
         Route::post('/{connector}/suspend', [Admin\ConnectorController::class, 'suspend'])->name('suspend');

@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 final class ConnectorVerificationService
@@ -175,6 +176,317 @@ final class ConnectorVerificationService
 
             throw $e;
         }
+    }
+
+    public function reviewDocument(
+        Connector $connector,
+        ConnectorVerificationDocument $document,
+        User $admin,
+        string $decision,
+        int $expectedRound,
+        ?string $applicantReason,
+        ?string $internalNote,
+    ): ConnectorVerificationDocument {
+        return DB::transaction(function () use (
+            $connector,
+            $document,
+            $admin,
+            $decision,
+            $expectedRound,
+            $applicantReason,
+            $internalNote,
+        ): ConnectorVerificationDocument {
+            if (! in_array($decision, ['accept', 'reject'], true)) {
+                throw ValidationException::withMessages([
+                    'decision' => 'Choose accept or reject.',
+                ]);
+            }
+
+            $lockedConnector = Connector::query()
+                ->whereKey($connector->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+            if ((int) $lockedConnector->current_submission_round !== $expectedRound) {
+                throw new ConflictHttpException('This verification review is stale. Refresh the admin workspace.');
+            }
+
+            $lockedRequirement = ConnectorVerificationRequirement::query()
+                ->whereKey($document->connector_verification_requirement_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $lockedDocument = ConnectorVerificationDocument::query()
+                ->whereKey($document->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $lockedRequirement->connector_id !== (int) $lockedConnector->id
+                || (int) $lockedDocument->connector_id !== (int) $lockedConnector->id
+                || (int) $lockedDocument->connector_verification_requirement_id !== (int) $lockedRequirement->id) {
+                throw new NotFoundHttpException;
+            }
+
+            if ($lockedConnector->verification_status !== Connector::VERIFICATION_UNDER_REVIEW) {
+                throw new ConflictHttpException('This connector is not currently under verification review.');
+            }
+
+            if ((int) $lockedDocument->submission_round !== (int) $lockedConnector->current_submission_round
+                || $lockedDocument->status !== ConnectorVerificationDocument::STATUS_PENDING
+                || $lockedDocument->superseded_at !== null) {
+                throw new ConflictHttpException('This verification document is already finalized or from another submission round.');
+            }
+
+            if ($decision === 'reject' && trim((string) $applicantReason) === '') {
+                throw ValidationException::withMessages([
+                    'applicant_reason' => 'An applicant-facing reason is required when rejecting evidence.',
+                ]);
+            }
+
+            $oldStatus = $lockedDocument->status;
+            $newStatus = $decision === 'accept'
+                ? ConnectorVerificationDocument::STATUS_ACCEPTED
+                : ConnectorVerificationDocument::STATUS_REJECTED;
+
+            $lockedDocument->update([
+                'status' => $newStatus,
+                'reviewed_by' => $admin->id,
+                'reviewed_at' => now(),
+                'applicant_rejection_reason' => $decision === 'reject'
+                    ? trim((string) $applicantReason)
+                    : null,
+                'internal_review_note' => $internalNote !== null && trim($internalNote) !== ''
+                    ? trim($internalNote)
+                    : null,
+            ]);
+
+            $acceptedCount = $lockedRequirement->documents()
+                ->whereNull('superseded_at')
+                ->where('status', ConnectorVerificationDocument::STATUS_ACCEPTED)
+                ->count();
+            $pendingCount = $lockedRequirement->documents()
+                ->whereNull('superseded_at')
+                ->where('status', ConnectorVerificationDocument::STATUS_PENDING)
+                ->count();
+            $minimum = max(1, (int) $lockedRequirement->minimum_evidence_count);
+
+            $requirementStatus = $acceptedCount >= $minimum
+                ? ConnectorVerificationRequirement::STATUS_SATISFIED
+                : ($pendingCount > 0
+                    ? ConnectorVerificationRequirement::STATUS_PENDING
+                    : ConnectorVerificationRequirement::STATUS_REJECTED);
+
+            $lockedRequirement->update(['status' => $requirementStatus]);
+
+            $lockedConnector->verificationAudits()->create([
+                'connector_verification_requirement_id' => $lockedRequirement->id,
+                'connector_verification_document_id' => $lockedDocument->id,
+                'actor_id' => $admin->id,
+                'action' => $decision === 'accept' ? 'document_accepted' : 'document_rejected',
+                'previous_state' => ['status' => $oldStatus],
+                'new_state' => [
+                    'status' => $newStatus,
+                    'requirement_status' => $requirementStatus,
+                ],
+                'submission_round' => $expectedRound,
+                'applicant_reason' => $decision === 'reject' ? trim((string) $applicantReason) : null,
+                'internal_notes' => $internalNote !== null && trim($internalNote) !== ''
+                    ? trim($internalNote)
+                    : null,
+            ]);
+
+            return $lockedDocument->fresh();
+        });
+    }
+
+    public function markRequirementNotApplicable(
+        Connector $connector,
+        ConnectorVerificationRequirement $requirement,
+        User $admin,
+        int $expectedRound,
+        string $reason,
+        ?string $internalNote,
+    ): ConnectorVerificationRequirement {
+        return DB::transaction(function () use (
+            $connector,
+            $requirement,
+            $admin,
+            $expectedRound,
+            $reason,
+            $internalNote,
+        ): ConnectorVerificationRequirement {
+            $lockedConnector = Connector::query()
+                ->whereKey($connector->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+            if ((int) $lockedConnector->current_submission_round !== $expectedRound) {
+                throw new ConflictHttpException('This verification review is stale. Refresh the admin workspace.');
+            }
+
+            $lockedRequirement = ConnectorVerificationRequirement::query()
+                ->whereKey($requirement->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $lockedRequirement->connector_id !== (int) $lockedConnector->id) {
+                throw new NotFoundHttpException;
+            }
+
+            if ($lockedConnector->verification_status !== Connector::VERIFICATION_UNDER_REVIEW) {
+                throw new ConflictHttpException('This connector is not currently under verification review.');
+            }
+
+            $definition = $this->definitionFor($lockedRequirement);
+            if (! ($definition['manual_not_applicable_allowed'] ?? false)) {
+                throw new AuthorizationException('This requirement cannot be marked not applicable.');
+            }
+
+            if ($lockedRequirement->status !== ConnectorVerificationRequirement::STATUS_PENDING
+                || $lockedRequirement->superseded_at !== null) {
+                throw new ConflictHttpException('This verification requirement is already finalized.');
+            }
+
+            if (trim($reason) === '') {
+                throw ValidationException::withMessages([
+                    'reason' => 'A reason is required when resolving a requirement as not applicable.',
+                ]);
+            }
+
+            $lockedRequirement->update([
+                'status' => ConnectorVerificationRequirement::STATUS_NOT_APPLICABLE,
+            ]);
+
+            $lockedConnector->verificationAudits()->create([
+                'connector_verification_requirement_id' => $lockedRequirement->id,
+                'actor_id' => $admin->id,
+                'action' => 'requirement_not_applicable',
+                'new_state' => ['status' => ConnectorVerificationRequirement::STATUS_NOT_APPLICABLE],
+                'submission_round' => $expectedRound,
+                'applicant_reason' => trim($reason),
+                'internal_notes' => $internalNote !== null && trim($internalNote) !== ''
+                    ? trim($internalNote)
+                    : null,
+            ]);
+
+            return $lockedRequirement->fresh();
+        });
+    }
+
+    public function requestSupplementalRequirement(
+        Connector $connector,
+        User $admin,
+        array $definition,
+        int $expectedRound,
+    ): ConnectorVerificationRequirement {
+        return DB::transaction(function () use ($connector, $admin, $definition, $expectedRound): ConnectorVerificationRequirement {
+            $lockedConnector = Connector::query()
+                ->whereKey($connector->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+            if ((int) $lockedConnector->current_submission_round !== $expectedRound) {
+                throw new ConflictHttpException('This verification review is stale. Refresh the admin workspace.');
+            }
+
+            if ($lockedConnector->verification_status !== Connector::VERIFICATION_UNDER_REVIEW) {
+                throw new ConflictHttpException('This connector is not currently under verification review.');
+            }
+
+            if ($lockedConnector->organization_type !== 'other') {
+                throw new AuthorizationException('Supplemental evidence is available only for Other organizations.');
+            }
+
+            $minimum = max(1, (int) ($definition['minimum_evidence_count'] ?? 1));
+            $maximum = max(1, (int) ($definition['maximum_evidence_count'] ?? $minimum));
+            $mimeTypes = array_values(array_unique(array_intersect(
+                [
+                    'application/pdf',
+                    'image/jpeg',
+                    'image/png',
+                    'image/webp',
+                ],
+                is_array($definition['accepted_mime_types'] ?? null)
+                    ? $definition['accepted_mime_types']
+                    : [],
+            )));
+            $metadataFields = array_values(array_intersect(
+                ['issuer', 'document_number', 'issue_date', 'expiry_date'],
+                is_array($definition['metadata_fields'] ?? null)
+                    ? $definition['metadata_fields']
+                    : [],
+            ));
+
+            if (trim((string) ($definition['label'] ?? '')) === ''
+                || trim((string) ($definition['guidance'] ?? '')) === ''
+                || $maximum < $minimum
+                || $mimeTypes === []) {
+                throw ValidationException::withMessages([
+                    'label' => 'A valid supplemental requirement definition is required.',
+                ]);
+            }
+
+            $key = 'custom_'.Str::uuid()->toString();
+            $snapshot = [
+                'key' => $key,
+                'label' => trim((string) $definition['label']),
+                'guidance' => trim((string) $definition['guidance']),
+                'evidence_category' => (string) $definition['evidence_category'],
+                'required' => true,
+                'rule_group' => $key,
+                'rule_mode' => 'all',
+                'minimum_evidence_count' => $minimum,
+                'maximum_evidence_count' => $maximum,
+                'accepted_mime_types' => $mimeTypes,
+                'max_kilobytes' => min(10240, max(1, (int) ($definition['max_kilobytes'] ?? 10240))),
+                'metadata_fields' => $metadataFields,
+                'expires' => (bool) ($definition['expires'] ?? false),
+                'manual_not_applicable_allowed' => false,
+                'issuing_authority' => null,
+                'source_url' => null,
+                'source_reviewed_on' => null,
+            ];
+
+            $requirement = $lockedConnector->verificationRequirements()->create([
+                'requirement_key' => $key,
+                'evidence_category' => $snapshot['evidence_category'],
+                'label' => $snapshot['label'],
+                'guidance' => $snapshot['guidance'],
+                'is_required' => true,
+                'rule_group' => $snapshot['rule_group'],
+                'rule_mode' => $snapshot['rule_mode'],
+                'minimum_evidence_count' => $minimum,
+                'maximum_evidence_count' => $maximum,
+                'definition_snapshot' => $snapshot,
+                'source_snapshot' => null,
+                'status' => ConnectorVerificationRequirement::STATUS_PENDING,
+                'requested_by' => $admin->id,
+            ]);
+
+            $lockedConnector->update([
+                'verification_status' => Connector::VERIFICATION_RESUBMISSION_REQUIRED,
+            ]);
+
+            $lockedConnector->verificationAudits()->create([
+                'connector_verification_requirement_id' => $requirement->id,
+                'actor_id' => $admin->id,
+                'action' => 'supplemental_requested',
+                'new_state' => [
+                    'requirement_key' => $key,
+                    'label' => $snapshot['label'],
+                    'verification_status' => Connector::VERIFICATION_RESUBMISSION_REQUIRED,
+                ],
+                'submission_round' => $expectedRound,
+            ]);
+
+            $lockedConnector->reviews()->create([
+                'reviewed_by' => $admin->id,
+                'from_status' => $lockedConnector->status,
+                'to_status' => $lockedConnector->status,
+                'reason' => 'Supplemental verification evidence requested.',
+                'reason_code' => 'supplemental_requested',
+                'submission_round' => $expectedRound,
+                'reviewed_at' => now(),
+            ]);
+
+            return $requirement->fresh();
+        });
     }
 
     public function recordDocumentAccess(
