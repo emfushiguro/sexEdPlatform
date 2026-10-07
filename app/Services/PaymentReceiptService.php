@@ -15,17 +15,25 @@ class PaymentReceiptService
 
         $details = (array) ($payment->payment_details ?? []);
         $modulePurchase = $payment->modulePurchase ?? $payment->moduleSaleLedger?->modulePurchase;
+        $connectorModulePurchase = $payment->connectorModulePurchase
+            ?? $payment->moduleSaleLedger?->connectorModulePurchase;
         $module = $modulePurchase?->module ?? $payment->moduleSaleLedger?->module;
+        $module ??= $connectorModulePurchase?->module;
         $moduleInstructor = $module?->creator ?? $payment->moduleSaleLedger?->instructor;
+        $isConnectorModulePurchase = $payment->isConnectorModulePurchase();
         $isModulePurchase = (string) data_get($details, 'payment_scope') === 'module_purchase'
             || $modulePurchase !== null
-            || $payment->isModulePurchase();
+            || $payment->isModuleCommercePurchase();
 
         return [
             'payment' => $payment,
             'details' => $details,
             'subscription' => $payment->subscription,
             'modulePurchase' => $modulePurchase,
+            'connectorModulePurchase' => $connectorModulePurchase,
+            'connector' => $connectorModulePurchase?->connector,
+            'isConnectorModulePurchase' => $isConnectorModulePurchase,
+            'seller' => $payment->moduleSaleLedger?->seller,
             'module' => $module,
             'moduleInstructor' => $moduleInstructor,
             'isModulePurchase' => $isModulePurchase,
@@ -44,9 +52,16 @@ class PaymentReceiptService
             'subscription.plan',
             'subscription.planPrice',
             'modulePurchase.module.creator',
+            'connectorModulePurchase.connector',
+            'connectorModulePurchase.module.creator',
+            'connectorModulePurchase.listing',
+            'connectorModulePurchase.entitlement',
             'moduleSaleLedger.module.creator',
             'moduleSaleLedger.instructor',
             'moduleSaleLedger.learner',
+            'moduleSaleLedger.connectorModulePurchase.connector',
+            'moduleSaleLedger.buyer',
+            'moduleSaleLedger.seller',
             'invoice',
         ]);
 

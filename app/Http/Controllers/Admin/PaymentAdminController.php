@@ -6,6 +6,7 @@ use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Services\AdminActivityLogService;
+use App\Services\Connectors\ConnectorModulePurchaseService;
 use App\Services\PaymentReceiptService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class PaymentAdminController extends Controller
 {
     public function __construct(
         private readonly PaymentReceiptService $paymentReceiptService,
+        private readonly ConnectorModulePurchaseService $connectorModulePurchaseService,
     ) {
     }
 
@@ -25,9 +27,16 @@ class PaymentAdminController extends Controller
             'user.learnerProfile',
             'subscription.plan',
             'modulePurchase.module.creator',
+            'connectorModulePurchase.connector',
+            'connectorModulePurchase.module',
+            'connectorModulePurchase.listing',
+            'connectorModulePurchase.entitlement',
             'moduleSaleLedger.module.creator',
             'moduleSaleLedger.instructor',
             'moduleSaleLedger.learner',
+            'moduleSaleLedger.connectorModulePurchase.connector',
+            'moduleSaleLedger.buyer',
+            'moduleSaleLedger.seller',
         ])->whereNull('archived_at');
 
         $payments = $query->latest()->get();
@@ -42,6 +51,7 @@ class PaymentAdminController extends Controller
             'processing' => (clone $statsQuery)->where('status', PaymentStatus::Processing)->count(),
             'failed' => (clone $statsQuery)->where('status', PaymentStatus::Failed)->count(),
             'module_purchase' => (clone $statsQuery)->where('payment_details->payment_scope', 'module_purchase')->count(),
+            'connector_module_purchase' => (clone $statsQuery)->where('payment_details->payment_scope', 'connector_module_purchase')->count(),
             'subscription_payment' => (clone $statsQuery)->where('payment_details->payment_scope', 'subscription')->count(),
         ];
         
@@ -58,9 +68,16 @@ class PaymentAdminController extends Controller
             'subscription.plan',
             'subscription.planPrice',
             'modulePurchase.module.creator',
+            'connectorModulePurchase.connector',
+            'connectorModulePurchase.module',
+            'connectorModulePurchase.listing',
+            'connectorModulePurchase.entitlement',
             'moduleSaleLedger.module.creator',
             'moduleSaleLedger.instructor',
             'moduleSaleLedger.learner',
+            'moduleSaleLedger.connectorModulePurchase.connector',
+            'moduleSaleLedger.buyer',
+            'moduleSaleLedger.seller',
             'refunds',
             'invoice',
         ]);
@@ -115,6 +132,28 @@ class PaymentAdminController extends Controller
         }
 
         try {
+            if ($payment->isConnectorModulePurchase()) {
+                $completed = $this->connectorModulePurchaseService->completePayment(
+                    $payment,
+                    (string) ($payment->method ?? 'paymongo'),
+                    data_get($payment->payment_details, 'paymongo_payment_id'),
+                );
+
+                app(AdminActivityLogService::class)->logModelMutation(
+                    action: 'payments.complete',
+                    entity: $payment,
+                    before: $before,
+                    after: $payment->fresh()->only(['id', 'status', 'paid_at', 'subscription_id']),
+                    meta: ['source' => 'admin.payments.complete', 'connector_module_purchase' => true],
+                    request: request(),
+                );
+
+                return redirect()->route('admin.payments.index')
+                    ->with($completed ? 'success' : 'warning', $completed
+                        ? 'Connector module payment completed.'
+                        : 'Payment completed but requires connector module attention.');
+            }
+
             // Marking payment as completed triggers PaymentObserver which calls
             // SubscriptionService::activate() automatically.
             $payment->update([

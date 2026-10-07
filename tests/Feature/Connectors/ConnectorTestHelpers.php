@@ -2,10 +2,15 @@
 
 namespace Tests\Feature\Connectors;
 
+use App\Enums\PaymentStatus;
 use App\Models\Connector;
+use App\Models\ConnectorModulePurchase;
 use App\Models\ConnectorRole;
 use App\Models\LearnerProfile;
 use App\Models\User;
+use App\Models\Module;
+use App\Models\ModuleMarketplaceListing;
+use App\Models\Payment;
 use App\Services\Connectors\ConnectorRoleService;
 use Illuminate\Support\Facades\DB;
 
@@ -133,5 +138,61 @@ trait ConnectorTestHelpers
         ]);
 
         return $user;
+    }
+
+    private function createConnectorModulePaymentState(
+        array $moduleOverrides = [],
+        array $listingOverrides = [],
+        array $purchaseOverrides = [],
+        array $paymentOverrides = [],
+    ): array {
+        $manager = User::factory()->create();
+        $connector = $this->createVerifiedConnector($manager);
+        $module = Module::factory()->create(array_merge([
+            'content_owner_type' => 'admin',
+            'is_published' => true,
+            'current_review_status' => 'approved',
+        ], $moduleOverrides));
+        $listing = ModuleMarketplaceListing::query()->create(array_merge([
+            'module_id' => $module->id,
+            'seller_type' => 'platform',
+            'status' => ModuleMarketplaceListing::STATUS_PUBLISHED,
+            'price_amount' => 2500,
+            'currency' => 'PHP',
+            'seat_capacity' => 10,
+        ], $listingOverrides));
+        $purchase = ConnectorModulePurchase::query()->create(array_merge([
+            'connector_id' => $connector->id,
+            'module_marketplace_listing_id' => $listing->id,
+            'module_id' => $module->id,
+            'purchased_by' => $manager->id,
+            'status' => ConnectorModulePurchase::STATUS_PENDING,
+            'gross_amount' => 2500,
+            'currency' => 'PHP',
+            'seat_capacity' => 10,
+            'seller_type_snapshot' => 'platform',
+            'module_title_snapshot' => $module->title,
+            'terms_version' => ConnectorModulePurchase::TERMS_VERSION,
+            'terms_accepted_at' => now(),
+            'capacity_hold_expires_at' => now()->addMinutes(30),
+        ], $purchaseOverrides));
+        $payment = Payment::query()->create(array_merge([
+            'user_id' => $manager->id,
+            'subscription_id' => null,
+            'amount' => 2500,
+            'method' => 'gcash',
+            'status' => PaymentStatus::Pending,
+            'payment_details' => [
+                'payment_scope' => 'connector_module_purchase',
+                'connector_id' => $connector->id,
+                'connector_module_purchase_id' => $purchase->id,
+                'marketplace_listing_id' => $listing->id,
+                'module_id' => $module->id,
+                'paymongo_checkout_session_id' => 'cs_connector_test',
+            ],
+        ], $paymentOverrides));
+        $purchase->update(['payment_id' => $payment->id]);
+
+        return [$manager, $connector, $module, $listing, $purchase, $payment];
     }
 }

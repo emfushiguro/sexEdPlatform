@@ -35,9 +35,12 @@
                         @foreach($payments as $payment)
                             @php
                                 $details = (array) ($payment->payment_details ?? []);
-                                $isModulePayment = $payment->isModulePurchase() || isset($details['module_id']);
+                                $isConnectorModulePurchase = $payment->isConnectorModulePurchase();
+                                $isModulePayment = $payment->isModuleCommercePurchase() || isset($details['module_id']);
                                 $itemLabel = $isModulePayment
-                                    ? ($payment->modulePurchase?->module?->title ?? ($details['module_title'] ?? 'Module Purchase'))
+                                    ? ($payment->connectorModulePurchase?->module?->title
+                                        ?? $payment->modulePurchase?->module?->title
+                                        ?? ($details['module_title'] ?? 'Module Purchase'))
                                     : ($payment->subscription?->getPlanLabel() ?? 'Subscription Plan');
                                 $checkoutUrl = $details['checkout_url'] ?? null;
                             @endphp
@@ -47,7 +50,7 @@
                                 </td>
                                 <td class="px-6 py-5 whitespace-nowrap text-sm text-gray-600 font-medium">
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border {{ $isModulePayment ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-purple-50 text-purple-700 border-purple-200' }}">
-                                        {{ $isModulePayment ? 'Module Purchase' : 'Subscription' }}
+                                        {{ $isConnectorModulePurchase ? 'Connector Module Purchase' : ($isModulePayment ? 'Module Purchase' : 'Subscription') }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-5 whitespace-nowrap text-sm text-gray-700 font-medium">
