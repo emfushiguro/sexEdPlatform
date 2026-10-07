@@ -3,6 +3,9 @@
 @section('title', $module->title)
 
 @section('content')
+@include('modules.partials.details-overview', ['module' => $module])
+@include('modules.partials.details-curriculum', ['lessons' => $lessons, 'canOpenLessons' => $isEnrolled ?? false])
+
 @php
     use App\Services\EntitlementService;
     use App\Support\SubscriptionFeatureKeys;

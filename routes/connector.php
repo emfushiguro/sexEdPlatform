@@ -12,6 +12,7 @@ use App\Http\Controllers\Connector\HomeController;
 use App\Http\Controllers\Connector\InvitationController;
 use App\Http\Controllers\Connector\InvitationInboxController;
 use App\Http\Controllers\Connector\MemberController;
+use App\Http\Controllers\Connector\ModuleMarketplaceController;
 use App\Http\Controllers\Connector\MembershipRequestController;
 use App\Http\Controllers\Connector\NotificationController;
 use App\Http\Controllers\Connector\RegistrationController;
@@ -37,7 +38,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/connector/{connector}/withdraw', [RegistrationController::class, 'withdraw'])->name('connector.withdraw');
 
     Route::get('/connector/{connector}/dashboard', [DashboardController::class, 'index'])->name('connector.dashboard');
-    Route::get('/connector/{connector}/modules', [DashboardController::class, 'modules'])->name('connector.modules');
+    Route::get('/connector/{connector}/modules', [ModuleMarketplaceController::class, 'index'])->name('connector.modules');
+    Route::get('/connector/{connector}/modules/marketplace/{listing}', [ModuleMarketplaceController::class, 'show'])
+        ->name('connector.modules.marketplace.show');
     Route::get('/connector/{connector}/educators', [DashboardController::class, 'educators'])->name('connector.educators');
     Route::get('/connector/{connector}/notifications', [NotificationController::class, 'index'])->name('connector.notifications.index');
     Route::post('/connector/{connector}/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('connector.notifications.mark-all-read');

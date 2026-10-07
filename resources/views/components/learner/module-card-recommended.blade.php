@@ -5,6 +5,11 @@
 @props([
     'module',
     'ownershipDisplay' => null,
+    'href' => null,
+    'badge' => null,
+    'actionLabel' => 'Start Learning',
+    'priceLabel' => null,
+    'seatLabel' => null,
 ])
 
 @php
@@ -37,8 +42,9 @@
         ? sprintf('%d / %d Enrolled', $approvedCount, $enrollmentLimit)
         : sprintf('%d Enrolled', $approvedCount);
 
-    $priceLabel = $module->display_price ?? 'Free';
-    $enrollUrl = route('learner.modules.show', $module);
+    $displayPriceLabel = $priceLabel ?? ($module->display_price ?? 'Free');
+    $enrollUrl = $href ?? route('learner.modules.show', $module);
+    $displaySeatLabel = $seatLabel ?? $enrollmentLabel;
 @endphp
 
 <div class="group h-full bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 hover:ring-2 hover:ring-purple-200 dark:hover:ring-purple-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
@@ -61,6 +67,9 @@
 
         {{-- Badges (stacked top-left row) --}}
         <div class="absolute top-2 left-2 flex gap-1 flex-wrap">
+            @if($badge)
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-purple-700">{{ $badge }}</span>
+            @endif
             @if($isFull)
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
                     FULL
@@ -115,8 +124,8 @@
         </div>
 
         <div class="flex items-center justify-between text-xs">
-            <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $priceLabel }}</span>
-            <span class="text-gray-500 dark:text-gray-400">{{ $enrollmentLabel }}</span>
+            <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $displayPriceLabel }}</span>
+            <span class="text-gray-500 dark:text-gray-400">{{ $displaySeatLabel }}</span>
         </div>
 
         <div class="flex items-center gap-2 pt-0.5">
@@ -144,7 +153,7 @@
                 class="mt-auto block w-full text-center text-sm font-semibold text-white py-2.5 px-4 rounded-lg transition-all duration-150 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
                 style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
             >
-                Start Learning
+                {{ $actionLabel }}
             </a>
         @endif
     </div>
