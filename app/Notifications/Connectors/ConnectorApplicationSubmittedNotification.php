@@ -13,8 +13,7 @@ class ConnectorApplicationSubmittedNotification extends Notification
     public function __construct(
         private readonly Connector $connector,
         private readonly string $audience = 'learner',
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -34,6 +33,8 @@ class ConnectorApplicationSubmittedNotification extends Notification
             'connector_id' => $this->connector->id,
             'connector_name' => $this->connector->name,
             'status' => 'pending',
+            'verification_status' => $this->connector->verification_status,
+            'submission_round' => $this->connector->current_submission_round,
             'action_url' => $isAdmin
                 ? route('admin.connectors.show', $this->connector)
                 : route('connector.status', $this->connector),

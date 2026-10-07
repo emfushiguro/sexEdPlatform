@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\Connectors\ConnectorApplicationWithdrawnNotification;
 use App\Services\Connectors\ConnectorRegistrationService;
 use App\Support\ConnectorOptions;
+use App\Support\ConnectorVerificationRequirements;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ use Illuminate\View\View;
 
 class RegistrationController extends Controller
 {
-    public function create(): View
+    public function create(ConnectorVerificationRequirements $verificationRequirements): View
     {
         $cities = DB::table(config('psgc.tables.cities', 'cities'))
             ->where(function ($query): void {
@@ -36,6 +37,7 @@ class RegistrationController extends Controller
 
         return view('connectors.register', [
             'categories' => ConnectorOptions::categories(),
+            'organizationTypes' => $verificationRequirements->organizationTypes(),
             'cities' => $cities,
             'barangays' => $barangays,
         ]);

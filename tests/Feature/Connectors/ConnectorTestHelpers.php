@@ -7,11 +7,12 @@ use App\Models\Connector;
 use App\Models\ConnectorModulePurchase;
 use App\Models\ConnectorRole;
 use App\Models\LearnerProfile;
-use App\Models\User;
 use App\Models\Module;
 use App\Models\ModuleMarketplaceListing;
 use App\Models\Payment;
+use App\Models\User;
 use App\Services\Connectors\ConnectorRoleService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 trait ConnectorTestHelpers
@@ -54,6 +55,7 @@ trait ConnectorTestHelpers
         return array_merge([
             'name' => 'Cavite Youth Health Network',
             'category' => 'ngo',
+            'organization_type' => 'ngo_nonprofit_foundation',
             'organization_email' => null,
             'contact_number' => '09171234567',
             'city_code' => '402101000',
@@ -62,6 +64,22 @@ trait ConnectorTestHelpers
             'description' => 'Community health education partner.',
             'website_url' => null,
             'verification_notes' => 'Accredited locally.',
+            'confirm_accuracy' => '1',
+            'reuse_representative_identity' => '0',
+            'logo' => UploadedFile::fake()->create('logo.png', 100, 'image/png'),
+            'evidence' => [
+                'sec_nonstock_registration' => [
+                    'files' => [UploadedFile::fake()->create('registration.pdf', 100, 'application/pdf')],
+                ],
+                'representative_identity' => [
+                    'files' => [UploadedFile::fake()->create('identity.pdf', 100, 'application/pdf')],
+                ],
+                'representative_authority' => [
+                    'files' => [UploadedFile::fake()->create('authority.pdf', 100, 'application/pdf')],
+                    'issuer' => 'Board of Trustees',
+                    'issue_date' => '2026-10-07',
+                ],
+            ],
         ], $overrides);
     }
 
