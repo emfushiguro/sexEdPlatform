@@ -74,4 +74,9 @@ class ConnectorModuleEntitlement extends Model
     {
         return in_array($this->status, [self::STATUS_ACTIVE, self::STATUS_CORRECTED], true);
     }
+
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
 }

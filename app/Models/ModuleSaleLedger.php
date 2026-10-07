@@ -11,6 +11,9 @@ class ModuleSaleLedger extends Model
 {
     use HasFactory;
 
+    public const SALE_CHANNEL_INDIVIDUAL = 'individual';
+    public const SALE_CHANNEL_CONNECTOR_MARKETPLACE = 'connector_marketplace';
+
     protected $fillable = [
         'payment_id',
         'sale_channel',

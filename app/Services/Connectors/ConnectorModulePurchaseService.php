@@ -4,11 +4,14 @@ namespace App\Services\Connectors;
 
 use App\Enums\PaymentStatus;
 use App\Models\Connector;
+use App\Models\ConnectorModuleEntitlement;
 use App\Models\ConnectorModulePurchase;
 use App\Models\Module;
 use App\Models\ModuleMarketplaceListing;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Monetization\ModuleSaleLedgerService;
+use App\Services\Modules\ModuleAccessService;
 use App\Services\Modules\ModuleCapacityService;
 use App\Services\PayMongoPaymentLinkService;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +23,143 @@ class ConnectorModulePurchaseService
         private readonly PayMongoPaymentLinkService $payMongo,
         private readonly ConnectorAccessService $access,
         private readonly ModuleCapacityService $capacity,
+        private readonly ModuleAccessService $moduleAccess,
+        private readonly ModuleSaleLedgerService $ledger,
     ) {
+    }
+
+    public function completePayment(
+        Payment $payment,
+        ?string $paymentMethod = null,
+        ?string $paymongoPaymentId = null,
+    ): bool {
+        if (!$payment->isConnectorModulePurchase()) {
+            return false;
+        }
+
+        return DB::transaction(function () use ($payment, $paymentMethod, $paymongoPaymentId): bool {
+            $lockedPayment = Payment::query()
+                ->whereKey($payment->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $purchaseId = (int) data_get($lockedPayment->payment_details, 'connector_module_purchase_id', 0);
+            $purchase = ConnectorModulePurchase::query()
+                ->whereKey($purchaseId)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $module = Module::query()
+                ->whereKey($purchase->module_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $existingEntitlement = $purchase->entitlement()->lockForUpdate()->first();
+            if ($purchase->isCompleted() && $existingEntitlement) {
+                return true;
+            }
+
+            if (!$lockedPayment->isCompleted()) {
+                $details = is_array($lockedPayment->payment_details)
+                    ? $lockedPayment->payment_details
+                    : [];
+                $details['payment_scope'] = 'connector_module_purchase';
+                if ($paymentMethod !== null) {
+                    $details['payment_method'] = $paymentMethod;
+                }
+                if ($paymongoPaymentId !== null) {
+                    $details['paymongo_payment_id'] = $paymongoPaymentId;
+                }
+
+                $lockedPayment->forceFill([
+                    'status' => PaymentStatus::Completed,
+                    'method' => $paymentMethod ?: $lockedPayment->method,
+                    'paid_at' => $lockedPayment->paid_at ?? now(),
+                    'payment_details' => $details,
+                ])->save();
+            }
+
+            if (!$module->isLearnerVisible()) {
+                $purchase->forceFill([
+                    'status' => ConnectorModulePurchase::STATUS_ATTENTION_REQUIRED,
+                    'capacity_hold_expires_at' => null,
+                    'failure_reason' => 'Module is no longer available for learning.',
+                ])->save();
+
+                return false;
+            }
+
+            if (!$purchase->capacity_hold_expires_at?->isFuture()) {
+                try {
+                    $this->capacity->assertAvailable(
+                        $module,
+                        (int) $purchase->seat_capacity,
+                        excludeConnectorPurchaseId: $purchase->id,
+                    );
+                } catch (ValidationException) {
+                    $purchase->forceFill([
+                        'status' => ConnectorModulePurchase::STATUS_ATTENTION_REQUIRED,
+                        'capacity_hold_expires_at' => null,
+                        'failure_reason' => 'Paid purchase requires manual capacity recovery.',
+                    ])->save();
+
+                    return false;
+                }
+            }
+
+            $entitlement = $existingEntitlement ?? ConnectorModuleEntitlement::query()->firstOrCreate(
+                ['connector_module_purchase_id' => $purchase->id],
+                [
+                    'connector_id' => $purchase->connector_id,
+                    'module_marketplace_listing_id' => $purchase->module_marketplace_listing_id,
+                    'module_id' => $purchase->module_id,
+                    'status' => ConnectorModuleEntitlement::STATUS_ACTIVE,
+                    'gross_amount' => $purchase->gross_amount,
+                    'currency' => $purchase->currency,
+                    'seat_capacity' => $purchase->seat_capacity,
+                    'activated_at' => now(),
+                ],
+            );
+
+            $this->ledger->createForCompletedConnectorModulePayment(
+                $lockedPayment,
+                $purchase,
+                $entitlement,
+            );
+
+            $purchase->forceFill([
+                'status' => ConnectorModulePurchase::STATUS_COMPLETED,
+                'capacity_hold_expires_at' => null,
+                'provider_paid_at' => $purchase->provider_paid_at ?? $lockedPayment->paid_at ?? now(),
+                'purchased_at' => $purchase->purchased_at ?? now(),
+            ])->save();
+
+            return true;
+        });
+    }
+
+    public function verifyAndCompletePendingPayment(Payment $payment): bool
+    {
+        if (!$payment->isConnectorModulePurchase()) {
+            return false;
+        }
+
+        if ($payment->isCompleted()) {
+            return $this->completePayment($payment);
+        }
+
+        $sessionId = (string) data_get($payment->payment_details, 'paymongo_checkout_session_id', '');
+        if ($sessionId === '') {
+            return false;
+        }
+
+        $response = $this->payMongo->retrieveCheckoutSession($sessionId);
+        $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
+        if (!in_array($status, ['paid', 'completed'], true)) {
+            return false;
+        }
+
+        $providerPaymentId = $this->payMongo->getActualPaymentIdFromCheckoutSession($sessionId);
+
+        return $this->completePayment($payment, $payment->method, $providerPaymentId);
     }
 
     public function createCheckout(

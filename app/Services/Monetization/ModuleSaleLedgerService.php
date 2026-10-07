@@ -9,6 +9,9 @@ use App\Models\ModuleReviewRequest;
 use App\Models\ModuleRevision;
 use App\Models\ModuleSaleLedger;
 use App\Models\Payment;
+use App\Models\ConnectorModuleEntitlement;
+use App\Models\ConnectorModulePurchase;
+use App\Models\User;
 
 class ModuleSaleLedgerService
 {
@@ -73,6 +76,85 @@ class ModuleSaleLedgerService
                 'payout_status' => 'paid',
                 'occurred_at' => $payment->paid_at ?? now(),
             ]
+        );
+    }
+
+    public function createForCompletedConnectorModulePayment(
+        Payment $payment,
+        ConnectorModulePurchase $purchase,
+        ConnectorModuleEntitlement $entitlement,
+    ): ModuleSaleLedger {
+        $existing = ModuleSaleLedger::query()
+            ->where('payment_id', $payment->id)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $grossAmount = (float) $purchase->gross_amount;
+        $sellerType = (string) $purchase->seller_type_snapshot;
+        $sellerId = (int) ($purchase->seller_user_id_snapshot ?? 0);
+        $isInstructorSale = $sellerType === 'instructor' && $sellerId > 0;
+
+        if ($isInstructorSale) {
+            $policy = $this->policyResolver->resolveForInstructor(
+                $sellerId,
+                $payment->paid_at ?? now(),
+            );
+            $split = $this->splitCalculator->calculate(
+                grossAmount: $grossAmount,
+                commissionPercent: (float) $policy->commission_percent,
+                taxBasis: (string) $policy->tax_basis,
+            );
+            $taxBasis = (string) $policy->tax_basis;
+            $refundPolicy = (string) $policy->refund_policy;
+            $commissionPercent = (float) $policy->commission_percent;
+            $sellerNetAmount = $split['instructor_earnings_amount'];
+            $sellerName = (string) (User::query()->whereKey($sellerId)->value('name') ?? '');
+        } else {
+            $split = [
+                'gross_amount' => number_format($grossAmount, 2, '.', ''),
+                'basis_amount' => number_format($grossAmount, 2, '.', ''),
+                'commission_amount' => '0.00',
+                'instructor_earnings_amount' => '0.00',
+            ];
+            $taxBasis = 'gross';
+            $refundPolicy = 'disabled';
+            $commissionPercent = 0.0;
+            $sellerNetAmount = $split['gross_amount'];
+            $sellerName = 'Platform';
+            $sellerId = null;
+        }
+
+        return ModuleSaleLedger::query()->firstOrCreate(
+            ['payment_id' => $payment->id],
+            [
+                'sale_channel' => 'connector_marketplace',
+                'connector_module_purchase_id' => $purchase->id,
+                'connector_id' => $purchase->connector_id,
+                'buyer_user_id' => $purchase->purchased_by,
+                'seller_type' => $sellerType,
+                'seller_user_id' => $sellerId,
+                'seller_name_snapshot' => $sellerName,
+                'seat_capacity_snapshot' => $purchase->seat_capacity,
+                'module_id' => $purchase->module_id,
+                'instructor_id' => $sellerId,
+                'learner_id' => null,
+                'learner_name_snapshot' => null,
+                'currency' => strtoupper((string) $purchase->currency),
+                'gross_amount' => $split['gross_amount'],
+                'basis_amount' => $split['basis_amount'],
+                'commission_percent_snapshot' => $commissionPercent,
+                'commission_amount' => $split['commission_amount'],
+                'instructor_earnings_amount' => $split['instructor_earnings_amount'],
+                'seller_net_amount' => $sellerNetAmount,
+                'tax_basis_snapshot' => $taxBasis,
+                'refund_policy_snapshot' => $refundPolicy,
+                'sale_status' => 'completed',
+                'payout_status' => 'paid',
+                'occurred_at' => $payment->paid_at ?? now(),
+            ],
         );
     }
 
