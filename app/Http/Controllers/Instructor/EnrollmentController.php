@@ -13,15 +13,18 @@ use App\Notifications\Learner\EnrollmentApprovedNotification;
 use App\Notifications\Learner\EnrollmentRejectedNotification;
 use App\Services\Content\ContentOwnershipGuard;
 use App\Services\Modules\ModuleAccessService;
+use App\Services\Modules\ModuleCapacityService;
 use App\Support\ContentPanelContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class EnrollmentController extends Controller
 {
     public function __construct(
         private readonly ContentOwnershipGuard $ownershipGuard,
         private readonly ModuleAccessService $moduleAccessService,
+        private readonly ModuleCapacityService $moduleCapacityService,
     )
     {
     }
@@ -234,15 +237,21 @@ class EnrollmentController extends Controller
 
         $enrollment->loadMissing('module', 'user');
 
-        // Update enrollment to approved
-        $enrollment->update([
-            'status' => EnrollmentStatus::Approved,
-            'enrolled_at' => now(),
-            'rejection_reason_code' => null,
-            'rejection_reason_note' => null,
-            'rejected_by_instructor_id' => null,
-            'rejected_at' => null,
-        ]);
+        DB::transaction(function () use ($enrollment): void {
+            $module = $this->moduleCapacityService->lock($enrollment->module);
+            if (!$this->moduleAccessService->hasActiveAccess($enrollment->user, $module)) {
+                $this->moduleCapacityService->assertAvailable($module, 1);
+            }
+
+            $enrollment->update([
+                'status' => EnrollmentStatus::Approved,
+                'enrolled_at' => now(),
+                'rejection_reason_code' => null,
+                'rejection_reason_note' => null,
+                'rejected_by_instructor_id' => null,
+                'rejected_at' => null,
+            ]);
+        });
         $this->moduleAccessService->activateSource(
             ModuleAccessGrant::SOURCE_DIRECT_ENROLLMENT,
             (int) $enrollment->id,

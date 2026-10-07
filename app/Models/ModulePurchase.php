@@ -25,6 +25,7 @@ class ModulePurchase extends Model
         'currency',
         'status',
         'purchased_at',
+        'capacity_hold_expires_at',
         'metadata',
     ];
 

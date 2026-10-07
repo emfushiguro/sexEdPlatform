@@ -22,6 +22,7 @@ use App\Services\GamificationService;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\ModulePurchaseService;
 use App\Services\Modules\ModuleAccessService;
+use App\Services\Modules\ModuleCapacityService;
 use App\Services\LearnerModuleCompletionService;
 use App\Services\Content\AdminOwnershipDisplayService;
 use Illuminate\Http\Request;
@@ -36,6 +37,7 @@ class ModuleController extends Controller
         private readonly AdminOwnershipDisplayService $ownershipDisplayService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
         private readonly ModuleAccessService $moduleAccessService,
+        private readonly ModuleCapacityService $moduleCapacityService,
     ) {
     }
 
@@ -198,13 +200,11 @@ class ModuleController extends Controller
 
         $hasPurchased = $modulePurchase !== null;
 
-        $approvedEnrollmentsCount = ModuleEnrollment::query()
-            ->approvedForModule($module->id)
-            ->count();
-
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && $approvedEnrollmentsCount >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $approvedEnrollmentsCount = $capacityUsage['independent_learners'];
+        $effectiveEnrollmentLimit = $capacityUsage['limit'];
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         $needsParentApproval = ParentChildAccount::query()
             ->accessEligible()
@@ -526,11 +526,9 @@ class ModuleController extends Controller
                 ->with('success', 'Your enrollment request has been submitted. Please wait for guardian approval.');
         }
 
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && ModuleEnrollment::query()
-                ->approvedForModule($module->id)
-                ->count() >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         if ($isAtCapacity) {
             $enrollment = ModuleEnrollment::create([
@@ -667,9 +665,9 @@ class ModuleController extends Controller
             }
         }
 
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         if ($isAtCapacity) {
             return redirect()->route('learner.modules.show', $module)
@@ -739,9 +737,9 @@ class ModuleController extends Controller
                 ->with('info', 'Guardian approval is required before payment.');
         }
 
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         if ($isAtCapacity) {
             return redirect()->route('learner.modules.show', $module)
@@ -840,9 +838,9 @@ class ModuleController extends Controller
                 ->with('info', 'Guardian approval is required before payment.');
         }
 
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         if ($isAtCapacity) {
             return redirect()->route('learner.modules.show', $module)
@@ -1007,31 +1005,4 @@ class ModuleController extends Controller
         return $this->instructorPlanCapabilityService->canReceivePaidEnrollments($instructor);
     }
 
-    private function resolveEffectiveEnrollmentLimit(Module $module): ?int
-    {
-        $effectiveLimit = $module->enrollment_limit !== null ? (int) $module->enrollment_limit : null;
-
-        if ((string) ($module->content_owner_type ?? '') !== 'instructor') {
-            return $effectiveLimit;
-        }
-
-        $instructor = $module->creator;
-        if (!$instructor) {
-            return $effectiveLimit;
-        }
-
-        $planCap = $this->instructorPlanCapabilityService->getLearnerCapForModule(
-            $instructor,
-            $module->isPaidAccess() ? 'paid' : 'free'
-        );
-        if ($planCap === null) {
-            return $effectiveLimit;
-        }
-
-        if ($effectiveLimit === null) {
-            return $planCap;
-        }
-
-        return min($effectiveLimit, $planCap);
-    }
 }
