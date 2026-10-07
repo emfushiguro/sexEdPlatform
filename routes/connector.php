@@ -28,6 +28,7 @@ use App\Http\Controllers\Connector\SeminarLivestreamController;
 use App\Http\Controllers\Connector\SeminarRegistrantController;
 use App\Http\Controllers\Connector\SeminarSpeakerController;
 use App\Http\Controllers\Connector\SubscriptionController;
+use App\Http\Controllers\Connector\VerificationDocumentController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -40,6 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connector/{connector}/status', [RegistrationController::class, 'status'])->name('connector.status');
     Route::post('/connector/{connector}/verification/resubmit', [RegistrationController::class, 'resubmit'])
         ->name('connector.verification.resubmit');
+    Route::get('/connector/{connector}/verification/documents/{document}', VerificationDocumentController::class)
+        ->name('connector.verification.documents.show');
     Route::post('/connector/{connector}/withdraw', [RegistrationController::class, 'withdraw'])->name('connector.withdraw');
 
     Route::get('/connector/{connector}/dashboard', [DashboardController::class, 'index'])->name('connector.dashboard');

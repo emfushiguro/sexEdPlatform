@@ -177,6 +177,28 @@ final class ConnectorVerificationService
         }
     }
 
+    public function recordDocumentAccess(
+        ConnectorVerificationDocument $document,
+        User $viewer,
+        string $action,
+    ): void {
+        if (! in_array($action, ['document_previewed', 'document_downloaded'], true)) {
+            throw new \InvalidArgumentException('Unsupported verification document audit action.');
+        }
+
+        $document->connector()->firstOrFail()->verificationAudits()->create([
+            'connector_verification_requirement_id' => $document->connector_verification_requirement_id,
+            'connector_verification_document_id' => $document->id,
+            'actor_id' => $viewer->id,
+            'action' => $action,
+            'new_state' => [
+                'status' => $document->status,
+                'submission_round' => $document->submission_round,
+            ],
+            'submission_round' => $document->submission_round,
+        ]);
+    }
+
     public function resubmit(
         Connector $connector,
         User $applicant,

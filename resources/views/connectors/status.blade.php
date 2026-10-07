@@ -111,7 +111,8 @@
                                             <ul class="mt-4 space-y-2 text-sm text-gray-600">
                                                 @foreach($requirement->documents->where('status', '!=', 'superseded') as $document)
                                                     <li class="rounded-lg bg-gray-50 p-3">
-                                                        <span class="font-medium text-gray-800">{{ $document->original_name }}</span>
+                                                        <a href="{{ route('connector.verification.documents.show', ['connector' => $connector, 'document' => $document, 'disposition' => 'inline']) }}" class="font-medium text-purple-700 hover:underline">{{ $document->original_name }}</a>
+                                                        <a href="{{ route('connector.verification.documents.show', ['connector' => $connector, 'document' => $document, 'disposition' => 'attachment']) }}" class="ml-2 text-xs font-semibold text-gray-600 hover:underline">Download</a>
                                                         <span class="ml-2 text-xs uppercase tracking-wide text-gray-500">{{ $document->status }}</span>
                                                         @if($document->status === 'rejected' && $document->applicant_rejection_reason)
                                                             <p class="mt-1 text-sm text-red-700">{{ $document->applicant_rejection_reason }}</p>

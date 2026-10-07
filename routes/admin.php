@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Instructor;
 use App\Http\Middleware\EnsureLearnerIdentityVerified;
+use App\Http\Controllers\Connector\VerificationDocumentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -330,6 +331,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::prefix('connectors')->name('connectors.')->group(function () {
         Route::get('/', [Admin\ConnectorController::class, 'index'])->name('index');
         Route::get('/{connector}', [Admin\ConnectorController::class, 'show'])->name('show');
+        Route::get('/{connector}/verification/documents/{document}', VerificationDocumentController::class)
+            ->name('verification.documents.show');
         Route::post('/{connector}/approve', [Admin\ConnectorController::class, 'approve'])->name('approve');
         Route::post('/{connector}/reject', [Admin\ConnectorController::class, 'reject'])->name('reject');
         Route::post('/{connector}/suspend', [Admin\ConnectorController::class, 'suspend'])->name('suspend');
