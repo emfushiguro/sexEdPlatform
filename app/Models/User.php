@@ -292,6 +292,26 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ModulePurchase::class);
     }
 
+    public function connectorModulePurchases()
+    {
+        return $this->hasMany(ConnectorModulePurchase::class, 'purchased_by');
+    }
+
+    public function moduleMarketplaceListings()
+    {
+        return $this->hasMany(ModuleMarketplaceListing::class, 'seller_user_id');
+    }
+
+    public function moduleAccessGrants()
+    {
+        return $this->hasMany(ModuleAccessGrant::class);
+    }
+
+    public function connectorModuleSeatAssignments()
+    {
+        return $this->hasMany(ConnectorModuleSeatAssignment::class);
+    }
+
     public function chatConversationsAsParticipantOne()
     {
         return $this->hasMany(Conversation::class, 'participant_one_id');

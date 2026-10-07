@@ -8,4 +8,5 @@ enum EnrollmentStatus: string
     case Approved = 'approved';
     case Rejected = 'rejected';
     case PendingParentApproval = 'pending_parent_approval';
+    case Inactive = 'inactive';
 }

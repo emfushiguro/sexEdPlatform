@@ -13,6 +13,14 @@ class ModuleSaleLedger extends Model
 
     protected $fillable = [
         'payment_id',
+        'sale_channel',
+        'connector_module_purchase_id',
+        'connector_id',
+        'buyer_user_id',
+        'seller_type',
+        'seller_user_id',
+        'seller_name_snapshot',
+        'seat_capacity_snapshot',
         'module_purchase_id',
         'module_id',
         'instructor_id',
@@ -24,6 +32,7 @@ class ModuleSaleLedger extends Model
         'commission_percent_snapshot',
         'commission_amount',
         'instructor_earnings_amount',
+        'seller_net_amount',
         'tax_basis_snapshot',
         'refund_policy_snapshot',
         'sale_status',
@@ -40,6 +49,8 @@ class ModuleSaleLedger extends Model
             'commission_percent_snapshot' => 'decimal:2',
             'commission_amount' => 'decimal:2',
             'instructor_earnings_amount' => 'decimal:2',
+            'seller_net_amount' => 'decimal:2',
+            'seat_capacity_snapshot' => 'integer',
             'occurred_at' => 'datetime',
         ];
     }
@@ -52,6 +63,26 @@ class ModuleSaleLedger extends Model
     public function modulePurchase(): BelongsTo
     {
         return $this->belongsTo(ModulePurchase::class);
+    }
+
+    public function connectorModulePurchase(): BelongsTo
+    {
+        return $this->belongsTo(ConnectorModulePurchase::class);
+    }
+
+    public function connector(): BelongsTo
+    {
+        return $this->belongsTo(Connector::class);
+    }
+
+    public function buyer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'buyer_user_id');
+    }
+
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'seller_user_id');
     }
 
     public function module(): BelongsTo
@@ -77,5 +108,10 @@ class ModuleSaleLedger extends Model
     public function scopeForInstructor($query, int $instructorId)
     {
         return $query->where('instructor_id', $instructorId);
+    }
+
+    public function scopeForConnector($query, int $connectorId)
+    {
+        return $query->where('connector_id', $connectorId);
     }
 }

@@ -80,6 +80,11 @@ class Payment extends Model
         return $this->hasOne(ModuleSaleLedger::class);
     }
 
+    public function connectorModulePurchase(): HasOne
+    {
+        return $this->hasOne(ConnectorModulePurchase::class);
+    }
+
     // Scopes
 
     public function scopeCompleted($query)
@@ -112,6 +117,16 @@ class Payment extends Model
     public function isModulePurchase(): bool
     {
         return (string) data_get($this->payment_details, 'payment_scope') === 'module_purchase';
+    }
+
+    public function isConnectorModulePurchase(): bool
+    {
+        return (string) data_get($this->payment_details, 'payment_scope') === 'connector_module_purchase';
+    }
+
+    public function isModuleCommercePurchase(): bool
+    {
+        return $this->isModulePurchase() || $this->isConnectorModulePurchase();
     }
 
     public function markAsCompleted(string $transactionId = null): void
