@@ -4,6 +4,9 @@
 @section('page-title', 'Module Revenue Transaction Details')
 
 @section('content')
+    @php
+        $isConnectorMarketplace = $transaction->sale_channel === \App\Models\ModuleSaleLedger::SALE_CHANNEL_CONNECTOR_MARKETPLACE;
+    @endphp
     <div class="space-y-6">
         <section class="rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
             <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.17),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(59,12,177,0.14),_transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">
@@ -53,15 +56,41 @@
                     <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Occurred At</dt>
                     <dd class="mt-2 text-sm font-semibold text-gray-900">{{ optional($transaction->occurred_at)->format('M d, Y h:i A') ?? 'N/A' }}</dd>
                 </div>
+                @if($isConnectorMarketplace)
+                    <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Sale Channel</dt>
+                        <dd class="mt-2 text-sm font-semibold text-indigo-900">Connector Marketplace</dd>
+                    </div>
+                    <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Connector</dt>
+                        <dd class="mt-2 text-sm font-semibold text-indigo-900">{{ $transaction->connector?->name ?? $transaction->connectorModulePurchase?->connector?->name ?? 'Unknown connector' }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Acting Buyer</dt>
+                        <dd class="mt-2 text-sm font-semibold text-indigo-900">{{ $transaction->buyer?->name ?? $transaction->connectorModulePurchase?->purchaser?->name ?? 'Unknown buyer' }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Seats</dt>
+                        <dd class="mt-2 text-sm font-semibold text-indigo-900">{{ (int) ($transaction->seat_capacity_snapshot ?? $transaction->connectorModulePurchase?->seat_capacity ?? 0) }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Seller / Owner</dt>
+                        <dd class="mt-2 text-sm font-semibold text-indigo-900">{{ $transaction->seller?->name ?? $transaction->instructor?->name ?? 'Unknown seller' }}</dd>
+                    </div>
+                    <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Rate / Seller Net</dt>
+                        <dd class="mt-2 text-sm font-semibold text-indigo-900">{{ number_format((float) $transaction->commission_percent_snapshot, 2) }}% / PHP {{ number_format((float) ($transaction->seller_net_amount ?? $transaction->instructor_earnings_amount), 2) }}</dd>
+                    </div>
+                @endif
                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                    <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Learner</dt>
-                    <dd class="mt-2 text-sm font-semibold text-gray-900">{{ $transaction->learner?->name ?? $transaction->learner_name_snapshot ?? 'Unknown learner' }}</dd>
-                    <p class="text-xs text-gray-500">{{ $transaction->learner?->email ?? 'No email' }}</p>
+                    <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $isConnectorMarketplace ? 'Learner / Access Owner' : 'Learner' }}</dt>
+                    <dd class="mt-2 text-sm font-semibold text-gray-900">{{ $transaction->learner?->name ?? $transaction->learner_name_snapshot ?? ($isConnectorMarketplace ? 'Connector members' : 'Unknown learner') }}</dd>
+                    <p class="text-xs text-gray-500">{{ $transaction->learner?->email ?? ($isConnectorMarketplace ? 'Connector-managed access' : 'No email') }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
                     <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Instructor</dt>
-                    <dd class="mt-2 text-sm font-semibold text-gray-900">{{ $transaction->instructor?->name ?? 'Unknown instructor' }}</dd>
-                    <p class="text-xs text-gray-500">{{ $transaction->instructor?->email ?? 'No email' }}</p>
+                    <dd class="mt-2 text-sm font-semibold text-gray-900">{{ $transaction->seller?->name ?? $transaction->instructor?->name ?? 'Unknown instructor' }}</dd>
+                    <p class="text-xs text-gray-500">{{ $transaction->seller?->email ?? $transaction->instructor?->email ?? 'No email' }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
                     <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Payment Method</dt>

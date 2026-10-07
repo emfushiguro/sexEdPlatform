@@ -293,6 +293,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('module-revenue.destroy');
         Route::patch('/module-revenue/{moduleSaleLedger}/payout-status', [Admin\ModuleRevenueController::class, 'updatePayoutStatus'])
             ->name('module-revenue.payout.update');
+        Route::post('/connector-module-purchases/{purchase}/correct', [Admin\ConnectorModulePurchaseCorrectionController::class, 'correct'])
+            ->name('connector-module-purchases.correct');
     });
 
     Route::prefix('financial-reports')->name('financial-reports.')

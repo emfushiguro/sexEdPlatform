@@ -101,6 +101,10 @@ class PaymentAdminController extends Controller
 
     public function destroy(Payment $payment): RedirectResponse
     {
+        if ($payment->isConnectorModulePurchase()) {
+            return redirect()->back()->with('error', 'Connector module payments cannot be permanently deleted; use an administrator correction.');
+        }
+
         if ($payment->status === PaymentStatus::Completed) {
             return redirect()->back()->with('error', 'Completed payments cannot be permanently deleted.');
         }

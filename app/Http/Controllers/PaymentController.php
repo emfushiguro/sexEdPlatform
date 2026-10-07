@@ -478,10 +478,14 @@ class PaymentController extends Controller
             ->limit(20);
 
         if ($isInstructorContext) {
-            $pendingPaymentsQuery->whereNotNull('subscription_id')
-                ->whereHas('subscription.plan', function ($query) {
-                    $query->where('plan_audience', 'instructor');
-                });
+            $pendingPaymentsQuery->where(function ($query) {
+                $query->where(function ($subscriptionQuery) {
+                    $subscriptionQuery->whereNotNull('subscription_id')
+                        ->whereHas('subscription.plan', function ($planQuery) {
+                            $planQuery->where('plan_audience', 'instructor');
+                        });
+                })->orWhere('payment_details->payment_scope', 'connector_module_purchase');
+            });
         }
 
         // Reconcile stale pending records before rendering history table.
@@ -510,10 +514,14 @@ class PaymentController extends Controller
             ->latest();
 
         if ($isInstructorContext) {
-            $paymentsQuery->whereNotNull('subscription_id')
-                ->whereHas('subscription.plan', function ($query) {
-                    $query->where('plan_audience', 'instructor');
-                });
+            $paymentsQuery->where(function ($query) {
+                $query->where(function ($subscriptionQuery) {
+                    $subscriptionQuery->whereNotNull('subscription_id')
+                        ->whereHas('subscription.plan', function ($planQuery) {
+                            $planQuery->where('plan_audience', 'instructor');
+                        });
+                })->orWhere('payment_details->payment_scope', 'connector_module_purchase');
+            });
         }
 
         $payments = $paymentsQuery->paginate(10);

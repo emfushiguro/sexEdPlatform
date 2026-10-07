@@ -27,6 +27,12 @@ class ModuleRevenueController extends Controller
             'learner.learnerProfile:id,user_id,avatar_path',
             'payment:id,transaction_id,method,status,paid_at',
             'modulePurchase:id,module_id,purchased_at,status',
+            'connectorModulePurchase.connector',
+            'connectorModulePurchase.purchaser',
+            'connectorModulePurchase.entitlement',
+            'connector',
+            'buyer',
+            'seller',
         ])->where('sale_status', '!=', 'archived');
 
         if ($request->filled('instructor_id')) {
@@ -104,6 +110,12 @@ class ModuleRevenueController extends Controller
                 'learner.learnerProfile:id,user_id,avatar_path',
                 'payment:id,user_id,transaction_id,method,status,paid_at,payment_details,amount',
                 'modulePurchase:id,module_id,purchased_at,status,amount,currency',
+                'connectorModulePurchase.connector',
+                'connectorModulePurchase.purchaser',
+                'connectorModulePurchase.entitlement',
+                'connector',
+                'buyer',
+                'seller',
             ])
             ->findOrFail($moduleSaleLedger->id);
 
@@ -123,6 +135,12 @@ class ModuleRevenueController extends Controller
                 'learner:id,name,email',
                 'learner.learnerProfile:id,user_id,avatar_path',
                 'modulePurchase:id,module_id,purchased_at,status',
+                'connectorModulePurchase.connector',
+                'connectorModulePurchase.purchaser',
+                'connectorModulePurchase.entitlement',
+                'connector',
+                'buyer',
+                'seller',
             ]);
 
         if ($request->filled('module_id')) {
@@ -176,6 +194,10 @@ class ModuleRevenueController extends Controller
 
     public function destroy(ModuleSaleLedger $moduleSaleLedger)
     {
+        if ($moduleSaleLedger->sale_channel === ModuleSaleLedger::SALE_CHANNEL_CONNECTOR_MARKETPLACE) {
+            return redirect()->back()->with('error', 'Connector marketplace ledger entries cannot be permanently deleted; archive only.');
+        }
+
         $moduleSaleLedger->delete();
 
         return redirect()->route('admin.monetization.module-revenue.index')

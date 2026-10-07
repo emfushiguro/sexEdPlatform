@@ -5,6 +5,7 @@ namespace App\Services\Modules;
 use App\Models\Module;
 use App\Models\ModuleMarketplaceListing;
 use App\Models\User;
+use App\Notifications\Instructor\ModuleMarketplaceStatusNotification;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -98,13 +99,29 @@ class ModuleMarketplaceListingService
 
     public function suspend(ModuleMarketplaceListing $listing, User $admin, string $reason): ModuleMarketplaceListing
     {
-        $listing->forceFill([
-            'status' => ModuleMarketplaceListing::STATUS_SUSPENDED,
-            'suspended_by' => $admin->id,
-            'suspended_at' => now(),
-            'suspension_reason' => trim($reason),
-        ])->save();
+        return DB::transaction(function () use ($listing, $admin, $reason): ModuleMarketplaceListing {
+            $listing->loadMissing('module');
+            $listing->forceFill([
+                'status' => ModuleMarketplaceListing::STATUS_SUSPENDED,
+                'suspended_by' => $admin->id,
+                'suspended_at' => now(),
+                'suspension_reason' => trim($reason),
+            ])->save();
 
-        return $listing->fresh();
+            if ($listing->seller_type === 'instructor' && $listing->seller_user_id) {
+                $sellerId = (int) $listing->seller_user_id;
+                $listingId = (int) $listing->id;
+                $reason = trim($reason);
+                DB::afterCommit(function () use ($listingId, $sellerId, $reason): void {
+                    $resolved = ModuleMarketplaceListing::query()->find($listingId);
+                    $seller = User::query()->find($sellerId);
+                    if ($resolved && $seller) {
+                        $seller->notify(new ModuleMarketplaceStatusNotification($resolved, ModuleMarketplaceListing::STATUS_SUSPENDED, $reason));
+                    }
+                });
+            }
+
+            return $listing->fresh();
+        });
     }
 }

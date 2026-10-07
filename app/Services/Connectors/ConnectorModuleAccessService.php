@@ -8,6 +8,7 @@ use App\Models\ConnectorModuleEntitlement;
 use App\Models\ConnectorModuleSeatAssignment;
 use App\Models\ModuleAccessGrant;
 use App\Models\User;
+use App\Notifications\Connectors\ConnectorModuleAccessNotification;
 use App\Services\Modules\ModuleAccessService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -254,6 +255,17 @@ class ConnectorModuleAccessService
             ->each(fn (ConnectorModuleSeatAssignment $assignment) => $this->releaseAssignment($assignment, $reason));
     }
 
+    public function releaseEntitlement(
+        ConnectorModuleEntitlement $entitlement,
+        string $reason = 'entitlement_released',
+    ): void {
+        ConnectorModuleSeatAssignment::query()
+            ->where('connector_module_entitlement_id', $entitlement->id)
+            ->where('status', '!=', ConnectorModuleSeatAssignment::STATUS_REVOKED)
+            ->get()
+            ->each(fn (ConnectorModuleSeatAssignment $assignment) => $this->releaseAssignment($assignment, $reason));
+    }
+
     public function revoke(
         ConnectorModuleEntitlement $entitlement,
         User $learner,
@@ -267,6 +279,7 @@ class ConnectorModuleAccessService
                 'connector_module_entitlement_id' => $entitlement->id,
                 'user_id' => $learner->id,
             ]);
+            $previousStatus = $assignment->exists ? $assignment->status : null;
             $assignment->forceFill([
                 'connector_membership_id' => $assignment->connector_membership_id
                     ?? $entitlement->connector->memberships()->where('user_id', $learner->id)->value('id'),
@@ -284,6 +297,10 @@ class ConnectorModuleAccessService
                 (int) $assignment->id,
                 $reason,
             );
+
+            if ($previousStatus !== ConnectorModuleSeatAssignment::STATUS_REVOKED) {
+                $this->queueAssignmentNotification($assignment, 'revoked');
+            }
 
             return $assignment->fresh();
         });
@@ -438,6 +455,7 @@ class ConnectorModuleAccessService
         ?string $inactiveReason,
         bool $guardianPending = false,
     ): void {
+        $previousStatus = $assignment->exists ? $assignment->status : null;
         $wasInactive = $assignment->exists && $assignment->status === ConnectorModuleSeatAssignment::STATUS_INACTIVE;
         $assignment->forceFill([
             'connector_module_entitlement_id' => $rule->connector_module_entitlement_id,
@@ -456,6 +474,16 @@ class ConnectorModuleAccessService
         ])->save();
 
         $this->moduleAccess->grantConnectorAssignment($assignment, $guardianPending);
+
+        if ($previousStatus !== $status) {
+            $this->queueAssignmentNotification(
+                $assignment,
+                in_array($status, [
+                    ConnectorModuleSeatAssignment::STATUS_ACTIVE,
+                    ConnectorModuleSeatAssignment::STATUS_INDEPENDENT,
+                ], true) ? 'granted' : 'released',
+            );
+        }
     }
 
     private function releaseAssignment(
@@ -466,6 +494,7 @@ class ConnectorModuleAccessService
             return;
         }
 
+        $previousStatus = $assignment->status;
         $assignment->forceFill([
             'status' => ConnectorModuleSeatAssignment::STATUS_INACTIVE,
             'inactive_reason' => $reason,
@@ -477,6 +506,27 @@ class ConnectorModuleAccessService
             (int) $assignment->id,
             $reason,
         );
+
+        if ($previousStatus !== ConnectorModuleSeatAssignment::STATUS_INACTIVE) {
+            $this->queueAssignmentNotification($assignment, 'released');
+        }
+    }
+
+    private function queueAssignmentNotification(
+        ConnectorModuleSeatAssignment $assignment,
+        string $action,
+    ): void {
+        $assignmentId = (int) $assignment->id;
+
+        DB::afterCommit(function () use ($assignmentId, $action): void {
+            $resolved = ConnectorModuleSeatAssignment::query()
+                ->with(['entitlement', 'user'])
+                ->find($assignmentId);
+
+            if ($resolved?->user) {
+                $resolved->user->notify(new ConnectorModuleAccessNotification($resolved, $action));
+            }
+        });
     }
 
     private function ruleKey(string $targetType, ?int $targetId): string

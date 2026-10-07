@@ -6,8 +6,8 @@
 <div class="max-w-6xl mx-auto space-y-6">
 	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div>
-			<h1 class="text-2xl font-bold text-gray-900">Subscription Payment History</h1>
-			<p class="mt-1 text-sm text-gray-500">Track all instructor subscription payments, statuses, and receipts.</p>
+			<h1 class="text-2xl font-bold text-gray-900">Payment History</h1>
+			<p class="mt-1 text-sm text-gray-500">Track instructor subscriptions and Connector Marketplace module payments.</p>
 		</div>
 		<a href="{{ route('instructor.subscriptions.index') }}" class="inline-flex items-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
 			Back to subscriptions
@@ -21,7 +21,7 @@
 					<thead class="bg-gray-50 border-b border-gray-200">
 						<tr>
 							<th class="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-[0.14em] text-xs">Transaction</th>
-							<th class="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-[0.14em] text-xs">Plan</th>
+							<th class="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-[0.14em] text-xs">Plan / Purchase</th>
 							<th class="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-[0.14em] text-xs">Amount</th>
 							<th class="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-[0.14em] text-xs">Method</th>
 							<th class="px-5 py-3 text-left font-semibold text-gray-600 uppercase tracking-[0.14em] text-xs">Status</th>
@@ -39,14 +39,24 @@
 									'refunded' => 'bg-blue-50 text-blue-700 border-blue-200',
 									default => 'bg-rose-50 text-rose-700 border-rose-200',
 								};
-								$planName = $payment->subscription?->plan?->name
-									?? data_get($payment->payment_details, 'plan_name')
-									?? $payment->subscription?->getPlanLabel()
-									?? 'Instructor Plan';
+								$isConnectorModule = $payment->isConnectorModulePurchase();
+								$planName = $isConnectorModule
+									? ($payment->connectorModulePurchase?->module?->title ?? 'Connector module package')
+									: ($payment->subscription?->plan?->name
+										?? data_get($payment->payment_details, 'plan_name')
+										?? $payment->subscription?->getPlanLabel()
+										?? 'Instructor Plan');
 							@endphp
 							<tr class="hover:bg-gray-50/70 transition-colors">
 								<td class="px-5 py-4 whitespace-nowrap font-semibold text-gray-900">{{ $payment->transaction_id }}</td>
-								<td class="px-5 py-4 whitespace-nowrap text-gray-700">{{ $planName }}</td>
+								<td class="px-5 py-4 text-gray-700">
+									<span class="font-semibold">{{ $planName }}</span>
+									@if($isConnectorModule)
+										<span class="block text-xs text-indigo-700">Connector Marketplace</span>
+										<span class="block text-xs text-gray-500">Connector: {{ $payment->connectorModulePurchase?->connector?->name ?? 'Unknown connector' }}</span>
+										<span class="block text-xs text-gray-500">Seats: {{ (int) ($payment->connectorModulePurchase?->seat_capacity ?? 0) }}</span>
+									@endif
+								</td>
 								<td class="px-5 py-4 whitespace-nowrap font-semibold text-gray-900">PHP {{ number_format((float) $payment->amount, 2) }}</td>
 								<td class="px-5 py-4 whitespace-nowrap text-gray-600">{{ ucfirst((string) ($payment->method ?? 'n/a')) }}</td>
 								<td class="px-5 py-4 whitespace-nowrap">
@@ -87,7 +97,7 @@
 		@else
 			<div class="px-6 py-20 text-center">
 				<h2 class="text-xl font-semibold text-gray-900">No instructor payments yet</h2>
-				<p class="mt-2 text-sm text-gray-500">When you subscribe to a paid instructor plan, transactions will appear here.</p>
+			<p class="mt-2 text-sm text-gray-500">When you subscribe to a paid instructor plan or purchase a Connector module package, transactions will appear here.</p>
 				<a href="{{ route('instructor.subscriptions.index') }}" class="mt-5 inline-flex items-center rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600">
 					View plans
 				</a>

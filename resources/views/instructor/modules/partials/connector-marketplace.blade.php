@@ -16,6 +16,11 @@
             </span>
         @endif
     </div>
+    @if($marketplaceListing?->status === 'suspended' && $marketplaceListing->suspension_reason)
+        <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Suspension reason: {{ $marketplaceListing->suspension_reason }}
+        </p>
+    @endif
 
     @if($canManageMarketplace)
         <form method="POST" action="{{ route($marketplaceRoutePrefix . '.modules.marketplace.update', $module) }}" class="mt-5 grid gap-4 sm:grid-cols-4">

@@ -10,6 +10,7 @@ use App\Models\Module;
 use App\Models\ModuleMarketplaceListing;
 use App\Models\Payment;
 use App\Models\User;
+use App\Notifications\Connectors\ConnectorModulePurchaseNotification;
 use App\Services\Monetization\ModuleSaleLedgerService;
 use App\Services\Modules\ModuleAccessService;
 use App\Services\Modules\ModuleCapacityService;
@@ -37,7 +38,14 @@ class ConnectorModulePurchaseService
             return false;
         }
 
-        return DB::transaction(function () use ($payment, $paymentMethod, $paymongoPaymentId): bool {
+        $notificationStatus = null;
+
+        $completed = DB::transaction(function () use (
+            $payment,
+            $paymentMethod,
+            $paymongoPaymentId,
+            &$notificationStatus,
+        ): bool {
             $lockedPayment = Payment::query()
                 ->whereKey($payment->id)
                 ->lockForUpdate()
@@ -83,6 +91,8 @@ class ConnectorModulePurchaseService
                     'capacity_hold_expires_at' => null,
                     'failure_reason' => 'Module is no longer available for learning.',
                 ])->save();
+                $notificationStatus = ConnectorModulePurchase::STATUS_ATTENTION_REQUIRED;
+                $this->queuePurchaseNotification((int) $purchase->id, $notificationStatus);
 
                 return false;
             }
@@ -100,6 +110,8 @@ class ConnectorModulePurchaseService
                         'capacity_hold_expires_at' => null,
                         'failure_reason' => 'Paid purchase requires manual capacity recovery.',
                     ])->save();
+                    $notificationStatus = ConnectorModulePurchase::STATUS_ATTENTION_REQUIRED;
+                    $this->queuePurchaseNotification((int) $purchase->id, $notificationStatus);
 
                     return false;
                 }
@@ -131,8 +143,52 @@ class ConnectorModulePurchaseService
                 'provider_paid_at' => $purchase->provider_paid_at ?? $lockedPayment->paid_at ?? now(),
                 'purchased_at' => $purchase->purchased_at ?? now(),
             ])->save();
+            $notificationStatus = ConnectorModulePurchase::STATUS_COMPLETED;
+            $this->queuePurchaseNotification((int) $purchase->id, $notificationStatus);
 
             return true;
+        });
+
+        return $completed;
+    }
+
+    private function queuePurchaseNotification(int $purchaseId, string $status): void
+    {
+        DB::afterCommit(function () use ($purchaseId, $status): void {
+            $purchase = ConnectorModulePurchase::query()
+                ->with([
+                    'connector.memberships.user',
+                    'connector.memberships.role.permissions',
+                    'purchaser',
+                ])
+                ->find($purchaseId);
+
+            if (!$purchase) {
+                return;
+            }
+
+            $recipients = collect([$purchase->purchaser])->filter();
+            foreach ($purchase->connector?->memberships ?? [] as $membership) {
+                if ($membership->status === 'active'
+                    && $membership->role?->permissions?->contains('permission_key', 'connector.manage_modules')) {
+                    $recipients->push($membership->user);
+                }
+            }
+
+            if ($status === ConnectorModulePurchase::STATUS_ATTENTION_REQUIRED) {
+                $recipients = $recipients->merge(
+                    User::query()
+                        ->where('role', 'admin')
+                        ->orWhereHas('roles', fn ($query) => $query->where('name', 'admin'))
+                        ->get()
+                );
+            }
+
+            $notification = new ConnectorModulePurchaseNotification($purchase, $status);
+            $recipients
+                ->filter()
+                ->unique('id')
+                ->each(fn (User $user) => $user->notify($notification));
         });
     }
 
