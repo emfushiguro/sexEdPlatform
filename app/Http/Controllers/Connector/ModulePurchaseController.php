@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Connector;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProcessModulePaymentRequest;
 use App\Models\Connector;
+use App\Models\ConnectorModulePurchase;
 use App\Models\ModuleMarketplaceListing;
 use App\Services\Connectors\ConnectorAccessService;
 use App\Services\Connectors\ConnectorModulePurchaseService;
@@ -74,5 +75,26 @@ class ModulePurchaseController extends Controller
         }
 
         return redirect((string) $checkout['checkout_url']);
+    }
+
+    public function confirmation(
+        Request $request,
+        Connector $connector,
+        ConnectorModulePurchase $purchase,
+    ): View {
+        $this->access->abortUnlessWorkspace($request->user(), $connector);
+        abort_unless(
+            (int) $purchase->connector_id === (int) $connector->id
+                && $purchase->status === ConnectorModulePurchase::STATUS_COMPLETED,
+            404,
+        );
+        $purchase->load(['connector', 'module', 'entitlement']);
+
+        return view('connectors.modules.purchase-confirmation', [
+            'connector' => $connector,
+            'purchase' => $purchase,
+            'entitlement' => $purchase->entitlement,
+            'canManage' => $this->access->hasPermission($request->user(), $connector, 'connector.manage_modules'),
+        ]);
     }
 }

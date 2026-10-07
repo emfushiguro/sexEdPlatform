@@ -13,6 +13,7 @@ use App\Http\Controllers\Connector\InvitationController;
 use App\Http\Controllers\Connector\InvitationInboxController;
 use App\Http\Controllers\Connector\MemberController;
 use App\Http\Controllers\Connector\ModuleAccessController;
+use App\Http\Controllers\Connector\ModuleLibraryController;
 use App\Http\Controllers\Connector\ModuleMarketplaceController;
 use App\Http\Controllers\Connector\ModulePurchaseController;
 use App\Http\Controllers\Connector\MembershipRequestController;
@@ -41,6 +42,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/connector/{connector}/dashboard', [DashboardController::class, 'index'])->name('connector.dashboard');
     Route::get('/connector/{connector}/modules', [ModuleMarketplaceController::class, 'index'])->name('connector.modules');
+    Route::get('/connector/{connector}/modules/library', [ModuleLibraryController::class, 'index'])
+        ->name('connector.modules.library.index');
+    Route::get('/connector/{connector}/modules/library/{entitlement}', [ModuleLibraryController::class, 'show'])
+        ->name('connector.modules.library.show');
+    Route::get('/connector/{connector}/modules/library/{entitlement}/access', [ModuleLibraryController::class, 'access'])
+        ->name('connector.modules.library.access');
+    Route::get('/connector/{connector}/modules/purchases/{purchase}/confirmation', [ModulePurchaseController::class, 'confirmation'])
+        ->name('connector.modules.purchase.confirmation');
     Route::get('/connector/{connector}/modules/marketplace/{listing}', [ModuleMarketplaceController::class, 'show'])
         ->name('connector.modules.marketplace.show');
     Route::get('/connector/{connector}/modules/marketplace/{listing}/checkout', [ModulePurchaseController::class, 'checkout'])
