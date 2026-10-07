@@ -339,6 +339,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('verification.requirements.resolve');
         Route::post('/{connector}/verification/request-evidence', [Admin\ConnectorVerificationController::class, 'requestEvidence'])
             ->name('verification.request-evidence');
+        Route::post('/{connector}/verification/request-resubmission', [Admin\ConnectorController::class, 'requestResubmission'])
+            ->name('verification.request-resubmission');
         Route::post('/{connector}/approve', [Admin\ConnectorController::class, 'approve'])->name('approve');
         Route::post('/{connector}/reject', [Admin\ConnectorController::class, 'reject'])->name('reject');
         Route::post('/{connector}/suspend', [Admin\ConnectorController::class, 'suspend'])->name('suspend');

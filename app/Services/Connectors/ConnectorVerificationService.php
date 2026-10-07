@@ -8,9 +8,11 @@ use App\Models\ConnectorVerificationRequirement;
 use App\Models\LearnerIdentityVerification;
 use App\Models\User;
 use App\Notifications\Connectors\ConnectorApplicationSubmittedNotification;
+use App\Notifications\Connectors\ConnectorModerationDecisionNotification;
 use App\Support\ConnectorVerificationRequirements;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Notifications\Notification as BaseNotification;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,11 +20,30 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 final class ConnectorVerificationService
 {
+    private const APPROVAL_CHECKLIST_KEYS = [
+        'organization_identity_established',
+        'regulatory_evidence_resolved',
+        'representative_identity_verified',
+        'representative_authority_established',
+        'required_evidence_complete',
+        'application_consistent',
+    ];
+
+    private const PERMANENT_REJECTION_REASON_CODES = [
+        'ineligible',
+        'fraudulent',
+        'policy_violation',
+        'duplicate',
+        'unsupported',
+        'other',
+    ];
+
     public function __construct(
         private readonly ConnectorVerificationRequirements $registry,
         private readonly ConnectorRoleService $roles,
@@ -489,6 +510,336 @@ final class ConnectorVerificationService
         });
     }
 
+    public function approve(
+        Connector $connector,
+        User $admin,
+        int $expectedRound,
+        array $checklist,
+        ?string $internalNote,
+    ): Connector {
+        return DB::transaction(function () use (
+            $connector,
+            $admin,
+            $expectedRound,
+            $checklist,
+            $internalNote,
+        ): Connector {
+            $locked = Connector::query()
+                ->whereKey($connector->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertDecisionRound($locked, $expectedRound);
+
+            if ($locked->status !== 'pending'
+                || $locked->verification_status !== Connector::VERIFICATION_UNDER_REVIEW) {
+                throw new ConflictHttpException('Only a pending connector under verification review can be approved.');
+            }
+
+            $this->assertApprovalChecklist($checklist);
+
+            $requirements = $locked->verificationRequirements()
+                ->whereNull('superseded_at')
+                ->get();
+
+            if ($requirements->isEmpty()) {
+                throw new HttpException(422, 'No current verification requirements are available.');
+            }
+
+            $this->assertApprovalEvidence($locked, $requirements, $expectedRound);
+
+            $fromStatus = $locked->status;
+            $reviewedAt = now();
+
+            $locked->update([
+                'status' => 'verified',
+                'verification_status' => Connector::VERIFICATION_VERIFIED,
+                'reviewed_by' => $admin->id,
+                'reviewed_at' => $reviewedAt,
+                'rejection_reason' => null,
+                'suspended_at' => null,
+            ]);
+
+            $locked->memberships()
+                ->where('user_id', $locked->primary_representative_user_id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'active',
+                    'accepted_at' => $reviewedAt,
+                ]);
+
+            $locked->reviews()->create([
+                'reviewed_by' => $admin->id,
+                'from_status' => $fromStatus,
+                'to_status' => 'verified',
+                'reason' => 'Connector approved.',
+                'reason_code' => 'approved',
+                'internal_notes' => $this->cleanNote($internalNote),
+                'submission_round' => $expectedRound,
+                'reviewed_at' => $reviewedAt,
+            ]);
+
+            $locked->verificationAudits()->create([
+                'actor_id' => $admin->id,
+                'action' => 'connector_approved',
+                'previous_state' => [
+                    'status' => $fromStatus,
+                    'verification_status' => Connector::VERIFICATION_UNDER_REVIEW,
+                ],
+                'new_state' => [
+                    'status' => 'verified',
+                    'verification_status' => Connector::VERIFICATION_VERIFIED,
+                ],
+                'submission_round' => $expectedRound,
+                'internal_notes' => $this->cleanNote($internalNote),
+            ]);
+
+            DB::afterCommit(function () use ($locked): void {
+                $current = $locked->fresh();
+                $recipient = $current->primaryRepresentative()->first();
+
+                if ($recipient) {
+                    $this->notifySafely(
+                        $recipient,
+                        $current->id,
+                        new ConnectorModerationDecisionNotification($current, 'verified'),
+                    );
+                }
+            });
+
+            return $locked->fresh(['roles.permissions', 'memberships']);
+        });
+    }
+
+    public function requestResubmission(
+        Connector $connector,
+        User $admin,
+        int $expectedRound,
+        string $applicantReason,
+        ?string $internalNote,
+    ): Connector {
+        return DB::transaction(function () use (
+            $connector,
+            $admin,
+            $expectedRound,
+            $applicantReason,
+            $internalNote,
+        ): Connector {
+            $locked = Connector::query()
+                ->whereKey($connector->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertDecisionRound($locked, $expectedRound);
+
+            if ($locked->verification_status !== Connector::VERIFICATION_UNDER_REVIEW) {
+                throw new ConflictHttpException('This connector is not currently under verification review.');
+            }
+
+            $requirements = $locked->verificationRequirements()
+                ->whereNull('superseded_at')
+                ->get();
+
+            $eligible = $requirements->contains(function (ConnectorVerificationRequirement $requirement) use ($admin): bool {
+                return in_array($requirement->status, [
+                    ConnectorVerificationRequirement::STATUS_REJECTED,
+                    ConnectorVerificationRequirement::STATUS_EXPIRED,
+                ], true) || (
+                    $requirement->status === ConnectorVerificationRequirement::STATUS_PENDING
+                    && (int) $requirement->requested_by === (int) $admin->id
+                );
+            });
+
+            if (! $eligible) {
+                throw new HttpException(422, 'No rejected, expired, or administrator-requested requirement is eligible for resubmission.');
+            }
+
+            $reason = trim($applicantReason);
+            if ($reason === '') {
+                throw ValidationException::withMessages([
+                    'applicant_reason' => 'An applicant-facing reason is required.',
+                ]);
+            }
+
+            $note = $this->cleanNote($internalNote);
+            $locked->update([
+                'verification_status' => Connector::VERIFICATION_RESUBMISSION_REQUIRED,
+            ]);
+
+            $locked->reviews()->create([
+                'reviewed_by' => $admin->id,
+                'from_status' => $locked->status,
+                'to_status' => $locked->status,
+                'reason' => $reason,
+                'reason_code' => 'resubmission_requested',
+                'internal_notes' => $note,
+                'submission_round' => $expectedRound,
+                'reviewed_at' => now(),
+            ]);
+
+            $locked->verificationAudits()->create([
+                'actor_id' => $admin->id,
+                'action' => 'resubmission_requested',
+                'previous_state' => [
+                    'verification_status' => Connector::VERIFICATION_UNDER_REVIEW,
+                ],
+                'new_state' => [
+                    'verification_status' => Connector::VERIFICATION_RESUBMISSION_REQUIRED,
+                ],
+                'submission_round' => $expectedRound,
+                'applicant_reason' => $reason,
+                'internal_notes' => $note,
+            ]);
+
+            return $locked->fresh(['roles.permissions', 'memberships']);
+        });
+    }
+
+    public function permanentlyReject(
+        Connector $connector,
+        User $admin,
+        int $expectedRound,
+        string $reasonCode,
+        string $applicantReason,
+        ?string $internalNote,
+    ): Connector {
+        if (! in_array($reasonCode, self::PERMANENT_REJECTION_REASON_CODES, true)) {
+            throw ValidationException::withMessages([
+                'reason_code' => 'Choose a valid permanent rejection reason.',
+            ]);
+        }
+
+        return DB::transaction(function () use (
+            $connector,
+            $admin,
+            $expectedRound,
+            $reasonCode,
+            $applicantReason,
+            $internalNote,
+        ): Connector {
+            $locked = Connector::query()
+                ->whereKey($connector->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertDecisionRound($locked, $expectedRound);
+
+            if ($locked->status === 'withdrawn'
+                || $locked->status === 'rejected'
+                || $locked->verification_status === Connector::VERIFICATION_REJECTED) {
+                throw new ConflictHttpException('This connector decision is already finalized.');
+            }
+
+            $reason = trim($applicantReason);
+            if ($reason === '') {
+                throw ValidationException::withMessages([
+                    'applicant_reason' => 'An applicant-facing reason is required.',
+                ]);
+            }
+
+            $fromStatus = $locked->status;
+            $note = $this->cleanNote($internalNote);
+            $locked->update([
+                'status' => 'rejected',
+                'verification_status' => Connector::VERIFICATION_REJECTED,
+                'reviewed_by' => $admin->id,
+                'reviewed_at' => now(),
+                'rejection_reason' => $reason,
+                'suspended_at' => null,
+            ]);
+
+            $locked->reviews()->create([
+                'reviewed_by' => $admin->id,
+                'from_status' => $fromStatus,
+                'to_status' => 'rejected',
+                'reason' => $reason,
+                'reason_code' => 'permanently_rejected',
+                'internal_notes' => $note,
+                'submission_round' => $expectedRound,
+                'reviewed_at' => now(),
+            ]);
+
+            $locked->verificationAudits()->create([
+                'actor_id' => $admin->id,
+                'action' => 'connector_permanently_rejected',
+                'previous_state' => [
+                    'status' => $fromStatus,
+                    'verification_status' => $connector->verification_status,
+                ],
+                'new_state' => [
+                    'status' => 'rejected',
+                    'verification_status' => Connector::VERIFICATION_REJECTED,
+                    'reason_code' => $reasonCode,
+                ],
+                'submission_round' => $expectedRound,
+                'applicant_reason' => $reason,
+                'internal_notes' => $note,
+            ]);
+
+            DB::afterCommit(function () use ($locked): void {
+                $current = $locked->fresh();
+                $recipient = $current->primaryRepresentative()->first();
+
+                if ($recipient) {
+                    $this->notifySafely(
+                        $recipient,
+                        $current->id,
+                        new ConnectorModerationDecisionNotification($current, 'rejected'),
+                    );
+                }
+            });
+
+            return $locked->fresh(['roles.permissions', 'memberships']);
+        });
+    }
+
+    public function suspend(Connector $connector, User $admin, string $reason): Connector
+    {
+        return DB::transaction(function () use ($connector, $admin, $reason): Connector {
+            $locked = Connector::query()
+                ->whereKey($connector->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $cleanReason = trim($reason);
+            if ($cleanReason === '') {
+                throw ValidationException::withMessages([
+                    'reason' => 'A suspension reason is required.',
+                ]);
+            }
+
+            $fromStatus = $locked->status;
+            $locked->update([
+                'status' => 'suspended',
+                'reviewed_by' => $admin->id,
+                'reviewed_at' => now(),
+                'rejection_reason' => $cleanReason,
+                'suspended_at' => now(),
+            ]);
+
+            $locked->reviews()->create([
+                'reviewed_by' => $admin->id,
+                'from_status' => $fromStatus,
+                'to_status' => 'suspended',
+                'reason' => $cleanReason,
+                'reason_code' => 'suspended',
+                'submission_round' => (int) $locked->current_submission_round,
+                'reviewed_at' => now(),
+            ]);
+
+            $locked->verificationAudits()->create([
+                'actor_id' => $admin->id,
+                'action' => 'connector_suspended',
+                'previous_state' => ['status' => $fromStatus],
+                'new_state' => ['status' => 'suspended'],
+                'submission_round' => (int) $locked->current_submission_round,
+                'applicant_reason' => $cleanReason,
+            ]);
+
+            return $locked->fresh(['roles.permissions', 'memberships']);
+        });
+    }
+
     public function recordDocumentAccess(
         ConnectorVerificationDocument $document,
         User $viewer,
@@ -813,6 +1164,152 @@ final class ConnectorVerificationService
 
             throw $e;
         }
+    }
+
+    private function assertDecisionRound(Connector $connector, int $expectedRound): void
+    {
+        if ((int) $connector->current_submission_round !== $expectedRound) {
+            throw new ConflictHttpException('This verification review is stale. Refresh the admin workspace.');
+        }
+    }
+
+    private function assertApprovalChecklist(array $checklist): void
+    {
+        $unknownKeys = array_diff(array_keys($checklist), self::APPROVAL_CHECKLIST_KEYS);
+
+        if ($unknownKeys !== []) {
+            throw ValidationException::withMessages([
+                'checklist' => 'The approval checklist contains an unsupported item.',
+            ]);
+        }
+
+        foreach (self::APPROVAL_CHECKLIST_KEYS as $key) {
+            if (! filter_var($checklist[$key] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                throw ValidationException::withMessages([
+                    'checklist.'.$key => 'Each approval checklist item must be confirmed.',
+                ]);
+            }
+        }
+    }
+
+    private function assertApprovalEvidence(
+        Connector $connector,
+        $requirements,
+        int $expectedRound,
+    ): void {
+        $groups = [];
+
+        foreach ($requirements as $requirement) {
+            $definition = $this->definitionFor($requirement);
+            $documents = $requirement->documents()
+                ->whereNull('superseded_at')
+                ->where('submission_round', $expectedRound)
+                ->get();
+            $acceptedCount = $documents
+                ->where('status', ConnectorVerificationDocument::STATUS_ACCEPTED)
+                ->count();
+            $hasBlockedRequiredDocument = $documents->contains(
+                fn (ConnectorVerificationDocument $document): bool => in_array($document->status, [
+                    ConnectorVerificationDocument::STATUS_PENDING,
+                    ConnectorVerificationDocument::STATUS_REJECTED,
+                    ConnectorVerificationDocument::STATUS_EXPIRED,
+                ], true),
+            );
+
+            $identityValid = false;
+            if ($requirement->learner_identity_verification_id !== null) {
+                $identityValid = LearnerIdentityVerification::query()
+                    ->whereKey($requirement->learner_identity_verification_id)
+                    ->where('status', 'approved')
+                    ->whereNull('superseded_at')
+                    ->exists();
+
+                if (! $identityValid) {
+                    throw new HttpException(422, 'The referenced representative identity verification is not currently approved.');
+                }
+            }
+
+            $notApplicableAudited = $requirement->status === ConnectorVerificationRequirement::STATUS_NOT_APPLICABLE
+                && ($definition['manual_not_applicable_allowed'] ?? false)
+                && $connector->verificationAudits()
+                    ->where('connector_verification_requirement_id', $requirement->id)
+                    ->where('action', 'requirement_not_applicable')
+                    ->where('submission_round', $expectedRound)
+                    ->exists();
+
+            $satisfied = $identityValid
+                || $acceptedCount >= max(1, (int) $requirement->minimum_evidence_count)
+                || $notApplicableAudited;
+
+            if ($requirement->is_required && ! $satisfied) {
+                throw new HttpException(422, 'Required connector verification evidence is incomplete.');
+            }
+
+            if ($requirement->is_required && $hasBlockedRequiredDocument) {
+                throw new HttpException(422, 'A required connector verification document is still pending or rejected.');
+            }
+
+            $group = (string) $requirement->rule_group;
+            $groups[$group][] = [
+                'mode' => (string) $requirement->rule_mode,
+                'satisfied' => $satisfied,
+                'accepted_count' => $acceptedCount,
+                'minimum' => max(1, (int) $requirement->minimum_evidence_count),
+            ];
+        }
+
+        foreach ($groups as $items) {
+            $mode = $items[0]['mode'] ?? 'all';
+
+            if ($mode === 'any' && ! collect($items)->contains('satisfied', true)) {
+                throw new HttpException(422, 'At least one requirement in an alternative evidence group must be satisfied.');
+            }
+
+            if ($mode === 'minimum') {
+                $minimum = max(array_column($items, 'minimum'));
+                $accepted = array_sum(array_column($items, 'accepted_count'));
+
+                if ($accepted < $minimum) {
+                    throw new HttpException(422, 'The minimum evidence threshold has not been met.');
+                }
+            }
+        }
+
+        $authority = $requirements->firstWhere('requirement_key', 'representative_authority');
+        if (! $authority) {
+            throw new HttpException(422, 'Representative authority is required for approval.');
+        }
+
+        $authorityDocuments = $authority->documents()
+            ->whereNull('superseded_at')
+            ->where('submission_round', $expectedRound)
+            ->get();
+        $authorityAccepted = $authorityDocuments
+            ->where('status', ConnectorVerificationDocument::STATUS_ACCEPTED)
+            ->count();
+        $authorityIdentityValid = $authority->learner_identity_verification_id !== null
+            && LearnerIdentityVerification::query()
+                ->whereKey($authority->learner_identity_verification_id)
+                ->where('status', 'approved')
+                ->whereNull('superseded_at')
+                ->exists();
+        $authoritySatisfied = $authorityIdentityValid
+            || $authorityAccepted >= max(1, (int) $authority->minimum_evidence_count)
+            || (
+                $authority->status === ConnectorVerificationRequirement::STATUS_NOT_APPLICABLE
+                && ($this->definitionFor($authority)['manual_not_applicable_allowed'] ?? false)
+            );
+
+        if (! $authoritySatisfied) {
+            throw new HttpException(422, 'Representative authority must be independently satisfied.');
+        }
+    }
+
+    private function cleanNote(?string $note): ?string
+    {
+        $clean = trim((string) $note);
+
+        return $clean === '' ? null : $clean;
     }
 
     private function storeDocument(
@@ -1166,7 +1663,7 @@ final class ConnectorVerificationService
             ->get();
     }
 
-    private function notifySafely(User $user, int $connectorId, ConnectorApplicationSubmittedNotification $notification): void
+    private function notifySafely(User $user, int $connectorId, BaseNotification $notification): void
     {
         try {
             $user->notify($notification);

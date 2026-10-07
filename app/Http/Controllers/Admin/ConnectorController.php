@@ -5,12 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ApproveConnectorRequest;
 use App\Http\Requests\Admin\RejectConnectorRequest;
+use App\Http\Requests\Admin\RequestConnectorResubmissionRequest;
 use App\Http\Requests\Admin\SuspendConnectorRequest;
 use App\Models\Connector;
-use App\Notifications\Connectors\ConnectorModerationDecisionNotification;
+use App\Services\Connectors\ConnectorVerificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ConnectorController extends Controller
@@ -38,95 +38,79 @@ class ConnectorController extends Controller
     public function show(Connector $connector): View
     {
         return view('admin.connectors.show', [
-            'connector' => $connector->load(['primaryRepresentative', 'creator', 'reviewer', 'memberships.user', 'memberships.role', 'reviews.reviewer']),
+            'connector' => $connector->load([
+                'primaryRepresentative',
+                'creator',
+                'reviewer',
+                'memberships.user',
+                'memberships.role',
+                'reviews.reviewer',
+            ]),
         ]);
     }
 
-    public function approve(ApproveConnectorRequest $request, Connector $connector): RedirectResponse
-    {
-        DB::transaction(function () use ($request, $connector) {
-            $from = $connector->status;
+    public function approve(
+        ApproveConnectorRequest $request,
+        Connector $connector,
+        ConnectorVerificationService $verification,
+    ): RedirectResponse {
+        $data = $request->validated();
 
-            $connector->update([
-                'status' => 'verified',
-                'reviewed_by' => $request->user()->id,
-                'reviewed_at' => now(),
-                'rejection_reason' => null,
-                'suspended_at' => null,
-            ]);
-
-            $connector->memberships()
-                ->where('user_id', $connector->primary_representative_user_id)
-                ->where('status', 'pending')
-                ->update(['status' => 'active', 'accepted_at' => now()]);
-
-            $connector->reviews()->create([
-                'reviewed_by' => $request->user()->id,
-                'from_status' => $from,
-                'to_status' => 'verified',
-                'reason' => $request->input('reason') ?: 'Connector approved.',
-                'reviewed_at' => now(),
-            ]);
-        });
-
-        $connector->primaryRepresentative?->notify(
-            new ConnectorModerationDecisionNotification($connector->fresh(), 'verified')
+        $verification->approve(
+            $connector,
+            $request->user(),
+            (int) $data['submission_round'],
+            $data['checklist'],
+            $data['internal_note'] ?? $data['reason'] ?? null,
         );
 
         return back()->with('success', 'Connector approved.');
     }
 
-    public function reject(RejectConnectorRequest $request, Connector $connector): RedirectResponse
-    {
-        DB::transaction(function () use ($request, $connector) {
-            $from = $connector->status;
-            $reason = $request->string('reason')->toString();
+    public function reject(
+        RejectConnectorRequest $request,
+        Connector $connector,
+        ConnectorVerificationService $verification,
+    ): RedirectResponse {
+        $data = $request->validated();
 
-            $connector->update([
-                'status' => 'rejected',
-                'reviewed_by' => $request->user()->id,
-                'reviewed_at' => now(),
-                'rejection_reason' => $reason,
-            ]);
-
-            $connector->reviews()->create([
-                'reviewed_by' => $request->user()->id,
-                'from_status' => $from,
-                'to_status' => 'rejected',
-                'reason' => $reason,
-                'reviewed_at' => now(),
-            ]);
-        });
-
-        $connector->primaryRepresentative?->notify(
-            new ConnectorModerationDecisionNotification($connector->fresh(), 'rejected')
+        $verification->permanentlyReject(
+            $connector,
+            $request->user(),
+            (int) $data['submission_round'],
+            $data['reason_code'],
+            $data['applicant_reason'],
+            $data['internal_note'] ?? null,
         );
 
         return back()->with('success', 'Connector rejected.');
     }
 
-    public function suspend(SuspendConnectorRequest $request, Connector $connector): RedirectResponse
-    {
-        DB::transaction(function () use ($request, $connector) {
-            $from = $connector->status;
-            $reason = $request->string('reason')->toString();
+    public function requestResubmission(
+        RequestConnectorResubmissionRequest $request,
+        Connector $connector,
+        ConnectorVerificationService $verification,
+    ): RedirectResponse {
+        $data = $request->validated();
 
-            $connector->update([
-                'status' => 'suspended',
-                'reviewed_by' => $request->user()->id,
-                'reviewed_at' => now(),
-                'rejection_reason' => $reason,
-                'suspended_at' => now(),
-            ]);
+        $verification->requestResubmission(
+            $connector,
+            $request->user(),
+            (int) $data['submission_round'],
+            $data['applicant_reason'],
+            $data['internal_note'] ?? null,
+        );
 
-            $connector->reviews()->create([
-                'reviewed_by' => $request->user()->id,
-                'from_status' => $from,
-                'to_status' => 'suspended',
-                'reason' => $reason,
-                'reviewed_at' => now(),
-            ]);
-        });
+        return redirect()->route('admin.connectors.show', $connector)
+            ->with('success', 'Connector resubmission requested.');
+    }
+
+    public function suspend(
+        SuspendConnectorRequest $request,
+        Connector $connector,
+        ConnectorVerificationService $verification,
+    ): RedirectResponse {
+        $verification->suspend($connector, $request->user(), $request->string('reason')->toString());
 
         return back()->with('success', 'Connector suspended.');
     }
