@@ -38,6 +38,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connectors/{connector}', [HomeController::class, 'show'])->name('connectors.show');
     Route::post('/connectors/{connector}/membership-requests', [MembershipRequestController::class, 'store'])->name('connectors.membership-requests.store');
     Route::get('/connector/{connector}/status', [RegistrationController::class, 'status'])->name('connector.status');
+    Route::post('/connector/{connector}/verification/resubmit', [RegistrationController::class, 'resubmit'])
+        ->name('connector.verification.resubmit');
     Route::post('/connector/{connector}/withdraw', [RegistrationController::class, 'withdraw'])->name('connector.withdraw');
 
     Route::get('/connector/{connector}/dashboard', [DashboardController::class, 'index'])->name('connector.dashboard');
