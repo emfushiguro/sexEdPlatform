@@ -23,6 +23,8 @@ use App\Models\ModuleReviewRequest;
 use App\Models\ParentChildAccount;
 use App\Models\Quiz;
 use App\Models\User;
+use App\Models\PlatformFeedback;
+use App\Models\Testimonial;
 use App\Models\AdminCreatorProfile;
 use App\Observers\PaymentObserver;
 use App\Policies\AdminCreatorProfilePolicy;
@@ -32,6 +34,8 @@ use App\Policies\ModulePolicy;
 use App\Policies\ParentChildPolicy;
 use App\Policies\QuizPolicy;
 use App\Policies\TopicPolicy;
+use App\Policies\PlatformFeedbackPolicy;
+use App\Policies\TestimonialPolicy;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\SubscriptionService;
 use App\Support\ContentPanelContext;
@@ -81,6 +85,11 @@ class AppServiceProvider extends ServiceProvider
                     ], 429, $headers);
                 });
         });
+        RateLimiter::for('feedback-submissions', function (Request $request) {
+            $payloadKey = $request->input('submission_token') ?: sha1((string) $request->input('type').'|'.(string) $request->input('subject').'|'.(string) $request->input('description'));
+            return Limit::perMinute(5)->by('feedback:'.($request->user()?->id ?? $request->ip()).':'.$payloadKey);
+        });
+        RateLimiter::for('helpfulness', fn (Request $request) => Limit::perMinute(30)->by('helpfulness:'.($request->user()?->id ?? $request->ip())));
 
         Gate::policy(User::class, ParentChildPolicy::class);
         Gate::policy(AdminCreatorProfile::class, AdminCreatorProfilePolicy::class);
@@ -89,6 +98,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Lesson::class, LessonPolicy::class);
         Gate::policy(LessonTopic::class, TopicPolicy::class);
         Gate::policy(Quiz::class, QuizPolicy::class);
+        Gate::policy(PlatformFeedback::class, PlatformFeedbackPolicy::class);
+        Gate::policy(Testimonial::class, TestimonialPolicy::class);
 
         Payment::observe(PaymentObserver::class);
 

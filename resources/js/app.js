@@ -4,6 +4,7 @@ import collapse from '@alpinejs/collapse';
 import persist from '@alpinejs/persist';
 import './toast'; // Toast notification system
 import './admin-community';
+import './sweet-alerts';
 import './chat/store';
 import './chat/global-popup';
 import './seminar-livestream';

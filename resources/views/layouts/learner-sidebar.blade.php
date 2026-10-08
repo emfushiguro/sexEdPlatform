@@ -88,6 +88,15 @@
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M9 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM4.25 7a4.75 4.75 0 1 1 9.5 0 4.75 4.75 0 0 1-9.5 0Zm10.5-1.25a.75.75 0 0 1 .75-.75 4.75 4.75 0 0 1 0 9.5.75.75 0 0 1 0-1.5 3.25 3.25 0 0 0 0-6.5.75.75 0 0 1-.75-.75ZM2.75 17.5A3.25 3.25 0 0 1 6 14.25h6A3.25 3.25 0 0 1 15.25 17.5v.5a.75.75 0 0 1-1.5 0v-.5A1.75 1.75 0 0 0 12 15.75H6A1.75 1.75 0 0 0 4.25 17.5v.5a.75.75 0 0 1-1.5 0v-.5Zm15 0a.75.75 0 0 1 .75-.75 1.75 1.75 0 0 1 1.75 1.75v.5a.75.75 0 0 1-1.5 0v-.5a.25.25 0 0 0-.25-.25.75.75 0 0 1-.75-.75Z"/></svg>',
         ];
     }
+
+    $supportNavItems = [
+        [
+            'label' => 'Help Center',
+            'route' => 'help.index',
+            'active' => request()->routeIs('help.*'),
+            'icon' => 'help',
+        ],
+    ];
 @endphp
 
 <aside
@@ -171,6 +180,37 @@
                 @endif
             </a>
         @endforeach
+
+        <div class="pt-5" data-support-section="user">
+            <p
+                x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                x-cloak
+                class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-gray-500"
+            >Support</p>
+            <div class="space-y-1">
+                @foreach($supportNavItems as $item)
+                    <a
+                        href="{{ route($item['route']) }}"
+                        data-support-nav="{{ $item['icon'] }}"
+                        aria-label="{{ $item['label'] }}"
+                        title="{{ $item['label'] }}"
+                        @if($item['active']) aria-current="page" @endif
+                        class="group flex items-center gap-3 overflow-hidden whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 {{ $item['active'] ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700 dark:text-gray-400 dark:hover:bg-purple-900/20 dark:hover:text-purple-300' }}"
+                        @if($item['active']) style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);" @endif
+                        :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'justify-center' : ''"
+                    >
+                        <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ $item['active'] ? 'text-white' : 'text-gray-500 group-hover:text-purple-600 dark:text-gray-400 dark:group-hover:text-purple-400' }}">
+                            <x-ui.support-icon :name="$item['icon']" />
+                        </span>
+                        <span
+                            x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                            x-cloak
+                            class="truncate"
+                        >{{ $item['label'] }}</span>
+                    </a>
+                @endforeach
+            </div>
+        </div>
     </nav>
 
     {{-- ─── Bottom: Edit Profile + Logout ─── --}}

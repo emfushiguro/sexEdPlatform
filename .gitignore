@@ -58,6 +58,9 @@ fix-index.cjs
 \!skills/
 \!tail-admin/
 \.superpowers/
+\.claude/
+\.codex/
+
 
 # Keep user-facing assets/media trackable
 !/public/media/

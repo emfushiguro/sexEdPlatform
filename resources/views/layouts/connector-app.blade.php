@@ -47,6 +47,9 @@
             ['Educators', 'connector.educators', 'connector.manage_educators', 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0'],
             ['Subscription', 'connector.subscription', 'connector.view_subscription', 'M4.75 6.5h14.5M6 4.75h12A1.25 1.25 0 0 1 19.25 6v12A1.25 1.25 0 0 1 18 19.25H6A1.25 1.25 0 0 1 4.75 18V6A1.25 1.25 0 0 1 6 4.75Zm2 9.25h1m3 0h1'],
         ];
+        $connectorSupportNavItems = [
+            ['Help Center', 'connector.help.index', 'connector.help.*', 'help'],
+        ];
     @endphp
 
     <div class="min-h-screen xl:flex">
@@ -85,6 +88,35 @@
                         <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">{{ $label }}</span>
                     </a>
                 @endforeach
+
+                <div class="pt-5" data-support-section="user">
+                    <p
+                        x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                        x-cloak
+                        class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400"
+                    >Support</p>
+                    <div class="space-y-1">
+                        @foreach($connectorSupportNavItems as [$label, $route, $activePattern, $icon])
+                            @php $active = request()->routeIs(...(array) $activePattern); @endphp
+                            <a
+                                href="{{ route($route, $connector) }}"
+                                data-support-nav="{{ $icon }}"
+                                aria-label="{{ $label }}"
+                                title="{{ $label }}"
+                                @if($active) aria-current="page" @endif
+                                class="group flex items-center gap-3 overflow-hidden whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 {{ $active ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                @if($active) style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);" @endif
+                                :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'justify-center' : ''"
+                            >
+                                <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ $active ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                    <x-ui.support-icon :name="$icon" />
+                                </span>
+                                <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">{{ $label }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+
             </nav>
 
             <div class="space-y-1 border-t border-gray-100 p-3">
