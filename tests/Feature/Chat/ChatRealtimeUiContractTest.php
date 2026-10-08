@@ -116,4 +116,17 @@ class ChatRealtimeUiContractTest extends TestCase
         $this->assertArrayHasKey('conversation_status', $resolvedPayload);
         $this->assertArrayHasKey('accepted_conversation_id', $resolvedPayload);
     }
+
+    public function test_guardian_invitation_composer_is_text_only(): void
+    {
+        $store = File::get(resource_path('js/chat/store.js'));
+        $panel = File::get(resource_path('views/chat/partials/conversation-panel.blade.php'));
+
+        $this->assertStringContainsString('allows_attachments: conversation.allows_attachments !== false', $store);
+        $this->assertStringContainsString("['direct', 'guardian_invitation'].includes(conversation.conversation_type)", $store);
+        $this->assertStringContainsString("conversation?.allows_attachments === false", $store);
+        $this->assertStringContainsString('$store.chat.activeConversation()?.allows_attachments !== false', $panel);
+        $this->assertStringContainsString('Record voice note', $panel);
+        $this->assertStringContainsString('This guardian invitation conversation is read-only because the invitation or relationship is no longer active.', $panel);
+    }
 }

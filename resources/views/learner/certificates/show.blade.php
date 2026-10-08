@@ -25,16 +25,19 @@
                             font-family: 'Poppins', 'Montserrat', 'Segoe UI', sans-serif;
                             font-weight: 700;
                             letter-spacing: 0.005em;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            white-space: nowrap;
+                            overflow-wrap: anywhere;
+                            word-break: break-word;
                         }
 
                         .certificate-overlay-module {
                             font-family: 'Poppins', 'Montserrat', 'Segoe UI', sans-serif;
                             font-weight: 500;
                             letter-spacing: 0.01em;
-                            display: -webkit-box;
-                            -webkit-line-clamp: 3;
-                            -webkit-box-orient: vertical;
-                            overflow: hidden;
+                            overflow-wrap: anywhere;
                             word-break: break-word;
                         }
 
@@ -44,6 +47,25 @@
                             letter-spacing: 0.03em;
                         }
                     </style>
+
+                    @php
+                        $learnerNameLength = mb_strlen((string) $certificate->learner_name);
+                        $moduleTitleLength = mb_strlen((string) $certificate->module_title);
+                        $learnerNameFontSize = match (true) {
+                            $learnerNameLength > 90 => 'clamp(8px, 1.1cqi, 13px)',
+                            $learnerNameLength > 60 => 'clamp(9px, 1.6cqi, 19px)',
+                            $learnerNameLength > 38 => 'clamp(11px, 2.3cqi, 27px)',
+                            $learnerNameLength > 22 => 'clamp(13px, 3cqi, 32px)',
+                            $learnerNameLength > 14 => 'clamp(14px, 3.8cqi, 42px)',
+                            default => 'clamp(14px, 5.06cqi, 56px)',
+                        };
+                        $moduleTitleFontSize = match (true) {
+                            $moduleTitleLength > 140 => 'clamp(8px, 1.5cqi, 16px)',
+                            $moduleTitleLength > 90 => 'clamp(10px, 2cqi, 22px)',
+                            $moduleTitleLength > 60 => 'clamp(12px, 2.5cqi, 28px)',
+                            default => 'clamp(10px, 3.2cqi, 36px)',
+                        };
+                    @endphp
 
                     @if($templateImageUrl)
                         <div class="w-full overflow-x-auto">
@@ -57,13 +79,13 @@
                                     class="absolute inset-0 w-full h-full object-cover"
                                 >
 
-                                                                    <div class="absolute text-center text-slate-900 truncate certificate-overlay-name"
-                                                                            style="left: 31.04%; top: 44.62%; width: 38.05%; font-size: clamp(14px, 5.06cqi, 56px); line-height: 1.02;">
+                                <div class="absolute text-center text-slate-900 certificate-overlay-name"
+                                     style="left: 31.04%; top: 44.62%; width: 38.05%; font-size: {{ $learnerNameFontSize }}; line-height: 1.02;">
                                     {{ $certificate->learner_name }}
                                 </div>
 
-                                  <div class="absolute text-center text-slate-900 certificate-overlay-module"
-                                                                            style="left: 23.47%; top: 64.57%; width: 52.86%; font-size: clamp(10px, 3.20cqi, 36px); line-height: 1.1;">
+                                <div class="absolute text-center text-slate-900 certificate-overlay-module"
+                                     style="left: 23.47%; top: 64.57%; width: 52.86%; font-size: {{ $moduleTitleFontSize }}; line-height: 1.1;">
                                     {{ $certificate->module_title }}
                                 </div>
 

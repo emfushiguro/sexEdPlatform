@@ -1,7 +1,7 @@
 @extends('layouts.connector-app')
 
-@section('title', 'Seminars')
-@section('page-title', 'Seminars')
+@section('title', 'Educational Events')
+@section('page-title', 'Educational Events')
 
 @section('content')
     @php
@@ -21,11 +21,11 @@
 <div x-data="{ deleteOpen: false, deleteAction: '', deleteTitle: '' }">
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h2 class="text-2xl font-bold text-gray-900">Seminars</h2>
-            <p class="mt-1 text-sm text-gray-600">{{ $canManageSeminars ? 'Manage free webinars and physical seminars for your connector.' : 'Browse connector seminars available to members.' }}</p>
+            <h2 class="text-2xl font-bold text-gray-900">Educational Events</h2>
+            <p class="mt-1 text-sm text-gray-600">{{ $canManageSeminars ? 'Manage seminars and webinars for your connector.' : 'Browse connector educational events available to members.' }}</p>
         </div>
         @if($canManageSeminars)
-            <a href="{{ route('connector.seminars.create', $connector) }}" class="inline-flex items-center justify-center rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">Create Seminar</a>
+            <a href="{{ route('connector.seminars.create', $connector) }}" class="inline-flex items-center justify-center rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">Create Educational Event</a>
         @endif
     </div>
 
@@ -35,6 +35,7 @@
                 <tr>
                     <th class="px-4 py-3">Title</th>
                     <th class="px-4 py-3">Type</th>
+                    <th class="px-4 py-3">Format</th>
                     <th class="px-4 py-3">Status</th>
                     <th class="px-4 py-3">Starts</th>
                     <th class="px-4 py-3 text-right">Registrants</th>
@@ -48,7 +49,8 @@
                             <a href="{{ route('connector.seminars.show', [$connector, $seminar]) }}" class="font-semibold text-purple-700 hover:text-purple-900">{{ $seminar->title }}</a>
                             <div class="text-xs text-gray-500">{{ config('seminars.categories.'.$seminar->category, ucfirst((string) $seminar->category)) }}</div>
                         </td>
-                        <td class="px-4 py-3 capitalize">{{ $seminar->type }}</td>
+                        <td class="px-4 py-3"><span class="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{{ ucfirst($seminar->type) }}</span></td>
+                        <td class="px-4 py-3"><span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{{ match ($seminar->event_format) { 'in_person' => 'In Person', 'external' => 'External Platform', 'native' => 'Native (Agora)', default => 'Unspecified' } }}</span></td>
                         <td class="px-4 py-3">
                             <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold capitalize {{ $statusStyles[$seminar->status] ?? 'bg-gray-100 text-gray-700 border-gray-200' }}">
                                 {{ \App\Enums\SeminarStatus::tryFrom($seminar->status)?->label() ?? str_replace('_', ' ', $seminar->status) }}
@@ -75,7 +77,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-10 text-center text-gray-500">No seminars yet.</td>
+                        <td colspan="7" class="px-4 py-10 text-center text-gray-500">No educational events yet.</td>
                     </tr>
                 @endforelse
             </tbody>

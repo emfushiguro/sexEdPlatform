@@ -1,0 +1,83 @@
+@props(['activity', 'preview' => false])
+
+<div class="interactive-sequencing-container relative mt-6" x-data="sequencingActivity(@js([
+    'activityId' => $activity['id'] ?? null,
+    'revision' => $activity['revision'] ?? 1,
+    'checkUrl' => $activity['check_sequence_url'] ?? null,
+    'stateUrl' => $activity['state_url'] ?? null,
+    'previewToken' => $activity['preview_token'] ?? null,
+    'previewEvaluateUrl' => $activity['preview_evaluate_url'] ?? null,
+    'preview' => $preview,
+    'csrf' => csrf_token(),
+    'initialStatus' => $activity['status'] ?? 'in_progress',
+    'items' => $activity['payload']['items'] ?? [],
+    'initialOrder' => collect($activity['payload']['items'] ?? [])->pluck('id')->values()->all(),
+]))"
+    @interactive-activity-state.window="if ($event.detail.activityId === activityId) status = $event.detail.status"
+    @interactive-activity-payload.window="if ($event.detail.activityId === activityId) loadPayload($event.detail.payload, $event.detail.status, $event.detail.previewToken)"
+    @interactive-activity-practice.window="if ($event.detail.activityId === activityId) ($event.detail.payload ? loadPayload($event.detail.payload, status, $event.detail.previewToken) : resetPractice())"
+    @pointermove.window="movePointerDrag($event)"
+    @pointerup.window="dropPointerDrag($event)"
+    @pointercancel.window="cancelDrag()"
+    @keydown.escape.window="if (isDragging()) cancelDrag()">
+    <p id="sequencing-drag-instructions" class="sr-only">Use Space or Enter to pick up an item. Use the arrow keys, Home, or End to choose a position, then Space or Enter to drop it. Press Escape to cancel.</p>
+
+    <ol class="interactive-sequence-list space-y-2" aria-label="Sequence items">
+        <template x-for="(itemId, index) in order" :key="itemId">
+            <li class="interactive-sequence-row interactive-match-card relative"
+                :data-sequence-index="index"
+                :class="{
+                    'interactive-sequence-row--dragged': isDragging() && draggedId === itemId,
+                    'interactive-match-card--correct': itemState(itemId, index) === 'correct',
+                    'interactive-match-card--incorrect': itemState(itemId, index) === 'incorrect'
+                }"
+                :aria-posinset="index + 1"
+                :aria-setsize="order.length">
+                <div x-show="isDragging() && dragOverIndex === index && draggedId !== itemId" class="interactive-sequence-insertion-bar absolute -top-2 left-2 right-2" aria-hidden="true"></div>
+                <span class="interactive-sequence-position min-w-8 text-xs font-semibold text-gray-500" x-text="positionLabel(index)"></span>
+                <div class="interactive-sequence-item-content" :class="isDragging() && draggedId === itemId ? 'interactive-sequence-source' : ''">
+                    <img x-show="itemFor(itemId).image_url && !isMediaFailed(itemId)"
+                         :src="itemFor(itemId).image_url"
+                         :alt="itemFor(itemId).image_alt"
+                         @@error="mediaFailed(itemId)"
+                         draggable="false"
+                         class="interactive-activity-item-image interactive-sequence-item-image">
+                    <span x-show="isMediaFailed(itemId)" class="interactive-item-media-fallback" x-text="`Image unavailable: ${itemFor(itemId).image_alt || 'Item image'}`"></span>
+                    <span x-show="itemFor(itemId).value" class="text-sm text-gray-800" x-text="itemFor(itemId).value"></span>
+                </div>
+                <span x-cloak x-show="itemState(itemId, index) === 'correct'" class="text-xs font-semibold text-emerald-700">Correct</span>
+                <span x-cloak x-show="itemState(itemId, index) === 'incorrect'" class="text-xs font-semibold text-rose-700">Incorrect</span>
+                <span class="interactive-match-badge interactive-match-badge--correct" x-cloak x-show="itemState(itemId, index) === 'correct'" aria-hidden="true">✓</span>
+                <span class="interactive-match-badge interactive-match-badge--incorrect" x-cloak x-show="itemState(itemId, index) === 'incorrect'" aria-hidden="true">×</span>
+                <button type="button"
+                    :aria-label="`Drag ${itemLabel(itemFor(itemId))}. Position ${index + 1} of ${order.length}.`"
+                    aria-describedby="sequencing-drag-instructions"
+                    :aria-pressed="isDragging() && draggedId === itemId"
+                    @pointerdown.prevent.stop="beginPointerDrag(index, $event)"
+                    @keydown="handleDragKey(index, $event)"
+                    class="interactive-sequence-handle inline-flex min-h-11 min-w-11 cursor-grab items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 active:cursor-grabbing"
+                    :class="isDragging() && draggedId === itemId ? 'cursor-grabbing' : ''">
+                    <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="8" cy="6" r="1.5"></circle><circle cx="16" cy="6" r="1.5"></circle>
+                        <circle cx="8" cy="12" r="1.5"></circle><circle cx="16" cy="12" r="1.5"></circle>
+                        <circle cx="8" cy="18" r="1.5"></circle><circle cx="16" cy="18" r="1.5"></circle>
+                    </svg>
+                    <span class="sr-only">Drag item</span>
+                </button>
+            </li>
+        </template>
+    </ol>
+
+    <div x-cloak x-show="isDragging()" :style="dragOverlayStyle()" class="interactive-sequence-overlay fixed z-50 pointer-events-none rounded-xl border border-purple-300 bg-white px-3 py-3 shadow-xl" aria-hidden="true">
+        <div class="flex items-center gap-2">
+            <img x-show="itemFor(draggedId).image_url && !isMediaFailed(draggedId)" :src="itemFor(draggedId).image_url" :alt="itemFor(draggedId).image_alt" draggable="false" class="interactive-activity-item-image interactive-sequence-overlay-image">
+            <span class="text-sm font-semibold text-gray-900" x-text="itemLabel(itemFor(draggedId))"></span>
+        </div>
+    </div>
+    <div id="sequencing-drag-announcement" class="sr-only" aria-live="polite" x-text="dragAnnouncement"></div>
+
+    <div class="mt-4 flex flex-wrap gap-3">
+        <button type="button" x-show="!isLocked()" @click="checkAnswer()" :disabled="isLocked()" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Check answer</button>
+        <button type="button" x-cloak x-show="hasIncorrectResults() && !isLocked()" @click="retryAnswer()" :disabled="isLocked()" class="min-h-11 rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Retry</button>
+    </div>
+</div>

@@ -17,7 +17,12 @@ class StartConversationRequest extends FormRequest
     {
         return [
             'target_user_id' => ['required', 'integer', 'exists:users,id'],
-            'conversation_type' => ['required', 'string', Rule::in(Conversation::supportedConversationTypes())],
+            'conversation_type' => [
+                'required',
+                'string',
+                Rule::in(Conversation::supportedConversationTypes()),
+                Rule::notIn([Conversation::TYPE_GUARDIAN_INVITATION]),
+            ],
             'module_id' => ['nullable', 'integer', 'exists:modules,id'],
             'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],
             'lesson_topic_id' => ['nullable', 'integer', 'exists:lesson_topics,id'],

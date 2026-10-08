@@ -7,13 +7,7 @@
         </div>
     </x-slot>
 
-    <x-wizard-stepper :steps="[
-        ['label' => 'Dependent Info', 'active' => false, 'done' => true],
-        ['label' => 'Location', 'active' => false, 'done' => true],
-        ['label' => 'Credentials', 'active' => true, 'done' => false],
-        ['label' => 'Validation', 'active' => false, 'done' => false],
-        ['label' => 'Review', 'active' => false, 'done' => false],
-    ]" />
+    <x-wizard-stepper flow="dependent" />
 
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-purple-900">Create Login Credentials</h1>

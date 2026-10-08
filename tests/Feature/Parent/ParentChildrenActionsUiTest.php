@@ -33,6 +33,51 @@ class ParentChildrenActionsUiTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), $approvedUrl));
     }
 
+    public function test_my_children_page_shows_support_action_only_for_exact_verified_permission_relationship(): void
+    {
+        $parent = $this->createApprovedParent();
+        $allowedChild = $this->createChildForParent($parent, 'approved', 'Allowed Child', 'Learner');
+        $allowed = ParentChildAccount::query()->where('child_user_id', $allowedChild->id)->firstOrFail();
+        $allowed->update([
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'relationship_verified_at' => now(),
+            'can_manage_support_information' => true,
+        ]);
+
+        $deniedChild = $this->createChildForParent($parent, 'approved', 'Denied Child', 'Learner');
+        $denied = ParentChildAccount::query()->where('child_user_id', $deniedChild->id)->firstOrFail();
+        $denied->update([
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'relationship_verified_at' => now(),
+            'can_manage_support_information' => false,
+        ]);
+
+        $response = $this->actingAs($parent)->get(route('parent.children.index'));
+
+        $response->assertOk()
+            ->assertSee(route('parent.children.support-information.edit', $allowedChild), false)
+            ->assertDontSee(route('parent.children.support-information.edit', $deniedChild), false);
+    }
+
+    public function test_my_dependents_message_action_remains_available_for_a_stale_learner_role(): void
+    {
+        $parent = $this->createApprovedParent();
+        $child = $this->createChildForParent($parent, 'approved', 'Chat', 'Dependent');
+
+        $parent->roles()->firstOrFail()->revokePermissionTo('access chat');
+        $parent->forgetCachedPermissions();
+
+        $response = $this->actingAs($parent)->get(route('parent.children.index'));
+
+        $response->assertOk()
+            ->assertSee('Message '.$child->full_name, false)
+            ->assertSee('open-global-chat', false)
+            ->assertSee('target_user_id: '.$child->id, false)
+            ->assertSee('globalPopupChat({', false);
+    }
+
     private function createApprovedParent(): User
     {
         $this->seedLocationRows();

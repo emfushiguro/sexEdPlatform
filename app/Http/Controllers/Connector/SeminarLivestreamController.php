@@ -24,6 +24,7 @@ class SeminarLivestreamController extends Controller
     {
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
+        abort_unless($seminar->isNativeDelivery(), 403);
 
         abort_unless($this->tokens->canPublish($request->user(), $seminar), 403);
 
@@ -40,6 +41,7 @@ class SeminarLivestreamController extends Controller
     {
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
+        abort_unless($seminar->isNativeDelivery(), 403);
 
         return response()->json($this->tokens->tokenFor($request->user(), $seminar, 'host'));
     }
@@ -80,6 +82,7 @@ class SeminarLivestreamController extends Controller
     {
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
+        abort_unless($seminar->isNativeDelivery(), 403);
         abort_unless($this->tokens->canHost($request->user(), $seminar), 403);
     }
 }

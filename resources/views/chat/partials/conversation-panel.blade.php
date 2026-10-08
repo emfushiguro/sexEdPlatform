@@ -345,6 +345,7 @@
             await $store.chat.declineRequest(requestId);
         },
     }"
+    x-effect="if ($store.chat.activeConversation()?.allows_attachments === false && queuedAttachments.length > 0) clearQueuedAttachments()"
     x-show="$store.chat.shouldShowConversationPanel()"
 >
     <header class="border-b border-gray-100 bg-gradient-to-r from-fuchsia-50 via-white to-indigo-50 px-5 py-4">
@@ -872,7 +873,7 @@
                     Recording voice note... <span class="font-semibold" x-text="recordingDurationLabel()"></span>
                 </div>
 
-                <div class="grid gap-2 sm:grid-cols-2" x-show="queuedAttachments.length > 0">
+                <div class="grid gap-2 sm:grid-cols-2" x-show="queuedAttachments.length > 0 && $store.chat.activeConversation()?.allows_attachments !== false">
                     <template x-for="(attachment, index) in queuedAttachments" :key="attachment.id">
                         <div class="relative rounded-xl border border-gray-200 bg-gray-50 p-2">
                             <button
@@ -909,11 +910,13 @@
                         x-ref="attachmentInput"
                         class="hidden"
                         multiple
+                        x-show="$store.chat.activeConversation()?.allows_attachments !== false"
                         @change="queueAttachments($event)"
                     >
 
                     <button
                         type="button"
+                        x-show="$store.chat.activeConversation()?.allows_attachments !== false"
                         class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                         :disabled="$store.chat.loading.send || !$store.chat.activeConversationId || !$store.chat.activeConversation()?.can_send || isRecording"
                         @click="$refs.attachmentInput.click()"
@@ -926,6 +929,7 @@
 
                     <button
                         type="button"
+                        x-show="$store.chat.activeConversation()?.allows_attachments !== false"
                         class="inline-flex h-10 w-10 items-center justify-center rounded-xl border text-gray-600 transition disabled:cursor-not-allowed disabled:opacity-60"
                         :class="isRecording ? 'border-red-300 bg-red-50 text-red-600' : 'border-gray-200 bg-white hover:bg-gray-50'"
                         :disabled="$store.chat.loading.send || !$store.chat.activeConversationId || !$store.chat.activeConversation()?.can_send"
@@ -980,6 +984,12 @@
         </template>
 
         <p class="text-xs text-red-600" x-show="$store.chat.composerError" x-text="$store.chat.composerError"></p>
+
+        <template x-if="$store.chat.activeConversation()?.conversation_type === 'guardian_invitation' && !$store.chat.activeConversation()?.can_send">
+            <p class="text-xs text-gray-600" role="status">
+                This guardian invitation conversation is read-only because the invitation or relationship is no longer active.
+            </p>
+        </template>
 
         <template x-if="!$store.chat.activeConversationId">
             <div class="text-xs text-gray-500">Start a conversation to enable the message composer.</div>

@@ -6,8 +6,10 @@ use App\Models\Conversation;
 use App\Models\ConversationRead;
 use App\Models\Message;
 use App\Models\MessageRequest;
+use App\Models\ParentChildInvitation;
 use App\Models\User;
 use App\Services\Chat\ChatService;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class ChatServiceTest extends TestCase
@@ -83,5 +85,39 @@ class ChatServiceTest extends TestCase
         $this->assertSame($readOne->id, $readTwo->id);
         $this->assertSame($secondMessage->id, $readTwo->last_read_message_id);
         $this->assertSame(1, ConversationRead::query()->count());
+    }
+
+    public function test_guardian_invitation_chat_rejects_attachments_at_the_service_boundary(): void
+    {
+        $service = app(ChatService::class);
+        $guardian = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
+        $child = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
+        $invitation = ParentChildInvitation::query()->create([
+            'inviter_parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'invite_token' => (string) \Illuminate\Support\Str::uuid(),
+            'relationship_type' => 'legal_guardian',
+            'status' => 'pending',
+            'expires_at' => now()->addDays(3),
+        ]);
+        $conversation = Conversation::query()->create([
+            'participant_one_id' => min($guardian->id, $child->id),
+            'participant_two_id' => max($guardian->id, $child->id),
+            'pair_key' => Conversation::makePairKey($guardian->id, $child->id),
+            'conversation_type' => Conversation::TYPE_GUARDIAN_INVITATION,
+            'status' => Conversation::STATUS_ACTIVE,
+            'parent_child_invitation_id' => $invitation->id,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_GUARDIAN_INVITATION, $invitation->id),
+        ]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Guardian invitation conversations support text messages only.');
+
+        $service->sendMessage(
+            $child,
+            $conversation,
+            'This text must not be accompanied by a file.',
+            [UploadedFile::fake()->create('attachment.txt', 2, 'text/plain')],
+        );
     }
 }

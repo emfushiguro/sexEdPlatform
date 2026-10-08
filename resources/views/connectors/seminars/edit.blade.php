@@ -1,7 +1,7 @@
 @extends('layouts.connector-app')
 
-@section('title', 'Edit Seminar')
-@section('page-title', 'Edit Seminar')
+@section('title', 'Edit Educational Event')
+@section('page-title', 'Edit Educational Event')
 
 @section('content')
     <div class="mx-auto max-w-4xl rounded-lg border border-gray-200 bg-white p-6">

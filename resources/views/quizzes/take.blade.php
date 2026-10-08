@@ -187,8 +187,10 @@
               id="cb_{{ $question->id }}_{{ $option->id }}"
               name="answers[{{ $question->id }}][]"
               value="{{ $option->id }}"
+              data-learning-audio-selection
               @change="
                 updateMultiSelect({{ $question->id }});
+                $store.learningAudio.play('selection');
                 let lbl = document.getElementById('lbl_ms_{{ $question->id }}_{{ $option->id }}');
                 if ($event.target.checked) {
                   lbl.classList.add('border-purple-400','bg-purple-50','dark:bg-purple-900/20','dark:border-purple-500');
@@ -247,29 +249,7 @@
             $blankCount      = max(1, count($parts) - 1);
             $shuffledWords   = collect($question->word_bank)->shuffle()->values()->all();
           @endphp
-          <div
-            x-data="{
-              wordBank: {{ json_encode($shuffledWords) }},
-              selectedWords: Array({{ $blankCount }}).fill(null),
-              selectWord(wordIndex) {
-                let blank = this.selectedWords.findIndex(v => v === null);
-                if (blank === -1) return;
-                this.selectedWords[blank] = wordIndex;
-                this.reportStatus();
-              },
-              removeWord(blankIndex) {
-                this.selectedWords[blankIndex] = null;
-                this.reportStatus();
-              },
-              isUsed(wordIndex) { return this.selectedWords.includes(wordIndex); },
-              reportStatus() {
-                this.$dispatch('quiz-blank-change', {
-                  questionId: {{ $question->id }},
-                  filled: this.selectedWords.every(w => w !== null)
-                });
-              }
-            }"
-            class="space-y-3">
+          <div x-data="wordBankQuestion(@js($shuffledWords), {{ $blankCount }}, (answers) => $dispatch('quiz-blank-change', { questionId: {{ $question->id }}, filled: answers.every(Boolean) }))" class="space-y-3">
 
             <div class="p-4 bg-gray-50 dark:bg-gray-700/40 rounded-xl border border-gray-200 dark:border-gray-600">
               <p class="text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed flex flex-wrap items-center gap-1.5">
@@ -277,7 +257,8 @@
                   <span>{{ $part }}</span>
                   @if($pIdx < $blankCount)
                     <span
-                      @click="removeWord({{ $pIdx }})"
+                      @click="if (selectedWords[{{ $pIdx }}] !== null) { removeWord({{ $pIdx }}); $store.learningAudio.play('selection'); }"
+                      data-learning-audio-selection
                       class="inline-flex items-center justify-center px-3 py-1 min-w-[90px] rounded-lg border-2 border-dashed font-semibold text-sm cursor-pointer transition-all duration-150"
                       :class="selectedWords[{{ $pIdx }}] === null
                         ? 'border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500'
@@ -299,7 +280,8 @@
                 <template x-for="(word, wordIndex) in wordBank" :key="wordIndex">
                   <button
                     type="button"
-                    @click="selectWord(wordIndex)"
+                    data-learning-audio-selection
+                    @click="if (!isUsed(wordIndex) && selectedWords.some(selectedWord => selectedWord === null)) { selectWord(wordIndex); $store.learningAudio.play('selection'); }"
                     x-show="!isUsed(wordIndex)"
                     x-text="word"
                     class="px-4 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-150 active:scale-95">
@@ -337,8 +319,10 @@
               id="radio_{{ $question->id }}_{{ $option->id }}"
               name="answers[{{ $question->id }}]"
               value="{{ $option->id }}"
+              data-learning-audio-selection
               @change="
                 markAnswered({{ $question->id }});
+                $store.learningAudio.play('selection');
                 document.querySelectorAll('[name=\'answers[{{ $question->id }}]\']').forEach(r => {
                   let l = document.getElementById('lbl_opt_{{ $question->id }}_' + r.value);
                   if (!l) return;

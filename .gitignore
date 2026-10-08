@@ -41,7 +41,7 @@ Homestead.yaml
 *.xls
 
 # Worktree metadata
-.worktrees/
+/.worktrees/
 
 # Local scratch files
 content*.txt
@@ -52,18 +52,14 @@ fix-index.cjs
 # Local agent/tooling folders
 /.agents/
 /.codegraph/
+/.codex/
 /.github/
 \!claude-code/
 \!github/
 \!skills/
 \!tail-admin/
 \.superpowers/
-\.claude/
-\.codex/
-
 
 # Keep user-facing assets/media trackable
 !/public/media/
 !/public/media/**
-!/storage/app/public/
-!/storage/app/public/**

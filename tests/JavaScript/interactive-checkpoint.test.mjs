@@ -1,0 +1,274 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+    createCheckpointCoordinator,
+    createInteractiveCheckpoint,
+} from '../../resources/js/interactive-checkpoint.js';
+
+test('perspective feedback submits exactly one guided pathway', async () => {
+    let submittedBody;
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'perspective_feedback',
+        questionId: 17,
+        submitUrl: '/submit',
+        skipUrl: '/skip',
+        csrf: 'token',
+        perspectiveCharacterLimit: 1000,
+    }, async (_url, options) => {
+        submittedBody = JSON.parse(options.body);
+        return {
+            ok: true,
+            json: async () => ({
+                status: 'completed',
+                is_correct: null,
+                pathway: 'guided',
+                result: { pathway: 'guided', option_id: 4, option_text: 'Listen', feedback: 'Listening helps.' },
+                feedback: 'Listening helps.',
+                explanation: 'Respect autonomy.',
+            }),
+        };
+    });
+
+    checkpoint.choosePerspectivePathway('guided');
+    checkpoint.answer.option_id = 4;
+    await checkpoint.submit();
+
+    assert.deepEqual(submittedBody, {
+        answer: { pathway: 'guided', option_id: 4, perspective_text: '' },
+    });
+    assert.equal(checkpoint.state, 'completed');
+    assert.equal(checkpoint.isCorrect, null);
+    assert.equal(checkpoint.showContinue(), true);
+    assert.equal(checkpoint.feedback, 'Listening helps.');
+});
+
+test('written perspective counts remaining characters and survives request errors', async () => {
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'perspective_feedback',
+        submitUrl: '/submit',
+        skipUrl: '/skip',
+        csrf: 'token',
+        perspectiveCharacterLimit: 20,
+    }, async () => ({
+        ok: false,
+        json: async () => ({ message: 'Unable to save the checkpoint.' }),
+    }));
+
+    checkpoint.choosePerspectivePathway('own');
+    checkpoint.answer.perspective_text = 'My own view';
+    assert.equal(checkpoint.remainingPerspectiveCharacters(), 9);
+
+    await checkpoint.submit();
+
+    assert.equal(checkpoint.answer.perspective_text, 'My own view');
+    assert.equal(checkpoint.state, 'error');
+});
+
+test('stored completed perspective is restored without correctness', () => {
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'perspective_feedback',
+        initialStatus: 'completed',
+        initialResult: { pathway: 'own', perspective_text: 'Stored reflection' },
+        initialExplanation: 'Consider the impact.',
+    });
+
+    assert.equal(checkpoint.state, 'completed');
+    assert.equal(checkpoint.answer.perspective_text, 'Stored reflection');
+    assert.equal(checkpoint.isCorrect, null);
+    assert.equal(checkpoint.showSkip(), false);
+});
+
+test('incorrect hides explanation and exposes retry or skip', async () => {
+    const request = async () => ({
+        ok: true,
+        json: async () => ({ status: 'incorrect', is_correct: false, explanation: null }),
+    });
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'identification', submitUrl: '/submit', skipUrl: '/skip', csrf: 'token',
+    }, request);
+    checkpoint.answer = 'Pressure';
+
+    await checkpoint.submit();
+
+    assert.equal(checkpoint.state, 'incorrect');
+    assert.equal(checkpoint.explanation, null);
+    assert.equal(checkpoint.showSkip(), true);
+    assert.equal(checkpoint.showContinue(), false);
+});
+
+test('correct removes skip and exposes continuation', async () => {
+    const request = async () => ({
+        ok: true,
+        json: async () => ({ status: 'correct', is_correct: true, explanation: 'Freely given.' }),
+    });
+    const checkpoint = createInteractiveCheckpoint({ type: 'identification', submitUrl: '/submit', skipUrl: '/skip', csrf: 'token' }, request);
+    checkpoint.answer = 'Consent';
+
+    await checkpoint.submit();
+
+    assert.equal(checkpoint.state, 'correct');
+    assert.equal(checkpoint.showSkip(), false);
+    assert.equal(checkpoint.showContinue(), true);
+});
+
+test('plays the authoritative result sound after a correct response', async () => {
+    const sounds = [];
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'identification', submitUrl: '/submit', csrf: 'token',
+        audio: { play: (key) => sounds.push(key) },
+    }, async () => ({
+        ok: true,
+        json: async () => ({ status: 'correct', is_correct: true, explanation: 'Correct.' }),
+    }));
+
+    await checkpoint.submit();
+
+    assert.deepEqual(sounds, ['correct']);
+});
+
+test('plays the authoritative result sound after an incorrect response', async () => {
+    const sounds = [];
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'identification', submitUrl: '/submit', csrf: 'token',
+        audio: { play: (key) => sounds.push(key) },
+    }, async () => ({
+        ok: true,
+        json: async () => ({ status: 'incorrect', is_correct: false }),
+    }));
+
+    await checkpoint.submit();
+
+    assert.deepEqual(sounds, ['incorrect']);
+});
+
+test('plays success for completed perspective feedback without correctness sounds', async () => {
+    const sounds = [];
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'perspective_feedback', submitUrl: '/submit', csrf: 'token',
+        audio: { play: (key) => sounds.push(key) },
+    }, async () => ({
+        ok: true,
+        json: async () => ({
+            status: 'completed', is_correct: null,
+            result: { pathway: 'own', perspective_text: 'My perspective' },
+        }),
+    }));
+
+    checkpoint.choosePerspectivePathway('own');
+    checkpoint.answer.perspective_text = 'My perspective';
+    await checkpoint.submit();
+
+    assert.deepEqual(sounds, ['success']);
+    assert.equal(sounds.includes('correct'), false);
+    assert.equal(sounds.includes('incorrect'), false);
+});
+
+test('does not play sound for skipped responses, request errors, restored state, or retry', async () => {
+    const sounds = [];
+    const audio = { play: (key) => sounds.push(key) };
+    const skipped = createInteractiveCheckpoint({
+        type: 'identification', skipUrl: '/skip', csrf: 'token', audio,
+    }, async () => ({
+        ok: true,
+        json: async () => ({ status: 'skipped', is_correct: null }),
+    }));
+    await skipped.skip();
+
+    const failed = createInteractiveCheckpoint({
+        type: 'identification', submitUrl: '/submit', csrf: 'token', audio,
+    }, async () => ({
+        ok: false,
+        json: async () => ({ message: 'Unable to save the checkpoint.' }),
+    }));
+    await failed.submit();
+
+    const restored = createInteractiveCheckpoint({
+        type: 'perspective_feedback', initialStatus: 'completed', audio,
+    });
+    restored.retry();
+
+    assert.deepEqual(sounds, []);
+});
+
+test('request failure retains the answer and exposes an error', async () => {
+    const request = async () => ({
+        ok: false,
+        json: async () => ({ message: 'Unable to save the checkpoint.' }),
+    });
+    const checkpoint = createInteractiveCheckpoint({ type: 'identification', submitUrl: '/submit', skipUrl: '/skip', csrf: 'token' }, request);
+    checkpoint.answer = 'Consent';
+
+    await checkpoint.submit();
+
+    assert.equal(checkpoint.state, 'error');
+    assert.equal(checkpoint.answer, 'Consent');
+    assert.equal(checkpoint.error, 'Unable to save the checkpoint.');
+});
+
+test('retry clears the answer and coordinator releases footer ownership', () => {
+    const checkpoint = createInteractiveCheckpoint({ type: 'identification', submitUrl: '/submit', skipUrl: '/skip', csrf: 'token' });
+    checkpoint.answer = 'Pressure';
+    checkpoint.state = 'incorrect';
+    checkpoint.retry();
+    assert.equal(checkpoint.state, 'ready');
+    assert.equal(checkpoint.answer, '');
+
+    const coordinator = createCheckpointCoordinator();
+    coordinator.activate(17);
+    assert.equal(coordinator.footerForwardVisible(), false);
+    coordinator.release(17);
+    assert.equal(coordinator.footerForwardVisible(), true);
+});
+
+test('resolved inside checkpoint claims then releases footer ownership', async () => {
+    const checkpoint = createInteractiveCheckpoint({
+        type: 'identification', questionId: 17, submitUrl: '/submit', skipUrl: '/skip', csrf: 'token',
+    }, async () => ({
+        ok: true,
+        json: async () => ({ status: 'skipped', is_correct: null, explanation: null }),
+    }));
+    const events = [];
+    checkpoint.$dispatch = (name, detail) => events.push([name, detail]);
+
+    await checkpoint.skip();
+    checkpoint.continueLearning();
+
+    assert.deepEqual(events, [
+        ['checkpoint-active', { questionId: 17, token: 'checkpoint:17' }],
+        ['checkpoint-continued', { questionId: 17, token: 'checkpoint:17' }],
+    ]);
+});
+
+test('continuation releases the current interaction before navigating to the next item', () => {
+    const previousWindow = globalThis.window;
+    const navigatedTo = [];
+    globalThis.window = { location: { assign: (url) => navigatedTo.push(url) } };
+
+    try {
+        const checkpoint = createInteractiveCheckpoint({
+            type: 'identification',
+            questionId: 17,
+            continueUrl: '/learn/lessons/4?topic=2',
+        });
+        const events = [];
+        checkpoint.$dispatch = (name, detail) => events.push([name, detail]);
+
+        checkpoint.continueLearning();
+
+        assert.deepEqual(events, [
+            ['checkpoint-continued', { questionId: 17, token: 'checkpoint:17' }],
+        ]);
+        assert.deepEqual(navigatedTo, ['/learn/lessons/4?topic=2']);
+    } finally {
+        globalThis.window = previousWindow;
+    }
+});
+
+test('optional interaction coordinator accepts string tokens and checkpoint alias remains compatible', () => {
+    const coordinator = createCheckpointCoordinator();
+
+    coordinator.activate('activity:17');
+    assert.equal(coordinator.footerForwardVisible(), false);
+    coordinator.release('activity:17');
+    assert.equal(coordinator.footerForwardVisible(), true);
+});

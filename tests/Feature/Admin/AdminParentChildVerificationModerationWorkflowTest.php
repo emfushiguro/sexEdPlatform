@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\DependentSupportProfile;
 use App\Models\ParentChildAccount;
 use App\Models\User;
 use Tests\TestCase;
@@ -98,6 +99,20 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
     {
         $admin = $this->createAdmin();
         $relationship = $this->createRelationshipVerification('under_review');
+        DependentSupportProfile::query()->create([
+            'dependent_user_id' => $relationship->child_user_id,
+            'relevant_health_considerations' => 'PRIVATE-ADMIN-ISOLATION-MARKER',
+            'privacy_notice_version' => DependentSupportProfile::NOTICE_VERSION,
+            'purpose_acknowledged_at' => now(),
+            'purpose_acknowledged_by_user_id' => $relationship->child_user_id,
+            'created_by_user_id' => $relationship->child_user_id,
+            'updated_by_user_id' => $relationship->child_user_id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.relationships.show', $relationship))
+            ->assertOk()
+            ->assertDontSee('PRIVATE-ADMIN-ISOLATION-MARKER', false);
 
         $this->actingAs($admin)
             ->postJson(route('admin.parent-verifications.relationships.approve', $relationship))
@@ -119,6 +134,12 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
         $this->assertSame(route('parent.relationship-verifications.show', $relationship), data_get($guardianNotification->data, 'action_url'));
         $this->assertNotNull($dependentNotification);
         $this->assertSame(route('learner.parent.index'), data_get($dependentNotification->data, 'action_url'));
+        $this->assertDatabaseHas('parent_child_accounts', [
+            'id' => $relationship->id,
+            'relationship_status' => 'active',
+            'relationship_verified_status' => 'verified',
+            'verification_status' => 'pending',
+        ]);
     }
 
     public function test_non_pending_approval_returns_conflict_as_before(): void
@@ -296,6 +317,21 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
             'relationship_type' => 'legal_guardian',
             'relationship_status' => 'pending',
             'relationship_verified_status' => $status,
+            'current_evidence_round' => 1,
+        ]);
+
+        $relationship->verificationDocuments()->create([
+            'uploaded_by_user_id' => $relationship->parent_user_id,
+            'document_type' => 'court_guardianship_order',
+            'submission_round' => 1,
+            'document_side' => 'not_applicable',
+            'display_order' => 0,
+            'disk' => 'local',
+            'path' => 'guardian-relationship-verifications/'.$relationship->id.'/round-1/order.pdf',
+            'original_name' => 'order.pdf',
+            'mime_type' => 'application/pdf',
+            'size_bytes' => 100,
+            'submitted_at' => now(),
         ]);
 
         return $relationship;

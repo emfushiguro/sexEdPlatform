@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\GuardianRelationshipVerificationDocument;
+use App\Models\LearnerIdentityVerification;
 use App\Models\LearnerProfile;
 use App\Models\ParentChildAccount;
 use App\Models\User;
@@ -10,6 +11,48 @@ use Tests\TestCase;
 
 class AdminParentChildVerificationUiTest extends TestCase
 {
+    public function test_sidebar_verification_badge_includes_current_pending_learner_identity_cases(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $learner = User::factory()->create();
+        $learner->assignRole('learner');
+
+        LearnerIdentityVerification::query()->create([
+            'user_id' => $learner->id,
+            'pathway' => 'adult',
+            'document_type' => 'national_id',
+            'status' => 'pending',
+            'submission_round' => 1,
+            'submitted_at' => now(),
+        ]);
+        $supersededLearner = User::factory()->create();
+        $supersededLearner->assignRole('learner');
+
+        LearnerIdentityVerification::query()->create([
+            'user_id' => $supersededLearner->id,
+            'pathway' => 'adult',
+            'document_type' => 'national_id',
+            'status' => 'pending',
+            'submission_round' => 1,
+            'submitted_at' => now(),
+            'superseded_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.index', ['type' => 'learners']));
+
+        $response->assertOk();
+        $this->assertMatchesRegularExpression(
+            '/data-testid="admin-nav-badge-guardian-child-verifications"[^>]*>\s*1\s*</',
+            $response->getContent(),
+        );
+    }
+
     public function test_parent_tab_uses_server_side_status_filtering_for_pending_records(): void
     {
         /** @var User $admin */
@@ -173,8 +216,66 @@ class AdminParentChildVerificationUiTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.parent-verifications.index'))
             ->assertOk()
-            ->assertSee('Child Verifications', false)
+            ->assertSee('Dependent Verifications', false)
             ->assertSee($pendingChild->full_name, false);
+    }
+
+    public function test_dependent_review_is_view_only_in_the_queue_and_renders_both_guardian_id_sides(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $admin->assignRole('admin');
+
+        $guardian = User::factory()->create([
+            'first_name' => 'Grace',
+            'last_name' => 'Guardian',
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
+            'parent_id_document_path' => 'guardian-verifications/grace/front.jpg',
+            'parent_id_document_back_path' => 'guardian-verifications/grace/back.jpg',
+        ]);
+        $guardian->assignRole('learner');
+
+        $dependent = User::factory()->create([
+            'first_name' => 'Dina',
+            'last_name' => 'Dependent',
+        ]);
+        $dependent->assignRole('learner');
+
+        $verification = ParentChildAccount::create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $dependent->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'pending',
+            'verification_document_path' => 'child-verifications/dina/birth-certificate.pdf',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.index', ['type' => 'children', 'status' => 'pending']))
+            ->assertOk();
+
+        $childTableMarkup = str($response->getContent())
+            ->after('x-show="activeType === \'children\'"')
+            ->before('x-show="activeType === \'relationships\'"')
+            ->toString();
+
+        self::assertStringContainsString('Dependent Account Verification - '.$dependent->full_name, $childTableMarkup);
+        self::assertStringContainsString('Guardian Government ID - Front', $childTableMarkup);
+        self::assertStringContainsString('Guardian Government ID - Back', $childTableMarkup);
+        self::assertStringContainsString(route('admin.parent-verifications.parents.document', [$guardian, 'front']), $childTableMarkup);
+        self::assertStringContainsString(route('admin.parent-verifications.parents.document', [$guardian, 'back']), $childTableMarkup);
+        self::assertStringContainsString('aria-label="View dependent account verification"', $childTableMarkup);
+        self::assertStringNotContainsString(route('admin.parent-verifications.children.archive', $verification), $childTableMarkup);
+        $destroyRoute = route('admin.parent-verifications.children.destroy', $verification);
+        self::assertSame(
+            0,
+            preg_match('/'.preg_quote($destroyRoute, '/').'(?![A-Za-z0-9_\/])/', $childTableMarkup),
+            'The view-only queue must not render the DELETE endpoint.'
+        );
+        self::assertStringNotContainsString('Archive Application', $childTableMarkup);
+        self::assertStringNotContainsString('Delete Application', $childTableMarkup);
     }
 
     public function test_verification_preview_details_use_standardized_copy_and_hide_removed_fields(): void
@@ -225,7 +326,8 @@ class AdminParentChildVerificationUiTest extends TestCase
         $response->assertOk()
             ->assertSee(route('admin.parent-verifications.parents.show', $parentApplicant), false)
             ->assertDontSee('Guardian Verification - '.$parentApplicant->full_name, false)
-            ->assertSee('Child Verification - '.$childApplicant->full_name, false)
+            ->assertSee('Dependent Account Verification - '.$childApplicant->full_name, false)
+            ->assertDontSee('Child Verification - '.$childApplicant->full_name, false)
             ->assertSee('Verification Details', false)
             ->assertDontSee('Verification Transparency Details', false)
             ->assertDontSee('Reviewed At', false)
@@ -336,6 +438,7 @@ class AdminParentChildVerificationUiTest extends TestCase
             'relationship_type' => 'adoptive_parent',
             'relationship_status' => 'pending',
             'relationship_verified_status' => 'under_review',
+            'current_evidence_round' => 1,
             'relationship_verification_submitted_at' => now(),
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
@@ -343,16 +446,21 @@ class AdminParentChildVerificationUiTest extends TestCase
             'verification_status' => 'pending',
         ]);
 
-        GuardianRelationshipVerificationDocument::query()->create([
+        $document = GuardianRelationshipVerificationDocument::query()->create([
             'parent_child_account_id' => $relationship->id,
             'uploaded_by_user_id' => $guardian->id,
             'document_type' => 'adoption_order',
+            'submission_round' => 1,
+            'document_side' => 'front',
+            'display_order' => 0,
             'disk' => 'local',
             'path' => 'guardian-relationship-verifications/'.$relationship->id.'/internal-test-image.jpg',
             'original_name' => 'internal-test-image.jpg',
             'mime_type' => 'image/jpeg',
             'size_bytes' => 4096,
         ]);
+
+        $documentUrl = route('admin.parent-verifications.relationships.documents.show', [$relationship, $document]);
 
         $response = $this->actingAs($admin)
             ->get(route('admin.parent-verifications.relationships.show', $relationship));
@@ -370,10 +478,16 @@ class AdminParentChildVerificationUiTest extends TestCase
             ->assertSee('Dependent validation', false)
             ->assertSee('Relationship verification', false)
             ->assertSee('Overall relationship', false)
-            ->assertSee('Adoption Order', false)
+            ->assertDontSee('Administrative verification of submitted identity and relationship evidence', false)
+            ->assertSee('Evidence round 1', false)
+            ->assertDontSee('Current round', false)
+            ->assertSee('Adoption-Related Order or Record', false)
             ->assertSee('Submitted by', false)
             ->assertSee('Front', false)
             ->assertSee('Preview', false)
+            ->assertSee('data-testid="relationship-document-image-preview"', false)
+            ->assertSee('alt="Adoption-Related Order or Record - Front"', false)
+            ->assertSee('src="'.$documentUrl.'"', false)
             ->assertSee('Download', false)
             ->assertSee('Zoom in', false)
             ->assertSee('Zoom out', false)
@@ -381,8 +495,54 @@ class AdminParentChildVerificationUiTest extends TestCase
             ->assertSee('Fit to screen', false)
             ->assertSee('Request Resubmission', false)
             ->assertDontSee('internal-test-image.jpg', false)
+            ->assertDontSee('guardian-relationship-verifications/'.$relationship->id.'/internal-test-image.jpg', false)
+            ->assertDontSee('content_sha256', false)
             ->assertDontSee('Approve Relationship', false)
             ->assertDontSee('Approve Guardian', false);
+    }
+
+    public function test_relationship_review_page_hides_revocation_controls(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $guardian = User::factory()->create([
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
+        ]);
+        $guardian->assignRole('learner');
+
+        $dependent = User::factory()->create();
+        $dependent->assignRole('learner');
+
+        $relationship = ParentChildAccount::create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $dependent->id,
+            'relationship_type' => 'adoptive_parent',
+            'relationship_status' => 'active',
+            'relationship_verified_status' => 'verified',
+            'relationship_verified_at' => now(),
+            'current_evidence_round' => 1,
+            'relationship_verification_submitted_at' => now(),
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'verification_status' => 'approved',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.parent-verifications.relationships.show', $relationship));
+
+        $response->assertOk()
+            ->assertDontSee('Revoke verification', false)
+            ->assertDontSee('relationship-revoke-note', false)
+            ->assertDontSee("decisionModal = 'revoke'", false)
+            ->assertDontSee('>Revoke<', false)
+            ->assertDontSee(route('admin.parent-verifications.relationships.revoke', $relationship), false);
     }
 
     public function test_review_tables_show_profile_avatars_and_relationship_view_compares_guardian_ids(): void
@@ -472,7 +632,7 @@ class AdminParentChildVerificationUiTest extends TestCase
         self::assertStringContainsString('alt="Ari Guardian avatar"', $parentTableMarkup);
         self::assertStringContainsString('h-9 w-9 rounded-full object-cover', $parentTableMarkup);
 
-        self::assertStringContainsString('>Child</th>', $childTableMarkup);
+        self::assertStringContainsString('>Dependent</th>', $childTableMarkup);
         self::assertStringContainsString('h-9 w-9 rounded-full object-cover', $childTableMarkup);
         self::assertStringContainsString('aria-label="Dina Verification avatar fallback"', $childTableMarkup);
         self::assertStringContainsString('inline-flex h-9 w-9', $childTableMarkup);
@@ -481,6 +641,9 @@ class AdminParentChildVerificationUiTest extends TestCase
         self::assertStringContainsString('h-9 w-9 rounded-full object-cover', $relationshipTableMarkup);
         self::assertStringContainsString('alt="Ari Guardian avatar"', $relationshipTableMarkup);
         self::assertStringContainsString('aria-label="Dina Dependent avatar fallback"', $relationshipTableMarkup);
+        self::assertStringContainsString('title="View Relationship Verification"', $relationshipTableMarkup);
+        self::assertStringContainsString('aria-label="View relationship verification"', $relationshipTableMarkup);
+        self::assertStringNotContainsString('>View</a>', $relationshipTableMarkup);
 
         $this->actingAs($admin)
             ->get(route('admin.parent-verifications.relationships.show', $relationship))

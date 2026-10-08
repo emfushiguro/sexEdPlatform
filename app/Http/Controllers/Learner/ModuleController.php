@@ -10,7 +10,6 @@ use App\Models\ModuleEnrollment;
 use App\Models\ModulePurchase;
 use App\Models\ParentChildAccount;
 use App\Models\QuizAttempt;
-use App\Models\LessonTopicProgress;
 use App\Models\ContentReport;
 use App\Models\InstructorFeedback;
 use App\Models\ModuleFeedback;
@@ -167,7 +166,9 @@ class ModuleController extends Controller
             ->where('is_published', true)
             ->orderBy('order')
             ->with([
-                'topics' => fn($query) => $query->ordered(),
+                'topics' => fn($query) => $query
+                    ->ordered()
+                    ->with(['interactiveActivities', 'checkpointQuestions.options']),
                 'quiz' => fn($query) => $query->where('is_active', true)->with('questions'),
             ])
             ->get();
@@ -204,10 +205,9 @@ class ModuleController extends Controller
             && $approvedEnrollmentsCount >= $effectiveEnrollmentLimit;
 
         $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
             ->where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+            ->withPermission('can_approve_content')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval
@@ -285,13 +285,10 @@ class ModuleController extends Controller
 
         $moduleCertificate = $user->certificates()->where('module_id', $module->id)->first();
 
-        $topicIds = $lessons->flatMap(fn ($lesson) => $lesson->topics->pluck('id'))->unique();
-        $completedTopicIds = LessonTopicProgress::where('user_id', $user->id)
-            ->whereIn('lesson_topic_id', $topicIds)
-            ->where('completed', true)
-            ->pluck('lesson_topic_id')
-            ->unique();
-        $allTopicsCompleted = $topicIds->isEmpty() || $completedTopicIds->count() === $topicIds->count();
+        $topics = $lessons->flatMap(fn ($lesson) => $lesson->topics);
+        $topicIds = $topics->pluck('id')->unique();
+        $completedTopicIds = $this->completionService->completedTopicIds($user, $topics)->all();
+        $allTopicsCompleted = $topicIds->isEmpty() || count($completedTopicIds) === $topicIds->count();
 
         $lessonQuizIds = collect($lessonQuizzes)->pluck('id')->unique();
         $lessonQuizById = collect($lessonQuizzes)->keyBy('id');
@@ -421,6 +418,7 @@ class ModuleController extends Controller
             'quizAttempts',
             'moduleCertificate',
             'certificateEligible',
+            'completedTopicIds',
             'shieldsRemaining',
             'reviewSummary',
             'recentReviews',
@@ -490,10 +488,10 @@ class ModuleController extends Controller
         }
 
         // Check if parent approval is required
-        $needsParentApproval = ParentChildAccount::where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+        $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
+            ->where('child_user_id', $user->id)
+            ->withPermission('can_approve_content')
             ->exists();
 
         if ($needsParentApproval) {
@@ -507,10 +505,9 @@ class ModuleController extends Controller
             $enrollment->loadMissing('module');
 
             $parentApproverIds = ParentChildAccount::query()
+                ->accessEligible()
                 ->where('child_user_id', $user->id)
-                ->where('can_approve_content', true)
-                ->where('verification_status', 'approved')
-                ->whereNotNull('relationship_verified_at')
+                ->withPermission('can_approve_content')
                 ->pluck('parent_user_id')
                 ->unique()
                 ->values();
@@ -617,10 +614,9 @@ class ModuleController extends Controller
             ->first();
 
         $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
             ->where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+            ->withPermission('can_approve_content')
             ->exists();
 
         if ($needsParentApproval) {
@@ -645,10 +641,9 @@ class ModuleController extends Controller
                 $enrollment->loadMissing('module');
 
                 $parentApproverIds = ParentChildAccount::query()
+                    ->accessEligible()
                     ->where('child_user_id', $user->id)
-                    ->where('can_approve_content', true)
-                    ->where('verification_status', 'approved')
-                    ->whereNotNull('relationship_verified_at')
+                    ->withPermission('can_approve_content')
                     ->pluck('parent_user_id')
                     ->unique()
                     ->values();
@@ -724,10 +719,9 @@ class ModuleController extends Controller
             ->first();
 
         $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
             ->where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+            ->withPermission('can_approve_content')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval
@@ -826,10 +820,9 @@ class ModuleController extends Controller
             ->first();
 
         $needsParentApproval = ParentChildAccount::query()
+            ->accessEligible()
             ->where('child_user_id', $user->id)
-            ->where('can_approve_content', true)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+            ->withPermission('can_approve_content')
             ->exists();
 
         $isParentApprovedForPurchase = !$needsParentApproval
@@ -951,6 +944,8 @@ class ModuleController extends Controller
                 ->with('error', 'Pass the final quiz first to unlock module completion.');
         }
 
+        $newlyCompleted = false;
+
         if ($enrollment->completed_at === null && $this->completionService->isFullyCompleted($user, $module)) {
             $enrollment->update([
                 'completed_at' => now(),
@@ -961,6 +956,12 @@ class ModuleController extends Controller
             if ($moduleCompletionPoints > 0) {
                 session()->flash('points_earned', $moduleCompletionPoints);
             }
+
+            $newlyCompleted = true;
+        }
+
+        if ($newlyCompleted) {
+            session()->now('learning_audio_event', 'success');
         }
 
         $module->loadMissing('publishedRevision');

@@ -167,15 +167,31 @@ class ParentEnrollmentNotificationTest extends TestCase
 
     private function createParentChildPair(): array
     {
-        $parent = User::factory()->create(['email_verified_at' => now(), 'role' => 'learner']);
+        $parent = User::factory()->create([
+            'email_verified_at' => now(),
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
+            'guardian_onboarding_status' => 'completed',
+        ]);
         $parent->assignRole('learner');
 
-        $child = User::factory()->create(['email_verified_at' => now(), 'role' => 'learner']);
+        $child = User::factory()->create([
+            'email_verified_at' => now(),
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
         $child->assignRole('learner');
 
         ParentChildAccount::create([
             'parent_user_id' => $parent->id,
             'child_user_id' => $child->id,
+            'relationship_type' => 'parent',
+            'verification_pathway' => 'legacy',
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'is_legacy_relationship' => true,
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,

@@ -1,7 +1,21 @@
 import './bootstrap';
+import './video-upload-form';
+import './caption-tracks-form';
+import './logout-confirmation';
+import { plyrOptionsFor } from './video-player';
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import persist from '@alpinejs/persist';
+import { createQuestionAuthoring, questionTextForEditor } from './question-authoring';
+import { createCheckpointCoordinator, createInteractiveCheckpoint, createOptionalInteractionCoordinator } from './interactive-checkpoint';
+import { createWordBank } from './word-bank';
+import { createInteractiveActivityAuthoring } from './interactive-activity-authoring';
+import { createInteractiveActivity } from './interactive-activity';
+import { createMatchingActivity } from './matching-activity';
+import { createSequencingActivity } from './sequencing-activity';
+import { createLearningPathBuilder } from './learning-path-builder';
+import { createIdentitySelfie } from './identity-selfie';
+import { initializeLearningAudioPage, learningAudio } from './learning-audio';
 import './toast'; // Toast notification system
 import './admin-community';
 import './sweet-alerts';
@@ -72,6 +86,16 @@ const createInstructorSearch = () => ({
 
 // Keep this on window for Blade usage: x-data="instructorSearch()"
 window.instructorSearch = createInstructorSearch;
+window.questionTextForEditor = questionTextForEditor;
+window.interactiveCheckpoint = createInteractiveCheckpoint;
+window.checkpointCoordinator = createCheckpointCoordinator;
+window.optionalInteractionCoordinator = createOptionalInteractionCoordinator;
+window.wordBankQuestion = createWordBank;
+window.interactiveActivityAuthoring = createInteractiveActivityAuthoring;
+window.interactiveActivity = createInteractiveActivity;
+window.matchingActivity = createMatchingActivity;
+window.sequencingActivity = createSequencingActivity;
+window.learningPathBuilder = createLearningPathBuilder;
 
 // Heavy libraries are loaded on-demand to keep the main bundle small.
 let cachedPdfJsLib = null;
@@ -109,15 +133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.Plyr = Plyr;
 
     players.forEach((el) => {
-        new Plyr(el, {
-            speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-            captions: { active: el.querySelector('track') !== null, language: 'en', update: true },
-            controls: [
-                'play-large', 'play', 'progress', 'current-time',
-                'mute', 'volume', 'captions', 'settings', 'fullscreen',
-            ],
-            settings: ['captions', 'speed'],
-        });
+        new Plyr(el, plyrOptionsFor(el));
     });
 });
 
@@ -125,6 +141,8 @@ window.Alpine = Alpine;
 Alpine.plugin(collapse);
 Alpine.plugin(persist);
 Alpine.data('instructorSearch', createInstructorSearch);
+Alpine.data('questionAuthoring', createQuestionAuthoring);
+Alpine.data('identitySelfie', createIdentitySelfie);
 
 // Theme store — dark / light mode, persisted in localStorage
 Alpine.store('theme', {
@@ -323,4 +341,22 @@ Alpine.store('modals', {
     },
 });
 
+const learningAudioStore = {
+    enabled: learningAudio.enabled,
+    volume: learningAudio.volume,
+    initialize: (...args) => learningAudio.initialize(...args),
+    unlock: (...args) => learningAudio.unlock(...args),
+    setEnabled: (value) => learningAudio.setEnabled(value),
+    setVolume: (value) => learningAudio.setVolume(value),
+    play: (key) => learningAudio.play(key),
+};
+
+Alpine.store('learningAudio', learningAudioStore);
+const reactiveLearningAudioStore = Alpine.store('learningAudio');
+learningAudio.subscribe(({ enabled, volume }) => {
+    reactiveLearningAudioStore.enabled = enabled;
+    reactiveLearningAudioStore.volume = volume;
+});
+window.learningAudio = learningAudio;
+initializeLearningAudioPage(learningAudio);
 Alpine.start();

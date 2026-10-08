@@ -6,17 +6,23 @@ use App\Http\Requests\Parent\RespondParentChildInvitationRequest;
 use App\Http\Requests\Parent\SendParentChildInvitationRequest;
 use App\Models\ParentChildInvitation;
 use App\Models\User;
+use App\Services\Chat\GuardianInvitationConversationService;
 use App\Services\ParentChildInvitationService;
+use Carbon\Carbon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use InvalidArgumentException;
 
 class ParentInvitationController extends Controller
 {
-    public function __construct(private readonly ParentChildInvitationService $invitationService)
-    {
-    }
+    public function __construct(
+        private readonly ParentChildInvitationService $invitationService,
+        private readonly GuardianInvitationConversationService $conversationService,
+    ) {}
 
     public function index(Request $request): View|RedirectResponse
     {
@@ -32,6 +38,19 @@ class ParentInvitationController extends Controller
             'outgoingInvitations' => $outgoingInvitations->take(5)->values(),
             'totalOutgoingInvitations' => $outgoingInvitations->count(),
         ]);
+    }
+
+    public function conversation(Request $request, ParentChildInvitation $invitation): RedirectResponse
+    {
+        try {
+            $conversation = $this->conversationService->createOrGet($request->user(), $invitation);
+        } catch (AuthorizationException $exception) {
+            abort(403, $exception->getMessage());
+        } catch (InvalidArgumentException $exception) {
+            return back()->withErrors(['conversation' => $exception->getMessage()]);
+        }
+
+        return redirect()->route('chat.conversation.open', $conversation);
     }
 
     public function history(Request $request): View|RedirectResponse
@@ -56,17 +75,28 @@ class ParentInvitationController extends Controller
         }
 
         try {
+            $documents = collect($request->validated('documents'))
+                ->values()
+                ->map(static fn (array $document, int $index): array => [
+                    'document_type' => (string) $document['document_type'],
+                    'document_side' => (string) $document['document_side'],
+                    'pairing_key' => filled($document['pairing_key'] ?? null)
+                        ? (string) $document['pairing_key']
+                        : null,
+                    'display_order' => $index,
+                    'file' => $document['file'],
+                ])
+                ->all();
+
             $this->invitationService->sendInvitation(
                 $parent,
                 (string) $request->string('identifier'),
                 (string) $request->string('relationship_type'),
                 $request->filled('relationship_custom') ? (string) $request->string('relationship_custom') : null,
                 $request->filled('message') ? (string) $request->string('message') : null,
-                $request->hasFile('relationship_document') ? [
-                    'document_type' => (string) $request->string('relationship_document_type'),
-                    'document' => $request->file('relationship_document'),
-                    'supporting_document' => $request->file('relationship_supporting_document'),
-                ] : null,
+                [
+                    'documents' => $documents,
+                ],
             );
         } catch (InvalidArgumentException $exception) {
             return back()->withErrors(['identifier' => $exception->getMessage()])->withInput();
@@ -84,16 +114,77 @@ class ParentInvitationController extends Controller
 
         abort_if(! $isParentViewer && ! $isChildViewer, 403);
 
+        $inviterParentColumns = 'id,name,email,birthdate,status,parent_verification_status,created_at';
+        $inviterProfileColumns = 'id,user_id,avatar_path';
+        $inviterProfileColumns .= ',username,birthdate,gender,city_code,barangay_code,bio';
+        if (Schema::hasColumn('learner_profiles', 'about')) {
+            $inviterProfileColumns .= ',about';
+        }
+
         $invitation->load([
-            'inviterParent:id,name,email',
-            'child:id,name,email,first_name,last_name,birthdate',
-            'child.learnerProfile:id,user_id,username,birthdate',
+            "inviterParent:{$inviterParentColumns}",
+            "inviterParent.learnerProfile:{$inviterProfileColumns}",
+            'child:id,name,status',
+            'child.learnerProfile:id,user_id,username,avatar_path',
+            'parentChildAccount:id,parent_user_id,child_user_id,relationship_status,relationship_verified_status',
+            'conversation:id,parent_child_invitation_id,status',
         ]);
+
+        $invitation->load([
+            'inviterParent.learnerProfile.city:code,name',
+            'inviterParent.learnerProfile.barangayLocation:code,name',
+        ]);
+
+        $guardianSummary = [
+            'name' => (string) ($invitation->inviterParent?->name ?: 'Guardian'),
+            'avatar_path' => $invitation->inviterParent?->learnerProfile?->avatar_path,
+            'identity_verified' => $invitation->inviterParent?->parent_verification_status === 'approved',
+            'member_since' => $invitation->inviterParent?->created_at?->format('F Y'),
+        ];
+
+        $learnerSummary = [
+            'name' => (string) ($invitation->child?->name ?: 'Learner'),
+            'avatar_path' => $invitation->child?->learnerProfile?->avatar_path,
+            'username' => $invitation->child?->learnerProfile?->username,
+        ];
+
+        $guardianProfile = null;
+        if ($invitation->inviterParent) {
+            $guardian = $invitation->inviterParent;
+            $profile = $guardian->learnerProfile;
+            $birthdate = $guardian->birthdate ?? $profile?->birthdate;
+            $genderValue = strtolower(trim((string) ($profile?->gender ?? '')));
+            $gender = $genderValue !== ''
+                ? Str::of($genderValue)->replace('_', ' ')->title()->toString()
+                : null;
+            $barangayName = $profile?->barangayLocation?->name ?: $profile?->getAttribute('barangay');
+            $location = collect([
+                $barangayName,
+                $profile?->city?->name,
+            ])->filter()->implode(', ');
+            $about = trim((string) ($profile?->about ?: $profile?->bio ?: ''));
+
+            $guardianProfile = [
+                'name' => (string) ($guardian->full_name ?: $guardian->name ?: 'Guardian'),
+                'avatar_path' => $profile?->avatar_path,
+                'age' => $birthdate ? Carbon::parse($birthdate)->age : null,
+                'email' => (string) ($guardian->email ?: ''),
+                'username' => $profile?->username,
+                'birthdate' => $birthdate,
+                'gender' => $gender,
+                'location' => $location,
+                'location_short' => $profile?->city?->name ?: ($barangayName ?: null),
+                'about' => $about !== '' ? Str::limit($about, 140) : null,
+            ];
+        }
 
         return view('parent.invitations.show', [
             'invitation' => $invitation,
             'isParentViewer' => $isParentViewer,
             'isChildViewer' => $isChildViewer,
+            'guardianSummary' => $guardianSummary,
+            'guardianProfile' => $guardianProfile,
+            'learnerSummary' => $learnerSummary,
         ]);
     }
 

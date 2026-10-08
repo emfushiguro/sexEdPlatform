@@ -18,6 +18,7 @@ use App\Http\Controllers\Connector\RegistrationController;
 use App\Http\Controllers\Connector\RoleController;
 use App\Http\Controllers\Connector\SeminarAttendanceController;
 use App\Http\Controllers\Connector\SeminarController;
+use App\Http\Controllers\Connector\SeminarDeliveryController;
 use App\Http\Controllers\Connector\SeminarInteractionController;
 use App\Http\Controllers\Connector\SeminarLivestreamController;
 use App\Http\Controllers\Connector\SeminarRegistrantController;
@@ -86,6 +87,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connector/{connector}/seminars/{seminar}', [SeminarController::class, 'show'])->name('connector.seminars.show');
     Route::get('/connector/{connector}/seminars/{seminar}/edit', [SeminarController::class, 'edit'])->name('connector.seminars.edit');
     Route::put('/connector/{connector}/seminars/{seminar}', [SeminarController::class, 'update'])->name('connector.seminars.update');
+    Route::put('/connector/{connector}/seminars/{seminar}/delivery', [SeminarDeliveryController::class, 'update'])->name('connector.seminars.delivery.update');
     Route::delete('/connector/{connector}/seminars/{seminar}', [SeminarController::class, 'destroy'])->name('connector.seminars.destroy');
     Route::post('/connector/{connector}/seminars/{seminar}/submit-review', [SeminarController::class, 'submitForReview'])->name('connector.seminars.submit-review');
     Route::post('/connector/{connector}/seminars/{seminar}/publish', [SeminarController::class, 'publish'])->name('connector.seminars.publish');
@@ -112,6 +114,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/connector/{connector}/seminars/{seminar}/registrants/{registrant}/reject', [SeminarRegistrantController::class, 'reject'])->name('connector.seminars.registrants.reject');
     Route::delete('/connector/{connector}/seminars/{seminar}/registrants/{registrant}', [SeminarRegistrantController::class, 'destroy'])->name('connector.seminars.registrants.destroy');
     Route::get('/connector/{connector}/seminars/{seminar}/attendance', [SeminarAttendanceController::class, 'index'])->name('connector.seminars.attendance');
+    Route::post('/connector/{connector}/seminars/{seminar}/attendance/code', [SeminarAttendanceController::class, 'generate'])->name('connector.seminars.attendance.code.generate');
+    Route::post('/connector/{connector}/seminars/{seminar}/attendance/code/disable', [SeminarAttendanceController::class, 'disable'])->name('connector.seminars.attendance.code.disable');
+    Route::post('/connector/{connector}/seminars/{seminar}/attendance/{registrant}/manual', [SeminarAttendanceController::class, 'manual'])->name('connector.seminars.attendance.manual');
     Route::get('/connector/{connector}/seminars/{seminar}/attendance/export', [SeminarAttendanceController::class, 'export'])->name('connector.seminars.attendance.export');
 
     Route::get('/connector/{connector}/members', [MemberController::class, 'index'])->name('connector.members.index');

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AttachParentChildRequest;
 use App\Http\Requests\Admin\DetachParentChildRequest;
-use App\Http\Requests\Admin\ToggleParentChildVerificationRequest;
+use App\Http\Requests\Admin\UpdateGuardianRelationshipPermissionsRequest;
 use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Services\Admin\UserRelationshipService;
@@ -111,7 +111,8 @@ class UserRelationshipAdminController extends Controller
             $this->userRelationshipService->detachParentChild(
                 parentId: (int) $request->integer('parent_user_id'),
                 childId: (int) $request->integer('child_user_id'),
-                actorId: (int) $request->user()->id,
+                admin: $request->user(),
+                note: $request->validated('note'),
                 request: $request,
             );
         } catch (InvalidArgumentException $exception) {
@@ -121,21 +122,25 @@ class UserRelationshipAdminController extends Controller
         return back()->with('success', 'Guardian-dependent relationship detached successfully.');
     }
 
-    public function toggleVerification(ToggleParentChildVerificationRequest $request): RedirectResponse
+    public function updatePermissions(UpdateGuardianRelationshipPermissionsRequest $request): RedirectResponse
     {
         try {
-            $this->userRelationshipService->setRelationshipVerification(
+            $this->userRelationshipService->updateParentChildPermissions(
                 parentId: (int) $request->integer('parent_user_id'),
                 childId: (int) $request->integer('child_user_id'),
-                isVerified: (bool) $request->boolean('is_verified'),
-                actorId: (int) $request->user()->id,
+                permissions: $request->only([
+                    'can_view_progress',
+                    'can_view_quiz_answers',
+                    'can_approve_content',
+                ]),
+                admin: $request->user(),
                 request: $request,
             );
         } catch (InvalidArgumentException $exception) {
             return back()->withErrors(['relationship' => $exception->getMessage()])->withInput();
         }
 
-        return back()->with('success', 'Relationship verification updated successfully.');
+        return back()->with('success', 'Relationship permissions updated successfully.');
     }
 
     private function authorizeRelationshipAccess(Request $request): void

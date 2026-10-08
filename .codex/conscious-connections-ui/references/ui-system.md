@@ -1,8 +1,20 @@
 ﻿# Conscious Connections UI System
 
+> This file is the implementation companion for the repository-root design.md. Read design.md first; it is the canonical platform source of truth for visual identity, role modes, tokens, component conventions, accessibility, and migration decisions.
+
+## Canonical source order
+
+When guidance conflicts, use this order: root design.md, the nearest current implementation, this reference, then older documentation. This file supplies codebase-specific examples and paths; it does not create a competing visual language.
+
 ## Product Posture
 
 Conscious Connections is a sexual-health learning platform. UI must feel safe, warm, and trustworthy, not clinical-cold or entertainment-only. Prefer plain language, visible readiness, and clear decision ownership. Admin and instructor tools are work surfaces; learner pages can be more encouraging and progress-driven.
+
+## Admin Baseline: Payment Management
+
+Use resources/views/admin/payments/index.blade.php as the primary admin visual reference. Its pattern is a light-only gray-50 canvas, a white rounded 24-30px work shell with a restrained shadow, a lightly branded filter/header region, visible resettable filters, scan-friendly table headers and rows, semantic status pills, owner/source/date/amount/reference context, icon-first accessible actions, pagination, and explicit empty/loading/error/recovery states.
+
+Admin brand purple is an accent for active navigation, selection, filters, links, and primary actions. It is not a full-page background. Transaction detail and receipt views in payments/show.blade.php and payments/receipt.blade.php extend the same shell with audit context, monospace identifiers, related user/module/subscription information, and print behavior.
 
 ## Core Tokens
 

@@ -38,6 +38,12 @@
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M7 2.75a.75.75 0 0 1 .75.75v1h8.5v-1a.75.75 0 0 1 1.5 0v1H18A3.25 3.25 0 0 1 21.25 7.75V18A3.25 3.25 0 0 1 18 21.25H6A3.25 3.25 0 0 1 2.75 18V7.75A3.25 3.25 0 0 1 6 4.5h.25v-1A.75.75 0 0 1 7 2.75Zm11 3.25H6A1.75 1.75 0 0 0 4.25 7.75v.5h15.5v-.5A1.75 1.75 0 0 0 18 6ZM4.25 9.75V18A1.75 1.75 0 0 0 6 19.75h12A1.75 1.75 0 0 0 19.75 18V9.75H4.25Z"/></svg>',
         ],
         [
+            'label'  => 'Learning Paths',
+            'route'  => 'learner.learning-paths.index',
+            'active' => request()->routeIs('learner.learning-paths.*'),
+            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M5.25 3.25A2.25 2.25 0 0 0 3 5.5v13A2.25 2.25 0 0 0 5.25 20.75h13A2.25 2.25 0 0 0 20.5 18.5v-13a2.25 2.25 0 0 0-2.25-2.25h-13Zm0 1.5h13c.414 0 .75.336.75.75v13a.75.75 0 0 1-.75.75h-13a.75.75 0 0 1-.75-.75v-13c0-.414.336-.75.75-.75Zm2.5 3a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm0 3.5a.75.75 0 0 1 .75-.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1-.75-.75Zm0 3.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1-.75-.75Z"/></svg>',
+        ],
+        [
             'label'  => 'My Modules',
             'route'  => 'learner.modules.index',
             'active' => request()->routeIs('learner.modules.*'),
@@ -243,7 +249,7 @@
         </a>
 
         {{-- Logout --}}
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST" action="{{ route('logout') }}" data-logout-form>
             @csrf
             <button
                 type="submit"

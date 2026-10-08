@@ -73,6 +73,7 @@
                 ['key' => 'profile',      'label' => 'Profile'],
                 ['key' => 'password',     'label' => 'Password'],
                 ['key' => 'subscription', 'label' => 'Subscription'],
+                ['key' => 'sound',        'label' => 'Sound Effects'],
             ] as $tab)
             <button
                 @click="activeTab = '{{ $tab['key'] }}'"
@@ -423,6 +424,76 @@
             </a>
 
         </div>{{-- /subscription tab --}}
+
+        {{-- TAB: SOUND EFFECTS                                    --}}
+        <div x-show="activeTab === 'sound'" x-cloak class="p-6 space-y-5" data-learning-audio-settings>
+            <div>
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Sound Effects</h3>
+                <p class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                    Control the feedback sounds used while you learn. These preferences apply only to this browser and device.
+                </p>
+            </div>
+
+            <div class="rounded-2xl border border-purple-100 bg-purple-50/40 p-4 dark:border-purple-800/40 dark:bg-purple-900/10">
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Sound effects</p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Play gentle audio feedback during learning.</p>
+                    </div>
+                    <button
+                        type="button"
+                        role="switch"
+                        :data-learning-audio-state="$store.learningAudio.enabled ? 'on' : 'off'"
+                        :aria-checked="$store.learningAudio.enabled.toString()"
+                        :aria-label="$store.learningAudio.enabled ? 'Turn sound effects off' : 'Turn sound effects on'"
+                        @click="$store.learningAudio.setEnabled(!$store.learningAudio.enabled)"
+                        class="inline-flex min-h-11 min-w-[5.75rem] items-center justify-center gap-2 rounded-xl border px-3 text-xs font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                        :class="$store.learningAudio.enabled
+                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30'
+                            : 'border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'"
+                    >
+                        <span
+                            aria-hidden="true"
+                            class="relative inline-flex h-5 w-9 flex-shrink-0 rounded-full transition-colors"
+                            :class="$store.learningAudio.enabled ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-gray-600'"
+                        >
+                            <span
+                                class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                                :class="$store.learningAudio.enabled ? 'translate-x-4' : 'translate-x-0'"
+                            ></span>
+                        </span>
+                        <span x-text="$store.learningAudio.enabled ? 'ON' : 'OFF'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between gap-3">
+                    <label for="learning-audio-volume" class="text-sm font-semibold text-gray-800 dark:text-gray-200">Volume</label>
+                    <output for="learning-audio-volume" class="text-sm font-bold text-purple-700 dark:text-purple-300" x-text="`${Math.round($store.learningAudio.volume * 100)}%`"></output>
+                </div>
+                <input
+                    id="learning-audio-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    aria-label="Sound effects volume"
+                    :value="Math.round($store.learningAudio.volume * 100)"
+                    @input="$store.learningAudio.setVolume(Number($event.target.value) / 100)"
+                    class="mt-3 min-h-11 w-full accent-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                >
+            </div>
+
+            <button
+                type="button"
+                :disabled="!$store.learningAudio.enabled"
+                @click="$store.learningAudio.unlock(); $store.learningAudio.play('correct')"
+                class="inline-flex min-h-11 items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-gray-900"
+            >
+                Test Sound
+            </button>
+        </div>{{-- /sound effects tab --}}
 
     </div>{{-- /panel --}}
 </div>{{-- /root --}}

@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\ReviewGuardianRelationshipVerificationRequest;
 use App\Http\Requests\Admin\RejectChildVerificationRequest;
 use App\Http\Requests\Admin\RejectParentVerificationRequest;
 use App\Models\GuardianRelationshipVerificationDocument;
+use App\Models\LearnerIdentityVerification;
 use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Services\GuardianRelationshipVerificationService;
@@ -32,7 +33,7 @@ class ParentChildVerificationController extends Controller
     public function index(Request $request): View
     {
         $type = $request->string('type')->toString() ?: 'children';
-        if (! in_array($type, ['parents', 'children', 'relationships'], true)) {
+        if (! in_array($type, ['parents', 'children', 'relationships', 'learners'], true)) {
             $type = 'children';
         }
 
@@ -43,7 +44,30 @@ class ParentChildVerificationController extends Controller
 
         $parentApplications = $this->parentApplications($status);
         $childApplications = $this->childApplications($status);
-        $relationshipApplications = $this->relationshipApplications($status);
+        $relationshipFilters = [
+            'verification_pathway' => $request->string('verification_pathway')->toString() ?: 'all',
+            'relationship_status' => $request->string('relationship_status')->toString() ?: 'all',
+            'relationship_verified_status' => $request->string('relationship_verified_status')->toString() ?: 'all',
+        ];
+        $relationshipApplications = $this->relationshipApplications($status, $relationshipFilters);
+        $learnerPathway = $request->string('pathway')->toString();
+        if (! in_array($learnerPathway, ['teen', 'adult'], true)) {
+            $learnerPathway = 'all';
+        }
+        $learnerApplications = LearnerIdentityVerification::query()
+            ->with('learner')
+            ->whereNull('superseded_at')
+            ->where('status', $status)
+            ->when($learnerPathway !== 'all', fn ($query) => $query->where('pathway', $learnerPathway))
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+        $learnerCounts = LearnerIdentityVerification::query()
+            ->whereNull('superseded_at')
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
 
         return view('admin.parent-verifications.index', [
             'type' => $type,
@@ -51,6 +75,13 @@ class ParentChildVerificationController extends Controller
             'parentApplications' => $parentApplications,
             'childApplications' => $childApplications,
             'relationshipApplications' => $relationshipApplications,
+            'learnerApplications' => $learnerApplications,
+            'learnerPathway' => $learnerPathway,
+            'learnerStatusCounts' => [
+                'pending' => (int) ($learnerCounts['pending'] ?? 0),
+                'approved' => (int) ($learnerCounts['approved'] ?? 0),
+                'rejected' => (int) ($learnerCounts['rejected'] ?? 0),
+            ],
             'pendingParentCount' => User::query()
                 ->where('is_parent_registration', true)
                 ->where('parent_verification_status', VerificationStatus::Pending->value)
@@ -81,6 +112,18 @@ class ParentChildVerificationController extends Controller
             'pendingRelationshipCount' => $this->relationshipCountForStatus('pending'),
             'approvedRelationshipCount' => $this->relationshipCountForStatus('approved'),
             'rejectedRelationshipCount' => $this->relationshipCountForStatus('rejected'),
+            'relationshipFilters' => $relationshipFilters,
+            'relationshipPathways' => collect(config('guardian_relationships.pathways', []))
+                ->mapWithKeys(fn (array $pathway, string $key): array => [$key => $pathway['label'] ?? $key])
+                ->all(),
+            'relationshipStatuses' => [
+                ParentChildAccount::STATUS_PENDING => 'Pending',
+                ParentChildAccount::STATUS_ACTIVE => 'Active',
+                ParentChildAccount::STATUS_INACTIVE => 'Inactive',
+                ParentChildAccount::STATUS_REJECTED => 'Rejected',
+                ParentChildAccount::STATUS_REVOKED => 'Revoked',
+            ],
+            'relationshipVerificationStatuses' => config('guardian_relationships.verification_statuses', []),
         ]);
     }
 
@@ -157,6 +200,32 @@ class ParentChildVerificationController extends Controller
         );
     }
 
+    public function childDocument(ParentChildAccount $parentChildAccount): BinaryFileResponse
+    {
+        $path = (string) $parentChildAccount->verification_document_path;
+        $segments = explode('/', $path);
+        abort_unless(
+            str_starts_with($path, 'child-verifications/')
+                && ! str_contains($path, '\\')
+                && ! str_starts_with($path, '/')
+                && ! in_array('..', $segments, true)
+                && ! in_array('.', $segments, true),
+            404
+        );
+
+        $disk = Storage::disk('local');
+        if (! $disk->exists($path)) {
+            $disk = Storage::disk('public');
+        }
+        abort_unless($disk->exists($path), 404);
+
+        $response = response()->file($disk->path($path));
+        $response->headers->set('Cache-Control', 'private, no-store');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+
+        return $response;
+    }
+
     public function resetGuardianOnboarding(User $user): RedirectResponse
     {
         abort_unless($user->isParentRegistration(), 404);
@@ -178,7 +247,10 @@ class ParentChildVerificationController extends Controller
             'relationship' => $parentChildAccount->load([
                 'parent.learnerProfile',
                 'child.learnerProfile',
-                'verificationDocuments.uploadedBy',
+                'verificationDocuments' => fn ($query) => $query
+                    ->with('uploadedBy')
+                    ->orderByDesc('submission_round')
+                    ->orderBy('display_order'),
                 'verificationAudits.actor',
             ]),
             'rejectionReasons' => GuardianRelationshipTypes::rejectionReasons(),
@@ -187,8 +259,8 @@ class ParentChildVerificationController extends Controller
 
     public function approveRelationship(Request $request, ParentChildAccount $parentChildAccount): RedirectResponse|JsonResponse
     {
-        if (! in_array((string) $parentChildAccount->relationship_verified_status, ['pending', 'under_review', 'resubmission_required'], true)) {
-            return $this->respondError($request, 'Decision already finalized. Only pending relationship records can be approved.', 409);
+        if ($parentChildAccount->relationship_verified_status !== ParentChildAccount::VERIFICATION_UNDER_REVIEW) {
+            return $this->respondError($request, 'Only relationship submissions under review can be approved.', 409);
         }
 
         $this->relationshipVerificationService->approve($parentChildAccount, $request->user());
@@ -436,13 +508,16 @@ class ParentChildVerificationController extends Controller
         return $query->get();
     }
 
-    private function relationshipApplications(string $status)
+    private function relationshipApplications(string $status, array $filters = [])
     {
         return ParentChildAccount::query()
             ->with([
                 'parent.learnerProfile',
                 'child.learnerProfile',
-                'verificationDocuments',
+                'verificationDocuments' => fn ($query) => $query
+                    ->orderByDesc('submission_round')
+                    ->orderBy('display_order'),
+                'verificationAudits.actor',
             ])
             ->where(function ($query): void {
                 $query->whereIn('relationship_type', array_filter(
@@ -461,6 +536,9 @@ class ParentChildVerificationController extends Controller
             ->when($status === VerificationStatus::Approved->value, fn ($query) => $query->where('relationship_verified_status', 'verified'))
             ->when($status === VerificationStatus::Rejected->value, fn ($query) => $query->whereIn('relationship_verified_status', ['rejected', 'revoked']))
             ->when($status === VerificationStatus::Pending->value, fn ($query) => $query->whereIn('relationship_verified_status', ['pending', 'under_review', 'resubmission_required']))
+            ->when(($filters['verification_pathway'] ?? 'all') !== 'all', fn ($query) => $query->where('verification_pathway', $filters['verification_pathway']))
+            ->when(($filters['relationship_status'] ?? 'all') !== 'all', fn ($query) => $query->where('relationship_status', $filters['relationship_status']))
+            ->when(($filters['relationship_verified_status'] ?? 'all') !== 'all', fn ($query) => $query->where('relationship_verified_status', $filters['relationship_verified_status']))
             ->latest('relationship_verification_submitted_at')
             ->get();
     }

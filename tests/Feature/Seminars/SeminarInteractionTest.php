@@ -12,6 +12,19 @@ class SeminarInteractionTest extends TestCase
 {
     use ConnectorTestHelpers;
 
+    public function test_external_webinar_rejects_native_comments_and_questions(): void
+    {
+        $connector = $this->connector();
+        $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $seminar = $this->seminar($connector, ['event_format' => 'external', 'external_url' => 'https://meet.example.test/room']);
+        $this->register($seminar, $learner);
+
+        $this->actingAs($learner)->post(route('seminars.comments.store', $seminar), ['body' => 'Hello'])->assertForbidden();
+        $this->actingAs($learner)->post(route('seminars.questions.store', $seminar), ['question' => 'Hello?'])->assertForbidden();
+        $this->assertDatabaseMissing('seminar_comments', ['seminar_id' => $seminar->id, 'user_id' => $learner->id]);
+        $this->assertDatabaseMissing('seminar_questions', ['seminar_id' => $seminar->id, 'user_id' => $learner->id]);
+    }
+
     public function test_registered_user_can_post_comment_and_question_during_join_window(): void
     {
         $connector = $this->connector();
@@ -117,11 +130,12 @@ class SeminarInteractionTest extends TestCase
         ]);
     }
 
-    private function seminar(Connector $connector): Seminar
+    private function seminar(Connector $connector, array $overrides = []): Seminar
     {
-        return Seminar::query()->create([
+        return Seminar::query()->create(array_merge([
             'connector_id' => $connector->id,
             'type' => 'webinar',
+            'event_format' => 'native',
             'title' => 'Live Webinar',
             'description' => 'A free community session.',
             'purpose' => 'Support learner wellness.',
@@ -134,6 +148,6 @@ class SeminarInteractionTest extends TestCase
             'target_participants' => 'learners_and_instructors',
             'learner_age_categories' => ['adult'],
             'livestream_channel' => 'seminar-test-channel-'.str()->random(6),
-        ]);
+        ], $overrides));
     }
 }

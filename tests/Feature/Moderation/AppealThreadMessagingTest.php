@@ -45,11 +45,22 @@ class AppealThreadMessagingTest extends DatabaseTestCase
         $service = app(SuspensionAppealService::class);
 
         $appeal = $this->makeAppeal();
-        $linkedParent = User::factory()->create();
+        $linkedParent = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+            'is_parent_registration' => true,
+            'parent_verification_status' => 'approved',
+        ]);
+        $linkedParent->assignRole('learner');
 
         ParentChildAccount::query()->create([
             'parent_user_id' => $linkedParent->id,
             'child_user_id' => $appeal->user_id,
+            'relationship_type' => 'parent',
+            'verification_pathway' => 'legacy',
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'is_legacy_relationship' => true,
             'verification_status' => 'approved',
             'relationship_verified_at' => now(),
         ]);
@@ -65,7 +76,11 @@ class AppealThreadMessagingTest extends DatabaseTestCase
     private function makeAppeal()
     {
         $service = app(SuspensionAppealService::class);
-        $learner = User::factory()->create();
+        $learner = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $learner->assignRole('learner');
 
         $action = EnforcementAction::query()->create([
             'user_id' => $learner->id,

@@ -2,13 +2,12 @@
 
 namespace App\Http\Requests\Connector;
 
+use App\Services\Seminars\SeminarPublicationValidator;
+
 class UpdateSeminarRequest extends StoreSeminarRequest
 {
     public function rules(): array
     {
-        $rules = parent::rules();
-        $rules['starts_at'] = ['required', 'date'];
-
-        return $rules;
+        return SeminarPublicationValidator::rules();
     }
 }

@@ -3,6 +3,24 @@
 <head>
     <meta charset="utf-8">
     <title>Certificate - {{ $certificate->certificate_number }}</title>
+    @php
+        $learnerNameLength = mb_strlen((string) $certificate->learner_name);
+        $moduleTitleLength = mb_strlen((string) $certificate->module_title);
+        $learnerNameFontSize = match (true) {
+            $learnerNameLength > 90 => 13,
+            $learnerNameLength > 60 => 18,
+            $learnerNameLength > 38 => 26,
+            $learnerNameLength > 22 => 32,
+            $learnerNameLength > 14 => 38,
+            default => 42,
+        };
+        $moduleTitleFontSize = match (true) {
+            $moduleTitleLength > 140 => 12,
+            $moduleTitleLength > 90 => 16,
+            $moduleTitleLength > 60 => 21,
+            default => 28,
+        };
+    @endphp
     <style>
         @page {
             margin: 0;
@@ -32,9 +50,8 @@
         .field {
             position: absolute;
             color: #0f172a;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .learner-name {
@@ -42,7 +59,8 @@
             top: 44.62%;
             width: 38.05%;
             text-align: center;
-            font-size: 42pt;
+            white-space: nowrap;
+            font-size: {{ $learnerNameFontSize }}pt;
             font-weight: 700;
             line-height: 1.02;
             letter-spacing: 0.005em;
@@ -53,7 +71,7 @@
             top: 64.57%;
             width: 52.86%;
             text-align: center;
-            font-size: 28pt;
+            font-size: {{ $moduleTitleFontSize }}pt;
             font-weight: 500;
             line-height: 1.1;
             letter-spacing: 0.01em;

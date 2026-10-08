@@ -9,9 +9,8 @@
     $relationshipStatus = (string) ($relationship->relationship_status ?: 'pending');
     $dependentStatus = (string) ($relationship->verification_status ?: 'pending');
     $guardianStatus = (string) ($relationship->parent?->parent_verification_status ?: 'unknown');
-    $canApprove = in_array($status, ['pending', 'under_review', 'resubmission_required'], true);
-    $canRevoke = $status === 'verified';
-    $canReject = in_array($status, ['pending', 'under_review', 'resubmission_required'], true);
+    $canApprove = $status === 'under_review';
+    $canReject = $status === 'under_review';
 
     $badge = function (?string $value): string {
         return match ((string) $value) {
@@ -24,7 +23,9 @@
 
     $humanStatus = fn (?string $value): string => str((string) ($value ?: 'unknown'))->replace('_', ' ')->title()->toString();
     $initial = fn ($user, string $fallback): string => strtoupper(substr((string) ($user?->name ?: $fallback), 0, 1));
-    $documentLabels = [];
+    $evidenceRounds = $relationship->verificationDocuments
+        ->groupBy('submission_round')
+        ->sortKeysDesc();
     $guardianIdentityDocuments = collect([
         'front' => [
             'label' => 'Front of guardian ID',
@@ -97,11 +98,6 @@
                     Reject / Request Resubmission
                 </button>
             @endif
-            @if($canRevoke)
-                <button type="button" @click="decisionModal = 'revoke'" class="px-4 py-2 text-sm font-semibold text-gray-800 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                    Revoke
-                </button>
-            @endif
             </div>
         </div>
     </div>
@@ -112,9 +108,6 @@
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Verification Status</p>
                 <div class="flex flex-wrap items-center gap-3 mt-2">
                     <h1 class="text-2xl font-bold text-gray-900">{{ $relationship->relationshipVerificationLabel() }}</h1>
-                    <span class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold {{ $badge($status) }}">
-                        Overall relationship status: {{ $humanStatus($status) }}
-                    </span>
                 </div>
                 <p class="mt-2 text-sm text-gray-500">
                     Submitted {{ $relationship->relationship_verification_submitted_at?->format('M d, Y h:i A') ?? 'not submitted' }}
@@ -130,19 +123,19 @@
     <section class="p-5 bg-white border border-gray-200 shadow-sm rounded-xl">
         <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-gray-500">Verification Requirements</h2>
         <dl class="grid gap-3 mt-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <div class="p-3 border border-gray-100 rounded-lg bg-gray-50">
                 <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">Guardian verification</dt>
                 <dd class="mt-1 font-semibold text-gray-900">{{ $humanStatus($guardianStatus) }}</dd>
             </div>
-            <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <div class="p-3 border border-gray-100 rounded-lg bg-gray-50">
                 <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">Dependent validation</dt>
                 <dd class="mt-1 font-semibold text-gray-900">{{ $humanStatus($dependentStatus) }}</dd>
             </div>
-            <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <div class="p-3 border border-gray-100 rounded-lg bg-gray-50">
                 <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">Relationship verification</dt>
                 <dd class="mt-1 font-semibold text-gray-900">{{ $humanStatus($status) }}</dd>
             </div>
-            <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <div class="p-3 border border-gray-100 rounded-lg bg-gray-50">
                 <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">Overall relationship</dt>
                 <dd class="mt-1 font-semibold text-gray-900">{{ $humanStatus($relationshipStatus) }}</dd>
             </div>
@@ -195,7 +188,7 @@
         <div class="grid gap-4 mt-4 lg:grid-cols-2">
             @foreach($guardianIdentityDocuments as $document)
                 <article class="overflow-hidden border border-gray-200 rounded-xl bg-gray-50">
-                    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 bg-white">
+                    <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white border-b border-gray-200">
                         <h3 class="text-sm font-semibold text-gray-900">{{ $document['label'] }}</h3>
                         @if($document['url'])
                             <div class="flex items-center gap-2">
@@ -208,9 +201,9 @@
                     @if($document['url'])
                         <div class="p-3 bg-gray-100">
                             @if($document['is_pdf'])
-                                <iframe src="{{ $document['url'] }}#toolbar=0&amp;navpanes=0" title="{{ $document['label'] }}" class="h-72 w-full rounded-lg border border-gray-200 bg-white"></iframe>
+                                <iframe src="{{ $document['url'] }}#toolbar=0&amp;navpanes=0" title="{{ $document['label'] }}" class="w-full bg-white border border-gray-200 rounded-lg h-72"></iframe>
                             @else
-                                <img src="{{ $document['url'] }}" alt="{{ $document['label'] }}" class="h-72 w-full rounded-lg border border-gray-200 bg-white object-contain">
+                                <img src="{{ $document['url'] }}" alt="{{ $document['label'] }}" class="object-contain w-full bg-white border border-gray-200 rounded-lg h-72">
                             @endif
                         </div>
                     @else
@@ -225,20 +218,25 @@
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">Submitted Documents</h2>
-                <p class="mt-1 text-sm text-gray-500">Review document type, submitter, side, and current verification state in one place.</p>
             </div>
             <span class="text-sm font-semibold text-gray-500">{{ $relationship->verificationDocuments->count() }} submitted</span>
         </div>
 
-        <div class="grid gap-3 mt-4 xl:grid-cols-2">
-            @forelse($relationship->verificationDocuments as $document)
-                @php
-                    $documentTypeLabel = (string) config('guardian_relationships.document_types.' . $document->document_type, $humanStatus($document->document_type));
-                    $documentLabels[$document->document_type] = ($documentLabels[$document->document_type] ?? 0) + 1;
-                    $sideLabel = $documentLabels[$document->document_type] === 1 ? 'Front' : 'Back';
-                    $documentUrl = route('admin.parent-verifications.relationships.documents.show', [$relationship, $document]);
-                    $isImage = str_starts_with((string) $document->mime_type, 'image/');
-                @endphp
+        @forelse($evidenceRounds as $round => $roundDocuments)
+            <div class="mt-5" data-testid="evidence-round-{{ $round }}">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <h3 class="text-sm font-semibold text-gray-900">Evidence round {{ $round }}</h3>
+                </div>
+                <div class="grid gap-3 xl:grid-cols-2">
+                    @foreach($roundDocuments as $document)
+                        @php
+                            $documentTypeLabel = (string) config('guardian_relationships.document_types.' . $document->document_type, $humanStatus($document->document_type));
+                            $sideLabel = $document->document_side === 'not_applicable'
+                                ? 'Not applicable'
+                                : (filled($document->document_side) ? $humanStatus($document->document_side) : 'Front');
+                            $documentUrl = route('admin.parent-verifications.relationships.documents.show', [$relationship, $document]);
+                            $isImage = str_starts_with((string) $document->mime_type, 'image/');
+                        @endphp
                 <article class="p-4 border border-gray-200 rounded-xl bg-gray-50" data-testid="relationship-document-card">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0">
@@ -251,6 +249,10 @@
                                 <div>
                                     <dt class="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Submitted by</dt>
                                     <dd class="mt-1 font-medium text-gray-800">{{ $document->uploadedBy?->name ?? $relationship->parent?->name ?? 'Guardian' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Submitted</dt>
+                                    <dd class="mt-1 font-medium text-gray-800">{{ $document->submitted_at?->format('M d, Y h:i A') ?? $document->created_at?->format('M d, Y h:i A') }}</dd>
                                 </div>
                             </dl>
                         </div>
@@ -272,11 +274,24 @@
                             </a>
                         </div>
                     </div>
+                    @if($isImage)
+                        <div class="mt-4 overflow-hidden border border-gray-200 rounded-xl bg-white" data-testid="relationship-document-image-preview">
+                            <div class="flex items-center justify-between gap-3 px-3 py-2 border-b border-gray-200">
+                                <span class="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Image preview</span>
+                                <span class="text-xs font-medium text-gray-400">{{ $sideLabel }}</span>
+                            </div>
+                            <div class="p-3 bg-gray-100">
+                                <img src="{{ $documentUrl }}" alt="{{ $documentTypeLabel }} - {{ $sideLabel }}" class="object-contain w-full h-64 bg-white border border-gray-200 rounded-lg">
+                            </div>
+                        </div>
+                    @endif
                 </article>
-            @empty
-                <p class="px-4 py-8 text-sm text-center text-gray-500 border border-gray-200 border-dashed rounded-xl bg-gray-50">No documents submitted.</p>
-            @endforelse
-        </div>
+                    @endforeach
+                </div>
+            </div>
+        @empty
+            <p class="px-4 py-8 mt-4 text-sm text-center text-gray-500 border border-gray-200 border-dashed rounded-xl bg-gray-50">No documents submitted.</p>
+        @endforelse
     </section>
 
     <div class="grid gap-5 lg:grid-cols-3">
@@ -396,34 +411,5 @@
         </form>
     </div>
 
-    <div x-show="decisionModal === 'revoke'" x-cloak @keydown.escape.window="decisionModal = null" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="fixed inset-0 bg-gray-900/50" @click="decisionModal = null"></div>
-        <form method="POST" action="{{ route('admin.parent-verifications.relationships.revoke', $relationship) }}" class="relative z-10 w-full max-w-lg overflow-hidden bg-white shadow-2xl rounded-xl">
-            @csrf
-            <div class="px-6 py-5 border-b border-gray-100">
-                <h3 class="text-lg font-semibold text-gray-900">Revoke verification</h3>
-                <p class="mt-2 text-sm text-gray-600">This removes the verified relationship status. A structured reason is required for the audit trail.</p>
-            </div>
-            <div class="px-6 py-5 space-y-4">
-                <div>
-                    <label for="relationship-revoke-reason" class="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">Structured reason</label>
-                    <select id="relationship-revoke-reason" name="reason_code" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100">
-                        <option value="">Select reason</option>
-                        @foreach($rejectionReasons as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label for="relationship-revoke-note" class="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">Revocation reason</label>
-                    <textarea id="relationship-revoke-note" name="note" rows="4" maxlength="1000" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" placeholder="Explain why this verified relationship must be revoked."></textarea>
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
-                <button type="button" @click="decisionModal = null" class="px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800">Revoke</button>
-            </div>
-        </form>
-    </div>
 </div>
 @endsection

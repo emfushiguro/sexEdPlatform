@@ -1,46 +1,51 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\SeminarBrowseController;
-use App\Http\Controllers\SeminarAttendanceController;
-use App\Http\Controllers\SeminarInteractionController;
 use App\Http\Controllers\CertificateController;
-use App\Http\Controllers\Learner\ProfileCompletionController;
-use App\Http\Controllers\Learner\SubscriptionController;
-use App\Http\Controllers\Learner\QuizController;
-use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
-use App\Http\Controllers\Learner\ModuleFeedbackController as LearnerModuleFeedbackController;
-use App\Http\Controllers\Learner\ModuleReviewPageController as LearnerModuleReviewPageController;
-use App\Http\Controllers\Learner\ContentReportController as LearnerContentReportController;
-use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
-use App\Http\Controllers\Learner\TopicTranslationController;
-use App\Http\Controllers\Learner\ParentVisibilityController;
-use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
-use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
-use App\Http\Controllers\Learner\AdminCreatorProfileController as LearnerAdminCreatorProfileController;
-use App\Http\Controllers\HelpCenterController;
-use App\Http\Controllers\PlatformFeedbackController;
-use App\Http\Controllers\PlatformFeedbackAttachmentController;
-use App\Http\Controllers\PlatformFeedbackMessageController;
-use App\Http\Controllers\TestimonialController;
-use App\Http\Controllers\HelpArticleHelpfulnessController;
 use App\Http\Controllers\Chat\ConversationController as ChatConversationController;
 use App\Http\Controllers\Chat\MessageController as ChatMessageController;
 use App\Http\Controllers\Chat\MessageRequestController as ChatMessageRequestController;
 use App\Http\Controllers\Chat\StatusController as ChatStatusController;
 use App\Http\Controllers\GuardianRelationshipVerificationController;
+use App\Http\Controllers\HelpArticleHelpfulnessController;
+use App\Http\Controllers\HelpCenterController;
+use App\Http\Controllers\Learner\AdminCreatorProfileController as LearnerAdminCreatorProfileController;
+use App\Http\Controllers\Learner\ContentReportController as LearnerContentReportController;
+use App\Http\Controllers\Learner\DependentSupportInformationController as LearnerDependentSupportInformationController;
+use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
+use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
+use App\Http\Controllers\Learner\InteractiveActivityController as LearnerInteractiveActivityController;
+use App\Http\Controllers\Learner\LearningPathController as LearnerLearningPathController;
+use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
+use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
+use App\Http\Controllers\Learner\ModuleFeedbackController as LearnerModuleFeedbackController;
+use App\Http\Controllers\Learner\ModuleReviewPageController as LearnerModuleReviewPageController;
+use App\Http\Controllers\Learner\ParentVisibilityController;
+use App\Http\Controllers\Learner\ProfileCompletionController;
+use App\Http\Controllers\Learner\QuizController;
+use App\Http\Controllers\Learner\SubscriptionController;
+use App\Http\Controllers\Learner\TopicTranslationController;
+use App\Http\Controllers\Parent\DependentSupportInformationController as ParentDependentSupportInformationController;
 use App\Http\Controllers\ParentInvitationController;
-use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PlatformFeedbackAttachmentController;
+use App\Http\Controllers\PlatformFeedbackController;
+use App\Http\Controllers\PlatformFeedbackMessageController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SeminarAttendanceController;
+use App\Http\Controllers\SeminarBrowseController;
+use App\Http\Controllers\SeminarCodeAttendanceController;
+use App\Http\Controllers\SeminarExternalJoinController;
+use App\Http\Controllers\SeminarInteractionController;
+use App\Http\Controllers\TestimonialController;
 use App\Models\Conversation;
+use App\Services\Chat\ChatAuthorizationService;
 use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpFoundation\Response;
 
 $resolveLocalApkFile = static function (): ?array {
     $configuredPath = trim((string) config('apk.local_file', ''));
@@ -135,6 +140,7 @@ Route::get('/', function () {
     if (Auth::check()) {
         return redirect('/learn/dashboard');
     }
+
     return view('landing.index', ['testimonials' => \App\Models\Testimonial::query()->publiclyVisible()->with(['user.learnerProfile', 'user.instructorProfile', 'user.profile'])->orderBy('sort_order')->latest('published_at')->limit(6)->get()]);
 })->name('home');
 
@@ -291,6 +297,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('verified')->group(function () {
         Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
+        Route::get('/seminars/{seminar}/external', SeminarExternalJoinController::class)->name('seminars.external.join');
         Route::post('/seminars/{seminar}/register', [SeminarBrowseController::class, 'register'])->name('seminars.register');
         Route::post('/seminars/{seminar}/apply-speaker', [SeminarBrowseController::class, 'applyAsSpeaker'])->name('seminars.apply-speaker');
         Route::post('/seminars/{seminar}/cancel-registration', [SeminarBrowseController::class, 'cancelRegistration'])->name('seminars.cancel-registration');
@@ -301,6 +308,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/seminars/{seminar}/attendance/join', [SeminarAttendanceController::class, 'join'])->name('seminars.attendance.join');
         Route::post('/seminars/{seminar}/attendance/heartbeat', [SeminarAttendanceController::class, 'heartbeat'])->name('seminars.attendance.heartbeat');
         Route::post('/seminars/{seminar}/attendance/leave', [SeminarAttendanceController::class, 'leave'])->name('seminars.attendance.leave');
+        Route::post('/seminars/{seminar}/attendance/code', [SeminarCodeAttendanceController::class, 'submit'])->name('seminars.attendance.code.submit');
     });
 
     // PayMongo Subscription Routes (Legacy - kept for backward compatibility)
@@ -341,6 +349,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
         Route::get('/my-parent', [ParentVisibilityController::class, 'index'])->name('parent.index');
+        Route::patch('/my-parent/{parentChildAccount}/support-information-access', [ParentVisibilityController::class, 'updateSupportInformationAccess'])
+            ->name('parent.support-information-access.update');
+        Route::get('/my-support-information', [LearnerDependentSupportInformationController::class, 'edit'])
+            ->name('support-information.edit');
+        Route::put('/my-support-information', [LearnerDependentSupportInformationController::class, 'save'])
+            ->name('support-information.save');
+        Route::delete('/my-support-information', [LearnerDependentSupportInformationController::class, 'destroy'])
+            ->name('support-information.destroy');
 
         // Live search (AJAX)
         Route::get('/search', [\App\Http\Controllers\Learner\SearchController::class, 'index'])->name('search');
@@ -350,6 +366,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Learner\NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
         Route::post('/notifications/dropdown-open', [\App\Http\Controllers\Learner\NotificationController::class, 'markDropdownRead'])->name('notifications.dropdown-open');
         Route::get('/notifications/{id}/read', [\App\Http\Controllers\Learner\NotificationController::class, 'markRead'])->name('notifications.read');
+
+        // Guided learning paths stay ahead of broader module routes.
+        Route::get('/learning-paths', [LearnerLearningPathController::class, 'index'])->name('learning-paths.index');
+        Route::get('/learning-paths/{learningPath}', [LearnerLearningPathController::class, 'show'])
+            ->whereNumber('learningPath')
+            ->name('learning-paths.show');
 
         // Module browsing and enrollment
         Route::get('/modules', [LearnerModuleController::class, 'index'])->name('modules.index');
@@ -372,6 +394,24 @@ Route::middleware('auth')->group(function () {
         Route::post('/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('topics.complete');
         Route::post('/topics/{topic}/uncomplete', [LearnerLessonController::class, 'uncompleteTopic'])->name('topics.uncomplete');
         Route::post('/lessons/topics/{topic}/complete', [LearnerLessonController::class, 'completeTopic'])->name('lessons.topics.complete');
+        Route::post('/checkpoints/{question}/submit', [\App\Http\Controllers\Learner\InteractiveCheckpointController::class, 'submit'])
+            ->name('checkpoints.submit');
+        Route::post('/checkpoints/{question}/skip', [\App\Http\Controllers\Learner\InteractiveCheckpointController::class, 'skip'])
+            ->name('checkpoints.skip');
+        Route::get('/interactive-activities/{interactiveActivity}', [LearnerInteractiveActivityController::class, 'show'])
+            ->name('interactive-activities.show');
+        Route::post('/interactive-activities/{interactiveActivity}/match', [LearnerInteractiveActivityController::class, 'match'])
+            ->name('interactive-activities.match');
+        Route::post('/interactive-activities/{interactiveActivity}/check-sequence', [LearnerInteractiveActivityController::class, 'checkSequence'])
+            ->name('interactive-activities.check-sequence');
+        Route::put('/interactive-activities/{interactiveActivity}/state', [LearnerInteractiveActivityController::class, 'saveState'])
+            ->name('interactive-activities.state');
+        Route::post('/interactive-activities/{interactiveActivity}/skip', [LearnerInteractiveActivityController::class, 'skip'])
+            ->name('interactive-activities.skip');
+        Route::post('/interactive-activities/{interactiveActivity}/resume', [LearnerInteractiveActivityController::class, 'resume'])
+            ->name('interactive-activities.resume');
+        Route::post('/interactive-activities/{interactiveActivity}/practice', [LearnerInteractiveActivityController::class, 'practice'])
+            ->name('interactive-activities.practice');
         Route::post('/topics/{topic}/translate', [TopicTranslationController::class, 'translate'])
             ->middleware('throttle:30,1')
             ->name('topics.translate');
@@ -442,6 +482,12 @@ Route::middleware('auth')->group(function () {
             ->name('children.enrollments.approve');
         Route::post('/children/{child}/enrollments/{enrollment}/reject', [\App\Http\Controllers\ParentController::class, 'rejectEnrollment'])
             ->name('children.enrollments.reject');
+        Route::get('/children/{child}/support-information', [ParentDependentSupportInformationController::class, 'edit'])
+            ->name('children.support-information.edit');
+        Route::put('/children/{child}/support-information', [ParentDependentSupportInformationController::class, 'save'])
+            ->name('children.support-information.save');
+        Route::delete('/children/{child}/support-information', [ParentDependentSupportInformationController::class, 'destroy'])
+            ->name('children.support-information.destroy');
         Route::get('/relationship-verifications/{parentChildAccount}', [GuardianRelationshipVerificationController::class, 'show'])
             ->name('relationship-verifications.show');
         Route::post('/relationship-verifications/{parentChildAccount}', [GuardianRelationshipVerificationController::class, 'store'])
@@ -455,6 +501,8 @@ Route::middleware('auth')->group(function () {
             ->name('invitations.history');
         Route::post('/invitations', [ParentInvitationController::class, 'store'])
             ->name('invitations.store');
+        Route::post('/invitations/{invitation}/conversation', [ParentInvitationController::class, 'conversation'])
+            ->name('invitations.conversation');
         Route::get('/invitations/{invitation}', [ParentInvitationController::class, 'show'])
             ->name('invitations.show');
         Route::post('/invitations/{invitation}/respond', [ParentInvitationController::class, 'respond'])
@@ -463,19 +511,21 @@ Route::middleware('auth')->group(function () {
             ->name('invitations.cancel');
     });
 
+    Route::post('/guardian-relationships/{parentChildAccount}/deactivate', [\App\Http\Controllers\GuardianRelationshipLifecycleController::class, 'deactivate'])
+        ->name('guardian-relationships.deactivate');
+    Route::post('/guardian-relationships/{parentChildAccount}/reactivate', [\App\Http\Controllers\GuardianRelationshipLifecycleController::class, 'reactivate'])
+        ->name('guardian-relationships.reactivate');
+
     Route::prefix('chat')
         ->name('chat.')
-        ->middleware(['permission:access chat', 'guardian.verified'])
+        ->middleware(['chat.access', 'guardian.verified'])
         ->group(function () {
             Route::get('/', fn () => view('chat.page'))->name('page');
             Route::get('/conversation/{conversation}', function (Request $request, Conversation $conversation) {
-                $userId = (int) $request->user()->id;
-                $isParticipant = in_array($userId, [
-                    (int) $conversation->participant_one_id,
-                    (int) $conversation->participant_two_id,
-                ], true);
-
-                abort_unless($isParticipant, 403);
+                abort_unless(
+                    app(ChatAuthorizationService::class)->canViewConversation($request->user(), $conversation),
+                    403,
+                );
 
                 return redirect()->route('chat.page', [
                     'conversation_id' => $conversation->id,

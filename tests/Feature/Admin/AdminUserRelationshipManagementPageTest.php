@@ -101,4 +101,28 @@ class AdminUserRelationshipManagementPageTest extends TestCase
             ->assertSee('name="parent_user_id" value="'.$verifiedParent->id.'"', false)
             ->assertDontSee('name="parent_user_id" value="'.$unverifiedParent->id.'"', false);
     }
+
+    public function test_relationship_management_page_links_to_review_instead_of_direct_verification_toggle(): void
+    {
+        $this->withoutVite();
+
+        $admin = $this->createAdminUser();
+        $parent = User::factory()->create(['role' => 'learner']);
+        $child = User::factory()->create(['role' => 'learner']);
+        $relationship = ParentChildAccount::query()->create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'relationship_type' => 'aunt',
+            'verification_pathway' => 'non_parental_care',
+            'relationship_status' => 'pending',
+            'relationship_verified_status' => 'pending',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.relationships.index'))
+            ->assertOk()
+            ->assertSee(route('admin.parent-verifications.relationships.show', $relationship), false)
+            ->assertSee('Review Relationship', false)
+            ->assertDontSee('Toggle Verification', false);
+    }
 }

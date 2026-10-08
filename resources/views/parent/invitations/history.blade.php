@@ -78,7 +78,6 @@
                                     <div>
                                         <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Invited Guardian</p>
                                         <p class="text-sm font-semibold text-gray-900">{{ $invitation->inviterParent?->name ?? 'Guardian' }}</p>
-                                        <p class="text-xs text-gray-500">{{ $invitation->inviterParent?->email ?? 'No email' }}</p>
                                     </div>
                                 </div>
 
@@ -97,7 +96,6 @@
                                             {{ $invitation->relationshipLabel() }}
                                         </span>
                                         <p class="text-xs text-gray-500">
-                                            {{ $invitation->child?->email ?? 'No email' }}
                                             @if($invitation->child?->learnerProfile?->username)
                                                 · {{ $invitation->child->learnerProfile->username }}
                                             @endif

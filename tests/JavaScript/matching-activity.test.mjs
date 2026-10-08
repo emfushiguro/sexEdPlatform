@@ -1,0 +1,546 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+    calculateConnectorLines,
+    connectorPoint,
+    createMatchingActivity,
+    normalizeProposal,
+} from '../../resources/js/matching-activity.js';
+import { createInteractiveActivity } from '../../resources/js/interactive-activity.js';
+
+const response = (data, ok = true) => ({ ok, json: async () => data });
+
+test('image-only matching items use alt text in endpoint and connection labels', () => {
+    const activity = createMatchingActivity({
+        leftItems: [{ id: 'left-image', value: '', image_alt: 'Water cycle diagram' }],
+        rightItems: [{ id: 'right-text', value: 'Evaporation' }],
+    });
+
+    assert.equal(activity.itemLabel(activity.leftItems[0]), 'Water cycle diagram');
+    assert.match(activity.endpointLabel('left', 'left-image'), /Water cycle diagram/);
+    activity.matchedPairs = [{ left_id: 'left-image', right_id: 'right-text' }];
+    assert.match(activity.endpointLabel('left', 'left-image'), /connected to Evaporation/);
+});
+
+test('matching refreshes dot geometry after image load and image failure', () => {
+    const activity = createMatchingActivity();
+    let refreshes = 0;
+    activity.scheduleConnectorRefresh = () => { refreshes += 1; return activity; };
+
+    activity.mediaLoaded();
+    activity.mediaFailed('left', 'left-image');
+
+    assert.equal(refreshes, 2);
+    assert.equal(activity.isMediaFailed('left', 'left-image'), true);
+});
+
+test('a connection can begin from either side and normalizes to the server shape', () => {
+    assert.deepEqual(normalizeProposal(
+        { side: 'right', id: 'right-1' },
+        { side: 'left', id: 'left-1' },
+    ), { left_id: 'left-1', right_id: 'right-1' });
+    assert.equal(normalizeProposal({ side: 'left', id: 'left-1' }, { side: 'left', id: 'left-2' }), null);
+});
+
+test('click or tap activation keeps the first endpoint selected and connects the second endpoint', () => {
+    const activity = createMatchingActivity();
+
+    activity.activateEndpoint('left', 'left-1');
+    assert.deepEqual(activity.activeEndpoint, { side: 'left', id: 'left-1' });
+    activity.activateEndpoint('right', 'right-1');
+
+    assert.deepEqual(activity.matchedPairs, [{ left_id: 'left-1', right_id: 'right-1' }]);
+    assert.equal(activity.activeEndpoint, null);
+});
+
+test('selected endpoint draws a visible temporary line toward the connection gutter', () => {
+    const endpoints = [
+        { dataset: { matchDotSide: 'left', matchId: 'left-1' }, getBoundingClientRect: () => ({ left: 10, top: 20, width: 20, height: 20 }) },
+    ];
+    const activity = createMatchingActivity();
+    activity.connectorContainer = {
+        querySelectorAll: () => endpoints,
+        getBoundingClientRect: () => ({ left: 0, top: 0, width: 200, height: 100 }),
+    };
+
+    activity.activateEndpoint('left', 'left-1');
+    activity.refreshConnectors();
+
+    assert.deepEqual(activity.connectorLines.at(-1), {
+        x1: 20, y1: 30, x2: 100, y2: 30, state: 'pending', key: 'active-connection',
+    });
+});
+
+test('incorrect connections remain removable and are replaced from either endpoint', () => {
+    const activity = createMatchingActivity();
+    activity.startConnection('left', 'left-1');
+    activity.finishConnection('right', 'right-2');
+    activity.pairResults = [{ left_id: 'left-1', right_id: 'right-2', is_correct: false, state: 'incorrect' }];
+    activity.rejectedConnection = { left_id: 'left-1', right_id: 'right-2' };
+    assert.deepEqual(activity.matchedPairs, [{ left_id: 'left-1', right_id: 'right-2' }]);
+    assert.equal(activity.endpointState('left', 'left-1'), 'incorrect');
+    activity.removeRejectedConnection();
+    assert.deepEqual(activity.matchedPairs, []);
+
+    activity.startConnection('right', 'right-2');
+    activity.finishConnection('left', 'left-1');
+    assert.deepEqual(activity.matchedPairs, [{ left_id: 'left-1', right_id: 'right-2' }]);
+});
+
+test('available endpoints accept only an unlocked endpoint on the opposite side', () => {
+    const activity = createMatchingActivity({
+        initialMatchedPairs: [{ left_id: 'left-1', right_id: 'right-1' }],
+    });
+
+    assert.equal(activity.isEndpointAvailable('left', 'left-1'), false);
+    assert.equal(activity.isEndpointAvailable('right', 'right-1'), false);
+    assert.equal(activity.isEndpointAvailable('left', 'left-2'), true);
+    activity.startConnection('left', 'left-2');
+    assert.equal(activity.isValidTarget('left', 'left-3'), false);
+    assert.equal(activity.isValidTarget('right', 'right-1'), false);
+    assert.equal(activity.isValidTarget('right', 'right-2'), true);
+});
+
+test('only the active or hovered endpoint receives selected state', () => {
+    const activity = createMatchingActivity();
+
+    activity.startConnection('left', 'left-1');
+    assert.equal(activity.endpointState('left', 'left-1'), 'selected');
+    assert.equal(activity.endpointState('right', 'right-1'), 'idle');
+
+    activity.hoveredEndpoint = { side: 'right', id: 'right-2' };
+    assert.equal(activity.endpointState('right', 'right-1'), 'idle');
+    assert.equal(activity.endpointState('right', 'right-2'), 'selected');
+});
+
+test('invalid drops cancel the provisional connection without a request', async () => {
+    let calls = 0;
+    const activity = createMatchingActivity({ matchUrl: '/match' }, async () => {
+        calls += 1;
+        return response({});
+    });
+
+    activity.startConnection('left', 'left-1');
+    await activity.finishConnection('left', 'left-2');
+
+    assert.equal(calls, 0);
+    assert.equal(activity.activeEndpoint, null);
+    assert.equal(activity.pendingConnection, null);
+    assert.equal(activity.hoveredEndpoint, null);
+});
+
+test('a local connection remains visible until the server evaluates the full answer', () => {
+    const activity = createMatchingActivity({ matchUrl: '/match' });
+
+    activity.startConnection('left', 'left-1');
+    activity.finishConnection('right', 'right-1');
+    assert.deepEqual(activity.matchedPairs, [{ left_id: 'left-1', right_id: 'right-1' }]);
+    assert.equal(activity.pairState(activity.matchedPairs[0]), 'pending');
+    assert.equal(activity.requestState, 'idle');
+});
+
+test('failed requests retain their pending connection in a neutral error state', async () => {
+    const activity = createMatchingActivity({ matchUrl: '/match' }, async () => response({ message: 'Offline' }, false));
+
+    activity.startConnection('left', 'left-1');
+    activity.finishConnection('right', 'right-1');
+    await activity.checkAnswer();
+
+    assert.deepEqual(activity.matchedPairs, [{ left_id: 'left-1', right_id: 'right-1' }]);
+    assert.equal(activity.requestState, 'error');
+    assert.equal(activity.error, 'Offline');
+});
+
+test('confirmed connections lock both endpoints and publish the scoped result once', async () => {
+    const events = [];
+    const activity = createMatchingActivity({
+        activityId: 'matching-42',
+        matchUrl: '/match',
+        leftItems: [{ id: 'left-1', value: 'Left one' }],
+    }, async () => response({ status: 'completed', accepted: true, is_correct: true, is_complete: true }));
+    activity.$dispatch = (name, detail) => events.push({ name, detail });
+
+    activity.startConnection('right', 'right-1');
+    activity.finishConnection('left', 'left-1');
+    await activity.checkAnswer();
+
+    assert.deepEqual(activity.matchedPairs, [{ left_id: 'left-1', right_id: 'right-1' }]);
+    assert.equal(activity.isEndpointAvailable('left', 'left-1'), false);
+    assert.equal(activity.isEndpointAvailable('right', 'right-1'), false);
+    assert.deepEqual(events.at(-1), {
+        name: 'interactive-activity-result',
+        detail: {
+            activityId: 'matching-42',
+            type: 'matching',
+            data: { status: 'completed', accepted: true, is_correct: true, is_complete: true },
+            meta: { completed: 1, total: 1 },
+        },
+    });
+});
+
+test('practice completion locks matching controls until practice is reset', () => {
+    const activity = createMatchingActivity({ initialStatus: 'practice_completed' });
+
+    assert.equal(activity.isLocked(), true);
+    assert.equal(activity.isEndpointAvailable('left', 'left-1'), false);
+    activity.retryAnswer();
+    assert.equal(activity.feedback, '');
+});
+
+test('keyboard Space, Enter, and Escape control the active connection', async () => {
+    const activity = createMatchingActivity();
+    let prevented = 0;
+    const event = (key) => ({ key, preventDefault: () => { prevented += 1; } });
+
+    activity.activateEndpoint('left', 'left-1', event(' '));
+    assert.deepEqual(activity.activeEndpoint, { side: 'left', id: 'left-1' });
+    await activity.activateEndpoint('right', 'right-1', event('Enter'));
+    assert.deepEqual(activity.matchedPairs, [{ left_id: 'left-1', right_id: 'right-1' }]);
+    activity.activateEndpoint('left', 'left-2', event('Enter'));
+    activity.activateEndpoint('left', 'left-2', event('Escape'));
+    assert.equal(activity.activeEndpoint, null);
+    assert.equal(prevented, 4);
+});
+
+test('matching plays selection for valid pointer and keyboard connections only', () => {
+    const played = [];
+    const audio = { play: (key) => played.push(key) };
+    const activity = createMatchingActivity({ audio });
+
+    activity.startConnection('left', 'left-1');
+    activity.finishConnection('right', 'right-1');
+    assert.deepEqual(played, ['selection', 'selection']);
+
+    activity.activateEndpoint('left', 'left-2', { key: 'Enter', preventDefault() {} });
+    activity.activateEndpoint('right', 'right-2', { key: ' ', preventDefault() {} });
+    assert.deepEqual(played, ['selection', 'selection', 'selection', 'selection']);
+});
+
+test('matching remains silent for invalid, locked, cancelled, removed, and checked interactions', async () => {
+    const played = [];
+    const audio = { play: (key) => played.push(key) };
+    const activity = createMatchingActivity({
+        audio,
+        initialMatchedPairs: [{ left_id: 'left-1', right_id: 'right-1' }],
+        matchUrl: '/match',
+    }, async () => response({ status: 'in_progress', is_correct: false, is_complete: false }));
+
+    activity.startConnection('left', 'left-1');
+    activity.startConnection('left', 'left-2');
+    assert.deepEqual(played, ['selection']);
+    played.length = 0;
+    activity.finishConnection('left', 'left-3');
+    activity.moveConnection({ clientX: 10, clientY: 10 });
+    activity.cancelConnection();
+    activity.rejectedConnection = { left_id: 'left-2', right_id: 'right-2' };
+    activity.removeRejectedConnection();
+    await activity.checkAnswer();
+
+    assert.deepEqual(played, []);
+});
+
+test('loadPayload rehydrates completed matches and clears transient connection state', async () => {
+    const activity = createMatchingActivity({
+        initialMatchedPairs: [{ left_id: 'stale-left', right_id: 'stale-right' }],
+        leftItems: [{ id: 'stale-left', value: 'Stale left' }],
+        rightItems: [{ id: 'stale-right', value: 'Stale right' }],
+    });
+    const payload = {
+        left_items: [{ id: 'left-1', value: 'Left one' }],
+        right_items: [{ id: 'right-1', value: 'Right one' }],
+        completed_matches: [{ left_id: 'left-1', right_id: 'right-1' }],
+    };
+    let refreshes = 0;
+    activity.activeEndpoint = { side: 'left', id: 'stale-left' };
+    activity.pendingConnection = { left_id: 'stale-left', right_id: 'stale-right' };
+    activity.rejectedConnection = { left_id: 'stale-left', right_id: 'stale-right' };
+    activity.refreshConnectors = () => { refreshes += 1; return activity; };
+
+    activity.loadPayload(payload, 'practice');
+    await new Promise((resolve) => queueMicrotask(resolve));
+
+    assert.deepEqual(activity.leftItems, payload.left_items);
+    assert.deepEqual(activity.rightItems, payload.right_items);
+    assert.deepEqual(activity.matchedPairs, payload.completed_matches);
+    assert.notEqual(activity.matchedPairs, payload.completed_matches);
+    assert.equal(activity.status, 'practice');
+    assert.equal(activity.activeEndpoint, null);
+    assert.equal(activity.pendingConnection, null);
+    assert.equal(activity.rejectedConnection, null);
+    assert.equal(refreshes, 1);
+});
+
+test('completed check rehydrates authoritative matches instead of leaving stale local connections', async () => {
+    const activity = createMatchingActivity({
+        matchUrl: '/match',
+        leftItems: [{ id: 'left-1', value: 'Left one' }],
+        rightItems: [{ id: 'right-1', value: 'Right one' }],
+    }, async () => response({
+        status: 'completed',
+        accepted: false,
+        is_correct: true,
+        is_complete: true,
+        payload: {
+            left_items: [{ id: 'left-1', value: 'Left one' }],
+            right_items: [{ id: 'right-1', value: 'Right one' }],
+            completed_matches: [{ left_id: 'left-1', right_id: 'right-1' }],
+        },
+    }));
+    activity.matchedPairs = [{ left_id: 'left-1', right_id: 'stale-right' }];
+
+    await activity.checkAnswer();
+
+    assert.deepEqual(activity.matchedPairs, [{ left_id: 'left-1', right_id: 'right-1' }]);
+    assert.equal(activity.isLocked(), true);
+});
+
+test('practice check sends the shuffled right order with its working state', async () => {
+    let submitted;
+    const activity = createMatchingActivity({
+        practice: true,
+        matchUrl: '/match',
+        leftItems: [{ id: 'left-1', value: 'Left one' }],
+        rightItems: [{ id: 'right-2', value: 'Right two' }, { id: 'right-1', value: 'Right one' }],
+    }, async (_url, options) => {
+        submitted = JSON.parse(options.body);
+        return response({ status: 'practice', is_correct: false, is_complete: false, pair_results: [] });
+    });
+
+    await activity.checkAnswer();
+
+    assert.deepEqual(submitted.working_state.right_order, ['right-2', 'right-1']);
+});
+
+test('connector geometry uses dot-centered line coordinates', () => {
+    assert.deepEqual(connectorPoint({ left: 20, top: 30, width: 100, height: 20 }, { left: 10, top: 20 }), { x: 60, y: 20 });
+    assert.deepEqual(calculateConnectorLines(
+        [{ left: 20, top: 30, width: 100, height: 20 }],
+        [{ left: 300, top: 50, width: 80, height: 40 }],
+        { left: 10, top: 20 },
+    ), [{ x1: 60, y1: 20, x2: 330, y2: 50 }]);
+});
+
+test('Preview matching posts to the evaluator and rotates its token', async () => {
+    const events = [];
+    const child = createMatchingActivity({
+        activityId: 'matching-preview', preview: true, previewToken: 'token-1', previewEvaluateUrl: '/preview/evaluate',
+        leftItems: [{ id: 'left-1', value: 'Left one' }],
+    }, async (url, options) => {
+        assert.equal(url, '/preview/evaluate');
+        assert.deepEqual(JSON.parse(options.body), {
+            preview_token: 'token-1', action: 'match', connections: [{ left_id: 'left-1', right_id: 'right-1' }],
+        });
+        return response({
+            status: 'practice_completed',
+            is_correct: true,
+            is_complete: true,
+            preview_token: 'token-2',
+            pair_results: [{ left_id: 'left-1', right_id: 'right-1', is_correct: true }],
+        });
+    });
+    const parent = createInteractiveActivity({ activityId: 'matching-preview' });
+    child.$dispatch = (name, detail) => events.push({ name, detail });
+
+    child.startConnection('left', 'left-1');
+    child.finishConnection('right', 'right-1');
+    await child.checkAnswer();
+
+    const result = events.find(({ name }) => name === 'interactive-activity-result').detail;
+    assert.equal(result.data.is_complete, true);
+    assert.equal(child.previewToken, 'token-2');
+    parent.handleActivityResult(result);
+    assert.deepEqual(parent.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
+});
+
+test('matching keeps connections local until Check answer and validates each pair independently', async () => {
+    const calls = [];
+    const activity = createMatchingActivity({
+        activityId: 'matching-42',
+        matchUrl: '/match',
+        leftItems: [
+            { id: 'left-1', value: 'Left one' },
+            { id: 'left-2', value: 'Left two' },
+            { id: 'left-3', value: 'Left three' },
+        ],
+        rightItems: [
+            { id: 'right-1', value: 'Right one' },
+            { id: 'right-2', value: 'Right two' },
+            { id: 'right-3', value: 'Right three' },
+        ],
+    }, async (url, options) => {
+        calls.push({ url, options });
+        return response({
+            status: 'in_progress',
+            accepted: true,
+            is_correct: false,
+            is_complete: false,
+            pair_results: [
+                { left_id: 'left-1', right_id: 'right-1', is_correct: true },
+                { left_id: 'left-2', right_id: 'right-3', is_correct: false },
+                { left_id: 'left-3', right_id: 'right-2', is_correct: false },
+            ],
+        });
+    });
+
+    activity.startConnection('left', 'left-1');
+    await activity.finishConnection('right', 'right-1');
+    activity.startConnection('left', 'left-2');
+    await activity.finishConnection('right', 'right-3');
+    activity.startConnection('left', 'left-3');
+    await activity.finishConnection('right', 'right-2');
+
+    assert.equal(calls.length, 0);
+    assert.deepEqual(activity.matchedPairs, [
+        { left_id: 'left-1', right_id: 'right-1' },
+        { left_id: 'left-2', right_id: 'right-3' },
+        { left_id: 'left-3', right_id: 'right-2' },
+    ]);
+    assert.equal(activity.endpointState('left', 'left-1'), 'pending');
+
+    await activity.checkAnswer();
+
+    assert.equal(calls.length, 1);
+    assert.deepEqual(JSON.parse(calls[0].options.body).connections, activity.matchedPairs);
+    assert.equal(activity.endpointState('left', 'left-1'), 'correct');
+    assert.equal(activity.endpointState('left', 'left-2'), 'incorrect');
+    assert.equal(activity.endpointState('right', 'right-2'), 'incorrect');
+    assert.equal(activity.endpointState('left', 'left-3'), 'incorrect');
+    assert.equal(activity.hasIncorrectResults(), true);
+
+    const arrangement = JSON.parse(JSON.stringify(activity.matchedPairs));
+    activity.retryAnswer();
+    assert.deepEqual(activity.matchedPairs, arrangement);
+    assert.equal(activity.answerChecked, false);
+    assert.equal(activity.endpointState('left', 'left-1'), 'correct');
+    assert.equal(activity.endpointState('left', 'left-2'), 'pending');
+    assert.equal(activity.hasIncorrectResults(), false);
+});
+
+test('retry clears incorrect feedback without removing the learner connections', () => {
+    const activity = createMatchingActivity({
+        initialMatchedPairs: [
+            { left_id: 'left-1', right_id: 'right-1' },
+            { left_id: 'left-2', right_id: 'right-3' },
+        ],
+    });
+    activity.answerChecked = true;
+    activity.pairResults = [
+        { left_id: 'left-1', right_id: 'right-1', is_correct: true, state: 'correct' },
+        { left_id: 'left-2', right_id: 'right-3', is_correct: false, state: 'incorrect' },
+        { left_id: 'left-3', right_id: null, is_correct: null, state: 'unanswered' },
+    ];
+
+    activity.retryAnswer();
+
+    assert.deepEqual(activity.matchedPairs, [
+        { left_id: 'left-1', right_id: 'right-1' },
+        { left_id: 'left-2', right_id: 'right-3' },
+    ]);
+    assert.equal(activity.answerChecked, false);
+    assert.deepEqual(activity.pairResults, [
+        { left_id: 'left-1', right_id: 'right-1', is_correct: true, state: 'correct' },
+    ]);
+    assert.equal(activity.endpointState('left', 'left-2'), 'pending');
+    assert.equal(activity.endpointState('left', 'left-3'), 'idle');
+});
+
+test('matching reconnects an incorrect pair while preserving correct connections', async () => {
+    const responses = [
+        response({
+            status: 'in_progress',
+            accepted: true,
+            is_correct: false,
+            is_complete: false,
+            pair_results: [
+                { left_id: 'left-1', right_id: 'right-1', is_correct: true },
+                { left_id: 'left-2', right_id: 'right-3', is_correct: false },
+                { left_id: 'left-3', right_id: 'right-2', is_correct: false },
+            ],
+        }),
+        response({
+            status: 'completed',
+            accepted: true,
+            is_correct: true,
+            is_complete: true,
+            pair_results: [
+                { left_id: 'left-1', right_id: 'right-1', is_correct: true },
+                { left_id: 'left-2', right_id: 'right-2', is_correct: true },
+                { left_id: 'left-3', right_id: 'right-3', is_correct: true },
+            ],
+        }),
+    ];
+    const activity = createMatchingActivity({
+        matchUrl: '/match',
+        leftItems: [
+            { id: 'left-1', value: 'Left one' },
+            { id: 'left-2', value: 'Left two' },
+            { id: 'left-3', value: 'Left three' },
+        ],
+        rightItems: [
+            { id: 'right-1', value: 'Right one' },
+            { id: 'right-2', value: 'Right two' },
+            { id: 'right-3', value: 'Right three' },
+        ],
+    }, async () => responses.shift());
+
+    for (const [left, right] of [['left-1', 'right-1'], ['left-2', 'right-3'], ['left-3', 'right-2']]) {
+        activity.startConnection('left', left);
+        await activity.finishConnection('right', right);
+    }
+    await activity.checkAnswer();
+
+    activity.startConnection('left', 'left-2');
+    await activity.finishConnection('right', 'right-2');
+    activity.startConnection('left', 'left-3');
+    await activity.finishConnection('right', 'right-3');
+    await activity.checkAnswer();
+
+    assert.deepEqual(activity.matchedPairs, [
+        { left_id: 'left-1', right_id: 'right-1' },
+        { left_id: 'left-2', right_id: 'right-2' },
+        { left_id: 'left-3', right_id: 'right-3' },
+    ]);
+    assert.equal(activity.endpointState('left', 'left-1'), 'correct');
+    assert.equal(activity.status, 'completed');
+});
+
+test('matching connector lines follow local pair state', () => {
+    const endpoints = [
+        { dataset: { matchDotSide: 'left', matchId: 'left-1' }, getBoundingClientRect: () => ({ left: 10, top: 20, width: 20, height: 20 }) },
+        { dataset: { matchDotSide: 'right', matchId: 'right-1' }, getBoundingClientRect: () => ({ left: 110, top: 40, width: 20, height: 20 }) },
+    ];
+    const activity = createMatchingActivity();
+    activity.matchedPairs = [{ left_id: 'left-1', right_id: 'right-1' }];
+    activity.connectorContainer = {
+        querySelectorAll: () => endpoints,
+        getBoundingClientRect: () => ({ left: 0, top: 0 }),
+    };
+
+    activity.refreshConnectors();
+
+    assert.equal(activity.connectorLines.length, 1);
+    assert.equal(activity.connectorLines[0].state, 'pending');
+    assert.deepEqual(activity.connectorLines[0], {
+        x1: 20, y1: 30, x2: 120, y2: 50, state: 'pending', key: 'pending-left-1-right-1',
+    });
+});
+
+test('matching exposes drawable SVG paths for each connector state', () => {
+    const activity = createMatchingActivity();
+    activity.connectorLines = [
+        { x1: 20, y1: 30, x2: 100, y2: 30, state: 'pending' },
+        { x1: 40, y1: 50, x2: 120, y2: 50, state: 'incorrect' },
+    ];
+
+    assert.equal(activity.linePath('pending'), 'M 20 30 L 100 30');
+    assert.equal(activity.linePath('correct'), '');
+    assert.equal(activity.linePath('incorrect'), 'M 40 50 L 120 50');
+});
+
+test('matching exposes Alpine destroy cleanup', () => {
+    const activity = createMatchingActivity();
+
+    assert.equal(activity.destroy(), activity);
+    assert.equal(activity.connectorContainer, null);
+    assert.equal(activity.connectorRefreshHandler, null);
+});

@@ -2,12 +2,23 @@
 
 namespace App\Http\Requests\Parent;
 
+use App\Support\GuardianRelationshipEvidenceRules;
 use App\Support\GuardianRelationshipTypes;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class SendParentChildInvitationRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'documents' => GuardianRelationshipEvidenceRules::normalizePairingKeys(
+                (array) $this->input('documents', []),
+            ),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -16,27 +27,41 @@ class SendParentChildInvitationRequest extends FormRequest
     public function rules(): array
     {
         $relationshipType = (string) $this->input('relationship_type');
-        $requiresVerification = GuardianRelationshipTypes::requiresVerification($relationshipType);
 
-        return [
-            'identifier' => ['required', 'string', 'max:255'],
-            'relationship_type' => ['required', Rule::in(GuardianRelationshipTypes::values())],
-            'relationship_custom' => ['nullable', 'required_if:relationship_type,other', 'string', 'max:120'],
-            'message' => ['nullable', 'string', 'max:500'],
-            'relationship_document_type' => [
-                Rule::requiredIf($requiresVerification),
-                'nullable',
-                Rule::in(GuardianRelationshipTypes::acceptedDocumentTypes($relationshipType)),
+        return array_merge(
+            GuardianRelationshipEvidenceRules::for(
+                GuardianRelationshipTypes::acceptedDocumentTypes($relationshipType),
+            ),
+            [
+                'identifier' => ['required', 'string', 'max:255'],
+                'relationship_type' => ['required', Rule::in(GuardianRelationshipTypes::selectableValues())],
+                'relationship_custom' => ['nullable', 'required_if:relationship_type,other', 'string', 'max:120'],
+                'message' => ['nullable', 'string', 'max:500'],
+                'confirm_relationship_verification' => ['accepted'],
             ],
-            'relationship_document' => [
-                Rule::requiredIf($requiresVerification),
-                'nullable',
-                'file',
-                'mimes:pdf,jpg,jpeg,png,webp',
-                'max:5120',
-            ],
-            'relationship_supporting_document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'],
-            'confirm_relationship_verification' => $requiresVerification ? ['accepted'] : ['nullable'],
-        ];
+        );
+    }
+
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            $documents = (array) $this->input('documents', []);
+
+            foreach (GuardianRelationshipEvidenceRules::metadataErrors($documents) as $field => $message) {
+                $validator->errors()->add($field, $message);
+            }
+
+            $submittedTypes = collect($documents)->pluck('document_type')->filter()->all();
+            $requiredTypes = GuardianRelationshipTypes::requiredDocumentTypes(
+                (string) $this->input('relationship_type'),
+            );
+
+            if (array_intersect($requiredTypes, $submittedTypes) === []) {
+                $validator->errors()->add(
+                    'documents',
+                    'At least one core document for this verification pathway is required.',
+                );
+            }
+        }];
     }
 }

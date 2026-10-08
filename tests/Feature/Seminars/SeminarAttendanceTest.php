@@ -5,6 +5,7 @@ namespace Tests\Feature\Seminars;
 use App\Models\Connector;
 use App\Models\Seminar;
 use App\Models\User;
+use App\Services\Seminars\SeminarAttendanceService;
 use Illuminate\Testing\TestResponse;
 use Tests\Feature\Connectors\ConnectorTestHelpers;
 use Tests\TestCase;
@@ -12,6 +13,75 @@ use Tests\TestCase;
 class SeminarAttendanceTest extends TestCase
 {
     use ConnectorTestHelpers;
+
+    public function test_finalize_preserves_migrated_legacy_attendance_on_native_webinar(): void
+    {
+        $connector = $this->connector();
+        $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $native = $this->seminar($connector);
+        $attendedAt = now()->subDay();
+        $legacy = $native->attendances()->create([
+            'user_id' => $learner->id,
+            'status' => 'attended',
+            'attendance_method' => 'legacy',
+            'attended_at' => $attendedAt,
+            'total_seconds' => 0,
+        ]);
+
+        app(SeminarAttendanceService::class)->finalize($native);
+
+        $legacy->refresh();
+        $this->assertSame('attended', $legacy->status);
+        $this->assertSame('legacy', $legacy->attendance_method);
+        $this->assertSame($attendedAt->timestamp, $legacy->attended_at->timestamp);
+        $this->assertSame(0, $legacy->total_seconds);
+        $this->assertNull($legacy->left_at);
+    }
+
+    public function test_finalize_preserves_manual_decisions_and_skips_external_events(): void
+    {
+        $connector = $this->connector();
+        $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $presentLearner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $native = $this->seminar($connector);
+        $manualTime = now()->subMinutes(10);
+        $manual = $native->attendances()->create([
+            'user_id' => $learner->id,
+            'joined_at' => now()->subMinutes(6),
+            'total_seconds' => 0,
+            'status' => 'not_present',
+            'attendance_method' => 'manual',
+        ]);
+        $manualPresent = $native->attendances()->create([
+            'user_id' => $presentLearner->id,
+            'joined_at' => now()->subMinutes(6),
+            'total_seconds' => 0,
+            'status' => 'attended',
+            'attendance_method' => 'manual',
+            'attended_at' => $manualTime,
+        ]);
+        $external = $this->seminar($connector, ['event_format' => 'external', 'external_url' => 'https://meet.example.test/room']);
+        $externalAttendance = $external->attendances()->create([
+            'user_id' => $learner->id,
+            'joined_at' => now()->subMinutes(6),
+            'total_seconds' => 0,
+            'status' => 'registered',
+            'attendance_method' => 'manual',
+        ]);
+
+        app(SeminarAttendanceService::class)->finalize($native);
+        app(SeminarAttendanceService::class)->finalize($external);
+
+        $this->assertSame('not_present', $manual->fresh()->status);
+        $this->assertSame('manual', $manual->fresh()->attendance_method);
+        $this->assertGreaterThanOrEqual(300, $manual->fresh()->total_seconds);
+        $this->assertNotNull($manual->fresh()->left_at);
+        $this->assertSame('attended', $manualPresent->fresh()->status);
+        $this->assertSame($manualTime->timestamp, $manualPresent->fresh()->attended_at->timestamp);
+        $this->assertSame('registered', $externalAttendance->fresh()->status);
+        $this->assertNull($externalAttendance->fresh()->left_at);
+        $this->assertSame(0, $externalAttendance->fresh()->total_seconds);
+    }
 
     public function test_join_leave_records_and_aggregates_attendance_duration(): void
     {
@@ -26,6 +96,7 @@ class SeminarAttendanceTest extends TestCase
             ->assertJsonPath('attendance.status', 'joined');
 
         $attendance = $seminar->attendances()->where('user_id', $learner->id)->firstOrFail();
+        $this->assertSame('native', $attendance->attendance_method);
         $attendance->update(['joined_at' => now()->subMinutes(6)]);
 
         $this->actingAs($learner)
@@ -51,11 +122,13 @@ class SeminarAttendanceTest extends TestCase
         $seminar = $this->seminar($connector);
         $otherSeminar = $this->seminar($otherConnector, ['title' => 'Other']);
         $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $this->register($seminar, $learner);
         $attendance = $seminar->attendances()->create([
             'user_id' => $learner->id,
             'joined_at' => now()->subMinutes(6),
             'total_seconds' => 0,
             'status' => 'joined',
+            'attendance_method' => 'native',
         ]);
 
         $this->actingAs($owner)
@@ -83,6 +156,7 @@ class SeminarAttendanceTest extends TestCase
         $seminar = $this->seminar($connector);
         $otherSeminar = $this->seminar($otherConnector, ['title' => 'Other']);
         $learner = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
+        $this->register($seminar, $learner);
 
         $seminar->attendances()->create([
             'user_id' => $learner->id,
@@ -90,6 +164,7 @@ class SeminarAttendanceTest extends TestCase
             'left_at' => now(),
             'total_seconds' => 480,
             'status' => 'attended',
+            'attendance_method' => 'native',
         ]);
 
         $response = $this->actingAs($owner)
@@ -127,6 +202,7 @@ class SeminarAttendanceTest extends TestCase
         return Seminar::query()->create(array_merge([
             'connector_id' => $connector->id,
             'type' => 'webinar',
+            'event_format' => 'native',
             'title' => 'Live Webinar',
             'description' => 'A free community session.',
             'purpose' => 'Support learner wellness.',

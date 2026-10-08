@@ -32,19 +32,25 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'premium'          => \App\Http\Middleware\CheckPremiumStatus::class,
-            'role'             => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission'       => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'premium' => \App\Http\Middleware\CheckPremiumStatus::class,
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'profile.completed' => \App\Http\Middleware\EnsureProfileCompleted::class,
             'guardian.verified' => \App\Http\Middleware\EnsureGuardianVerified::class,
+            'chat.access' => \App\Http\Middleware\EnsureChatAccess::class,
             'suspension.guard' => \App\Http\Middleware\CheckUserSuspensionStatus::class,
             // PayMongo webhook HMAC signature verification
             'paymongo.webhook' => \App\Http\Middleware\VerifyPayMongoWebhook::class,
         ]);
 
         $middleware->appendToGroup('web', \App\Http\Middleware\CheckUserSuspensionStatus::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureLearnerIdentityVerified::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->dontFlash([
+            'relevant_health_considerations',
+            'accessibility_support_needs',
+            'additional_relevant_information',
+        ]);
     })->create();

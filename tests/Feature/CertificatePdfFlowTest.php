@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\CertificatePdfService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class CertificatePdfFlowTest extends TestCase
@@ -50,5 +51,49 @@ class CertificatePdfFlowTest extends TestCase
         $certificate->refresh();
 
         $this->assertSame($pdfPath, $certificate->pdf_path);
+    }
+
+    public function test_certificate_templates_wrap_long_recipient_and_module_names_without_ellipsis(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Alexandria Mariella Santos Del Rosario',
+        ]);
+        $module = Module::factory()->create([
+            'title' => 'Condoms and Safer Sexual Practices for Healthy Relationships',
+        ]);
+        $certificate = Certificate::create([
+            'user_id' => $user->id,
+            'module_id' => $module->id,
+            'learner_name_snapshot' => $user->name,
+            'module_title_snapshot' => $module->title,
+            'issued_at' => Carbon::create(2026, 3, 20, 9, 0, 0),
+        ]);
+
+        $this->actingAs($user);
+
+        $preview = view('learner.certificates.show', [
+            'certificate' => $certificate,
+            'templateImageUrl' => 'https://example.test/certificate.png',
+            'errors' => new ViewErrorBag,
+        ])->render();
+        $browserPdf = view('learner.certificates.pdf-browser', [
+            'certificate' => $certificate,
+            'templateImageBase64' => 'template',
+        ])->render();
+        $overlayPdf = view('learner.certificates.pdf-overlay', [
+            'certificate' => $certificate,
+            'templateImageBase64' => 'template',
+        ])->render();
+
+        foreach ([$preview, $browserPdf, $overlayPdf] as $template) {
+            $this->assertStringContainsString('overflow-wrap: anywhere', $template);
+            $this->assertStringNotContainsString('text-overflow: ellipsis', $template);
+        }
+
+        $this->assertMatchesRegularExpression(
+            '/\.certificate-overlay-name\s*\{[^}]*white-space:\s*nowrap/s',
+            $preview,
+        );
+        $this->assertStringNotContainsString('truncate certificate-overlay-name', $preview);
     }
 }

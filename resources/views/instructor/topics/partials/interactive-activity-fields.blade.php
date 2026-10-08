@@ -1,0 +1,167 @@
+@php($fieldActivity = $activity ?? null)
+@php($eligibleActivityTopics = $lesson->topics->filter(fn ($topic) => ! $topic->isOptionalInteraction()))
+@php($activityInsertAfterBlock = 0)
+@if($fieldActivity?->placement === 'inside_topic')
+    @foreach(($fieldActivity->lessonTopic?->content_blocks ?? []) as $blockIndex => $block)
+        @if(is_array($block) && ($block['type'] ?? null) === 'interactive_activity' && (int) ($block['activity_id'] ?? 0) === (int) $fieldActivity->id)
+            @php($activityInsertAfterBlock = max(0, $blockIndex - 1))
+        @endif
+    @endforeach
+@endif
+@php($activityBlockOptions = $eligibleActivityTopics->flatMap(function ($topic) use ($fieldActivity) {
+    return collect($topic->content_blocks ?? [])
+        ->filter(function ($block) use ($topic, $fieldActivity) {
+            if (! is_array($block) || ! in_array($block['type'] ?? null, ['checkpoint', 'interactive_activity'], true)) {
+                return false;
+            }
+
+            return ! ($fieldActivity
+                && $topic->is($fieldActivity->lessonTopic)
+                && ($block['type'] ?? null) === 'interactive_activity'
+                && (int) ($block['activity_id'] ?? 0) === (int) $fieldActivity->id);
+        })
+        ->keys()
+        ->map(fn ($blockIndex) => [
+            'topic_id' => (string) $topic->id,
+            'block_index' => (int) $blockIndex,
+            'label' => $topic->title.' - block '.((int) $blockIndex + 1),
+        ]);
+})->values())
+@php($activityConfigurationHasErrors = collect($errors->keys())->contains(fn ($key) => str_starts_with($key, 'configuration') || str_starts_with($key, 'pairs') || str_starts_with($key, 'items')))
+@php($activityConfigurationError = collect($errors->keys())->filter(fn ($key) => str_starts_with($key, 'configuration') || str_starts_with($key, 'pairs') || str_starts_with($key, 'items'))->map(fn ($key) => $errors->first($key))->filter()->first() ?: 'Review the activity fields above and correct any highlighted values.')
+@php($activityPairs = old('configuration.pairs', $fieldActivity?->activity_type?->value === 'matching' ? ($fieldActivity->configuration['pairs'] ?? []) : []))
+@php($activityItems = old('configuration.items', $fieldActivity?->activity_type?->value === 'sequencing' ? ($fieldActivity->configuration['items'] ?? []) : []))
+@php($hydrateMedia = function (array $item): array {
+    $path = trim((string) ($item['image_path'] ?? ''));
+    $item['image_path'] = $path !== '' ? $path : null;
+    $item['image_alt'] = $path !== '' ? (string) ($item['image_alt'] ?? '') : '';
+    $item['image_url'] = $path !== '' ? \Illuminate\Support\Facades\Storage::disk('public')->url($path) : null;
+
+    return $item;
+})
+@php($activityPairs = collect($activityPairs)->map(fn ($pair) => [
+    ...$pair,
+    'left' => $hydrateMedia((array) ($pair['left'] ?? [])),
+    'right' => $hydrateMedia((array) ($pair['right'] ?? [])),
+])->values()->all())
+@php($activityItems = collect($activityItems)->map(fn ($item) => $hydrateMedia((array) $item))->values()->all())
+<div id="interactiveActivityFields"
+     x-data="interactiveActivityAuthoring({
+         activityType: @js(old('activity_type', $fieldActivity?->activity_type?->value ?? 'matching')),
+         placement: @js(old('placement', $fieldActivity?->placement ?? 'between_topics')),
+         parentTopicId: @js(old('parent_topic_id', $fieldActivity?->placement === 'inside_topic' ? $fieldActivity->lesson_topic_id : '')),
+         insertAfterBlock: @js((int) old('insert_after_block', $activityInsertAfterBlock)),
+         blockOptions: @js($activityBlockOptions),
+         previewUrl: @js(route($contentRoutePrefix . '.interactive-activities.preview')),
+         imageUploadUrl: @js(route($contentRoutePrefix . '.image-library.upload')),
+         imageLibraryUrl: @js(route($contentRoutePrefix . '.image-library.json')),
+         csrf: @js(csrf_token()),
+         validationErrors: @js($errors->getMessages()),
+         pairs: @js($activityPairs),
+         items: @js($activityItems),
+     })"
+     @pointerup.window="dropAuthoringDrag()"
+     @pointercancel.window="cancelAuthoringDrag()"
+     @keydown.escape.window="if (authoringReorder.active()) cancelAuthoringDrag()"
+     x-cloak>
+    <input type="hidden" name="activity_type" x-model="activityType">
+
+    <div class="mb-6">
+        <label for="activity_type_selector" class="mb-2 block text-sm font-semibold text-gray-900">Activity type</label>
+        <select id="activity_type_selector" x-model="activityType" aria-describedby="activity-type-help activity-type-error" class="w-full rounded-xl border-gray-200 text-sm focus:border-purple-400 focus:ring-purple-300">
+            <option value="matching">Matching</option>
+            <option value="sequencing">Sequencing</option>
+        </select>
+        <p id="activity-type-help" class="mt-2 text-xs text-gray-500">Choose whether learners match related concepts or arrange items in order.</p>
+    </div>
+    @error('activity_type') <p id="activity-type-error" class="-mt-4 mb-6 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
+
+    <fieldset class="mb-6" aria-describedby="activity-placement-error">
+        <legend class="mb-3 text-sm font-semibold text-gray-900">Activity placement</legend>
+        <div class="grid gap-4 md:grid-cols-2">
+            <label class="cursor-pointer rounded-xl border-2 border-gray-200 p-4" :class="placement === 'between_topics' && 'border-purple-400 bg-purple-50'">
+                <input type="radio" name="placement" value="between_topics" x-model="placement" class="text-purple-600 focus:ring-purple-500">
+                <span class="ml-2 text-sm font-semibold text-gray-900">Between Topics</span>
+                <span class="mt-1 block text-xs text-gray-500">Add a standalone optional activity to the Lesson flow.</span>
+            </label>
+            <label class="cursor-pointer rounded-xl border-2 border-gray-200 p-4" :class="placement === 'inside_topic' && 'border-purple-400 bg-purple-50'">
+                <input type="radio" name="placement" value="inside_topic" x-model="placement" class="text-purple-600 focus:ring-purple-500">
+                <span class="ml-2 text-sm font-semibold text-gray-900">Inside Topic</span>
+                <span class="mt-1 block text-xs text-gray-500">Insert the activity into an instructional Topic body.</span>
+            </label>
+        </div>
+    </fieldset>
+    @error('placement') <p id="activity-placement-error" class="-mt-4 mb-6 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
+
+    <label for="activity_instructions" class="mb-6 block text-sm font-semibold text-gray-900">Instructions <span class="font-normal text-gray-400">(Optional)</span>
+        <textarea id="activity_instructions" name="instructions" maxlength="10000" rows="4" class="mt-1 block w-full rounded-xl border-gray-300">{{ old('instructions', $fieldActivity?->instructions) }}</textarea>
+    </label>
+    @error('instructions') <p id="activity-instructions-error" class="-mt-5 mb-6 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
+
+    <label for="activity_explanation" class="mb-6 block text-sm font-semibold text-gray-900">Explanation <span class="font-normal text-gray-400">(Optional)</span>
+        <textarea id="activity_explanation" name="explanation" maxlength="10000" rows="4" class="mt-1 block w-full rounded-xl border-gray-300">{{ old('explanation', $fieldActivity?->explanation) }}</textarea>
+    </label>
+    @error('explanation') <p id="activity-explanation-error" class="-mt-5 mb-6 text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
+
+    <div x-show="placement === 'inside_topic'" class="mb-6 space-y-4">
+        <label for="activity_parent_topic_id" class="block text-sm font-semibold text-gray-900">Containing Topic</label>
+        <select id="activity_parent_topic_id" name="parent_topic_id" x-model="parentTopicId" @change="insertAfterBlock = 0" :disabled="placement !== 'inside_topic'" aria-describedby="activity-parent-topic-error" aria-invalid="{{ $errors->has('parent_topic_id') ? 'true' : 'false' }}" class="w-full rounded-xl border-gray-200 focus:border-purple-400 focus:ring-purple-300">
+            <option value="">Select an instructional Topic</option>
+            @foreach($eligibleActivityTopics as $lessonTopic)
+                <option value="{{ $lessonTopic->id }}">{{ $lessonTopic->title }}</option>
+            @endforeach
+        </select>
+        <label for="activity_insert_after_block" class="block text-sm font-semibold text-gray-900">Insert after block</label>
+        <select id="activity_insert_after_block" name="insert_after_block" x-model.number="insertAfterBlock" :disabled="placement !== 'inside_topic'" aria-describedby="activity-insert-after-block-error" aria-invalid="{{ $errors->has('insert_after_block') ? 'true' : 'false' }}" class="w-full rounded-xl border-gray-200 focus:border-purple-400 focus:ring-purple-300">
+            <option value="0">Topic body</option>
+            <template x-for="option in blockOptions.filter(option => String(option.topic_id) === String(parentTopicId))" :key="`${option.topic_id}-${option.block_index}`">
+                <option :value="option.block_index" x-text="option.label"></option>
+            </template>
+        </select>
+        @error('parent_topic_id') <p id="activity-parent-topic-error" class="text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
+        @error('insert_after_block') <p id="activity-insert-after-block-error" class="text-xs text-red-600" role="alert">{{ $message }}</p> @enderror
+    </div>
+
+    @if($activityConfigurationHasErrors)
+        <p id="activity-configuration-error" class="text-xs text-red-600" role="alert">{{ $activityConfigurationError }}</p>
+    @endif
+
+    <div x-show="activityType === 'matching'">
+        @include('instructor.topics.partials.matching-builder')
+    </div>
+    <div x-show="activityType === 'sequencing'">
+        @include('instructor.topics.partials.sequencing-builder')
+    </div>
+
+    <div class="mt-6 flex justify-end">
+        <button type="button" data-preview-trigger @click="openPreview($event.currentTarget)" :disabled="isLoading || hasPendingMedia()" class="rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-50">
+            <span x-show="!isLoading">Interactive Preview</span>
+            <span x-show="isLoading">Loading preview…</span>
+            <span x-show="!isLoading && hasPendingMedia()">Finish image uploads first</span>
+        </button>
+    </div>
+
+    @include('instructor.topics.partials.interactive-activity-preview-modal')
+
+    <div x-cloak x-show="imageLibraryOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4" @click.self="closeImageLibrary()" @keydown.escape.window="if (imageLibraryOpen) closeImageLibrary()">
+        <section role="dialog" aria-modal="true" aria-labelledby="activity-image-library-title" class="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+                <h2 id="activity-image-library-title" class="text-lg font-semibold text-gray-900">Choose from Image Library</h2>
+                <button type="button" @click="closeImageLibrary()" class="min-h-11 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700">Close</button>
+            </div>
+            <div class="max-h-[calc(90vh-5rem)] overflow-y-auto p-5">
+                <p x-show="imageLibraryLoading" role="status" class="text-sm text-gray-600">Loading Image Library…</p>
+                <p x-show="imageLibraryError" x-text="imageLibraryError" role="alert" class="text-sm text-red-700"></p>
+                <div x-show="!imageLibraryLoading && !imageLibraryError" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                    <template x-for="image in imageLibraryImages" :key="image.path">
+                        <button type="button" @click="selectLibraryImage(image)" class="rounded-xl border border-gray-200 p-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
+                            <img :src="image.url" alt="" class="interactive-authoring-media-preview" draggable="false">
+                            <span class="mt-2 block truncate text-xs font-medium text-gray-700" x-text="image.filename || image.path"></span>
+                        </button>
+                    </template>
+                </div>
+                <p x-show="!imageLibraryLoading && !imageLibraryError && imageLibraryImages.length === 0" class="text-sm text-gray-600">No images in your library yet.</p>
+            </div>
+        </section>
+    </div>
+</div>

@@ -21,18 +21,18 @@ class SeminarReminderNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Seminar reminder')
+            ->subject('Educational Event reminder')
             ->line($this->seminar->title.' starts soon.')
             ->line('Hosted by: '.($this->seminar->connector?->name ?? 'Concious Connections'))
             ->line('Schedule: '.$this->formattedSchedule())
-            ->action('Open seminar', route('seminars.show', $this->seminar));
+            ->action('Open Educational Event', route('seminars.show', $this->seminar));
     }
 
     public function toDatabase(object $notifiable): array
     {
         return [
             'type' => 'seminar_reminder',
-            'title' => 'Seminar reminder',
+            'title' => 'Educational Event reminder',
             'message' => $this->seminar->title.' starts soon.',
             'seminar_id' => $this->seminar->id,
             'seminar_title' => $this->seminar->title,

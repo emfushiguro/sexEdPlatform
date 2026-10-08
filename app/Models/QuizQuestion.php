@@ -10,7 +10,10 @@ class QuizQuestion extends Model
 {
     protected $fillable = [
         'quiz_id',
+        'checkpoint_topic_id',
+        'checkpoint_block_uuid',
         'question_text',
+        'context_description',
         'question_type',
         'points',
         'order',
@@ -18,6 +21,11 @@ class QuizQuestion extends Model
         'case_sensitive',
         'word_bank',
         'image_path',
+        'explanation',
+        'allow_own_perspective',
+        'perspective_prompt',
+        'perspective_character_limit',
+        'reflection_guide',
     ];
 
     protected function casts(): array
@@ -27,6 +35,8 @@ class QuizQuestion extends Model
             'order' => 'integer',
             'case_sensitive' => 'boolean',
             'word_bank' => 'array',
+            'allow_own_perspective' => 'boolean',
+            'perspective_character_limit' => 'integer',
         ];
     }
 
@@ -35,6 +45,11 @@ class QuizQuestion extends Model
     public function quiz()
     {
         return $this->belongsTo(Quiz::class);
+    }
+
+    public function checkpointTopic()
+    {
+        return $this->belongsTo(LessonTopic::class, 'checkpoint_topic_id');
     }
 
     public function options()
@@ -47,6 +62,21 @@ class QuizQuestion extends Model
         return $this->hasMany(QuizOption::class)->where('is_correct', true);
     }
 
+    public function checkpointProgress()
+    {
+        return $this->hasMany(InteractiveCheckpointProgress::class);
+    }
+
+    public function scopeFormalQuiz($query)
+    {
+        return $query->whereNotNull('quiz_id')->whereNull('checkpoint_topic_id');
+    }
+
+    public function scopeCheckpoint($query)
+    {
+        return $query->whereNotNull('checkpoint_topic_id');
+    }
+
     public function getImageUrlAttribute(): ?string
     {
         return $this->resolvePublicMediaUrl($this->image_path, 'quiz-images');
@@ -54,7 +84,7 @@ class QuizQuestion extends Model
 
     private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string
     {
-        if (!$path) {
+        if (! $path) {
             return null;
         }
 
@@ -68,8 +98,8 @@ class QuizQuestion extends Model
             $normalized = substr($normalized, 8);
         }
 
-        if (!str_contains($normalized, '/') && $defaultDirectory !== '') {
-            $normalized = trim($defaultDirectory, '/') . '/' . $normalized;
+        if (! str_contains($normalized, '/') && $defaultDirectory !== '') {
+            $normalized = trim($defaultDirectory, '/').'/'.$normalized;
         }
 
         return Storage::url($normalized);

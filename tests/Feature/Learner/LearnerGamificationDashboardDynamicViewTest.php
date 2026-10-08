@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserDailyShield;
 use App\Services\Gamification\GamificationPolicyResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class LearnerGamificationDashboardDynamicViewTest extends TestCase
@@ -32,13 +33,32 @@ class LearnerGamificationDashboardDynamicViewTest extends TestCase
         $response = $this->actingAs($learner)
             ->get(route('learner.dashboard'));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertSee('data-learning-audio', false)
+            ->assertSee('data-learning-audio-settings', false)
+            ->assertSee('data-learning-audio-toggle', false)
+            ->assertSee(":data-learning-audio-state=\"\$store.learningAudio.enabled ? 'on' : 'off'\"", false)
+            ->assertSee('Sound Effects')
+            ->assertSee('Test Sound')
+            ->assertSee('role="switch"', false)
+            ->assertSee('type="range"', false);
         $response->assertSee('150/300 XP', false);
         $response->assertSee('0/5', false);
         $response->assertSee('Buy Saver — ⭐ 42', false);
         $response->assertSee('⭐ 21 pts', false);
         $response->assertSee('⭐ 84 pts', false);
         $response->assertSee('Full Refill (5 Shields)', false);
+    }
+
+    public function test_audio_navigation_toggles_do_not_use_green_enabled_styling(): void
+    {
+        foreach (['views/layouts/learner-header.blade.php', 'views/layouts/learner-fullscreen.blade.php'] as $view) {
+            $contents = File::get(resource_path($view));
+            preg_match('/data-learning-audio-toggle.*?<\/button>/s', $contents, $matches);
+
+            $this->assertNotEmpty($matches, "Audio toggle not found in {$view}.");
+            $this->assertStringNotContainsString('emerald', $matches[0]);
+        }
     }
 
     public function test_streak_saver_button_uses_dynamic_threshold_copy_when_points_are_insufficient(): void

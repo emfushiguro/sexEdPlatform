@@ -41,11 +41,14 @@
                     ? \Carbon\Carbon::parse($parentBirthdate)->age
                     : null;
                 $parentGender = $profile?->gender
-                    ? ucfirst(str_replace('_', ' ', (string) $profile->gender))
+                    ? \Illuminate\Support\Str::of((string) $profile->gender)
+                        ->replace('_', ' ')
+                        ->title()
+                        ->toString()
                     : null;
                 $parentUsername = $profile?->username;
                 $cityName = $profile?->city?->name;
-                $barangayName = $profile?->barangay?->name;
+                $barangayName = $profile?->barangayLocation?->name ?: $profile?->getAttribute('barangay');
                 $locationLabel = $barangayName && $cityName
                     ? $barangayName . ', ' . $cityName
                     : ($cityName ?: $barangayName);
@@ -58,7 +61,7 @@
                 $fullName = $parentUser?->full_name ?: $parentUser?->name;
                 $initials = strtoupper(substr((string) $parentUser?->name, 0, 1));
                 $linkedAgo = $parentLink->relationship_verified_at?->diffForHumans();
-                $canUseChat = auth()->user()?->can('access chat') ?? false;
+                $canUseChat = auth()->user()?->canAccessChat() ?? false;
                 $statusClass = strtolower((string) $verificationLabel) === 'approved'
                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                     : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
@@ -164,6 +167,21 @@
                             <span x-text="showDetails ? 'Hide Details' : 'View Details'"></span>
                         </button>
                     </div>
+
+                    <form method="POST" action="{{ route('learner.parent.support-information-access.update', $parentLink) }}" class="mt-4 rounded-xl border border-purple-100 bg-purple-50 p-4">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="enabled" value="0">
+                        <label class="flex items-start justify-between gap-4">
+                            <span>
+                                <span class="block text-sm font-semibold text-purple-950">Health &amp; Support Information access</span>
+                                <span class="mt-1 block text-xs text-gray-600">Allows this guardian to view, edit, and remove your optional support information.</span>
+                            </span>
+                            <input type="checkbox" name="enabled" value="1" class="mt-1 rounded border-purple-300"
+                                   @checked($parentLink->can_manage_support_information)
+                                   onchange="this.form.submit()">
+                        </label>
+                    </form>
                 </article>
             @endif
         @endforeach

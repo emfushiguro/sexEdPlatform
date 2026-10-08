@@ -158,6 +158,7 @@
                         'label' => 'MAIN',
                         'items' => [
                             ['label' => 'Dashboard', 'route' => 'instructor.dashboard', 'active' => request()->routeIs('instructor.dashboard'), 'badge' => 0, 'icon' => 'grid'],
+                            ['label' => 'Guidelines', 'route' => 'instructor.guidelines', 'active' => request()->routeIs('instructor.guidelines'), 'badge' => 0, 'icon' => 'document'],
                             ['label' => 'Profile', 'route' => 'instructor.profile.show', 'active' => request()->routeIs('instructor.profile.*'), 'badge' => 0, 'icon' => 'users'],
                         ],
                     ],
@@ -355,6 +356,7 @@
                     <form
                         method="POST"
                         action="{{ route('instructor.logout') }}"
+                        data-logout-form
                         x-show="$store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered || $store.instructorSidebar.isMobileOpen"
                         x-cloak
                     >

@@ -2,29 +2,40 @@
 
 namespace App\Models;
 
+use App\Notifications\CustomVerifyEmail;
+use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
-use Carbon\Carbon;
-use App\Notifications\CustomVerifyEmail;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable, SoftDeletes, HasRoles;
+    use HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
+
     public const STATUS_SUSPENDED = 'suspended';
+
     public const STATUS_ARCHIVED = 'archived';
 
     public const ACCOUNT_TYPE_LEARNER_CHILD = 'learner-child';
+
     public const ACCOUNT_TYPE_LEARNER_TEEN = 'learner-teen';
+
     public const ACCOUNT_TYPE_LEARNER_ADULT = 'learner-adult';
+
     public const ACCOUNT_TYPE_PARENT = 'parent';
+
     public const ACCOUNT_TYPE_INSTRUCTOR = 'instructor';
+
     public const ACCOUNT_TYPE_ADMIN = 'admin';
 
     /**
@@ -131,6 +142,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(LearnerProfile::class);
     }
 
+    public function identityVerifications(): HasMany
+    {
+        return $this->hasMany(LearnerIdentityVerification::class);
+    }
+
     public function adminCreatorProfile()
     {
         return $this->hasOne(AdminCreatorProfile::class);
@@ -232,11 +248,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function subscriptionPlan()
     {
         return $this->hasOneThrough(
-            SubscriptionPlan::class, 
-            Subscription::class, 
-            'user_id', 
-            'id', 
-            'id', 
+            SubscriptionPlan::class,
+            Subscription::class,
+            'user_id',
+            'id',
+            'id',
             'plan_id'
         )->where('subscriptions.status', 'active');
     }
@@ -502,7 +518,7 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         if (filled($this->middle_initial)) {
-            $nameParts[] = trim((string) $this->middle_initial) . '.';
+            $nameParts[] = trim((string) $this->middle_initial).'.';
         }
 
         if (filled($this->last_name)) {
@@ -531,10 +547,10 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function calculateAge(): ?int
     {
-        if (!$this->birthdate) {
+        if (! $this->birthdate) {
             return null;
         }
-        
+
         return Carbon::parse($this->birthdate)->age;
     }
 
@@ -570,7 +586,39 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function isParent(): bool
     {
-        return $this->children()->exists();
+        return $this->accessibleChildLinks()->exists();
+    }
+
+    public function guardians(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'parent_child_accounts', 'child_user_id', 'parent_user_id')
+            ->withPivot([
+                'id',
+                'relationship_type',
+                'relationship_custom',
+                'verification_pathway',
+                'relationship_status',
+                'relationship_verified_status',
+                'current_evidence_round',
+                'can_view_progress',
+                'can_view_quiz_answers',
+                'can_approve_content',
+                'can_manage_support_information',
+                'relationship_verified_at',
+                'deleted_at',
+            ])
+            ->wherePivotNull('deleted_at')
+            ->withTimestamps();
+    }
+
+    public function accessibleChildLinks(): HasMany
+    {
+        return $this->hasMany(ParentChildAccount::class, 'parent_user_id')->accessEligible();
+    }
+
+    public function accessibleGuardianLinks(): HasMany
+    {
+        return $this->hasMany(ParentChildAccount::class, 'child_user_id')->accessEligible();
     }
 
     /**
@@ -584,6 +632,7 @@ class User extends Authenticatable implements MustVerifyEmail
                 'can_view_progress',
                 'can_view_quiz_answers',
                 'can_approve_content',
+                'can_manage_support_information',
                 'relationship_type',
                 'relationship_custom',
                 'relationship_status',
@@ -619,6 +668,7 @@ class User extends Authenticatable implements MustVerifyEmail
                 'can_view_progress',
                 'can_view_quiz_answers',
                 'can_approve_content',
+                'can_manage_support_information',
                 'relationship_type',
                 'relationship_custom',
                 'relationship_status',
@@ -647,6 +697,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function parentChildLink()
     {
         return $this->hasOne(ParentChildAccount::class, 'child_user_id');
+    }
+
+    public function dependentSupportProfile(): HasOne
+    {
+        return $this->hasOne(DependentSupportProfile::class, 'dependent_user_id');
     }
 
     public function isParentRegistration(): bool
@@ -684,7 +739,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function hasCompletedProfile(): bool
     {
-        if (!$this->isLearner()) {
+        if (! $this->isLearner()) {
             return true;
         }
 
@@ -700,6 +755,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasRole('learner')
             || $this->role === 'learner'
             || $this->can('access learner platform');
+    }
+
+    public function canAccessChat(): bool
+    {
+        return $this->can('access chat') || $this->isLearner();
     }
 
     public function hasLearnerToInstructorTransition(): bool
@@ -737,12 +797,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(RoleTransition::class);
     }
 
-    public function childLinks()
+    public function childLinks(): HasMany
     {
         return $this->hasMany(ParentChildAccount::class, 'parent_user_id');
     }
 
-    public function parentLinks()
+    public function parentLinks(): HasMany
     {
         return $this->hasMany(ParentChildAccount::class, 'child_user_id');
     }

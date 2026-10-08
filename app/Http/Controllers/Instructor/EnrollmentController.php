@@ -141,7 +141,7 @@ class EnrollmentController extends Controller
         $enrollment->load([
             'user.learnerProfile.city',
             'user.learnerProfile.barangay',
-            'user.parentLinks.parent',
+            'user.accessibleGuardianLinks.parent',
             'user.moduleEnrollments.module',
             'module.lessons:id,module_id',
         ]);
@@ -179,7 +179,7 @@ class EnrollmentController extends Controller
             ? min(100, (int) round(($completedLessonCount / $moduleLessonCount) * 100))
             : (int) ($enrollment->completion_percentage ?? 0);
 
-        $parentConnections = $enrollment->user->parentLinks
+        $parentConnections = $enrollment->user->accessibleGuardianLinks
             ->filter(fn ($link) => $link->parent !== null)
             ->values()
             ->map(function ($link): array {

@@ -10,7 +10,7 @@ class AttachParentChildRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->can('manage user relationships');
+        return (bool) ($this->user()?->hasRole('admin') || $this->user()?->can('manage user relationships'));
     }
 
     public function rules(): array
@@ -24,7 +24,6 @@ class AttachParentChildRequest extends FormRequest
             'can_view_progress' => ['nullable', 'boolean'],
             'can_view_quiz_answers' => ['nullable', 'boolean'],
             'can_approve_content' => ['nullable', 'boolean'],
-            'is_verified' => ['nullable', 'boolean'],
         ];
     }
 }

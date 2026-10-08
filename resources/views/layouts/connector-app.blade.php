@@ -231,6 +231,12 @@
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12 12 4l9 8M5.5 10.5v8h13v-8"/></svg>
                             <span class="hidden sm:inline">Learner</span>
                         </a>
+                        <form method="POST" action="{{ route('logout') }}" data-logout-form>
+                            @csrf
+                            <button type="submit" class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700" aria-label="Log out" title="Log out">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 8.25 19.5 12l-3.75 3.75M19.5 12H8.25m3-8.25H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25h5.25"/></svg>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </header>
@@ -277,5 +283,6 @@
     @endif
 
     @include('chat.partials.global-popup')
+    @include('components.logout-confirmation-modal')
 </body>
 </html>

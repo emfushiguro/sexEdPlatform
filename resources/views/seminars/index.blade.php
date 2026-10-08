@@ -1,18 +1,18 @@
 @extends(auth()->user()?->isInstructor() ? 'layouts.instructor-app' : 'layouts.learner-app')
 
-@section('title', 'Seminars | '.config('app.name', 'Conscious Connections'))
+@section('title', 'Educational Events | '.config('app.name', 'Conscious Connections'))
 
 @section('content')
     <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">Seminars</h1>
-            <p class="mt-1 text-sm text-gray-600">Browse upcoming connector-hosted learning sessions available to your account.</p>
+            <h1 class="text-2xl font-bold text-gray-900">Educational Events</h1>
+            <p class="mt-1 text-sm text-gray-600">Browse learning events available to your account.</p>
         </div>
 
         <form method="GET" class="mb-6 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-5">
             <input name="search" value="{{ request('search') }}" placeholder="Search seminars..." class="rounded-lg border-gray-300 text-sm">
             <select name="type" class="rounded-lg border-gray-300 text-sm">
-                <option value="">All formats</option>
+                <option value="">All event types</option>
                 @foreach(\App\Enums\SeminarType::cases() as $type)
                     <option value="{{ $type->value }}" @selected(request('type') === $type->value)>{{ $type->label() }}</option>
                 @endforeach
@@ -32,25 +32,49 @@
 
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             @forelse($seminars as $seminar)
+                @php
+                    $formatLabel = match ($seminar->event_format) {
+                        'in_person' => 'In Person',
+                        'external' => 'External Platform',
+                        'native' => 'Native Livestream',
+                        default => 'Format to be announced',
+                    };
+                    $deadline = $seminar->registration_deadline_at ?? $seminar->starts_at ?? $seminar->schedule;
+                @endphp
                 @php($showRoute = auth()->user()?->isInstructor() ? 'instructor.seminars.show' : (auth()->user()?->isLearner() ? 'learner.seminars.show' : 'seminars.show'))
                 <a href="{{ route($showRoute, $seminar) }}" class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-purple-200 hover:shadow-md">
                     <div class="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide">
-                        <span class="rounded-full bg-purple-50 px-2.5 py-1 text-purple-700">{{ $seminar->type }}</span>
+                        <span class="rounded-full bg-purple-50 px-2.5 py-1 text-purple-700">{{ ucfirst($seminar->type) }}</span>
+                        <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">{{ $formatLabel }}</span>
                         <span class="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700">{{ $seminar->categoryDisplayName() }}</span>
                     </div>
                     <h2 class="mt-3 text-lg font-bold text-gray-900">{{ $seminar->title }}</h2>
                     <p class="mt-2 line-clamp-3 text-sm text-gray-600">{{ $seminar->purpose }}</p>
                     <div class="mt-4 text-sm font-semibold text-gray-800">{{ $seminar->localStartsAt()?->format('M d, Y g:i A') }} PHT</div>
-                    <div class="mt-1 text-xs text-gray-500">{{ $seminar->connector?->name }}</div>
+                    <div class="mt-1 text-xs text-gray-500">Organizer: {{ $seminar->connector?->name }}</div>
+                    <div class="mt-1 text-xs text-gray-500">Speakers: {{ $seminar->speakers->pluck('display_name')->filter()->join(', ') ?: 'To be announced' }}</div>
+                    @if($seminar->event_format === 'in_person' && $seminar->location)
+                        <div class="mt-1 text-xs text-gray-500">Venue: {{ $seminar->location }}</div>
+                    @elseif($seminar->event_format === 'external')
+                        <div class="mt-1 text-xs text-gray-500">Platform: {{ $seminar->external_platform === 'other' ? $seminar->external_platform_name : ucwords(str_replace('_', ' ', $seminar->external_platform ?? 'To be announced')) }}</div>
+                    @endif
                     @php($registered = $seminar->active_registrants_count ?? $seminar->registrants()->active()->count())
                     <div class="mt-2 text-xs text-gray-500">{{ $registered }} / {{ $seminar->capacity ?? 'Open' }} registered</div>
                     <div class="mt-1 text-xs font-semibold {{ $seminar->capacity !== null && $registered >= $seminar->capacity ? 'text-rose-700' : 'text-emerald-700' }}">
-                        {{ $seminar->capacity !== null && $registered >= $seminar->capacity ? 'Full' : 'Registration open' }}
+                        @if($seminar->viewer_is_registered)
+                            Registered
+                        @elseif($seminar->viewer_registration_pending)
+                            Pending approval
+                        @elseif($deadline && now()->greaterThanOrEqualTo($deadline))
+                            Registration closed
+                        @else
+                            {{ $seminar->capacity !== null && $registered >= $seminar->capacity ? 'Full' : 'Registration open' }}
+                        @endif
                     </div>
                 </a>
             @empty
                 <div class="rounded-lg border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 md:col-span-2 xl:col-span-3">
-                    No eligible seminars are available right now.
+                    No eligible events are available right now.
                 </div>
             @endforelse
         </div>

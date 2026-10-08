@@ -141,7 +141,7 @@ class ConnectorSeminarManagementTest extends TestCase
         $response->assertRedirect(route('connector.seminars.show', [$connector, $seminar]));
         $this->assertSame('draft', $seminar->status);
         $this->assertSame('webinar', $seminar->type);
-        $this->assertNotNull($seminar->livestream_channel);
+        $this->assertNull($seminar->livestream_channel);
 
         $this->actingAs($owner)
             ->post(route('connector.seminars.submit-review', [$connector, $seminar]))
@@ -286,7 +286,7 @@ class ConnectorSeminarManagementTest extends TestCase
             ->assertSee('This marks the seminar completed and finalizes attendance records.');
     }
 
-    public function test_connector_can_create_seminar_without_description(): void
+    public function test_connector_requires_description_for_new_seminar(): void
     {
         $owner = User::factory()->create(['role' => 'learner']);
         $owner->assignRole('learner');
@@ -301,13 +301,8 @@ class ConnectorSeminarManagementTest extends TestCase
                 'learner_age_categories' => ['teen'],
             ]));
 
-        $response->assertRedirect();
-        $this->assertDatabaseHas('seminars', [
-            'title' => 'Family Learning Webinar',
-            'purpose' => 'Help families understand safe online learning habits.',
-            'description' => null,
-            'category' => 'education',
-        ]);
+        $response->assertSessionHasErrors('description');
+        $this->assertDatabaseMissing('seminars', ['title' => 'Family Learning Webinar']);
     }
 
     public function test_seminar_times_are_entered_in_philippine_time_and_stored_in_utc(): void
@@ -349,10 +344,12 @@ class ConnectorSeminarManagementTest extends TestCase
             ->post(route('connector.seminars.store', $connector), $this->seminarPayload([
                 'title' => 'Local Skills Session',
                 'purpose' => 'Introduce community learning options.',
-                'type' => 'physical',
+                'type' => 'seminar',
+                'event_format' => 'in_person',
                 'category' => 'other',
                 'learner_age_categories' => ['adult'],
                 'location' => 'Community Hall',
+                'venue_address' => '123 Main Street',
             ]))
             ->assertSessionHasErrors('custom_category');
     }
@@ -640,19 +637,12 @@ class ConnectorSeminarManagementTest extends TestCase
 
     private function seminarPayload(array $overrides = []): array
     {
-        return array_merge([
+        return $this->educationalEventPayload(array_merge([
             'title' => 'Community Wellness Webinar',
             'description' => 'A free community session.',
             'purpose' => 'Support learner wellness.',
-            'type' => 'webinar',
-            'category' => 'health',
-            'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
-            'ends_at' => now()->addDay()->addHour()->format('Y-m-d H:i:s'),
-            'capacity' => 50,
-            'target_participants' => 'learners_and_instructors',
             'learner_age_categories' => ['kids', 'teen'],
-            'location' => null,
-        ], $overrides);
+        ], $overrides));
     }
 
     private function streamedContent(TestResponse $response): string

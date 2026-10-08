@@ -77,7 +77,12 @@
 
     @stack('head')
 </head>
-<body class="font-sans antialiased bg-gray-50 dark:bg-gray-900" x-data>
+@php
+    $learningAudioEvent = in_array(session('learning_audio_event'), ['selection', 'correct', 'incorrect', 'success', 'complete'], true)
+        ? session('learning_audio_event')
+        : null;
+@endphp
+<body class="font-sans antialiased bg-gray-50 dark:bg-gray-900" data-learning-audio @if($learningAudioEvent) data-learning-audio-event="{{ $learningAudioEvent }}" @endif x-data>
 
     {{-- ═══════════════════════════════════════════════════════════
          FULLSCREEN TOP BAR
@@ -142,6 +147,25 @@
                 </svg>
                 <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">{{ number_format($fsGami?->score ?? 0) }}</span>
             </div>
+
+            {{-- Sound effects toggle --}}
+            <button
+                type="button"
+                data-learning-audio-toggle
+                :data-learning-audio-state="$store.learningAudio.enabled ? 'on' : 'off'"
+                @click="$store.learningAudio.setEnabled(!$store.learningAudio.enabled)"
+                :aria-pressed="$store.learningAudio.enabled.toString()"
+                :aria-label="$store.learningAudio.enabled ? 'Mute sound effects' : 'Enable sound effects'"
+                :title="$store.learningAudio.enabled ? 'Mute sound effects' : 'Enable sound effects'"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-offset-gray-900"
+            >
+                <svg x-show="$store.learningAudio.enabled" x-cloak class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11 5 6 9H3v6h3l5 4V5Zm4.5 4.5a3.5 3.5 0 0 1 0 5m2.5-7.5a7 7 0 0 1 0 10"/>
+                </svg>
+                <svg x-show="!$store.learningAudio.enabled" x-cloak class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11 5 6 9H3v6h3l5 4V5Zm5 4 5 5m0-5-5 5"/>
+                </svg>
+            </button>
 
             {{-- Dark mode toggle --}}
             <button

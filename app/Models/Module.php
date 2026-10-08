@@ -135,6 +135,11 @@ class Module extends Model
         return $this->hasMany(ModuleLearnerCategory::class);
     }
 
+    public function learningPathMemberships(): HasMany
+    {
+        return $this->hasMany(LearningPathModule::class);
+    }
+
     public function publishedRevision(): BelongsTo
     {
         return $this->belongsTo(ModuleRevision::class, 'published_revision_id');
@@ -221,7 +226,7 @@ class Module extends Model
     {
         $ageRanges = self::learnerCategoryAgeRanges();
 
-        if (!isset($ageRanges[$ageBracket])) {
+        if (! isset($ageRanges[$ageBracket])) {
             return $query;
         }
 
@@ -285,7 +290,7 @@ class Module extends Model
     }
 
     /**
-     * @param array<int, string> $categories
+     * @param  array<int, string>  $categories
      */
     public function syncLearnerCategories(array $categories): void
     {
@@ -342,7 +347,7 @@ class Module extends Model
      */
     public function getContentForAgeBracket(string $ageBracket): ?array
     {
-        if (!$this->age_specific_content) {
+        if (! $this->age_specific_content) {
             return null;
         }
 
@@ -351,7 +356,7 @@ class Module extends Model
 
     public function isLearnerVisible(): bool
     {
-        if (!$this->is_published) {
+        if (! $this->is_published) {
             return false;
         }
 
@@ -370,7 +375,7 @@ class Module extends Model
         $snapshot = $this->publishedSnapshot();
         $moduleData = $snapshot['module'] ?? null;
 
-        if (!is_array($moduleData)) {
+        if (! is_array($moduleData)) {
             return $this;
         }
 
@@ -413,7 +418,7 @@ class Module extends Model
 
     public function getDisplayPriceAttribute(): string
     {
-        if (!$this->isPaidAccess()) {
+        if (! $this->isPaidAccess()) {
             return 'Free';
         }
 
@@ -422,7 +427,7 @@ class Module extends Model
             ? number_format($amount, 0)
             : number_format($amount, 2);
 
-        return '₱' . $formatted;
+        return '₱'.$formatted;
     }
 
     /**
@@ -444,7 +449,7 @@ class Module extends Model
     }
 
     /**
-     * @param array<int, string> $categories
+     * @param  array<int, string>  $categories
      * @return array<int, string>
      */
     public static function normalizeLearnerCategories(array $categories): array
@@ -494,7 +499,7 @@ class Module extends Model
     }
 
     /**
-     * @param array<int, string> $categories
+     * @param  array<int, string>  $categories
      * @return array{0:int,1:int}
      */
     public static function ageRangeForLearnerCategories(array $categories): array
@@ -543,7 +548,7 @@ class Module extends Model
 
     private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string
     {
-        if (!$path) {
+        if (! $path) {
             return null;
         }
 
@@ -557,8 +562,8 @@ class Module extends Model
             $normalized = substr($normalized, 8);
         }
 
-        if (!str_contains($normalized, '/') && $defaultDirectory !== '') {
-            $normalized = trim($defaultDirectory, '/') . '/' . $normalized;
+        if (! str_contains($normalized, '/') && $defaultDirectory !== '') {
+            $normalized = trim($defaultDirectory, '/').'/'.$normalized;
         }
 
         return Storage::url($normalized);

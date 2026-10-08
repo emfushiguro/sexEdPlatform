@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EnrollmentStatus;
 use App\Http\Requests\Parent\RejectEnrollmentRequest;
+use App\Models\ParentChildAccount;
 use App\Models\ModuleEnrollment;
 use App\Models\QuizAttempt;
 use App\Models\User;
@@ -29,12 +30,14 @@ class ParentController extends Controller
             abort(403);
         }
 
-        $parentChildLink = $parent->children()
-            ->where('users.id', $child->id)
+        $parentChildLink = ParentChildAccount::query()
+            ->accessEligible()
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
             ->first();
 
-        $canApproveContent = $parentChildLink?->pivot->can_approve_content ?? false;
-        $canViewQuizAnswers = $parentChildLink?->pivot->can_view_quiz_answers ?? false;
+        $canApproveContent = (bool) ($parentChildLink?->can_approve_content ?? false);
+        $canViewQuizAnswers = (bool) ($parentChildLink?->can_view_quiz_answers ?? false);
 
         return view('parent.children.show', [
             'child'              => $child,
@@ -57,11 +60,14 @@ class ParentController extends Controller
             abort(403);
         }
 
-        $parentChildLink = $parent->children()
-            ->where('users.id', $child->id)
+        $parentChildLink = ParentChildAccount::query()
+            ->accessEligible()
+            ->withPermission('can_view_quiz_answers')
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
             ->first();
 
-        $canViewQuizAnswers = $parentChildLink?->pivot->can_view_quiz_answers ?? false;
+        $canViewQuizAnswers = (bool) ($parentChildLink?->can_view_quiz_answers ?? false);
 
         abort_unless($canViewQuizAnswers, 403);
 
@@ -91,11 +97,14 @@ class ParentController extends Controller
             abort(403);
         }
 
-        $parentChildLink = $parent->children()
-            ->where('users.id', $child->id)
+        $parentChildLink = ParentChildAccount::query()
+            ->accessEligible()
+            ->withPermission('can_approve_content')
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
             ->first();
 
-        $canApproveContent = (bool) ($parentChildLink?->pivot->can_approve_content ?? false);
+        $canApproveContent = (bool) ($parentChildLink?->can_approve_content ?? false);
 
         if ($enrollment->status === EnrollmentStatus::PendingParentApproval && ! $canApproveContent) {
             abort(403);
@@ -248,11 +257,14 @@ class ParentController extends Controller
             abort(403);
         }
 
-        $parentChildLink = $parent->children()
-            ->where('users.id', $child->id)
+        $parentChildLink = ParentChildAccount::query()
+            ->accessEligible()
+            ->withPermission('can_approve_content')
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
             ->first();
 
-        $canApproveContent = (bool) ($parentChildLink?->pivot->can_approve_content ?? false);
+        $canApproveContent = (bool) ($parentChildLink?->can_approve_content ?? false);
 
         if (! $canApproveContent) {
             abort(403);
@@ -294,11 +306,14 @@ class ParentController extends Controller
             abort(403);
         }
 
-        $parentChildLink = $parent->children()
-            ->where('users.id', $child->id)
+        $parentChildLink = ParentChildAccount::query()
+            ->accessEligible()
+            ->withPermission('can_approve_content')
+            ->where('parent_user_id', $parent->id)
+            ->where('child_user_id', $child->id)
             ->first();
 
-        $canApproveContent = (bool) ($parentChildLink?->pivot->can_approve_content ?? false);
+        $canApproveContent = (bool) ($parentChildLink?->can_approve_content ?? false);
 
         if (! $canApproveContent) {
             abort(403);

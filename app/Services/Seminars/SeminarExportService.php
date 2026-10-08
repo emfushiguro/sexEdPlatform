@@ -56,27 +56,40 @@ class SeminarExportService
             fputcsv($handle, [
                 'name',
                 'email',
-                'role',
+                'participant type',
+                'registration status',
+                'attendance status',
+                'method',
+                'attended at',
                 'joined at',
                 'left at',
                 'total minutes',
-                'status',
             ]);
 
-            $seminar->attendances()
+            $seminar->registrants()
                 ->with('user')
-                ->orderBy('joined_at')
-                ->chunk(200, function ($attendances) use ($handle): void {
-                    foreach ($attendances as $attendance) {
-                        $user = $attendance->user;
+                ->orderBy('registered_at')
+                ->orderBy('id')
+                ->chunk(200, function ($registrants) use ($seminar, $handle): void {
+                    $attendances = $seminar->attendances()
+                        ->whereIn('user_id', $registrants->pluck('user_id'))
+                        ->get()
+                        ->keyBy('user_id');
+
+                    foreach ($registrants as $registrant) {
+                        $user = $registrant->user;
+                        $attendance = $attendances->get($registrant->user_id);
                         fputcsv($handle, [
                             $user?->name,
                             $user?->email,
-                            $user?->role,
-                            optional($attendance->joined_at)?->toDateTimeString(),
-                            optional($attendance->left_at)?->toDateTimeString(),
-                            number_format((int) $attendance->total_seconds / 60, 2, '.', ''),
-                            $attendance->status,
+                            $registrant->participant_type,
+                            $registrant->status,
+                            $attendance?->status ?? 'Not submitted',
+                            $attendance?->attendance_method,
+                            optional($attendance?->attended_at)->toDateTimeString(),
+                            optional($attendance?->joined_at)->toDateTimeString(),
+                            optional($attendance?->left_at)->toDateTimeString(),
+                            $attendance ? number_format((int) $attendance->total_seconds / 60, 2, '.', '') : '',
                         ]);
                     }
                 });

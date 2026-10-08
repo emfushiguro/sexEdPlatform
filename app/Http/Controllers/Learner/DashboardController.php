@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
-use App\Models\LessonTopic;
 use App\Models\LessonTopicProgress;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
@@ -64,24 +63,9 @@ class DashboardController extends Controller
                 ->where('completed', true)
                 ->count();
 
-            // Topic-based progress — reflects partial lesson progress accurately
-            $lessonIds = $module->lessons()->where('is_published', true)->pluck('id');
-            $totalTopics = LessonTopic::whereIn('lesson_id', $lessonIds)->count();
-
-            if ($totalTopics > 0) {
-                $completedTopics = LessonTopicProgress::where('user_id', $user->id)
-                    ->whereIn('lesson_topic_id', function ($q) use ($lessonIds) {
-                        $q->select('id')->from('lesson_topics')->whereIn('lesson_id', $lessonIds);
-                    })
-                    ->where('completed', true)
-                    ->count();
-                $progressPercent = round(($completedTopics / $totalTopics) * 100);
-            } else {
-                // No topics: fall back to lesson-level completion
-                $progressPercent = $totalLessons > 0
-                    ? round(($completedLessons / $totalLessons) * 100)
-                    : 0;
-            }
+            $progressPercent = $totalLessons > 0
+                ? round(($completedLessons / $totalLessons) * 100)
+                : 0;
 
             // Find the first incomplete lesson for "Continue Learning"
             $nextLesson = $module->lessons()
@@ -236,9 +220,7 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        $approvedParentLinks = $user->parentLinks()
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
+        $approvedParentLinks = $user->accessibleGuardianLinks()
             ->with([
                 'parent:id,name,email,birthdate',
                 'parent.learnerProfile:id,user_id,avatar_path,birthdate',

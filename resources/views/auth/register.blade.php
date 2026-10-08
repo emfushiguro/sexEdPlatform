@@ -13,6 +13,7 @@
         ['label' => 'Personal Info', 'active' => true,  'done' => false],
         ['label' => 'Account Info',  'active' => false, 'done' => false],
         ['label' => 'Verify Email',  'active' => false, 'done' => false],
+        ['label' => 'Identity Verification', 'active' => false, 'done' => false],
         ['label' => 'Profile',       'active' => false, 'done' => false],
     ]" />
 

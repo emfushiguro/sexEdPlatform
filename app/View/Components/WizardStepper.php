@@ -13,6 +13,7 @@ class WizardStepper extends Component
         ['label' => 'Personal Info', 'route' => 'register'],
         ['label' => 'Account Info',  'route' => 'register.account'],
         ['label' => 'Verify Email',  'route' => 'verification.notice'],
+        ['label' => 'Identity Verification', 'routes' => ['learner.identity.create', 'learner.identity.selfie.create', 'learner.identity.status']],
         ['label' => 'Profile',       'route' => 'profile.complete'],
     ];
 
@@ -24,10 +25,21 @@ class WizardStepper extends Component
         ['label' => 'Guardian Verification', 'route' => 'guardian.verification.create'],
     ];
 
+    private const DEPENDENT_FLOW = [
+        ['label' => 'Dependent Info', 'routes' => ['parent.create-child']],
+        ['label' => 'Location', 'routes' => ['parent.create-child.location']],
+        ['label' => 'Credentials', 'routes' => ['parent.create-child.credentials']],
+        ['label' => 'Validation', 'routes' => ['parent.create-child.validation']],
+        ['label' => 'Relationship', 'routes' => ['parent.create-child.relationship-verification']],
+        // Support information is optional and follows the relationship step.
+        ['label' => 'All Set', 'routes' => ['parent.create-child.support-information', 'parent.create-child.done']],
+    ];
+
     public function __construct(
         private ?string $currentRoute = null,
         private ?bool $isParentFlow = null,
         ?array $steps = null,
+        private ?string $flow = null,
     ) {
         $this->currentRoute = $currentRoute ?? Route::currentRouteName() ?? '';
 
@@ -44,11 +56,19 @@ class WizardStepper extends Component
 
     private function buildSteps(): ?array
     {
-        $map = $this->isParentFlow ? self::PARENT_FLOW : self::LEARNER_FLOW;
+        $map = $this->flow === 'dependent'
+            ? self::DEPENDENT_FLOW
+            : ($this->isParentFlow ? self::PARENT_FLOW : self::LEARNER_FLOW);
+
+        if (! $this->isParentFlow && $this->flow !== 'dependent' && $this->currentRoute === 'profile.complete'
+            && auth()->check() && ! auth()->user()->identityVerifications()->exists()) {
+            $map = array_values(array_filter($map, fn (array $step) => $step['label'] !== 'Identity Verification'));
+        }
 
         $activeIndex = null;
         foreach ($map as $i => $step) {
-            if ($step['route'] === $this->currentRoute) {
+            $routes = $step['routes'] ?? [$step['route']];
+            if (in_array($this->currentRoute, $routes, true)) {
                 $activeIndex = $i;
                 break;
             }
@@ -60,10 +80,10 @@ class WizardStepper extends Component
 
         return array_map(function (array $step, int $i) use ($activeIndex) {
             return [
-                'label'       => $step['label'],
+                'label' => $step['label'],
                 'isCompleted' => $i < $activeIndex,
-                'isActive'    => $i === $activeIndex,
-                'isUpcoming'  => $i > $activeIndex,
+                'isActive' => $i === $activeIndex,
+                'isUpcoming' => $i > $activeIndex,
             ];
         }, $map, array_keys($map));
     }

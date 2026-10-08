@@ -76,6 +76,7 @@ class SeminarInteractionService
 
     private function abortUnlessParticipantCanWrite(User $user, Seminar $seminar): void
     {
+        abort_unless($seminar->isNativeDelivery(), 403);
         if ($seminar->status === SeminarStatus::Completed->value) {
             throw ValidationException::withMessages(['seminar' => 'This seminar is completed and interactions are read-only.']);
         }

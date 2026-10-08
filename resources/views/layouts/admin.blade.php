@@ -342,7 +342,7 @@
                                 @endif
                                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
                                     @php
-                                        $pendingVerificationTotal = (int) (($adminModerationCounts['pending_parent_verifications'] ?? 0) + ($adminModerationCounts['pending_child_verifications'] ?? 0));
+                                        $pendingVerificationTotal = (int) (($adminModerationCounts['pending_parent_verifications'] ?? 0) + ($adminModerationCounts['pending_child_verifications'] ?? 0) + ($adminModerationCounts['pending_learner_identity_verifications'] ?? 0));
                                     @endphp
                                  <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.parent-verifications.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -352,7 +352,7 @@
                                     </span>
                                     <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
                                           x-cloak class="flex min-w-0 flex-1 items-center gap-2">
-                                        <span class="truncate">Guardian &amp; Child Verifications</span>
+                                        <span class="truncate">Guardian, Child &amp; Learner Verifications</span>
                                         <span class="{{ $adminSidebarBadgeSlotClasses }}">
                                             @if($pendingVerificationTotal > 0)
                                                 <span data-testid="admin-nav-badge-guardian-child-verifications"
@@ -423,6 +423,17 @@
                             Learning Contents
                         </h2>
                         <ul class="flex flex-col gap-1">
+                            @can('viewAny', \App\Models\LearningPath::class)
+                            <li>
+                                <a href="{{ route('admin.learning-paths.index') }}"
+                                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap {{ request()->routeIs('admin.learning-paths.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                   @if(request()->routeIs('admin.learning-paths.*')) style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);" @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                    <span class="flex-shrink-0 text-gray-500 group-hover:text-purple-600" aria-hidden="true"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h11M4 18h7m11-7-3 3-2-2"/></svg></span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Learning Paths</span>
+                                </a>
+                            </li>
+                            @endcan
                             <li>
                                 <a href="{{ route('admin.modules.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
@@ -744,7 +755,7 @@
                         <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Edit Profile</span>
                     </a>
 
-                    <form method="POST" action="{{ route('admin.logout') }}">
+                    <form method="POST" action="{{ route('admin.logout') }}" data-logout-form>
                         @csrf
                         <button type="submit"
                                 class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-rose-600 transition hover:bg-rose-50"
@@ -993,7 +1004,7 @@
                                 </div>
                                 @include('partials.chat-status-selector')
                                 <div class="py-1 border-t border-gray-100">
-                                    <form method="POST" action="{{ route('admin.logout') }}">
+                                    <form method="POST" action="{{ route('admin.logout') }}" data-logout-form>
                                         @csrf
                                         <button type="submit"
                                                 class="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-error-600 hover:bg-error-50 transition-colors">
@@ -1060,5 +1071,6 @@
     @endif
 
     @include('chat.partials.global-popup')
+    @include('components.logout-confirmation-modal')
 </body>
 </html>

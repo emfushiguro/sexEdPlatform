@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
+use App\Models\InteractiveActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -17,24 +18,25 @@ class ImageLibraryController extends Controller
     {
         $images = [];
         $files = $this->listImageFiles();
-        
+
         foreach ($files as $file) {
             $images[] = [
+                'path' => $file,
                 'filename' => basename($file),
-                'url' => asset('storage/' . $file),
+                'url' => asset('storage/'.$file),
                 'size' => Storage::disk('public')->size($file),
                 'uploaded' => Storage::disk('public')->lastModified($file),
             ];
         }
-        
+
         // Sort by upload date (newest first)
-        usort($images, function($a, $b) {
+        usort($images, function ($a, $b) {
             return $b['uploaded'] - $a['uploaded'];
         });
-        
+
         return view('instructor.image-library.index', compact('images'));
     }
-    
+
     /**
      * Return image list as JSON (for inline gallery in modals)
      */
@@ -45,13 +47,14 @@ class ImageLibraryController extends Controller
 
         foreach ($files as $file) {
             $images[] = [
+                'path' => $file,
                 'filename' => basename($file),
-                'url'      => asset('storage/' . $file),
-                'size_kb'  => round(Storage::disk('public')->size($file) / 1024, 1),
+                'url' => asset('storage/'.$file),
+                'size_kb' => round(Storage::disk('public')->size($file) / 1024, 1),
             ];
         }
 
-        usort($images, fn($a, $b) => strcmp($b['filename'], $a['filename']));
+        usort($images, fn ($a, $b) => strcmp($b['filename'], $a['filename']));
 
         return response()->json(['images' => $images]);
     }
@@ -62,26 +65,27 @@ class ImageLibraryController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,jpg,png|max:2048',
+            'image' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
         ]);
 
         try {
             $file = $request->file('image');
-            $filename = time() . '_' . str_replace(' ', '_', $file->getClientOriginalName());
+            $filename = time().'_'.str_replace(' ', '_', $file->getClientOriginalName());
             $path = $file->storeAs($this->userImageDirectory(), $filename, 'public');
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'success'  => true,
+                    'success' => true,
+                    'path' => $path,
                     'filename' => $filename,
-                    'url'      => asset('storage/' . $path),
-                    'size_kb'  => round(Storage::disk('public')->size($path) / 1024, 1),
+                    'url' => asset('storage/'.$path),
+                    'size_kb' => round(Storage::disk('public')->size($path) / 1024, 1),
                 ]);
             }
 
             return back()->with('success', "Image '{$filename}' uploaded successfully!");
         } catch (\Exception $e) {
-            Log::error('Image upload failed: ' . $e->getMessage());
+            Log::error('Image upload failed: '.$e->getMessage());
 
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Failed to upload image.'], 500);
@@ -90,7 +94,7 @@ class ImageLibraryController extends Controller
             return back()->with('error', 'Failed to upload image. Please try again.');
         }
     }
-    
+
     /**
      * Delete image from library
      */
@@ -98,16 +102,21 @@ class ImageLibraryController extends Controller
     {
         try {
             $path = $this->resolveDeletePath($filename);
-            
-            if (!$path || !Storage::disk('public')->exists($path)) {
+
+            if (! $path || ! Storage::disk('public')->exists($path)) {
                 return back()->with('error', 'Image not found.');
             }
-            
+
+            if ($this->isUsedByInteractiveActivity($path)) {
+                return back()->with('error', 'This image is used by an interactive activity and cannot be deleted.');
+            }
+
             Storage::disk('public')->delete($path);
-            
+
             return back()->with('success', "Image '{$filename}' deleted successfully!");
         } catch (\Exception $e) {
-            Log::error('Image delete failed: ' . $e->getMessage());
+            Log::error('Image delete failed: '.$e->getMessage());
+
             return back()->with('error', 'Failed to delete image.');
         }
     }
@@ -128,7 +137,7 @@ class ImageLibraryController extends Controller
         $disk = Storage::disk('public');
         $safeFilename = basename($filename);
 
-        $scopedPath = $this->userImageDirectory() . '/' . $safeFilename;
+        $scopedPath = $this->userImageDirectory().'/'.$safeFilename;
         if ($disk->exists($scopedPath)) {
             return $scopedPath;
         }
@@ -140,6 +149,32 @@ class ImageLibraryController extends Controller
     {
         $userId = (int) Auth::id();
 
-        return 'quiz-images/user-' . $userId;
+        return 'quiz-images/user-'.$userId;
+    }
+
+    private function isUsedByInteractiveActivity(string $path): bool
+    {
+        return InteractiveActivity::query()
+            ->select(['id', 'configuration'])
+            ->lazyById()
+            ->contains(fn (InteractiveActivity $activity): bool => $this->configurationContainsPath($activity->configuration, $path));
+    }
+
+    private function configurationContainsPath(mixed $value, string $path): bool
+    {
+        if (! is_array($value)) {
+            return false;
+        }
+
+        foreach ($value as $key => $child) {
+            if ($key === 'image_path' && $child === $path) {
+                return true;
+            }
+            if ($this->configurationContainsPath($child, $path)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

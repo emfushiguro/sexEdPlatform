@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\View\Components\WizardStepper;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class WizardStepperTest extends TestCase
 {
@@ -17,7 +18,8 @@ class WizardStepperTest extends TestCase
         $component = new WizardStepper('register', false);
         $steps = $component->steps;
 
-        $this->assertCount(4, $steps);
+        $this->assertCount(5, $steps);
+        $this->assertSame('Identity Verification', $steps[3]['label']);
         $this->assertTrue($steps[0]['isActive']);
         $this->assertFalse($steps[1]['isActive']);
     }
@@ -27,7 +29,7 @@ class WizardStepperTest extends TestCase
         $component = new WizardStepper('register.account', false);
         $steps = $component->steps;
 
-        $this->assertCount(4, $steps);
+        $this->assertCount(5, $steps);
         $this->assertTrue($steps[0]['isCompleted']);
         $this->assertTrue($steps[1]['isActive']);
         $this->assertFalse($steps[2]['isActive']);
@@ -38,23 +40,30 @@ class WizardStepperTest extends TestCase
         $component = new WizardStepper('verification.notice', false);
         $steps = $component->steps;
 
-        $this->assertCount(4, $steps);
+        $this->assertCount(5, $steps);
         $this->assertTrue($steps[0]['isCompleted']);
         $this->assertTrue($steps[1]['isCompleted']);
         $this->assertTrue($steps[2]['isActive']);
         $this->assertFalse($steps[3]['isActive']);
     }
 
-    public function test_learner_flow_step_4_active_on_profile_complete(): void
+    public function test_learner_flow_step_4_active_on_identity_verification(): void
+    {
+        $steps = (new WizardStepper('learner.identity.create', false))->steps;
+        $this->assertCount(5, $steps);
+        $this->assertTrue($steps[3]['isActive']);
+    }
+
+    public function test_learner_flow_step_5_active_on_profile_complete(): void
     {
         $component = new WizardStepper('profile.complete', false);
         $steps = $component->steps;
 
-        $this->assertCount(4, $steps);
+        $this->assertCount(5, $steps);
         $this->assertTrue($steps[0]['isCompleted']);
         $this->assertTrue($steps[1]['isCompleted']);
         $this->assertTrue($steps[2]['isCompleted']);
-        $this->assertTrue($steps[3]['isActive']);
+        $this->assertTrue($steps[4]['isActive']);
     }
 
     // ─── Parent flow (6 steps) ───────────────────────────────────────────────
@@ -139,12 +148,48 @@ class WizardStepperTest extends TestCase
         $this->assertNull($component->steps);
     }
 
+    public function test_dependent_flow_uses_the_current_six_step_process(): void
+    {
+        $component = new WizardStepper('parent.create-child.credentials', false, null, 'dependent');
+
+        $this->assertSame([
+            'Dependent Info',
+            'Location',
+            'Credentials',
+            'Validation',
+            'Relationship',
+            'All Set',
+        ], array_column($component->steps, 'label'));
+        $this->assertTrue($component->steps[2]['isActive']);
+        $this->assertTrue($component->steps[0]['isCompleted']);
+        $this->assertFalse($component->steps[3]['isCompleted']);
+    }
+
+    public function test_dependent_support_route_keeps_all_set_as_the_final_stage(): void
+    {
+        $component = new WizardStepper('parent.create-child.support-information', false, null, 'dependent');
+
+        $this->assertCount(6, $component->steps);
+        $this->assertTrue($component->steps[5]['isActive']);
+        $this->assertSame('All Set', $component->steps[5]['label']);
+    }
+
     // ─── Disambiguation (shared routes) ─────────────────────────────────────
 
     public function test_verification_notice_shows_learner_flow_without_session_flag(): void
     {
         $component = new WizardStepper('verification.notice', false);
-        $this->assertCount(4, $component->steps);
+        $this->assertCount(5, $component->steps);
+    }
+
+    public function test_legacy_learner_profile_keeps_original_four_steps(): void
+    {
+        $user = User::factory()->create(['role' => 'learner', 'birthdate' => '2000-01-01']);
+        $user->assignRole('learner');
+        $this->actingAs($user);
+
+        $this->assertSame(['Personal Info', 'Account Info', 'Verify Email', 'Profile'],
+            array_column((new WizardStepper('profile.complete', false))->steps, 'label'));
     }
 
     public function test_verification_notice_shows_parent_flow_with_session_flag(): void

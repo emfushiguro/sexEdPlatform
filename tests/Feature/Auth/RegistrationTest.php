@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -27,9 +28,9 @@ class RegistrationTest extends TestCase
     public function test_personal_info_step_stores_session_and_redirects_to_account_step(): void
     {
         $response = $this->post('/register', [
-            'first_name'     => 'Juan',
-            'last_name'      => 'dela Cruz',
-            'birthdate'      => '2000-01-01',
+            'first_name' => 'Juan',
+            'last_name' => 'dela Cruz',
+            'birthdate' => '2000-01-01',
         ]);
 
         $response->assertRedirect('/register/account');
@@ -40,8 +41,8 @@ class RegistrationTest extends TestCase
     {
         $response = $this->post('/register', [
             'first_name' => 'Kiddo',
-            'last_name'  => 'Test',
-            'birthdate'  => now()->subYears(10)->format('Y-m-d'),
+            'last_name' => 'Test',
+            'birthdate' => now()->subYears(10)->format('Y-m-d'),
         ]);
 
         $response->assertRedirect(route('parent.registration.required'));
@@ -52,22 +53,43 @@ class RegistrationTest extends TestCase
     {
         // Step 1: submit personal info
         $this->withSession(['pending_personal_info' => [
-            'first_name'     => 'Juan',
+            'first_name' => 'Juan',
             'middle_initial' => null,
-            'last_name'      => 'dela Cruz',
-            'suffix'         => null,
-            'birthdate'      => '2000-01-01',
-            'age'            => 25,
+            'last_name' => 'dela Cruz',
+            'suffix' => null,
+            'birthdate' => '2000-01-01',
+            'age' => 25,
         ]]);
 
         // Step 2: submit account info
         $response = $this->post('/register/account', [
-            'email'                 => 'juan@gmail.com',
-            'password'              => 'Xk#9mP2@qL7nR4wZ',
+            'email' => 'juan@gmail.com',
+            'password' => 'Xk#9mP2@qL7nR4wZ',
             'password_confirmation' => 'Xk#9mP2@qL7nR4wZ',
         ]);
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('verification.notice'));
+        $user = User::where('email', 'juan@gmail.com')->firstOrFail();
+        $this->assertSame('adult', $user->identityVerifications()->sole()->pathway);
+        $this->assertSame(['created'], $user->identityVerifications()->sole()->audits()->pluck('action')->all());
+    }
+
+    public function test_new_thirteen_year_old_gets_one_teen_case(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-09-24 10:00:00'));
+        $this->withSession(['pending_personal_info' => [
+            'first_name' => 'Teen', 'last_name' => 'Learner',
+            'birthdate' => '2013-09-24', 'age' => 99,
+        ]]);
+
+        $this->post('/register/account', [
+            'email' => 'teenlearner@gmail.com',
+            'password' => 'Xk#9mP2@qL7nR4wZ',
+            'password_confirmation' => 'Xk#9mP2@qL7nR4wZ',
+        ])->assertRedirect(route('verification.notice'));
+
+        $user = User::where('email', 'teenlearner@gmail.com')->firstOrFail();
+        $this->assertSame('teen', $user->identityVerifications()->sole()->pathway);
     }
 }

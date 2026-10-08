@@ -59,6 +59,7 @@ class ParentChildVerificationResubmissionTest extends TestCase
     public function test_rejected_child_can_be_resubmitted_by_owning_parent_and_move_back_to_pending(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         Notification::fake();
 
         $admin = $this->createAdmin();
@@ -107,7 +108,8 @@ class ParentChildVerificationResubmissionTest extends TestCase
         $this->assertStringStartsWith('child-verifications/' . $parent->id . '/', (string) $verification->verification_document_path);
 
         Storage::disk('public')->assertMissing('child-verifications/original/rejected-child-doc.pdf');
-        Storage::disk('public')->assertExists((string) $verification->verification_document_path);
+        Storage::disk('local')->assertExists((string) $verification->verification_document_path);
+        Storage::disk('public')->assertMissing((string) $verification->verification_document_path);
 
         Notification::assertSentTo(
             [$admin],

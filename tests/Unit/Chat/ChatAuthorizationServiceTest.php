@@ -7,6 +7,7 @@ use App\Models\Conversation;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
 use App\Models\ParentChildAccount;
+use App\Models\ParentChildInvitation;
 use App\Models\User;
 use App\Services\Chat\ChatAuthorizationService;
 use Tests\TestCase;
@@ -86,8 +87,12 @@ class ChatAuthorizationServiceTest extends TestCase
     {
         $service = app(ChatAuthorizationService::class);
 
-        $parent = User::factory()->create(['role' => 'learner']);
-        $child = User::factory()->create(['role' => 'learner']);
+        $parent = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+            'parent_verification_status' => 'approved',
+        ]);
+        $child = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
 
         ParentChildAccount::create([
             'parent_user_id' => $parent->id,
@@ -95,6 +100,9 @@ class ChatAuthorizationServiceTest extends TestCase
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'current_evidence_round' => 1,
             'verification_status' => 'approved',
             'relationship_verified_at' => now(),
         ]);
@@ -112,9 +120,13 @@ class ChatAuthorizationServiceTest extends TestCase
     {
         $service = app(ChatAuthorizationService::class);
 
-        $parent = User::factory()->create(['role' => 'learner']);
-        $child = User::factory()->create(['role' => 'learner']);
-        $instructor = User::factory()->create(['role' => 'instructor']);
+        $parent = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+            'parent_verification_status' => 'approved',
+        ]);
+        $child = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
+        $instructor = User::factory()->create(['role' => 'instructor', 'status' => User::STATUS_ACTIVE]);
 
         ParentChildAccount::create([
             'parent_user_id' => $parent->id,
@@ -122,6 +134,9 @@ class ChatAuthorizationServiceTest extends TestCase
             'can_view_progress' => true,
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'current_evidence_round' => 1,
             'verification_status' => 'approved',
             'relationship_verified_at' => now(),
         ]);
@@ -146,6 +161,66 @@ class ChatAuthorizationServiceTest extends TestCase
         $this->assertFalse($parentToInstructor['requires_request']);
         $this->assertTrue($instructorToParent['allowed']);
         $this->assertFalse($instructorToParent['requires_request']);
+    }
+
+    public function test_only_access_eligible_guardian_links_qualify_for_child_and_instructor_chat(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+
+        $parent = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
+        $child = User::factory()->create(['role' => 'learner', 'status' => User::STATUS_ACTIVE]);
+        $instructor = User::factory()->create(['role' => 'instructor', 'status' => User::STATUS_ACTIVE]);
+        $parent->forceFill(['parent_verification_status' => 'approved'])->save();
+
+        $relationship = ParentChildAccount::create([
+            'parent_user_id' => $parent->id,
+            'child_user_id' => $child->id,
+            'can_view_progress' => true,
+            'can_view_quiz_answers' => true,
+            'can_approve_content' => true,
+            'relationship_status' => ParentChildAccount::STATUS_PENDING,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_UNDER_REVIEW,
+            'verification_status' => 'approved',
+            'relationship_verified_at' => now(),
+        ]);
+
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'is_published' => true,
+            'content_owner_type' => 'instructor',
+        ]);
+        ModuleEnrollment::create([
+            'user_id' => $child->id,
+            'module_id' => $module->id,
+            'status' => EnrollmentStatus::Approved,
+            'enrolled_at' => now(),
+        ]);
+
+        $this->assertFalse($service->evaluateStart($parent, $child)['allowed']);
+        $pendingParentToInstructor = $service->evaluateStart($parent, $instructor);
+        $this->assertTrue($pendingParentToInstructor['allowed']);
+        $this->assertTrue($pendingParentToInstructor['requires_request']);
+
+        $relationship->update([
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'verification_status' => 'approved',
+            'current_evidence_round' => 1,
+            'relationship_verified_at' => now(),
+        ]);
+
+        $this->assertTrue($service->evaluateStart($parent, $child)['allowed']);
+        $this->assertTrue($service->evaluateStart($parent, $instructor)['allowed']);
+
+        $relationship->update([
+            'relationship_status' => ParentChildAccount::STATUS_REVOKED,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_REVOKED,
+        ]);
+
+        $this->assertFalse($service->evaluateStart($parent, $child)['allowed']);
+        $revokedParentToInstructor = $service->evaluateStart($parent, $instructor);
+        $this->assertTrue($revokedParentToInstructor['allowed']);
+        $this->assertTrue($revokedParentToInstructor['requires_request']);
     }
 
     public function test_send_and_subscribe_require_participation_and_active_state(): void
@@ -180,5 +255,240 @@ class ChatAuthorizationServiceTest extends TestCase
         $this->assertTrue($service->canSendMessage($userA, $activeConversation));
         $this->assertFalse($service->canSendMessage($userA, $pendingConversation));
         $this->assertFalse($service->canSendMessage($userC, $activeConversation));
+    }
+
+    public function test_existing_guardian_chat_keeps_transcript_access_after_revocation_but_loses_live_access(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+
+        $guardian = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $child = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $relationship = ParentChildAccount::create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'relationship_verified_at' => now(),
+        ]);
+
+        $conversation = Conversation::create([
+            'participant_one_id' => $guardian->id,
+            'participant_two_id' => $child->id,
+            'pair_key' => Conversation::makePairKey($guardian->id, $child->id),
+            'conversation_type' => Conversation::TYPE_DIRECT,
+            'status' => Conversation::STATUS_ACTIVE,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_DIRECT, null),
+        ]);
+
+        $this->assertTrue($service->canViewConversation($guardian, $conversation));
+        $this->assertTrue($service->canSubscribeToConversation($guardian, $conversation));
+        $this->assertTrue($service->canSendMessage($guardian, $conversation));
+
+        $relationship->update([
+            'relationship_status' => ParentChildAccount::STATUS_REVOKED,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_REVOKED,
+        ]);
+
+        $revokedConversation = $conversation->fresh();
+
+        $this->assertTrue($service->canViewConversation($guardian, $revokedConversation));
+        $this->assertFalse($service->canSubscribeToConversation($guardian, $revokedConversation));
+        $this->assertFalse($service->canSendMessage($guardian, $revokedConversation));
+    }
+
+    public function test_suspended_participant_loses_transcript_live_and_send_access(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+
+        $guardian = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $child = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        ParentChildAccount::create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'relationship_verified_at' => now(),
+        ]);
+
+        $conversation = Conversation::create([
+            'participant_one_id' => $guardian->id,
+            'participant_two_id' => $child->id,
+            'pair_key' => Conversation::makePairKey($guardian->id, $child->id),
+            'conversation_type' => Conversation::TYPE_DIRECT,
+            'status' => Conversation::STATUS_ACTIVE,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_DIRECT, null),
+        ]);
+
+        $guardian->update(['status' => User::STATUS_SUSPENDED]);
+        $suspendedGuardian = $guardian->fresh();
+
+        $this->assertFalse($service->canViewConversation($suspendedGuardian, $conversation));
+        $this->assertFalse($service->canSubscribeToConversation($suspendedGuardian, $conversation));
+        $this->assertFalse($service->canSendMessage($suspendedGuardian, $conversation));
+    }
+
+    public function test_guardian_invitation_live_access_follows_invitation_and_relationship_lifecycle(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+        [$guardian, $child, $invitation, $conversation] = $this->createInvitationConversation();
+
+        $this->assertTrue($service->canViewConversation($child, $conversation));
+        $this->assertTrue($service->canSubscribeToConversation($child, $conversation));
+        $this->assertTrue($service->canSendMessage($child, $conversation));
+
+        $relationship = ParentChildAccount::create([
+            'parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'relationship_status' => ParentChildAccount::STATUS_PENDING,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_PENDING,
+        ]);
+        $invitation->update([
+            'status' => 'accepted',
+            'parent_child_account_id' => $relationship->id,
+        ]);
+
+        foreach ([
+            ParentChildAccount::VERIFICATION_PENDING,
+            ParentChildAccount::VERIFICATION_UNDER_REVIEW,
+            ParentChildAccount::VERIFICATION_RESUBMISSION_REQUIRED,
+        ] as $verificationStatus) {
+            $relationship->update(['relationship_verified_status' => $verificationStatus]);
+            $freshConversation = $conversation->fresh();
+
+            $this->assertTrue($service->canViewConversation($child, $freshConversation));
+            $this->assertTrue($service->canSubscribeToConversation($child, $freshConversation));
+            $this->assertTrue($service->canSendMessage($child, $freshConversation));
+        }
+
+        $relationship->update([
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+            'relationship_verified_at' => now(),
+        ]);
+        $this->assertTrue($service->canSubscribeToConversation($child, $conversation->fresh()));
+
+        $invitation->update(['parent_child_account_id' => null]);
+        $withoutRelationship = $conversation->fresh();
+        $this->assertTrue($service->canViewConversation($child, $withoutRelationship));
+        $this->assertFalse($service->canSubscribeToConversation($child, $withoutRelationship));
+        $this->assertFalse($service->canSendMessage($child, $withoutRelationship));
+
+        $invitation->update(['parent_child_account_id' => $relationship->id, 'status' => 'rejected']);
+        $closedConversation = $conversation->fresh();
+        $this->assertTrue($service->canViewConversation($child, $closedConversation));
+        $this->assertFalse($service->canSubscribeToConversation($child, $closedConversation));
+        $this->assertFalse($service->canSendMessage($child, $closedConversation));
+
+        $invitation->update(['status' => 'pending', 'expires_at' => now()->subMinute()]);
+        $expiredConversation = $conversation->fresh();
+        $this->assertTrue($service->canViewConversation($child, $expiredConversation));
+        $this->assertFalse($service->canSubscribeToConversation($child, $expiredConversation));
+        $this->assertFalse($service->canSendMessage($child, $expiredConversation));
+
+        $relationship->delete();
+        $this->assertTrue($service->canViewConversation($child, $conversation->fresh()));
+        $this->assertFalse($service->canSubscribeToConversation($child, $conversation->fresh()));
+    }
+
+    public function test_guardian_invitation_transcript_requires_matching_participants_and_active_actor(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+        [$guardian, $child, $invitation] = $this->createInvitationConversation(false);
+        $outsider = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $mismatchedConversation = Conversation::create([
+            'participant_one_id' => min($guardian->id, $outsider->id),
+            'participant_two_id' => max($guardian->id, $outsider->id),
+            'pair_key' => Conversation::makePairKey($guardian->id, $outsider->id),
+            'conversation_type' => Conversation::TYPE_GUARDIAN_INVITATION,
+            'status' => Conversation::STATUS_ACTIVE,
+            'parent_child_invitation_id' => $invitation->id,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_GUARDIAN_INVITATION, $invitation->id),
+        ]);
+
+        $this->assertFalse($service->canViewConversation($guardian, $mismatchedConversation));
+        $this->assertFalse($service->canSubscribeToConversation($guardian, $mismatchedConversation));
+        $this->assertFalse($service->canSendMessage($guardian, $mismatchedConversation));
+        $this->assertFalse($service->canViewConversation($outsider, $mismatchedConversation));
+
+        $conversation = Conversation::create([
+            'participant_one_id' => min($guardian->id, $child->id),
+            'participant_two_id' => max($guardian->id, $child->id),
+            'pair_key' => Conversation::makePairKey($guardian->id, $child->id),
+            'conversation_type' => Conversation::TYPE_GUARDIAN_INVITATION,
+            'status' => Conversation::STATUS_ACTIVE,
+            'parent_child_invitation_id' => null,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_GUARDIAN_INVITATION, 999),
+        ]);
+
+        $this->assertFalse($service->canViewConversation($child, $conversation));
+
+        $child->update(['status' => User::STATUS_SUSPENDED]);
+        $this->assertFalse($service->canViewConversation($child->fresh(), $mismatchedConversation));
+        $this->assertFalse($service->canSubscribeToConversation($child->fresh(), $mismatchedConversation));
+        $this->assertFalse($service->canSendMessage($child->fresh(), $mismatchedConversation));
+    }
+
+    public function test_guardian_invitation_cannot_be_initiated_when_guardian_is_inactive(): void
+    {
+        $service = app(ChatAuthorizationService::class);
+        [$guardian, $child, $invitation] = $this->createInvitationConversation(false);
+
+        $guardian->update(['status' => User::STATUS_SUSPENDED]);
+
+        $this->assertFalse($service->canInitiateGuardianInvitationConversation($child, $invitation->fresh()));
+    }
+
+    private function createInvitationConversation(bool $withConversation = true): array
+    {
+        $guardian = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $child = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $invitation = ParentChildInvitation::query()->create([
+            'inviter_parent_user_id' => $guardian->id,
+            'child_user_id' => $child->id,
+            'relationship_type' => 'grandmother',
+            'invite_token' => (string) \Illuminate\Support\Str::uuid(),
+            'status' => 'pending',
+            'expires_at' => now()->addDays(14),
+        ]);
+
+        if (! $withConversation) {
+            return [$guardian, $child, $invitation];
+        }
+
+        $conversation = Conversation::query()->create([
+            'participant_one_id' => min($guardian->id, $child->id),
+            'participant_two_id' => max($guardian->id, $child->id),
+            'pair_key' => Conversation::makePairKey($guardian->id, $child->id),
+            'conversation_type' => Conversation::TYPE_GUARDIAN_INVITATION,
+            'status' => Conversation::STATUS_ACTIVE,
+            'parent_child_invitation_id' => $invitation->id,
+            'context_key' => Conversation::makeContextKey(Conversation::TYPE_GUARDIAN_INVITATION, $invitation->id),
+        ]);
+
+        return [$guardian, $child, $invitation, $conversation];
     }
 }

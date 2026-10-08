@@ -19,6 +19,20 @@
     x-data="{ approveOpen: false, rejectOpen: @js($errors->any()), rejectReason: @js(old('reason', 'incomplete_information')) }"
     class="space-y-6"
 >
+    @if($seminar->isExternalDelivery() && in_array($seminar->status, ['published', 'completed'], true))
+        @include('seminars._delivery-form', ['action' => route('admin.seminars.delivery.update', $seminar)])
+    @endif
+    @if(in_array($seminar->event_format, ['in_person', 'external'], true) && ! in_array($seminar->status, ['cancelled', 'archived'], true))
+        @include('seminars._attendance-code-management', [
+            'generateAction' => route('admin.seminars.attendance.code.generate', $seminar),
+            'disableAction' => route('admin.seminars.attendance.code.disable', $seminar),
+        ])
+    @endif
+    <div>
+        <a href="{{ route('admin.seminars.attendance', $seminar) }}" class="inline-flex items-center rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">
+            View full attendance roster
+        </a>
+    </div>
     @foreach(['success','error','warning'] as $type)
         @if(session($type))
             <div class="rounded-xl border px-4 py-3 text-sm {{ $type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : ($type === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-amber-200 bg-amber-50 text-amber-700') }}">

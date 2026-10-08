@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Instructor;
+use App\Http\Middleware\EnsureLearnerIdentityVerified;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -118,6 +119,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     });
 
     // Shared learning content authoring (reuses instructor content controllers)
+    Route::patch('learning-paths/{learningPath}/archive', [Admin\LearningPathController::class, 'archive'])
+        ->name('learning-paths.archive');
+    Route::patch('learning-paths/{learningPath}/restore', [Admin\LearningPathController::class, 'restore'])
+        ->name('learning-paths.restore');
+    Route::get('learning-paths/{learningPath}/preview', [Admin\LearningPathController::class, 'preview'])
+        ->name('learning-paths.preview');
+    Route::resource('learning-paths', Admin\LearningPathController::class)
+        ->except(['show', 'destroy'])
+        ->parameters(['learning-paths' => 'learningPath']);
+
     Route::resource('modules', Instructor\ModuleController::class);
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
         ->name('modules.activate');
@@ -140,6 +151,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         ->name('topics.create');
     Route::post('topics', [Instructor\TopicController::class, 'store'])
         ->name('topics.store');
+    Route::get('topics/{topic}/checkpoints/{question}/edit', [Instructor\TopicController::class, 'editCheckpoint'])
+        ->name('topics.checkpoints.edit');
+    Route::put('topics/{topic}/checkpoints/{question}', [Instructor\TopicController::class, 'updateCheckpoint'])
+        ->name('topics.checkpoints.update');
     Route::get('topics/{topic}/edit', [Instructor\TopicController::class, 'edit'])
         ->name('topics.edit');
     Route::get('topics/{topic}/preview', [Instructor\TopicController::class, 'preview'])
@@ -148,6 +163,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         ->name('topics.update');
     Route::delete('topics/{topic}', [Instructor\TopicController::class, 'destroy'])
         ->name('topics.destroy');
+
+    Route::post('interactive-activities/preview', [Instructor\InteractiveActivityController::class, 'preview'])
+        ->name('interactive-activities.preview');
+    Route::post('interactive-activities/preview/evaluate', [Instructor\InteractiveActivityController::class, 'evaluatePreview'])
+        ->name('interactive-activities.preview-evaluate');
+    Route::get('interactive-activities/{interactiveActivity}/edit', [Instructor\InteractiveActivityController::class, 'edit'])
+        ->name('interactive-activities.edit');
+    Route::put('interactive-activities/{interactiveActivity}', [Instructor\InteractiveActivityController::class, 'update'])
+        ->name('interactive-activities.update');
+    Route::delete('interactive-activities/{interactiveActivity}', [Instructor\InteractiveActivityController::class, 'destroy'])
+        ->name('interactive-activities.destroy');
 
     Route::post('upload/image', [Instructor\TopicController::class, 'uploadImage'])
         ->name('upload.image');
@@ -203,8 +229,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('relationships.attach');
         Route::delete('/relationships/detach', [Admin\UserRelationshipAdminController::class, 'detach'])
             ->name('relationships.detach');
-        Route::patch('/relationships/verification', [Admin\UserRelationshipAdminController::class, 'toggleVerification'])
-            ->name('relationships.verification');
+        Route::patch('/relationships/permissions', [Admin\UserRelationshipAdminController::class, 'updatePermissions'])
+            ->name('relationships.permissions');
 
         Route::get('/create', [Admin\UserAdminController::class, 'create'])->name('create');
         Route::post('/', [Admin\UserAdminController::class, 'store'])->name('store');
@@ -334,11 +360,22 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     Route::prefix('parent-verifications')->name('parent-verifications.')->group(function () {
         Route::get('/', [Admin\ParentChildVerificationController::class, 'index'])->name('index');
+        Route::get('/learners/{case}', [Admin\LearnerIdentityVerificationController::class, 'show'])
+            ->withoutMiddleware(EnsureLearnerIdentityVerified::class)->name('learners.show');
+        Route::get('/learners/{case}/evidence/{slot}', [Admin\LearnerIdentityVerificationController::class, 'evidence'])
+            ->whereIn('slot', ['identity_front', 'identity_back', 'selfie'])
+            ->withoutMiddleware(EnsureLearnerIdentityVerified::class)->name('learners.evidence');
+        Route::post('/learners/{case}/approve', [Admin\LearnerIdentityVerificationController::class, 'approve'])
+            ->withoutMiddleware(EnsureLearnerIdentityVerified::class)->name('learners.approve');
+        Route::post('/learners/{case}/reject', [Admin\LearnerIdentityVerificationController::class, 'reject'])
+            ->withoutMiddleware(EnsureLearnerIdentityVerified::class)->name('learners.reject');
         Route::get('/parents/{user}', [Admin\ParentChildVerificationController::class, 'showParent'])
             ->name('parents.show');
         Route::get('/parents/{user}/document/{side}', [Admin\ParentChildVerificationController::class, 'parentDocument'])
             ->whereIn('side', ['front', 'back'])
             ->name('parents.document');
+        Route::get('/children/{parentChildAccount}/document', [Admin\ParentChildVerificationController::class, 'childDocument'])
+            ->name('children.document');
         Route::post('/parents/{user}/reset-onboarding', [Admin\ParentChildVerificationController::class, 'resetGuardianOnboarding'])
             ->name('parents.reset-onboarding');
 
@@ -377,14 +414,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::delete('/subscribers/{subscription}', [Admin\SubscriberAdminController::class, 'destroy'])
         ->name('subscribers.destroy');
 
-
     // Calendar
-    Route::get('/calendar', fn() => view('admin.calendar.index'))->name('calendar.index');
+    Route::get('/calendar', fn () => view('admin.calendar.index'))->name('calendar.index');
 
     // Seminars
     Route::prefix('seminars')->name('seminars.')->group(function () {
         Route::get('/', [Admin\SeminarModerationController::class, 'index'])->name('index');
         Route::get('/{seminar}', [Admin\SeminarModerationController::class, 'show'])->name('show');
+        Route::put('/{seminar}/delivery', [Admin\SeminarDeliveryController::class, 'update'])->name('delivery.update');
+        Route::get('/{seminar}/attendance', [Admin\SeminarAttendanceController::class, 'index'])->name('attendance');
+        Route::get('/{seminar}/attendance/export', [Admin\SeminarAttendanceController::class, 'export'])->name('attendance.export');
+        Route::post('/{seminar}/attendance/code', [Admin\SeminarAttendanceController::class, 'generate'])->name('attendance.code.generate');
+        Route::post('/{seminar}/attendance/code/disable', [Admin\SeminarAttendanceController::class, 'disable'])->name('attendance.code.disable');
+        Route::post('/{seminar}/attendance/{registrant}/manual', [Admin\SeminarAttendanceController::class, 'manual'])->name('attendance.manual');
         Route::post('/{seminar}/approve', [Admin\SeminarModerationController::class, 'approve'])->name('approve');
         Route::post('/{seminar}/reject', [Admin\SeminarModerationController::class, 'reject'])->name('reject');
         Route::post('/{seminar}/cancel', [Admin\SeminarModerationController::class, 'cancel'])->name('cancel');
@@ -394,6 +436,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     });
 
     // Messages
-    Route::get('/messages', fn() => view('admin.messages.index'))->name('messages.index');
+    Route::get('/messages', fn () => view('admin.messages.index'))->name('messages.index');
 
 });

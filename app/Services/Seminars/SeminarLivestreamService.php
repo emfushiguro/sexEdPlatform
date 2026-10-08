@@ -60,8 +60,10 @@ class SeminarLivestreamService
 
     public function end(Seminar $seminar, User $user): Seminar
     {
+        abort_unless($seminar->isNativeDelivery(), 403);
         $seminar = DB::transaction(function () use ($seminar, $user): Seminar {
             $locked = Seminar::query()->lockForUpdate()->findOrFail($seminar->id);
+            abort_unless($locked->isNativeDelivery(), 403);
 
             if ($locked->status === SeminarStatus::Completed->value) {
                 return $locked;
@@ -83,6 +85,7 @@ class SeminarLivestreamService
 
     public function status(Seminar $seminar): array
     {
+        abort_unless($seminar->isNativeDelivery(), 403);
         $joined = $seminar->attendances()->whereNull('left_at');
 
         return [
@@ -96,6 +99,7 @@ class SeminarLivestreamService
 
     private function assertStartable(Seminar $seminar): void
     {
+        abort_unless($seminar->isNativeDelivery(), 403);
         if ($seminar->type !== SeminarType::Webinar->value || $seminar->status !== SeminarStatus::Published->value) {
             throw ValidationException::withMessages(['livestream' => 'Only published webinars can go live.']);
         }

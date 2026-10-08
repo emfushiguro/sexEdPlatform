@@ -33,8 +33,8 @@ class UserController extends Controller
                         $moduleQuery->where('created_by', $instructorId);
                     })->with('module:id,title,created_by');
                 },
-                'parentLinks.parent:id,name,email,status',
-                'childLinks:id,parent_user_id,relationship_verified_at',
+                'accessibleGuardianLinks.parent:id,name,email,status',
+                'accessibleChildLinks.child:id,parent_user_id,relationship_verified_at',
             ])
             ->withCount([
                 'moduleEnrollments as instructor_modules_enrolled_count' => function ($query) use ($instructorId) {
@@ -42,9 +42,7 @@ class UserController extends Controller
                         $moduleQuery->where('created_by', $instructorId);
                     });
                 },
-                'childLinks as verified_child_links_count' => function ($query) {
-                    $query->whereNotNull('relationship_verified_at');
-                },
+                'accessibleChildLinks as verified_child_links_count',
             ])
             ->latest()
             ->get();
@@ -80,11 +78,11 @@ class UserController extends Controller
             'certificates' => fn ($query) => $query
                 ->whereHas('module', fn ($moduleQuery) => $moduleQuery->where('created_by', $instructorId))
                 ->with('module:id,title'),
-            'parentLinks.parent:id,name,email,status,birthdate',
-            'parentLinks.parent.learnerProfile:id,user_id,avatar_path,birthdate',
-            'childLinks:id,parent_user_id,child_user_id,relationship_verified_at,verification_status',
-            'childLinks.child:id,name,first_name,last_name,email,birthdate,status',
-            'childLinks.child.learnerProfile:id,user_id,avatar_path,birthdate',
+            'accessibleGuardianLinks.parent:id,name,email,status,birthdate',
+            'accessibleGuardianLinks.parent.learnerProfile:id,user_id,avatar_path,birthdate',
+            'accessibleChildLinks:id,parent_user_id,child_user_id,relationship_verified_at,relationship_verified_status',
+            'accessibleChildLinks.child:id,name,first_name,last_name,email,birthdate,status',
+            'accessibleChildLinks.child.learnerProfile:id,user_id,avatar_path,birthdate',
         ]);
 
         $moduleIds = $user->moduleEnrollments->pluck('module_id')->filter()->values();
@@ -167,9 +165,8 @@ class UserController extends Controller
         ];
 
         $parentLinks = ParentChildAccount::query()
+            ->accessEligible()
             ->where('child_user_id', $user->id)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
             ->with([
                 'parent:id,name,email,status,birthdate',
                 'parent.learnerProfile:id,user_id,avatar_path,birthdate',
@@ -178,9 +175,8 @@ class UserController extends Controller
             ->get();
 
         $linkedChildren = ParentChildAccount::query()
+            ->accessEligible()
             ->where('parent_user_id', $user->id)
-            ->where('verification_status', 'approved')
-            ->whereNotNull('relationship_verified_at')
             ->with([
                 'child:id,name,first_name,last_name,email,birthdate,status',
                 'child.learnerProfile:id,user_id,avatar_path,birthdate',
@@ -301,13 +297,11 @@ class UserController extends Controller
             return (int) $count > 0;
         }
 
-        if ($user->relationLoaded('childLinks')) {
-            return $user->childLinks->contains(fn ($link) => !is_null($link->relationship_verified_at));
+        if ($user->relationLoaded('accessibleChildLinks')) {
+            return $user->accessibleChildLinks->isNotEmpty();
         }
 
-        return $user->childLinks()
-            ->whereNotNull('relationship_verified_at')
-            ->exists();
+        return $user->accessibleChildLinks()->exists();
     }
 
     private function resolveLearnerAvatarUrl(User $user): ?string

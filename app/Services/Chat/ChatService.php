@@ -18,8 +18,7 @@ class ChatService
     public function __construct(
         protected ChatAuthorizationService $chatAuthorizationService,
         protected ChatContextResolver $chatContextResolver,
-    ) {
-    }
+    ) {}
 
     public function createOrGetConversation(
         User $initiator,
@@ -34,7 +33,7 @@ class ChatService
 
         $decision = $this->chatAuthorizationService->evaluateStart($initiator, $target);
 
-        if (!$decision['allowed']) {
+        if (! $decision['allowed']) {
             throw new AuthorizationException((string) ($decision['reason'] ?? 'Conversation start denied.'));
         }
 
@@ -72,11 +71,11 @@ class ChatService
     {
         $decision = $this->chatAuthorizationService->evaluateStart($requester, $instructor);
 
-        if (!$decision['allowed']) {
+        if (! $decision['allowed']) {
             throw new AuthorizationException((string) ($decision['reason'] ?? 'Message request denied.'));
         }
 
-        if (!$decision['requires_request']) {
+        if (! $decision['requires_request']) {
             throw new DomainException('Message request is not required for this pair.');
         }
 
@@ -95,11 +94,11 @@ class ChatService
     {
         $decision = $this->chatAuthorizationService->evaluateStart($requester, $instructor);
 
-        if (!$decision['allowed']) {
+        if (! $decision['allowed']) {
             throw new AuthorizationException((string) ($decision['reason'] ?? 'Message request denied.'));
         }
 
-        if (!$decision['requires_request']) {
+        if (! $decision['requires_request']) {
             throw new DomainException('Message request is not required for this pair.');
         }
 
@@ -202,12 +201,16 @@ class ChatService
 
     public function sendMessage(User $sender, Conversation $conversation, ?string $messageBody, array $attachments = []): Message
     {
-        if (!$this->chatAuthorizationService->canSendMessage($sender, $conversation)) {
+        if (! $this->chatAuthorizationService->canSendMessage($sender, $conversation)) {
             throw new AuthorizationException('User is not allowed to send to this conversation.');
         }
 
         $trimmedBody = trim((string) $messageBody);
         $uploadedFiles = array_values(array_filter($attachments, fn ($attachment) => $attachment instanceof UploadedFile));
+
+        if ($conversation->conversation_type === Conversation::TYPE_GUARDIAN_INVITATION && $uploadedFiles !== []) {
+            throw new InvalidArgumentException('Guardian invitation conversations support text messages only.');
+        }
 
         if ($trimmedBody === '' && count($uploadedFiles) < 1) {
             throw new InvalidArgumentException('Message body or attachments are required.');
@@ -271,7 +274,7 @@ class ChatService
 
     public function markConversationRead(User $user, Conversation $conversation, ?Message $message = null): ConversationRead
     {
-        if (!$this->chatAuthorizationService->canSubscribeToConversation($user, $conversation)) {
+        if (! $this->chatAuthorizationService->canViewConversation($user, $conversation)) {
             throw new AuthorizationException('User is not allowed to read this conversation.');
         }
 
@@ -324,7 +327,7 @@ class ChatService
             || $target->hasRole('admin')
             || $target->role === 'admin';
 
-        if (!$initiatorIsAdmin && !$targetIsAdmin) {
+        if (! $initiatorIsAdmin && ! $targetIsAdmin) {
             throw new AuthorizationException('Admin support chat requires an admin participant.');
         }
     }

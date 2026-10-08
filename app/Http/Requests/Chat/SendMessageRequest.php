@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Chat;
 
+use App\Models\Conversation;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SendMessageRequest extends FormRequest
@@ -13,6 +14,18 @@ class SendMessageRequest extends FormRequest
 
     public function rules(): array
     {
+        $conversation = $this->route('conversation');
+        $invitationTextOnly = $conversation instanceof Conversation
+            && $conversation->conversation_type === Conversation::TYPE_GUARDIAN_INVITATION;
+
+        if ($invitationTextOnly) {
+            return [
+                'message_body' => ['required', 'string', 'max:5000'],
+                'attachments' => ['prohibited'],
+                'retry_of' => ['nullable', 'string', 'max:100'],
+            ];
+        }
+
         $maxAttachmentKb = (int) config('chat.max_attachment_kb', 10240);
         $maxAttachmentsPerMessage = (int) config('chat.max_attachments_per_message', 5);
 

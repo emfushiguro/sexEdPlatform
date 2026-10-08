@@ -13,16 +13,27 @@ class Conversation extends Model
     use HasFactory;
 
     public const TYPE_DIRECT = 'direct';
+
     public const TYPE_ADMIN_SUPPORT = 'admin_support_chat';
+
     public const TYPE_MODULE_CHAT = 'module_chat';
+
     public const TYPE_LESSON_CHAT = 'lesson_chat';
+
     public const TYPE_LESSON_TOPIC_CHAT = 'lesson_topic_chat';
+
     public const TYPE_QUIZ_HELP = 'quiz_help';
 
+    public const TYPE_GUARDIAN_INVITATION = 'guardian_invitation';
+
     public const STATUS_PENDING_REQUEST = 'pending_request';
+
     public const STATUS_ACCEPTED = 'accepted';
+
     public const STATUS_DECLINED = 'declined';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_CLOSED = 'closed';
 
     protected $fillable = [
@@ -31,6 +42,7 @@ class Conversation extends Model
         'pair_key',
         'conversation_type',
         'status',
+        'parent_child_invitation_id',
         'module_id',
         'lesson_id',
         'lesson_topic_id',
@@ -72,6 +84,7 @@ class Conversation extends Model
             self::TYPE_LESSON_CHAT,
             self::TYPE_LESSON_TOPIC_CHAT,
             self::TYPE_QUIZ_HELP,
+            self::TYPE_GUARDIAN_INVITATION,
         ];
     }
 
@@ -108,6 +121,11 @@ class Conversation extends Model
     public function quiz(): BelongsTo
     {
         return $this->belongsTo(Quiz::class);
+    }
+
+    public function parentChildInvitation(): BelongsTo
+    {
+        return $this->belongsTo(ParentChildInvitation::class);
     }
 
     public function messages(): HasMany
