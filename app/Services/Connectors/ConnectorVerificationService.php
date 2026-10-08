@@ -9,6 +9,7 @@ use App\Models\LearnerIdentityVerification;
 use App\Models\User;
 use App\Notifications\Connectors\ConnectorApplicationSubmittedNotification;
 use App\Notifications\Connectors\ConnectorModerationDecisionNotification;
+use App\Notifications\Connectors\ConnectorVerificationActionRequiredNotification;
 use App\Support\ConnectorVerificationRequirements;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
@@ -174,11 +175,19 @@ final class ConnectorVerificationService
                 ]);
 
                 DB::afterCommit(function () use ($applicant, $connector): void {
-                    $this->notifySafely($applicant, $connector->id, new ConnectorApplicationSubmittedNotification($connector));
+                    $this->notifySafely(
+                        $applicant,
+                        $connector->id,
+                        new ConnectorApplicationSubmittedNotification($connector, 'learner', 'submitted'),
+                    );
 
                     try {
                         foreach ($this->adminRecipients() as $admin) {
-                            $this->notifySafely($admin, $connector->id, new ConnectorApplicationSubmittedNotification($connector, 'admin'));
+                            $this->notifySafely(
+                                $admin,
+                                $connector->id,
+                                new ConnectorApplicationSubmittedNotification($connector, 'admin', 'submitted'),
+                            );
                         }
                     } catch (Throwable $e) {
                         Log::warning('Connector application admin notification lookup failed.', [
@@ -506,6 +515,44 @@ final class ConnectorVerificationService
                 'reviewed_at' => now(),
             ]);
 
+            $requirementLabel = $requirement->label;
+            DB::afterCommit(function () use ($lockedConnector, $requirementLabel): void {
+                $current = $lockedConnector->fresh();
+                $recipient = $current->primaryRepresentative()->first();
+
+                if ($recipient) {
+                    $this->notifySafely(
+                        $recipient,
+                        $current->id,
+                        new ConnectorVerificationActionRequiredNotification(
+                            $current,
+                            'supplemental_requirement',
+                            [$requirementLabel],
+                        ),
+                    );
+                }
+
+                try {
+                    foreach ($this->adminRecipients() as $admin) {
+                        $this->notifySafely(
+                            $admin,
+                            $current->id,
+                            new ConnectorVerificationActionRequiredNotification(
+                                $current,
+                                'supplemental_requirement',
+                                [$requirementLabel],
+                                'admin',
+                            ),
+                        );
+                    }
+                } catch (Throwable $e) {
+                    Log::warning('Connector supplemental notification admin lookup failed.', [
+                        'connector_id' => $current->id,
+                        'exception' => $e,
+                    ]);
+                }
+            });
+
             return $requirement->fresh();
         });
     }
@@ -639,6 +686,15 @@ final class ConnectorVerificationService
             $requirements = $locked->verificationRequirements()
                 ->whereNull('superseded_at')
                 ->get();
+            $rejectedRequirementLabels = $requirements
+                ->filter(fn (ConnectorVerificationRequirement $requirement): bool => in_array($requirement->status, [
+                    ConnectorVerificationRequirement::STATUS_REJECTED,
+                    ConnectorVerificationRequirement::STATUS_EXPIRED,
+                ], true))
+                ->pluck('label')
+                ->filter()
+                ->values()
+                ->all();
 
             $eligible = $requirements->contains(function (ConnectorVerificationRequirement $requirement) use ($admin): bool {
                 return in_array($requirement->status, [
@@ -690,6 +746,25 @@ final class ConnectorVerificationService
                 'applicant_reason' => $reason,
                 'internal_notes' => $note,
             ]);
+
+            if ($rejectedRequirementLabels !== []) {
+                DB::afterCommit(function () use ($locked, $rejectedRequirementLabels): void {
+                    $current = $locked->fresh();
+                    $recipient = $current->primaryRepresentative()->first();
+
+                    if ($recipient) {
+                        $this->notifySafely(
+                            $recipient,
+                            $current->id,
+                            new ConnectorVerificationActionRequiredNotification(
+                                $current,
+                                'document_rejected',
+                                $rejectedRequirementLabels,
+                            ),
+                        );
+                    }
+                });
+            }
 
             return $locked->fresh(['roles.permissions', 'memberships']);
         });
@@ -1136,7 +1211,7 @@ final class ConnectorVerificationService
                     $this->notifySafely(
                         $applicant,
                         $current->id,
-                        new ConnectorApplicationSubmittedNotification($current),
+                        new ConnectorApplicationSubmittedNotification($current, 'learner', 'resubmitted'),
                     );
 
                     try {
@@ -1144,7 +1219,7 @@ final class ConnectorVerificationService
                             $this->notifySafely(
                                 $admin,
                                 $current->id,
-                                new ConnectorApplicationSubmittedNotification($current, 'admin'),
+                                new ConnectorApplicationSubmittedNotification($current, 'admin', 'resubmitted'),
                             );
                         }
                     } catch (Throwable $e) {
