@@ -5,7 +5,15 @@
 
 @php
     $categories = config('connector_permissions.categories', []);
-    $connectorRows = $connectors->values()->map(function ($connector) use ($categories) {
+    $verificationLabels = [
+        'under_review' => 'Under review',
+        'resubmission_required' => 'Resubmission required',
+        'verified' => 'Verified evidence',
+        'legacy_verified' => 'Legacy verified',
+        'reverification_required' => 'Re-verification required',
+        'rejected' => 'Rejected evidence',
+    ];
+    $connectorRows = $connectors->values()->map(function ($connector) use ($categories, $verificationLabels) {
         $representative = $connector->primaryRepresentative;
         $category = (string) $connector->category;
         $status = (string) $connector->status;
@@ -19,6 +27,8 @@
             'category' => $category,
             'category_label' => $categories[$category] ?? str($category)->headline()->toString(),
             'status' => $status,
+            'verification_status' => (string) ($connector->verification_status ?: ''),
+            'verification_status_label' => $verificationLabels[$connector->verification_status] ?? 'Not recorded',
             'members' => (int) $connector->memberships_count,
             'invitations' => (int) $connector->invitations_count,
             'submitted_at' => $connector->created_at?->format('M d, Y') ?? 'Unknown date',
@@ -35,6 +45,7 @@
                 $category,
                 $categories[$category] ?? null,
                 $status,
+                $verificationLabels[$connector->verification_status] ?? null,
                 $connector->city_code,
                 $connector->barangay_code,
             ]))),
@@ -93,6 +104,24 @@
         @endforeach
     </div>
 
+    <section class="rounded-[24px] border border-brand-100 bg-brand-50/40 p-5 shadow-theme-xs" aria-labelledby="verification-counts-heading">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Evidence state</p>
+                <h2 id="verification-counts-heading" class="mt-1 text-lg font-bold text-gray-900">Verification queue</h2>
+            </div>
+            <span class="text-sm text-gray-500">Use the filters to narrow review work.</span>
+        </div>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            @foreach($verificationLabels as $key => $label)
+                <a href="{{ route('admin.connectors.index', ['verification_status' => $key]) }}" class="rounded-2xl border border-white bg-white px-4 py-3 shadow-sm transition hover:border-brand-200 hover:bg-brand-50">
+                    <span class="block text-xs font-semibold text-gray-500">{{ $label }}</span>
+                    <span class="mt-1 block text-xl font-bold text-gray-900">{{ number_format((int) ($verificationCounts[$key] ?? 0)) }}</span>
+                </a>
+            @endforeach
+        </div>
+    </section>
+
     <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
         <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.16),_transparent_34%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">
             <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
@@ -136,9 +165,42 @@
                     </label>
                 </div>
             </div>
+            <form method="GET" class="mt-5 grid gap-3 rounded-2xl border border-brand-100 bg-white/80 p-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="verification-filter-form">
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Operational status</span>
+                    <select name="status" class="w-full rounded-xl border-brand-100 bg-white px-3 py-2.5 text-sm text-gray-900">
+                        <option value="">All operational statuses</option>
+                        @foreach(['pending' => 'Pending', 'verified' => 'Verified', 'rejected' => 'Rejected', 'suspended' => 'Suspended', 'withdrawn' => 'Withdrawn'] as $key => $label)
+                            <option value="{{ $key }}" @selected(($filters['status'] ?? '') === $key)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Verification state</span>
+                    <select name="verification_status" class="w-full rounded-xl border-brand-100 bg-white px-3 py-2.5 text-sm text-gray-900">
+                        <option value="">All verification states</option>
+                        @foreach($verificationLabels as $key => $label)
+                            <option value="{{ $key }}" @selected(($filters['verification_status'] ?? '') === $key)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Organization type</span>
+                    <select name="organization_type" class="w-full rounded-xl border-brand-100 bg-white px-3 py-2.5 text-sm text-gray-900">
+                        <option value="">All organization types</option>
+                        @foreach($organizationTypes as $key => $definition)
+                            <option value="{{ $key }}" @selected(($filters['organization_type'] ?? '') === $key)>{{ $definition['label'] ?? str($key)->headline() }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <div class="flex items-end">
+                    <button type="submit" class="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-800">Apply verification filters</button>
+                </div>
+            </form>
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Server results: {{ $connectors->count() }}</p>
             <p class="text-sm text-gray-500"><span class="font-semibold text-gray-800" x-text="filteredConnectors.length"></span> connectors shown</p>
             <button type="button" @click="resetFilters()" class="inline-flex items-center rounded-2xl border border-brand-200 bg-brand-50/60 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70">
                 Reset Filters
@@ -179,7 +241,10 @@
                                 <span class="text-xs text-gray-400">invites</span>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold capitalize" :class="statusClass(connector.status)" x-text="connector.status"></span>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold capitalize" :class="statusClass(connector.status)" x-text="connector.status"></span>
+                                    <span class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700" x-text="connector.verification_status_label"></span>
+                                </div>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600" x-text="connector.submitted_at"></td>
                             <td class="px-6 py-4 text-right">
@@ -187,13 +252,13 @@
                                     <a :href="connector.show_url" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50/60 text-brand-700 transition hover:bg-brand-100" title="View connector">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S3.732 16.057 2.458 12Z"/></svg>
                                     </a>
-                                    <button type="button" x-show="connector.status !== 'verified'" @click="openAction('approve', connector)" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100" title="Approve connector">
+                                    <button type="button" x-show="connector.status !== 'verified'" @click="window.location.href = connector.show_url" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100" title="Open verification workspace">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 13 4 4L19 7"/></svg>
                                     </button>
-                                    <button type="button" x-show="connector.status === 'pending'" @click="openAction('reject', connector)" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100" title="Reject connector">
+                                    <button type="button" x-show="connector.status === 'pending'" @click="window.location.href = connector.show_url" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100" title="Open verification workspace">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"/></svg>
                                     </button>
-                                    <button type="button" x-show="connector.status !== 'suspended'" @click="openAction('suspend', connector)" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100" title="Suspend connector">
+                                    <button type="button" x-show="connector.status !== 'suspended'" @click="window.location.href = connector.show_url" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100" title="Open verification workspace">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                                     </button>
                                 </div>
