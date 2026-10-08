@@ -11,6 +11,7 @@ use App\Notifications\Connectors\ConnectorApplicationSubmittedNotification;
 use App\Notifications\Connectors\ConnectorModerationDecisionNotification;
 use App\Notifications\Connectors\ConnectorVerificationActionRequiredNotification;
 use App\Support\ConnectorVerificationRequirements;
+use Carbon\CarbonInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\Notification as BaseNotification;
@@ -1239,6 +1240,377 @@ final class ConnectorVerificationService
 
             throw $e;
         }
+    }
+
+    public function sendExpirationWarnings(CarbonInterface $asOf): int
+    {
+        $warningCount = 0;
+        $warningDays = array_values(array_unique(array_filter(
+            array_map(static fn ($days): int => (int) $days, (array) config('connector_verification.expiration_warning_days', [30, 7])),
+            static fn (int $days): bool => $days > 0,
+        )));
+
+        foreach ($warningDays as $days) {
+            $warningDate = $asOf->copy()->addDays($days)->toDateString();
+
+            ConnectorVerificationDocument::query()
+                ->where('status', ConnectorVerificationDocument::STATUS_ACCEPTED)
+                ->whereNull('superseded_at')
+                ->whereDate('expiry_date', $warningDate)
+                ->chunkById(100, function ($documents) use (&$warningCount, $days, $warningDate): void {
+                    foreach ($documents as $document) {
+                        if ($this->sendExpirationWarning($document, $days, $warningDate)) {
+                            $warningCount++;
+                        }
+                    }
+                });
+        }
+
+        return $warningCount;
+    }
+
+    public function expireDueDocuments(CarbonInterface $asOf): int
+    {
+        $expiredCount = 0;
+        $asOfDate = $asOf->toDateString();
+
+        ConnectorVerificationDocument::query()
+            ->where('status', ConnectorVerificationDocument::STATUS_ACCEPTED)
+            ->whereNull('superseded_at')
+            ->whereDate('expiry_date', '<=', $asOfDate)
+            ->chunkById(100, function ($documents) use (&$expiredCount, $asOfDate): void {
+                foreach ($documents as $document) {
+                    if ($this->expireDocument($document, $asOfDate)) {
+                        $expiredCount++;
+                    }
+                }
+            });
+
+        return $expiredCount;
+    }
+
+    private function sendExpirationWarning(
+        ConnectorVerificationDocument $document,
+        int $warningDays,
+        string $warningDate,
+    ): bool {
+        $warned = false;
+
+        DB::transaction(function () use (&$warned, $document, $warningDays, $warningDate): void {
+            $connector = Connector::query()
+                ->whereKey($document->connector_id)
+                ->lockForUpdate()
+                ->first();
+            $requirement = ConnectorVerificationRequirement::query()
+                ->whereKey($document->connector_verification_requirement_id)
+                ->lockForUpdate()
+                ->first();
+            $lockedDocument = ConnectorVerificationDocument::query()
+                ->whereKey($document->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $connector || ! $requirement || ! $lockedDocument
+                || (int) $requirement->connector_id !== (int) $connector->id
+                || (int) $lockedDocument->connector_id !== (int) $connector->id
+                || (int) $lockedDocument->connector_verification_requirement_id !== (int) $requirement->id
+                || in_array($connector->status, ['rejected', 'withdrawn'], true)
+                || $lockedDocument->status !== ConnectorVerificationDocument::STATUS_ACCEPTED
+                || $requirement->superseded_at !== null
+                || $lockedDocument->superseded_at !== null
+                || $lockedDocument->expiry_date === null
+                || $lockedDocument->expiry_date->toDateString() !== $warningDate) {
+                return;
+            }
+
+            $definition = $this->definitionFor($requirement);
+            if (! ($definition['expires'] ?? false)) {
+                return;
+            }
+
+            $action = 'document_expiration_warning_'.$warningDays;
+            if ($connector->verificationAudits()
+                ->where('connector_verification_document_id', $lockedDocument->id)
+                ->where('action', $action)
+                ->exists()) {
+                return;
+            }
+
+            $connector->verificationAudits()->create([
+                'connector_verification_requirement_id' => $requirement->id,
+                'connector_verification_document_id' => $lockedDocument->id,
+                'action' => $action,
+                'new_state' => [
+                    'status' => ConnectorVerificationDocument::STATUS_ACCEPTED,
+                    'expiry_date' => $lockedDocument->expiry_date->toDateString(),
+                    'warning_days' => $warningDays,
+                ],
+                'submission_round' => $lockedDocument->submission_round,
+            ]);
+
+            $requirementLabel = $requirement->label;
+            DB::afterCommit(function () use ($connector, $requirementLabel): void {
+                $current = $connector->fresh();
+                $recipient = $current->primaryRepresentative()->first();
+
+                if ($recipient) {
+                    $this->notifySafely(
+                        $recipient,
+                        $current->id,
+                        new ConnectorVerificationActionRequiredNotification(
+                            $current,
+                            'expiration_warning',
+                            [$requirementLabel],
+                        ),
+                    );
+                }
+            });
+
+            $warned = true;
+        });
+
+        return $warned;
+    }
+
+    private function expireDocument(
+        ConnectorVerificationDocument $document,
+        string $asOfDate,
+    ): bool {
+        $expired = false;
+
+        DB::transaction(function () use (&$expired, $document, $asOfDate): void {
+            $connector = Connector::query()
+                ->whereKey($document->connector_id)
+                ->lockForUpdate()
+                ->first();
+            $requirement = ConnectorVerificationRequirement::query()
+                ->whereKey($document->connector_verification_requirement_id)
+                ->lockForUpdate()
+                ->first();
+            $lockedDocument = ConnectorVerificationDocument::query()
+                ->whereKey($document->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $connector || ! $requirement || ! $lockedDocument
+                || (int) $requirement->connector_id !== (int) $connector->id
+                || (int) $lockedDocument->connector_id !== (int) $connector->id
+                || (int) $lockedDocument->connector_verification_requirement_id !== (int) $requirement->id
+                || in_array($connector->status, ['rejected', 'withdrawn'], true)
+                || $lockedDocument->status !== ConnectorVerificationDocument::STATUS_ACCEPTED
+                || $requirement->superseded_at !== null
+                || $lockedDocument->superseded_at !== null
+                || $lockedDocument->expiry_date === null
+                || $lockedDocument->expiry_date->toDateString() > $asOfDate) {
+                return;
+            }
+
+            $definition = $this->definitionFor($requirement);
+            if (! ($definition['expires'] ?? false)) {
+                return;
+            }
+
+            $previousRequirementStatus = $requirement->status;
+            $lockedDocument->update([
+                'status' => ConnectorVerificationDocument::STATUS_EXPIRED,
+            ]);
+
+            $requirementStatus = $this->recomputeRequirementStatus($requirement);
+            $requirement->update(['status' => $requirementStatus]);
+
+            $connector->verificationAudits()->create([
+                'connector_verification_requirement_id' => $requirement->id,
+                'connector_verification_document_id' => $lockedDocument->id,
+                'action' => 'document_expired',
+                'previous_state' => [
+                    'status' => ConnectorVerificationDocument::STATUS_ACCEPTED,
+                    'requirement_status' => $previousRequirementStatus,
+                ],
+                'new_state' => [
+                    'status' => ConnectorVerificationDocument::STATUS_EXPIRED,
+                    'requirement_status' => $requirementStatus,
+                    'expiry_date' => $lockedDocument->expiry_date->toDateString(),
+                ],
+                'submission_round' => $lockedDocument->submission_round,
+            ]);
+
+            $requirements = ConnectorVerificationRequirement::query()
+                ->where('connector_id', $connector->id)
+                ->whereNull('superseded_at')
+                ->get();
+            $verificationSatisfied = $this->verificationRulesSatisfied($requirements);
+            $transitionAction = null;
+            $previousVerificationStatus = $connector->verification_status;
+
+            if (! $verificationSatisfied && $connector->status === 'verified'
+                && $connector->verification_status !== Connector::VERIFICATION_REVERIFICATION_REQUIRED) {
+                $connector->update([
+                    'verification_status' => Connector::VERIFICATION_REVERIFICATION_REQUIRED,
+                ]);
+                $transitionAction = 'connector_reverification_required';
+            } elseif (! $verificationSatisfied && $connector->status === 'pending'
+                && $connector->verification_status !== Connector::VERIFICATION_RESUBMISSION_REQUIRED) {
+                $connector->update([
+                    'verification_status' => Connector::VERIFICATION_RESUBMISSION_REQUIRED,
+                ]);
+                $transitionAction = 'connector_resubmission_required';
+            }
+
+            if ($transitionAction !== null) {
+                $connector->verificationAudits()->create([
+                    'action' => $transitionAction,
+                    'previous_state' => [
+                        'verification_status' => $previousVerificationStatus,
+                    ],
+                    'new_state' => [
+                        'verification_status' => $connector->verification_status,
+                    ],
+                    'submission_round' => (int) $connector->current_submission_round,
+                ]);
+
+                $requirementLabel = $requirement->label;
+                DB::afterCommit(function () use ($connector, $requirementLabel): void {
+                    $current = $connector->fresh();
+                    $recipient = $current->primaryRepresentative()->first();
+
+                    if ($recipient) {
+                        $this->notifySafely(
+                            $recipient,
+                            $current->id,
+                            new ConnectorVerificationActionRequiredNotification(
+                                $current,
+                                'reverification_required',
+                                [$requirementLabel],
+                            ),
+                        );
+                    }
+
+                    try {
+                        foreach ($this->adminRecipients() as $admin) {
+                            $this->notifySafely(
+                                $admin,
+                                $current->id,
+                                new ConnectorVerificationActionRequiredNotification(
+                                    $current,
+                                    'reverification_required',
+                                    [$requirementLabel],
+                                    'admin',
+                                ),
+                            );
+                        }
+                    } catch (Throwable $e) {
+                        Log::warning('Connector expiration notification admin lookup failed.', [
+                            'connector_id' => $current->id,
+                            'exception' => $e,
+                        ]);
+                    }
+                });
+            }
+
+            $expired = true;
+        });
+
+        return $expired;
+    }
+
+    private function recomputeRequirementStatus(ConnectorVerificationRequirement $requirement): string
+    {
+        $state = $this->requirementEvidenceState($requirement);
+
+        if ($state['satisfied']) {
+            return ConnectorVerificationRequirement::STATUS_SATISFIED;
+        }
+
+        $definition = $this->definitionFor($requirement);
+        if ($requirement->status === ConnectorVerificationRequirement::STATUS_NOT_APPLICABLE
+            && ($definition['manual_not_applicable_allowed'] ?? false)) {
+            return ConnectorVerificationRequirement::STATUS_NOT_APPLICABLE;
+        }
+
+        if ($state['pending_count'] > 0) {
+            return ConnectorVerificationRequirement::STATUS_PENDING;
+        }
+
+        if ($state['expired_count'] > 0) {
+            return ConnectorVerificationRequirement::STATUS_EXPIRED;
+        }
+
+        return ConnectorVerificationRequirement::STATUS_REJECTED;
+    }
+
+    private function verificationRulesSatisfied($requirements): bool
+    {
+        $groups = [];
+
+        foreach ($requirements as $requirement) {
+            $state = $this->requirementEvidenceState($requirement);
+            $groups[(string) $requirement->rule_group][] = [
+                'mode' => (string) $requirement->rule_mode,
+                'required' => (bool) $requirement->is_required,
+                'satisfied' => $state['satisfied'],
+                'accepted_count' => $state['accepted_count'],
+                'minimum' => max(1, (int) $requirement->minimum_evidence_count),
+            ];
+        }
+
+        foreach ($groups as $items) {
+            $mode = $items[0]['mode'] ?? 'all';
+
+            if ($mode === 'any' && ! collect($items)->contains('satisfied', true)) {
+                return false;
+            }
+
+            if ($mode === 'minimum') {
+                $minimum = max(array_column($items, 'minimum'));
+                if (array_sum(array_column($items, 'accepted_count')) < $minimum) {
+                    return false;
+                }
+            }
+
+            if ($mode === 'all' && collect($items)->contains(
+                fn (array $item): bool => $item['required'] && ! $item['satisfied'],
+            )) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function requirementEvidenceState(ConnectorVerificationRequirement $requirement): array
+    {
+        $documents = $requirement->documents()
+            ->whereNull('superseded_at')
+            ->get(['status']);
+        $acceptedCount = $documents
+            ->where('status', ConnectorVerificationDocument::STATUS_ACCEPTED)
+            ->count();
+        $pendingCount = $documents
+            ->where('status', ConnectorVerificationDocument::STATUS_PENDING)
+            ->count();
+        $expiredCount = $documents
+            ->where('status', ConnectorVerificationDocument::STATUS_EXPIRED)
+            ->count();
+
+        $identityValid = $requirement->learner_identity_verification_id !== null
+            && LearnerIdentityVerification::query()
+                ->whereKey($requirement->learner_identity_verification_id)
+                ->where('status', 'approved')
+                ->whereNull('superseded_at')
+                ->exists();
+
+        $definition = $this->definitionFor($requirement);
+        $manualNotApplicable = $requirement->status === ConnectorVerificationRequirement::STATUS_NOT_APPLICABLE
+            && ($definition['manual_not_applicable_allowed'] ?? false);
+
+        return [
+            'accepted_count' => $acceptedCount,
+            'pending_count' => $pendingCount,
+            'expired_count' => $expiredCount,
+            'satisfied' => $identityValid
+                || $acceptedCount >= max(1, (int) $requirement->minimum_evidence_count)
+                || $manualNotApplicable,
+        ];
     }
 
     private function assertDecisionRound(Connector $connector, int $expectedRound): void
