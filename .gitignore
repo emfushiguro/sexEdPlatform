@@ -58,7 +58,7 @@ fix-index.cjs
 \!github/
 \!skills/
 \!tail-admin/
-/.superpowers/
+\.superpowers/
 
 # Keep user-facing assets/media trackable
 !/public/media/

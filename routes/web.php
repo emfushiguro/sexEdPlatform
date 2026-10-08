@@ -6,14 +6,16 @@ use App\Http\Controllers\Chat\MessageController as ChatMessageController;
 use App\Http\Controllers\Chat\MessageRequestController as ChatMessageRequestController;
 use App\Http\Controllers\Chat\StatusController as ChatStatusController;
 use App\Http\Controllers\GuardianRelationshipVerificationController;
+use App\Http\Controllers\HelpArticleHelpfulnessController;
+use App\Http\Controllers\HelpCenterController;
 use App\Http\Controllers\Learner\AdminCreatorProfileController as LearnerAdminCreatorProfileController;
 use App\Http\Controllers\Learner\ContentReportController as LearnerContentReportController;
 use App\Http\Controllers\Learner\DependentSupportInformationController as LearnerDependentSupportInformationController;
 use App\Http\Controllers\Learner\InstructorApplicationController as LearnerInstructorApplicationController;
 use App\Http\Controllers\Learner\InstructorProfileController as LearnerInstructorProfileController;
 use App\Http\Controllers\Learner\InteractiveActivityController as LearnerInteractiveActivityController;
-use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
 use App\Http\Controllers\Learner\LearningPathController as LearnerLearningPathController;
+use App\Http\Controllers\Learner\LessonController as LearnerLessonController;
 use App\Http\Controllers\Learner\ModuleController as LearnerModuleController;
 use App\Http\Controllers\Learner\ModuleFeedbackController as LearnerModuleFeedbackController;
 use App\Http\Controllers\Learner\ModuleReviewPageController as LearnerModuleReviewPageController;
@@ -25,12 +27,16 @@ use App\Http\Controllers\Learner\TopicTranslationController;
 use App\Http\Controllers\Parent\DependentSupportInformationController as ParentDependentSupportInformationController;
 use App\Http\Controllers\ParentInvitationController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PlatformFeedbackAttachmentController;
+use App\Http\Controllers\PlatformFeedbackController;
+use App\Http\Controllers\PlatformFeedbackMessageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeminarAttendanceController;
-use App\Http\Controllers\SeminarCodeAttendanceController;
 use App\Http\Controllers\SeminarBrowseController;
+use App\Http\Controllers\SeminarCodeAttendanceController;
 use App\Http\Controllers\SeminarExternalJoinController;
 use App\Http\Controllers\SeminarInteractionController;
+use App\Http\Controllers\TestimonialController;
 use App\Models\Conversation;
 use App\Services\Chat\ChatAuthorizationService;
 use Illuminate\Http\Client\Response as HttpClientResponse;
@@ -135,8 +141,33 @@ Route::get('/', function () {
         return redirect('/learn/dashboard');
     }
 
-    return view('landing.index');
+    return view('landing.index', ['testimonials' => \App\Models\Testimonial::query()->publiclyVisible()->with(['user.learnerProfile', 'user.instructorProfile', 'user.profile'])->orderBy('sort_order')->latest('published_at')->limit(6)->get()]);
 })->name('home');
+
+Route::get('/help', [HelpCenterController::class, 'index'])->name('help.index');
+Route::get('/help/{helpArticle:slug}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'show'])->withoutScopedBindings()->name('help.section.image');
+Route::get('/help/{helpArticle:slug}', [HelpCenterController::class, 'show'])->name('help.show');
+Route::get('/testimonials/{testimonial}/avatar', [\App\Http\Controllers\TestimonialAvatarController::class, 'show'])->name('testimonials.avatar');
+
+Route::middleware('auth')->group(function (): void {
+    Route::get('/feedback', [PlatformFeedbackController::class, 'create'])->name('feedback.create');
+    Route::get('/feedback/create', [PlatformFeedbackController::class, 'create'])->name('feedback.create.legacy');
+    Route::post('/feedback', [PlatformFeedbackController::class, 'store'])->middleware('throttle:feedback-submissions')->name('feedback.store');
+    Route::get('/feedback/submissions', [PlatformFeedbackController::class, 'index'])->name('feedback.index');
+    Route::get('/feedback/submissions/{platformFeedback}', [PlatformFeedbackController::class, 'show'])->name('feedback.show');
+    Route::get('/feedback/submissions/{platformFeedback}/attachment', [PlatformFeedbackAttachmentController::class, 'show'])->name('feedback.attachment.show');
+    Route::post('/feedback/submissions/{platformFeedback}/messages', [PlatformFeedbackMessageController::class, 'store'])->middleware('throttle:30,1')->name('feedback.messages.store');
+    Route::delete('/feedback/submissions/{platformFeedback}', [PlatformFeedbackController::class, 'withdraw'])->name('feedback.withdraw');
+
+    Route::get('/testimonials', [TestimonialController::class, 'index'])->name('testimonials.index');
+    Route::get('/testimonials/create', [TestimonialController::class, 'create'])->name('testimonials.create');
+    Route::post('/testimonials', [TestimonialController::class, 'store'])->middleware('throttle:feedback-submissions')->name('testimonials.store');
+    Route::get('/testimonials/{testimonial}', [TestimonialController::class, 'show'])->name('testimonials.show');
+    Route::delete('/testimonials/{testimonial}', [TestimonialController::class, 'withdraw'])->name('testimonials.withdraw');
+});
+Route::put('/help/{helpArticle}/helpfulness', [HelpArticleHelpfulnessController::class, 'update'])
+    ->middleware(['auth', 'throttle:helpfulness'])
+    ->name('help.helpfulness.update');
 
 Route::get('/download', function () {
     return redirect()->route('landing.apk');

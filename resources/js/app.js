@@ -18,6 +18,7 @@ import { createIdentitySelfie } from './identity-selfie';
 import { initializeLearningAudioPage, learningAudio } from './learning-audio';
 import './toast'; // Toast notification system
 import './admin-community';
+import './sweet-alerts';
 import './chat/store';
 import './chat/global-popup';
 import './seminar-livestream';

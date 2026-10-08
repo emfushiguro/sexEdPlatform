@@ -23,9 +23,11 @@ use App\Models\Module;
 use App\Models\ModuleReviewRequest;
 use App\Models\ParentChildAccount;
 use App\Models\Payment;
+use App\Models\PlatformFeedback;
 use App\Models\Quiz;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\Testimonial;
 use App\Models\User;
 use App\Observers\PaymentObserver;
 use App\Policies\AdminCreatorProfilePolicy;
@@ -35,7 +37,9 @@ use App\Policies\LearningPathPolicy;
 use App\Policies\LessonPolicy;
 use App\Policies\ModulePolicy;
 use App\Policies\ParentChildPolicy;
+use App\Policies\PlatformFeedbackPolicy;
 use App\Policies\QuizPolicy;
+use App\Policies\TestimonialPolicy;
 use App\Policies\TopicPolicy;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\SubscriptionService;
@@ -92,6 +96,12 @@ class AppServiceProvider extends ServiceProvider
                     ], 429, $headers);
                 });
         });
+        RateLimiter::for('feedback-submissions', function (Request $request) {
+            $payloadKey = $request->input('submission_token') ?: sha1((string) $request->input('type').'|'.(string) $request->input('subject').'|'.(string) $request->input('description'));
+
+            return Limit::perMinute(5)->by('feedback:'.($request->user()?->id ?? $request->ip()).':'.$payloadKey);
+        });
+        RateLimiter::for('helpfulness', fn (Request $request) => Limit::perMinute(30)->by('helpfulness:'.($request->user()?->id ?? $request->ip())));
 
         Gate::policy(User::class, ParentChildPolicy::class);
         Gate::policy(DependentSupportProfile::class, DependentSupportProfilePolicy::class);
@@ -102,6 +112,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Lesson::class, LessonPolicy::class);
         Gate::policy(LessonTopic::class, TopicPolicy::class);
         Gate::policy(Quiz::class, QuizPolicy::class);
+        Gate::policy(PlatformFeedback::class, PlatformFeedbackPolicy::class);
+        Gate::policy(Testimonial::class, TestimonialPolicy::class);
 
         Payment::observe(PaymentObserver::class);
 

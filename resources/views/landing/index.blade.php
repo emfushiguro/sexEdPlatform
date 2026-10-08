@@ -560,6 +560,37 @@
 </section>
 
 
+@if(isset($testimonials) && $testimonials->isNotEmpty())
+<section id="testimonials" class="bg-white px-6 py-20 sm:px-8">
+    <div class="mx-auto max-w-6xl">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-purple-700">Community voices</p>
+            <h2 class="mt-3 text-3xl font-bold tracking-tight text-gray-950 sm:text-4xl">What our community says</h2>
+            <p class="mt-3 text-base leading-7 text-gray-600">Real experiences from people learning and teaching with Conscious Connections.</p>
+        </div>
+        <div class="mx-auto mt-10 flex max-w-5xl flex-wrap justify-center gap-5">
+            @foreach($testimonials->take(6) as $testimonial)
+                <figure class="flex h-full w-full max-w-sm flex-col rounded-2xl border border-purple-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.875rem)]">
+                    <blockquote class="flex-1 text-base leading-7 text-gray-700">“{{ $testimonial->quotation }}”</blockquote>
+                    <figcaption class="mt-6 flex items-center gap-3 border-t border-gray-100 pt-5">
+                        @if($testimonial->show_profile_image)
+                            <x-support.testimonial-avatar :testimonial="$testimonial" />
+                        @endif
+                        <div class="min-w-0">
+                            <p class="truncate font-semibold text-gray-950">{{ $testimonial->display_name }}</p>
+                            @if($testimonial->show_role && $testimonial->display_role)
+                                <p class="mt-0.5 text-sm text-gray-500">{{ $testimonial->display_role }}</p>
+                            @endif
+                        </div>
+                    </figcaption>
+                </figure>
+            @endforeach
+        </div>
+    </div>
+</section>
+@endif
+
+
 {{-- ═══════════════════════════════════════════════════
      FOOTER — 4-column full, brand gradient
 ═══════════════════════════════════════════════════ --}}
@@ -604,6 +635,7 @@
                     <li><a href="{{ $href }}" class="lp-footer-link text-sm">{{ $label }}</a></li>
                     @endforeach
                     <li><a href="{{ route('landing.apk') }}" class="lp-footer-link text-sm">Download APK</a></li>
+                    <li><a href="{{ route('help.index') }}" class="lp-footer-link text-sm">Help Center</a></li>
                 </ul>
             </div>
 
