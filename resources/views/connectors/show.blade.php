@@ -2,19 +2,38 @@
 
 @section('title', $connector->name)
 @section('content')
+@php
+    $publiclyVerified = in_array($connector->verification_status, ['verified', 'legacy_verified'], true);
+    $verificationUpdateInProgress = in_array($connector->verification_status, ['under_review', 'resubmission_required', 'reverification_required'], true);
+    $logoUrl = $connector->status === 'verified' && filled($connector->logo_path)
+        ? Storage::disk(config('connector_verification.logo_disk', 'public'))->url($connector->logo_path)
+        : null;
+@endphp
 <div class="mx-auto max-w-5xl space-y-6 px-4 py-6">
     <a href="{{ route('connectors.index') }}" class="text-sm font-semibold text-purple-700">Back to connectors</a>
 
     <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div class="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
             <div class="flex gap-4">
-                <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-2xl font-bold text-purple-700">
-                    {{ strtoupper(mb_substr($connector->name, 0, 1)) }}
-                </div>
+                @if($logoUrl)
+                    <img src="{{ $logoUrl }}" alt="{{ $connector->name }} logo" class="h-16 w-16 flex-shrink-0 rounded-2xl object-cover">
+                @else
+                    <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-2xl font-bold text-purple-700">
+                        {{ strtoupper(mb_substr($connector->name, 0, 1)) }}
+                    </div>
+                @endif
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.18em] text-purple-700">{{ $categories[$connector->category] ?? str($connector->category)->headline() }}</p>
                     <h1 class="mt-1 text-2xl font-bold text-gray-900">{{ $connector->name }}</h1>
                     <p class="mt-3 max-w-3xl text-sm leading-6 text-gray-600">{{ $connector->description ?: 'No description provided yet.' }}</p>
+                    @if($publiclyVerified)
+                        <div class="mt-4" role="status">
+                            <span class="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-bold uppercase text-green-700">Verified</span>
+                            <p class="mt-1 text-xs text-gray-500">Verified by Conscious Connections based on submitted organizational and authorization documents.</p>
+                        </div>
+                    @elseif($verificationUpdateInProgress)
+                        <p class="mt-4 text-sm font-semibold text-gray-600">Verification update in progress</p>
+                    @endif
                 </div>
             </div>
             @include('connectors.partials.membership-button', ['connector' => $connector, 'state' => $membershipState])

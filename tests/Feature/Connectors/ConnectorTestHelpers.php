@@ -89,6 +89,7 @@ trait ConnectorTestHelpers
             ...$this->connectorPayload(['name' => 'Verified Connector']),
             'slug' => 'verified-connector-'.str()->random(6),
             'status' => 'verified',
+            'verification_status' => Connector::VERIFICATION_LEGACY_VERIFIED,
             'created_by' => $owner->id,
             'primary_representative_user_id' => $owner->id,
         ]);

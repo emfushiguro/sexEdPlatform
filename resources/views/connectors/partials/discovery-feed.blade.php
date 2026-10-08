@@ -6,18 +6,36 @@
 @else
     <div class="grid gap-4 md:grid-cols-2">
         @foreach($connectors as $connector)
+            @php
+                $publiclyVerified = in_array($connector->verification_status, ['verified', 'legacy_verified'], true);
+                $verificationUpdateInProgress = in_array($connector->verification_status, ['under_review', 'resubmission_required', 'reverification_required'], true);
+                $logoUrl = $connector->status === 'verified' && filled($connector->logo_path)
+                    ? Storage::disk(config('connector_verification.logo_disk', 'public'))->url($connector->logo_path)
+                    : null;
+            @endphp
             <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div class="flex gap-4">
-                    <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-purple-100 text-lg font-bold text-purple-700">
-                        {{ strtoupper(mb_substr($connector->name, 0, 1)) }}
-                    </div>
+                    @if($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="{{ $connector->name }} logo" class="h-12 w-12 flex-shrink-0 rounded-xl object-cover">
+                    @else
+                        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-purple-100 text-lg font-bold text-purple-700">
+                            {{ strtoupper(mb_substr($connector->name, 0, 1)) }}
+                        </div>
+                    @endif
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                                 <h3 class="truncate text-base font-bold text-gray-900">{{ $connector->name }}</h3>
                                 <p class="text-sm text-gray-500">{{ $categories[$connector->category] ?? str($connector->category)->headline() }}</p>
                             </div>
-                            <span class="inline-flex w-fit rounded-full bg-green-100 px-2.5 py-1 text-xs font-bold uppercase text-green-700">Verified</span>
+                            @if($publiclyVerified)
+                                <div class="sm:text-right">
+                                    <span class="inline-flex w-fit rounded-full bg-green-100 px-2.5 py-1 text-xs font-bold uppercase text-green-700">Verified</span>
+                                    <p class="mt-1 text-xs text-gray-500">Verified by Conscious Connections based on submitted organizational and authorization documents.</p>
+                                </div>
+                            @elseif($verificationUpdateInProgress)
+                                <span class="inline-flex w-fit rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">Verification update in progress</span>
+                            @endif
                         </div>
                         <p class="mt-3 line-clamp-2 text-sm text-gray-600">{{ $connector->description ?: 'No description provided yet.' }}</p>
                         <p class="mt-3 text-xs text-gray-500">{{ $connector->address_line ?: 'Location available on request' }}</p>
