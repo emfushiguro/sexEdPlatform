@@ -29,6 +29,7 @@ use App\Http\Controllers\Connector\SeminarRegistrantController;
 use App\Http\Controllers\Connector\SeminarSpeakerController;
 use App\Http\Controllers\Connector\SubscriptionController;
 use App\Http\Controllers\Connector\VerificationDocumentController;
+use App\Http\Controllers\HelpCenterController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -46,6 +47,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/connector/{connector}/withdraw', [RegistrationController::class, 'withdraw'])->name('connector.withdraw');
 
     Route::get('/connector/{connector}/dashboard', [DashboardController::class, 'index'])->name('connector.dashboard');
+    Route::get('/connector/{connector}/help', [HelpCenterController::class, 'index'])->name('connector.help.index');
+    Route::get('/connector/{connector}/help/{helpArticle:slug}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'connectorShow'])->withoutScopedBindings()->name('connector.help.section.image');
+    Route::get('/connector/{connector}/help/{helpArticle:slug}', [HelpCenterController::class, 'connectorShow'])->withoutScopedBindings()->name('connector.help.show');
+    Route::get('/connector/{connector}/feedback', [\App\Http\Controllers\PlatformFeedbackController::class, 'create'])->name('connector.feedback.create');
+    Route::get('/connector/{connector}/feedback/create', [\App\Http\Controllers\PlatformFeedbackController::class, 'create'])->name('connector.feedback.create.legacy');
+    Route::post('/connector/{connector}/feedback', [\App\Http\Controllers\PlatformFeedbackController::class, 'store'])->middleware('throttle:feedback-submissions')->name('connector.feedback.store');
+    Route::get('/connector/{connector}/feedback/submissions', [\App\Http\Controllers\PlatformFeedbackController::class, 'index'])->name('connector.feedback.index');
+    Route::get('/connector/{connector}/feedback/submissions/{platformFeedback}', [\App\Http\Controllers\PlatformFeedbackController::class, 'connectorShow'])->withoutScopedBindings()->name('connector.feedback.show');
+    Route::get('/connector/{connector}/feedback/submissions/{platformFeedback}/attachment', [\App\Http\Controllers\PlatformFeedbackAttachmentController::class, 'show'])->name('connector.feedback.attachment.show');
+    Route::post('/connector/{connector}/feedback/submissions/{platformFeedback}/messages', [\App\Http\Controllers\PlatformFeedbackMessageController::class, 'connectorStore'])->middleware('throttle:30,1')->name('connector.feedback.messages.store');
+    Route::delete('/connector/{connector}/feedback/submissions/{platformFeedback}', [\App\Http\Controllers\PlatformFeedbackController::class, 'withdraw'])->name('connector.feedback.withdraw');
     Route::get('/connector/{connector}/modules', [ModuleMarketplaceController::class, 'index'])->name('connector.modules');
     Route::get('/connector/{connector}/modules/library', [ModuleLibraryController::class, 'index'])
         ->name('connector.modules.library.index');
