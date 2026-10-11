@@ -62,4 +62,39 @@ class ConnectorRegistrationStepperTest extends TestCase
             ->assertSee('id="error-evidence"', false)
             ->assertDontSee('/connector-registration/draft');
     }
+
+    public function test_inline_stepper_selectors_are_safe_inside_the_html_data_attribute(): void
+    {
+        $this->seedCaviteAddress();
+
+        $response = $this->actingAs(User::factory()->create(['role' => 'learner']))
+            ->get(route('connectors.register'));
+
+        $response->assertOk();
+
+        foreach ([
+            "querySelectorAll('[data-requirement-file]')",
+            "querySelectorAll('[data-step-heading]')",
+            "querySelectorAll('[data-step-panel]')",
+        ] as $selector) {
+            $this->assertMatchesRegularExpression(
+                '/<div\\s+[^>]*x-data="[^"]*'.preg_quote($selector, '/').'[^"]*"[^>]*>/s',
+                $response->getContent()
+            );
+        }
+    }
+
+    public function test_registration_form_uses_the_platform_connector_visual_language(): void
+    {
+        $this->seedCaviteAddress();
+
+        $this->actingAs(User::factory()->create(['role' => 'learner']))
+            ->get(route('connectors.register'))
+            ->assertOk()
+            ->assertSee('from-brand-500 via-brand-700 to-brand-900', false)
+            ->assertSee('border-brand-100 bg-brand-50', false)
+            ->assertSee('bg-brand-700', false)
+            ->assertDontSee('border-cyan-100 bg-cyan-50', false)
+            ->assertDontSee('border-b border-slate-200 bg-slate-950', false);
+    }
 }
