@@ -172,6 +172,11 @@ document.addEventListener('submit', async (event) => {
         return;
     }
 
+    // Community moderation has its own AJAX lifecycle and confirmation flow.
+    if (form.matches('[data-community-moderation-form]')) {
+        return;
+    }
+
     if (!form.matches('[data-confirm-submit]') || form.dataset.confirmed === 'true') {
         return;
     }

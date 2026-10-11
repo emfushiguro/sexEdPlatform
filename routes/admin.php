@@ -30,6 +30,37 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/notifications/dropdown-open', [Admin\NotificationController::class, 'markDropdownRead'])->name('notifications.dropdown-open');
     Route::get('/notifications/{id}/read', [Admin\NotificationController::class, 'markRead'])->name('notifications.read');
 
+    Route::prefix('help')->name('help.')->group(function () {
+      Route::resource('categories', Admin\HelpCategoryController::class)->except(['show', 'destroy'])->parameters(['categories' => 'helpCategory']);
+        Route::post('categories/{helpCategory}/deactivate', [Admin\HelpCategoryController::class, 'deactivate'])->name('categories.deactivate');
+        Route::post('categories/order', [Admin\HelpCategoryController::class, 'order'])->name('categories.order');
+      Route::resource('articles', Admin\HelpArticleController::class)->except(['show', 'destroy'])->parameters(['articles' => 'helpArticle']);
+        Route::get('articles/{helpArticle}/preview', [Admin\HelpArticleController::class, 'preview'])->name('articles.preview');
+        Route::get('articles/{helpArticle}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'adminShow'])->withoutScopedBindings()->name('articles.section.image');
+        Route::post('articles/{helpArticle}/publish', [Admin\HelpArticleController::class, 'publish'])->name('articles.publish');
+        Route::post('articles/{helpArticle}/archive', [Admin\HelpArticleController::class, 'archive'])->name('articles.archive');
+        Route::post('articles/order', [Admin\HelpArticleController::class, 'order'])->name('articles.order');
+    });
+    Route::prefix('feedback')->name('feedback.')->group(function () {
+        Route::get('/', [Admin\PlatformFeedbackController::class, 'index'])->name('index');
+        Route::get('/{platformFeedback}/attachment', [\App\Http\Controllers\PlatformFeedbackAttachmentController::class, 'show'])->name('attachment.show');
+        Route::post('/{platformFeedback}/messages', [\App\Http\Controllers\PlatformFeedbackMessageController::class, 'store'])->middleware('throttle:30,1')->name('messages.store');
+        Route::post('/{platformFeedback}/open', [Admin\PlatformFeedbackController::class, 'open'])->name('open');
+        Route::get('/{platformFeedback}', [Admin\PlatformFeedbackController::class, 'show'])->name('show');
+        Route::put('/{platformFeedback}', [Admin\PlatformFeedbackController::class, 'update'])->name('update');
+    });
+    Route::prefix('testimonials')->name('testimonials.')->group(function () {
+        Route::get('/', [Admin\TestimonialController::class, 'index'])->name('index');
+        Route::get('/{testimonial}/preview', [Admin\TestimonialController::class, 'preview'])->name('preview');
+        Route::get('/{testimonial}/avatar', [\App\Http\Controllers\TestimonialAvatarController::class, 'adminShow'])->name('avatar');
+        Route::get('/{testimonial}/edit', [Admin\TestimonialController::class, 'edit'])->name('edit');
+        Route::put('/{testimonial}', [Admin\TestimonialController::class, 'update'])->name('update');
+        Route::post('/order', [Admin\TestimonialController::class, 'order'])->name('order');
+        Route::post('/{testimonial}/publish', [Admin\TestimonialController::class, 'publish'])->name('publish');
+        Route::post('/{testimonial}/reject', [Admin\TestimonialController::class, 'reject'])->name('reject');
+        Route::post('/{testimonial}/withdraw', [Admin\TestimonialController::class, 'withdraw'])->name('withdraw');
+    });
+
     Route::prefix('content-reviews')->name('content-reviews.')->group(function () {
         Route::get('/', [Admin\ContentReviewController::class, 'index'])->name('index');
         Route::get('/{reviewRequest}', [Admin\ContentReviewController::class, 'show'])->name('show');

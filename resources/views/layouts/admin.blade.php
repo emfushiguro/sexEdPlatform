@@ -708,6 +708,39 @@
                         </ul>
                     </div>
 
+                    {{-- SUPPORT MANAGEMENT --}}
+                    <div data-support-section="management">
+                        <h2 x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                            x-cloak
+                            class="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            Support Management
+                        </h2>
+                        <ul class="flex flex-col gap-1">
+                            @foreach([
+                                ['label' => 'Help Articles', 'route' => 'admin.help.articles.index', 'active' => request()->routeIs('admin.help.*'), 'icon' => 'help'],
+                                ['label' => 'Support Tickets', 'route' => 'admin.feedback.index', 'active' => request()->routeIs('admin.feedback.*'), 'icon' => 'feedback'],
+                                ['label' => 'Testimonials', 'route' => 'admin.testimonials.index', 'active' => request()->routeIs('admin.testimonials.*'), 'icon' => 'testimonial'],
+                            ] as $managementItem)
+                                <li>
+                                    <a
+                                        href="{{ route($managementItem['route']) }}"
+                                        aria-label="{{ $managementItem['label'] }}"
+                                        title="{{ $managementItem['label'] }}"
+                                        @if($managementItem['active']) aria-current="page" @endif
+                                        class="group flex items-center gap-3 overflow-hidden whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 {{ $managementItem['active'] ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                        @if($managementItem['active']) style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);" @endif
+                                        :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''"
+                                    >
+                                        <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ $managementItem['active'] ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                            <x-ui.support-icon :name="$managementItem['icon']" />
+                                        </span>
+                                        <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">{{ $managementItem['label'] }}</span>
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+
                 </nav>
             </div>
 
