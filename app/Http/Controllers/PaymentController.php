@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\PayMongoPaymentLinkService;
 use App\Enums\PaymentStatus;
 use App\Services\ModulePurchaseService;
+use App\Services\Connectors\ConnectorModulePurchaseService;
 use App\Services\PaymentReceiptService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,7 @@ class PaymentController extends Controller
     public function __construct(
         protected SubscriptionService $subscriptionService,
         protected ModulePurchaseService $modulePurchaseService,
+        protected ConnectorModulePurchaseService $connectorModulePurchaseService,
         protected PaymentReceiptService $paymentReceiptService,
     ) {}
 
@@ -255,7 +257,7 @@ class PaymentController extends Controller
     public function pending(Payment $payment)
     {
         $isInstructorContext = $this->isInstructorPaymentContext($payment);
-        $isModulePayment = $payment->isModulePurchase();
+        $isModulePayment = $payment->isModuleCommercePurchase();
 
         if ($isModulePayment) {
             if ($payment->user_id !== Auth::id()) {
@@ -276,7 +278,9 @@ class PaymentController extends Controller
         // Auto-activate if PayMongo already processed this payment
         if ($payment->status === PaymentStatus::Pending) {
             if ($isModulePayment) {
-                $completed = $this->modulePurchaseService->verifyAndCompletePendingPayment($payment);
+                $completed = $payment->isConnectorModulePurchase()
+                    ? $this->connectorModulePurchaseService->verifyAndCompletePendingPayment($payment)
+                    : $this->modulePurchaseService->verifyAndCompletePendingPayment($payment);
                 if ($completed) {
                     return redirect($this->resolvePaymentRedirectUrl($payment))
                         ->with('success', 'Payment confirmed! Your module access is now available.');
@@ -310,7 +314,7 @@ class PaymentController extends Controller
      */
     public function checkStatus(Payment $payment)
     {
-        $isModulePayment = $payment->isModulePurchase();
+        $isModulePayment = $payment->isModuleCommercePurchase();
 
         if ($isModulePayment) {
             if ($payment->user_id !== Auth::id()) {
@@ -332,7 +336,9 @@ class PaymentController extends Controller
         }
 
         if ($isModulePayment) {
-            $completed = $this->modulePurchaseService->verifyAndCompletePendingPayment($payment);
+            $completed = $payment->isConnectorModulePurchase()
+                ? $this->connectorModulePurchaseService->verifyAndCompletePendingPayment($payment)
+                : $this->modulePurchaseService->verifyAndCompletePendingPayment($payment);
             if ($completed) {
                 return response()->json(['status' => 'completed', 'redirect' => $this->resolvePaymentRedirectUrl($payment)]);
             }
@@ -439,7 +445,9 @@ class PaymentController extends Controller
                 'paid_at' => now(),
             ]);
 
-            if ($payment->isModulePurchase()) {
+            if ($payment->isConnectorModulePurchase()) {
+                $this->connectorModulePurchaseService->completePayment($payment, 'paymongo', null);
+            } elseif ($payment->isModulePurchase()) {
                 $this->modulePurchaseService->completePayment($payment, 'paymongo', null);
             } else {
                 $this->subscriptionService->activate($payment->subscription);
@@ -470,18 +478,26 @@ class PaymentController extends Controller
             ->limit(20);
 
         if ($isInstructorContext) {
-            $pendingPaymentsQuery->whereNotNull('subscription_id')
-                ->whereHas('subscription.plan', function ($query) {
-                    $query->where('plan_audience', 'instructor');
-                });
+            $pendingPaymentsQuery->where(function ($query) {
+                $query->where(function ($subscriptionQuery) {
+                    $subscriptionQuery->whereNotNull('subscription_id')
+                        ->whereHas('subscription.plan', function ($planQuery) {
+                            $planQuery->where('plan_audience', 'instructor');
+                        });
+                })->orWhere('payment_details->payment_scope', 'connector_module_purchase');
+            });
         }
 
         // Reconcile stale pending records before rendering history table.
         $pendingPayments = $pendingPaymentsQuery->get();
 
         foreach ($pendingPayments as $pendingPayment) {
-            if ($pendingPayment->isModulePurchase()) {
-                $this->modulePurchaseService->verifyAndCompletePendingPayment($pendingPayment);
+            if ($pendingPayment->isModuleCommercePurchase()) {
+                if ($pendingPayment->isConnectorModulePurchase()) {
+                    $this->connectorModulePurchaseService->verifyAndCompletePendingPayment($pendingPayment);
+                } else {
+                    $this->modulePurchaseService->verifyAndCompletePendingPayment($pendingPayment);
+                }
                 continue;
             }
 
@@ -489,14 +505,23 @@ class PaymentController extends Controller
         }
 
         $paymentsQuery = $user->payments()
-            ->with(['subscription.plan', 'modulePurchase.module'])
+            ->with([
+                'subscription.plan',
+                'modulePurchase.module',
+                'connectorModulePurchase.connector',
+                'connectorModulePurchase.module',
+            ])
             ->latest();
 
         if ($isInstructorContext) {
-            $paymentsQuery->whereNotNull('subscription_id')
-                ->whereHas('subscription.plan', function ($query) {
-                    $query->where('plan_audience', 'instructor');
-                });
+            $paymentsQuery->where(function ($query) {
+                $query->where(function ($subscriptionQuery) {
+                    $subscriptionQuery->whereNotNull('subscription_id')
+                        ->whereHas('subscription.plan', function ($planQuery) {
+                            $planQuery->where('plan_audience', 'instructor');
+                        });
+                })->orWhere('payment_details->payment_scope', 'connector_module_purchase');
+            });
         }
 
         $payments = $paymentsQuery->paginate(10);
@@ -511,7 +536,7 @@ class PaymentController extends Controller
     {
         $isInstructorContext = request()->routeIs('instructor.payments.receipt');
 
-        if ($payment->isModulePurchase()) {
+        if ($payment->isModuleCommercePurchase()) {
             if ($payment->user_id !== Auth::id()) {
                 abort(403);
             }
@@ -706,7 +731,7 @@ class PaymentController extends Controller
         }
 
         $module = null;
-        if ($scope === 'module_purchase' && $moduleId > 0) {
+        if (in_array($scope, ['module_purchase', 'connector_module_purchase'], true) && $moduleId > 0) {
             $module = \App\Models\Module::query()->find($moduleId);
 
             if (Auth::check()) {
@@ -715,7 +740,7 @@ class PaymentController extends Controller
 
                 $pendingQuery = $user->payments()
                     ->where('status', PaymentStatus::Pending->value)
-                    ->where('payment_details->payment_scope', 'module_purchase')
+                    ->where('payment_details->payment_scope', $scope)
                     ->where('payment_details->module_id', $moduleId)
                     ->latest('id');
 
@@ -725,7 +750,11 @@ class PaymentController extends Controller
 
                 $pendingPayment = $pendingQuery->first();
                 if ($pendingPayment) {
-                    $this->modulePurchaseService->verifyAndCompletePendingPayment($pendingPayment);
+                    if ($scope === 'connector_module_purchase') {
+                        $this->connectorModulePurchaseService->verifyAndCompletePendingPayment($pendingPayment);
+                    } else {
+                        $this->modulePurchaseService->verifyAndCompletePendingPayment($pendingPayment);
+                    }
                 }
             }
         }
@@ -769,8 +798,14 @@ class PaymentController extends Controller
             return null;
         }
 
-        if ($scope === 'module_purchase') {
+        if (in_array($scope, ['module_purchase', 'connector_module_purchase'], true)) {
             if (!$payment->isModulePurchase()) {
+                if ($scope !== 'connector_module_purchase' || !$payment->isConnectorModulePurchase()) {
+                    return null;
+                }
+            }
+
+            if ($scope === 'connector_module_purchase' && !$payment->isConnectorModulePurchase()) {
                 return null;
             }
 
@@ -781,7 +816,7 @@ class PaymentController extends Controller
             return $payment;
         }
 
-        if ($payment->isModulePurchase()) {
+        if ($payment->isModuleCommercePurchase()) {
             return null;
         }
 
@@ -794,8 +829,8 @@ class PaymentController extends Controller
             ->where('status', PaymentStatus::Completed->value)
             ->latest('id');
 
-        if ($scope === 'module_purchase') {
-            $query->where('payment_details->payment_scope', 'module_purchase');
+        if (in_array($scope, ['module_purchase', 'connector_module_purchase'], true)) {
+            $query->where('payment_details->payment_scope', $scope);
 
             if ($moduleId > 0) {
                 $query->where('payment_details->module_id', $moduleId);
@@ -839,9 +874,16 @@ class PaymentController extends Controller
 
     private function resolvePaymentRedirectUrl(Payment $payment): string
     {
-        if ($payment->isModulePurchase()) {
+        if ($payment->isModuleCommercePurchase()) {
             $moduleId = (int) data_get($payment->payment_details, 'module_id');
             if ($moduleId > 0) {
+                if ($payment->isConnectorModulePurchase()) {
+                    $connectorId = (int) data_get($payment->payment_details, 'connector_id');
+                    return $connectorId > 0
+                        ? route('connector.modules', $connectorId)
+                        : route('learner.modules.index');
+                }
+
                 return route('learner.modules.show', $moduleId);
             }
 

@@ -1,11 +1,16 @@
-@extends('layouts.learner-app')
+@extends($layout ?? 'layouts.learner-app')
 
 @php
     $scope = $scope ?? 'subscription';
     $isModule = $scope === 'module_purchase';
-    $pageTitle = $isModule ? 'Confirm Module Purchase' : 'Confirm Subscription Purchase';
+    $isConnectorModule = $scope === 'connector_module_purchase';
+    $pageTitle = $isConnectorModule
+        ? 'Confirm Connector Module Purchase'
+        : ($isModule ? 'Confirm Module Purchase' : 'Confirm Subscription Purchase');
     $subtitle = $isModule
-        ? 'Review module details before redirecting to secure PayMongo checkout.'
+        ? ($isConnectorModule
+            ? 'Review the organization seat package before redirecting to secure PayMongo checkout.'
+            : 'Review module details before redirecting to secure PayMongo checkout.')
         : 'Review subscription details before redirecting to secure PayMongo checkout.';
     $submitUrl = $submitUrl ?? '#';
     $backUrl = $backUrl ?? route('subscription.index');
@@ -52,10 +57,12 @@
         <div class="px-6 py-4 bg-white space-y-4">
             <div class="rounded-xl border border-gray-200 p-3 bg-gray-50/70">
                 <p class="text-xs text-gray-500">Purchase Type</p>
-                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $isModule ? 'Module Purchase' : 'Subscription' }}</p>
+                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $isConnectorModule ? 'Connector Module Package' : ($isModule ? 'Module Purchase' : 'Subscription') }}</p>
             </div>
 
-            @if($isModule)
+            @if($isConnectorModule)
+                @include('payments.partials.checkout-item-connector-module', ['connector' => $connector, 'module' => $module, 'seatCapacity' => $seatCapacity])
+            @elseif($isModule)
                 @include('payments.partials.checkout-item-module', ['module' => $module])
             @else
                 @include('payments.partials.checkout-item-subscription', ['subscription' => $subscription])
@@ -65,11 +72,11 @@
                 <p class="text-sm font-semibold text-purple-700">Payment Summary</p>
                 <div class="mt-2 flex items-center justify-between">
                     <span class="text-sm text-purple-700">Price</span>
-                    <span class="text-sm font-semibold text-purple-800">PHP {{ number_format($amount, 2) }}</span>
+                    <span class="text-sm font-semibold text-purple-800">{{ $currency ?? 'PHP' }} {{ number_format($amount, 2) }}</span>
                 </div>
                 <div class="mt-1 flex items-center justify-between">
                     <span class="text-sm font-semibold text-purple-700">Total Amount</span>
-                    <span class="text-2xl font-extrabold tracking-tight text-purple-800">PHP {{ number_format($amount, 2) }}</span>
+                    <span class="text-2xl font-extrabold tracking-tight text-purple-800">{{ $currency ?? 'PHP' }} {{ number_format($amount, 2) }}</span>
                 </div>
             </div>
 
@@ -122,6 +129,9 @@
             @error('accept_terms')
                 <p class="mt-3 text-sm text-red-600">{{ $message }}</p>
             @enderror
+            @if($isConnectorModule)
+                <p class="mt-3 text-xs font-medium text-amber-700">Connector packages are non-refundable and do not auto-assign seats.</p>
+            @endif
         </div>
 
         <button type="submit" id="submit-btn" class="mt-6 w-full py-3.5 px-6 rounded-xl font-bold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-base bg-brand-500 hover:bg-brand-600 hover:shadow-lg hover:shadow-purple-300/40 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">

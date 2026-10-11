@@ -168,5 +168,6 @@
                         </div>
                     </form>
                 </div>
+            @include('instructor.modules.partials.connector-marketplace')
             </div>
 @endsection

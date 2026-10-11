@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Learner;
 
-use App\Enums\EnrollmentStatus;
 use App\Enums\InteractiveActivityType;
 use App\Http\Controllers\Controller;
 use App\Models\InteractiveActivity;
 use App\Models\InteractiveActivityProgress;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityPresenter;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityProgressService;
+use App\Services\Modules\ModuleAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +20,7 @@ class InteractiveActivityController extends Controller
     public function __construct(
         private readonly InteractiveActivityProgressService $progress,
         private readonly InteractiveActivityPresenter $presenter,
+        private readonly ModuleAccessService $moduleAccessService,
     ) {}
 
     public function show(InteractiveActivity $interactiveActivity): JsonResponse
@@ -139,11 +140,7 @@ class InteractiveActivityController extends Controller
 
         abort_unless($activity->lessonTopic && $lesson && $module, 404);
         abort_unless($lesson->is_published, 404);
-        abort_unless($module->isLearnerVisible(), 403);
-        abort_unless(Auth::user()->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved)
-            ->exists(), 403);
+        $this->moduleAccessService->assertCanLearn(Auth::user(), $module);
 
         if ($checkRevision && (int) $request->input('revision') !== (int) $activity->revision) {
             abort(response()->json(['message' => 'Activity changed. Reload to continue.'], 409));

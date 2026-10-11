@@ -10,6 +10,7 @@ use App\Notifications\Admin\NewModuleSubmissionNotification;
 use App\Notifications\InstructorModuleReviewDecisionNotification;
 use App\Notifications\InstructorModuleReviewStatusNotification;
 use App\Services\Content\ContentAuthoringService;
+use App\Services\Content\ModuleRevisionCompatibilityService;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\Moderation\SourceAdapters\ModuleReviewModerationAdapter;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ class ContentGovernanceService
         private readonly ContentAuthoringService $contentAuthoringService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
         private readonly ModuleReviewModerationAdapter $moduleReviewModerationAdapter,
+        private readonly ModuleRevisionCompatibilityService $moduleRevisionCompatibilityService,
     ) {}
 
     /**
@@ -240,6 +242,7 @@ class ContentGovernanceService
             $revision = $reviewRequest->revision;
             $module = $reviewRequest->module;
 
+            $this->moduleRevisionCompatibilityService->assertCompatible($module, $revision);
             $this->assertInstructorPublishQuotaAvailable($module);
 
             $revision->forceFill([

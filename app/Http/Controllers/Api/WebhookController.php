@@ -6,6 +6,7 @@ use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Subscription;
+use App\Services\Connectors\ConnectorModulePurchaseService;
 use App\Services\ModulePurchaseService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class WebhookController extends Controller
     public function __construct(
         protected SubscriptionService $subscriptionService,
         protected ModulePurchaseService $modulePurchaseService,
+        protected ConnectorModulePurchaseService $connectorModulePurchaseService,
     ) {}
 
     /**
@@ -107,25 +109,33 @@ class WebhookController extends Controller
             'amount' => $attributes['amount'] ?? 0,
         ]);
 
-        if ($paymentScope === 'module_purchase') {
+        if (in_array($paymentScope, ['module_purchase', 'connector_module_purchase'], true)) {
             $payment = $paymentId
                 ? Payment::query()->find($paymentId)
                 : Payment::query()
                     ->where('user_id', $userId)
                     ->where('status', PaymentStatus::Pending)
-                    ->where('payment_details->payment_scope', 'module_purchase')
+                    ->where('payment_details->payment_scope', $paymentScope)
                     ->latest('id')
                     ->first();
 
-            if (!$payment) {
+            if (!$payment || ($paymentScope === 'connector_module_purchase' && !$payment->isConnectorModulePurchase())) {
                 return;
             }
 
-            $this->modulePurchaseService->completePayment(
-                payment: $payment,
-                paymentMethod: $paymentMethod,
-                paymongoPaymentId: (string) ($paymentData['id'] ?? ''),
-            );
+            if ($paymentScope === 'connector_module_purchase') {
+                $this->connectorModulePurchaseService->completePayment(
+                    payment: $payment,
+                    paymentMethod: $paymentMethod,
+                    paymongoPaymentId: (string) ($paymentData['id'] ?? ''),
+                );
+            } else {
+                $this->modulePurchaseService->completePayment(
+                    payment: $payment,
+                    paymentMethod: $paymentMethod,
+                    paymongoPaymentId: (string) ($paymentData['id'] ?? ''),
+                );
+            }
 
             return;
         }

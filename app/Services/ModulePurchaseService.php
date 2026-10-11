@@ -11,6 +11,8 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\Monetization\ModuleSaleLedgerService;
+use App\Services\Modules\ModuleAccessService;
+use App\Services\Modules\ModuleCapacityService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,6 +22,8 @@ class ModulePurchaseService
         private readonly PayMongoPaymentLinkService $payMongoPaymentLinkService,
         private readonly ModuleSaleLedgerService $moduleSaleLedgerService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
+        private readonly ModuleAccessService $moduleAccessService,
+        private readonly ModuleCapacityService $moduleCapacityService,
     ) {
     }
 
@@ -70,6 +74,19 @@ class ModulePurchaseService
 
         try {
             return DB::transaction(function () use ($user, $module, $paymentMethod, $billing) {
+                $pendingPurchase = ModulePurchase::query()
+                    ->where('user_id', $user->id)
+                    ->where('module_id', $module->id)
+                    ->where('status', ModulePurchase::STATUS_PENDING)
+                    ->latest('id')
+                    ->first();
+                $module = $this->moduleCapacityService->lock($module);
+                $this->moduleCapacityService->assertAvailable(
+                    $module,
+                    1,
+                    excludeModulePurchaseId: $pendingPurchase?->id,
+                );
+
                 $billingName = (string) ($billing['name'] ?? $user->name);
                 $billingEmail = (string) ($billing['email'] ?? $user->email ?? '');
                 $billingPhone = (string) ($billing['phone'] ?? '');
@@ -86,9 +103,17 @@ class ModulePurchaseService
                         [
                             'amount' => (float) ($module->price_amount ?? 0),
                             'currency' => strtoupper((string) ($module->price_currency ?? 'PHP')),
+                            'capacity_hold_expires_at' => now()->addMinutes(
+                                (int) config('billing.module_marketplace.capacity_hold_minutes', 30)
+                            ),
                             'metadata' => [],
                         ]
                     );
+                $purchase->update([
+                    'capacity_hold_expires_at' => now()->addMinutes(
+                        (int) config('billing.module_marketplace.capacity_hold_minutes', 30)
+                    ),
+                ]);
 
                 $payment = Payment::query()
                     ->where('user_id', $user->id)
@@ -283,6 +308,7 @@ class ModulePurchaseService
                     'payment_id' => $payment->id,
                     'status' => ModulePurchase::STATUS_COMPLETED,
                     'purchased_at' => now(),
+                    'capacity_hold_expires_at' => null,
                     'metadata' => array_merge($purchase->metadata ?? [], [
                         'payment_id' => $payment->id,
                     ]),
@@ -290,7 +316,16 @@ class ModulePurchaseService
             }
 
             if ($module) {
+                $this->moduleAccessService->grantIndividualPurchase($purchase);
                 $this->ensureEnrollmentAfterPurchase($payment->user_id, $module);
+
+                $enrollment = ModuleEnrollment::query()
+                    ->where('user_id', $payment->user_id)
+                    ->where('module_id', $module->id)
+                    ->first();
+                if ($enrollment) {
+                    $this->moduleAccessService->grantDirectEnrollment($enrollment);
+                }
             }
 
             try {

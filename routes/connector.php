@@ -12,6 +12,10 @@ use App\Http\Controllers\Connector\HomeController;
 use App\Http\Controllers\Connector\InvitationController;
 use App\Http\Controllers\Connector\InvitationInboxController;
 use App\Http\Controllers\Connector\MemberController;
+use App\Http\Controllers\Connector\ModuleAccessController;
+use App\Http\Controllers\Connector\ModuleLibraryController;
+use App\Http\Controllers\Connector\ModuleMarketplaceController;
+use App\Http\Controllers\Connector\ModulePurchaseController;
 use App\Http\Controllers\Connector\MembershipRequestController;
 use App\Http\Controllers\Connector\NotificationController;
 use App\Http\Controllers\Connector\RegistrationController;
@@ -24,6 +28,7 @@ use App\Http\Controllers\Connector\SeminarLivestreamController;
 use App\Http\Controllers\Connector\SeminarRegistrantController;
 use App\Http\Controllers\Connector\SeminarSpeakerController;
 use App\Http\Controllers\Connector\SubscriptionController;
+use App\Http\Controllers\Connector\VerificationDocumentController;
 use App\Http\Controllers\HelpCenterController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +40,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connectors/{connector}', [HomeController::class, 'show'])->name('connectors.show');
     Route::post('/connectors/{connector}/membership-requests', [MembershipRequestController::class, 'store'])->name('connectors.membership-requests.store');
     Route::get('/connector/{connector}/status', [RegistrationController::class, 'status'])->name('connector.status');
+    Route::post('/connector/{connector}/verification/resubmit', [RegistrationController::class, 'resubmit'])
+        ->name('connector.verification.resubmit');
+    Route::get('/connector/{connector}/verification/documents/{document}', VerificationDocumentController::class)
+        ->name('connector.verification.documents.show');
     Route::post('/connector/{connector}/withdraw', [RegistrationController::class, 'withdraw'])->name('connector.withdraw');
 
     Route::get('/connector/{connector}/dashboard', [DashboardController::class, 'index'])->name('connector.dashboard');
@@ -49,7 +58,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connector/{connector}/feedback/submissions/{platformFeedback}/attachment', [\App\Http\Controllers\PlatformFeedbackAttachmentController::class, 'show'])->name('connector.feedback.attachment.show');
     Route::post('/connector/{connector}/feedback/submissions/{platformFeedback}/messages', [\App\Http\Controllers\PlatformFeedbackMessageController::class, 'connectorStore'])->middleware('throttle:30,1')->name('connector.feedback.messages.store');
     Route::delete('/connector/{connector}/feedback/submissions/{platformFeedback}', [\App\Http\Controllers\PlatformFeedbackController::class, 'withdraw'])->name('connector.feedback.withdraw');
-    Route::get('/connector/{connector}/modules', [DashboardController::class, 'modules'])->name('connector.modules');
+    Route::get('/connector/{connector}/modules', [ModuleMarketplaceController::class, 'index'])->name('connector.modules');
+    Route::get('/connector/{connector}/modules/library', [ModuleLibraryController::class, 'index'])
+        ->name('connector.modules.library.index');
+    Route::get('/connector/{connector}/modules/library/{entitlement}', [ModuleLibraryController::class, 'show'])
+        ->name('connector.modules.library.show');
+    Route::get('/connector/{connector}/modules/library/{entitlement}/access', [ModuleLibraryController::class, 'access'])
+        ->name('connector.modules.library.access');
+    Route::get('/connector/{connector}/modules/purchases/{purchase}/confirmation', [ModulePurchaseController::class, 'confirmation'])
+        ->name('connector.modules.purchase.confirmation');
+    Route::get('/connector/{connector}/modules/marketplace/{listing}', [ModuleMarketplaceController::class, 'show'])
+        ->name('connector.modules.marketplace.show');
+    Route::get('/connector/{connector}/modules/marketplace/{listing}/checkout', [ModulePurchaseController::class, 'checkout'])
+        ->name('connector.modules.purchase.checkout');
+    Route::post('/connector/{connector}/modules/marketplace/{listing}/checkout', [ModulePurchaseController::class, 'store'])
+        ->name('connector.modules.purchase.store');
+    Route::post('/connector/{connector}/modules/{entitlement}/access-rules', [ModuleAccessController::class, 'storeRule'])
+        ->name('connector.modules.access-rules.store');
+    Route::delete('/connector/{connector}/modules/{entitlement}/access-rules/{rule}', [ModuleAccessController::class, 'destroyRule'])
+        ->name('connector.modules.access-rules.destroy');
+    Route::post('/connector/{connector}/modules/{entitlement}/members/{learner}/revoke', [ModuleAccessController::class, 'revoke'])
+        ->name('connector.modules.access.revoke');
+    Route::delete('/connector/{connector}/modules/{entitlement}/members/{learner}/revoke', [ModuleAccessController::class, 'clearRevocation'])
+        ->name('connector.modules.access.revoke.clear');
     Route::get('/connector/{connector}/educators', [DashboardController::class, 'educators'])->name('connector.educators');
     Route::get('/connector/{connector}/notifications', [NotificationController::class, 'index'])->name('connector.notifications.index');
     Route::post('/connector/{connector}/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('connector.notifications.mark-all-read');

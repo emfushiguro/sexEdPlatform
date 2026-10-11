@@ -5,6 +5,7 @@
 @section('content')
     <div x-data="transactionDetailsPage()" class="space-y-6">
         @php
+            $isConnectorMarketplace = $ledger->sale_channel === \App\Models\ModuleSaleLedger::SALE_CHANNEL_CONNECTOR_MARKETPLACE;
             $avatarPath = $ledger->learner?->learnerProfile?->avatar_path;
             $avatarUrl = null;
             if (!empty($avatarPath)) {
@@ -19,7 +20,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Transaction Details</h1>
-                <p class="mt-1 text-sm text-gray-600">Complete breakdown of module, learner, payment, and payout information.</p>
+                <p class="mt-1 text-sm text-gray-600">Complete breakdown of module, {{ $isConnectorMarketplace ? 'Connector Marketplace sale' : 'learner sale' }}, payment, and payout information.</p>
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ route('instructor.earnings.index') }}" class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Back to Earnings</a>
@@ -67,7 +68,7 @@
                 <p class="mt-2 text-2xl font-bold text-gray-900">P{{ number_format((float) $ledger->commission_amount, 2) }}</p>
             </div>
             <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-xs">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Your Earnings</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">{{ $isConnectorMarketplace ? 'Seller Net' : 'Your Earnings' }}</p>
                 <p class="mt-2 text-2xl font-bold text-gray-900">P{{ number_format((float) $ledger->instructor_earnings_amount, 2) }}</p>
             </div>
             <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-xs">
@@ -88,26 +89,44 @@
                     <div>
                         <p class="text-sm font-semibold text-gray-900">{{ $ledger->module?->title ?? 'Unknown Module' }}</p>
                         <p class="mt-1 text-xs text-gray-500">Price: P{{ number_format((float) ($ledger->module?->price_amount ?? 0), 2) }}</p>
-                        <p class="mt-1 text-xs text-gray-500">Purchase status: {{ ucfirst((string) ($ledger->modulePurchase?->status ?? 'N/A')) }}</p>
+                        @if($isConnectorMarketplace)
+                            <p class="mt-1 text-xs font-semibold text-indigo-700">Sale channel: Connector Marketplace</p>
+                            <p class="mt-1 text-xs text-gray-500">Connector: {{ $ledger->connector?->name ?? $ledger->connectorModulePurchase?->connector?->name ?? 'Unknown connector' }}</p>
+                            <p class="mt-1 text-xs text-gray-500">Acting buyer: {{ $ledger->buyer?->name ?? $ledger->connectorModulePurchase?->purchaser?->name ?? 'Unknown buyer' }}</p>
+                            <p class="mt-1 text-xs text-gray-500">Seats: {{ (int) ($ledger->seat_capacity_snapshot ?? $ledger->connectorModulePurchase?->seat_capacity ?? 0) }}</p>
+                        @else
+                            <p class="mt-1 text-xs text-gray-500">Purchase status: {{ ucfirst((string) ($ledger->modulePurchase?->status ?? 'N/A')) }}</p>
+                        @endif
                     </div>
                 </div>
             </section>
 
             <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs">
-                <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">Learner Information</h2>
+                <h2 class="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">{{ $isConnectorMarketplace ? 'Connector Buyer' : 'Learner Information' }}</h2>
                 <div class="mt-4 flex items-start gap-4">
-                    @if($avatarUrl)
-                        <img src="{{ $avatarUrl }}" alt="Learner avatar" class="h-14 w-14 rounded-full border border-gray-200 object-cover">
-                    @else
-                        <span class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 text-lg font-semibold text-sky-700">
-                            {{ strtoupper(substr($ledger->learner_name_snapshot ?: ($ledger->learner?->name ?? 'U'), 0, 1)) }}
+                    @if($isConnectorMarketplace)
+                        <span class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-lg font-semibold text-indigo-700">
+                            {{ strtoupper(substr(($ledger->buyer?->name ?? $ledger->connectorModulePurchase?->purchaser?->name ?? 'B'), 0, 1)) }}
                         </span>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">{{ $ledger->buyer?->name ?? $ledger->connectorModulePurchase?->purchaser?->name ?? 'Unknown buyer' }}</p>
+                            <p class="mt-1 text-xs text-gray-500">{{ $ledger->buyer?->email ?? $ledger->connectorModulePurchase?->purchaser?->email ?? 'No email available' }}</p>
+                            <p class="mt-1 text-xs text-gray-500">Connector: {{ $ledger->connector?->name ?? $ledger->connectorModulePurchase?->connector?->name ?? 'Unknown connector' }}</p>
+                        </div>
+                    @else
+                        @if($avatarUrl)
+                            <img src="{{ $avatarUrl }}" alt="Learner avatar" class="h-14 w-14 rounded-full border border-gray-200 object-cover">
+                        @else
+                            <span class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 text-lg font-semibold text-sky-700">
+                                {{ strtoupper(substr($ledger->learner_name_snapshot ?: ($ledger->learner?->name ?? 'U'), 0, 1)) }}
+                            </span>
+                        @endif
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">{{ $ledger->learner_name_snapshot ?: ($ledger->learner?->name ?? 'Unknown Learner') }}</p>
+                            <p class="mt-1 text-xs text-gray-500">{{ $ledger->learner?->email ?? 'No email available' }}</p>
+                            <p class="mt-1 text-xs text-gray-500">Username: {{ $ledger->learner?->learnerProfile?->username ?? 'N/A' }}</p>
+                        </div>
                     @endif
-                    <div>
-                        <p class="text-sm font-semibold text-gray-900">{{ $ledger->learner_name_snapshot ?: ($ledger->learner?->name ?? 'Unknown Learner') }}</p>
-                        <p class="mt-1 text-xs text-gray-500">{{ $ledger->learner?->email ?? 'No email available' }}</p>
-                        <p class="mt-1 text-xs text-gray-500">Username: {{ $ledger->learner?->learnerProfile?->username ?? 'N/A' }}</p>
-                    </div>
                 </div>
             </section>
 
@@ -130,6 +149,12 @@
                         <dt class="text-gray-500">Payout Status</dt>
                         <dd class="font-semibold text-gray-900">{{ ucfirst((string) $ledger->payout_status) }}</dd>
                     </div>
+                    @if($isConnectorMarketplace)
+                        <div class="flex items-start justify-between gap-3">
+                            <dt class="text-gray-500">Sale Channel</dt>
+                            <dd class="font-semibold text-indigo-700">Connector Marketplace</dd>
+                        </div>
+                    @endif
                     <div class="flex items-start justify-between gap-3">
                         <dt class="text-gray-500">Purchased At</dt>
                         <dd class="font-semibold text-gray-900">{{ optional($ledger->modulePurchase?->purchased_at ?: $ledger->occurred_at)->toDayDateTimeString() ?? 'N/A' }}</dd>
@@ -147,6 +172,12 @@
                     <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Commission Percent</dt>
                     <dd class="mt-1 text-sm font-semibold text-gray-900">{{ number_format((float) $ledger->commission_percent_snapshot, 2) }}%</dd>
                 </div>
+                @if($isConnectorMarketplace)
+                    <div>
+                        <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Seller Net</dt>
+                        <dd class="mt-1 text-sm font-semibold text-gray-900">PHP {{ number_format((float) ($ledger->seller_net_amount ?? $ledger->instructor_earnings_amount), 2) }}</dd>
+                    </div>
+                @endif
                 <div>
                     <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Tax Basis</dt>
                     <dd class="mt-1 text-sm font-semibold text-gray-900">{{ strtoupper((string) $ledger->tax_basis_snapshot) }}</dd>

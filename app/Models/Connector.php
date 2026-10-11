@@ -9,15 +9,32 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Connector extends Model
 {
+    public const VERIFICATION_UNDER_REVIEW = 'under_review';
+
+    public const VERIFICATION_RESUBMISSION_REQUIRED = 'resubmission_required';
+
+    public const VERIFICATION_VERIFIED = 'verified';
+
+    public const VERIFICATION_LEGACY_VERIFIED = 'legacy_verified';
+
+    public const VERIFICATION_REVERIFICATION_REQUIRED = 'reverification_required';
+
+    public const VERIFICATION_REJECTED = 'rejected';
+
     protected $fillable = [
         'name',
         'slug',
         'category',
+        'organization_type',
         'organization_email',
         'contact_number',
         'description',
         'website_url',
         'verification_notes',
+        'logo_path',
+        'verification_status',
+        'current_submission_round',
+        'verification_submitted_at',
         'city_code',
         'barangay_code',
         'address_line',
@@ -35,6 +52,8 @@ class Connector extends Model
         return [
             'reviewed_at' => 'datetime',
             'suspended_at' => 'datetime',
+            'current_submission_round' => 'integer',
+            'verification_submitted_at' => 'datetime',
         ];
     }
 
@@ -78,9 +97,39 @@ class Connector extends Model
         return $this->hasMany(ConnectorReview::class);
     }
 
+    public function verificationRequirements(): HasMany
+    {
+        return $this->hasMany(ConnectorVerificationRequirement::class);
+    }
+
+    public function verificationDocuments(): HasMany
+    {
+        return $this->hasMany(ConnectorVerificationDocument::class);
+    }
+
+    public function verificationAudits(): HasMany
+    {
+        return $this->hasMany(ConnectorVerificationAudit::class);
+    }
+
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    public function connectorModulePurchases(): HasMany
+    {
+        return $this->hasMany(ConnectorModulePurchase::class);
+    }
+
+    public function connectorModuleEntitlements(): HasMany
+    {
+        return $this->hasMany(ConnectorModuleEntitlement::class);
+    }
+
+    public function moduleAccessGrants(): HasMany
+    {
+        return $this->hasMany(ModuleAccessGrant::class);
     }
 
     public function seminars(): HasMany

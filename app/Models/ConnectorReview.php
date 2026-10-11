@@ -13,6 +13,9 @@ class ConnectorReview extends Model
         'from_status',
         'to_status',
         'reason',
+        'reason_code',
+        'internal_notes',
+        'submission_round',
         'reviewed_at',
     ];
 
@@ -20,6 +23,7 @@ class ConnectorReview extends Model
     {
         return [
             'reviewed_at' => 'datetime',
+            'submission_round' => 'integer',
         ];
     }
 

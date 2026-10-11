@@ -19,13 +19,16 @@
 
     @php
         $details = (array) ($payment->payment_details ?? []);
-        $isModulePayment = $payment->isModulePurchase() || isset($details['module_id']);
+        $isConnectorModulePurchase = $payment->isConnectorModulePurchase();
+        $isModulePayment = $payment->isModuleCommercePurchase() || isset($details['module_id']);
         $paymongoRef = $details['paymongo_payment_id'] ?? $details['paymongo_link_id'] ?? null;
         $reference = $payment->transaction_id ?: ($paymongoRef ? strtoupper(substr((string) $paymongoRef, -10)) : (string) $payment->id);
         $datePaid = $payment->paid_at ?? $payment->created_at;
         $method = strtoupper((string) ($payment->method ?? $details['payment_method'] ?? 'N/A'));
         $itemName = $isModulePayment
-            ? ($payment->modulePurchase?->module?->title ?? ($details['module_title'] ?? 'Module Purchase'))
+            ? ($connectorModulePurchase?->module?->title
+                ?? $payment->modulePurchase?->module?->title
+                ?? ($details['module_title'] ?? 'Module Purchase'))
             : ($payment->subscription?->plan?->name
                 ?? ($details['plan_name'] ?? $payment->subscription?->getPlanLabel() ?? 'Subscription Plan'));
         $billingCycle = $isModulePayment ? 'One-time purchase' : ucfirst((string) ($details['billing_cycle'] ?? 'monthly'));
@@ -61,6 +64,20 @@
                     <span class="font-medium">Learner Name</span>
                     <span class="text-right">{{ $payment->user?->name ?? 'N/A' }}</span>
                 </div>
+                @if($isConnectorModulePurchase)
+                    <div class="flex items-start justify-between gap-8 py-3">
+                        <span class="font-medium">Connector</span>
+                        <span class="text-right">{{ $connector?->name ?? 'N/A' }}</span>
+                    </div>
+                    <div class="flex items-start justify-between gap-8 py-3">
+                        <span class="font-medium">Seats</span>
+                        <span class="text-right">{{ $connectorModulePurchase?->seat_capacity ?? 0 }} seats</span>
+                    </div>
+                    <div class="flex items-start justify-between gap-8 py-3">
+                        <span class="font-medium">Terms Version</span>
+                        <span class="text-right">{{ $connectorModulePurchase?->terms_version ?? 'N/A' }}</span>
+                    </div>
+                @endif
                 <div class="flex items-start justify-between gap-8 py-3">
                     <span class="font-medium">Payment Method</span>
                     <span class="text-right">{{ $method }}</span>

@@ -163,7 +163,7 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">No.</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Module</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Learner</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Learner / Buyer</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Method</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Sale Amount</th>
                             <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Platform Fee</th>
@@ -176,6 +176,7 @@
                     <tbody class="divide-y divide-gray-100 bg-white">
                         @forelse($transactions as $tx)
                             @php
+                                $isConnectorMarketplace = $tx->sale_channel === \App\Models\ModuleSaleLedger::SALE_CHANNEL_CONNECTOR_MARKETPLACE;
                                 $avatarPath = $tx->learner?->learnerProfile?->avatar_path;
                                 $avatarUrl = null;
                                 if (!empty($avatarPath)) {
@@ -203,26 +204,41 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-3">
-                                    <div class="flex items-center gap-3">
-                                        @if($avatarUrl)
-                                            <img src="{{ $avatarUrl }}" alt="Learner avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover">
-                                        @else
-                                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-100 text-sm font-semibold text-sky-700">
-                                                {{ strtoupper(substr($tx->learner_name_snapshot ?: ($tx->learner?->name ?? 'U'), 0, 1)) }}
-                                            </span>
-                                        @endif
-                                        <div>
-                                            <p class="text-sm font-semibold text-gray-900">{{ $tx->learner_name_snapshot ?: ($tx->learner?->name ?? 'Unknown Learner') }}</p>
-                                            <p class="text-xs text-gray-500">{{ $tx->learner?->email ?? 'No email available' }}</p>
+                                    @if($isConnectorMarketplace)
+                                        <p class="text-sm font-semibold text-indigo-700">Connector Marketplace</p>
+                                        <p class="text-xs text-gray-500">Connector: {{ $tx->connector?->name ?? $tx->connectorModulePurchase?->connector?->name ?? 'Unknown connector' }}</p>
+                                        <p class="text-xs text-gray-500">Buyer: {{ $tx->buyer?->name ?? $tx->connectorModulePurchase?->purchaser?->name ?? 'Unknown buyer' }}</p>
+                                        <p class="text-xs text-gray-500">Seats: {{ (int) ($tx->seat_capacity_snapshot ?? $tx->connectorModulePurchase?->seat_capacity ?? 0) }}</p>
+                                    @else
+                                        <div class="flex items-center gap-3">
+                                            @if($avatarUrl)
+                                                <img src="{{ $avatarUrl }}" alt="Learner avatar" class="h-10 w-10 rounded-full border border-gray-200 object-cover">
+                                            @else
+                                                <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-100 text-sm font-semibold text-sky-700">
+                                                    {{ strtoupper(substr($tx->learner_name_snapshot ?: ($tx->learner?->name ?? 'U'), 0, 1)) }}
+                                                </span>
+                                            @endif
+                                            <div>
+                                                <p class="text-sm font-semibold text-gray-900">{{ $tx->learner_name_snapshot ?: ($tx->learner?->name ?? 'Unknown Learner') }}</p>
+                                                <p class="text-xs text-gray-500">{{ $tx->learner?->email ?? 'No email available' }}</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    @endif
                                 </td>
-                                <td class="px-6 py-3 text-sm text-gray-700">{{ ucfirst(str_replace('_', ' ', (string) ($tx->payment?->method ?? 'unknown'))) }}</td>
+                                <td class="px-6 py-3 text-sm text-gray-700">
+                                    @if($isConnectorMarketplace)
+                                        <span class="font-semibold text-indigo-700">Connector Marketplace</span>
+                                        <span class="block text-xs text-gray-500">{{ ucfirst(str_replace('_', ' ', (string) ($tx->payment?->method ?? 'unknown'))) }}</span>
+                                        <span class="block text-xs text-gray-500">{{ number_format((float) $tx->commission_percent_snapshot, 2) }}% fee - Seller net: PHP {{ number_format((float) ($tx->seller_net_amount ?? $tx->instructor_earnings_amount), 2) }}</span>
+                                    @else
+                                        {{ ucfirst(str_replace('_', ' ', (string) ($tx->payment?->method ?? 'unknown'))) }}
+                                    @endif
+                                </td>
                                 <td class="px-6 py-3 text-sm font-semibold text-gray-900">P{{ number_format((float) $tx->gross_amount, 2) }}</td>
                                 <td class="px-6 py-3 text-sm font-semibold text-gray-900">P{{ number_format((float) $tx->commission_amount, 2) }}</td>
                                 <td class="px-6 py-3 text-sm font-semibold text-gray-900">P{{ number_format((float) $tx->instructor_earnings_amount, 2) }}</td>
                                 <td class="px-6 py-3 text-sm text-gray-700">{{ ucfirst((string) $tx->payout_status) }}</td>
-                                <td class="px-6 py-3 text-sm text-gray-700">{{ optional($tx->occurred_at)->format('M d, Y h:i A') ?? 'N/A' }}</td>
+                                <td class="px-6 py-3 text-sm text-gray-700">{{ optional($tx->connectorModulePurchase?->purchased_at ?: $tx->occurred_at)->format('M d, Y h:i A') ?? 'N/A' }}</td>
                                 <td class="px-6 py-3 text-sm">
                                     <div class="flex items-center gap-2">
                                         <a href="{{ route('instructor.earnings.show', $tx) }}"

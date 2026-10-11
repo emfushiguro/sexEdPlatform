@@ -15,6 +15,7 @@ class ModulePurchase extends Model
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_FAILED = 'failed';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_ATTENTION_REQUIRED = 'attention_required';
 
     protected $fillable = [
         'user_id',
@@ -24,6 +25,7 @@ class ModulePurchase extends Model
         'currency',
         'status',
         'purchased_at',
+        'capacity_hold_expires_at',
         'metadata',
     ];
 
@@ -32,6 +34,7 @@ class ModulePurchase extends Model
         return [
             'amount' => 'decimal:2',
             'purchased_at' => 'datetime',
+            'capacity_hold_expires_at' => 'datetime',
             'metadata' => 'array',
         ];
     }

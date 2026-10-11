@@ -188,10 +188,18 @@
                                 <td class="px-6 py-3 text-sm font-semibold text-gray-900">₱{{ number_format((float) $tx->commission_amount, 2) }}</td>
                                 <td class="px-6 py-3 text-sm font-semibold text-gray-900">₱{{ number_format((float) $tx->instructor_earnings_amount, 2) }}</td>
                                 <td class="px-6 py-3 text-sm text-gray-700">
-                                    <p class="font-semibold text-gray-900">{{ ucfirst(str_replace('_', ' ', (string) ($tx->payment?->method ?? 'unknown'))) }}</p>
-                                    <p class="text-xs text-gray-500">{{ ucfirst((string) ($tx->payment?->status?->value ?? $tx->payment?->status ?? 'N/A')) }}</p>
+                                    @if($tx->sale_channel === \App\Models\ModuleSaleLedger::SALE_CHANNEL_CONNECTOR_MARKETPLACE)
+                                        <p class="font-semibold text-indigo-700">Connector Marketplace</p>
+                                        <p class="text-xs text-gray-500">Connector: {{ $tx->connector?->name ?? 'Unknown Connector' }}</p>
+                                        <p class="text-xs text-gray-500">Buyer: {{ $tx->buyer?->name ?? $tx->connectorModulePurchase?->purchaser?->name ?? 'Unknown buyer' }}</p>
+                                        <p class="text-xs text-gray-500">Seats: {{ (int) ($tx->seat_capacity_snapshot ?? $tx->connectorModulePurchase?->seat_capacity ?? 0) }}</p>
+                                        <p class="text-xs text-gray-500">Rate: {{ number_format((float) $tx->commission_percent_snapshot, 2) }}% - Seller net: PHP {{ number_format((float) ($tx->seller_net_amount ?? $tx->instructor_earnings_amount), 2) }}</p>
+                                    @else
+                                        <p class="font-semibold text-gray-900">{{ ucfirst(str_replace('_', ' ', (string) ($tx->payment?->method ?? 'unknown'))) }}</p>
+                                        <p class="text-xs text-gray-500">{{ ucfirst((string) ($tx->payment?->status?->value ?? $tx->payment?->status ?? 'N/A')) }}</p>
+                                    @endif
                                 </td>
-                                <td class="px-6 py-3 text-sm text-gray-700">{{ optional($tx->modulePurchase?->purchased_at ?: $tx->occurred_at)->format('M d, Y h:i A') ?? 'N/A' }}</td>
+                                <td class="px-6 py-3 text-sm text-gray-700">{{ optional($tx->connectorModulePurchase?->purchased_at ?: $tx->modulePurchase?->purchased_at ?: $tx->occurred_at)->format('M d, Y h:i A') ?? 'N/A' }}</td>
                                 <td class="px-6 py-3 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('admin.monetization.module-revenue.transactions.show', $tx) }}"
@@ -213,15 +221,17 @@
                                             </button>
                                         </form>
 
-                                        <form method="POST" action="{{ route('admin.monetization.module-revenue.destroy', $tx) }}" onsubmit="return confirm('Delete this transaction permanently?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700" title="Delete transaction" aria-label="Delete transaction">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </form>
+                                        @if($tx->sale_channel !== \App\Models\ModuleSaleLedger::SALE_CHANNEL_CONNECTOR_MARKETPLACE)
+                                            <form method="POST" action="{{ route('admin.monetization.module-revenue.destroy', $tx) }}" onsubmit="return confirm('Delete this transaction permanently?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50 text-gray-700" title="Delete transaction" aria-label="Delete transaction">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -291,6 +301,7 @@
                                 <td class="px-6 py-3 text-sm text-gray-900">₱{{ number_format((float) $rollup->commission_amount, 2) }}</td>
                                 <td class="px-6 py-3 text-sm text-gray-900">₱{{ number_format((float) $rollup->earnings_amount, 2) }}</td>
                                 <td class="px-6 py-3 text-right">
+                                    @if($rollup->instructor_id)
                                     <a href="{{ route('admin.monetization.module-revenue.instructors.show', $rollup->instructor_id) }}"
                                        class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-white transition hover:bg-brand-50"
                                        title="View instructor revenue details"
@@ -300,6 +311,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
                                     </a>
+                                    @endif
                                 </td>
                             </tr>
                         @empty

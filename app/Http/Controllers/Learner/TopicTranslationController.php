@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Learner;
 
-use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\LessonTopic;
 use App\Models\User;
 use App\Services\EntitlementService;
+use App\Services\Modules\ModuleAccessService;
 use App\Services\TopicTranslationService;
 use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -22,6 +22,7 @@ class TopicTranslationController extends Controller
 {
     public function __construct(
         private readonly EntitlementService $entitlementService,
+        private readonly ModuleAccessService $moduleAccessService,
     ) {
     }
 
@@ -46,21 +47,11 @@ class TopicTranslationController extends Controller
 
         /** @var User $user */
         $user = Auth::user();
+        $this->moduleAccessService->assertCanLearn($user, $module);
 
         $translatorGate = $this->requireTranslatorEntitlement($user, SubscriptionFeatureKeys::TEXT_TRANSLATOR);
         if ($translatorGate) {
             return $translatorGate;
-        }
-
-        $isEnrolled = $user->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved)
-            ->exists();
-
-        if (!$isEnrolled) {
-            return response()->json([
-                'message' => 'You are not enrolled in this module.',
-            ], 403);
         }
 
         $originalHtml = (string) ($topic->text_content ?? '');
@@ -199,16 +190,7 @@ class TopicTranslationController extends Controller
             ], 404);
         }
 
-        $isEnrolled = $user->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved)
-            ->exists();
-
-        if (! $isEnrolled) {
-            return response()->json([
-                'message' => 'You are not enrolled in this module.',
-            ], 403);
-        }
+        $this->moduleAccessService->assertCanLearn($user, $module);
 
         $requestedText = preg_replace('/\s+/u', ' ', strip_tags((string) ($validated['text'] ?? '')));
         $requestedText = is_string($requestedText) ? trim($requestedText) : '';

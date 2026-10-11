@@ -128,6 +128,22 @@ class ModulePolicy
         return $user->can('review modules');
     }
 
+    public function manageMarketplaceListing(User $user, Module $module): bool
+    {
+        if ($user->hasRole('admin')) {
+            return $module->content_owner_type === 'admin';
+        }
+
+        return $user->isInstructor()
+            && $user->can('edit modules')
+            && $this->ownsModule($user, $module);
+    }
+
+    public function suspendMarketplaceListing(User $user, Module $module): bool
+    {
+        return $user->hasRole('admin') && $user->can('review modules');
+    }
+
     private function ownsModule(User $user, Module $module): bool
     {
         return (int) $module->created_by === (int) $user->id;

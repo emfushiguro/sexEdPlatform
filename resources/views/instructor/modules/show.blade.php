@@ -187,6 +187,8 @@
     </div>
 </div>
 
+@include('instructor.modules.partials.connector-marketplace')
+
 {{-- ══  Section 3: Enrolled Learners  ══ --}}
 <div class="rounded-2xl bg-white shadow-sm border border-gray-100 p-6 mb-5"
      x-data="{

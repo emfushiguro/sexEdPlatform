@@ -32,8 +32,10 @@
 
     @php
         $enrolledModuleIds = $enrolledModuleIds ?? [];
+        $pastAccessModuleIds = $pastAccessModuleIds ?? [];
         $enrolledModules = $modules->filter(fn($m) => in_array($m->id, $enrolledModuleIds));
-        $browseModules   = $modules->filter(fn($m) => !in_array($m->id, $enrolledModuleIds));
+        $pastAccessModules = $modules->filter(fn($m) => in_array($m->id, $pastAccessModuleIds));
+        $browseModules   = $modules->filter(fn($m) => !in_array($m->id, $enrolledModuleIds) && !in_array($m->id, $pastAccessModuleIds));
     @endphp
 
     {{-- MY ENROLLED MODULES --}}
@@ -156,6 +158,31 @@
                             {{ $isCompleted ? 'Review Module' : ($pct > 0 ? 'Continue Learning' : 'Start Learning') }}
                         </a>
                     </div>
+                </div>
+            @endforeach
+        </div>
+    </section>
+    @endif
+
+    @if($pastAccessModules->isNotEmpty())
+    <section class="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/60">
+        <div class="mb-5 border-l-4 border-gray-400 pl-3">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-white">Past Access</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Progress and issued certificates are preserved; learning actions are unavailable.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach($pastAccessModules as $module)
+                @php
+                    $prog = $progress[$module->id];
+                    $enrollment = $enrollments->get($module->id);
+                @endphp
+                <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/40">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $module->title }}</h3>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $prog->completed_lessons }}/{{ $prog->total_lessons }} lessons completed</p>
+                    @if($enrollment?->completed_at)
+                        <p class="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">Completed</p>
+                    @endif
+                    <a href="{{ route('learner.modules.show', $module) }}" class="mt-4 inline-flex rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800">View History</a>
                 </div>
             @endforeach
         </div>

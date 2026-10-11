@@ -43,7 +43,7 @@
             ['Community Hub', 'connector.community.index', 'community.view_space', 'M7.5 8.25h9m-9 3.75h6m-8.25 7.5 2.25-2.25H18a2.25 2.25 0 0 0 2.25-2.25V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v9A2.25 2.25 0 0 0 6 17.25h.75v2.25Z'],
             ['Notifications', 'connector.notifications.index', null, 'M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 1 0-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9'],
             ['Roles & Permissions', 'connector.roles.index', 'connector.manage_roles', 'M12 3.75 5.25 6.5v5.25c0 4.25 2.85 7.9 6.75 8.95 3.9-1.05 6.75-4.7 6.75-8.95V6.5L12 3.75Zm-2.25 8.5 1.75 1.75 3.25-4'],
-            ['Modules', 'connector.modules', 'connector.manage_modules', 'M5 4.75h14v14H5zM8 8.75h8M8 12h8M8 15.25h5'],
+            ['Modules', 'connector.modules', null, 'M5 4.75h14v14H5zM8 8.75h8M8 12h8M8 15.25h5'],
             ['Educators', 'connector.educators', 'connector.manage_educators', 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0'],
             ['Subscription', 'connector.subscription', 'connector.view_subscription', 'M4.75 6.5h14.5M6 4.75h12A1.25 1.25 0 0 1 19.25 6v12A1.25 1.25 0 0 1 18 19.25H6A1.25 1.25 0 0 1 4.75 18V6A1.25 1.25 0 0 1 6 4.75Zm2 9.25h1m3 0h1'],
         ];

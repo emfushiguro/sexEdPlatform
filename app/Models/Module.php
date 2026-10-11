@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -88,6 +89,26 @@ class Module extends Model
     public function purchases()
     {
         return $this->hasMany(ModulePurchase::class);
+    }
+
+    public function marketplaceListing(): HasOne
+    {
+        return $this->hasOne(ModuleMarketplaceListing::class);
+    }
+
+    public function connectorModulePurchases(): HasMany
+    {
+        return $this->hasMany(ConnectorModulePurchase::class);
+    }
+
+    public function connectorModuleEntitlements(): HasMany
+    {
+        return $this->hasMany(ConnectorModuleEntitlement::class);
+    }
+
+    public function accessGrants(): HasMany
+    {
+        return $this->hasMany(ModuleAccessGrant::class);
     }
 
     public function moduleSaleLedgers(): HasMany

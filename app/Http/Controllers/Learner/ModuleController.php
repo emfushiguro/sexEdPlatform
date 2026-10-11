@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ProcessModulePaymentRequest;
 use App\Enums\EnrollmentStatus;
 use App\Models\Module;
+use App\Models\ModuleAccessGrant;
 use App\Models\ModuleEnrollment;
 use App\Models\ModulePurchase;
 use App\Models\ParentChildAccount;
@@ -21,6 +22,8 @@ use App\Notifications\Parent\ChildEnrollmentApprovalRequestedNotification;
 use App\Services\GamificationService;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\ModulePurchaseService;
+use App\Services\Modules\ModuleAccessService;
+use App\Services\Modules\ModuleCapacityService;
 use App\Services\LearnerModuleCompletionService;
 use App\Services\Content\AdminOwnershipDisplayService;
 use Illuminate\Http\Request;
@@ -34,6 +37,8 @@ class ModuleController extends Controller
         private readonly GamificationService $gamificationService,
         private readonly AdminOwnershipDisplayService $ownershipDisplayService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
+        private readonly ModuleAccessService $moduleAccessService,
+        private readonly ModuleCapacityService $moduleCapacityService,
     ) {
     }
 
@@ -53,18 +58,26 @@ class ModuleController extends Controller
         // Get learner's age
         $learnerAge = $learnerProfile->getAge();
         
-        $enrolledModuleIds = $user->moduleEnrollments()
+        $approvedModuleIds = $user->moduleEnrollments()
             ->where('status', EnrollmentStatus::Approved)
             ->pluck('module_id');
+        $historicalAccessModuleIds = ModuleAccessGrant::query()
+            ->where('user_id', $user->id)
+            ->whereIn('status', [
+                ModuleAccessGrant::STATUS_ACTIVE,
+                ModuleAccessGrant::STATUS_INACTIVE,
+            ])
+            ->pluck('module_id');
+        $knownModuleIds = $approvedModuleIds->merge($historicalAccessModuleIds)->unique()->values();
 
-        // Show active age-appropriate modules plus enrolled modules (including deactivated) for history visibility.
-        $modules = Module::where(function ($query) use ($learnerAge, $enrolledModuleIds) {
+        // Show active age-appropriate modules plus current and historical access for safe history visibility.
+        $modules = Module::where(function ($query) use ($learnerAge, $knownModuleIds) {
                 $query->where(function ($inner) use ($learnerAge) {
                     $inner->learnerVisible()->forAge($learnerAge);
                 });
 
-                if ($enrolledModuleIds->isNotEmpty()) {
-                    $query->orWhereIn('id', $enrolledModuleIds);
+                if ($knownModuleIds->isNotEmpty()) {
+                    $query->orWhereIn('id', $knownModuleIds);
                 }
             })
             ->withCount([
@@ -90,7 +103,17 @@ class ModuleController extends Controller
 
         // Get user's enrollments
         $enrollments = $user->moduleEnrollments()->get()->keyBy('module_id');
-        $enrolledModuleIds = $enrollments->keys()->toArray();
+        $enrolledModuleIds = $modules
+            ->filter(fn (Module $module): bool => $this->moduleAccessService->hasActiveAccess($user, $module))
+            ->pluck('id')
+            ->values()
+            ->toArray();
+        $pastAccessModuleIds = $modules
+            ->filter(fn (Module $module): bool => $this->moduleAccessService->hasHistoricalAccess($user, $module)
+                && !$this->moduleAccessService->hasActiveAccess($user, $module))
+            ->pluck('id')
+            ->values()
+            ->toArray();
 
         // Calculate progress for each module
         $progress = [];
@@ -121,7 +144,14 @@ class ModuleController extends Controller
             }
         }
 
-        return view('learner.modules.index', compact('modules', 'enrolledModuleIds', 'enrollments', 'progress', 'ownershipDisplays'));
+        return view('learner.modules.index', compact(
+            'modules',
+            'enrolledModuleIds',
+            'pastAccessModuleIds',
+            'enrollments',
+            'progress',
+            'ownershipDisplays',
+        ));
     }
 
     /**
@@ -141,10 +171,12 @@ class ModuleController extends Controller
             ->where('module_id', $module->id)
             ->first();
 
-        $isApprovedEnrollment = $enrollment && $enrollment->status === EnrollmentStatus::Approved;
+        $hasActiveAccess = $this->moduleAccessService->hasActiveAccess($user, $module);
+        $hasHistoricalAccess = $this->moduleAccessService->hasHistoricalAccess($user, $module);
+        $isApprovedEnrollment = $hasActiveAccess;
 
-        // Deactivated modules remain viewable for enrolled learners only.
-        if (!$module->isLearnerVisible() && !$isApprovedEnrollment) {
+        // Historical learners may review safe module metadata after access ends.
+        if (!$module->isLearnerVisible() && !$hasHistoricalAccess) {
             abort(404);
         }
 
@@ -154,27 +186,30 @@ class ModuleController extends Controller
         $creator = $module->creator;
         $ownershipDisplay = $this->ownershipDisplayService->forModule($module);
 
-        // Security: Check age-based access for non-enrolled learners.
+        // Security: Check age-based access for learners without current or historical access.
         $learnerAge = $learnerProfile->getAge();
-        if (!$isApprovedEnrollment && !$this->canAccessModule($module, $learnerAge)) {
+        if (!$hasActiveAccess && !$hasHistoricalAccess && !$this->canAccessModule($module, $learnerAge)) {
             return redirect()->route('learner.modules.index')
                 ->with('error', 'This module is not available for your age group.');
         }
 
-        // Get published lessons only
-        $lessons = $module->lessons()
+        $lessonsQuery = $module->lessons()
             ->where('is_published', true)
-            ->orderBy('order')
-            ->with([
+            ->orderBy('order');
+
+        if ($hasActiveAccess) {
+            $lessonsQuery->with([
                 'topics' => fn($query) => $query
                     ->ordered()
                     ->with(['interactiveActivities', 'checkpointQuestions.options']),
                 'quiz' => fn($query) => $query->where('is_active', true)->with('questions'),
-            ])
-            ->get();
+            ]);
+        }
 
-        // Check enrollment status
-        $isEnrolled = $isApprovedEnrollment;
+        $lessons = $lessonsQuery->get();
+
+        // Check shared access status
+        $isEnrolled = $hasActiveAccess;
         $enrollmentStatus = $enrollment?->status?->value;
 
         $isPaidModule = $module->isPaidAccess();
@@ -196,13 +231,11 @@ class ModuleController extends Controller
 
         $hasPurchased = $modulePurchase !== null;
 
-        $approvedEnrollmentsCount = ModuleEnrollment::query()
-            ->approvedForModule($module->id)
-            ->count();
-
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && $approvedEnrollmentsCount >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $approvedEnrollmentsCount = $capacityUsage['independent_learners'];
+        $effectiveEnrollmentLimit = $capacityUsage['limit'];
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         $needsParentApproval = ParentChildAccount::query()
             ->accessEligible()
@@ -263,29 +296,32 @@ class ModuleController extends Controller
             ->pluck('lesson_id')
             ->toArray();
 
-        // Get quizzes for this module
-        $moduleQuizzes = $module->quizzes()
-            ->where('is_active', true)
-            ->with('questions')
-            ->get();
+        // Do not load protected quiz content for historical-only access.
+        $moduleQuizzes = $hasActiveAccess
+            ? $module->quizzes()->where('is_active', true)->with('questions')->get()
+            : collect();
         
         // Get lesson quizzes
         $lessonQuizzes = [];
-        foreach ($lessons as $lesson) {
-            if ($lesson->quiz) {
-                $lessonQuizzes[$lesson->id] = $lesson->quiz;
+        if ($hasActiveAccess) {
+            foreach ($lessons as $lesson) {
+                if ($lesson->quiz) {
+                    $lessonQuizzes[$lesson->id] = $lesson->quiz;
+                }
             }
         }
         
         // Get user's quiz attempts
-        $quizAttempts = $user->quizAttempts()
-            ->whereIn('quiz_id', $moduleQuizzes->pluck('id')->merge(collect($lessonQuizzes)->pluck('id')))
-            ->get()
-            ->groupBy('quiz_id');
+        $quizAttempts = $hasActiveAccess
+            ? $user->quizAttempts()
+                ->whereIn('quiz_id', $moduleQuizzes->pluck('id')->merge(collect($lessonQuizzes)->pluck('id')))
+                ->get()
+                ->groupBy('quiz_id')
+            : collect();
 
         $moduleCertificate = $user->certificates()->where('module_id', $module->id)->first();
 
-        $topics = $lessons->flatMap(fn ($lesson) => $lesson->topics);
+        $topics = $hasActiveAccess ? $lessons->flatMap(fn ($lesson) => $lesson->topics) : collect();
         $topicIds = $topics->pluck('id')->unique();
         $completedTopicIds = $this->completionService->completedTopicIds($user, $topics)->all();
         $allTopicsCompleted = $topicIds->isEmpty() || count($completedTopicIds) === $topicIds->count();
@@ -337,7 +373,7 @@ class ModuleController extends Controller
                 || ($finalQuizAttemptLimit !== null && $finalAttemptCount >= (int) $finalQuizAttemptLimit);
         }
 
-        $certificateEligible = $isEnrolled
+        $certificateEligible = $hasActiveAccess
             && $totalLessons > 0
             && count($completedLessonIds) === $totalLessons
             && $allTopicsCompleted
@@ -370,7 +406,9 @@ class ModuleController extends Controller
                 ->get()
             : collect();
 
-        $reviewEligibility = $this->completionService->reviewEligibility($user, $module);
+        $reviewEligibility = $hasActiveAccess
+            ? $this->completionService->reviewEligibility($user, $module)
+            : ['eligible' => false, 'reason' => 'This module is available as historical access only.'];
         $userFeedback = ModuleFeedback::query()
             ->where('module_id', $module->id)
             ->where('learner_id', $user->id)
@@ -396,10 +434,15 @@ class ModuleController extends Controller
 
         $shieldsRemaining = UserDailyShield::getShields($user);
 
+        $activeConnectorSources = $this->moduleAccessService->activeConnectorSources($user, $module);
+
         return view('learner.modules.show', compact(
             'module', 
             'lessons', 
             'isEnrolled', 
+            'hasActiveAccess',
+            'hasHistoricalAccess',
+            'activeConnectorSources',
             'enrollmentStatus',
             'isPaidModule',
             'modulePurchase',
@@ -501,6 +544,7 @@ class ModuleController extends Controller
                 'status'      => EnrollmentStatus::PendingParentApproval,
                 'enrolled_at' => null,
             ]);
+            $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
             $enrollment->loadMissing('module');
 
@@ -523,19 +567,18 @@ class ModuleController extends Controller
                 ->with('success', 'Your enrollment request has been submitted. Please wait for guardian approval.');
         }
 
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && ModuleEnrollment::query()
-                ->approvedForModule($module->id)
-                ->count() >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         if ($isAtCapacity) {
-            ModuleEnrollment::create([
+            $enrollment = ModuleEnrollment::create([
                 'user_id' => $user->id,
                 'module_id' => $module->id,
                 'status' => EnrollmentStatus::Pending,
                 'enrolled_at' => null,
             ]);
+            $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
             return redirect()->route('learner.modules.index')
                 ->with('success', 'Module capacity has been reached. Your enrollment is queued for manual review.');
@@ -544,24 +587,26 @@ class ModuleController extends Controller
         // Check enrollment mode
         if ($module->enrollment_mode === 'manual') {
             // Manual approval - create pending enrollment
-            ModuleEnrollment::create([
+            $enrollment = ModuleEnrollment::create([
                 'user_id' => $user->id,
                 'module_id' => $module->id,
                 'status' => EnrollmentStatus::Pending,
                 'enrolled_at' => null,
             ]);
+            $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
             return redirect()->route('learner.modules.index')
                 ->with('success', 'Your enrollment request has been submitted. Please wait for instructor approval.');
         }
 
         // Auto approval - create approved enrollment
-        ModuleEnrollment::create([
+        $enrollment = ModuleEnrollment::create([
             'user_id' => $user->id,
             'module_id' => $module->id,
             'status' => EnrollmentStatus::Approved,
             'enrolled_at' => now(),
         ]);
+        $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
         return redirect()->route('learner.modules.show', $module)
             ->with('success', 'Successfully enrolled in module!');
@@ -637,6 +682,7 @@ class ModuleController extends Controller
                     'status' => EnrollmentStatus::PendingParentApproval,
                     'enrolled_at' => null,
                 ]);
+                $this->moduleAccessService->grantDirectEnrollment($enrollment);
 
                 $enrollment->loadMissing('module');
 
@@ -660,9 +706,9 @@ class ModuleController extends Controller
             }
         }
 
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         if ($isAtCapacity) {
             return redirect()->route('learner.modules.show', $module)
@@ -732,9 +778,9 @@ class ModuleController extends Controller
                 ->with('info', 'Guardian approval is required before payment.');
         }
 
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         if ($isAtCapacity) {
             return redirect()->route('learner.modules.show', $module)
@@ -833,9 +879,9 @@ class ModuleController extends Controller
                 ->with('info', 'Guardian approval is required before payment.');
         }
 
-        $effectiveEnrollmentLimit = $this->resolveEffectiveEnrollmentLimit($module);
-        $isAtCapacity = $effectiveEnrollmentLimit !== null
-            && ModuleEnrollment::query()->approvedForModule($module->id)->count() >= $effectiveEnrollmentLimit;
+        $capacityUsage = $this->moduleCapacityService->usage($module);
+        $isAtCapacity = $capacityUsage['available'] !== null
+            && $capacityUsage['available'] <= 0;
 
         if ($isAtCapacity) {
             return redirect()->route('learner.modules.show', $module)
@@ -920,6 +966,8 @@ class ModuleController extends Controller
                 ->with('error', 'Please complete your profile to access modules.');
         }
 
+        $this->moduleAccessService->assertCanLearn($user, $module);
+
         $enrollment = $user->moduleEnrollments()
             ->where('module_id', $module->id)
             ->first();
@@ -1000,31 +1048,4 @@ class ModuleController extends Controller
         return $this->instructorPlanCapabilityService->canReceivePaidEnrollments($instructor);
     }
 
-    private function resolveEffectiveEnrollmentLimit(Module $module): ?int
-    {
-        $effectiveLimit = $module->enrollment_limit !== null ? (int) $module->enrollment_limit : null;
-
-        if ((string) ($module->content_owner_type ?? '') !== 'instructor') {
-            return $effectiveLimit;
-        }
-
-        $instructor = $module->creator;
-        if (!$instructor) {
-            return $effectiveLimit;
-        }
-
-        $planCap = $this->instructorPlanCapabilityService->getLearnerCapForModule(
-            $instructor,
-            $module->isPaidAccess() ? 'paid' : 'free'
-        );
-        if ($planCap === null) {
-            return $effectiveLimit;
-        }
-
-        if ($effectiveLimit === null) {
-            return $planCap;
-        }
-
-        return min($effectiveLimit, $planCap);
-    }
 }

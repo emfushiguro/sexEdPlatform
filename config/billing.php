@@ -104,6 +104,11 @@ return [
         'decimal_places' => 2,
     ],
 
+    'module_marketplace' => [
+        'capacity_hold_minutes' => 30,
+        'terms_version' => '2026-10-05',
+    ],
+
     'tax' => [
         'enabled' => false,
         'rate' => 0.12, // 12% VAT

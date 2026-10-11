@@ -9,11 +9,14 @@
         $method = (string) ($payment->method ?? 'unknown');
         $scope = (string) data_get($payment->payment_details, 'payment_scope');
 
-        $isModulePurchase = $scope === 'module_purchase'
+        $isConnectorModulePurchase = $scope === 'connector_module_purchase';
+        $isModulePurchase = $payment->isModuleCommercePurchase()
             || $payment->modulePurchase !== null
             || $payment->moduleSaleLedger !== null;
 
-        $module = $payment->modulePurchase?->module ?? $payment->moduleSaleLedger?->module;
+        $module = $payment->connectorModulePurchase?->module
+            ?? $payment->modulePurchase?->module
+            ?? $payment->moduleSaleLedger?->module;
         $instructor = $module?->creator ?? $payment->moduleSaleLedger?->instructor;
         $learner = $payment->user ?? $payment->moduleSaleLedger?->learner;
 
@@ -29,8 +32,8 @@
 
         return [
             'id' => $payment->id,
-            'type_key' => $isModulePurchase ? 'module_purchase' : 'subscription',
-            'type_label' => $isModulePurchase ? 'Module Purchase' : 'Subscription Payment',
+            'type_key' => $isConnectorModulePurchase ? 'connector_module_purchase' : ($isModulePurchase ? 'module_purchase' : 'subscription'),
+            'type_label' => $isConnectorModulePurchase ? 'Connector Module Purchase' : ($isModulePurchase ? 'Module Purchase' : 'Subscription Payment'),
             'module_title' => $module?->title ?? '-',
             'module_thumb' => $module?->thumbnail_url,
             'instructor' => $instructor?->name ?? '-',
@@ -186,6 +189,7 @@
                                     class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                                 <option value="">All types</option>
                                 <option value="module_purchase">Module Purchase</option>
+                                <option value="connector_module_purchase">Connector Module Purchase</option>
                                 <option value="subscription">Subscription Payment</option>
                             </select>
                         </label>
@@ -509,6 +513,7 @@
                 typeClass(typeKey) {
                     return {
                         module_purchase: 'bg-brand-100 text-brand-800',
+                        connector_module_purchase: 'bg-indigo-100 text-indigo-800',
                         subscription: 'bg-brand-50 text-brand-700',
                     }[typeKey] || 'bg-gray-100 text-gray-600';
                 },

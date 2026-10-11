@@ -205,6 +205,12 @@ class FinancialReportService
                 'learner.learnerProfile:id,user_id,avatar_path',
                 'payment:id,transaction_id,method,status,paid_at',
                 'modulePurchase:id,module_id,purchased_at,status',
+                'connectorModulePurchase.connector',
+                'connectorModulePurchase.purchaser',
+                'connectorModulePurchase.entitlement',
+                'connector',
+                'buyer',
+                'seller',
             ])
             ->whereDoesntHave('visibility', function ($visibilityQuery) use ($filter) {
                 $visibilityQuery

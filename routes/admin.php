@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Instructor;
 use App\Http\Middleware\EnsureLearnerIdentityVerified;
+use App\Http\Controllers\Connector\VerificationDocumentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -130,6 +131,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         ->parameters(['learning-paths' => 'learningPath']);
 
     Route::resource('modules', Instructor\ModuleController::class);
+    Route::put('modules/{module}/marketplace', [Instructor\ModuleMarketplaceListingController::class, 'update'])
+        ->name('modules.marketplace.update');
+    Route::delete('modules/{module}/marketplace', [Instructor\ModuleMarketplaceListingController::class, 'destroy'])
+        ->name('modules.marketplace.destroy');
+    Route::post('modules/{listing}/marketplace/suspend', [Instructor\ModuleMarketplaceListingController::class, 'suspend'])
+        ->name('modules.marketplace.suspend');
     Route::patch('modules/{module}/activate', [Instructor\ModuleController::class, 'activate'])
         ->name('modules.activate');
     Route::patch('modules/{module}/deactivate', [Instructor\ModuleController::class, 'deactivate'])
@@ -318,6 +325,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->name('module-revenue.destroy');
         Route::patch('/module-revenue/{moduleSaleLedger}/payout-status', [Admin\ModuleRevenueController::class, 'updatePayoutStatus'])
             ->name('module-revenue.payout.update');
+        Route::post('/connector-module-purchases/{purchase}/correct', [Admin\ConnectorModulePurchaseCorrectionController::class, 'correct'])
+            ->name('connector-module-purchases.correct');
     });
 
     Route::prefix('financial-reports')->name('financial-reports.')
@@ -353,6 +362,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::prefix('connectors')->name('connectors.')->group(function () {
         Route::get('/', [Admin\ConnectorController::class, 'index'])->name('index');
         Route::get('/{connector}', [Admin\ConnectorController::class, 'show'])->name('show');
+        Route::get('/{connector}/verification/documents/{document}', VerificationDocumentController::class)
+            ->name('verification.documents.show');
+        Route::post('/{connector}/verification/documents/{document}/review', [Admin\ConnectorVerificationController::class, 'reviewDocument'])
+            ->name('verification.documents.review');
+        Route::post('/{connector}/verification/requirements/{requirement}/resolve', [Admin\ConnectorVerificationController::class, 'resolveRequirement'])
+            ->name('verification.requirements.resolve');
+        Route::post('/{connector}/verification/request-evidence', [Admin\ConnectorVerificationController::class, 'requestEvidence'])
+            ->name('verification.request-evidence');
+        Route::post('/{connector}/verification/request-resubmission', [Admin\ConnectorController::class, 'requestResubmission'])
+            ->name('verification.request-resubmission');
         Route::post('/{connector}/approve', [Admin\ConnectorController::class, 'approve'])->name('approve');
         Route::post('/{connector}/reject', [Admin\ConnectorController::class, 'reject'])->name('reject');
         Route::post('/{connector}/suspend', [Admin\ConnectorController::class, 'suspend'])->name('suspend');

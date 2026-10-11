@@ -30,6 +30,7 @@ class ConnectorHomeTest extends TestCase
             ...$this->connectorPayload(['name' => 'Public Health Partner']),
             'slug' => 'public-health-partner',
             'status' => 'verified',
+            'verification_status' => Connector::VERIFICATION_LEGACY_VERIFIED,
             'created_by' => $owner->id,
             'primary_representative_user_id' => $owner->id,
         ]);
@@ -52,6 +53,7 @@ class ConnectorHomeTest extends TestCase
             ...$this->connectorPayload(['name' => 'Verified Advocacy Group', 'description' => 'Community learning partner.']),
             'slug' => 'verified-advocacy-group',
             'status' => 'verified',
+            'verification_status' => Connector::VERIFICATION_LEGACY_VERIFIED,
             'created_by' => $admin->id,
             'primary_representative_user_id' => $admin->id,
         ]);

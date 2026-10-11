@@ -2,17 +2,22 @@
 
 namespace App\Services\Chat;
 
-use App\Enums\EnrollmentStatus;
 use App\Enums\ParentChildInvitationStatus;
 use App\Models\Conversation;
 use App\Models\MessageRequest;
-use App\Models\ModuleEnrollment;
+use App\Models\Module;
 use App\Models\ParentChildAccount;
 use App\Models\ParentChildInvitation;
 use App\Models\User;
+use App\Services\Modules\ModuleAccessService;
 
 class ChatAuthorizationService
 {
+    public function __construct(
+        private readonly ModuleAccessService $moduleAccessService,
+    ) {
+    }
+
     /**
      * @return array{allowed: bool, requires_request: bool, reason: ?string}
      */
@@ -240,34 +245,25 @@ class ChatAuthorizationService
 
     protected function hasLearnerInstructorEnrollmentRelation(int $learnerId, int $instructorId): bool
     {
-        $hasDirectEnrollment = ModuleEnrollment::query()
-            ->where('user_id', $learnerId)
-            ->where('status', EnrollmentStatus::Approved)
-            ->whereHas('module', function ($query) use ($instructorId) {
-                $query->where('created_by', $instructorId);
-            })
-            ->exists();
-
-        if ($hasDirectEnrollment) {
-            return true;
-        }
-
-        $linkedChildIds = ParentChildAccount::query()
+        $learnerIds = ParentChildAccount::query()
             ->accessEligible()
             ->where('parent_user_id', $learnerId)
             ->pluck('child_user_id');
+        $learnerIds->push($learnerId);
 
-        if ($linkedChildIds->isEmpty()) {
+        $modules = Module::query()
+            ->where('created_by', $instructorId)
+            ->get();
+        if ($modules->isEmpty()) {
             return false;
         }
 
-        return ModuleEnrollment::query()
-            ->whereIn('user_id', $linkedChildIds)
-            ->where('status', EnrollmentStatus::Approved)
-            ->whereHas('module', function ($query) use ($instructorId) {
-                $query->where('created_by', $instructorId);
-            })
-            ->exists();
+        return User::query()
+            ->whereIn('id', $learnerIds->unique())
+            ->get()
+            ->contains(fn (User $learner): bool => $modules->contains(
+                fn (Module $module): bool => $this->moduleAccessService->hasActiveAccess($learner, $module),
+            ));
     }
 
     protected function hasApprovedParentChildRelation(int $firstUserId, int $secondUserId): bool

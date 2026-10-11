@@ -20,6 +20,8 @@ class ModuleEnrollment extends Model
         'enrolled_at',
         'completed_at',
         'completion_percentage',
+        'inactive_reason',
+        'inactivated_at',
     ];
 
     protected function casts(): array
@@ -30,6 +32,7 @@ class ModuleEnrollment extends Model
             'enrolled_at' => 'datetime',
             'completed_at' => 'datetime',
             'completion_percentage' => 'integer',
+            'inactivated_at' => 'datetime',
         ];
     }
 
@@ -75,6 +78,11 @@ class ModuleEnrollment extends Model
     public function scopeRejected($query)
     {
         return $query->where('status', EnrollmentStatus::Rejected);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', EnrollmentStatus::Approved);
     }
 
     // Helper Methods

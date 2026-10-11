@@ -88,6 +88,12 @@ class ModuleEarningsController extends Controller
             'learner.learnerProfile:id,user_id,avatar_path,username,barangay,barangay_code,city_code',
             'payment:id,transaction_id,paid_at,method,status',
             'modulePurchase:id,module_id,purchased_at,status',
+            'connectorModulePurchase.connector',
+            'connectorModulePurchase.purchaser',
+            'connectorModulePurchase.entitlement',
+            'connector',
+            'buyer',
+            'seller',
         ]);
 
         return view('instructor.earnings.show', [

@@ -31,7 +31,7 @@ class PaymentObserver
         if ($payment->isDirty('status') && $payment->status === PaymentStatus::Completed) {
             $payment->loadMissing(['user', 'subscription.user']);
 
-            if ($payment->isModulePurchase()) {
+            if ($payment->isModuleCommercePurchase()) {
                 Log::info('Module purchase payment completed', [
                     'payment_id' => $payment->id,
                     'user_id' => $payment->user_id,
@@ -96,7 +96,7 @@ class PaymentObserver
 
             $payment->loadMissing(['user', 'subscription']);
 
-            if (!$payment->isModulePurchase() && $payment->user) {
+            if (!$payment->isModuleCommercePurchase() && $payment->user) {
                 try {
                     $payment->user->notify(new SubscriptionResultNotification('failed', $payment->subscription, $payment));
                 } catch (\Throwable $exception) {

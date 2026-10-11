@@ -100,6 +100,12 @@ class RefundService
         string $adminNotes = null,
         bool $bypassTimeLimit = false
     ): Refund {
+        if ($payment->isConnectorModulePurchase()) {
+            throw new \InvalidArgumentException(
+                'Connector module purchases are non-refundable and require an administrator correction.'
+            );
+        }
+
         $refundAmount = $amount ?? $payment->amount;
         
         // Validate refund amount

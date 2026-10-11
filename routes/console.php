@@ -12,6 +12,10 @@ Schedule::command('seminars:send-notices')
     ->everyMinute()
     ->withoutOverlapping();
 
+Schedule::command('connectors:expire-verification-documents')
+    ->dailyAt('01:15')
+    ->withoutOverlapping();
+
 // Keep lifecycle reconciliation frequent enough to prevent stale premium access windows.
 Schedule::command('subscriptions:expire')
     ->everyFifteenMinutes()
