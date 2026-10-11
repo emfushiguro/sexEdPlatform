@@ -196,11 +196,17 @@
                             ['label' => 'Image Library', 'route' => 'instructor.image-library.index', 'active' => request()->routeIs('instructor.image-library.*'), 'badge' => 0, 'icon' => 'sparkles'],
                         ],
                     ],
+                    [
+                        'label' => 'SUPPORT',
+                        'items' => [
+                            ['label' => 'Help Center', 'route' => 'help.index', 'active' => request()->routeIs('help.*'), 'badge' => 0, 'icon' => 'support-help'],
+                        ],
+                    ],
                 ];
                 @endphp
 
                 @foreach($navGroups as $group)
-                <div>
+                <div @if($group['label'] === 'SUPPORT') data-support-section="user" @endif>
                     <p
                         x-show="$store.instructorSidebar.isExpanded || $store.instructorSidebar.isHovered || $store.instructorSidebar.isMobileOpen"
                         x-cloak
@@ -211,12 +217,20 @@
                         <li>
                             <a
                                 href="{{ route($item['route']) }}"
-                                class="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden whitespace-nowrap {{ $item['active'] ? 'text-white shadow-sm bg-gradient-to-r from-brand-500 via-brand-700 to-brand-900' : 'text-gray-600 hover:bg-brand-50 hover:text-brand-700' }}"
+                                @if(str_starts_with($item['icon'], 'support-'))
+                                    data-support-nav="{{ str_replace('support-', '', $item['icon']) }}"
+                                    aria-label="{{ $item['label'] }}"
+                                    title="{{ $item['label'] }}"
+                                    @if($item['active']) aria-current="page" @endif
+                                @endif
+                                class="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 {{ $item['active'] ? 'text-white shadow-sm bg-gradient-to-r from-brand-500 via-brand-700 to-brand-900' : 'text-gray-600 hover:bg-brand-50 hover:text-brand-700' }}"
                                 :class="(!$store.instructorSidebar.isExpanded && !$store.instructorSidebar.isHovered && !$store.instructorSidebar.isMobileOpen) ? 'justify-center' : ''"
                             >
                                 {{-- Icon --}}
                                 <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ $item['active'] ? 'text-white' : 'text-gray-500 group-hover:text-brand-600' }}">
-                                    @if($item['icon'] === 'grid')
+                                    @if(str_starts_with($item['icon'], 'support-'))
+                                    <x-ui.support-icon :name="str_replace('support-', '', $item['icon'])" />
+                                    @elseif($item['icon'] === 'grid')
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                                     </svg>
