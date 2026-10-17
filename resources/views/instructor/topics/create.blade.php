@@ -184,22 +184,10 @@
                 <div class="relative">
                     <input type="file" name="video_file" id="video_file"
                         accept=".mp4,.mpeg,.mpg,.mov,.avi,.webm,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
-                        class="sr-only" data-video-file-input
+                        class="topic-file-input" data-video-file-input
                         aria-describedby="videoFileName videoFileClientError{{ $errors->has('video_file') ? ' videoFileServerError' : '' }}"
                         aria-invalid="{{ $errors->has('video_file') ? 'true' : 'false' }}">
-                    <label for="video_file"
-                        class="flex items-center justify-center w-full px-6 py-4 transition border-2 border-gray-200 border-dashed cursor-pointer rounded-xl hover:border-purple-400 hover:bg-purple-50 focus-within:border-purple-400 focus-within:bg-purple-50 focus-within:ring-2 focus-within:ring-purple-300">
-                        <div class="text-center">
-                            <svg class="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            <p class="mt-2 text-sm text-gray-600"><span class="font-semibold text-purple-700">Click to
-                                    upload video</span></p>
-                            <p class="mt-1 text-xs text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
-                        </div>
-                    </label>
+                    <p class="mt-2 break-all text-xs text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
                 </div>
                 <p id="videoFileClientError" data-video-error class="hidden mt-1 text-sm text-red-600" role="alert"></p>
                 @error('video_file')

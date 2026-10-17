@@ -211,15 +211,15 @@
             <!-- Video File Upload -->
             <div id="videoFileInput" class="mb-6 hidden">
                 @if($topic->video_file_path)
-                    <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                    <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <svg class="w-8 h-8 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <svg class="w-6 h-6 flex-shrink-0 text-brand-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                                 </svg>
-                                <div>
+                                <div class="min-w-0">
                                     <p class="text-sm font-medium text-gray-900">Current Video File</p>
-                                    <p class="text-xs text-gray-500">{{ basename($topic->video_file_path) }}</p>
+                                    <p class="mt-1 break-all text-xs text-gray-500">{{ basename($topic->video_file_path) }}</p>
                                 </div>
                             </div>
                         </div>
@@ -234,12 +234,12 @@
                     name="video_file" 
                     id="video_file" 
                     accept=".mp4,.mpeg,.mpg,.mov,.avi,.webm,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('video_file') border-red-500 @enderror"
+                    class="topic-file-input"
                     data-video-file-input
                     aria-describedby="videoFileName videoFileClientError{{ $errors->has('video_file') ? ' videoFileServerError' : '' }}"
                     aria-invalid="{{ $errors->has('video_file') ? 'true' : 'false' }}"
                 >
-                <p class="mt-1 text-sm text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
+                <p class="mt-2 break-all text-xs text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
                 <p id="videoFileClientError" data-video-error class="hidden mt-1 text-sm text-red-600" role="alert"></p>
                 @error('video_file')
                     <p id="videoFileServerError" class="mt-1 text-sm text-red-600">{{ $message }}</p>

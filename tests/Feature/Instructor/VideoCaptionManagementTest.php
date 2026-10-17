@@ -44,7 +44,7 @@ class VideoCaptionManagementTest extends TestCase
             'video_file' => $this->video(),
             'captions' => [
                 0 => ['file' => $this->vtt('english.vtt', 'Hello'), 'language_code' => 'EN', 'label' => 'English'],
-                1 => ['file' => $this->vtt('filipino.vtt', 'Kumusta'), 'language_code' => 'fil', 'label' => 'Filipino'],
+                1 => ['file' => UploadedFile::fake()->createWithContent('filipino.srt', "1\n00:00:00,000 --> 00:00:02,000\nKumusta\n"), 'language_code' => 'fil', 'label' => 'Filipino'],
             ],
             'caption_default' => 1,
         ])->assertRedirect();
@@ -63,6 +63,10 @@ class VideoCaptionManagementTest extends TestCase
             'is_default' => true,
         ]);
         $this->assertCount(2, Storage::disk('public')->allFiles('captions/'.$topic->id));
+        foreach ($topic->captions as $caption) {
+            $this->assertStringEndsWith('.vtt', $caption->file_path);
+            $this->assertStringStartsWith('WEBVTT', Storage::disk('public')->get($caption->file_path));
+        }
     }
 
     public function test_duplicate_languages_and_external_caption_uploads_are_rejected(): void
@@ -138,6 +142,75 @@ class VideoCaptionManagementTest extends TestCase
         Storage::disk('public')->assertMissing($english->file_path);
         Storage::disk('public')->assertMissing('captions/'.$topic->id.'/korean-old.vtt');
         Storage::disk('public')->assertExists($updated->file_path);
+    }
+
+    public function test_owner_can_replace_caption_with_srt_without_replacing_video(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $topic = $this->localVideoTopic($lesson);
+        $caption = $topic->captions()->create([
+            'file_path' => 'captions/'.$topic->id.'/original.vtt',
+            'language_code' => 'en',
+            'label' => 'English',
+            'is_default' => true,
+        ]);
+        Storage::disk('public')->put($caption->file_path, $this->vttText());
+        $srt = "1\r\n00:00:01,250 --> 00:00:03,500\r\nUpdated subtitle\r\n";
+
+        $this->actingAs($instructor)->put(route('instructor.topics.update', $topic), [
+            'title' => $topic->title,
+            'type' => 'video',
+            'duration' => 3,
+            'video_source' => 'upload',
+            'captions' => [[
+                'id' => $caption->id,
+                'file' => UploadedFile::fake()->createWithContent('updated.srt', $srt),
+                'language_code' => 'fil',
+                'label' => 'Filipino',
+            ]],
+            'caption_default' => 0,
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $updated = $caption->fresh();
+        $this->assertStringEndsWith('.vtt', $updated->file_path);
+        $this->assertSame("WEBVTT\n\n1\n00:00:01.250 --> 00:00:03.500\nUpdated subtitle\n", Storage::disk('public')->get($updated->file_path));
+        $this->assertSame('fil', $updated->language_code);
+        $this->assertSame('Filipino', $updated->label);
+        $this->assertTrue($updated->is_default);
+        Storage::disk('public')->assertMissing($caption->file_path);
+        Storage::disk('public')->assertExists($topic->video_file_path);
+        $this->assertSame($topic->video_file_path, $topic->fresh()->video_file_path);
+    }
+
+    public function test_invalid_srt_replacement_preserves_saved_caption(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $topic = $this->localVideoTopic($lesson);
+        $caption = $topic->captions()->create([
+            'file_path' => 'captions/'.$topic->id.'/original.vtt',
+            'language_code' => 'en',
+            'label' => 'English',
+            'is_default' => true,
+        ]);
+        Storage::disk('public')->put($caption->file_path, $this->vttText());
+
+        $this->actingAs($instructor)->put(route('instructor.topics.update', $topic), [
+            'title' => $topic->title,
+            'type' => 'video',
+            'duration' => 3,
+            'video_source' => 'upload',
+            'captions' => [[
+                'id' => $caption->id,
+                'file' => UploadedFile::fake()->createWithContent('invalid.srt', "1\n00:00:05,000 --> 00:00:01,000\nBad cue\n"),
+                'language_code' => 'en',
+                'label' => 'English',
+            ]],
+        ])->assertSessionHasErrors('captions.0.file');
+
+        $this->assertSame($caption->file_path, $caption->fresh()->file_path);
+        $this->assertTrue($caption->fresh()->is_default);
+        $this->assertSame($this->vttText(), Storage::disk('public')->get($caption->file_path));
+        $this->assertCount(1, Storage::disk('public')->allFiles('captions/'.$topic->id));
     }
 
     public function test_switching_provider_and_deleting_topic_clean_caption_files(): void
@@ -478,8 +551,8 @@ class VideoCaptionManagementTest extends TestCase
                 ->assertSee('data-caption-template', false)
                 ->assertSee('data-add-caption', false)
                 ->assertSee('name="caption_default"', false)
-                ->assertSee('accept=".vtt,text/vtt,text/plain"', false)
-                ->assertSee('WebVTT up to 2 MB', false);
+                ->assertSee('accept=".vtt,.srt,text/vtt,text/plain,text/srt,application/srt,application/x-srt,application/x-subrip"', false)
+                ->assertSee('VTT or SRT up to 2 MB', false);
 
             $this->assertMatchesRegularExpression(
                 '/name="captions\\[__INDEX__\\]\\[language_code\\]"[^>]*required/',
@@ -499,6 +572,58 @@ class VideoCaptionManagementTest extends TestCase
         $this->actingAs($other)
             ->get(route('instructor.topics.edit', $topic))
             ->assertForbidden();
+    }
+
+    public function test_authorized_topic_preview_includes_saved_caption_tracks(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $topic = $this->localVideoTopic($lesson);
+        $english = $topic->captions()->create([
+            'file_path' => 'captions/'.$topic->id.'/english.vtt',
+            'language_code' => 'en',
+            'label' => 'English "CC"',
+            'is_default' => false,
+        ]);
+        $filipino = $topic->captions()->create([
+            'file_path' => 'captions/'.$topic->id.'/filipino.vtt',
+            'language_code' => 'fil',
+            'label' => 'Filipino',
+            'is_default' => true,
+        ]);
+
+        $this->actingAs($instructor)->getJson(route('instructor.topics.preview', $topic))
+            ->assertOk()
+            ->assertJsonPath('captions', [
+                ['file_url' => $filipino->file_url, 'language_code' => 'fil', 'label' => 'Filipino', 'is_default' => true],
+                ['file_url' => $english->file_url, 'language_code' => 'en', 'label' => 'English "CC"', 'is_default' => false],
+            ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->assignRole('admin');
+        $this->actingAs($admin)->getJson(route('admin.topics.preview', $topic))
+            ->assertOk()->assertJsonCount(2, 'captions');
+
+        $other = User::factory()->create(['role' => 'instructor']);
+        $other->assignRole('instructor');
+        $this->actingAs($other)->getJson(route('instructor.topics.preview', $topic))->assertForbidden();
+    }
+
+    public function test_topic_preview_omits_local_captions_for_external_videos(): void
+    {
+        [$instructor, $lesson] = $this->topicAuthoringFixture();
+        $topic = $this->localVideoTopic($lesson);
+        $this->actingAs($instructor)->getJson(route('instructor.topics.preview', $topic))
+            ->assertOk()->assertJsonPath('captions', []);
+
+        $topic->update(['video_provider' => 'youtube', 'video_id' => 'dQw4w9WgXcQ', 'video_file_path' => null]);
+        $topic->captions()->create([
+            'file_path' => 'captions/'.$topic->id.'/legacy.vtt',
+            'language_code' => 'en',
+            'label' => 'English',
+            'is_default' => true,
+        ]);
+        $this->getJson(route('instructor.topics.preview', $topic))
+            ->assertOk()->assertJsonPath('captions', []);
     }
 
     private function vtt(string $name, string $cue = 'Hello'): UploadedFile

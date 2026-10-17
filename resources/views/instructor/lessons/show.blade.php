@@ -127,7 +127,11 @@
             if (topic.video_url) {
                 content += `<div class="aspect-video bg-black rounded-xl overflow-hidden"><iframe src="${topic.video_url}" class="w-full h-full" allowfullscreen></iframe></div>`;
             } else if (topic.video_file_url) {
-                content += `<video controls class="w-full rounded-xl"><source src="${topic.video_file_url}" type="video/mp4"></video>`;
+                const tracks = (topic.captions || [])
+                    .filter(caption => caption.file_url)
+                    .map(caption => `<track kind="subtitles" src="${escapeHtml(caption.file_url)}" srclang="${escapeHtml(caption.language_code)}" label="${escapeHtml(caption.label)}"${caption.is_default ? ' default' : ''}>`)
+                    .join('');
+                content += `<video controls class="w-full rounded-xl"><source src="${escapeHtml(topic.video_file_url)}" type="video/mp4">${tracks}</video>`;
             } else {
                 content += `<div class="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">No video source available for this topic.</div>`;
             }

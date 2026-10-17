@@ -8,7 +8,7 @@ use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
-use App\Rules\WebVttFile;
+use App\Rules\CaptionFile;
 use App\Services\Content\ContentOwnershipGuard;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityAuthoringService;
 use App\Services\Learning\QuestionAuthoringService;
@@ -811,7 +811,7 @@ class TopicController extends Controller
             'captions' => ['nullable', 'array'],
             'captions.*' => ['array'],
             'captions.*.id' => ['nullable', 'integer'],
-            'captions.*.file' => ['nullable', 'file', 'max:2048', new WebVttFile],
+            'captions.*.file' => ['bail', 'nullable', 'file', 'max:2048', new CaptionFile],
             'captions.*.language_code' => [
                 'nullable',
                 'string',
@@ -871,7 +871,7 @@ class TopicController extends Controller
                 if (! $id && ! $file) {
                     $validator->errors()->add(
                         'captions.'.$index.'.file',
-                        'A WebVTT file is required.',
+                        'A VTT or SRT caption file is required.',
                     );
                 }
                 if ($language === '') {
@@ -1000,7 +1000,7 @@ class TopicController extends Controller
     public function preview(LessonTopic $topic)
     {
         $this->authorize('view', $topic);
-        $topic->loadMissing(['interactiveActivities', 'checkpointQuestions.options']);
+        $topic->loadMissing(['captions', 'interactiveActivities', 'checkpointQuestions.options']);
 
         $worksheetFiles = [];
 
@@ -1053,6 +1053,14 @@ class TopicController extends Controller
             'video_id' => $topic->video_id,
             'video_file_path' => $topic->video_file_path,
             'video_file_url' => $topic->video_file_url,
+            'captions' => $topic->type === 'video' && $topic->video_provider === 'local'
+                ? $topic->captions->map(fn ($caption) => [
+                    'file_url' => $caption->file_url,
+                    'language_code' => $caption->language_code,
+                    'label' => $caption->label,
+                    'is_default' => $caption->is_default,
+                ])->values()
+                : [],
             'video_description' => $topic->video_description,
             'text_content' => $topic->text_content,
             'image_attachments' => $imageAttachments,
