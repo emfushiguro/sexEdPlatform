@@ -34,9 +34,10 @@
             'submitted_at' => $connector->created_at?->format('M d, Y') ?? 'Unknown date',
             'submitted_at_value' => $connector->created_at?->format('Y-m-d') ?? null,
             'show_url' => route('admin.connectors.show', $connector),
-            'approve_url' => route('admin.connectors.approve', $connector),
-            'reject_url' => route('admin.connectors.reject', $connector),
-            'suspend_url' => route('admin.connectors.suspend', $connector),
+            'logo_url' => $connector->logo_path
+                ? Storage::disk(config('connector_verification.logo_disk', 'public'))->url($connector->logo_path) : null,
+            'representative_avatar_url' => $representative?->learnerProfile?->avatar_path
+                ? Storage::disk('public')->url($representative->learnerProfile->avatar_path) : null,
             'search_blob' => strtolower(implode(' ', array_filter([
                 $connector->name,
                 $connector->organization_email,
@@ -61,9 +62,9 @@
 @endphp
 
 @section('content')
+<div class="mb-4 flex justify-end"><a href="{{ route('admin.connectors.module-access.index') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-brand-700">Manage module access</a></div>
 <div x-data="connectorManagementPage({
         connectors: @js($connectorRows),
-        csrf: @js(csrf_token()),
     })"
     class="space-y-8">
 
@@ -89,13 +90,13 @@
                     <p class="text-[11px] font-semibold uppercase tracking-[0.18em]">{{ $card['label'] }}</p>
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-full {{ $iconClass }}">
                         @if($card['icon'] === 'clock')
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                         @elseif($card['icon'] === 'check')
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                         @elseif($card['icon'] === 'pause')
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10 9v6m4-6v6m7-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10 9v6m4-6v6m7-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                         @else
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Zm9 0a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2V6ZM4 15a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3Zm9 0a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-3Z"/></svg>
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Zm9 0a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2V6ZM4 15a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3Zm9 0a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-3Z"/></svg>
                         @endif
                     </span>
                 </div>
@@ -103,24 +104,6 @@
             </article>
         @endforeach
     </div>
-
-    <section class="rounded-[24px] border border-brand-100 bg-brand-50/40 p-5 shadow-theme-xs" aria-labelledby="verification-counts-heading">
-        <div class="flex flex-wrap items-end justify-between gap-3">
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Evidence state</p>
-                <h2 id="verification-counts-heading" class="mt-1 text-lg font-bold text-gray-900">Verification queue</h2>
-            </div>
-            <span class="text-sm text-gray-500">Use the filters to narrow review work.</span>
-        </div>
-        <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-            @foreach($verificationLabels as $key => $label)
-                <a href="{{ route('admin.connectors.index', ['verification_status' => $key]) }}" class="rounded-2xl border border-white bg-white px-4 py-3 shadow-sm transition hover:border-brand-200 hover:bg-brand-50">
-                    <span class="block text-xs font-semibold text-gray-500">{{ $label }}</span>
-                    <span class="mt-1 block text-xl font-bold text-gray-900">{{ number_format((int) ($verificationCounts[$key] ?? 0)) }}</span>
-                </a>
-            @endforeach
-        </div>
-    </section>
 
     <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
         <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.16),_transparent_34%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">
@@ -133,11 +116,11 @@
                     <label class="block xl:col-span-2">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</span>
                         <input x-model.debounce.150ms="filters.search" @input="page = 1" type="text" placeholder="Name, representative, email..."
-                            class="w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                            class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border shadow-sm outline-none rounded-2xl border-brand-100 focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
-                        <select x-model="filters.status" @change="page = 1" class="w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                        <select x-model="filters.status" @change="page = 1" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border shadow-sm outline-none rounded-2xl border-brand-100 focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                             <option value="">All statuses</option>
                             <option value="pending">Pending</option>
                             <option value="verified">Verified</option>
@@ -147,7 +130,7 @@
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Category</span>
-                        <select x-model="filters.category" @change="page = 1" class="w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                        <select x-model="filters.category" @change="page = 1" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border shadow-sm outline-none rounded-2xl border-brand-100 focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                             <option value="">All categories</option>
                             @foreach($categories as $key => $label)
                                 <option value="{{ $key }}">{{ $label }}</option>
@@ -156,7 +139,7 @@
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Members</span>
-                        <select x-model="filters.memberBand" @change="page = 1" class="w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
+                        <select x-model="filters.memberBand" @change="page = 1" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border shadow-sm outline-none rounded-2xl border-brand-100 focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                             <option value="">Any count</option>
                             <option value="0">No members</option>
                             <option value="1-5">1-5</option>
@@ -165,7 +148,7 @@
                     </label>
                 </div>
             </div>
-            <form method="GET" class="mt-5 grid gap-3 rounded-2xl border border-brand-100 bg-white/80 p-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="verification-filter-form">
+            <form method="GET" class="grid gap-3 p-4 mt-5 border rounded-2xl border-brand-100 bg-white/80 sm:grid-cols-2 xl:grid-cols-4" data-testid="verification-filter-form">
                 <label class="block">
                     <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Operational status</span>
                     <select name="status" class="w-full rounded-xl border-brand-100 bg-white px-3 py-2.5 text-sm text-gray-900">
@@ -200,7 +183,7 @@
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Server results: {{ $connectors->count() }}</p>
+            <p class="text-xs font-semibold tracking-wide text-gray-500 uppercase">Server results: {{ $connectors->count() }}</p>
             <p class="text-sm text-gray-500"><span class="font-semibold text-gray-800" x-text="filteredConnectors.length"></span> connectors shown</p>
             <button type="button" @click="resetFilters()" class="inline-flex items-center rounded-2xl border border-brand-200 bg-brand-50/60 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70">
                 Reset Filters
@@ -221,17 +204,37 @@
                         <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 bg-white">
+                <tbody class="bg-white divide-y divide-gray-100">
                     <template x-for="(connector, index) in paginatedConnectors" :key="connector.id">
                         <tr class="transition hover:bg-brand-50/55">
                             <td class="px-6 py-4 text-sm font-semibold text-gray-500" x-text="rowNumber(index)"></td>
                             <td class="px-6 py-4">
-                                <p class="text-sm font-semibold text-gray-900" x-text="connector.name"></p>
-                                <p class="text-xs text-gray-500" x-text="connector.email"></p>
+                                <div class="flex items-center gap-3">
+                                    <div class="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-50 text-sm font-bold text-brand-700">
+                                        <span aria-hidden="true" x-text="initials(connector.name)"></span>
+                                        <template x-if="connector.logo_url">
+                                            <img :src="connector.logo_url" :alt="connector.name + ' photo'" loading="lazy" class="absolute inset-0 h-full w-full object-cover" x-on:error="connector.logo_url = null">
+                                        </template>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900" x-text="connector.name"></p>
+                                        <p class="text-xs text-gray-500" x-text="connector.email"></p>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-6 py-4">
-                                <p class="text-sm font-semibold text-gray-800" x-text="connector.representative"></p>
-                                <p class="text-xs text-gray-500" x-text="connector.representative_email"></p>
+                                <div class="flex items-center gap-3">
+                                    <div class="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-50 text-sm font-bold text-gray-700">
+                                        <span aria-hidden="true" x-text="initials(connector.representative)"></span>
+                                        <template x-if="connector.representative_avatar_url">
+                                            <img :src="connector.representative_avatar_url" :alt="connector.representative + ' photo'" loading="lazy" class="absolute inset-0 h-full w-full object-cover" x-on:error="connector.representative_avatar_url = null">
+                                        </template>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900" x-text="connector.representative"></p>
+                                        <p class="text-xs text-gray-500" x-text="connector.representative_email"></p>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600" x-text="connector.category_label"></td>
                             <td class="px-6 py-4 text-sm text-gray-600">
@@ -242,71 +245,35 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-wrap gap-1.5">
-                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold capitalize" :class="statusClass(connector.status)" x-text="connector.status"></span>
-                                    <span class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700" x-text="connector.verification_status_label"></span>
+                                    <span class="inline-flex px-3 py-1 text-xs font-bold capitalize rounded-full" :class="statusClass(connector.status)" x-text="connector.status"></span>
+                                    <span class="inline-flex px-3 py-1 text-xs font-semibold text-blue-700 rounded-full bg-blue-50" x-text="connector.verification_status_label"></span>
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600" x-text="connector.submitted_at"></td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
-                                    <a :href="connector.show_url" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50/60 text-brand-700 transition hover:bg-brand-100" title="View connector">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S3.732 16.057 2.458 12Z"/></svg>
+                                    <a :href="connector.show_url" class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-brand-50/60 text-brand-700 hover:bg-brand-100" title="View connector" :aria-label="'View connector: ' + connector.name">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S3.732 16.057 2.458 12Z"/></svg>
                                     </a>
-                                    <button type="button" x-show="connector.status !== 'verified'" @click="window.location.href = connector.show_url" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100" title="Open verification workspace">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 13 4 4L19 7"/></svg>
-                                    </button>
-                                    <button type="button" x-show="connector.status === 'pending'" @click="window.location.href = connector.show_url" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100" title="Open verification workspace">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"/></svg>
-                                    </button>
-                                    <button type="button" x-show="connector.status !== 'suspended'" @click="window.location.href = connector.show_url" class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100" title="Open verification workspace">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                                    </button>
                                 </div>
                             </td>
                         </tr>
                     </template>
                     <tr x-show="filteredConnectors.length === 0" x-cloak>
-                        <td colspan="8" class="px-6 py-14 text-center text-sm text-gray-500">No connectors match these filters.</td>
+                        <td colspan="8" class="px-6 text-sm text-center text-gray-500 py-14">No connectors match these filters.</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <div class="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
             <button type="button" @click="prevPage()" :disabled="page === 1" class="rounded-lg border border-brand-200 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
             <span class="text-sm text-gray-600">Page <span class="font-semibold" x-text="safePage"></span> of <span class="font-semibold" x-text="totalPages"></span></span>
             <button type="button" @click="nextPage()" :disabled="page >= totalPages" class="rounded-lg border border-brand-200 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
         </div>
     </section>
 
-    <div x-show="actionOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center px-4" @keydown.escape.window="closeAction()">
-        <div class="absolute inset-0 bg-gray-900/50" @click="closeAction()"></div>
-        <form method="POST" :action="selectedActionUrl" class="relative w-full max-w-lg rounded-2xl border border-brand-100 bg-white p-6 shadow-2xl">
-            @csrf
-            <h3 class="text-lg font-bold text-gray-900" x-text="actionTitle"></h3>
-            <p class="mt-2 text-sm text-gray-600">
-                <span x-text="actionDescription"></span>
-                <span class="font-semibold" x-text="selectedConnector ? selectedConnector.name : ''"></span>.
-            </p>
-            <template x-if="selectedAction === 'approve'">
-                <input type="hidden" name="reason" value="Connector approved from the management table.">
-            </template>
-            <div x-show="selectedAction !== 'approve'" class="mt-4">
-                <label class="block text-sm font-semibold text-gray-700">Reason</label>
-                <select x-model="selectedReason" class="mt-1 w-full rounded-xl border-gray-300 text-sm" required>
-                    <template x-for="reason in currentReasons" :key="reason">
-                        <option :value="reason" x-text="reason"></option>
-                    </template>
-                </select>
-                <textarea x-show="selectedReason === 'Other'" name="reason" rows="3" class="mt-3 w-full rounded-xl border-gray-300 text-sm" placeholder="Write the reason..." :required="selectedReason === 'Other'"></textarea>
-                <input x-show="selectedReason !== 'Other'" type="hidden" name="reason" :value="selectedReason">
-            </div>
-            <div class="mt-6 flex items-center justify-end gap-2">
-                <button type="button" @click="closeAction()" class="rounded-lg border border-brand-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-brand-50">Cancel</button>
-                <button type="submit" class="rounded-lg px-4 py-2 text-sm font-semibold text-white" :class="selectedAction === 'reject' ? 'bg-rose-600 hover:bg-rose-700' : (selectedAction === 'suspend' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700')">Confirm</button>
-            </div>
-        </form>
-    </div>
+
 </div>
 
 <script>
@@ -316,12 +283,6 @@
             filters: { search: '', status: '', category: '', memberBand: '' },
             page: 1,
             perPage: 10,
-            actionOpen: false,
-            selectedAction: 'approve',
-            selectedConnector: null,
-            selectedReason: '',
-            rejectionReasons: ['Incomplete organization information', 'Invalid organization details', 'Duplicate organization', 'Verification requirements not met', 'Policy concerns', 'Other'],
-            suspensionReasons: ['Policy concerns', 'Misuse of connector privileges', 'Verification requirements no longer met', 'Reported safety concern', 'Other'],
             get filteredConnectors() {
                 return this.connectors.filter((connector) => {
                     const search = this.filters.search.trim().toLowerCase();
@@ -346,23 +307,6 @@
             get paginatedConnectors() {
                 return this.filteredConnectors.slice((this.safePage - 1) * this.perPage, this.safePage * this.perPage);
             },
-            get selectedActionUrl() {
-                if (!this.selectedConnector) return '#';
-                return this.selectedConnector[`${this.selectedAction}_url`];
-            },
-            get actionTitle() {
-                return { approve: 'Approve Connector?', reject: 'Reject Connector?', suspend: 'Suspend Connector?' }[this.selectedAction];
-            },
-            get actionDescription() {
-                return {
-                    approve: 'This will verify and activate ',
-                    reject: 'This will reject the current application for ',
-                    suspend: 'This will suspend dashboard access for ',
-                }[this.selectedAction];
-            },
-            get currentReasons() {
-                return this.selectedAction === 'suspend' ? this.suspensionReasons : this.rejectionReasons;
-            },
             resetFilters() {
                 this.filters = { search: '', status: '', category: '', memberBand: '' };
                 this.page = 1;
@@ -376,15 +320,8 @@
             nextPage() {
                 if (this.page < this.totalPages) this.page += 1;
             },
-            openAction(action, connector) {
-                this.selectedAction = action;
-                this.selectedConnector = connector;
-                this.selectedReason = action === 'suspend' ? this.suspensionReasons[0] : this.rejectionReasons[0];
-                this.actionOpen = true;
-            },
-            closeAction() {
-                this.actionOpen = false;
-                this.selectedConnector = null;
+            initials(name) {
+                return String(name || '?').trim().split(/\s+/).slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('');
             },
             statusClass(status) {
                 return {

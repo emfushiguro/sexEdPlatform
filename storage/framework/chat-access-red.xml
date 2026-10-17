@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\Chat\ChatAccessGateTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" tests="27" assertions="88" errors="0" failures="13" skipped="0" time="44.281600">
+    <testsuite name="Tests\Feature\Chat\ChatAccessGateTest::test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission" tests="12" assertions="60" errors="0" failures="4" skipped="0" time="42.137510">
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;admin legacy&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="39.962337">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set "admin legacy"&#13;
+Failed asserting that false is true.
+&#13;
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:42</failure>
+        <system-out>
+
+</system-out>
+      </testcase>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;admin stale_permission&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="7" time="0.288031"/>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;admin missing_permission&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="7" time="0.191757"/>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;instructor legacy&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.121912">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set "instructor legacy"&#13;
+Failed asserting that false is true.
+&#13;
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:42</failure>
+      </testcase>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;instructor stale_permission&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.134122">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set "instructor stale_permission"&#13;
+Failed asserting that false is true.
+&#13;
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:42</failure>
+      </testcase>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;instructor missing_permission&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.158711">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set "instructor missing_permission"&#13;
+Failed asserting that false is true.
+&#13;
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:42</failure>
+      </testcase>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;learner legacy&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="7" time="0.182083"/>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;learner stale_permission&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="7" time="0.233124"/>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;learner missing_permission&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="7" time="0.261058"/>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;parent legacy&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="7" time="0.174908"/>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;parent stale_permission&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="7" time="0.217952"/>
+      <testcase name="test_supported_accounts_can_open_chat_and_load_its_apis_without_a_chat_permission with data set &quot;parent missing_permission&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="27" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="7" time="0.211516"/>
+    </testsuite>
+    <testsuite name="Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews" tests="9" assertions="9" errors="0" failures="9" skipped="0" time="1.361159">
+      <testcase name="test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set &quot;admin inactive&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="63" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.158599">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set "admin inactive"&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:174
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:76</failure>
+      </testcase>
+      <testcase name="test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set &quot;admin suspended&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="63" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.191544">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set "admin suspended"&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:174
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:76</failure>
+      </testcase>
+      <testcase name="test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set &quot;admin archived&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="63" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.139243">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set "admin archived"&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:174
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:76</failure>
+      </testcase>
+      <testcase name="test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set &quot;instructor inactive&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="63" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.150067">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set "instructor inactive"&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:174
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:76</failure>
+      </testcase>
+      <testcase name="test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set &quot;instructor suspended&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="63" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.135678">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set "instructor suspended"&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:174
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:76</failure>
+      </testcase>
+      <testcase name="test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set &quot;instructor archived&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="63" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.150063">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set "instructor archived"&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:174
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:76</failure>
+      </testcase>
+      <testcase name="test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set &quot;learner inactive&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="63" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.142934">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set "learner inactive"&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:174
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:76</failure>
+      </testcase>
+      <testcase name="test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set &quot;learner suspended&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="63" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.144727">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set "learner suspended"&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:174
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:76</failure>
+      </testcase>
+      <testcase name="test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set &quot;learner archived&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="63" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.148305">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Chat\ChatAccessGateTest::test_non_active_accounts_cannot_open_chat_or_read_conversation_previews with data set "learner archived"&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:174
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php:76</failure>
+      </testcase>
+    </testsuite>
+    <testsuite name="Tests\Feature\Chat\ChatAccessGateTest::test_unrelated_roles_are_not_implicitly_given_chat_access" tests="3" assertions="9" errors="0" failures="0" skipped="0" time="0.407311">
+      <testcase name="test_unrelated_roles_are_not_implicitly_given_chat_access with data set #0" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="89" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="3" time="0.136233"/>
+      <testcase name="test_unrelated_roles_are_not_implicitly_given_chat_access with data set #1" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="89" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="3" time="0.129506"/>
+      <testcase name="test_unrelated_roles_are_not_implicitly_given_chat_access with data set #2" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="89" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="3" time="0.141572"/>
+    </testsuite>
+    <testcase name="test_explicit_chat_permission_still_allows_an_otherwise_unsupported_role" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="98" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="1" time="0.130887"/>
+    <testcase name="test_parent_verification_and_onboarding_remain_required" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="106" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="6" time="0.148464"/>
+    <testcase name="test_guests_must_sign_in_before_opening_chat" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Chat\ChatAccessGateTest.php" line="116" class="Tests\Feature\Chat\ChatAccessGateTest" classname="Tests.Feature.Chat.ChatAccessGateTest" assertions="3" time="0.096269"/>
+  </testsuite>
+</testsuites>

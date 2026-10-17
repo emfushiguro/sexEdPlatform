@@ -27,7 +27,7 @@ class RbacBladePermissionVisibilityTest extends TestCase
         $this->assertStringContainsString("can('view enrollments')", $navigationLayout);
 
         $this->assertStringNotContainsString('hasRole(', $learnerHeaderLayout);
-        $this->assertStringContainsString("can('access instructor panel')", $learnerHeaderLayout);
+        $this->assertStringContainsString("canAny(['access instructor panel', 'create modules'])", $learnerHeaderLayout);
 
         $this->assertStringContainsString('canSwitchToLearnerView()', $instructorHeaderLayout);
         $this->assertStringContainsString("route('instructor.switch-to-learner')", $instructorHeaderLayout);

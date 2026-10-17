@@ -1,24 +1,31 @@
 @php
-    $initialStep = 1;
+    $errorKeys = $errors->keys();
+    $hasSpecificEvidenceError = collect($errorKeys)->contains(
+        fn ($key) => str_contains($key, '.') && array_key_exists(explode('.', $key, 2)[0], $requirementCatalog)
+    );
+    $initialStep = $errors->any() ? 6 : 1;
 
-    foreach ($errors->keys() as $errorKey) {
-        if (str_starts_with($errorKey, 'evidence')) {
-            $initialStep = 4;
-            break;
+    foreach ($errorKeys as $errorKey) {
+        if ($errorKey === 'evidence' && $hasSpecificEvidenceError) {
+            continue;
         }
 
-        if (in_array($errorKey, ['reuse_representative_identity', 'confirm_accuracy', 'verification_notes'], true)) {
-            $initialStep = max($initialStep, 5);
-        } elseif ($errorKey === 'logo') {
-            $initialStep = max($initialStep, 3);
-        } elseif (in_array($errorKey, ['name', 'organization_email', 'contact_number', 'website_url', 'city_code', 'barangay_code', 'address_line', 'description'], true)) {
-            $initialStep = max($initialStep, 2);
-        }
+        $field = explode('.', $errorKey, 2)[0];
+        $step = match (true) {
+            in_array($field, ['category', 'organization_type', 'organization_type_detail'], true) => 1,
+            in_array($field, ['name', 'organization_email', 'contact_number', 'website_url', 'city_code', 'barangay_code', 'address_line', 'description'], true) => 2,
+            $field === 'logo' => 3,
+            in_array($field, ['representative_identity', 'representative_authority', 'reuse_representative_identity'], true) => 5,
+            in_array($field, ['confirm_accuracy', 'verification_notes'], true) => 6,
+            default => 4,
+        };
+        $initialStep = min($initialStep, $step);
     }
 
-    $enabledRequirementKeys = $initialRequirementKeys === []
-        ? array_keys($requirementCatalog)
-        : $initialRequirementKeys;
+    $requirementKeysByGroup = collect($requirementCatalog)
+        ->groupBy('rule_group', true)
+        ->map(fn ($requirements) => $requirements->keys()->all())
+        ->all();
 @endphp
 
 @extends('layouts.learner-app')
@@ -34,13 +41,13 @@
             cityCode: @js(old('city_code', '')),
             selectedBarangayCode: @js(old('barangay_code', '')),
             barangays: @js($barangays),
-            categories: @js($categories),
             organizationTypes: @js($organizationTypes),
-            selectedCategory: @js(old('category', '')),
-            selectedOrganizationType: @js(old('organization_type', '')),
-            activeRequirementKeys: @js($enabledRequirementKeys),
-            previousCategory: @js(old('category', '')),
-            previousOrganizationType: @js(old('organization_type', '')),
+            requirementKeysByGroup: @js($requirementKeysByGroup),
+            selectedOrganizationType: @js($selectedOrganizationType),
+            previousOrganizationType: @js($selectedOrganizationType),
+            reuseRepresentativeIdentity: @js((bool) old('reuse_representative_identity')),
+            selectedEvidenceFiles: {},
+            draggingEvidenceKey: null,
             logoPreviewUrl: null,
             isLoadingBarangays: false,
 
@@ -51,7 +58,7 @@
             availableRequirementKeys() {
                 const type = this.organizationTypes[this.selectedOrganizationType];
 
-                if (!type || !type.categories.includes(this.selectedCategory)) {
+                if (!type) {
                     return [];
                 }
 
@@ -59,12 +66,21 @@
             },
 
             isRequirementVisible(key) {
-                return this.activeRequirementKeys.includes(key);
+                return this.availableRequirementKeys().includes(key);
+            },
+
+            isGroupVisible(group) {
+                return (this.requirementKeysByGroup[group] || []).some((key) => this.isRequirementVisible(key));
+            },
+
+            isRequirementDisabled(key) {
+                return !this.isRequirementVisible(key) || (key === 'representative_identity' && this.reuseRepresentativeIdentity);
             },
 
             syncRequirements() {
                 const nextKeys = this.availableRequirementKeys();
-                const removedKeys = this.activeRequirementKeys.filter((key) => !nextKeys.includes(key));
+                const previousKeys = this.organizationTypes[this.previousOrganizationType]?.requirements || [];
+                const removedKeys = previousKeys.filter((key) => !nextKeys.includes(key));
                 const hasRemovedFiles = removedKeys.some((key) => {
                     const input = Array.from(this.$root.querySelectorAll('[data-requirement-file]'))
                         .find((element) => element.dataset.requirementFile === key);
@@ -73,15 +89,48 @@
                 });
 
                 if (hasRemovedFiles && ! window.confirm('Changing the organization type will clear incompatible evidence selections. Continue?')) {
-                    this.selectedCategory = this.previousCategory;
                     this.selectedOrganizationType = this.previousOrganizationType;
 
                     return;
                 }
 
-                this.activeRequirementKeys = nextKeys;
-                this.previousCategory = this.selectedCategory;
+                removedKeys.forEach((key) => this.clearEvidenceFiles(key));
                 this.previousOrganizationType = this.selectedOrganizationType;
+            },
+
+            evidenceFileChanged(key, event) {
+                this.selectedEvidenceFiles[key] = Array.from(event.target.files || []).map((file) => file.name);
+            },
+
+            clearEvidenceFiles(key, restoreFocus = false) {
+                const input = Array.from(this.$root.querySelectorAll('[data-requirement-file]'))
+                    .find((element) => element.dataset.requirementFile === key);
+
+                if (input) {
+                    input.value = '';
+                }
+
+                this.selectedEvidenceFiles[key] = [];
+
+                if (restoreFocus && input && ! input.disabled) {
+                    this.$nextTick(() => input.focus());
+                }
+            },
+
+            dropEvidenceFiles(key, event) {
+                this.draggingEvidenceKey = null;
+
+                const input = Array.from(this.$root.querySelectorAll('[data-requirement-file]'))
+                    .find((element) => element.dataset.requirementFile === key);
+
+                if (!input || this.isRequirementDisabled(key) || !event.dataTransfer?.files.length) {
+                    return;
+                }
+
+                const transfer = new DataTransfer();
+                Array.from(event.dataTransfer.files).forEach((file) => transfer.items.add(file));
+                input.files = transfer.files;
+                this.evidenceFileChanged(key, { target: input });
             },
 
             async loadBarangays(cityCode) {
@@ -111,7 +160,7 @@
             },
 
             goToStep(step) {
-                this.currentStep = Math.min(5, Math.max(1, step));
+                this.currentStep = Math.min(6, Math.max(1, step));
                 this.$nextTick(() => this.focusStepHeading());
             },
 
@@ -172,8 +221,8 @@
                 </div>
             </div>
 
-            <ol class="mt-8 grid gap-2 sm:grid-cols-5" aria-label="Registration progress">
-                @foreach(range(1, 5) as $step)
+            <ol class="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="Registration progress">
+                @foreach(range(1, 6) as $step)
                     <li>
                         <button
                             type="button"
@@ -185,7 +234,7 @@
                             :class="currentStep === {{ $step }} ? 'border-brand-100 bg-white/15 text-white' : 'text-brand-100/70'"
                         >
                             <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-current font-semibold">{{ $step }}</span>
-                            <span>{{ ['Organization type', 'Organization details', 'Logo', 'Evidence', 'Representative'][ $step - 1 ] }}</span>
+                            <span>{{ ['Organization type', 'Organization details', 'Logo', 'Organization evidence', 'Representative', 'Confirmation'][ $step - 1 ] }}</span>
                         </button>
                     </li>
                 @endforeach
@@ -201,11 +250,12 @@
             @csrf
 
             <div class="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-950" aria-live="polite">
-                <span x-show="currentStep === 1"><strong>Step 1 of 5:</strong> choose the organization category and legal or operating type.</span>
-                <span x-show="currentStep === 2"><strong>Step 2 of 5:</strong> share the organization’s Cavite location and contact details.</span>
-                <span x-show="currentStep === 3"><strong>Step 3 of 5:</strong> add an optional visual mark for your public connector profile.</span>
-                <span x-show="currentStep === 4"><strong>Step 4 of 5:</strong> attach the evidence reviewers will use to verify the application.</span>
-                <span x-show="currentStep === 5"><strong>Step 5 of 5:</strong> confirm the representative account and submit.</span>
+                <span x-show="currentStep === 1"><strong>Step 1 of 6:</strong> choose your organization type.</span>
+                <span x-show="currentStep === 2"><strong>Step 2 of 6:</strong> share the organization’s Cavite location and contact details.</span>
+                <span x-show="currentStep === 3"><strong>Step 3 of 6:</strong> add an optional visual mark for your public connector profile.</span>
+                <span x-show="currentStep === 4"><strong>Step 4 of 6:</strong> upload evidence for your organization.</span>
+                <span x-show="currentStep === 5"><strong>Step 5 of 6:</strong> verify the representative’s identity and authority.</span>
+                <span x-show="currentStep === 6"><strong>Step 6 of 6:</strong> review and confirm your application.</span>
             </div>
 
             <fieldset data-step-panel="1" x-show="currentStep === 1" class="space-y-6">
@@ -215,28 +265,10 @@
                     class="text-xl font-semibold tracking-tight text-gray-900 focus:outline-none"
                 >1. Organization type</legend>
                 <p class="max-w-2xl text-sm leading-6 text-gray-600">
-                    Category describes the work your connector supports. Organization type describes the legal, institutional, or community form that is applying.
+                    Choose the type that best describes your organization. This determines the verification evidence needed for your application.
                 </p>
 
-                <div class="grid gap-5 md:grid-cols-2">
-                    <label>
-                        <span class="text-sm font-semibold text-gray-800">Category <span class="text-rose-600" aria-hidden="true">*</span></span>
-                        <select
-                            name="category"
-                            x-model="selectedCategory"
-                            @change="syncRequirements()"
-                            aria-describedby="error-category"
-                            class="mt-2 min-h-11 w-full rounded-xl border-gray-300 bg-white focus:border-brand-500 focus:ring-brand-500"
-                            required
-                        >
-                            <option value="">Select category</option>
-                            @foreach($categories as $value => $label)
-                                <option value="{{ $value }}" @selected(old('category') === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        <p id="error-category" class="mt-1 min-h-5 text-xs text-rose-700" role="alert">@error('category'){{ $message }}@enderror</p>
-                    </label>
-
+                <div class="max-w-xl">
                     <label>
                         <span class="text-sm font-semibold text-gray-800">Organization type <span class="text-rose-600" aria-hidden="true">*</span></span>
                         <select
@@ -249,10 +281,17 @@
                         >
                             <option value="">Select organization type</option>
                             @foreach($organizationTypes as $value => $type)
-                                <option value="{{ $value }}" @selected(old('organization_type') === $value)>{{ $type['label'] }}</option>
+                                <option value="{{ $value }}" @selected($selectedOrganizationType === $value)>{{ $type['label'] }}</option>
                             @endforeach
                         </select>
                         <p id="error-organization_type" class="mt-1 min-h-5 text-xs text-rose-700" role="alert">@error('organization_type'){{ $message }}@enderror</p>
+                        <p x-show="selectedOrganizationType === 'school_educational_institution'" class="mt-2 text-sm leading-6 text-gray-600">Schools must provide organization identity evidence and at least one applicable DepEd, CHED, or TESDA authority document.</p>
+                    </label>
+                    <label x-show="selectedOrganizationType === 'other'" class="mt-4 block">
+                        <span class="text-sm font-semibold text-gray-800">Please specify your organization type <span class="text-rose-600" aria-hidden="true">*</span></span>
+                        <input name="organization_type_detail" value="{{ old('organization_type_detail') }}" maxlength="255" :required="selectedOrganizationType === 'other'" :disabled="selectedOrganizationType !== 'other'" aria-describedby="error-organization_type_detail" class="mt-2 min-h-11 w-full rounded-xl border-gray-300 focus:border-brand-500 focus:ring-brand-500" placeholder="e.g. Independent youth center">
+                        <p id="error-organization_type_detail" class="mt-1 min-h-5 text-xs text-rose-700" role="alert">@error('organization_type_detail'){{ $message }}@enderror</p>
+                        <p class="mt-1 text-sm leading-6 text-gray-600">Provide evidence of your organization and your representative’s identity and authority. Reviewers may ask for additional documents suited to the type you specify.</p>
                     </label>
                 </div>
             </fieldset>
@@ -380,74 +419,26 @@
                     data-step-heading="4"
                     tabindex="-1"
                     class="text-xl font-semibold tracking-tight text-gray-900 focus:outline-none"
-                >4. Verification evidence</legend>
+                >4. Organization evidence</legend>
                 <p class="max-w-3xl text-sm leading-6 text-gray-600">
-                    Upload only the evidence relevant to your selected organization type. Files are stored privately for reviewers; accepted evidence is retained with the verification history.
+                    Upload only the documents relevant to your selected organization type. Files stay private during review.
                 </p>
+                <p x-show="selectedOrganizationType === 'school_educational_institution'" x-cloak class="text-sm leading-6 text-gray-600">For regulatory eligibility, upload at least one applicable DepEd, CHED, or TESDA authority document. You do not need all three.</p>
+                <p x-show="!selectedOrganizationType" x-cloak class="rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-950">Choose an organization type in Step 1 to see its documents.</p>
 
                 <p id="error-evidence" class="min-h-5 text-sm text-rose-700" role="alert">@error('evidence'){{ $message }}@enderror</p>
 
-                @foreach(['organization_identity' => 'Organization identity', 'regulatory_eligibility' => 'Regulatory eligibility', 'representative_identity' => 'Representative identity', 'representative_authority' => 'Representative authority', 'supporting_evidence' => 'Supporting evidence'] as $groupKey => $groupLabel)
-                    <section class="space-y-4 rounded-2xl border border-gray-200 p-4 sm:p-5">
+                @foreach($requirementKeysByGroup as $groupKey => $keys)
+                    @continue(in_array($groupKey, ['representative_identity', 'representative_authority'], true))
+                    <section x-show="isGroupVisible('{{ $groupKey }}')" x-cloak class="space-y-4 rounded-2xl border border-gray-200 p-4 sm:p-5">
                         <div>
-                            <h3 class="text-base font-semibold text-gray-900">{{ $groupLabel }}</h3>
-                            <p class="mt-1 text-xs leading-5 text-gray-500">Configured requirements appear below. Optional requirements may not apply to every organization.</p>
+                            <h3 class="text-base font-semibold text-gray-900">{{ ucfirst(str_replace('_', ' ', $groupKey)) }}</h3>
+                            <p class="mt-1 text-xs leading-5 text-gray-500">Only documents applicable to your selected organization type appear here.</p>
                         </div>
 
-                        @foreach($requirementCatalog as $key => $requirement)
-                            @if($requirement['rule_group'] === $groupKey)
-                                @php($isInitiallyEnabled = in_array($key, $enabledRequirementKeys, true))
-                                <article
-                                    x-show="isRequirementVisible('{{ $key }}')"
-                                    data-requirement-key="{{ $key }}"
-                                    class="rounded-xl border border-gray-200 bg-white p-4"
-                                >
-                                    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                        <div>
-                                            <h4 class="font-semibold text-gray-900">{{ $requirement['label'] }}</h4>
-                                            <p class="mt-1 text-sm leading-6 text-gray-600">{{ $requirement['guidance'] }}</p>
-                                        </div>
-                                        <span class="shrink-0 text-xs font-semibold {{ $requirement['required'] ? 'text-rose-700' : 'text-gray-500' }}">
-                                            {{ $requirement['required'] ? 'Required' : 'Optional' }}
-                                        </span>
-                                    </div>
-
-                                    @if($requirement['issuing_authority'])
-                                        <p class="mt-3 text-xs text-gray-500">Typical issuer: {{ $requirement['issuing_authority'] }}</p>
-                                    @endif
-
-                                    <label class="mt-4 block">
-                                        <span class="text-sm font-semibold text-gray-800">Upload file{{ ($requirement['maximum_evidence_count'] ?? 1) > 1 ? 's' : '' }}</span>
-                                        <input
-                                            type="file"
-                                            name="evidence[{{ $key }}][files][]"
-                                            data-requirement-file="{{ $key }}"
-                                            multiple
-                                            accept="{{ implode(',', $requirement['accepted_mime_types']) }}"
-                                            @disabled(! $isInitiallyEnabled)
-                                            x-bind:disabled="!isRequirementVisible('{{ $key }}')"
-                                            aria-describedby="error-evidence-{{ $key }}-files"
-                                            class="mt-2 block min-h-11 w-full rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 text-sm text-gray-700"
-                                        >
-                                        <span class="mt-1 block text-xs text-gray-500">PDF, JPEG, PNG, or WebP; {{ number_format($requirement['max_kilobytes'] / 1024, 1) }} MB maximum per file.</span>
-                                        <p id="error-evidence-{{ $key }}-files" class="mt-1 min-h-5 text-xs text-rose-700" role="alert">@error('evidence.'.$key.'.files'){{ $message }}@enderror</p>
-                                    </label>
-
-                                    @foreach($requirement['metadata_fields'] as $metadataField)
-                                        <label class="mt-3 block">
-                                            <span class="text-sm font-semibold text-gray-800">{{ str($metadataField)->replace('_', ' ')->title() }}</span>
-                                            <input
-                                                type="{{ in_array($metadataField, ['issue_date', 'expiry_date'], true) ? 'date' : 'text' }}"
-                                                name="evidence[{{ $key }}][{{ $metadataField }}]"
-                                                value="{{ old('evidence.'.$key.'.'.$metadataField) }}"
-                                                @disabled(! $isInitiallyEnabled)
-                                                x-bind:disabled="!isRequirementVisible('{{ $key }}')"
-                                                class="mt-2 min-h-11 w-full rounded-xl border-gray-300 focus:border-brand-500 focus:ring-brand-500"
-                                            >
-                                        </label>
-                                    @endforeach
-                                </article>
-                            @endif
+                        @foreach($keys as $key)
+                            @php($requirement = $requirementCatalog[$key])
+                            @include('connectors.partials.evidence-card')
                         @endforeach
                     </section>
                 @endforeach
@@ -462,7 +453,7 @@
                     data-step-heading="5"
                     tabindex="-1"
                     class="text-xl font-semibold tracking-tight text-gray-900 focus:outline-none"
-                >5. Representative and confirmation</legend>
+                >5. Representative verification</legend>
 
                 <div class="rounded-2xl border border-gray-200 bg-gray-50 p-5">
                     <p class="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Representative account</p>
@@ -476,6 +467,8 @@
                         type="checkbox"
                         name="reuse_representative_identity"
                         value="1"
+                        x-model="reuseRepresentativeIdentity"
+                        @change="if (reuseRepresentativeIdentity) clearEvidenceFiles('representative_identity')"
                         @checked(old('reuse_representative_identity'))
                         class="mt-1 h-5 w-5 rounded border-gray-300 focus:border-brand-500 focus:ring-brand-500"
                     >
@@ -485,6 +478,24 @@
                     </span>
                 </label>
                 <p id="error-reuse_representative_identity" class="min-h-5 text-xs text-rose-700" role="alert">@error('reuse_representative_identity'){{ $message }}@enderror</p>
+                <p x-show="reuseRepresentativeIdentity" x-cloak class="text-sm text-amber-900">To upload an identity document, turn off approved identity reuse.</p>
+
+                @foreach(['representative_identity' => 'Representative identity', 'representative_authority' => 'Representative authority'] as $groupKey => $groupLabel)
+                    <section x-show="isGroupVisible('{{ $groupKey }}')" x-cloak class="space-y-4 rounded-2xl border border-gray-200 p-4 sm:p-5">
+                        <h3 class="text-base font-semibold text-gray-900">{{ $groupLabel }}</h3>
+                        @foreach($requirementCatalog as $key => $requirement)
+                            @if($requirement['rule_group'] === $groupKey)
+                                @include('connectors.partials.evidence-card')
+                            @endif
+                        @endforeach
+                    </section>
+                @endforeach
+
+                <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-950">If the form has a validation error, browsers cannot restore selected files. Choose them again before submitting.</p>
+            </fieldset>
+
+            <fieldset data-step-panel="6" x-show="currentStep === 6" class="space-y-6">
+                <legend data-step-heading="6" tabindex="-1" class="text-xl font-semibold tracking-tight text-gray-900 focus:outline-none">6. Confirmation</legend>
 
                 <label class="block">
                     <span class="text-sm font-semibold text-gray-800">Verification notes <span class="text-xs font-normal text-gray-500">(optional)</span></span>
@@ -526,13 +537,13 @@
                 <div class="flex flex-col gap-3 sm:flex-row">
                     <button
                         type="button"
-                        x-show="currentStep < 5"
+                        x-show="currentStep < 6"
                         @click="continueStep()"
                         class="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
                     >Continue</button>
                     <button
                         type="submit"
-                        x-show="currentStep === 5"
+                        x-show="currentStep === 6"
                         class="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
                     >Submit application</button>
                 </div>

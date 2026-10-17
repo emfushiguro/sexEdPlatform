@@ -1,7 +1,7 @@
 @extends('layouts.instructor-app')
 
 @php
-    $canUseChat = auth()->user()?->can('access chat') ?? false;
+    $canUseChat = auth()->user()?->canAccessChat() ?? false;
 @endphp
 
 @section('content')

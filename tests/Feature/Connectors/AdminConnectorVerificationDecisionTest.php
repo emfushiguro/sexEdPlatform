@@ -14,16 +14,7 @@ class AdminConnectorVerificationDecisionTest extends TestCase
 {
     use ConnectorTestHelpers;
 
-    private const CHECKLIST = [
-        'organization_identity_established' => '1',
-        'regulatory_evidence_resolved' => '1',
-        'representative_identity_verified' => '1',
-        'representative_authority_established' => '1',
-        'required_evidence_complete' => '1',
-        'application_consistent' => '1',
-    ];
-
-    public function test_approval_requires_complete_evidence_and_exact_checklist(): void
+    public function test_approval_requires_complete_evidence_without_a_checklist(): void
     {
         Storage::fake('local');
         Storage::fake('public');
@@ -33,27 +24,31 @@ class AdminConnectorVerificationDecisionTest extends TestCase
         $connector = $this->submitInitialApplication($owner);
 
         $this->actingAs($admin)
-            ->post(route('admin.connectors.approve', $connector), [
+            ->postJson(route('admin.connectors.approve', $connector), [
                 'submission_round' => 1,
-                'checklist' => self::CHECKLIST,
             ])
             ->assertStatus(422);
 
-        $this->completeCurrentEvidence($connector);
+        $this->assertSame('pending', $connector->fresh()->status);
+    }
 
-        $checklist = self::CHECKLIST;
-        $checklist['application_consistent'] = '0';
+    public function test_incomplete_browser_approval_returns_to_the_decision_dialog(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $connector = $this->submitInitialApplication(User::factory()->create());
 
-        $this->actingAs($admin)
+        $this->actingAs($this->admin())
             ->from(route('admin.connectors.show', $connector))
             ->post(route('admin.connectors.approve', $connector), [
                 'submission_round' => 1,
-                'checklist' => $checklist,
+                'review_dialog' => 'approve-connector',
+                'internal_note' => 'Keep this draft note.',
             ])
             ->assertRedirect(route('admin.connectors.show', $connector))
-            ->assertSessionHasErrors('checklist.application_consistent');
-
-        $this->assertSame('pending', $connector->fresh()->status);
+            ->assertSessionHasErrors('approval')
+            ->assertSessionHasInput('review_dialog', 'approve-connector')
+            ->assertSessionHasInput('internal_note', 'Keep this draft note.');
     }
 
     public function test_valid_approval_activates_only_primary_pending_membership_and_preserves_evidence(): void
@@ -71,7 +66,6 @@ class AdminConnectorVerificationDecisionTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.connectors.approve', $connector), [
                 'submission_round' => 1,
-                'checklist' => self::CHECKLIST,
                 'internal_note' => 'All required evidence reviewed.',
             ])
             ->assertRedirect();
@@ -88,7 +82,6 @@ class AdminConnectorVerificationDecisionTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.connectors.approve', $connector), [
                 'submission_round' => 1,
-                'checklist' => self::CHECKLIST,
             ])
             ->assertStatus(409);
     }
@@ -107,7 +100,6 @@ class AdminConnectorVerificationDecisionTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.connectors.approve', $connector), [
                 'submission_round' => 1,
-                'checklist' => self::CHECKLIST,
             ])
             ->assertStatus(409);
 
@@ -120,7 +112,6 @@ class AdminConnectorVerificationDecisionTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.connectors.approve', $verified), [
                 'submission_round' => 1,
-                'checklist' => self::CHECKLIST,
             ])
             ->assertStatus(409);
     }

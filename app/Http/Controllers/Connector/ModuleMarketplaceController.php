@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Connector;
 
 use App\Http\Controllers\Controller;
 use App\Models\Connector;
+use App\Models\ConnectorModulePurchase;
 use App\Models\ModuleMarketplaceListing;
 use App\Services\Connectors\ConnectorAccessService;
+use App\Services\Modules\ModuleCapacityService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -13,8 +15,8 @@ class ModuleMarketplaceController extends Controller
 {
     public function __construct(
         private readonly ConnectorAccessService $access,
-    ) {
-    }
+        private readonly ModuleCapacityService $capacity,
+    ) {}
 
     public function index(Request $request, Connector $connector): View
     {
@@ -23,6 +25,7 @@ class ModuleMarketplaceController extends Controller
 
         $listings = ModuleMarketplaceListing::query()
             ->with([
+                'module' => fn ($query) => $query->withCount(['lessons' => fn ($lessons) => $lessons->where('is_published', true)]),
                 'module.creator.instructorProfile',
                 'module.creator.adminCreatorProfile',
                 'module.publishedRevision',
@@ -77,6 +80,12 @@ class ModuleMarketplaceController extends Controller
             ->where('module_id', $module->id)
             ->latest('id')
             ->first();
+        $pendingPurchase = ConnectorModulePurchase::query()
+            ->where('connector_id', $connector->id)
+            ->where('module_id', $module->id)
+            ->where('status', ConnectorModulePurchase::STATUS_PENDING)
+            ->where('capacity_hold_expires_at', '>', now())
+            ->latest('id')->first();
 
         return view('connectors.modules.marketplace.show', [
             'connector' => $connector,
@@ -84,8 +93,10 @@ class ModuleMarketplaceController extends Controller
             'module' => $module,
             'lessons' => $module->lessons,
             'entitlement' => $entitlement,
+            'pendingPurchase' => $pendingPurchase,
             'canManage' => $this->access->hasPermission($request->user(), $connector, 'connector.manage_modules'),
             'canOpenLessons' => false,
+            'marketplaceCapacity' => $this->capacity->usage($module),
         ]);
     }
 }

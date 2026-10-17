@@ -21,7 +21,7 @@ class StartConversationRequest extends FormRequest
                 'required',
                 'string',
                 Rule::in(Conversation::supportedConversationTypes()),
-                Rule::notIn([Conversation::TYPE_GUARDIAN_INVITATION]),
+                Rule::notIn([Conversation::TYPE_GUARDIAN_INVITATION, Conversation::TYPE_CONNECTOR_NEGOTIATION]),
             ],
             'module_id' => ['nullable', 'integer', 'exists:modules,id'],
             'lesson_id' => ['nullable', 'integer', 'exists:lessons,id'],

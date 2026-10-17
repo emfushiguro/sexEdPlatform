@@ -18,14 +18,22 @@ class ModulePurchaseController extends Controller
     public function __construct(
         private readonly ConnectorAccessService $access,
         private readonly ConnectorModulePurchaseService $purchases,
-    ) {
-    }
+    ) {}
 
     public function checkout(Request $request, Connector $connector, ModuleMarketplaceListing $listing): View|RedirectResponse
     {
         $this->access->abortUnlessPermission($request->user(), $connector, 'connector.manage_modules');
         $listing->loadMissing('module.creator');
         abort_unless($listing->status === ModuleMarketplaceListing::STATUS_PUBLISHED && $listing->module?->isLearnerVisible(), 404);
+        $request->validate(['seat_capacity' => ['nullable', 'integer', 'min:1']]);
+        $seats = $request->filled('seat_capacity') ? $request->integer('seat_capacity') : $listing->seat_capacity;
+        $pendingPurchase = ConnectorModulePurchase::query()
+            ->where('connector_id', $connector->id)->where('module_id', $listing->module_id)
+            ->where('status', ConnectorModulePurchase::STATUS_PENDING)
+            ->where('capacity_hold_expires_at', '>', now())->latest('id')->first();
+        $package = $pendingPurchase && (int) $pendingPurchase->seat_capacity === (int) $seats
+            ? ['seat_capacity' => $pendingPurchase->seat_capacity, 'price_amount' => $pendingPurchase->gross_amount]
+            : $listing->packageForSeats($seats);
 
         return view('payments.checkout-summary', [
             'layout' => 'layouts.connector-app',
@@ -33,9 +41,9 @@ class ModulePurchaseController extends Controller
             'connector' => $connector,
             'listing' => $listing,
             'module' => $listing->module,
-            'amount' => (float) $listing->price_amount,
+            'amount' => (float) $package['price_amount'],
             'currency' => $listing->currency,
-            'seatCapacity' => $listing->seat_capacity,
+            'seatCapacity' => $package['seat_capacity'],
             'paymentMethod' => 'gcash',
             'submitUrl' => route('connector.modules.purchase.store', [$connector, $listing]),
             'backUrl' => route('connector.modules.marketplace.show', [$connector, $listing]),
@@ -49,6 +57,8 @@ class ModulePurchaseController extends Controller
     ): RedirectResponse {
         $this->access->abortUnlessPermission($request->user(), $connector, 'connector.manage_modules');
 
+        $request->validate(['seat_capacity' => ['nullable', 'integer', 'min:1']]);
+
         try {
             $checkout = $this->purchases->createCheckout(
                 $connector,
@@ -60,6 +70,7 @@ class ModulePurchaseController extends Controller
                     'email' => (string) ($request->input('billing_email') ?: ($request->user()->email ?? '')),
                     'phone' => (string) ($request->input('billing_phone') ?: ''),
                 ],
+                $request->filled('seat_capacity') ? $request->integer('seat_capacity') : null,
             );
         } catch (\Illuminate\Validation\ValidationException $exception) {
             return back()->withInput()->withErrors($exception->errors());

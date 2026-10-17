@@ -16,18 +16,9 @@
 @endphp
 
 <div
-    x-data="{ approveOpen: false, rejectOpen: @js($errors->any()), rejectReason: @js(old('reason', 'incomplete_information')) }"
+    x-data="{ approveOpen: false, rejectOpen: @js($errors->hasAny(['reason', 'note'])), rejectReason: @js(old('reason', 'incomplete_information')) }"
     class="space-y-6"
 >
-    @if($seminar->isExternalDelivery() && in_array($seminar->status, ['published', 'completed'], true))
-        @include('seminars._delivery-form', ['action' => route('admin.seminars.delivery.update', $seminar)])
-    @endif
-    @if(in_array($seminar->event_format, ['in_person', 'external'], true) && ! in_array($seminar->status, ['cancelled', 'archived'], true))
-        @include('seminars._attendance-code-management', [
-            'generateAction' => route('admin.seminars.attendance.code.generate', $seminar),
-            'disableAction' => route('admin.seminars.attendance.code.disable', $seminar),
-        ])
-    @endif
     <div>
         <a href="{{ route('admin.seminars.attendance', $seminar) }}" class="inline-flex items-center rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">
             View full attendance roster
@@ -43,10 +34,14 @@
 
     <section class="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-theme-xs">
         <div class="border-b border-brand-100 bg-[radial-gradient(circle_at_top_left,_rgba(163,14,178,0.17),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(59,12,177,0.14),_transparent_32%),linear-gradient(180deg,#ffffff_0%,#f8f3ff_100%)] px-6 py-6">
+        <div class="mb-5 max-w-3xl">@include('seminars._thumbnail', ['variant' => 'cover', 'loading' => 'eager'])</div>
             <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div>
                     <a href="{{ route('admin.seminars.index') }}" class="text-sm font-semibold text-brand-700 hover:text-brand-900">Back to moderation queue</a>
                     <h1 class="mt-3 text-2xl font-bold text-gray-900">{{ $seminar->title }}</h1>
+                    @if($seminar->isExternalDelivery() && in_array($seminar->status, ['published', 'completed'], true))
+                        @include('seminars._delivery-drawer', ['action' => route('admin.seminars.delivery.update', $seminar)])
+                    @endif
                     <p class="mt-1 text-sm text-gray-500">{{ $seminar->connector?->name ?? 'No connector' }} / {{ $seminar->categoryDisplayName() }}</p>
                 </div>
 
@@ -74,7 +69,8 @@
                         <div><dt class="text-xs font-semibold uppercase text-gray-500">Type</dt><dd class="mt-1 font-semibold capitalize text-gray-900">{{ $seminar->type }}</dd></div>
                         <div><dt class="text-xs font-semibold uppercase text-gray-500">Category</dt><dd class="mt-1 font-semibold text-gray-900">{{ $seminar->categoryDisplayName() }}</dd></div>
                         <div><dt class="text-xs font-semibold uppercase text-gray-500">Capacity</dt><dd class="mt-1 font-semibold text-gray-900">{{ $seminar->capacity ? number_format($seminar->capacity) : 'Unlimited' }}</dd></div>
-                        <div class="md:col-span-2"><dt class="text-xs font-semibold uppercase text-gray-500">Purpose</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->purpose ?: 'No purpose provided.' }}</dd></div>
+                        <div class="md:col-span-2"><dt class="text-xs font-semibold uppercase text-gray-500">Description</dt><dd class="mt-1 whitespace-pre-line text-sm text-gray-700">{{ $seminar->description ?: 'No description provided.' }}</dd></div>
+                        <div class="md:col-span-2"><dt class="text-xs font-semibold uppercase text-gray-500">Purpose / Objectives</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->purpose ?: 'No purpose provided.' }}</dd></div>
                     </dl>
                 </section>
 
@@ -83,14 +79,27 @@
                     <dl class="mt-4 grid gap-4 md:grid-cols-2">
                         <div><dt class="text-xs font-semibold uppercase text-gray-500">Starts</dt><dd class="mt-1 font-semibold text-gray-900">{{ $seminar->localStartsAt() ? $seminar->localStartsAt()->format('M d, Y g:i A').' PHT' : 'Not set' }}</dd></div>
                         <div><dt class="text-xs font-semibold uppercase text-gray-500">Ends</dt><dd class="mt-1 font-semibold text-gray-900">{{ $seminar->localEndsAt() ? $seminar->localEndsAt()->format('M d, Y g:i A').' PHT' : 'Not set' }}</dd></div>
-                        <div class="md:col-span-2"><dt class="text-xs font-semibold uppercase text-gray-500">Location</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->location ?: 'No Location Provided' }}</dd></div>
-                        <div class="md:col-span-2"><dt class="text-xs font-semibold uppercase text-gray-500">Livestream Channel</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->livestream_channel ?: 'Not set' }}</dd></div>
+                        @if($seminar->event_format === 'in_person')<div class="md:col-span-2"><dt class="text-xs font-semibold uppercase text-gray-500">Venue</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->location ?: 'Not set' }}</dd></div>@endif
+                        <div><dt class="text-xs font-semibold uppercase text-gray-500">Delivery format</dt><dd class="mt-1 text-sm text-gray-700">{{ ucwords(str_replace('_', ' ', $seminar->event_format ?? 'native')) }}</dd></div>
+                        <div><dt class="text-xs font-semibold uppercase text-gray-500">Duration</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->starts_at && $seminar->ends_at ? $seminar->starts_at->diffInMinutes($seminar->ends_at).' minutes' : 'Not set' }}</dd></div>
+                        @if($seminar->isExternalDelivery())
+                            <div><dt class="text-xs font-semibold uppercase text-gray-500">Platform</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->external_platform === 'other' ? $seminar->external_platform_name : ucwords(str_replace('_', ' ', $seminar->external_platform ?? 'Not set')) }}</dd></div>
+                            <div><dt class="text-xs font-semibold uppercase text-gray-500">Link release</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->external_link_visible_at ? $seminar->external_link_visible_at->copy()->timezone(config('app.display_timezone', 'Asia/Manila'))->format('M d, Y g:i A').' PHT' : 'Immediately after confirmation' }}</dd></div>
+                            <div><dt class="text-xs font-semibold uppercase text-gray-500">Link expiry</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->external_link_expiry_mode === 'ongoing' ? 'Ongoing' : ($seminar->external_link_expiry_mode === 'event_end' ? 'At event end' : ($seminar->external_link_expires_at ? $seminar->external_link_expires_at->copy()->timezone(config('app.display_timezone', 'Asia/Manila'))->format('M d, Y g:i A').' PHT' : 'Not set')) }}</dd></div>
+                        @elseif($seminar->event_format === 'in_person')
+                            <div><dt class="text-xs font-semibold uppercase text-gray-500">Venue address</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->venue_address ?: 'Not set' }}</dd></div>
+                            <div><dt class="text-xs font-semibold uppercase text-gray-500">Room</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->venue_room ?: 'Not set' }}</dd></div>
+                        @else
+                            <div><dt class="text-xs font-semibold uppercase text-gray-500">Livestream Channel</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->livestream_channel ?: 'Not set' }}</dd></div>
+                        @endif
+                        <div class="md:col-span-2"><dt class="text-xs font-semibold uppercase text-gray-500">Delivery instructions</dt><dd class="mt-1 whitespace-pre-line text-sm text-gray-700">{{ $seminar->delivery_instructions ?: 'None provided.' }}</dd></div>
                     </dl>
                 </section>
 
                 <section>
                     <h2 class="border-b border-gray-100 pb-2 text-sm font-bold uppercase tracking-[0.2em] text-gray-500">Registration Settings</h2>
                     <dl class="mt-4 grid gap-4 md:grid-cols-2">
+                        <div><dt class="text-xs font-semibold uppercase text-gray-500">Registration deadline</dt><dd class="mt-1 text-sm text-gray-700">{{ $seminar->registration_deadline_at ? $seminar->registration_deadline_at->copy()->timezone(config('app.display_timezone', 'Asia/Manila'))->format('M d, Y g:i A').' PHT' : 'Closes when the event starts' }}</dd></div>
                         <div><dt class="text-xs font-semibold uppercase text-gray-500">Registration</dt><dd class="mt-1 font-semibold capitalize text-gray-900">{{ str_replace('_', ' ', $seminar->registration_approval_mode ?? 'open') }}</dd></div>
                         <div><dt class="text-xs font-semibold uppercase text-gray-500">Target Participants</dt><dd class="mt-1 font-semibold capitalize text-gray-900">{{ str_replace('_', ' ', $seminar->target_participants ?? 'Not set') }}</dd></div>
                         <div class="md:col-span-2"><dt class="text-xs font-semibold uppercase text-gray-500">Learner Ages</dt><dd class="mt-1 text-sm text-gray-700">{{ $selectedAges ?: 'No age limits set.' }}</dd></div>
@@ -124,7 +133,7 @@
                                 @endif
                                 <div>
                                     <div class="font-semibold text-gray-900">{{ $speaker->display_name ?: $speaker->user?->full_name }}</div>
-                                    <div class="text-gray-500">{{ $speaker->role ?? 'Speaker' }} / {{ $speaker->status }}</div>
+                                    <div class="text-gray-500">{{ $speaker->role ?? 'Speaker' }} / @if($speaker->status === 'accepted')<span class="font-semibold text-emerald-700">&#10003; Confirmed speaker</span>@else{{ $speaker->status }}@endif</div>
                                 </div>
                             </div>
                         @empty
@@ -138,6 +147,10 @@
 
     <section class="rounded-[30px] border border-gray-200 bg-white p-6 shadow-theme-xs">
         <h2 class="text-sm font-bold uppercase tracking-[0.2em] text-gray-500">Moderation Information</h2>
+        <dl class="mt-4 grid gap-4 text-sm md:grid-cols-2">
+            <div><dt class="font-semibold text-gray-500">Submitted by / at</dt><dd>{{ $seminar->submittedForReviewBy?->full_name ?? 'Not submitted' }} / {{ $seminar->submitted_for_review_at ? $seminar->submitted_for_review_at->copy()->timezone(config('app.display_timezone', 'Asia/Manila'))->format('M d, Y g:i A').' PHT' : 'Not set' }}</dd></div>
+            <div><dt class="font-semibold text-gray-500">Published by / at</dt><dd>{{ $seminar->publishedBy?->full_name ?? 'Not published' }} / {{ $seminar->published_at ? $seminar->published_at->copy()->timezone(config('app.display_timezone', 'Asia/Manila'))->format('M d, Y g:i A').' PHT' : 'Not set' }}</dd></div>
+        </dl>
         <div class="mt-4 space-y-3">
             @forelse($seminar->moderationReviews as $review)
                 <div class="rounded-2xl border border-gray-100 p-4 text-sm">

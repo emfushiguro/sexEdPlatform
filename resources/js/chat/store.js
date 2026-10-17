@@ -2,6 +2,7 @@ const defaultState = {
     currentUserId: null,
     currentUserName: null,
     currentUserRole: null,
+    connectorId: null,
     messageMutationWindowMinutes: 15,
     reportReasons: [],
     suggestions: [],
@@ -104,6 +105,7 @@ function normalizeConversation(conversation) {
         participant_one_id: Number(conversation.participant_one_id),
         participant_two_id: Number(conversation.participant_two_id),
         conversation_type: conversation.conversation_type,
+        connector_id: conversation.connector_id ? Number(conversation.connector_id) : null,
         status: conversation.status,
         context_key: conversation.context_key,
         context_label: conversation.context_label || 'Direct Conversation',
@@ -244,13 +246,14 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
-            if (this.activeConversationId) {
+            const visibleConversations = this.filteredConversations();
+            if (visibleConversations.some(conversation => conversation.id === this.activeConversationId)) {
                 await this.selectConversation(this.activeConversationId);
                 return;
             }
 
-            if (this.conversations.length > 0) {
-                await this.selectConversation(this.conversations[0].id);
+            if (visibleConversations.length > 0) {
+                await this.selectConversation(visibleConversations[0].id);
             }
         },
 
@@ -262,6 +265,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         applyBootstrapPayload(payload = {}) {
+            if (Object.prototype.hasOwnProperty.call(payload, 'connectorId')) {
+                this.connectorId = Number(payload.connectorId) || null;
+            }
+
             if (payload.currentUserId) {
                 this.currentUserId = Number(payload.currentUserId || this.currentUserId || 0);
             }
@@ -401,7 +408,24 @@ document.addEventListener('alpine:init', () => {
                     },
                 });
 
-                const conversations = (response.data.conversations || []).map(normalizeConversation);
+                let conversations = (response.data.conversations || []).map(normalizeConversation);
+                if (this.connectorId) {
+                    try {
+                        const connectorResponse = await window.axios.get('/chat/conversations', {
+                            params: {
+                                page: targetPage,
+                                per_page: this.conversationPagination.perPage,
+                                connector_id: this.connectorId,
+                            },
+                        });
+                        conversations.push(...(connectorResponse.data.conversations || []).map(normalizeConversation));
+                    } catch (error) {
+                        if (!this.isConversationUnavailableError(error)) {
+                            throw error;
+                        }
+                        this.composerError = 'This Connector workspace is no longer available.';
+                    }
+                }
 
                 if (reset) {
                     this.setConversations(conversations);
@@ -477,6 +501,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         async fetchDiscovery() {
+            if (this.connectorId) {
+                return;
+            }
+
             this.loading.discovery = true;
 
             try {
@@ -739,12 +767,15 @@ document.addEventListener('alpine:init', () => {
 
         filteredConversations() {
             const query = String(this.discoveryQuery || '').toLowerCase().trim();
+            const conversations = this.connectorId
+                ? this.conversations.filter(conversation => conversation.connector_id === this.connectorId)
+                : this.conversations;
 
             if (!query) {
-                return this.conversations;
+                return conversations;
             }
 
-            return this.conversations.filter((conversation) => {
+            return conversations.filter((conversation) => {
                 const participant = this.conversationParticipantName(conversation).toLowerCase();
                 const label = String(conversation.context_label || '').toLowerCase();
                 const preview = String(conversation.latest_message_preview || '').toLowerCase();

@@ -15,8 +15,7 @@ class ModuleLibraryController extends Controller
     public function __construct(
         private readonly ConnectorAccessService $access,
         private readonly ConnectorModuleAccessService $moduleAccess,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request, Connector $connector): View
     {
@@ -53,7 +52,6 @@ class ModuleLibraryController extends Controller
     {
         $this->access->abortUnlessPermission($request->user(), $connector, 'connector.manage_modules');
         $this->assertEntitlement($connector, $entitlement);
-        $this->moduleAccess->reconcileEntitlement($entitlement);
         $entitlement->load([
             'module',
             'purchase',
@@ -62,11 +60,13 @@ class ModuleLibraryController extends Controller
             'assignments.membership.role',
         ]);
         $this->addSeatCounts($entitlement);
+        $members = $this->moduleAccess->managementRoster($entitlement);
 
         return view('connectors.modules.library.access', [
             'connector' => $connector,
             'entitlement' => $entitlement,
             'canManage' => true,
+            'members' => $members,
         ]);
     }
 

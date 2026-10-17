@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\CustomVerifyEmail;
+use App\Services\Connectors\ConnectorAccessService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -779,7 +780,12 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function canAccessChat(): bool
     {
-        return $this->can('access chat') || $this->isLearner();
+        return $this->can('access chat') || $this->isAdmin() || $this->isInstructor() || $this->isLearner()
+            || $this->connectorMemberships()->where('status', 'active')
+                ->whereHas('connector', fn ($query) => $query->where('status', 'verified'))
+                ->whereHas('role.permissions', fn ($query) => $query->whereIn('permission_key',
+                    app(ConnectorAccessService::class)->effectivePermissionKeys('connector.manage_educators')))
+                ->exists();
     }
 
     public function hasLearnerToInstructorTransition(): bool

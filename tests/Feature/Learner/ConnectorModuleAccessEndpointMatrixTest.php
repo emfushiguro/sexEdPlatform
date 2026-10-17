@@ -8,13 +8,30 @@ use Tests\TestCase;
 
 class ConnectorModuleAccessEndpointMatrixTest extends TestCase
 {
-    use RefreshDatabase;
     use ConnectorLearnerAccessHelpers;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->withoutMiddleware(EnsureProfileCompleted::class);
+    }
+
+    public function test_active_assigned_learner_can_open_module_lesson_quiz_and_activity(): void
+    {
+        $fixture = $this->connectorLearnerFixture();
+        $this->actingAs($fixture['learner'])->get(route('learner.modules.show', $fixture['module']))->assertOk();
+        $this->get(route('learner.lessons.show', $fixture['lesson']))->assertOk()->assertSee('Protected learning text.');
+        $this->get(route('quizzes.start', $fixture['quiz']))->assertOk();
+        $this->get(route('learner.interactive-activities.show', $fixture['activity']))->assertOk();
+        $this->assertTrue($fixture['learner']->canAccessChat());
+    }
+
+    public function test_age_ineligible_assigned_learner_cannot_open_lesson(): void
+    {
+        $fixture = $this->connectorLearnerFixture();
+        $fixture['module']->update(['min_age' => 5, 'max_age' => 12]);
+        $this->actingAs($fixture['learner'])->get(route('learner.lessons.show', $fixture['lesson']))->assertForbidden();
     }
 
     public function test_revoked_connector_access_blocks_learning_mutations_and_preserves_safe_history(): void

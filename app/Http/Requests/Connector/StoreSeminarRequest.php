@@ -5,6 +5,7 @@ namespace App\Http\Requests\Connector;
 use App\Services\Seminars\SeminarPublicationValidator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class StoreSeminarRequest extends FormRequest
@@ -44,7 +45,15 @@ class StoreSeminarRequest extends FormRequest
 
     public function rules(): array
     {
-        return SeminarPublicationValidator::rules(creating: true);
+        return [...SeminarPublicationValidator::rules(creating: true), ...$this->thumbnailRules()];
+    }
+
+    protected function thumbnailRules(): array
+    {
+        return [
+            'thumbnail' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:min_width=1,min_height=1', Rule::prohibitedIf($this->boolean('remove_thumbnail'))],
+            'remove_thumbnail' => ['sometimes', 'boolean'],
+        ];
     }
 
     public function withValidator($validator): void

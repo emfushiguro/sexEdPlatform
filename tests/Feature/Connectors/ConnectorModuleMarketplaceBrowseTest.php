@@ -13,6 +13,30 @@ class ConnectorModuleMarketplaceBrowseTest extends TestCase
 {
     use ConnectorTestHelpers;
 
+    public function test_module_published_by_an_instructor_without_a_subscription_is_visible_to_connectors(): void
+    {
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+        $module = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'current_review_status' => 'approved',
+            'title' => 'Approved Instructor Connector Module',
+        ]);
+        $this->actingAs($instructor)->put(route('instructor.modules.marketplace.update', $module), [
+            'action' => 'publish',
+            'price_amount' => 5000,
+            'currency' => config('billing.currency.code'),
+            'seat_capacity' => 50,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertFalse($instructor->subscriptions()->exists());
+
+        $manager = User::factory()->create();
+        $connector = $this->createVerifiedConnector($manager);
+        $member = $this->createAdultConnectorMember($connector);
+        $this->actingAs($member)->get(route('connector.modules', $connector))
+            ->assertOk()->assertSee($module->title)->assertSee('50 seats');
+    }
+
     public function test_active_members_can_browse_published_listings_but_only_managers_can_purchase(): void
     {
         $owner = User::factory()->create();

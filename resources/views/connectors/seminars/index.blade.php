@@ -46,7 +46,7 @@
                 @forelse($seminars as $seminar)
                     <tr>
                         <td class="px-4 py-3">
-                            <a href="{{ route('connector.seminars.show', [$connector, $seminar]) }}" class="font-semibold text-purple-700 hover:text-purple-900">{{ $seminar->title }}</a>
+                            <div class="flex items-center gap-3">@include('seminars._thumbnail', ['variant' => 'compact'])<div><a href="{{ route('connector.seminars.show', [$connector, $seminar]) }}" class="font-semibold text-purple-700 hover:text-purple-900">{{ $seminar->title }}</a></div></div>
                             <div class="text-xs text-gray-500">{{ config('seminars.categories.'.$seminar->category, ucfirst((string) $seminar->category)) }}</div>
                         </td>
                         <td class="px-4 py-3"><span class="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{{ ucfirst($seminar->type) }}</span></td>

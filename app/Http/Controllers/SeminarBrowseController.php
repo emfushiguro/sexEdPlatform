@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Seminars\RegisterSeminarRequest;
 use App\Models\Seminar;
 use App\Services\Seminars\AgoraTokenService;
+use App\Services\Seminars\SeminarCodeAttendanceService;
 use App\Services\Seminars\SeminarDiscoveryService;
 use App\Services\Seminars\SeminarExternalAccessService;
 use App\Services\Seminars\SeminarRegistrationService;
@@ -12,6 +13,7 @@ use App\Services\Seminars\SeminarSpeakerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class SeminarBrowseController extends Controller
@@ -30,11 +32,12 @@ class SeminarBrowseController extends Controller
         ]);
     }
 
-    public function show(Request $request, Seminar $seminar): View
+    public function show(Request $request, Seminar $seminar): Response
     {
         abort_unless($this->discovery->canView($request->user(), $seminar), 403);
 
-        return view('seminars.show', [
+        return response()->view('seminars.show', [
+            'postedAttendanceCode' => app(SeminarCodeAttendanceService::class)->postedCodeFor($request->user(), $seminar),
             'seminar' => $seminar->load(['connector', 'speakers.user']),
             'registration' => $this->registrations->activeRegistration($request->user(), $seminar),
             'attendance' => $seminar->attendances()->where('user_id', $request->user()->id)->first(),
@@ -44,7 +47,7 @@ class SeminarBrowseController extends Controller
             'canJoinLivestream' => $this->tokens->canJoinLivestream($request->user(), $seminar),
             'canJoinExternal' => $seminar->isExternalDelivery() && $this->externalAccess->canJoin($request->user(), $seminar),
             'externalJoinMessage' => $seminar->isExternalDelivery() ? $this->externalAccess->messageFor($request->user(), $seminar) : null,
-        ]);
+        ])->header('Cache-Control', 'no-store, private');
     }
 
     public function register(RegisterSeminarRequest $request, Seminar $seminar): RedirectResponse

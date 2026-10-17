@@ -15,7 +15,7 @@ class SeminarPublicationValidator
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
-            'purpose' => ['required', 'string'],
+            'purpose' => ['nullable', 'string'],
             'type' => ['required', Rule::in(['seminar', 'webinar'])],
             'event_format' => ['required', Rule::in(['in_person', 'external', 'native'])],
             'category' => ['required', Rule::in(array_keys(config('seminars.categories')))],

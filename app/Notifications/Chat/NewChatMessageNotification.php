@@ -16,8 +16,7 @@ class NewChatMessageNotification extends Notification
     public function __construct(
         private readonly Message $message,
         private readonly Conversation $conversation,
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -42,7 +41,7 @@ class NewChatMessageNotification extends Notification
         }
 
         if (mb_strlen($preview) > 140) {
-            $preview = mb_substr($preview, 0, 137) . '...';
+            $preview = mb_substr($preview, 0, 137).'...';
         }
 
         $senderAvatarUrl = $this->resolveSenderAvatarUrl($senderName);
@@ -50,10 +49,12 @@ class NewChatMessageNotification extends Notification
         return [
             'type' => 'chat_message_received',
             'status' => 'unread',
-            'title' => $senderName . ' sent you a message',
-            'message' => '"' . $preview . '"',
+            'title' => $senderName.' sent you a message',
+            'message' => '"'.$preview.'"',
             'message_preview' => $preview,
             'conversation_id' => $this->conversation->id,
+            ...($this->conversation->conversation_type === Conversation::TYPE_CONNECTOR_NEGOTIATION
+                ? ['connector_id' => $this->conversation->connector_id] : []),
             'chat_message_id' => $this->message->id,
             'sender_id' => $this->message->sender_id,
             'sender_name' => $senderName,
@@ -79,13 +80,13 @@ class NewChatMessageNotification extends Notification
                 $normalized = substr($normalized, 8);
             }
 
-            if (!str_contains($normalized, '/')) {
-                $normalized = 'avatars/' . $normalized;
+            if (! str_contains($normalized, '/')) {
+                $normalized = 'avatars/'.$normalized;
             }
 
             return Storage::url($normalized);
         }
 
-        return 'https://ui-avatars.com/api/?name=' . urlencode($senderName) . '&color=1D4ED8&background=EFF6FF';
+        return 'https://ui-avatars.com/api/?name='.urlencode($senderName).'&color=1D4ED8&background=EFF6FF';
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Instructor;
 use App\Http\Controllers\Controller;
 use App\Models\SeminarSpeaker;
 use App\Services\Seminars\AgoraTokenService;
+use App\Services\Seminars\SeminarExternalAccessService;
 use App\Services\Seminars\SeminarSpeakerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class SeminarSpeakerInvitationController extends Controller
     public function __construct(
         private readonly SeminarSpeakerService $speakers,
         private readonly AgoraTokenService $tokens,
+        private readonly SeminarExternalAccessService $externalAccess,
     ) {}
 
     public function index(Request $request): View
@@ -40,7 +42,9 @@ class SeminarSpeakerInvitationController extends Controller
         abort_unless((int) $speaker->user_id === (int) $request->user()->id, 403);
 
         return view('instructor.speaker-invitations.show', [
-            'speaker' => $speaker->load(['seminar.connector', 'seminar.speakers.user', 'seminar.registrants.user']),
+            'speaker' => $speaker->load(['seminar.connector', 'seminar.speakers.user.instructorProfile']),
+            'externalJoinOpen' => $speaker->seminar !== null && $speaker->status === 'accepted' && $this->externalAccess->canJoin($request->user(), $speaker->seminar),
+            'externalMessage' => $speaker->seminar?->isExternalDelivery() ? $this->externalAccess->messageFor($request->user(), $speaker->seminar) : null,
             'joinOpen' => $speaker->seminar !== null && $this->tokens->canJoinLivestream($request->user(), $speaker->seminar),
         ]);
     }

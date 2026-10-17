@@ -50,15 +50,6 @@ class DashboardController extends Controller
         return view('connectors.stubs.modules', ['connector' => $connector]);
     }
 
-    public function educators(Request $request, Connector $connector): View|\Illuminate\Http\RedirectResponse
-    {
-        if (! $this->workspaceMembership($request, $connector)) {
-            return redirect()->route('connector.status', $connector);
-        }
-
-        return view('connectors.stubs.educators', ['connector' => $connector]);
-    }
-
     private function workspaceMembership(Request $request, Connector $connector)
     {
         if ($connector->status !== 'verified') {

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\Seminars\SeminarThumbnailTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php" tests="8" assertions="25" errors="2" failures="4" skipped="0" time="10.532137">
+    <testcase name="test_optional_thumbnail_and_objectives_allow_review_and_publication" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php" line="39" class="Tests\Feature\Seminars\SeminarThumbnailTest" classname="Tests.Feature.Seminars.SeminarThumbnailTest" assertions="1" time="0.772180">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Seminars\SeminarThumbnailTest::test_optional_thumbnail_and_objectives_allow_review_and_publication&#13;
+Session has unexpected errors: &#13;
+&#13;
+{
+    "default": [
+        "The purpose field is required."
+    ]
+}
+Failed asserting that true is false.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:1678
+C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php:44</failure>
+    </testcase>
+    <testcase name="test_upload_preserve_replace_and_remove_thumbnail" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php" line="57" class="Tests\Feature\Seminars\SeminarThumbnailTest" classname="Tests.Feature.Seminars.SeminarThumbnailTest" assertions="2" time="0.186443">
+      <error type="TypeError">Tests\Feature\Seminars\SeminarThumbnailTest::test_upload_preserve_replace_and_remove_thumbnail&#13;
+TypeError: PHPUnit\Framework\Assert::assertStringStartsWith(): Argument #2 ($string) must be of type string, null given, called in C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php on line 62
+&#13;
+C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php:62</error>
+    </testcase>
+    <testcase name="test_rejects_invalid_or_oversized_images_and_conflicting_removal" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php" line="79" class="Tests\Feature\Seminars\SeminarThumbnailTest" classname="Tests.Feature.Seminars.SeminarThumbnailTest" assertions="3" time="0.181444">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Seminars\SeminarThumbnailTest::test_rejects_invalid_or_oversized_images_and_conflicting_removal&#13;
+Session is missing expected key [errors].
+Failed asserting that false is true.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:1540
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:1617
+C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php:91</failure>
+    </testcase>
+    <testcase name="test_rejects_unauthorized_uploads_and_ignores_client_storage_paths" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php" line="98" class="Tests\Feature\Seminars\SeminarThumbnailTest" classname="Tests.Feature.Seminars.SeminarThumbnailTest" assertions="6" time="0.215312"/>
+    <testcase name="test_failed_database_save_preserves_old_image_and_cleans_new_upload" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php" line="111" class="Tests\Feature\Seminars\SeminarThumbnailTest" classname="Tests.Feature.Seminars.SeminarThumbnailTest" assertions="5" time="0.167792">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Seminars\SeminarThumbnailTest::test_failed_database_save_preserves_old_image_and_cleans_new_upload&#13;
+Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+-Array &amp;0 [
+-    0 =&gt; null,
+-]
++Array &amp;0 []
+&#13;
+C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php:133</failure>
+    </testcase>
+    <testcase name="test_deleting_draft_cleans_image_but_published_event_keeps_it" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php" line="136" class="Tests\Feature\Seminars\SeminarThumbnailTest" classname="Tests.Feature.Seminars.SeminarThumbnailTest" assertions="5" time="8.657848"/>
+    <testcase name="test_removal_never_deletes_other_public_media" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php" line="151" class="Tests\Feature\Seminars\SeminarThumbnailTest" classname="Tests.Feature.Seminars.SeminarThumbnailTest" assertions="2" time="0.179854">
+      <error type="Illuminate\Database\QueryException">Tests\Feature\Seminars\SeminarThumbnailTest::test_removal_never_deletes_other_public_media&#13;
+Illuminate\Database\QueryException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'thumbnail_path' in 'field list' (Connection: mysql, SQL: update `seminars` set `thumbnail_path` = modules/keep.png, `seminars`.`updated_at` = 2026-10-15 08:34:21 where `id` = 805)
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Database\Connection.php:826
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Database\Connection.php:780
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Database\Connection.php:583
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Database\Connection.php:535
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Database\Query\Builder.php:3917
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:1266
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:1316
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:1233
+C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php:156</error>
+    </testcase>
+    <testcase name="test_capacity_bounds_and_optional_objectives_are_validated" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php" line="162" class="Tests\Feature\Seminars\SeminarThumbnailTest" classname="Tests.Feature.Seminars.SeminarThumbnailTest" assertions="1" time="0.171263">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Seminars\SeminarThumbnailTest::test_capacity_bounds_and_optional_objectives_are_validated&#13;
+Session has unexpected errors: &#13;
+&#13;
+{
+    "default": [
+        "The purpose field is required."
+    ]
+}
+Failed asserting that true is false.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:1678
+C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php:34
+C:\Users\Jaded\ConciousConnections\tests\Feature\Seminars\SeminarThumbnailTest.php:166</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

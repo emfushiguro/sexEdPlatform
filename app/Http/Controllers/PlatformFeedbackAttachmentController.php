@@ -22,4 +22,9 @@ class PlatformFeedbackAttachmentController extends Controller
 
         return response()->file(Storage::disk('local')->path($platformFeedback->attachment_path), ['Content-Disposition' => 'inline', 'X-Content-Type-Options' => 'nosniff']);
     }
+
+    public function connectorShow(Request $request, Connector $connector, PlatformFeedback $platformFeedback)
+    {
+        return $this->show($request, $platformFeedback, $connector);
+    }
 }

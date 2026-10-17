@@ -1,6 +1,7 @@
-@extends('layouts.learner-app')
+@extends(isset($connector) ? 'layouts.connector-app' : 'layouts.learner-app')
 
 @section('title', 'Instructor Background')
+@section('page-title', 'Instructor Profile')
 
 @section('content')
 @php
@@ -10,13 +11,18 @@
 @endphp
 
 <div class="max-w-5xl mx-auto space-y-6">
-    <a href="{{ url()->previous() }}"
-       class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-purple-600 transition-colors">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-        </svg>
-        Back
-    </a>
+    <div class="flex items-center justify-between gap-4">
+        <a href="{{ isset($connector) ? route('connector.educators', $connector) : url()->previous() }}"
+           class="inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm text-gray-500 hover:text-purple-600 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+            <svg aria-hidden="true" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+            </svg>
+            {{ isset($connector) ? 'Back to Educators' : 'Back' }}
+        </a>
+        @isset($connector)
+            @include('connectors.educators.partials.message-action')
+        @endisset
+    </div>
 
     <section class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div class="px-6 py-7" style="background: linear-gradient(120deg, #A30EB2 0%, #730DB1 55%, #3B0CB1 100%);">

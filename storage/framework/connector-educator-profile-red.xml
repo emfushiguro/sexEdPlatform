@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\Connectors\ConnectorEducatorProfileTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" tests="6" assertions="12" errors="5" failures="0" skipped="0" time="41.736646">
+    <testcase name="test_directory_has_labeled_view_and_message_icon_actions" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="13" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="1" time="40.617859">
+      <error type="Symfony\Component\Routing\Exception\RouteNotFoundException">Tests\Feature\Connectors\ConnectorEducatorProfileTest::test_directory_has_labeled_view_and_message_icon_actions&#13;
+Symfony\Component\Routing\Exception\RouteNotFoundException: Route [connector.educators.show] not defined.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Routing\UrlGenerator.php:526
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Foundation\helpers.php:871
+C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php:17</error>
+      <system-out>
+
+</system-out>
+    </testcase>
+    <testcase name="test_host_views_saved_profile_in_connector_workspace_without_private_account_or_verification_data" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="24" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="0" time="0.165997">
+      <error type="Symfony\Component\Routing\Exception\RouteNotFoundException">Tests\Feature\Connectors\ConnectorEducatorProfileTest::test_host_views_saved_profile_in_connector_workspace_without_private_account_or_verification_data&#13;
+Symfony\Component\Routing\Exception\RouteNotFoundException: Route [connector.educators.show] not defined.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Routing\UrlGenerator.php:526
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Foundation\helpers.php:871
+C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php:28</error>
+    </testcase>
+    <testcase name="test_profile_changes_from_existing_instructor_management_are_visible_to_organizers" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="43" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="2" time="0.193466">
+      <error type="Symfony\Component\Routing\Exception\RouteNotFoundException">Tests\Feature\Connectors\ConnectorEducatorProfileTest::test_profile_changes_from_existing_instructor_management_are_visible_to_organizers&#13;
+Symfony\Component\Routing\Exception\RouteNotFoundException: Route [connector.educators.show] not defined.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Routing\UrlGenerator.php:526
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Foundation\helpers.php:871
+C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php:50</error>
+    </testcase>
+    <testcase name="test_view_uses_existing_manager_access_and_rejects_unavailable_targets" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="55" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="0" time="0.113784">
+      <error type="Symfony\Component\Routing\Exception\RouteNotFoundException">Tests\Feature\Connectors\ConnectorEducatorProfileTest::test_view_uses_existing_manager_access_and_rejects_unavailable_targets&#13;
+Symfony\Component\Routing\Exception\RouteNotFoundException: Route [connector.educators.show] not defined.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Routing\UrlGenerator.php:526
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Foundation\helpers.php:871
+C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php:58</error>
+    </testcase>
+    <testcase name="test_missing_profile_uses_empty_states_without_creating_a_record" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="73" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="1" time="0.150326">
+      <error type="Symfony\Component\Routing\Exception\RouteNotFoundException">Tests\Feature\Connectors\ConnectorEducatorProfileTest::test_missing_profile_uses_empty_states_without_creating_a_record&#13;
+Symfony\Component\Routing\Exception\RouteNotFoundException: Route [connector.educators.show] not defined.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Routing\UrlGenerator.php:526
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Foundation\helpers.php:871
+C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php:77</error>
+    </testcase>
+    <testcase name="test_shared_learner_profile_keeps_its_existing_layout_and_privacy_rules" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="84" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="8" time="0.495214"/>
+  </testsuite>
+</testsuites>

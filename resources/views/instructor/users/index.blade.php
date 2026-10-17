@@ -26,7 +26,7 @@
      x-data="{
         rows: @js($learnersTable),
         categoryOptions: @js($categoryOptions),
-          canUseChat: @js(auth()->user()?->can('access chat') ?? false),
+          canUseChat: @js(auth()->user()?->canAccessChat() ?? false),
         q: '',
         categoryFilter: '',
         statusFilter: '',

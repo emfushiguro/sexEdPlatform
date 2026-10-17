@@ -7,7 +7,7 @@
 <div class="space-y-5">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h2 class="text-2xl font-bold text-gray-900">{{ $seminar->title }}</h2>
+            <div class="mb-3">@include('seminars._thumbnail', ['variant' => 'compact', 'loading' => 'eager'])</div>            <h2 class="text-2xl font-bold text-gray-900">{{ $seminar->title }}</h2>
             <p class="mt-1 text-sm text-gray-600">Search, filter, approve, reject, and inspect registrants.</p>
         </div>
         <div class="flex gap-2">
@@ -43,11 +43,10 @@
                 @forelse($registrants as $registrant)
                     <tr>
                         <td class="px-4 py-3">
-                            <div class="font-semibold text-gray-900">{{ $registrant->user?->name ?? 'Unknown user' }}</div>
-                            <div class="text-xs text-gray-500">{{ $registrant->user?->email }}</div>
+                            @include('seminars._participant-profile', ['user' => $registrant->user])
                         </td>
                         <td class="px-4 py-3 capitalize">{{ $registrant->participant_type }}</td>
-                        <td class="px-4 py-3">{{ $registrant->registered_at?->format('M d, Y g:i A') ?? 'Unknown' }}</td>
+                        <td class="px-4 py-3">{{ $registrant->registered_at ? $registrant->registered_at->copy()->timezone(config('app.display_timezone'))->format('M d, Y g:i:s A').' PHT' : 'Unknown' }}</td>
                         <td class="px-4 py-3">
                             <span class="rounded-full px-2.5 py-1 text-xs font-bold capitalize {{ ['pending' => 'bg-amber-100 text-amber-800', 'registered' => 'bg-emerald-100 text-emerald-800', 'rejected' => 'bg-rose-100 text-rose-800'][$registrant->status] ?? 'bg-gray-100 text-gray-700' }}">
                                 {{ $registrant->status === 'registered' ? 'approved' : $registrant->status }}

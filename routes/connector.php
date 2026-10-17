@@ -8,15 +8,16 @@ use App\Http\Controllers\Connector\CommunityReactionController;
 use App\Http\Controllers\Connector\CommunityReportController;
 use App\Http\Controllers\Connector\CommunityUpvoteController;
 use App\Http\Controllers\Connector\DashboardController;
+use App\Http\Controllers\Connector\EducatorController;
 use App\Http\Controllers\Connector\HomeController;
 use App\Http\Controllers\Connector\InvitationController;
 use App\Http\Controllers\Connector\InvitationInboxController;
 use App\Http\Controllers\Connector\MemberController;
+use App\Http\Controllers\Connector\MembershipRequestController;
 use App\Http\Controllers\Connector\ModuleAccessController;
 use App\Http\Controllers\Connector\ModuleLibraryController;
 use App\Http\Controllers\Connector\ModuleMarketplaceController;
 use App\Http\Controllers\Connector\ModulePurchaseController;
-use App\Http\Controllers\Connector\MembershipRequestController;
 use App\Http\Controllers\Connector\NotificationController;
 use App\Http\Controllers\Connector\RegistrationController;
 use App\Http\Controllers\Connector\RoleController;
@@ -29,7 +30,11 @@ use App\Http\Controllers\Connector\SeminarRegistrantController;
 use App\Http\Controllers\Connector\SeminarSpeakerController;
 use App\Http\Controllers\Connector\SubscriptionController;
 use App\Http\Controllers\Connector\VerificationDocumentController;
+use App\Http\Controllers\HelpArticleImageController;
 use App\Http\Controllers\HelpCenterController;
+use App\Http\Controllers\PlatformFeedbackAttachmentController;
+use App\Http\Controllers\PlatformFeedbackController;
+use App\Http\Controllers\PlatformFeedbackMessageController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -46,18 +51,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('connector.verification.documents.show');
     Route::post('/connector/{connector}/withdraw', [RegistrationController::class, 'withdraw'])->name('connector.withdraw');
 
-    Route::get('/connector/{connector}/dashboard', [DashboardController::class, 'index'])->name('connector.dashboard');
     Route::get('/connector/{connector}/help', [HelpCenterController::class, 'index'])->name('connector.help.index');
-    Route::get('/connector/{connector}/help/{helpArticle:slug}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'connectorShow'])->withoutScopedBindings()->name('connector.help.section.image');
-    Route::get('/connector/{connector}/help/{helpArticle:slug}', [HelpCenterController::class, 'connectorShow'])->withoutScopedBindings()->name('connector.help.show');
-    Route::get('/connector/{connector}/feedback', [\App\Http\Controllers\PlatformFeedbackController::class, 'create'])->name('connector.feedback.create');
-    Route::get('/connector/{connector}/feedback/create', [\App\Http\Controllers\PlatformFeedbackController::class, 'create'])->name('connector.feedback.create.legacy');
-    Route::post('/connector/{connector}/feedback', [\App\Http\Controllers\PlatformFeedbackController::class, 'store'])->middleware('throttle:feedback-submissions')->name('connector.feedback.store');
-    Route::get('/connector/{connector}/feedback/submissions', [\App\Http\Controllers\PlatformFeedbackController::class, 'index'])->name('connector.feedback.index');
-    Route::get('/connector/{connector}/feedback/submissions/{platformFeedback}', [\App\Http\Controllers\PlatformFeedbackController::class, 'connectorShow'])->withoutScopedBindings()->name('connector.feedback.show');
-    Route::get('/connector/{connector}/feedback/submissions/{platformFeedback}/attachment', [\App\Http\Controllers\PlatformFeedbackAttachmentController::class, 'show'])->name('connector.feedback.attachment.show');
-    Route::post('/connector/{connector}/feedback/submissions/{platformFeedback}/messages', [\App\Http\Controllers\PlatformFeedbackMessageController::class, 'connectorStore'])->middleware('throttle:30,1')->name('connector.feedback.messages.store');
-    Route::delete('/connector/{connector}/feedback/submissions/{platformFeedback}', [\App\Http\Controllers\PlatformFeedbackController::class, 'withdraw'])->name('connector.feedback.withdraw');
+    Route::get('/connector/{connector}/help/{helpArticle:slug}/sections/{section}/image', [HelpArticleImageController::class, 'connectorShow'])
+        ->withoutScopedBindings()
+        ->name('connector.help.section.image');
+    Route::get('/connector/{connector}/help/{helpArticle:slug}', [HelpCenterController::class, 'connectorShow'])
+        ->withoutScopedBindings()
+        ->name('connector.help.show');
+
+    Route::get('/connector/{connector}/feedback', [PlatformFeedbackController::class, 'create'])->name('connector.feedback.create');
+    Route::get('/connector/{connector}/feedback/create', [PlatformFeedbackController::class, 'create'])->name('connector.feedback.create.legacy');
+    Route::post('/connector/{connector}/feedback', [PlatformFeedbackController::class, 'store'])
+        ->middleware('throttle:feedback-submissions')
+        ->name('connector.feedback.store');
+    Route::get('/connector/{connector}/feedback/submissions', [PlatformFeedbackController::class, 'index'])->name('connector.feedback.index');
+    Route::get('/connector/{connector}/feedback/submissions/{platformFeedback}/attachment', [PlatformFeedbackAttachmentController::class, 'connectorShow'])
+        ->name('connector.feedback.attachment.show');
+    Route::post('/connector/{connector}/feedback/submissions/{platformFeedback}/messages', [PlatformFeedbackMessageController::class, 'connectorStore'])
+        ->middleware('throttle:30,1')
+        ->name('connector.feedback.messages.store');
+    Route::get('/connector/{connector}/feedback/submissions/{platformFeedback}', [PlatformFeedbackController::class, 'connectorShow'])
+        ->withoutScopedBindings()
+        ->name('connector.feedback.show');
+    Route::delete('/connector/{connector}/feedback/submissions/{platformFeedback}', [PlatformFeedbackController::class, 'withdraw'])->name('connector.feedback.withdraw');
+
+    Route::get('/connector/{connector}/dashboard', [DashboardController::class, 'index'])->name('connector.dashboard');
     Route::get('/connector/{connector}/modules', [ModuleMarketplaceController::class, 'index'])->name('connector.modules');
     Route::get('/connector/{connector}/modules/library', [ModuleLibraryController::class, 'index'])
         ->name('connector.modules.library.index');
@@ -75,25 +93,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('connector.modules.purchase.store');
     Route::post('/connector/{connector}/modules/{entitlement}/access-rules', [ModuleAccessController::class, 'storeRule'])
         ->name('connector.modules.access-rules.store');
+    Route::post('/connector/{connector}/modules/{entitlement}/members/access', [ModuleAccessController::class, 'member'])
+        ->name('connector.modules.access.member');
     Route::delete('/connector/{connector}/modules/{entitlement}/access-rules/{rule}', [ModuleAccessController::class, 'destroyRule'])
         ->name('connector.modules.access-rules.destroy');
     Route::post('/connector/{connector}/modules/{entitlement}/members/{learner}/revoke', [ModuleAccessController::class, 'revoke'])
         ->name('connector.modules.access.revoke');
     Route::delete('/connector/{connector}/modules/{entitlement}/members/{learner}/revoke', [ModuleAccessController::class, 'clearRevocation'])
         ->name('connector.modules.access.revoke.clear');
-
-    Route::get('/connector/{connector}/help', [HelpCenterController::class, 'index'])->name('connector.help.index');
-    Route::get('/connector/{connector}/help/{helpArticle:slug}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'connectorShow'])->withoutScopedBindings()->name('connector.help.section.image');
-    Route::get('/connector/{connector}/help/{helpArticle:slug}', [HelpCenterController::class, 'connectorShow'])->withoutScopedBindings()->name('connector.help.show');
-    Route::get('/connector/{connector}/feedback', [\App\Http\Controllers\PlatformFeedbackController::class, 'create'])->name('connector.feedback.create');
-    Route::get('/connector/{connector}/feedback/create', [\App\Http\Controllers\PlatformFeedbackController::class, 'create'])->name('connector.feedback.create.legacy');
-    Route::post('/connector/{connector}/feedback', [\App\Http\Controllers\PlatformFeedbackController::class, 'store'])->middleware('throttle:feedback-submissions')->name('connector.feedback.store');
-    Route::get('/connector/{connector}/feedback/submissions', [\App\Http\Controllers\PlatformFeedbackController::class, 'index'])->name('connector.feedback.index');
-    Route::get('/connector/{connector}/feedback/submissions/{platformFeedback}', [\App\Http\Controllers\PlatformFeedbackController::class, 'connectorShow'])->withoutScopedBindings()->name('connector.feedback.show');
-    Route::get('/connector/{connector}/feedback/submissions/{platformFeedback}/attachment', [\App\Http\Controllers\PlatformFeedbackAttachmentController::class, 'show'])->name('connector.feedback.attachment.show');
-    Route::post('/connector/{connector}/feedback/submissions/{platformFeedback}/messages', [\App\Http\Controllers\PlatformFeedbackMessageController::class, 'connectorStore'])->middleware('throttle:30,1')->name('connector.feedback.messages.store');
-    Route::delete('/connector/{connector}/feedback/submissions/{platformFeedback}', [\App\Http\Controllers\PlatformFeedbackController::class, 'withdraw'])->name('connector.feedback.withdraw');
-    Route::get('/connector/{connector}/educators', [DashboardController::class, 'educators'])->name('connector.educators');
+    Route::get('/connector/{connector}/educators', [EducatorController::class, 'index'])->name('connector.educators');
+    Route::get('/connector/{connector}/educators/{instructor}', [EducatorController::class, 'show'])->name('connector.educators.show');
+    Route::get('/connector/{connector}/messages', [EducatorController::class, 'messages'])->middleware(['chat.access', 'guardian.verified'])->name('connector.educators.messages');
+    Route::post('/connector/{connector}/educators/{instructor}/conversation', [EducatorController::class, 'store'])
+        ->middleware(['chat.access', 'guardian.verified', 'throttle:20,1'])->name('connector.educators.conversation');
     Route::get('/connector/{connector}/notifications', [NotificationController::class, 'index'])->name('connector.notifications.index');
     Route::post('/connector/{connector}/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('connector.notifications.mark-all-read');
     Route::post('/connector/{connector}/notifications/dropdown-open', [NotificationController::class, 'markDropdownRead'])->name('connector.notifications.dropdown-open');
@@ -159,6 +171,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connector/{connector}/seminars/{seminar}/attendance', [SeminarAttendanceController::class, 'index'])->name('connector.seminars.attendance');
     Route::post('/connector/{connector}/seminars/{seminar}/attendance/code', [SeminarAttendanceController::class, 'generate'])->name('connector.seminars.attendance.code.generate');
     Route::post('/connector/{connector}/seminars/{seminar}/attendance/code/disable', [SeminarAttendanceController::class, 'disable'])->name('connector.seminars.attendance.code.disable');
+    Route::post('/connector/{connector}/seminars/{seminar}/attendance/code/post', [SeminarAttendanceController::class, 'post'])->name('connector.seminars.attendance.code.post');
+    Route::post('/connector/{connector}/seminars/{seminar}/attendance/code/unpost', [SeminarAttendanceController::class, 'unpost'])->name('connector.seminars.attendance.code.unpost');
     Route::post('/connector/{connector}/seminars/{seminar}/attendance/{registrant}/manual', [SeminarAttendanceController::class, 'manual'])->name('connector.seminars.attendance.manual');
     Route::get('/connector/{connector}/seminars/{seminar}/attendance/export', [SeminarAttendanceController::class, 'export'])->name('connector.seminars.attendance.export');
 

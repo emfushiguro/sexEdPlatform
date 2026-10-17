@@ -20,7 +20,7 @@
         <header class="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="text-sm font-medium text-purple-700">{{ $connector->name }} · {{ $seminar->categoryDisplayName() }}</p>
-                <h1 class="mt-1 text-2xl font-bold text-gray-950">{{ $seminar->title }}</h1>
+                <div class="mb-3">@include('seminars._thumbnail', ['variant' => 'compact', 'loading' => 'eager'])</div>                <h1 class="mt-1 text-2xl font-bold text-gray-950">{{ $seminar->title }}</h1>
             </div>
             <div class="flex flex-wrap items-center gap-4 text-sm font-semibold text-gray-600">
                 <span class="rounded-full bg-gray-100 px-3 py-1 text-gray-700 data-[tone=live]:bg-red-100 data-[tone=live]:text-red-700 data-[tone=preparing]:bg-amber-100 data-[tone=preparing]:text-amber-700" data-agora-badge data-tone="waiting">Waiting</span>

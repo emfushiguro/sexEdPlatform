@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="CLI Arguments" tests="17" assertions="203" errors="0" failures="1" skipped="0" time="46.060512">
+    <testsuite name="Tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest.php" tests="6" assertions="29" errors="0" failures="1" skipped="0" time="42.969461">
+      <testcase name="test_void_is_append_only_releases_access_logs_correction_and_preserves_progress" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest.php" line="23" class="Tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest" classname="Tests.Feature.Admin.ConnectorModulePurchaseCorrectionTest" assertions="6" time="42.002690">
+        <system-out>
+
+</system-out>
+      </testcase>
+      <testcase name="test_correction_requires_admin_reason" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest.php" line="75" class="Tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest" classname="Tests.Feature.Admin.ConnectorModulePurchaseCorrectionTest" assertions="3" time="0.164568"/>
+      <testcase name="test_restore_reconciles_assignments_without_duplicate_purchase_or_ledger" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest.php" line="91" class="Tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest" classname="Tests.Feature.Admin.ConnectorModulePurchaseCorrectionTest" assertions="10" time="0.337999"/>
+      <testsuite name="Tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest::test_restore_rejects_unsafe_modules_or_insufficient_capacity" tests="2" assertions="8" errors="0" failures="0" skipped="0" time="0.289946">
+        <testcase name="test_restore_rejects_unsafe_modules_or_insufficient_capacity with data set &quot;unpublished&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest.php" line="125" class="Tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest" classname="Tests.Feature.Admin.ConnectorModulePurchaseCorrectionTest" assertions="4" time="0.157805"/>
+        <testcase name="test_restore_rejects_unsafe_modules_or_insufficient_capacity with data set &quot;capacity exhausted&quot;" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest.php" line="125" class="Tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest" classname="Tests.Feature.Admin.ConnectorModulePurchaseCorrectionTest" assertions="4" time="0.132141"/>
+      </testsuite>
+      <testcase name="test_retry_finalization_recovers_paid_attention_case_idempotently" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest.php" line="146" class="Tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest" classname="Tests.Feature.Admin.ConnectorModulePurchaseCorrectionTest" assertions="2" time="0.174257">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest::test_retry_finalization_recovers_paid_attention_case_idempotently&#13;
+Session is missing expected key [warning].
+Failed asserting that false is true.
+&#13;
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Jaded\ConciousConnections\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:1540
+C:\Users\Jaded\ConciousConnections\tests\Feature\Admin\ConnectorModulePurchaseCorrectionTest.php:154</failure>
+      </testcase>
+    </testsuite>
+    <testsuite name="Tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest.php" tests="5" assertions="66" errors="0" failures="0" skipped="0" time="1.626762">
+      <testcase name="test_admin_detail_renders_the_safe_verification_workspace" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest.php" line="16" class="Tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest" classname="Tests.Feature.Connectors.AdminConnectorVerificationWorkspaceTest" assertions="31" time="0.317340"/>
+      <testcase name="test_index_counts_and_filters_by_verification_status" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest.php" line="102" class="Tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest" classname="Tests.Feature.Connectors.AdminConnectorVerificationWorkspaceTest" assertions="6" time="0.278217"/>
+      <testcase name="test_empty_optional_evidence_is_hidden_but_uploaded_alternatives_are_visible" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest.php" line="120" class="Tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest" classname="Tests.Feature.Connectors.AdminConnectorVerificationWorkspaceTest" assertions="6" time="0.299781"/>
+      <testcase name="test_index_renders_logos_and_representative_photos_with_only_view_actions" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest.php" line="145" class="Tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest" classname="Tests.Feature.Connectors.AdminConnectorVerificationWorkspaceTest" assertions="11" time="0.397347"/>
+      <testcase name="test_supplemental_validation_preserves_every_entered_field_in_the_modal" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest.php" line="169" class="Tests\Feature\Connectors\AdminConnectorVerificationWorkspaceTest" classname="Tests.Feature.Connectors.AdminConnectorVerificationWorkspaceTest" assertions="12" time="0.334077"/>
+    </testsuite>
+    <testsuite name="Tests\Feature\Connectors\ConnectorModuleMarketplaceLifecycleTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorModuleMarketplaceLifecycleTest.php" tests="1" assertions="51" errors="0" failures="0" skipped="0" time="0.935681">
+      <testcase name="test_connector_marketplace_lifecycle_preserves_history_and_reassigns_seat" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorModuleMarketplaceLifecycleTest.php" line="29" class="Tests\Feature\Connectors\ConnectorModuleMarketplaceLifecycleTest" classname="Tests.Feature.Connectors.ConnectorModuleMarketplaceLifecycleTest" assertions="51" time="0.935681"/>
+    </testsuite>
+    <testsuite name="Tests\Feature\Connectors\ConnectorModulePaymentWebhookTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorModulePaymentWebhookTest.php" tests="1" assertions="9" errors="0" failures="0" skipped="0" time="0.105251">
+      <testcase name="test_connector_payment_webhook_completes_the_purchase_without_subscription_activation" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorModulePaymentWebhookTest.php" line="13" class="Tests\Feature\Connectors\ConnectorModulePaymentWebhookTest" classname="Tests.Feature.Connectors.ConnectorModulePaymentWebhookTest" assertions="9" time="0.105251"/>
+    </testsuite>
+    <testsuite name="Tests\Feature\Connectors\ConnectorVerificationExpirationTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorVerificationExpirationTest.php" tests="4" assertions="48" errors="0" failures="0" skipped="0" time="0.423357">
+      <testcase name="test_verification_expiration_preserves_marketplace_purchase_entitlement_and_membership" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorVerificationExpirationTest.php" line="19" class="Tests\Feature\Connectors\ConnectorVerificationExpirationTest" classname="Tests.Feature.Connectors.ConnectorVerificationExpirationTest" assertions="9" time="0.129047"/>
+      <testcase name="test_command_sends_configured_warnings_once" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorVerificationExpirationTest.php" line="48" class="Tests\Feature\Connectors\ConnectorVerificationExpirationTest" classname="Tests.Feature.Connectors.ConnectorVerificationExpirationTest" assertions="11" time="0.105817"/>
+      <testcase name="test_due_expiration_updates_verified_and_pending_boundaries_and_is_idempotent" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorVerificationExpirationTest.php" line="80" class="Tests\Feature\Connectors\ConnectorVerificationExpirationTest" classname="Tests.Feature.Connectors.ConnectorVerificationExpirationTest" assertions="21" time="0.094305"/>
+      <testcase name="test_alternative_accepted_evidence_and_foundational_evidence_remain_operational" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorVerificationExpirationTest.php" line="138" class="Tests\Feature\Connectors\ConnectorVerificationExpirationTest" classname="Tests.Feature.Connectors.ConnectorVerificationExpirationTest" assertions="7" time="0.094188"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

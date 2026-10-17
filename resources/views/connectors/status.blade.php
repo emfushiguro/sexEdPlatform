@@ -17,6 +17,9 @@
                 <p class="text-xs font-semibold uppercase tracking-wider text-purple-700">Connector status</p>
                 <h1 class="mt-1 text-2xl font-bold text-gray-900">{{ $connector->name }}</h1>
                 <p class="mt-2 text-sm text-gray-600">{{ $connector->category ? str($connector->category)->replace('_', ' ')->title() : 'Connector organization' }}</p>
+                @if($connector->organization_type === 'other' && $connector->organization_type_detail)
+                    <p class="mt-1 text-sm text-gray-600">Specified type: {{ $connector->organization_type_detail }}</p>
+                @endif
             </div>
 
             @if($logoUrl)
@@ -128,6 +131,7 @@
                                                 <input
                                                     id="resubmit-{{ str($requirement->requirement_key)->slug('-') }}"
                                                     name="evidence[{{ $requirement->requirement_key }}][files][]"
+                                                    form="connector-evidence-resubmission"
                                                     type="file"
                                                     accept="{{ $acceptedMimes }}"
                                                     required
@@ -138,6 +142,7 @@
                                                     <input
                                                         id="resubmit-{{ str($requirement->requirement_key)->slug('-') }}-{{ $field }}"
                                                         name="evidence[{{ $requirement->requirement_key }}][{{ $field }}]"
+                                                        form="connector-evidence-resubmission"
                                                         type="{{ in_array($field, ['issue_date', 'expiry_date'], true) ? 'date' : 'text' }}"
                                                         class="mt-1 block w-full rounded-lg border-gray-300 text-sm shadow-sm"
                                                     >
@@ -162,7 +167,7 @@
                 <p class="mt-1 text-sm text-gray-600">Only rejected, expired, or administrator-requested requirements can be replaced. Accepted evidence stays on the record.</p>
 
                 @if($eligibleRequirements->isNotEmpty())
-                    <form method="POST" action="{{ route('connector.verification.resubmit', $connector) }}" enctype="multipart/form-data" class="mt-5">
+                    <form id="connector-evidence-resubmission" method="POST" action="{{ route('connector.verification.resubmit', $connector) }}" enctype="multipart/form-data" class="mt-5">
                         @csrf
                         <input type="hidden" name="submission_round" value="{{ $connector->current_submission_round }}">
                         @error('evidence')

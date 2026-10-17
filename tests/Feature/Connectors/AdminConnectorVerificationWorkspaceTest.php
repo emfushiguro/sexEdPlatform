@@ -69,9 +69,9 @@ class AdminConnectorVerificationWorkspaceTest extends TestCase
             ->assertOk();
 
         $response->assertSee('Organization identity');
-        $response->assertSee('Regulatory eligibility');
+        $response->assertDontSee('id="purpose-regulatory_eligibility"', false);
         $response->assertSee('Representative authority');
-        $response->assertSee('Completion');
+        $response->assertSee('Submitted documents');
         $response->assertSee('Representative identity');
         $response->assertSee('SEC non-stock registration');
         $response->assertSee('Accepted');
@@ -80,13 +80,14 @@ class AdminConnectorVerificationWorkspaceTest extends TestCase
         $response->assertSee('Expired');
         $response->assertSee('Superseded');
         $response->assertSee('Submission round');
-        $response->assertSee('Approval checklist');
-        $response->assertSee('Organization identity established');
-        $response->assertSee('Regulatory evidence resolved');
-        $response->assertSee('Representative identity verified');
-        $response->assertSee('Representative authority established');
-        $response->assertSee('Required evidence complete');
-        $response->assertSee('Application consistent');
+        $response->assertDontSee('Approval checklist');
+        $response->assertDontSee('name="checklist[', false);
+        $response->assertSee('data-document-preview', false);
+        $response->assertSee('data-review-dialog', false);
+        $response->assertSee('data-decision-dialog', false);
+        $response->assertSee('aria-label="Download', false);
+        $response->assertDontSee('No current evidence file submitted.');
+        $response->assertDontSee($connector->verificationRequirements()->first()->guidance);
         $response->assertSee('Applicant reason');
         $response->assertSee('Internal note');
         $response->assertSee('Organization logo');
@@ -114,6 +115,93 @@ class AdminConnectorVerificationWorkspaceTest extends TestCase
             ->assertSee('Resubmission Workspace')
             ->assertSee('Resubmission required')
             ->assertSee('Server results: 1');
+    }
+
+    public function test_empty_optional_evidence_is_hidden_but_uploaded_alternatives_are_visible(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $payload = $this->connectorPayload();
+        $payload['evidence']['other_organization_identity'] = $payload['evidence']['sec_nonstock_registration'];
+        unset($payload['evidence']['sec_nonstock_registration']);
+        $payload['evidence']['deped_authority'] = [
+            'files' => [\Illuminate\Http\UploadedFile::fake()->create('recognition.pdf', 100, 'application/pdf')],
+        ];
+        $connector = $this->submitInitialApplication(User::factory()->create(), [
+            'organization_type' => 'school_educational_institution',
+            'evidence' => $payload['evidence'],
+        ]);
+
+        $response = $this->actingAs($this->admin())
+            ->get(route('admin.connectors.show', $connector))
+            ->assertOk();
+        $this->assertTrue(str_contains($response->getContent(), 'DepEd authority'), 'The uploaded school authority must be visible.');
+        $this->assertTrue(str_contains($response->getContent(), 'Required alternative'), 'An uploaded mandatory alternative must not be labelled merely optional.');
+        $this->assertFalse(str_contains($response->getContent(), 'CHED authority'), 'The empty CHED alternative must not be rendered.');
+        $this->assertFalse(str_contains($response->getContent(), 'TESDA program registration'), 'The empty TESDA alternative must not be rendered.');
+    }
+
+    public function test_index_renders_logos_and_representative_photos_with_only_view_actions(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $owner = User::factory()->create();
+        $owner->learnerProfile()->create(['username' => 'representative-'.$owner->id, 'avatar_path' => 'avatars/representative.png']);
+        $connector = $this->submitInitialApplication($owner);
+
+        $this->actingAs($this->admin())->get(route('admin.connectors.index'))
+            ->assertOk()
+            ->assertSee('logo_url')
+            ->assertSee('representative_avatar_url')
+            ->assertViewHas('connectors', fn ($connectors) => $connectors->first()->primaryRepresentative->learnerProfile->avatar_path === 'avatars/representative.png')
+            ->assertSee('View connector')
+            ->assertDontSee('Open verification workspace')
+            ->assertDontSee('selectedActionUrl')
+            ->assertDontSee('approve_url');
+
+        $this->get(route('admin.connectors.show', $connector))
+            ->assertOk()
+            ->assertSee(Storage::disk('public')->url('avatars/representative.png'), false);
+    }
+
+    public function test_supplemental_validation_preserves_every_entered_field_in_the_modal(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $payload = $this->connectorPayload();
+        $payload['evidence']['other_organization_identity'] = $payload['evidence']['sec_nonstock_registration'];
+        unset($payload['evidence']['sec_nonstock_registration']);
+        $connector = $this->submitInitialApplication(User::factory()->create(), [
+            'organization_type' => 'other',
+            'organization_type_detail' => 'Community youth center',
+            'evidence' => $payload['evidence'],
+        ]);
+        $this->actingAs($this->admin())
+            ->from(route('admin.connectors.show', $connector))
+            ->post(route('admin.connectors.verification.request-evidence', $connector), [
+                'submission_round' => 1,
+                'review_dialog' => 'supplemental-evidence',
+                'label' => 'Specific certificate',
+                'guidance' => 'Provide the current certificate.',
+                'evidence_category' => 'regulatory_eligibility',
+                'minimum_evidence_count' => 2,
+                'maximum_evidence_count' => 1,
+                'accepted_mime_types' => ['image/png'],
+                'expires' => '1',
+            ])
+            ->assertRedirect(route('admin.connectors.show', $connector))
+            ->assertSessionHasErrors('maximum_evidence_count');
+
+        $response = $this->get(route('admin.connectors.show', $connector))->assertOk();
+        $html = $response->getContent();
+        $this->assertMatchesRegularExpression('/id="supplemental-min"[^>]*value="2"/', $html);
+        $this->assertMatchesRegularExpression('/value="regulatory_eligibility"[^>]*selected/', $html);
+        $this->assertMatchesRegularExpression('/name="accepted_mime_types\[\]"[^>]*value="image\/png"[^>]*checked/', $html);
+        $this->assertDoesNotMatchRegularExpression('/name="accepted_mime_types\[\]"[^>]*value="application\/pdf"[^>]*checked/', $html);
+        $this->assertMatchesRegularExpression('/name="expires"[^>]*checked/', $html);
+        $this->assertMatchesRegularExpression('/data-reopen-dialog="supplemental-evidence"/', $html);
     }
 
     private function admin(): User

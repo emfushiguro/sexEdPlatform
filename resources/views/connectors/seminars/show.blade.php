@@ -37,8 +37,8 @@
                 'email' => $user?->email ?? '',
                 'avatar' => $avatarUrlFor($user),
                 'initial' => strtoupper(mb_substr($user?->name ?? 'U', 0, 1)),
-                'registered_at' => $registrant->registered_at?->diffForHumans() ?? 'Unknown',
-                'registered_at_full' => $registrant->registered_at?->format('M d, Y g:i A') ?? 'Unknown',
+                'registered_at' => $registrant->registered_at ? $registrant->registered_at->copy()->timezone(config('app.display_timezone'))->format('M d, Y g:i:s A').' PHT' : 'Unknown',
+                'registered_at_full' => $registrant->registered_at ? $registrant->registered_at->copy()->timezone(config('app.display_timezone'))->format('M d, Y g:i:s A').' PHT' : 'Unknown',
                 'status' => $registrant->status,
                 'participant_type' => $registrant->participant_type ?? 'participant',
                 'age' => $isLearner ? ($user?->calculateAge() ?? 'Unknown') : null,
@@ -55,11 +55,10 @@
         })->values();
     @endphp
     <div class="space-y-6">
-        @if($seminar->isExternalDelivery() && in_array($seminar->status, ['published', 'completed'], true))
-            @include('seminars._delivery-form', ['action' => route('connector.seminars.delivery.update', [$connector, $seminar])])
-        @endif
         <div class="rounded-lg border border-gray-200 bg-white p-6" x-data="{ statusOpen: false, cancelOpen: false, archiveOpen: false, completeOpen: false, cancelReason: 'Speaker unavailable', customCancelReason: '' }">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+                <div class="w-full max-w-sm">@include('seminars._thumbnail', ['variant' => 'cover', 'loading' => 'eager'])</div>
+                <div class="min-w-0 space-y-4">
                 <div>
                     <div class="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide">
                         <span class="rounded-full border px-2.5 py-1 {{ $statusStyles[$seminar->status] ?? 'bg-gray-100 text-gray-700 border-gray-200' }}">{{ $statusLabel }}</span>
@@ -68,9 +67,14 @@
                     </div>
                     <h2 class="mt-3 text-2xl font-bold text-gray-900">{{ $seminar->title }}</h2>
                     <p class="mt-2 text-sm text-gray-600">{{ $seminar->description }}</p>
-                    <p class="mt-2 text-sm text-gray-600"><span class="font-semibold">Objectives:</span> {{ $seminar->purpose }}</p>
+                    @if($seminar->purpose)
+                        <p class="mt-2 text-sm text-gray-600"><span class="font-semibold">Objectives:</span> {{ $seminar->purpose }}</p>
+                    @endif
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    @if($seminar->isExternalDelivery() && in_array($seminar->status, ['published', 'completed'], true))
+                        @include('seminars._delivery-drawer', ['action' => route('connector.seminars.delivery.update', [$connector, $seminar])])
+                    @endif
                     @if($seminar->isNativeDelivery() && $seminar->type === 'webinar' && $seminar->livestream_channel && $seminar->status === 'published')
                         <a href="{{ route('connector.seminars.livestream', [$connector, $seminar]) }}" class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black">Host Livestream</a>
                     @endif
@@ -98,6 +102,7 @@
                     </button>
                 </div>
             </div>
+            </div>
 
             <dl class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
@@ -106,7 +111,7 @@
                 </div>
                 <div>
                     <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Capacity</dt>
-                    <dd class="mt-1 text-sm font-semibold text-gray-900">{{ $seminar->capacity ?? 'Unlimited' }}</dd>
+                    <dd class="mt-1 text-sm font-semibold text-gray-900">{{ $seminar->capacity ?? 'No registration limit set' }}</dd>
                 </div>
                 <div>
                     <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Registrants</dt>
@@ -219,7 +224,7 @@
                                 <div class="min-w-0">
                                     <div class="truncate font-semibold text-gray-900">{{ $speaker->display_name }}</div>
                                     <div class="truncate text-sm text-gray-500">{{ $speaker->user?->instructorProfile?->professional_background ?? $speaker->title ?? 'No organization listed' }}</div>
-                                    <div class="text-xs font-semibold uppercase tracking-wide text-gray-400">{{ ucfirst($speaker->role ?? 'speaker') }} / {{ ucfirst($speaker->status ?? 'accepted') }}</div>
+                                    <div class="text-xs font-semibold uppercase tracking-wide text-gray-400">{{ ucfirst($speaker->role ?? 'speaker') }} / @if($speaker->status === 'accepted')<span class="text-emerald-700">&#10003; Confirmed speaker</span>@else{{ ucfirst($speaker->status) }}@endif</div>
                                     @if($speaker->status === 'applied')
                                         <dl class="mt-2 space-y-1 text-xs text-gray-600">
                                             <div><dt class="font-semibold text-gray-500">Motivation</dt><dd>{{ $speaker->application_motivation }}</dd></div>
@@ -246,7 +251,7 @@
                                             <button class="rounded-lg bg-rose-700 px-3 py-2 text-sm font-semibold text-white">Confirm</button>
                                         </div>
                                     </form>
-                                @elseif(in_array($speaker->status, ['pending', 'accepted'], true))
+                                @elseif($speaker->status === 'pending')
                                     <form method="POST" action="{{ route('connector.seminars.speakers.destroy', [$connector, $seminar, $speaker]) }}">
                                         @csrf
                                         @method('DELETE')
@@ -318,7 +323,7 @@
                         <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                             <tr>
                                 <th class="px-3 py-2">Registrant</th>
-                                <th class="px-3 py-2">Registered</th>
+                                <th class="px-3 py-2">Registered (PHT)</th>
                                 <th class="px-3 py-2">Status</th>
                                 <th class="px-3 py-2 text-right">Actions</th>
                             </tr>
@@ -409,6 +414,7 @@
             </div>
         </div>
 
+        @if($seminar->isNativeDelivery())
         <div class="grid gap-6 lg:grid-cols-2">
             <div class="rounded-lg border border-gray-200 bg-white p-5">
                 <h3 class="font-bold text-gray-900">Comments</h3>
@@ -466,6 +472,7 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
     <script>
         function registrantManager(rows, manualMode) {

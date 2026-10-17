@@ -8,10 +8,45 @@
     $localEndsAt = $seminar->localEndsAt();
     $startsAtFormat = $localStartsAt && $localStartsAt->second !== 0 ? 'Y-m-d\TH:i:s' : 'Y-m-d\TH:i';
     $endsAtFormat = $localEndsAt && $localEndsAt->second !== 0 ? 'Y-m-d\TH:i:s' : 'Y-m-d\TH:i';
-    $fieldClass = 'mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500';
+    $scheduleLocked = $seminar->exists && $seminar->registrants()->exists();
+    $scheduleInitial = [
+        'starts_at' => old('starts_at', $localStartsAt?->format($startsAtFormat)),
+        'ends_at' => old('ends_at', $localEndsAt?->format($endsAtFormat)),
+        'registration_deadline_at' => old('registration_deadline_at', $seminar->registration_deadline_at?->copy()->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i:s')),
+        'external_link_visible_at' => old('external_link_visible_at', $seminar->external_link_visible_at?->copy()->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i:s')),
+        'suggest' => ! $seminar->exists && ! session()->hasOldInput(),
+        'locked' => $scheduleLocked,
+    ];
+    $fieldClass = 'mt-1 min-w-0 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500';
 @endphp
 
-<div class="grid gap-5 lg:grid-cols-2" x-data="{ category: @js(old('category', $seminar->category ?? 'education')), approvalMode: @js(old('registration_approval_mode', $seminar->registration_approval_mode ?? 'auto_approve')), eventType: @js($selectedType), eventFormat: @js($selectedFormat), platform: @js(old('external_platform', $seminar->external_platform ?? 'google_meet')), expiryMode: @js(old('external_link_expiry_mode', $seminar->external_link_expiry_mode ?? 'ongoing')) }">
+<div x-data="seminarSchedule(@js($scheduleInitial))">
+<div class="grid grid-cols-1 gap-5 lg:grid-cols-2" x-data="{ category: @js(old('category', $seminar->category ?? 'education')), approvalMode: @js(old('registration_approval_mode', $seminar->registration_approval_mode ?? 'auto_approve')), eventType: @js($selectedType), eventFormat: @js($selectedFormat), platform: @js(old('external_platform', $seminar->external_platform ?? 'google_meet')), expiryMode: @js(old('external_link_expiry_mode', $seminar->external_link_expiry_mode ?? 'ongoing')) }">
+    <fieldset class="min-w-0 lg:col-span-2" x-data="{
+        savedUrl: @js($seminar->thumbnailUrl()), previewUrl: null, remove: @js((bool) old('remove_thumbnail', false)), failed: false,
+        revoke() { if (this.previewUrl) URL.revokeObjectURL(this.previewUrl); this.previewUrl = null; },
+        select(event) { this.revoke(); this.remove = false; this.failed = false; const file = event.target.files[0]; if (file) this.previewUrl = URL.createObjectURL(file); },
+        clear() { this.revoke(); this.$refs.thumbnail.value = ''; this.failed = false; },
+        destroy() { this.revoke(); }
+    }" @reset.window="clear(); remove = false">
+        <legend class="text-sm font-semibold text-gray-700">Event thumbnail (optional)</legend>
+        <p id="seminar-thumbnail-help" class="mt-1 text-sm text-gray-600">JPG, PNG or WebP, up to 2 MB. Recommended aspect ratio: 16:9.</p>
+        <div class="mt-3 max-w-md" x-show="!remove && (previewUrl || savedUrl)" x-cloak>
+            <div class="relative aspect-video overflow-hidden rounded-lg bg-purple-50">
+                <span x-show="failed" class="absolute inset-0 flex items-center justify-center text-sm text-gray-600">Image preview unavailable</span>
+                <img :src="previewUrl || savedUrl" alt="Event thumbnail preview" width="640" height="360" x-show="!failed" x-on:error="failed = true" class="absolute inset-0 h-full w-full object-cover">
+            </div>
+        </div>
+        <label class="mt-3 block text-sm font-medium text-gray-700">Choose or replace thumbnail
+            <input x-ref="thumbnail" type="file" name="thumbnail" accept="image/jpeg,image/png,image/webp" aria-describedby="seminar-thumbnail-help" @change="select($event)" class="mt-1 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border file:border-gray-200 file:bg-gray-50 file:px-3 file:py-2">
+        </label>
+        <button type="button" x-show="previewUrl" x-cloak @click="clear()" class="mt-2 text-sm font-semibold text-purple-700">Reset selection</button>
+        @if($seminar->thumbnailUrl())
+            <label class="mt-3 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="remove_thumbnail" value="1" x-model="remove" @change="if (remove) clear()" @checked(old('remove_thumbnail')) class="rounded border-gray-300 text-purple-700">Remove saved thumbnail</label>
+        @endif
+        @error('thumbnail') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
+        @error('remove_thumbnail') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
+    </fieldset>
     <label class="block lg:col-span-2">
         <span class="text-sm font-semibold text-gray-700">Title</span>
         <input name="title" value="{{ old('title', $seminar->title) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
@@ -25,7 +60,7 @@
     </label>
 
     <label class="block lg:col-span-2">
-        <span class="text-sm font-semibold text-gray-700">Objectives</span>
+        <span class="text-sm font-semibold text-gray-700">Objectives (optional)</span>
         <textarea name="purpose" rows="3" class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">{{ old('purpose', $seminar->purpose) }}</textarea>
         @error('purpose') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
     </label>
@@ -75,28 +110,48 @@
         @error('custom_category') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
     </label>
 
-    <label class="block">
-        <span class="text-sm font-semibold text-gray-700">Starts At (Philippine Time)</span>
-        <input type="datetime-local" name="starts_at" step="1" value="{{ old('starts_at', $localStartsAt?->format($startsAtFormat)) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-        @error('starts_at') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
-    </label>
-
-    <label class="block">
-        <span class="text-sm font-semibold text-gray-700">Ends At (Philippine Time)</span>
-        <input type="datetime-local" name="ends_at" step="1" value="{{ old('ends_at', $localEndsAt?->format($endsAtFormat)) }}" required class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-        @error('ends_at') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
-    </label>
+    <fieldset class="grid min-w-0 grid-cols-1 gap-4 rounded-xl border border-gray-200 p-4 lg:col-span-2 lg:grid-cols-2">
+        <legend class="px-1 text-sm font-semibold text-gray-700">Event schedule (Philippine Time / PHT)</legend>
+        @foreach(['starts_at' => 'Start', 'ends_at' => 'End'] as $field => $label)
+            <div>
+                <span class="text-sm font-medium text-gray-700">{{ $label }}</span>
+                <div class="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <label class="min-w-0 flex-1"><span class="sr-only">{{ $label }} date (PHT)</span><input type="date" :value="part('{{ $field }}', 0)" @input="inputPart('{{ $field }}', 0, $event.target.value)" :disabled="locked" required class="{{ $fieldClass }}"></label>
+                    <label class="min-w-0 flex-1"><span class="sr-only">{{ $label }} time (PHT)</span><input type="time" :step="timeStep('{{ $field }}')" :value="part('{{ $field }}', 1)" @input="inputPart('{{ $field }}', 1, $event.target.value)" :disabled="locked" required class="{{ $fieldClass }}"></label>
+                </div>
+                <input type="hidden" name="{{ $field }}" :value="{{ $field }}" value="{{ $scheduleInitial[$field] }}">
+                @error($field) <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
+            </div>
+        @endforeach
+        <div class="sm:col-span-2">
+            @if($scheduleLocked)
+                <p class="text-sm text-gray-600">The event schedule cannot change after a registration exists.</p>
+            @else
+                <div class="flex flex-wrap items-center gap-2"><span class="text-xs text-gray-500">Set duration:</span>
+                    @foreach([30, 60, 90, 120] as $minutes)
+                        <button type="button" @click="duration({{ $minutes }})" :disabled="!starts_at" class="rounded-lg border border-gray-200 px-3 py-1 text-xs disabled:opacity-50">{{ $minutes }} min</button>
+                    @endforeach
+                    <button type="button" @click="suggest('ends_at')" class="text-xs font-semibold text-purple-700">Use suggested time</button>
+                </div>
+            @endif
+            <p class="mt-2 text-sm" :class="durationMinutes <= 0 ? 'text-red-600' : 'text-gray-600'" aria-live="polite" x-text="feedback"></p>
+            <p class="mt-1 text-sm text-gray-600" aria-live="polite" x-text="dateSummary"></p>
+        </div>
+    </fieldset>
 
     <label class="block">
         <span class="text-sm font-semibold text-gray-700">Registration Deadline (Philippine Time)</span>
-        <input type="datetime-local" name="registration_deadline_at" value="{{ old('registration_deadline_at', $seminar->registration_deadline_at?->copy()->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i')) }}" class="{{ $fieldClass }}">
-        <span class="mt-1 block text-xs text-gray-500">Leave blank to close registration when the event starts.</span>
+        <input type="datetime-local" :step="timeStep('registration_deadline_at')" name="registration_deadline_at" x-model="registration_deadline_at" @input="automatic.registration_deadline_at = false" value="{{ $scheduleInitial['registration_deadline_at'] }}" class="{{ $fieldClass }}">
+        <span class="mt-1 block text-xs text-gray-500">Suggested: 30 minutes before start. Blank closes registration at event start.</span>
+        <button type="button" @click="suggest('registration_deadline_at')" class="mt-1 text-xs font-semibold text-purple-700">Use suggested time</button>
+        <span class="mt-1 block text-sm text-red-600" aria-live="polite" x-text="deadlineFeedback"></span>
         @error('registration_deadline_at') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
     </label>
 
     <label class="block">
         <span class="text-sm font-semibold text-gray-700">Capacity</span>
-        <input type="number" min="1" name="capacity" value="{{ old('capacity', $seminar->capacity) }}" class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+        <input type="number" min="1" max="100000" step="1" aria-describedby="seminar-capacity-help" name="capacity" value="{{ old('capacity', $seminar->capacity) }}" class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+        <span id="seminar-capacity-help" class="mt-1 block text-sm text-gray-600">Your organization decides how many participants to accommodate. Set a registration limit based on your arrangements and platform capacity, or leave blank for no registration limit.</span>
         @error('capacity') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
     </label>
 
@@ -188,8 +243,9 @@
         </label>
         <label class="block">
             <span class="text-sm font-semibold text-gray-700">Link Release (Philippine Time)</span>
-            <input type="datetime-local" name="external_link_visible_at" :disabled="eventFormat !== 'external'" value="{{ old('external_link_visible_at', $seminar->external_link_visible_at?->copy()->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i')) }}" class="{{ $fieldClass }}">
-            <span class="mt-1 block text-xs text-gray-500">Leave blank for immediate access after confirmation.</span>
+            <input type="datetime-local" name="external_link_visible_at" :step="timeStep('external_link_visible_at')" x-model="external_link_visible_at" @input="automatic.external_link_visible_at = false" :disabled="eventFormat !== 'external'" value="{{ old('external_link_visible_at', $seminar->external_link_visible_at?->copy()->timezone(config('app.display_timezone'))->format('Y-m-d\TH:i')) }}" class="{{ $fieldClass }}">
+            <span class="mt-1 block text-xs text-gray-500">Suggested: 15 minutes before start. Blank releases immediately after confirmation.</span>
+            <button type="button" @click="suggest('external_link_visible_at')" class="mt-1 text-xs font-semibold text-purple-700">Use suggested time</button>
             @error('external_link_visible_at') <span class="mt-1 block text-sm text-red-600">{{ $message }}</span> @enderror
         </label>
         <label class="block">
@@ -226,4 +282,6 @@
 <div class="mt-6 flex items-center justify-end gap-3">
     <a href="{{ $seminar->exists ? route('connector.seminars.show', [$connector, $seminar]) : route('connector.seminars.index', $connector) }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</a>
     <button class="rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">{{ $submitLabel }}</button>
+</div>
+
 </div>

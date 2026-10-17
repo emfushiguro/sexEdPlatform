@@ -50,7 +50,9 @@ class MessagePayloadFormatter
 
     protected function formatAttachment(MessageAttachment $attachment): array
     {
-        $url = Storage::disk($attachment->disk)->url($attachment->path);
+        $url = $attachment->disk === 'local'
+            ? route('chat.attachments.show', $attachment)
+            : Storage::disk($attachment->disk)->url($attachment->path);
         $mime = strtolower((string) $attachment->mime_type);
         $isVoiceNote = Str::startsWith(strtolower((string) $attachment->path), 'chat/voice_notes/')
             || Str::startsWith($mime, 'audio/');
@@ -106,11 +108,11 @@ class MessagePayloadFormatter
             $normalized = substr($normalized, 8);
         }
 
-        if (!str_contains($normalized, '/')) {
+        if (! str_contains($normalized, '/')) {
             $normalized = 'avatars/'.$normalized;
         }
 
-        if (!Storage::disk('public')->exists($normalized)) {
+        if (! Storage::disk('public')->exists($normalized)) {
             return null;
         }
 

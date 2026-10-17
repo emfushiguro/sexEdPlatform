@@ -22,7 +22,17 @@ class RegistrationController extends Controller
 {
     public function create(ConnectorVerificationRequirements $verificationRequirements): View
     {
-        $organizationTypes = $verificationRequirements->organizationTypes();
+        $organizationTypes = array_intersect_key(
+            $verificationRequirements->organizationTypes(),
+            ConnectorOptions::categories(),
+        );
+        $selectedOrganizationType = old('organization_type', '');
+        if (! is_string($selectedOrganizationType) || ! isset($organizationTypes[$selectedOrganizationType])) {
+            $selectedOrganizationType = old('category', '');
+        }
+        if (! is_string($selectedOrganizationType) || ! isset($organizationTypes[$selectedOrganizationType])) {
+            $selectedOrganizationType = '';
+        }
         $requirementCatalog = collect(config('connector_verification.requirements', []))
             ->mapWithKeys(static function (array $definition, string $key): array {
                 return [$key => [
@@ -51,10 +61,10 @@ class RegistrationController extends Controller
             ->all();
 
         $initialRequirementKeys = [];
-        if (old('category') && old('organization_type')) {
+        if ($selectedOrganizationType) {
             try {
                 $initialRequirementKeys = array_column(
-                    $verificationRequirements->requirementsFor(old('category'), old('organization_type')),
+                    $verificationRequirements->requirementsFor($selectedOrganizationType, $selectedOrganizationType),
                     'key',
                 );
             } catch (\InvalidArgumentException) {
@@ -79,8 +89,8 @@ class RegistrationController extends Controller
             : collect();
 
         return view('connectors.register', [
-            'categories' => ConnectorOptions::categories(),
             'organizationTypes' => $organizationTypes,
+            'selectedOrganizationType' => $selectedOrganizationType,
             'requirementCatalog' => $requirementCatalog,
             'initialRequirementKeys' => $initialRequirementKeys,
             'cities' => $cities,

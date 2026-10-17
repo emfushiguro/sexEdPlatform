@@ -15,6 +15,7 @@
         'currentUserId' => $user?->id,
         'currentUserName' => $user?->name,
         'currentUserRole' => $user?->role,
+        'connectorId' => !empty($connectorChat) ? $connector->id : null,
         'messageMutationWindowMinutes' => (int) config('chat.message_mutation_window_minutes', 15),
         'suggestions' => app(\App\Services\Chat\ChatSuggestionCatalog::class)->forUser($user),
         'reportReasons' => collect(\App\Enums\MessageReportReason::cases())
@@ -35,15 +36,15 @@
     <!-- Header Area -->
     <div class="flex items-center justify-between gap-3 px-6 py-5 text-white bg-gradient-to-r from-purple-700 to-pink-500">
         <div>
-            <h1 class="text-xl font-bold tracking-tight">Connections</h1>
-            <p class="mt-1 text-sm text-purple-100">Connect with instructors, learners, and platform support.</p>
+            <h1 class="text-xl font-bold tracking-tight">{{ !empty($connectorChat) ? 'Negotiation messages' : 'Connections' }}</h1>
+            <p class="mt-1 text-sm text-purple-100">{{ !empty($connectorChat) ? 'Discuss availability, fees, and arrangements with instructors.' : 'Connect with instructors, learners, and platform support.' }}</p>
         </div>
     </div>
 
     <!-- Chat Container -->
     <div class="flex flex-col lg:flex-row min-h-[640px] bg-white">
         <div class="w-full lg:w-auto lg:border-r lg:border-gray-200">
-            @include('chat.partials.request-list')
+            @if(empty($connectorChat))@include('chat.partials.request-list')@endif
             @include('chat.partials.conversation-list')
         </div>
 

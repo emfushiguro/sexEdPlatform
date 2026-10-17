@@ -14,6 +14,7 @@
     @endphp
     <div class="mx-auto max-w-6xl space-y-6">
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-5 max-w-3xl">@include('seminars._thumbnail', ['variant' => 'cover', 'loading' => 'eager'])</div>
             <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                     <div class="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide">
@@ -78,7 +79,13 @@
                     </div>
                     <div>
                         <dt class="font-semibold text-gray-900 dark:text-white">Speakers</dt>
-                        <dd class="mt-1 text-gray-600 dark:text-gray-300">{{ $seminar->speakers->pluck('display_name')->filter()->join(', ') ?: 'To be announced' }}</dd>
+                        <dd class="mt-1 space-y-2 text-gray-600 dark:text-gray-300">
+                            @forelse($seminar->speakers->where('status', 'accepted') as $confirmedSpeaker)
+                                <div>{{ $confirmedSpeaker->display_name }} <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">✓ Confirmed speaker</span></div>
+                            @empty
+                                To be announced
+                            @endforelse
+                        </dd>
                     </div>
                     <div>
                         <dt class="font-semibold text-gray-900 dark:text-white">Format</dt>
@@ -115,6 +122,14 @@
                     && now()->greaterThanOrEqualTo($attendanceCodeOpensAt)
                     && now()->lessThanOrEqualTo($attendanceCodeClosesAt);
             @endphp
+
+            @if($postedAttendanceCode ?? null)
+                <section class="mt-8 rounded-2xl border border-purple-200 bg-purple-50 p-5" data-posted-attendance-code>
+                    <h2 class="font-bold text-gray-900">Posted attendance code</h2>
+                    <p class="mt-2 font-mono text-3xl tracking-widest text-purple-900">{{ $postedAttendanceCode }}</p>
+                    <p class="mt-2 text-sm text-gray-700">The organizer posted this code for confirmed registrants. Enter it below to submit attendance. Submission does not prove session participation.</p>
+                </section>
+            @endif
 
             @if($attendance)
                 <section class="mt-8 rounded-2xl border border-gray-100 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950">

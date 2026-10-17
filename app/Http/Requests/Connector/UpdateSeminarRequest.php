@@ -8,6 +8,6 @@ class UpdateSeminarRequest extends StoreSeminarRequest
 {
     public function rules(): array
     {
-        return SeminarPublicationValidator::rules();
+        return [...SeminarPublicationValidator::rules(), ...$this->thumbnailRules()];
     }
 }

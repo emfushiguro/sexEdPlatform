@@ -6,17 +6,15 @@ use App\Models\Module;
 use App\Models\ModuleMarketplaceListing;
 use App\Models\User;
 use App\Notifications\Instructor\ModuleMarketplaceStatusNotification;
-use App\Services\Instructor\InstructorPlanCapabilityService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class ModuleMarketplaceListingService
 {
     public function __construct(
         private readonly ModuleCapacityService $capacity,
-        private readonly InstructorPlanCapabilityService $instructorPlans,
-    ) {
-    }
+    ) {}
 
     public function upsert(Module $module, User $actor, array $data): ModuleMarketplaceListing
     {
@@ -24,6 +22,20 @@ class ModuleMarketplaceListingService
         $currency = strtoupper((string) ($data['currency'] ?? ''));
         $price = (float) ($data['price_amount'] ?? 0);
         $seatCapacity = (int) ($data['seat_capacity'] ?? 0);
+        $additionalPackages = $data['seat_packages'] ?? $module->marketplaceListing?->seat_packages ?? [];
+        Validator::make(['seat_packages' => $additionalPackages], [
+            'seat_packages' => ['array', 'max:9'],
+            'seat_packages.*' => ['array:seat_capacity,price_amount'],
+            'seat_packages.*.seat_capacity' => ['required', 'integer', 'min:1', 'distinct'],
+            'seat_packages.*.price_amount' => ['required', 'numeric', 'min:0.01', 'decimal:0,2'],
+        ])->validate();
+        if (collect($additionalPackages)->contains(fn ($package) => (int) $package['seat_capacity'] === $seatCapacity)) {
+            throw ValidationException::withMessages(['seat_packages' => 'Each package must have a different seat quantity, including the default package.']);
+        }
+        $additionalPackages = array_map(fn ($package) => [
+            'seat_capacity' => (int) $package['seat_capacity'],
+            'price_amount' => number_format((float) $package['price_amount'], 2, '.', ''),
+        ], $additionalPackages);
 
         if ($price <= 0 || $seatCapacity < 1 || $currency !== strtoupper((string) config('billing.currency.code'))) {
             throw ValidationException::withMessages([
@@ -31,27 +43,16 @@ class ModuleMarketplaceListingService
             ]);
         }
 
-        $module->loadMissing('creator');
-        if ($action === 'publish' && !$module->isLearnerVisible()) {
+        if ($action === 'publish' && ! $module->isLearnerVisible()) {
             throw ValidationException::withMessages([
                 'listing' => 'Only approved and published modules can be listed.',
             ]);
         }
 
-        if ($module->content_owner_type === 'instructor') {
-            if (!$module->creator
-                || !$this->instructorPlans->canPublishPaidModules($module->creator)
-                || !$this->instructorPlans->canReceivePaidEnrollments($module->creator)) {
-                throw ValidationException::withMessages([
-                    'listing' => 'This instructor plan cannot distribute paid marketplace modules.',
-                ]);
-            }
-        }
-
-        return DB::transaction(function () use ($module, $actor, $action, $currency, $price, $seatCapacity): ModuleMarketplaceListing {
+        return DB::transaction(function () use ($module, $actor, $action, $currency, $price, $seatCapacity, $additionalPackages): ModuleMarketplaceListing {
             $lockedModule = $this->capacity->lock($module);
             if ($action === 'publish') {
-                $this->capacity->assertAvailable($lockedModule, $seatCapacity);
+                $this->capacity->assertAvailable($lockedModule, max([$seatCapacity, ...array_column($additionalPackages, 'seat_capacity')]));
             }
 
             $listing = ModuleMarketplaceListing::query()->firstOrNew([
@@ -63,6 +64,7 @@ class ModuleMarketplaceListingService
                 'price_amount' => $price,
                 'currency' => $currency,
                 'seat_capacity' => $seatCapacity,
+                'seat_packages' => $additionalPackages,
             ]);
 
             if ($action === 'publish') {
@@ -76,7 +78,7 @@ class ModuleMarketplaceListingService
                     'suspended_at' => null,
                     'suspension_reason' => null,
                 ]);
-            } elseif (!$listing->exists || !$listing->isPublished()) {
+            } elseif (! $listing->exists || ! $listing->isPublished()) {
                 $listing->status = ModuleMarketplaceListing::STATUS_DRAFT;
             }
 

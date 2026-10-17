@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Connectors;
 
-use App\Models\Seminar;
 use App\Models\User;
 use Tests\TestCase;
 
@@ -54,7 +53,6 @@ class EducationalEventAuthoringTest extends TestCase
             [['type' => 'webinar', 'event_format' => 'native'], 'event_format'],
             [['type' => 'physical', 'event_format' => 'in_person'], 'type'],
             [['description' => ''], 'description'],
-            [['purpose' => ''], 'purpose'],
             [['type' => 'seminar', 'event_format' => 'in_person', 'location' => ''], 'location'],
             [['type' => 'seminar', 'event_format' => 'in_person', 'location' => 'Hall', 'venue_address' => ''], 'venue_address'],
             [['external_platform' => ''], 'external_platform'],

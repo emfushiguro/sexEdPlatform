@@ -26,6 +26,7 @@ class Connector extends Model
         'slug',
         'category',
         'organization_type',
+        'organization_type_detail',
         'organization_email',
         'contact_number',
         'description',

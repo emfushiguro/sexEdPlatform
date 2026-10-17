@@ -52,8 +52,8 @@ class SeminarCodeAttendanceTest extends TestCase
     public function test_regeneration_invalidates_old_code_and_disable_blocks_submission(): void
     {
         [$owner, $connector, $seminar, $learner] = $this->setupEvent();
-        $old = app(SeminarCodeAttendanceService::class)->generate($seminar, null, null);
-        $new = app(SeminarCodeAttendanceService::class)->generate($seminar, null, null);
+        $old = app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
+        $new = app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
         $this->actingAs($learner)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $old])->assertSessionHasErrors('code');
         $this->assertArrayNotHasKey('code', session('_old_input', []));
         $this->actingAs($learner)->post(route('seminars.attendance.code.submit', $seminar), ['code' => 'bad'])->assertSessionHasErrors('code');
@@ -68,7 +68,7 @@ class SeminarCodeAttendanceTest extends TestCase
     public function test_window_boundaries_and_pht_overrides(): void
     {
         [$owner, $connector, $seminar, $learner] = $this->setupEvent();
-        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, null, null);
+        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
         $this->travelTo($seminar->starts_at->copy()->subMinutes(15)->subSecond());
         $this->actingAs($learner)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code])->assertSessionHasErrors('code');
         $this->travelTo($seminar->starts_at->copy()->subMinutes(15));
@@ -98,10 +98,38 @@ class SeminarCodeAttendanceTest extends TestCase
         ])->assertSessionHasErrors('attendance_end_at');
     }
 
+    public function test_closed_window_feedback_is_visible_after_an_expired_submission(): void
+    {
+        [$owner, , $seminar, $learner] = $this->setupEvent();
+        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
+        $this->travelTo($seminar->ends_at->copy()->addMinutes(31));
+        $this->actingAs($learner)->from(route('seminars.show', $seminar))
+            ->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code])
+            ->assertSessionHasErrors(['code' => 'Attendance code entry is closed.']);
+        $response = $this->actingAs($learner)->get(route('seminars.show', $seminar));
+        $this->assertStringContainsString('Attendance code entry is closed.', $response->getContent());
+        $this->assertSame(0, $seminar->attendances()->count());
+    }
+
+    public function test_host_flash_is_bound_to_its_actor_and_never_displays_a_regenerated_code(): void
+    {
+        [$owner, $connector, $seminar] = $this->setupEvent();
+        $manager = $this->createAdultConnectorMember($connector, ['connector.manage_seminars']);
+        $this->actingAs($owner)->post(route('connector.seminars.attendance.code.generate', [$connector, $seminar]));
+        $encrypted = session('generated_attendance_code');
+        $code = Crypt::decryptString($encrypted);
+        $this->actingAs($manager)->get(route('connector.seminars.attendance', [$connector, $seminar]))->assertOk()->assertDontSee($code);
+        app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
+        $this->actingAs($owner)->withSession([
+            'generated_attendance_code' => $encrypted, 'generated_attendance_seminar_id' => $seminar->id,
+            'generated_attendance_actor_id' => $owner->id,
+        ])->get(route('connector.seminars.attendance', [$connector, $seminar]))->assertOk()->assertDontSee($code);
+    }
+
     public function test_rejects_unregistered_ineligible_speaker_and_blocked_status_or_native(): void
     {
         [$owner, $connector, $seminar, $learner] = $this->setupEvent();
-        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, null, null);
+        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
         $unregistered = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
         $this->actingAs($unregistered)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code])->assertSessionHasErrors('code');
         $pending = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
@@ -126,36 +154,37 @@ class SeminarCodeAttendanceTest extends TestCase
         $this->actingAs($learner)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code])->assertSessionHasErrors('code');
     }
 
-    public function test_manual_override_is_preserved_and_external_event_and_admin_can_generate(): void
+    public function test_manual_override_is_preserved_and_connector_manages_external_event_codes(): void
     {
         [$owner, $connector, $seminar, $learner] = $this->setupEvent(['event_format' => 'external', 'type' => 'webinar']);
         $admin = User::factory()->create(['role' => 'admin']);
         $admin->assignRole('admin');
-        $this->actingAs($admin)->post(route('admin.seminars.attendance.code.generate', $seminar))->assertSessionHas('generated_attendance_code');
+        $this->actingAs($admin)->post('/admin/seminars/'.$seminar->id.'/attendance/code')->assertNotFound();
+        $this->actingAs($owner)->post(route('connector.seminars.attendance.code.generate', [$connector, $seminar]))->assertSessionHas('generated_attendance_code');
         $code = Crypt::decryptString(session('generated_attendance_code'));
         $other = $this->registeredLearner($seminar);
         $this->actingAs($other)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code])->assertSessionHas('success');
         $seminar->attendances()->create(['user_id' => $learner->id, 'status' => 'not_present', 'attendance_method' => 'manual', 'total_seconds' => 0]);
         $this->actingAs($learner)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code])->assertSessionHasErrors('code');
         $this->assertSame('manual', $seminar->attendances()->first()->attendance_method);
-        $this->actingAs($admin)->post(route('admin.seminars.attendance.code.disable', $seminar))->assertRedirect();
+        $this->actingAs($owner)->post(route('connector.seminars.attendance.code.disable', [$connector, $seminar]))->assertRedirect();
         $this->assertFalse($seminar->fresh()->attendance_code_enabled);
     }
 
-    public function test_management_requires_owner_permission_or_admin_role(): void
+    public function test_management_requires_connector_owner_permission(): void
     {
         [$owner, $connector, $seminar] = $this->setupEvent();
         $outsider = $this->createCompletedLearner(['age_bracket_cached' => 'adults']);
         $this->actingAs($outsider)->post(route('connector.seminars.attendance.code.generate', [$connector, $seminar]))->assertForbidden();
-        $this->actingAs($outsider)->post(route('admin.seminars.attendance.code.generate', $seminar))->assertForbidden();
+        $this->actingAs($outsider)->post('/admin/seminars/'.$seminar->id.'/attendance/code')->assertNotFound();
         $otherConnector = $this->createVerifiedConnector($outsider);
         $this->actingAs($owner)->post(route('connector.seminars.attendance.code.generate', [$otherConnector, $seminar]))->assertForbidden();
     }
 
     public function test_wrong_codes_are_limited_per_user_event_and_per_ip_across_events(): void
     {
-        [, , $seminar, $learner] = $this->setupEvent();
-        app(SeminarCodeAttendanceService::class)->generate($seminar, null, null);
+        [$owner, , $seminar, $learner] = $this->setupEvent();
+        app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
         for ($i = 0; $i < 5; $i++) {
             $this->actingAs($learner)->post(route('seminars.attendance.code.submit', $seminar), ['code' => '00000000'])->assertSessionHasErrors('code');
         }
@@ -165,7 +194,7 @@ class SeminarCodeAttendanceTest extends TestCase
         $event = $seminar->replicate();
         $event->title = 'Second class';
         $event->save();
-        app(SeminarCodeAttendanceService::class)->generate($event, null, null);
+        app(SeminarCodeAttendanceService::class)->generate($event, $owner);
         for ($i = 0; $i < 15; $i++) {
             $person = $this->registeredLearner($event);
             $this->actingAs($person)->post(route('seminars.attendance.code.submit', $event), ['code' => '00000000'])->assertSessionHasErrors('code');
@@ -176,8 +205,8 @@ class SeminarCodeAttendanceTest extends TestCase
 
     public function test_wrong_code_counter_survives_attendance_rollback_with_database_cache(): void
     {
-        [, , $seminar, $learner] = $this->setupEvent();
-        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, null, null);
+        [$owner, , $seminar, $learner] = $this->setupEvent();
+        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
         $originalStore = config('cache.default');
         $originalLimiter = RateLimiter::getFacadeRoot();
         $userKey = "seminar-code:{$seminar->id}:{$learner->id}";

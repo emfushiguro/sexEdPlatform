@@ -19,6 +19,11 @@ class SeminarAttendanceRosterTest extends TestCase
     {
         [$owner, $connector, $seminar] = $this->event();
         $notSubmitted = User::factory()->create(['name' => 'Not Submitted Learner', 'role' => 'learner']);
+        $notSubmitted->learnerProfile()->create([
+            'username' => 'roster-photo-'.$notSubmitted->id,
+            'birthdate' => now()->subYears(21)->toDateString(),
+            'avatar_path' => 'avatars/roster-person.png',
+        ]);
         $codeParticipant = User::factory()->create(['name' => 'Code Participant', 'role' => 'learner']);
         $manualParticipant = User::factory()->create(['name' => 'Manual Participant', 'role' => 'learner']);
         $pendingParticipant = User::factory()->create(['name' => 'Pending Participant', 'role' => 'learner']);
@@ -68,6 +73,9 @@ class SeminarAttendanceRosterTest extends TestCase
         $page->assertOk()
             ->assertSee($notSubmitted->name)
             ->assertSee('Not submitted')
+            ->assertSee('data-participant-profile', false)
+            ->assertSee(asset('storage/avatars/roster-person.png'), false)
+            ->assertSee('x-model="decision"', false)
             ->assertSee($codeParticipant->name)
             ->assertSee('Attendance submitted')
             ->assertSee($manualParticipant->name)
@@ -79,6 +87,8 @@ class SeminarAttendanceRosterTest extends TestCase
         $page->assertViewHas('registrants', function (LengthAwarePaginator $registrants): bool {
             $this->assertSame(27, $registrants->total());
             $this->assertSame(25, $registrants->perPage());
+            $this->assertTrue($registrants->first()->user->relationLoaded('learnerProfile'));
+            $this->assertTrue($registrants->first()->user->relationLoaded('instructorProfile'));
 
             return true;
         });
@@ -99,7 +109,7 @@ class SeminarAttendanceRosterTest extends TestCase
         rewind($csvHandle);
         $this->assertSame([
             'name', 'email', 'participant type', 'registration status', 'attendance status',
-            'method', 'attended at', 'joined at', 'left at', 'total minutes',
+            'method', 'attended at',
         ], fgetcsv($csvHandle));
         $csvRows = [];
         while (($row = fgetcsv($csvHandle)) !== false) {
@@ -116,7 +126,7 @@ class SeminarAttendanceRosterTest extends TestCase
         $this->assertSame('registered', $nativeCsvRow[3]);
         $this->assertSame('attended', $nativeCsvRow[4]);
         $this->assertSame('native', $nativeCsvRow[5]);
-        $this->assertSame('15.00', $nativeCsvRow[9]);
+        $this->assertCount(7, $nativeCsvRow);
     }
 
     public function test_admin_can_open_complete_roster_and_csv_but_learners_cannot(): void
@@ -186,7 +196,7 @@ class SeminarAttendanceRosterTest extends TestCase
             ->assertSee('Recorded by the event organizer')
             ->assertDontSee('Enter the eight-digit code');
 
-        [, , $legacySeminar] = $this->event([
+        [$legacyOwner, , $legacySeminar] = $this->event([
             'event_format' => 'external',
             'external_url' => 'https://meet.example.test/legacy-event',
             'attendance_code_enabled' => true,
@@ -199,7 +209,7 @@ class SeminarAttendanceRosterTest extends TestCase
             'attendance_method' => 'legacy',
             'attended_at' => now(),
         ]);
-        $code = app(\App\Services\Seminars\SeminarCodeAttendanceService::class)->generate($legacySeminar, null, null);
+        $code = app(\App\Services\Seminars\SeminarCodeAttendanceService::class)->generate($legacySeminar, $legacyOwner);
 
         $this->actingAs($learner)
             ->get(route('seminars.show', $legacySeminar))

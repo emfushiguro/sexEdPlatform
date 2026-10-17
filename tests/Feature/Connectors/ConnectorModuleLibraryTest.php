@@ -13,6 +13,7 @@ class ConnectorModuleLibraryTest extends TestCase
     {
         [$manager, $connector, $module, $listing, $purchase, $payment] = $this->createConnectorModulePaymentState();
         app(ConnectorModulePurchaseService::class)->completePayment($payment, 'gcash', 'pay_library_1');
+        $listing->update(['price_amount' => 9000, 'seat_capacity' => 25]);
 
         $this->actingAs($manager)
             ->get(route('connector.modules.library.index', $connector))

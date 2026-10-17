@@ -12,9 +12,13 @@ use Illuminate\Validation\ValidationException;
 
 class SeminarManualAttendanceService
 {
+    public function __construct(private readonly SeminarAccessService $access) {}
+
     public function set(Seminar $seminar, SeminarRegistrant $registrant, User $actor, bool $attended, ?string $reason): SeminarAttendance
     {
         return DB::transaction(function () use ($seminar, $registrant, $actor, $attended, $reason): SeminarAttendance {
+            $seminar = Seminar::query()->findOrFail($seminar->id);
+            $this->access->abortUnlessCanManageAttendance($actor, $seminar);
             $current = $seminar->registrants()->whereKey($registrant->id)->lockForUpdate()->firstOrFail();
             if ($current->status !== 'registered' || $current->cancelled_at !== null) {
                 throw ValidationException::withMessages(['attended' => 'An active confirmed registration is required.']);
@@ -59,7 +63,7 @@ class SeminarManualAttendanceService
                 'reason' => $reason !== '' ? $reason : null,
                 'before' => $before,
                 'after' => $this->snapshot($attendance),
-            ]);
+            ], $actor->id);
 
             return $attendance;
         });

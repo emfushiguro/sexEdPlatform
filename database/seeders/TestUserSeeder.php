@@ -18,7 +18,6 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
-use Spatie\Permission\Models\Role;
 
 class TestUserSeeder extends Seeder
 {
@@ -429,9 +428,7 @@ class TestUserSeeder extends Seeder
 
     private function ensureRolesExist(): void
     {
-        foreach (['admin', 'instructor', 'learner', 'parent'] as $roleName) {
-            Role::findOrCreate($roleName, 'web');
-        }
+        $this->call(RolePermissionSeeder::class);
     }
 
     /**

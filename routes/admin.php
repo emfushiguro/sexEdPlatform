@@ -360,6 +360,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     });
 
     Route::prefix('connectors')->name('connectors.')->group(function () {
+        Route::get('/module-access', [Admin\ConnectorModuleAccessController::class, 'index'])->name('module-access.index');
+        Route::post('/{connector}/module-access/{entitlement}/review', [Admin\ConnectorModuleAccessController::class, 'review'])->name('module-access.review');
+        Route::post('/{connector}/module-access/{entitlement}', [Admin\ConnectorModuleAccessController::class, 'update'])->name('module-access.update');
         Route::get('/', [Admin\ConnectorController::class, 'index'])->name('index');
         Route::get('/{connector}', [Admin\ConnectorController::class, 'show'])->name('show');
         Route::get('/{connector}/verification/documents/{document}', VerificationDocumentController::class)
@@ -439,13 +442,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Seminars
     Route::prefix('seminars')->name('seminars.')->group(function () {
         Route::get('/', [Admin\SeminarModerationController::class, 'index'])->name('index');
+        Route::get('/attendance', [Admin\SeminarAttendanceController::class, 'monitor'])->name('attendance.monitor');
         Route::get('/{seminar}', [Admin\SeminarModerationController::class, 'show'])->name('show');
         Route::put('/{seminar}/delivery', [Admin\SeminarDeliveryController::class, 'update'])->name('delivery.update');
         Route::get('/{seminar}/attendance', [Admin\SeminarAttendanceController::class, 'index'])->name('attendance');
         Route::get('/{seminar}/attendance/export', [Admin\SeminarAttendanceController::class, 'export'])->name('attendance.export');
-        Route::post('/{seminar}/attendance/code', [Admin\SeminarAttendanceController::class, 'generate'])->name('attendance.code.generate');
-        Route::post('/{seminar}/attendance/code/disable', [Admin\SeminarAttendanceController::class, 'disable'])->name('attendance.code.disable');
-        Route::post('/{seminar}/attendance/{registrant}/manual', [Admin\SeminarAttendanceController::class, 'manual'])->name('attendance.manual');
         Route::post('/{seminar}/approve', [Admin\SeminarModerationController::class, 'approve'])->name('approve');
         Route::post('/{seminar}/reject', [Admin\SeminarModerationController::class, 'reject'])->name('reject');
         Route::post('/{seminar}/cancel', [Admin\SeminarModerationController::class, 'cancel'])->name('cancel');
@@ -455,6 +456,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     });
 
     // Messages
-    Route::get('/messages', fn () => view('admin.messages.index'))->name('messages.index');
+    Route::get('/messages', fn () => view('admin.messages.index'))
+        ->middleware(['chat.access', 'guardian.verified'])->name('messages.index');
 
 });

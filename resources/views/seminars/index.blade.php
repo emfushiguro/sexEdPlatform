@@ -43,13 +43,14 @@
                 @endphp
                 @php($showRoute = auth()->user()?->isInstructor() ? 'instructor.seminars.show' : (auth()->user()?->isLearner() ? 'learner.seminars.show' : 'seminars.show'))
                 <a href="{{ route($showRoute, $seminar) }}" class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-purple-200 hover:shadow-md">
+                    <div class="mb-4">@include('seminars._thumbnail', ['variant' => 'cover', 'decorative' => true])</div>
                     <div class="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide">
                         <span class="rounded-full bg-purple-50 px-2.5 py-1 text-purple-700">{{ ucfirst($seminar->type) }}</span>
                         <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">{{ $formatLabel }}</span>
                         <span class="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700">{{ $seminar->categoryDisplayName() }}</span>
                     </div>
                     <h2 class="mt-3 text-lg font-bold text-gray-900">{{ $seminar->title }}</h2>
-                    <p class="mt-2 line-clamp-3 text-sm text-gray-600">{{ $seminar->purpose }}</p>
+                    <p class="mt-2 line-clamp-3 text-sm text-gray-600">{{ $seminar->purpose ?: $seminar->description }}</p>
                     <div class="mt-4 text-sm font-semibold text-gray-800">{{ $seminar->localStartsAt()?->format('M d, Y g:i A') }} PHT</div>
                     <div class="mt-1 text-xs text-gray-500">Organizer: {{ $seminar->connector?->name }}</div>
                     <div class="mt-1 text-xs text-gray-500">Speakers: {{ $seminar->speakers->pluck('display_name')->filter()->join(', ') ?: 'To be announced' }}</div>

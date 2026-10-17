@@ -3,12 +3,9 @@
 namespace Tests\Feature\Connectors;
 
 use App\Models\Connector;
-use App\Models\ConnectorReview;
-use App\Models\ConnectorVerificationAudit;
 use App\Models\ConnectorVerificationDocument;
 use App\Models\ConnectorVerificationRequirement;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -55,6 +52,7 @@ class ConnectorVerificationSchemaTest extends TestCase
     {
         $this->assertTrue(Schema::hasColumns('connectors', [
             'organization_type',
+            'organization_type_detail',
             'logo_path',
             'verification_status',
             'current_submission_round',

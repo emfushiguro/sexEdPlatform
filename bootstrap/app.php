@@ -49,6 +49,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontFlash([
+            'attendance_share_code',
+            'code',
             'relevant_health_considerations',
             'accessibility_support_needs',
             'additional_relevant_information',

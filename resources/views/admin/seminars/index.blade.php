@@ -14,6 +14,7 @@
 @endphp
 
 <div class="space-y-8">
+    <a href="{{ route('admin.seminars.attendance.monitor') }}" class="inline-flex rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50">Attendance monitoring</a>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach($cards as $card)
             <div class="min-h-[116px] rounded-[28px] border border-brand-100 bg-gradient-to-br from-white via-brand-50/70 to-brand-100/60 p-5 shadow-theme-xs">
@@ -78,7 +79,7 @@
                     @forelse($seminars as $seminar)
                         <tr>
                             <td class="px-6 py-4">
-                                <a href="{{ route('admin.seminars.show', $seminar) }}" class="font-semibold text-brand-700 hover:text-brand-900">{{ $seminar->title }}</a>
+                                <div class="flex items-center gap-3">@include('seminars._thumbnail', ['variant' => 'compact'])<div><a href="{{ route('admin.seminars.show', $seminar) }}" class="font-semibold text-brand-700 hover:text-brand-900">{{ $seminar->title }}</a></div></div>
                                 <div class="mt-1 text-xs text-gray-500">{{ $seminar->categoryDisplayName() }} / {{ ucfirst($seminar->type) }}</div>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-700">{{ $seminar->connector?->name ?? 'N/A' }}</td>

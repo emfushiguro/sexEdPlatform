@@ -429,5 +429,6 @@
     @endif
 
     @include('chat.partials.global-popup')
+    @include('components.logout-confirmation-modal')
 </body>
 </html>

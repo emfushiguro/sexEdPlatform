@@ -7,7 +7,7 @@
     $pageTitle = $isConnectorModule
         ? 'Confirm Connector Module Purchase'
         : ($isModule ? 'Confirm Module Purchase' : 'Confirm Subscription Purchase');
-    $subtitle = $isModule
+    $subtitle = ($isModule || $isConnectorModule)
         ? ($isConnectorModule
             ? 'Review the organization seat package before redirecting to secure PayMongo checkout.'
             : 'Review module details before redirecting to secure PayMongo checkout.')
@@ -94,6 +94,10 @@
 
     <form action="{{ $submitUrl }}" method="POST" id="payment-form" class="rounded-2xl border border-gray-200 bg-white shadow-sm p-6">
         @csrf
+        @if($isConnectorModule)
+            <input type="hidden" name="seat_capacity" value="{{ $seatCapacity }}">
+            <p class="mb-4 text-sm font-medium text-gray-700">Organization license for {{ $connector->name }}. Non-refundable. Assign seats after purchase; this does not buy personal access for the payer.</p>
+        @endif
 
         <h2 class="text-lg font-bold text-gray-900">Confirm And Continue</h2>
         <p class="mt-1 text-sm text-gray-600">

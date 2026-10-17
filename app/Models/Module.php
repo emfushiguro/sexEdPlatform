@@ -273,10 +273,9 @@ class Module extends Model
     public function isAppropriateForAge(int $age): bool
     {
         $ageBracket = self::ageBracketForAge($age);
-        if ($ageBracket !== null && $this->learnerCategories()->exists()) {
-            return $this->learnerCategories()
-                ->where('category', $ageBracket)
-                ->exists();
+        $this->loadMissing('learnerCategories');
+        if ($ageBracket !== null && $this->learnerCategories->isNotEmpty()) {
+            return $this->learnerCategories->contains('category', $ageBracket);
         }
 
         if ($this->min_age === null || $this->max_age === null) {
@@ -326,6 +325,7 @@ class Module extends Model
         foreach ($normalized as $category) {
             $this->learnerCategories()->create(['category' => $category]);
         }
+        $this->unsetRelation('learnerCategories');
 
         [$minAge, $maxAge] = self::ageRangeForLearnerCategories($normalized);
         $this->forceFill([

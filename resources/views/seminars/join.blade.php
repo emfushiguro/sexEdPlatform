@@ -8,7 +8,7 @@
             <section class="rounded-lg border border-gray-200 bg-gray-950 p-5 text-white">
                 <div class="flex items-center justify-between gap-3">
                     <div>
-                        <h1 class="text-xl font-bold">{{ $seminar->title }}</h1>
+                        <div class="mb-3">@include('seminars._thumbnail', ['variant' => 'compact', 'loading' => 'eager'])</div>                        <h1 class="text-xl font-bold">{{ $seminar->title }}</h1>
                         <p class="mt-1 text-sm text-gray-300" data-agora-status>{{ $seminar->connector?->name }}</p>
                     </div>
                     <span class="rounded-full {{ $canPublish ? 'bg-green-500/20 text-green-200' : 'bg-blue-500/20 text-blue-200' }} px-3 py-1 text-sm font-semibold">{{ ucfirst($livestreamRole) }}</span>

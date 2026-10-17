@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\Chat\ConversationController as ChatConversationController;
+use App\Http\Controllers\Chat\MessageAttachmentController as ChatMessageAttachmentController;
 use App\Http\Controllers\Chat\MessageController as ChatMessageController;
 use App\Http\Controllers\Chat\MessageRequestController as ChatMessageRequestController;
 use App\Http\Controllers\Chat\StatusController as ChatStatusController;
@@ -520,18 +521,37 @@ Route::middleware('auth')->group(function () {
         ->name('chat.')
         ->middleware(['chat.access', 'guardian.verified'])
         ->group(function () {
-            Route::get('/', fn () => view('chat.page'))->name('page');
+            Route::get('/', function (Request $request) {
+                $conversation = Conversation::find((int) $request->query('conversation_id', 0));
+                if ($conversation?->conversation_type === Conversation::TYPE_CONNECTOR_NEGOTIATION
+                    && (int) $conversation->participant_one_id === (int) $request->user()->id
+                    && app(ChatAuthorizationService::class)->canViewConversation($request->user(), $conversation)) {
+                    return redirect()->route('connector.educators.messages', [
+                        $conversation->connector_id, 'conversation_id' => $conversation->id,
+                    ]);
+                }
+
+                return view('chat.page');
+            })->name('page');
             Route::get('/conversation/{conversation}', function (Request $request, Conversation $conversation) {
                 abort_unless(
                     app(ChatAuthorizationService::class)->canViewConversation($request->user(), $conversation),
                     403,
                 );
 
+                if ($conversation->conversation_type === Conversation::TYPE_CONNECTOR_NEGOTIATION
+                    && (int) $conversation->participant_one_id === (int) $request->user()->id) {
+                    return redirect()->route('connector.educators.messages', [
+                        $conversation->connector_id, 'conversation_id' => $conversation->id,
+                    ]);
+                }
+
                 return redirect()->route('chat.page', [
                     'conversation_id' => $conversation->id,
                 ]);
             })->name('conversation.open');
             Route::get('/conversations', [ChatConversationController::class, 'index'])->name('conversations.index');
+            Route::get('/attachments/{attachment}', ChatMessageAttachmentController::class)->name('attachments.show');
             Route::get('/discovery', [ChatConversationController::class, 'discover'])->name('discovery');
             Route::post('/conversations/start', [ChatConversationController::class, 'start'])->name('conversations.start');
             Route::get('/conversations/{conversation}/messages', [ChatMessageController::class, 'index'])->name('messages.index');

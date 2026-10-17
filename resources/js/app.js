@@ -22,6 +22,7 @@ import './sweet-alerts';
 import './chat/store';
 import './chat/global-popup';
 import './seminar-livestream';
+import './seminar-schedule';
 
 const emptyInstructorSearchResults = () => ({
     modules: [],

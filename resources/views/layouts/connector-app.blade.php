@@ -8,6 +8,8 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('media/Logo.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {{-- Connector workspace is light-only; preserve the learner's saved theme preference. --}}
+    <script>window.ccForceLightModeOnce = true;</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>[x-cloak] { display: none !important; }</style>
 </head>
@@ -45,6 +47,7 @@
             ['Roles & Permissions', 'connector.roles.index', 'connector.manage_roles', 'M12 3.75 5.25 6.5v5.25c0 4.25 2.85 7.9 6.75 8.95 3.9-1.05 6.75-4.7 6.75-8.95V6.5L12 3.75Zm-2.25 8.5 1.75 1.75 3.25-4'],
             ['Modules', 'connector.modules', null, 'M5 4.75h14v14H5zM8 8.75h8M8 12h8M8 15.25h5'],
             ['Educators', 'connector.educators', 'connector.manage_educators', 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0'],
+            ['Messages', 'connector.educators.messages', 'connector.manage_educators', 'M7 8h10M7 12h6M5 3h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H8l-5 3V5a2 2 0 0 1 2-2Z'],
             ['Subscription', 'connector.subscription', 'connector.view_subscription', 'M4.75 6.5h14.5M6 4.75h12A1.25 1.25 0 0 1 19.25 6v12A1.25 1.25 0 0 1 18 19.25H6A1.25 1.25 0 0 1 4.75 18V6A1.25 1.25 0 0 1 6 4.75Zm2 9.25h1m3 0h1'],
         ];
         $connectorSupportNavItems = [

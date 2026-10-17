@@ -1,6 +1,6 @@
 # Connector Verification Operations Guide
 
-Status: implementation guide and release checklist for the connector registration verification workflow. The current registry is `config/connector_verification.php` version `2026-10-07`; review this guide whenever that registry changes.
+Status: implementation guide and release checklist for the connector registration verification workflow. The current registry is `config/connector_verification.php` version `2026-10-12`; review this guide whenever that registry changes.
 
 ## Scope and non-certification boundary
 
@@ -10,7 +10,7 @@ The workflow is deliberately separate from connector memberships, roles, seminar
 
 ## Operating invariants
 
-- The organization type is the verification input; category is a broader discovery and routing label. A category such as `government` can contain multiple organization types with different evidence requirements.
+- New registrations have one organization-type choice. The server derives the internal category from that choice for discovery and routing. Existing applications retain their more specific legal types and requirement snapshots.
 - Requirement keys are stable identifiers. Labels and guidance may be clarified, but a key must not be repurposed to mean a different document.
 - Every submitted verification uses a versioned registry snapshot. Updating the registry version/config creates the definition for future submissions; it does not mutate existing requirement or evidence snapshots.
 - Evidence is private by default. Public connector pages never expose raw files, document numbers, expiry dates, representative identity, internal review notes, or private storage paths.
@@ -20,7 +20,19 @@ The workflow is deliberately separate from connector memberships, roles, seminar
 
 ### Organization type versus category
 
-Categories are used for discovery and broad routing. The organization type selects the exact stable requirement set below. Do not infer requirements from the category alone.
+Registration uses the seven former category values as organization types. Category is not submitted by the new form. The server derives it from the chosen organization type; legacy clients with specific legal types still use the compatibility rules below.
+
+| Registration choice | Type key | Organization evidence |
+| --- | --- | --- |
+| Government | government | Official charter, registration, recognition, or certification; applicable activity-specific authority |
+| NGO | ngo | SEC non-stock registration; applicable activity-specific authority |
+| Community-based Organization | community_based_organization | Registration, charter, or community certification; applicable activity-specific authority |
+| School / Educational Institution | school_educational_institution | Organization identity and at least one DepEd, CHED, or TESDA authority document |
+| Health Organization | health_organization | Organization identity; applicable activity-specific authority |
+| Advocacy Group | advocacy_group | Organization identity; applicable activity-specific authority |
+| Other | other | Applicant must specify the organization type; organization identity is required; supplemental evidence may be requested through the existing reviewer workflow |
+
+Every choice also requires representative identity (or approved identity-case reuse) and representative authority. Broad choices do not identify a legal subtype; reviewers must assess the submitted identity and applicable activity authority. Existing legal-type profiles and previously saved requirement snapshots are retained:
 
 | Type key | Display label | Categories | Requirement keys |
 | --- | --- | --- | --- |
@@ -87,7 +99,7 @@ Only the configured requirements with `manual_not_applicable_allowed` may be mar
 
 ### Applicant
 
-1. Select the organization type and complete the registration stepper. Category compatibility is checked against the selected type.
+1. Select one of the seven organization types and complete the registration stepper. No separate category is needed; the server derives it.
 2. Submit each configured requirement through the verification service. The service creates a submission round, requirement snapshots, document metadata, and audit rows atomically.
 3. Use the applicant status page for `under_review`, `resubmission_required`, `verified`, `reverification_required`, and `rejected` outcomes.
 4. When resubmission is requested, replace only the rejected or requested evidence. Accepted evidence remains valid unless the requirement is re-evaluated or the document expires.
@@ -97,6 +109,7 @@ Only the configured requirements with `manual_not_applicable_allowed` may be mar
 - Open the connector verification workspace and review the current round, requirement snapshot, evidence state, and safe preview/download controls.
 - Accept, reject, or mark N/A only through the server-side review actions. Rejection requires an applicant-facing reason; internal notes are not applicant or public payloads.
 - Request supplemental evidence only through the configured supplemental path. The current path is scoped to `other` organization applications; do not add an ad hoc requirement directly in the database.
+- For `other`, read the applicant's specified organization type alongside identity and authority evidence before deciding whether the configured supplemental request is needed.
 - Before every action, use the round shown by the workspace. If a newer round exists, the stale action must be rejected with a conflict response; reload the current workspace rather than applying the old decision.
 - Approval and permanent rejection are explicit decisions. Do not treat notification delivery failure as a reason to roll back an already committed review decision.
 

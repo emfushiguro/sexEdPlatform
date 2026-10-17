@@ -7,12 +7,36 @@ use App\Models\ConnectorVerificationDocument;
 use App\Models\ConnectorVerificationRequirement;
 use App\Models\User;
 use App\Notifications\Connectors\ConnectorVerificationActionRequiredNotification;
+use App\Services\Connectors\ConnectorModulePurchaseService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class ConnectorVerificationExpirationTest extends TestCase
 {
+    use ConnectorTestHelpers;
+
+    public function test_verification_expiration_preserves_marketplace_purchase_entitlement_and_membership(): void
+    {
+        Carbon::setTestNow('2026-10-07 01:00:00');
+        Notification::fake();
+        [, $connector, , , $purchase, $payment] = $this->createConnectorModulePaymentState();
+        $connector->update(['verification_status' => Connector::VERIFICATION_VERIFIED, 'current_submission_round' => 1]);
+        app(ConnectorModulePurchaseService::class)->completePayment($payment, 'gcash', 'pay_expiry_preservation');
+        $memberships = $connector->memberships()->pluck('status', 'id')->all();
+        $document = $this->document($connector, 'expired-marketplace-evidence', 'Expiring evidence', Carbon::parse('2026-10-07'), ['expires' => true]);
+
+        $this->artisan('connectors:expire-verification-documents')->assertSuccessful();
+        $this->assertSame(ConnectorVerificationDocument::STATUS_EXPIRED, $document->fresh()->status);
+        $this->assertSame(Connector::VERIFICATION_REVERIFICATION_REQUIRED, $connector->fresh()->verification_status);
+        $this->assertSame('verified', $connector->fresh()->status);
+        $this->assertSame($memberships, $connector->memberships()->pluck('status', 'id')->all());
+        $this->assertSame('completed', $purchase->fresh()->status);
+        $this->assertSame('active', $purchase->fresh()->entitlement->status);
+        $this->assertDatabaseHas('payments', ['id' => $payment->id, 'status' => 'completed']);
+        $this->assertDatabaseCount('module_sale_ledgers', 1);
+    }
+
     use ConnectorTestHelpers;
 
     protected function tearDown(): void

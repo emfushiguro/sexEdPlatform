@@ -26,6 +26,8 @@ class Conversation extends Model
 
     public const TYPE_GUARDIAN_INVITATION = 'guardian_invitation';
 
+    public const TYPE_CONNECTOR_NEGOTIATION = 'connector_negotiation';
+
     public const STATUS_PENDING_REQUEST = 'pending_request';
 
     public const STATUS_ACCEPTED = 'accepted';
@@ -43,6 +45,7 @@ class Conversation extends Model
         'conversation_type',
         'status',
         'parent_child_invitation_id',
+        'connector_id',
         'module_id',
         'lesson_id',
         'lesson_topic_id',
@@ -85,6 +88,7 @@ class Conversation extends Model
             self::TYPE_LESSON_TOPIC_CHAT,
             self::TYPE_QUIZ_HELP,
             self::TYPE_GUARDIAN_INVITATION,
+            self::TYPE_CONNECTOR_NEGOTIATION,
         ];
     }
 
@@ -106,6 +110,11 @@ class Conversation extends Model
     public function module(): BelongsTo
     {
         return $this->belongsTo(Module::class);
+    }
+
+    public function connector(): BelongsTo
+    {
+        return $this->belongsTo(Connector::class);
     }
 
     public function lesson(): BelongsTo

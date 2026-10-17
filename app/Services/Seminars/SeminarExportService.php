@@ -61,9 +61,7 @@ class SeminarExportService
                 'attendance status',
                 'method',
                 'attended at',
-                'joined at',
-                'left at',
-                'total minutes',
+                ...($seminar->isNativeDelivery() ? ['joined at', 'left at', 'total minutes'] : []),
             ]);
 
             $seminar->registrants()
@@ -87,9 +85,11 @@ class SeminarExportService
                             $attendance?->status ?? 'Not submitted',
                             $attendance?->attendance_method,
                             optional($attendance?->attended_at)->toDateTimeString(),
-                            optional($attendance?->joined_at)->toDateTimeString(),
-                            optional($attendance?->left_at)->toDateTimeString(),
-                            $attendance ? number_format((int) $attendance->total_seconds / 60, 2, '.', '') : '',
+                            ...($seminar->isNativeDelivery() ? [
+                                optional($attendance?->joined_at)->toDateTimeString(),
+                                optional($attendance?->left_at)->toDateTimeString(),
+                                $attendance ? number_format((int) $attendance->total_seconds / 60, 2, '.', '') : '',
+                            ] : []),
                         ]);
                     }
                 });

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\Connectors\ConnectorEducatorProfileTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" tests="6" assertions="62" errors="0" failures="0" skipped="0" time="42.486313">
+    <testcase name="test_directory_has_labeled_view_and_message_icon_actions" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="14" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="8" time="41.042638">
+      <system-out>
+
+</system-out>
+    </testcase>
+    <testcase name="test_host_views_saved_profile_in_connector_workspace_without_private_account_or_verification_data" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="25" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="25" time="0.377304"/>
+    <testcase name="test_profile_changes_from_existing_instructor_management_are_visible_to_organizers" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="44" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="7" time="0.183773"/>
+    <testcase name="test_view_uses_existing_manager_access_and_rejects_unavailable_targets" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="57" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="6" time="0.264081"/>
+    <testcase name="test_missing_profile_uses_empty_states_without_creating_a_record" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="75" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="8" time="0.250249"/>
+    <testcase name="test_shared_learner_profile_keeps_its_existing_layout_and_privacy_rules" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorEducatorProfileTest.php" line="86" class="Tests\Feature\Connectors\ConnectorEducatorProfileTest" classname="Tests.Feature.Connectors.ConnectorEducatorProfileTest" assertions="8" time="0.368268"/>
+  </testsuite>
+</testsuites>

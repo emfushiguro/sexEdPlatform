@@ -46,7 +46,7 @@ class EducationalEventFormTest extends TestCase
             ->assertSee('name="external_link_visible_at"', false)
             ->assertSee('name="external_link_expiry_mode"', false)
             ->assertSee('name="external_link_expires_at"', false)
-            ->assertSee('immediate access after confirmation')
+            ->assertSee('Blank releases immediately after confirmation.')
             ->assertSee('remains available after completion');
     }
 
@@ -114,13 +114,17 @@ class EducationalEventFormTest extends TestCase
 
         $this->actingAs($owner)->get(route('connector.seminars.edit', [$connector, $seminar]))
             ->assertOk()
-            ->assertSee('name="starts_at" step="1" value="'.$payload['starts_at'].'"', false)
-            ->assertSee('name="ends_at" step="1" value="'.$payload['ends_at'].'"', false);
+            ->assertSee('type="hidden" name="starts_at" :value="starts_at" value="'.$payload['starts_at'].'"', false)
+            ->assertSee('Event schedule (Philippine Time / PHT)')
+            ->assertSee('The event schedule cannot change after a registration exists.')
+            ->assertSee('type="hidden" name="ends_at" :value="ends_at" value="'.$payload['ends_at'].'"', false);
 
         $this->actingAs($owner)->put(route('connector.seminars.update', [$connector, $seminar]), [
             ...$payload,
             'description' => 'Updated description only.',
         ])->assertRedirect();
         $this->assertSame('Updated description only.', $seminar->fresh()->description);
+        $this->assertSame($start->copy()->utc()->format('Y-m-d H:i:s'), $seminar->fresh()->starts_at->format('Y-m-d H:i:s'));
+        $this->assertSame($end->copy()->utc()->format('Y-m-d H:i:s'), $seminar->fresh()->ends_at->format('Y-m-d H:i:s'));
     }
 }
