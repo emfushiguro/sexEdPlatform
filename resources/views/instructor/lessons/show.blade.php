@@ -131,7 +131,7 @@
                     .filter(caption => caption.file_url)
                     .map(caption => `<track kind="subtitles" src="${escapeHtml(caption.file_url)}" srclang="${escapeHtml(caption.language_code)}" label="${escapeHtml(caption.label)}"${caption.is_default ? ' default' : ''}>`)
                     .join('');
-                content += `<video controls class="w-full rounded-xl"><source src="${escapeHtml(topic.video_file_url)}" type="video/mp4">${tracks}</video>`;
+                content += `<video controls class="w-full rounded-xl"><source src="${escapeHtml(topic.video_file_url)}">${tracks}</video>`;
             } else {
                 content += `<div class="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">No video source available for this topic.</div>`;
             }

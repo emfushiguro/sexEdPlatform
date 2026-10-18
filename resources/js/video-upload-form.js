@@ -37,6 +37,76 @@ export function allowedVideoFileError(file, maxBytes = VIDEO_UPLOAD_MAX_BYTES) {
     return null;
 }
 
+export function syncVideoSourceFields(form) {
+    const source = form.querySelector('[data-video-source]:checked')
+        || form.querySelector('select[data-video-source]');
+    const urlField = form.querySelector('[data-video-url-field]');
+    const fileField = form.querySelector('[data-video-file-field]');
+
+    if (!source || !urlField || !fileField) {
+        return;
+    }
+
+    urlField.classList.toggle('hidden', source.value !== 'url');
+    fileField.classList.toggle('hidden', source.value !== 'upload');
+}
+
+export function bindVideoFileTrigger(form) {
+    const fileInput = form.querySelector('[data-video-file-input]');
+    const trigger = form.querySelector('button[data-video-file-trigger]');
+
+    trigger?.addEventListener('click', () => fileInput?.click());
+}
+
+export function initializeVideoFilePreview(form) {
+    const input = form.querySelector('[data-video-file-input]');
+    const panel = form.querySelector('[data-video-preview]');
+    const video = form.querySelector('[data-video-preview-player]');
+    const status = form.querySelector('[data-video-preview-status]');
+    if (!input || !panel || !video) return;
+
+    let objectUrl;
+    const clear = () => {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = undefined;
+        panel.hidden = true;
+    };
+    const update = () => {
+        clear();
+        const file = input.files?.[0];
+        if (!file || allowedVideoFileError(file, Number(form.dataset.videoMaxBytes || VIDEO_UPLOAD_MAX_BYTES))) return;
+
+        objectUrl = URL.createObjectURL(file);
+        video.src = objectUrl;
+        video.hidden = false;
+        video.setAttribute('aria-label', `Preview of ${file.name}`);
+        panel.hidden = false;
+        setText(status, 'Loading video preview…');
+    };
+    video.addEventListener('loadedmetadata', () => {
+        // Seek just past the first frame so mobile browsers also paint a thumbnail.
+        if (video.duration > 0) {
+            video.currentTime = Math.min(0.1, video.duration / 2);
+        }
+    });
+    video.addEventListener('loadeddata', () => setText(status, 'Preview only. The file will upload when you save the topic.'));
+    video.addEventListener('error', () => {
+        if (!objectUrl) return;
+        video.hidden = true;
+        setText(status, 'This browser cannot preview this video format. You can still save the selected file.');
+    });
+    input.addEventListener('change', update);
+    form.addEventListener('reset', clear);
+    form.addEventListener('change', event => {
+        if (['video_source', 'type'].includes(event.target.name)) video.pause();
+    });
+    window.addEventListener('pagehide', clear);
+    window.addEventListener('pageshow', event => { if (event.persisted) update(); });
+}
+
 function toggle(element, hidden) {
     element?.classList.toggle('hidden', hidden);
 }
@@ -76,6 +146,13 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
     const maxBytes = Number(form.dataset.videoMaxBytes || VIDEO_UPLOAD_MAX_BYTES);
     let previouslyFocusedElement;
     let invalidFileSelection = false;
+
+    bindVideoFileTrigger(form);
+    initializeVideoFilePreview(form);
+    form.querySelectorAll?.('[data-video-source]')?.forEach((control) => {
+        control.addEventListener('change', () => syncVideoSourceFields(form));
+    });
+    syncVideoSourceFields(form);
 
     const setFileError = (message) => {
         setText(fileError, message || '');
