@@ -179,7 +179,11 @@ class ParentChildVerificationController extends Controller
         abort_unless($user->isParentRegistration(), 404);
 
         return view('admin.parent-verifications.show-parent', [
-            'guardian' => $user->load('learnerProfile'),
+            'guardian' => $user->load([
+                'learnerProfile',
+                'personaInquiries' => fn ($query) => $query->whereNull('learner_identity_verification_id')->orderByDesc('attempt_number'),
+                'guardianIdentityAudits.actor',
+            ]),
             'idTypeLabel' => $this->idTypeLabel($user),
         ]);
     }

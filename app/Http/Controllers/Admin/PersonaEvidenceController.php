@@ -1,0 +1,98 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\PersonaInquiry;
+use App\Services\Persona\PersonaClient;
+use Illuminate\Http\Response;
+use RuntimeException;
+
+class PersonaEvidenceController extends Controller
+{
+    public function __construct(
+        private readonly PersonaClient $personaClient,
+    ) {}
+
+    public function show(PersonaInquiry $personaInquiry, string $artifact): Response
+    {
+        abort_unless($this->isReviewable($personaInquiry), 404);
+
+        try {
+            $url = match ($artifact) {
+                'selfie' => $this->selfieUrl($personaInquiry),
+                'government-id-front' => $this->governmentIdUrl($personaInquiry, 'front'),
+                'government-id-back' => $this->governmentIdUrl($personaInquiry, 'back'),
+                default => null,
+            };
+        } catch (RuntimeException) {
+            abort(503, 'Persona media is temporarily unavailable.');
+        }
+
+        abort_if($url === null, 404);
+
+        try {
+            $media = $this->personaClient->downloadMedia($url);
+        } catch (RuntimeException) {
+            abort(503, 'Persona media is temporarily unavailable.');
+        }
+
+        return response($media['bytes'], 200, [
+            'Content-Type' => $media['content_type'],
+            'Content-Disposition' => 'inline',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    private function isReviewable(PersonaInquiry $attempt): bool
+    {
+        if (! $attempt->is_sandbox || config('persona.environment', 'sandbox') !== 'sandbox') {
+            return false;
+        }
+
+        $user = $attempt->user;
+        if (! $user) {
+            return false;
+        }
+
+        if ($attempt->flow_type === PersonaInquiry::FLOW_GUARDIAN_GOVERNMENT) {
+            return $user->isParentRegistration() && $attempt->learner_identity_verification_id === null;
+        }
+
+        return $user->isLearner() && $attempt->learner_identity_verification_id !== null;
+    }
+
+    private function selfieUrl(PersonaInquiry $attempt): ?string
+    {
+        if (! $attempt->selfie_verification_id) {
+            return null;
+        }
+
+        $response = $this->personaClient->retrieveSelfie($attempt->selfie_verification_id);
+        $url = data_get($response, 'data.attributes.center-photo-url');
+
+        return is_string($url) && $url !== '' ? $url : null;
+    }
+
+    private function governmentIdUrl(PersonaInquiry $attempt, string $page): ?string
+    {
+        if ($attempt->flow_type === PersonaInquiry::FLOW_TEEN_SCHOOL || ! $attempt->government_id_verification_id) {
+            return null;
+        }
+
+        $response = $this->personaClient->retrieveGovernmentId($attempt->government_id_verification_id);
+        $photoUrls = data_get($response, 'data.attributes.photo-urls', []);
+
+        foreach (is_array($photoUrls) ? $photoUrls : [] as $photo) {
+            if (! is_array($photo) || ($photo['page'] ?? null) !== $page) {
+                continue;
+            }
+
+            $url = $photo['url'] ?? null;
+            return is_string($url) && $url !== '' ? $url : null;
+        }
+
+        return null;
+    }
+}

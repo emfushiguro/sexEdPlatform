@@ -7,10 +7,10 @@ use App\Models\LearnerIdentityVerification;
 use App\Models\PersonaInquiry;
 use App\Models\User;
 use Illuminate\Database\QueryException;
-use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use LogicException;
+use Tests\TestCase;
 
 class PersonaSchemaTest extends TestCase
 {

@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Enums\VerificationStatus;
+use App\Models\GuardianIdentityAudit;
 use App\Models\ParentChildAccount;
+use App\Models\PersonaInquiry;
 use App\Models\User;
 use App\Notifications\Admin\ChildVerificationRequestSubmittedNotification;
 use App\Notifications\Admin\ParentVerificationRequestSubmittedNotification;
@@ -12,6 +14,7 @@ use App\Notifications\ChildVerificationRejectedNotification;
 use App\Notifications\ParentVerificationApprovedNotification;
 use App\Notifications\ParentVerificationRejectedNotification;
 use App\Notifications\ParentVerificationSubmittedNotification;
+use App\Services\Persona\PersonaInquiryService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +25,10 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class ParentChildVerificationService
 {
+    public function __construct(
+        private readonly PersonaInquiryService $personaInquiryService,
+    ) {}
+
     public function approveParent(User $parent): void
     {
         if (! $parent->is_parent_registration) {
@@ -29,18 +36,36 @@ class ParentChildVerificationService
         }
 
         DB::transaction(function () use ($parent): void {
-            $parent->update([
+            $lockedParent = User::query()->whereKey($parent->getKey())->lockForUpdate()->firstOrFail();
+            $fromStatus = $lockedParent->parent_verification_status;
+
+            try {
+                $this->personaInquiryService->assertGuardianMayApprove($lockedParent);
+            } catch (\DomainException) {
+                abort(422, 'Persona verification is required before guardian approval.');
+            }
+
+            $lockedParent->update([
                 'parent_verification_status' => VerificationStatus::Approved->value,
                 'parent_verification_rejection_reason' => null,
                 'parent_verification_reviewed_by' => Auth::id(),
                 'parent_verification_reviewed_at' => now(),
                 'parent_verification_approved_at' => now(),
-                'guardian_onboarding_status' => $parent->hasCompletedProfile() ? 'completed' : 'not_started',
+                'guardian_onboarding_status' => $lockedParent->hasCompletedProfile() ? 'completed' : 'not_started',
                 'guardian_onboarding_started_at' => null,
-                'guardian_onboarding_completed_at' => $parent->hasCompletedProfile() ? now() : null,
+                'guardian_onboarding_completed_at' => $lockedParent->hasCompletedProfile() ? now() : null,
             ]);
 
-            $this->notifySafely($parent, new ParentVerificationApprovedNotification());
+            $this->appendGuardianAudit(
+                guardian: $lockedParent,
+                action: 'approved',
+                fromStatus: $fromStatus,
+                toStatus: VerificationStatus::Approved->value,
+            );
+
+            DB::afterCommit(function () use ($lockedParent): void {
+                $this->notifySafely($lockedParent, new ParentVerificationApprovedNotification());
+            });
         });
     }
 
@@ -51,15 +76,29 @@ class ParentChildVerificationService
         }
 
         DB::transaction(function () use ($parent, $reason): void {
-            $parent->update([
+            $lockedParent = User::query()->whereKey($parent->getKey())->lockForUpdate()->firstOrFail();
+            $fromStatus = $lockedParent->parent_verification_status;
+            $normalizedReason = trim($reason);
+
+            $lockedParent->update([
                 'parent_verification_status' => VerificationStatus::Rejected->value,
-                'parent_verification_rejection_reason' => trim($reason),
+                'parent_verification_rejection_reason' => $normalizedReason,
                 'parent_verification_reviewed_by' => Auth::id(),
                 'parent_verification_reviewed_at' => now(),
                 'parent_verification_approved_at' => null,
             ]);
 
-            $this->notifySafely($parent, new ParentVerificationRejectedNotification(trim($reason)));
+            $this->appendGuardianAudit(
+                guardian: $lockedParent,
+                action: 'rejected',
+                fromStatus: $fromStatus,
+                toStatus: VerificationStatus::Rejected->value,
+                reason: $normalizedReason,
+            );
+
+            DB::afterCommit(function () use ($lockedParent, $normalizedReason): void {
+                $this->notifySafely($lockedParent, new ParentVerificationRejectedNotification($normalizedReason));
+            });
         });
     }
 
@@ -79,10 +118,23 @@ class ParentChildVerificationService
         }
 
         DB::transaction(function () use ($parent, $idType, $idTypeOther, $frontPath, $backPath): void {
-            $oldFrontPath = $parent->parent_id_document_path;
-            $oldBackPath = $parent->parent_id_document_back_path;
+            $lockedParent = User::query()->whereKey($parent->getKey())->lockForUpdate()->firstOrFail();
+            if ($lockedParent->parent_verification_status === VerificationStatus::Pending->value) {
+                throw new InvalidArgumentException('Guardian verification is already pending review.');
+            }
 
-            $parent->update([
+            $personaAttempt = $this->personaInquiryService->isRequired()
+                ? $this->personaInquiryService->assertGuardianMaySubmit($lockedParent, $idType)
+                : null;
+            $oldStatus = $lockedParent->parent_verification_status;
+            $oldFrontPath = $lockedParent->parent_id_document_path;
+            $oldBackPath = $lockedParent->parent_id_document_back_path;
+            $attemptNumber = $personaAttempt?->attempt_number
+                ?? max(1, (int) GuardianIdentityAudit::query()
+                    ->where('guardian_id', $lockedParent->id)
+                    ->max('attempt_number') + 1);
+
+            $lockedParent->update([
                 'parent_id_type' => $idType,
                 'parent_id_type_other' => $idType === 'other' ? $idTypeOther : null,
                 'parent_id_document_path' => $frontPath,
@@ -102,9 +154,44 @@ class ParentChildVerificationService
                 }
             }
 
-            $this->notifySafely($parent, new ParentVerificationSubmittedNotification());
-            $this->notifyAdminsSafely(new ParentVerificationRequestSubmittedNotification($parent));
+            $this->appendGuardianAudit(
+                guardian: $lockedParent,
+                action: 'submitted',
+                fromStatus: $oldStatus,
+                toStatus: VerificationStatus::Pending->value,
+                personaAttempt: $personaAttempt,
+                attemptNumber: $attemptNumber,
+            );
+
+            DB::afterCommit(function () use ($lockedParent): void {
+                $this->notifySafely($lockedParent, new ParentVerificationSubmittedNotification());
+                $this->notifyAdminsSafely(new ParentVerificationRequestSubmittedNotification($lockedParent));
+            });
         });
+    }
+
+    private function appendGuardianAudit(
+        User $guardian,
+        string $action,
+        ?string $fromStatus,
+        ?string $toStatus,
+        ?PersonaInquiry $personaAttempt = null,
+        ?int $attemptNumber = null,
+        ?string $reason = null,
+    ): void {
+        GuardianIdentityAudit::query()->create([
+            'guardian_id' => $guardian->id,
+            'actor_id' => Auth::id(),
+            'persona_inquiry_id' => $personaAttempt?->id,
+            'action' => $action,
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'attempt_number' => $attemptNumber ?? max(1, (int) GuardianIdentityAudit::query()
+                ->where('guardian_id', $guardian->id)
+                ->max('attempt_number')),
+            'reason' => $reason,
+            'created_at' => now(),
+        ]);
     }
 
     public function approveChild(ParentChildAccount $verification): void

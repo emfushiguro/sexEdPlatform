@@ -21,6 +21,12 @@
 
         <form method="POST" action="{{ route('learner.identity.store') }}" enctype="multipart/form-data" class="space-y-5">
             @csrf
+            @if(($personaRequired ?? false) && ($personaAttempt?->flow_type ?? null) === \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL)
+                <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900" role="status">
+                    <p class="font-semibold">Persona selfie evidence is already collected.</p>
+                    <p class="mt-1">This school or institution path does not ask for a duplicate local selfie. The administrator will still review your local identity evidence.</p>
+                </div>
+            @else
             <section x-data="identitySelfie" data-testid="selfie-capture" class="space-y-4" aria-labelledby="selfie-heading">
                 <h2 id="selfie-heading" class="sr-only">Selfie photo</h2>
                 <button type="button" data-testid="selfie-start-camera" @click="startCamera()"
@@ -60,6 +66,7 @@
                 </div>
                 <p class="text-sm text-gray-700">We collect your ID and selfie to confirm this account belongs to you. Only authorized reviewers use them for manual review. Our <a href="{{ route('privacy') }}" class="font-semibold text-purple-800 underline">privacy policy</a> explains how long they are kept and when they may be deleted.</p>
             </section>
+            @endif
             <div class="flex items-start gap-3">
                 <input id="confirm_submission" name="confirm_submission" type="checkbox" value="1" required class="mt-1 h-5 w-5 accent-purple-700">
                 <label for="confirm_submission" class="text-gray-800">I confirm these images are mine and agree to their review under the <a class="font-semibold text-purple-800 underline" href="{{ route('privacy') }}">privacy policy</a>.</label>

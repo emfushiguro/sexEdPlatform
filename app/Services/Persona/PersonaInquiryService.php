@@ -6,6 +6,7 @@ use App\Models\LearnerIdentityVerification;
 use App\Models\PersonaInquiry;
 use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -19,6 +20,7 @@ class PersonaInquiryService
         private readonly PersonaClient $client,
         private readonly PersonaTemplateSelector $selector,
         private readonly LearnerIdentityRequirement $requirement,
+        private readonly PersonaInquirySynchronizer $synchronizer,
     ) {}
 
     /** @return array{attempt: PersonaInquiry, session_token: string} */
@@ -81,12 +83,17 @@ class PersonaInquiryService
             abort(404);
         }
 
-        return $attempt;
+        $this->synchronizer->sync($attempt);
+
+        return $attempt->fresh();
     }
 
     public function refresh(User $user): PersonaInquiry
     {
-        return $this->ownedCurrentAttempt($user);
+        $attempt = $this->ownedCurrentAttempt($user);
+        $this->synchronizer->sync($attempt);
+
+        return $attempt->fresh();
     }
 
     /** @return array{attempt: PersonaInquiry, session_token: string} */
@@ -153,6 +160,11 @@ class PersonaInquiryService
         ]);
     }
 
+    public function isRequired(): bool
+    {
+        return (bool) config('persona.enabled', false);
+    }
+
     public function assertLearnerMaySubmit(
         User $learner,
         LearnerIdentityVerification $case,
@@ -167,8 +179,9 @@ class PersonaInquiryService
         }
 
         $targetRound = (int) $case->submission_round + 1;
-        $attempt = $this->findAttempt($learner, $case, $targetRound);
-        if (! $attempt || ! $attempt->isPolicyEligible()
+        $attempt = $this->findAttempt($learner, $case, $targetRound, true);
+        if (config('persona.environment', 'sandbox') !== 'sandbox'
+            || ! $attempt || ! $attempt->isPolicyEligible()
             || $attempt->local_document_type !== $documentType
             || $attempt->local_government_id_type !== $governmentIdType) {
             throw new DomainException('Persona verification is required before local identity submission.');
@@ -189,18 +202,101 @@ class PersonaInquiryService
 
     public function assertGuardianMaySubmit(User $guardian, string $governmentIdType): PersonaInquiry
     {
-        if (! $guardian->isParentRegistration()
-            || ! $guardian->hasVerifiedEmail()
-            || ! in_array($guardian->parent_verification_status, [null, 'rejected'], true)) {
+        $lockedGuardian = User::query()->whereKey($guardian->getKey())->lockForUpdate()->firstOrFail();
+        if (! $lockedGuardian->isParentRegistration()
+            || ! $lockedGuardian->hasVerifiedEmail()
+            || ! in_array($lockedGuardian->parent_verification_status, [null, 'rejected'], true)) {
             throw new DomainException('Persona verification is required before guardian submission.');
         }
 
-        $targetRound = $this->guardianTargetRound($guardian);
-        $attempt = $this->findAttempt($guardian, null, $targetRound);
-        if (! $attempt || ! $attempt->isPolicyEligible()
+        $targetRound = $this->guardianTargetRound($lockedGuardian);
+        $attempt = $this->findAttempt($lockedGuardian, null, $targetRound, true);
+        if (config('persona.environment', 'sandbox') !== 'sandbox'
+            || ! $attempt || ! $attempt->isPolicyEligible()
             || $attempt->flow_type !== PersonaInquiry::FLOW_GUARDIAN_GOVERNMENT
             || $attempt->local_government_id_type !== $governmentIdType) {
             throw new DomainException('Persona verification is required before guardian submission.');
+        }
+
+        return $attempt;
+    }
+
+    public function assertLearnerMayApprove(User $learner, LearnerIdentityVerification $case): ?PersonaInquiry
+    {
+        if (! $this->isRequired()) {
+            return null;
+        }
+
+        $attempt = PersonaInquiry::query()
+            ->where('user_id', $learner->id)
+            ->where('learner_identity_verification_id', $case->id)
+            ->where('target_submission_round', $case->submission_round)
+            ->whereNull('superseded_at')
+            ->latest('attempt_number')
+            ->lockForUpdate()
+            ->first();
+
+        if (! $attempt && $this->isGrandfathered($case->submitted_at)) {
+            return null;
+        }
+
+        $expectedFlow = match ([$case->pathway, $case->document_type]) {
+            ['teen', 'school_id'], ['teen', 'institution_id'] => PersonaInquiry::FLOW_TEEN_SCHOOL,
+            ['teen', 'government_id'] => PersonaInquiry::FLOW_TEEN_GOVERNMENT,
+            ['adult', 'government_id'] => PersonaInquiry::FLOW_ADULT_GOVERNMENT,
+            default => null,
+        };
+        $expectedIdType = $case->document_type === 'government_id' ? $case->government_id_type : null;
+
+        if (! $attempt
+            || ! $attempt->is_sandbox
+            || config('persona.environment', 'sandbox') !== 'sandbox'
+            || $attempt->user_id !== $learner->id
+            || $attempt->flow_type !== $expectedFlow
+            || $attempt->local_document_type !== $case->document_type
+            || $attempt->local_government_id_type !== $expectedIdType
+            || $attempt->persona_status !== 'completed'
+            || ! $attempt->isPolicyEligible()) {
+            throw new DomainException('Persona verification is required before learner approval.');
+        }
+
+        return $attempt;
+    }
+
+    public function assertGuardianMayApprove(User $guardian): ?PersonaInquiry
+    {
+        if (! $this->isRequired()) {
+            return null;
+        }
+
+        $round = max(
+            1,
+            (int) $guardian->guardianIdentityAudits()->max('attempt_number'),
+            (int) $guardian->personaInquiries()->max('target_submission_round'),
+        );
+        $attempt = PersonaInquiry::query()
+            ->where('user_id', $guardian->id)
+            ->whereNull('learner_identity_verification_id')
+            ->where('target_submission_round', $round)
+            ->whereNull('superseded_at')
+            ->latest('attempt_number')
+            ->lockForUpdate()
+            ->first();
+
+        if (! $attempt && $this->isGrandfathered($guardian->parent_verification_submitted_at)) {
+            return null;
+        }
+
+        if (! $attempt
+            || ! $attempt->is_sandbox
+            || config('persona.environment', 'sandbox') !== 'sandbox'
+            || $attempt->user_id !== $guardian->id
+            || $attempt->flow_type !== PersonaInquiry::FLOW_GUARDIAN_GOVERNMENT
+            || $attempt->local_document_type !== 'government_id'
+            || $attempt->local_government_id_type !== $guardian->parent_id_type
+            || $attempt->persona_status !== 'completed'
+            || ! $attempt->isPolicyEligible()) {
+            throw new DomainException('Persona verification is required before guardian approval.');
         }
 
         return $attempt;
@@ -286,9 +382,13 @@ class PersonaInquiryService
         $latestAudit = (int) $guardian->guardianIdentityAudits()->max('attempt_number');
         $latestPersonaRound = (int) $guardian->personaInquiries()->max('target_submission_round');
 
-        return $guardian->parent_verification_status === 'rejected'
-            ? max($latestAudit, $latestPersonaRound) + 1
-            : max(1, $latestPersonaRound);
+        if ($guardian->parent_verification_status !== 'rejected') {
+            return max(1, $latestPersonaRound);
+        }
+
+        $nextRound = max(1, $latestAudit + 1);
+
+        return max($nextRound, $latestPersonaRound);
     }
 
     private function isReplaceable(PersonaInquiry $attempt): bool
@@ -297,6 +397,20 @@ class PersonaInquiryService
             && ($attempt->expired_at !== null
                 || in_array($attempt->persona_status, ['failed', 'expired'], true)
                 || $attempt->verification_outcome === PersonaInquiry::OUTCOME_RETRYABLE);
+    }
+
+    private function isGrandfathered(mixed $submittedAt): bool
+    {
+        $cutover = config('persona.enforced_from');
+        if (! $cutover || ! $submittedAt) {
+            return false;
+        }
+
+        try {
+            return CarbonImmutable::parse($submittedAt)->lessThan(CarbonImmutable::parse($cutover));
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     /** @return array{attempt: PersonaInquiry, session_token: string} */

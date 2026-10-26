@@ -8,6 +8,7 @@ use App\Models\LearnerIdentityVerification;
 use App\Models\User;
 use App\Notifications\LearnerIdentityApprovedNotification;
 use App\Notifications\LearnerIdentityRejectedNotification;
+use App\Services\Persona\PersonaInquiryService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,11 +16,19 @@ use Illuminate\Support\Facades\Storage;
 
 class LearnerIdentityReview
 {
-    public function __construct(private readonly LearnerIdentityRequirement $requirement) {}
+    public function __construct(
+        private readonly LearnerIdentityRequirement $requirement,
+        private readonly PersonaInquiryService $personaInquiries,
+    ) {}
 
-    public function approve(User $reviewer, LearnerIdentityVerification $case, int $submissionRound): void
+    public function approve(
+        User $reviewer,
+        LearnerIdentityVerification $case,
+        int $submissionRound,
+        bool $personaPortraitCompared = false,
+    ): void
     {
-        $this->decide($reviewer, $case, VerificationStatus::Approved, null, $submissionRound);
+        $this->decide($reviewer, $case, VerificationStatus::Approved, null, $submissionRound, $personaPortraitCompared);
     }
 
     public function reject(User $reviewer, LearnerIdentityVerification $case, LearnerIdentityRejectionReason $reason, int $submissionRound): void
@@ -27,11 +36,18 @@ class LearnerIdentityReview
         $this->decide($reviewer, $case, VerificationStatus::Rejected, $reason, $submissionRound);
     }
 
-    private function decide(User $reviewer, LearnerIdentityVerification $case, VerificationStatus $decision, ?LearnerIdentityRejectionReason $reason, int $submissionRound): void
+    private function decide(
+        User $reviewer,
+        LearnerIdentityVerification $case,
+        VerificationStatus $decision,
+        ?LearnerIdentityRejectionReason $reason,
+        int $submissionRound,
+        bool $personaPortraitCompared = false,
+    ): void
     {
         abort_unless($reviewer->hasRole('admin'), 403);
 
-        DB::transaction(function () use ($reviewer, $case, $decision, $reason, $submissionRound): void {
+        DB::transaction(function () use ($reviewer, $case, $decision, $reason, $submissionRound, $personaPortraitCompared): void {
             $locked = LearnerIdentityVerification::query()->lockForUpdate()->findOrFail($case->id);
             $learner = $locked->learner;
             abort_if((int) $locked->submission_round !== $submissionRound,
@@ -47,6 +63,21 @@ class LearnerIdentityReview
                 || $learner->identityVerifications()->whereNull('superseded_at')->whereKeyNot($locked->id)->exists(),
                 409, 'Only a current pending case can be reviewed.');
             abort_unless($this->requiredEvidenceExists($locked), 422, 'Required private evidence is missing.');
+
+            if ($decision === VerificationStatus::Approved) {
+                try {
+                    $this->personaInquiries->assertLearnerMayApprove($learner, $locked);
+                } catch (DomainException) {
+                    abort(422, 'Persona verification is required before learner approval.');
+                }
+
+                if (config('persona.enabled', false)
+                    && $locked->pathway === 'teen'
+                    && in_array($locked->document_type, ['school_id', 'institution_id'], true)
+                    && ! $personaPortraitCompared) {
+                    abort(422, 'Administrator portrait comparison confirmation is required.');
+                }
+            }
 
             $locked->forceFill([
                 'status' => $decision->value,

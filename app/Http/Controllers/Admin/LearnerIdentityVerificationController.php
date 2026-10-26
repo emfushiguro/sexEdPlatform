@@ -23,7 +23,12 @@ class LearnerIdentityVerificationController extends Controller
         abort_if($case->superseded_at !== null, 404);
 
         return view('admin.parent-verifications.show-learner', [
-            'case' => $case->load(['learner', 'evidence', 'audits.actor']),
+            'case' => $case->load([
+                'learner',
+                'evidence',
+                'audits.actor',
+                'personaInquiries' => fn ($query) => $query->orderByDesc('attempt_number'),
+            ]),
             'reviewer' => $case->reviewed_by ? User::find($case->reviewed_by) : null,
         ]);
     }
@@ -56,8 +61,17 @@ class LearnerIdentityVerificationController extends Controller
             'submission_round' => ['required', 'integer', 'min:1'],
             'confirm_government_issued' => $case->pathway === 'adult' && $case->government_id_type === 'other'
                 ? ['accepted'] : ['sometimes', 'accepted'],
+            'persona_portrait_compared' => config('persona.enabled', false)
+                && $case->pathway === 'teen'
+                && in_array($case->document_type, ['school_id', 'institution_id'], true)
+                ? ['accepted'] : ['sometimes', 'accepted'],
         ]);
-        $this->review->approve($request->user(), $case, (int) $data['submission_round']);
+        $this->review->approve(
+            $request->user(),
+            $case,
+            (int) $data['submission_round'],
+            (bool) ($data['persona_portrait_compared'] ?? false),
+        );
 
         return redirect()->route('admin.parent-verifications.learners.show', $case)
             ->with('success', 'Learner identity approved.');

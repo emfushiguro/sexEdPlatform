@@ -16,8 +16,11 @@
         <h2 id="persona-identity-title" class="mt-1 text-lg font-semibold text-gray-900">Identity evidence step</h2>
         <p class="mt-2 text-sm leading-6 text-gray-700">
             Persona is one evidence step only. An authorized administrator still reviews and decides the application.
-            All Persona results in this flow are simulated Sandbox data.
+            Every Persona result is a Simulated Sandbox result.
         </p>
+        @error('persona')
+            <p class="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{{ $message }}</p>
+        @enderror
     </div>
 
     @if(!$attempt)

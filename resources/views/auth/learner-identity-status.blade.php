@@ -6,6 +6,10 @@
         </div>
     </x-slot>
     <main class="mx-auto max-w-2xl space-y-5">
+        @php
+            $personaRequired = $personaRequired ?? false;
+            $personaAttempt = $personaAttempt ?? null;
+        @endphp
         @unless($supportHold)<x-wizard-stepper :is-parent-flow="false" />@endunless
         <h1 class="text-3xl font-bold text-gray-900">Identity verification status</h1>
         @if($supportHold)
@@ -33,6 +37,14 @@
                 </div>
             </section>
         @elseif($case->status === 'rejected')
+            @if($personaRequired)
+                @include('auth.partials.persona-identity-step', [
+                    'attempt' => $personaAttempt,
+                    'allowSchoolDocuments' => $case->pathway === 'teen',
+                    'documentType' => $personaAttempt?->local_document_type,
+                    'governmentIdType' => $personaAttempt?->local_government_id_type,
+                ])
+            @endif
             <p class="text-gray-800">Your identity verification needs another submission.</p>
             @if($case->rejection_reason)
                 <p class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-gray-900">{{ $case->rejection_reason }}</p>

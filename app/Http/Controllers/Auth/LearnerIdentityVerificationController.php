@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\SubmitLearnerIdentitySelfieRequest;
 use App\Services\Identity\LearnerIdentityDocumentDraft;
 use App\Services\Identity\LearnerIdentityRequirement;
 use App\Services\Identity\LearnerIdentitySubmission;
+use App\Services\Persona\PersonaInquiryService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,10 @@ use Illuminate\View\View;
 
 class LearnerIdentityVerificationController extends Controller
 {
-    public function __construct(private LearnerIdentityRequirement $requirement) {}
+    public function __construct(
+        private LearnerIdentityRequirement $requirement,
+        private PersonaInquiryService $personaInquiries,
+    ) {}
 
     public function create(Request $request, LearnerIdentityDocumentDraft $drafts): RedirectResponse|View
     {
@@ -32,15 +36,38 @@ class LearnerIdentityVerificationController extends Controller
         if ($case->status === 'pending') {
             return redirect()->route('learner.identity.status');
         }
-        $draft = $drafts->current($request->user(), $case);
+        $personaRequired = $this->personaInquiries->isRequired();
+        $personaAttempt = $personaRequired ? $this->personaInquiries->currentAttempt($request->user()) : null;
+        $draft = $personaRequired && ! $personaAttempt?->isPolicyEligible()
+            ? null
+            : $drafts->current($request->user(), $case);
+        if ($personaRequired && ! $personaAttempt?->isPolicyEligible()) {
+            $drafts->clear();
+        }
 
-        return view('auth.learner-identity-verification', compact('case', 'draft'));
+        return view('auth.learner-identity-verification', compact(
+            'case', 'draft', 'personaAttempt', 'personaRequired',
+        ));
     }
 
     public function storeDocument(StoreLearnerIdentityDocumentRequest $request, LearnerIdentityDocumentDraft $drafts): RedirectResponse
     {
         $case = $this->requirement->current($request->user());
         abort_if($case === null, 403);
+
+        if ($this->personaInquiries->isRequired()) {
+            try {
+                $this->personaInquiries->assertLearnerMaySubmit(
+                    $request->user(),
+                    $case,
+                    (string) $request->input('document_type'),
+                    $request->filled('government_id_type') ? (string) $request->input('government_id_type') : null,
+                );
+            } catch (DomainException) {
+                return redirect()->route('learner.identity.create')
+                    ->withErrors(['persona' => 'Complete the Persona evidence step before uploading local evidence.']);
+            }
+        }
 
         $drafts->stage(
             $request->user(), $case,
@@ -65,11 +92,16 @@ class LearnerIdentityVerificationController extends Controller
         if ($case->status === 'pending') {
             return redirect()->route('learner.identity.status');
         }
+        $personaRequired = $this->personaInquiries->isRequired();
+        $personaAttempt = $personaRequired ? $this->personaInquiries->currentAttempt($request->user()) : null;
+        if ($personaRequired && ! $personaAttempt?->isPolicyEligible()) {
+            return redirect()->route('learner.identity.create');
+        }
         if (! $drafts->current($request->user(), $case)) {
             return redirect()->route('learner.identity.create');
         }
 
-        return view('auth.learner-identity-selfie', compact('case'));
+        return view('auth.learner-identity-selfie', compact('case', 'personaAttempt', 'personaRequired'));
     }
 
     public function store(SubmitLearnerIdentitySelfieRequest $request, LearnerIdentitySubmission $submission, LearnerIdentityDocumentDraft $drafts): RedirectResponse
@@ -112,6 +144,13 @@ class LearnerIdentityVerificationController extends Controller
             return redirect()->route('learner.identity.create');
         }
 
-        return view('auth.learner-identity-status', ['case' => $case, 'supportHold' => false]);
+        $personaRequired = $this->personaInquiries->isRequired();
+
+        return view('auth.learner-identity-status', [
+            'case' => $case,
+            'supportHold' => false,
+            'personaRequired' => $personaRequired,
+            'personaAttempt' => $personaRequired ? $this->personaInquiries->currentAttempt($request->user()) : null,
+        ]);
     }
 }

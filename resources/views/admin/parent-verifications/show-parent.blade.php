@@ -76,6 +76,10 @@
         </section>
     </div>
 
+    @include('admin.parent-verifications.partials.persona-summary', [
+        'personaAttempts' => $guardian->personaInquiries,
+    ])
+
     <section class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Verification Timeline</h2>
         <dl class="mt-4 grid gap-4 text-sm md:grid-cols-3">

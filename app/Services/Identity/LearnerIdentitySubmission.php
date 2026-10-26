@@ -7,6 +7,7 @@ use App\Models\LearnerIdentityVerification;
 use App\Models\User;
 use App\Notifications\Admin\LearnerIdentitySubmittedNotification as AdminLearnerIdentitySubmittedNotification;
 use App\Notifications\LearnerIdentitySubmittedNotification;
+use App\Services\Persona\PersonaInquiryService;
 use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,8 @@ use Throwable;
 
 class LearnerIdentitySubmission
 {
+    public function __construct(private readonly PersonaInquiryService $personaInquiries) {}
+
     public function submit(User $actor, LearnerIdentityVerification $case, array $data, array $files): LearnerIdentityVerification
     {
         $newPaths = [];
@@ -51,6 +54,9 @@ class LearnerIdentitySubmission
                 $previousStatus = $case->status;
                 $type = $data['document_type'];
                 $subtype = $type === 'government_id' ? $data['government_id_type'] : null;
+                if ($this->personaInquiries->isRequired()) {
+                    $this->personaInquiries->assertLearnerMaySubmit($actor, $case, $type, $subtype);
+                }
                 $requiresBack = $type === 'government_id'
                     && (bool) data_get(config('guardian_identity.id_types', []), $subtype.'.requires_back', false);
 

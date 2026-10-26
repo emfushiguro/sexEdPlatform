@@ -43,6 +43,10 @@
         @if($case->rejection_reason)<p class="p-4 mt-5 text-sm rounded-xl bg-rose-50 text-rose-800"><strong>Rejection reason:</strong> {{ $case->rejection_reason }}</p>@endif
     </section>
 
+    @include('admin.parent-verifications.partials.persona-summary', [
+        'personaAttempts' => $case->personaInquiries,
+    ])
+
     <section class="grid gap-6 lg:grid-cols-3">
         @foreach(['identity_front' => 'ID front', 'identity_back' => 'ID back', 'selfie' => 'Selfie'] as $slot => $label)
             @if($images->has($slot))
@@ -113,7 +117,7 @@
                 </div>
             </dialog>
 
-            <dialog x-ref="rejectDialog" role="dialog" aria-modal="true" data-testid="reject-identity-dialog" @click.self="$refs.rejectDialog.close()"
+            <dialog x-ref="rejectDialog" role="dialog" aria-modal="true" data-testid="reject-identity-dialog" @click.self="$refs.rejectDialog.close()" @if($errors->has('reason')) x-init="$nextTick(() => $refs.rejectDialog.showModal())" @endif
                     aria-labelledby="reject-identity-title" aria-describedby="reject-identity-description"
                     class="m-auto max-h-[90vh] w-[min(92vw,34rem)] overflow-y-auto rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
                 <div class="p-6 sm:p-7">

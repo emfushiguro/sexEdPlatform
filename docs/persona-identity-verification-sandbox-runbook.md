@@ -1,0 +1,82 @@
+# Persona Identity Verification Sandbox Runbook
+
+This runbook is for the Conscious Connections Persona Sandbox integration. It does not enable production processing. Do not place secret values in this file, tickets, screenshots, logs, or commits.
+
+## Configuration
+
+Set these server-side variables in the local environment only:
+
+- `PERSONA_ENABLED=false` until the Sandbox checks below are complete.
+- `PERSONA_ENVIRONMENT=sandbox`.
+- `PERSONA_API_KEY`.
+- `PERSONA_SELFIE_TEMPLATE_ID`.
+- `PERSONA_GOVID_SELFIE_TEMPLATE_ID`.
+- `PERSONA_WEBHOOK_SECRET`.
+- `PERSONA_WEBHOOK_SECRET_PREVIOUS` only during secret rotation.
+- `PERSONA_ENFORCED_FROM` as the reviewed enablement cutover timestamp.
+
+The application reads these through `config/persona.php`. Never print the API key, webhook secret, Hosted Flow session token, raw webhook body, signed media URL, or Persona image bytes. The API contract is pinned to `Persona-Version: 2026-09-29`.
+
+## Webhook and queue setup
+
+Configure Persona Dashboard to deliver a signed `POST /api/webhooks/persona` request to the current application domain. The endpoint is outside browser authentication and requires the Persona signature. Use a local tunnel for local Sandbox delivery; do not expose a development endpoint without the signature middleware.
+
+Confirm the exact inquiry event names available in the Dashboard for API version `2026-09-29`. Subscribe only to events that can change inquiry progress, completion, failure, or expiration. The Dashboard event list is the source of truth; this repository intentionally does not invent or hard-code an event allowlist.
+
+Run the existing queue worker:
+
+```powershell
+php artisan queue:work --queue=default --tries=5
+```
+
+The webhook records a small delivery ledger, deduplicates event IDs, and queues reconciliation. The job retrieves authoritative inquiry and verification resources; it never trusts an outcome from the webhook body. Inspect failed jobs using sanitized metadata only, for example `php artisan queue:failed`; do not dump serialized payloads or environment values.
+
+For secret rotation, put the new secret in `PERSONA_WEBHOOK_SECRET` and the old secret in `PERSONA_WEBHOOK_SECRET_PREVIOUS`, test a delivery signed by either secret, then remove the previous value after the rotation window. Do not echo either value.
+
+## Sandbox scenarios
+
+For each scenario, record the date, browser/device, synthetic account, template, selected document, result, and any sanitized error. Never record identity images, document numbers, raw JSON, inquiry IDs, signed URLs, or screenshots containing evidence.
+
+1. Teen school ID: Persona Selfie, then the existing local school ID; the administrator manually compares the local portrait and Persona selfie.
+2. Teen institution ID: Persona Selfie, then the existing local institution ID; the same manual comparison applies.
+3. Teen supported government ID: GovID + Selfie, then the existing local government ID and local selfie.
+4. Adult supported government ID: GovID + Selfie, then the existing local government ID and local selfie.
+5. Guardian supported government ID: GovID + Selfie, then the existing local government ID only.
+6. Dependent: verify that Persona is not used for dependent identity or relationship evidence.
+
+For every user path, check same-tab return, a new-tab resume, refresh, provider-unavailable handling, expiration/replacement, local upload, rejection reason, resubmission, and that Persona success alone does not approve the application or unlock dependent creation.
+
+## Government-ID mappings
+
+The application currently allows only these exact mappings when the configured Persona template and Sandbox result have been proven:
+
+| Application choice | Persona class |
+| --- | --- |
+| Passport | `pp` |
+| Driver's license | `dl` |
+| UMID | `umid` |
+| Postal ID | `pid` |
+| Voter's ID | `vid` |
+
+For each mapping, confirm that the template offers the document, run the documented Sandbox simulation, and verify an authoritative `PH` country and exact class. Remove any mapping that cannot be proven. Do not enable national ID, PhilHealth, senior-citizen ID, PWD ID, PRC ID, `other`, or generic Persona class `id` without a later reviewed contract change and tests.
+
+## Media and privacy checks
+
+As an administrator, open only the semantic evidence actions on an existing review page. Confirm that the response is private/no-store, `nosniff`, and contains no upstream URL. Test a non-admin, another subject's attempt, an unsupported artifact, an upstream failure, an HTTP URL, a deceptive subdomain, a redirect, a non-image MIME type, and an oversized response. Confirm that no Persona-specific storage file is created.
+
+Search logs and storage only for synthetic operational markers. Expected: local attempt metadata may be present; API keys, webhook secrets, raw payloads, session tokens, signed URLs, provider URLs, and Persona bytes must not be present.
+
+## Retry, replay, and recovery
+
+- Replay the same signed event: it must be accepted without duplicate reconciliation or notification.
+- Deliver an older event after a newer one: it must not regress the local attempt.
+- Stop the queue worker, deliver an event, then restart it: the user remains in a safe processing state until reconciliation completes.
+- Exercise failed/expired inquiry recovery and explicit replacement; the old attempt remains in history.
+- Use the authenticated refresh action when webhook delivery is delayed; it must use authoritative retrieval.
+- Simulate unavailable media; the review page remains usable and exposes only a generic preview error.
+
+## Rollback and release gates
+
+To stop Sandbox starts, set `PERSONA_ENABLED=false` and restart the application. Retain Persona rows, guardian audits, existing local evidence, pending reviews, and approvals. Existing pending and approved cases must remain operable.
+
+Production activation requires separate approval for privacy notice and consent, biometric processing, minors, legal basis, retention/deletion, security review, Dashboard configuration, verified ID mappings, queue/webhook operations, monitoring, incident response, and browser/accessibility checks. This Sandbox change does not satisfy those gates.

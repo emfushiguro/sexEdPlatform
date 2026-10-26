@@ -42,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'suspension.guard' => \App\Http\Middleware\CheckUserSuspensionStatus::class,
             // PayMongo webhook HMAC signature verification
             'paymongo.webhook' => \App\Http\Middleware\VerifyPayMongoWebhook::class,
+            'persona.webhook' => \App\Http\Middleware\VerifyPersonaWebhook::class,
         ]);
 
         $middleware->appendToGroup('web', \App\Http\Middleware\CheckUserSuspensionStatus::class);

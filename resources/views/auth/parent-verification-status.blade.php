@@ -49,6 +49,16 @@
         </div>
     @endif
 
+    @if(($personaRequired ?? false) && ! $isApproved && $status === 'rejected')
+        @include('auth.partials.persona-identity-step', [
+            'attempt' => $personaAttempt ?? null,
+            'isGuardian' => true,
+            'allowSchoolDocuments' => false,
+            'documentType' => 'government_id',
+            'governmentIdType' => ($personaAttempt ?? null)?->local_government_id_type,
+        ])
+    @endif
+
     @if($isApproved)
         <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 mb-4">
             <p class="font-semibold">Verification result: Approved</p>

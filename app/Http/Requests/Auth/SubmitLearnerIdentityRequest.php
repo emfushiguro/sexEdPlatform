@@ -45,7 +45,7 @@ class SubmitLearnerIdentityRequest extends FormRequest
             'identity_back' => [$requiresBack
                 ? ($documentChanged || ! $this->hasValidSlot($case, 'identity_back') ? 'required' : 'sometimes')
                 : 'prohibited', ...$image],
-            'selfie' => [! $this->hasValidSlot($case, 'selfie') ? 'required' : 'sometimes', ...$image],
+            'selfie' => [$type === 'government_id' && ! $this->hasValidSlot($case, 'selfie') ? 'required' : 'sometimes', ...$image],
             'confirm_submission' => ['accepted'],
         ];
     }

@@ -9,6 +9,10 @@ return [
     'hosted_flow_url' => 'https://inquiry.withpersona.com/verify',
     'api_version' => '2026-09-29',
     'webhook_secret' => env('PERSONA_WEBHOOK_SECRET'),
+    'webhook_secrets' => array_values(array_filter([
+        env('PERSONA_WEBHOOK_SECRET'),
+        env('PERSONA_WEBHOOK_SECRET_PREVIOUS'),
+    ])),
     'webhook_tolerance_seconds' => 300,
     'templates' => [
         'selfie' => env('PERSONA_SELFIE_TEMPLATE_ID'),
