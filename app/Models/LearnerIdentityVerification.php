@@ -49,4 +49,9 @@ class LearnerIdentityVerification extends Model
     {
         return $this->hasMany(LearnerIdentityAudit::class, 'verification_id');
     }
+
+    public function personaInquiries(): HasMany
+    {
+        return $this->hasMany(PersonaInquiry::class, 'learner_identity_verification_id');
+    }
 }

@@ -148,6 +148,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(LearnerIdentityVerification::class);
     }
 
+    public function personaInquiries(): HasMany
+    {
+        return $this->hasMany(PersonaInquiry::class);
+    }
+
+    public function guardianIdentityAudits(): HasMany
+    {
+        return $this->hasMany(GuardianIdentityAudit::class, 'guardian_id');
+    }
+
     public function adminCreatorProfile()
     {
         return $this->hasOne(AdminCreatorProfile::class);
