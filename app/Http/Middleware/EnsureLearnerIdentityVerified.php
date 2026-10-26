@@ -18,7 +18,7 @@ class EnsureLearnerIdentityVerified
         $user = $request->user();
         if (! $user || ! $user->isLearner() || $user->isParentRegistration()
             || $request->routeIs(
-                'verification.*', 'learner.identity.*', 'logout', 'instructor.logout', 'admin.logout',
+                'verification.*', 'learner.identity.*', 'persona.identity.*', 'logout', 'instructor.logout', 'admin.logout',
                 'password.*', 'profile.password.update', 'profile.account.delete',
                 'privacy', 'terms', 'moderation.suspension-status', 'moderation.appeals.*',
             )) {
@@ -35,6 +35,7 @@ class EnsureLearnerIdentityVerified
         if ($case === null || $case->status === VerificationStatus::Approved->value) {
             return $next($request);
         }
+
         return redirect()->route($case->status === null
             ? 'learner.identity.create' : 'learner.identity.status');
     }

@@ -15,6 +15,7 @@ use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\PersonaIdentityController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\RegistrationTempDocumentController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -110,6 +111,11 @@ Route::middleware('auth')->group(function () {
         Route::get('learner/identity/selfie', [LearnerIdentityVerificationController::class, 'selfie'])->name('learner.identity.selfie.create');
         Route::post('learner/identity/selfie', [LearnerIdentityVerificationController::class, 'store'])->name('learner.identity.store');
         Route::get('learner/identity/status', [LearnerIdentityVerificationController::class, 'status'])->name('learner.identity.status');
+        Route::post('identity/persona/start', [PersonaIdentityController::class, 'start'])->name('persona.identity.start');
+        Route::post('identity/persona/continue', [PersonaIdentityController::class, 'resume'])->name('persona.identity.resume');
+        Route::get('identity/persona/return', [PersonaIdentityController::class, 'handleReturn'])->name('persona.identity.return');
+        Route::post('identity/persona/refresh', [PersonaIdentityController::class, 'refresh'])->name('persona.identity.refresh');
+        Route::post('identity/persona/replace', [PersonaIdentityController::class, 'replace'])->name('persona.identity.replace');
     });
 
     Route::get('verify-email', EmailVerificationPromptController::class)
