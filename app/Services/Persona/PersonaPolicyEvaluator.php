@@ -80,7 +80,13 @@ class PersonaPolicyEvaluator
         if (in_array($status, ['failed', 'expired'], true)) {
             return PersonaInquiry::OUTCOME_RETRYABLE;
         }
-        if ($status !== 'completed') {
+        if ($status === 'declined') {
+            return PersonaInquiry::OUTCOME_INELIGIBLE;
+        }
+        if ($status === 'needs-review') {
+            return PersonaInquiry::OUTCOME_INCONCLUSIVE;
+        }
+        if (! in_array($status, ['completed', 'approved'], true)) {
             return $status === '' ? PersonaInquiry::OUTCOME_INCONCLUSIVE : PersonaInquiry::OUTCOME_NOT_READY;
         }
 

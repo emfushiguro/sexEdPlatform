@@ -45,7 +45,7 @@ class PersonaLearnerIntegrationTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
-    public function test_eligible_attempt_unlocks_frozen_local_document_choice(): void
+    public function test_eligible_government_attempt_does_not_request_duplicate_local_images(): void
     {
         [$adult, $case] = $this->learner('2000-01-01');
         $attempt = $this->attempt($adult, $case, [
@@ -57,9 +57,8 @@ class PersonaLearnerIntegrationTest extends TestCase
         $this->actingAs($adult)->get(route('learner.identity.create'))
             ->assertOk()
             ->assertSee('Persona evidence is eligible')
-            ->assertSee('name="id_selection"', false)
-            ->assertSee('value="government_id:passport"', false)
-            ->assertSee('name="identity_front"', false)
+            ->assertSee('No additional ID or selfie upload is required.')
+            ->assertDontSee('name="identity_front"', false)
             ->assertDontSee('<select id="id_selection"', false);
 
         $this->assertSame($case->id, $attempt->learner_identity_verification_id);
@@ -97,7 +96,7 @@ class PersonaLearnerIntegrationTest extends TestCase
         $this->assertEqualsCanonicalizing(['identity_front'], $case->fresh()->evidence->pluck('slot')->all());
     }
 
-    public function test_government_persona_flow_still_requires_the_existing_local_selfie(): void
+    public function test_government_persona_flow_rejects_duplicate_local_uploads(): void
     {
         [$adult, $case] = $this->learner('2000-01-01');
         $this->attempt($adult, $case, [
@@ -110,10 +109,9 @@ class PersonaLearnerIntegrationTest extends TestCase
             'id_selection' => 'government_id:passport',
             'identity_front' => $this->image('front.png'),
             'identity_back' => $this->image('back.png'),
-        ])->assertRedirect(route('learner.identity.selfie.create'));
-
-        $this->post(route('learner.identity.store'), ['confirm_submission' => '1'])
-            ->assertSessionHasErrors('selfie');
+        ])->assertSessionHasErrors('persona');
+        $this->assertNull(session('learner_identity_document_draft'));
+        $this->assertSame([], Storage::disk('local')->allFiles());
         $this->assertNull($case->fresh()->status);
     }
 

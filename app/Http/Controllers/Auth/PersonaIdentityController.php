@@ -48,7 +48,13 @@ class PersonaIdentityController extends Controller
 
     public function replace(Request $request): RedirectResponse
     {
-        $result = $this->inquiries->replace($request->user());
+        $data = $request->validate([
+            'document_type' => ['sometimes', 'required', 'string', 'in:school_id,institution_id,government_id'],
+            'government_id_type' => ['nullable', 'string', 'max:40', 'required_if:document_type,government_id'],
+        ]);
+        $result = $this->inquiries->replace(
+            $request->user(), $data['document_type'] ?? null, $data['government_id_type'] ?? null,
+        );
 
         return redirect()->away($this->inquiries->hostedFlowUrl($result['attempt'], $result['session_token']));
     }

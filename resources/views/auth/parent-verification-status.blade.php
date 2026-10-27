@@ -43,6 +43,10 @@
         </div>
     @endif
 
+    @if($user->parent_identity_evidence_source === 'persona' && ! $isApproved && $status === 'pending')
+        <p class="mb-4 rounded-xl border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">Your Persona ID and selfie are pending administrator review. No additional upload is required. Simulated Sandbox result.</p>
+    @endif
+
     @if(session('error'))
         <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 mb-4">
             {{ session('error') }}

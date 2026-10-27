@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use App\Notifications\PersonaActionRequiredNotification;
 use App\Notifications\PersonaReadyForLocalEvidenceNotification;
+use App\Notifications\LearnerIdentitySubmittedNotification;
 use Tests\TestCase;
 
 class PersonaWebhookTest extends TestCase
@@ -28,6 +29,7 @@ class PersonaWebhookTest extends TestCase
             'persona.environment' => 'sandbox',
             'persona.api_key' => 'test-persona-api-key',
             'persona.webhook_secret' => 'test-persona-webhook-secret',
+            'persona.webhook_secrets' => ['test-persona-webhook-secret'],
             'persona.webhook_tolerance_seconds' => 300,
             'persona.templates.govid_selfie' => 'tmpl_govid_test',
             'persona.government_id_classes' => ['passport' => 'pp'],
@@ -182,9 +184,10 @@ class PersonaWebhookTest extends TestCase
         $synchronizer->sync($attempt);
         $synchronizer->sync($attempt);
 
-        Notification::assertSentToTimes($attempt->user, PersonaReadyForLocalEvidenceNotification::class, 1);
+        Notification::assertSentToTimes($attempt->user, LearnerIdentitySubmittedNotification::class, 1);
+        Notification::assertNotSentTo($attempt->user, PersonaReadyForLocalEvidenceNotification::class);
         Notification::assertNotSentTo($attempt->user, PersonaActionRequiredNotification::class);
-        $notification = Notification::sent($attempt->user, PersonaReadyForLocalEvidenceNotification::class)->first();
+        $notification = Notification::sent($attempt->user, LearnerIdentitySubmittedNotification::class)->first();
         $serialized = json_encode($notification->toArray($attempt->user), JSON_THROW_ON_ERROR);
         $this->assertStringNotContainsString($attempt->persona_inquiry_id, $serialized);
         $this->assertStringNotContainsString('ver_gov_1', $serialized);

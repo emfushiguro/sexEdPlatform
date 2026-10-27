@@ -56,6 +56,10 @@ class LearnerIdentityVerificationController extends Controller
         abort_if($case === null, 403);
 
         if ($this->personaInquiries->isRequired()) {
+            if ($request->input('document_type') === 'government_id') {
+                return redirect()->route('learner.identity.status')
+                    ->withErrors(['persona' => 'Submit your government ID and selfie once through Persona.']);
+            }
             try {
                 $this->personaInquiries->assertLearnerMaySubmit(
                     $request->user(),

@@ -47,7 +47,8 @@ class PersonaEvidenceController extends Controller
 
     private function isReviewable(PersonaInquiry $attempt): bool
     {
-        if (! $attempt->is_sandbox || config('persona.environment', 'sandbox') !== 'sandbox') {
+        if (! $attempt->is_sandbox || ! $attempt->isCurrent()
+            || config('persona.environment', 'sandbox') !== 'sandbox') {
             return false;
         }
 
@@ -57,10 +58,17 @@ class PersonaEvidenceController extends Controller
         }
 
         if ($attempt->flow_type === PersonaInquiry::FLOW_GUARDIAN_GOVERNMENT) {
-            return $user->isParentRegistration() && $attempt->learner_identity_verification_id === null;
+            $round = max(1, (int) $user->guardianIdentityAudits()->max('attempt_number'));
+
+            return $user->isParentRegistration() && $attempt->learner_identity_verification_id === null
+                && $attempt->target_submission_round === $round;
         }
 
-        return $user->isLearner() && $attempt->learner_identity_verification_id !== null;
+        $case = $attempt->learnerVerification;
+
+        return $user->isLearner() && ! $user->isParentRegistration() && $case
+            && (int) $case->user_id === (int) $user->id && $case->superseded_at === null
+            && $attempt->target_submission_round === $case->submission_round;
     }
 
     private function selfieUrl(PersonaInquiry $attempt): ?string
@@ -90,6 +98,7 @@ class PersonaEvidenceController extends Controller
             }
 
             $url = $photo['url'] ?? null;
+
             return is_string($url) && $url !== '' ? $url : null;
         }
 

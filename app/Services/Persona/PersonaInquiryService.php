@@ -97,24 +97,24 @@ class PersonaInquiryService
     }
 
     /** @return array{attempt: PersonaInquiry, session_token: string} */
-    public function replace(User $user): array
+    public function replace(User $user, ?string $documentType = null, ?string $governmentIdType = null): array
     {
-        $state = DB::transaction(function () use ($user): PersonaInquiry {
+        $state = DB::transaction(function () use ($user, $documentType, $governmentIdType): PersonaInquiry {
             $lockedUser = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             [$case, $targetRound] = $this->lockedContext($lockedUser);
             $current = $this->findAttempt($lockedUser, $case, $targetRound, true);
 
             if (! $current || ! $this->isReplaceable($current)) {
                 throw ValidationException::withMessages([
-                    'persona' => 'Only a failed or expired Persona attempt can be replaced.',
+                    'persona' => 'Only an unsuccessful or expired Persona attempt can be replaced.',
                 ]);
             }
 
             $selection = $this->selector->select(
                 $lockedUser,
                 $case,
-                $current->local_document_type,
-                $current->local_government_id_type,
+                $documentType ?? $current->local_document_type,
+                $documentType === null ? $current->local_government_id_type : $governmentIdType,
             );
             $current->forceFill(['superseded_at' => now()])->save();
 
@@ -223,7 +223,7 @@ class PersonaInquiryService
 
     public function assertLearnerMayApprove(User $learner, LearnerIdentityVerification $case): ?PersonaInquiry
     {
-        if (! $this->isRequired()) {
+        if (! $this->isRequired() && $case->evidence_source !== 'persona' && ! $case->usesPersonaSelfie()) {
             return null;
         }
 
@@ -236,7 +236,7 @@ class PersonaInquiryService
             ->lockForUpdate()
             ->first();
 
-        if (! $attempt && $this->isGrandfathered($case->submitted_at)) {
+        if (! $attempt && $case->evidence_source !== 'persona' && ! $case->usesPersonaSelfie() && $this->isGrandfathered($case->submitted_at)) {
             return null;
         }
 
@@ -255,7 +255,9 @@ class PersonaInquiryService
             || $attempt->flow_type !== $expectedFlow
             || $attempt->local_document_type !== $case->document_type
             || $attempt->local_government_id_type !== $expectedIdType
-            || $attempt->persona_status !== 'completed'
+            || ($case->evidence_source === 'persona' && (! $attempt->government_id_verification_id || ! $attempt->selfie_verification_id))
+            || ($case->usesPersonaSelfie() && ! $attempt->selfie_verification_id)
+            || ! in_array($attempt->persona_status, ['completed', 'approved'], true)
             || ! $attempt->isPolicyEligible()) {
             throw new DomainException('Persona verification is required before learner approval.');
         }
@@ -265,7 +267,7 @@ class PersonaInquiryService
 
     public function assertGuardianMayApprove(User $guardian): ?PersonaInquiry
     {
-        if (! $this->isRequired()) {
+        if (! $this->isRequired() && $guardian->parent_identity_evidence_source !== 'persona') {
             return null;
         }
 
@@ -283,7 +285,7 @@ class PersonaInquiryService
             ->lockForUpdate()
             ->first();
 
-        if (! $attempt && $this->isGrandfathered($guardian->parent_verification_submitted_at)) {
+        if (! $attempt && $guardian->parent_identity_evidence_source !== 'persona' && $this->isGrandfathered($guardian->parent_verification_submitted_at)) {
             return null;
         }
 
@@ -294,7 +296,8 @@ class PersonaInquiryService
             || $attempt->flow_type !== PersonaInquiry::FLOW_GUARDIAN_GOVERNMENT
             || $attempt->local_document_type !== 'government_id'
             || $attempt->local_government_id_type !== $guardian->parent_id_type
-            || $attempt->persona_status !== 'completed'
+            || ($guardian->parent_identity_evidence_source === 'persona' && (! $attempt->government_id_verification_id || ! $attempt->selfie_verification_id))
+            || ! in_array($attempt->persona_status, ['completed', 'approved'], true)
             || ! $attempt->isPolicyEligible()) {
             throw new DomainException('Persona verification is required before guardian approval.');
         }
@@ -306,8 +309,8 @@ class PersonaInquiryService
     private function context(User $user): array
     {
         if ($user->isParentRegistration()) {
-            if (! in_array($user->parent_verification_status, [null, 'rejected'], true)) {
-                $this->invalid('This guardian application cannot start Persona verification.');
+            if (in_array($user->parent_verification_status, ['pending', 'approved'], true)) {
+                return [null, max(1, (int) $user->guardianIdentityAudits()->max('attempt_number'))];
             }
 
             return [null, $this->guardianTargetRound($user)];
@@ -322,13 +325,18 @@ class PersonaInquiryService
             $this->invalid('This account is not eligible for Persona verification.');
         }
 
-        return [$case, (int) $case->submission_round + 1];
+        return [$case, (int) $case->submission_round + (in_array($case->status, ['pending', 'approved'], true) ? 0 : 1)];
     }
 
     /** @return array{0: ?LearnerIdentityVerification, 1: int} */
     private function lockedContext(User $user): array
     {
         [$case, $targetRound] = $this->context($user);
+
+        if (($user->isParentRegistration() && ! in_array($user->parent_verification_status, [null, 'rejected'], true))
+            || ($case && ! in_array($case->status, [null, 'rejected'], true))) {
+            $this->invalid('This application is already submitted for review.');
+        }
 
         if ($case) {
             $case = LearnerIdentityVerification::query()->whereKey($case->getKey())->lockForUpdate()->firstOrFail();
@@ -396,6 +404,8 @@ class PersonaInquiryService
         return $attempt->isCurrent()
             && ($attempt->expired_at !== null
                 || in_array($attempt->persona_status, ['failed', 'expired'], true)
+                || (in_array($attempt->persona_status, ['completed', 'approved', 'declined', 'needs-review'], true)
+                    && in_array($attempt->verification_outcome, [PersonaInquiry::OUTCOME_INELIGIBLE, PersonaInquiry::OUTCOME_INCONCLUSIVE], true))
                 || $attempt->verification_outcome === PersonaInquiry::OUTCOME_RETRYABLE);
     }
 

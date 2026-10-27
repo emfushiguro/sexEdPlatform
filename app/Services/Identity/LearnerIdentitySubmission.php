@@ -96,6 +96,8 @@ class LearnerIdentitySubmission
 
                 $case->forceFill([
                     'document_type' => $type,
+                    'evidence_source' => $this->personaInquiries->isRequired() && in_array($type, ['school_id', 'institution_id'], true)
+                        ? 'persona_selfie' : 'local',
                     'government_id_type' => $subtype,
                     'government_id_type_other' => $subtype === 'other' ? $data['government_id_type_other'] : null,
                     'status' => 'pending',

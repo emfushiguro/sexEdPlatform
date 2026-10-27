@@ -6,6 +6,7 @@ use App\Models\GuardianIdentityAudit;
 use App\Models\PersonaInquiry;
 use App\Models\User;
 use App\Services\ParentChildVerificationService;
+use App\Services\Persona\PersonaReviewSubmission;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -41,7 +42,7 @@ class PersonaGuardianIntegrationTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
-    public function test_eligible_guardian_attempt_unlocks_frozen_local_form(): void
+    public function test_eligible_guardian_attempt_does_not_request_a_duplicate_local_form(): void
     {
         $guardian = $this->guardian();
         $attempt = $this->attempt($guardian);
@@ -49,9 +50,8 @@ class PersonaGuardianIntegrationTest extends TestCase
         $this->actingAs($guardian)->get(route('guardian.verification.create'))
             ->assertOk()
             ->assertSee('Persona evidence is eligible')
-            ->assertSee('name="government_id_type"', false)
-            ->assertSee('value="passport"', false)
-            ->assertSee('name="government_id_front"', false)
+            ->assertSee('No additional ID or selfie upload is required.')
+            ->assertDontSee('name="government_id_front"', false)
             ->assertDontSee('<select id="government_id_type"', false);
 
         $this->assertSame($guardian->id, $attempt->user_id);
@@ -62,8 +62,7 @@ class PersonaGuardianIntegrationTest extends TestCase
         $guardian = $this->guardian();
         $attempt = $this->attempt($guardian);
 
-        $this->actingAs($guardian)->post(route('guardian.verification.store'), $this->guardianFiles())
-            ->assertRedirect(route('guardian.verification.status'));
+        app(PersonaReviewSubmission::class)->submit($attempt);
 
         $guardian->refresh();
         $this->assertSame('pending', $guardian->parent_verification_status);
@@ -89,8 +88,7 @@ class PersonaGuardianIntegrationTest extends TestCase
         $guardian = $this->guardian();
         $first = $this->attempt($guardian);
 
-        $this->actingAs($guardian)->post(route('guardian.verification.store'), $this->guardianFiles())
-            ->assertRedirect(route('guardian.verification.status'));
+        app(PersonaReviewSubmission::class)->submit($first);
 
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $admin->assignRole('admin');
@@ -98,8 +96,7 @@ class PersonaGuardianIntegrationTest extends TestCase
         app(ParentChildVerificationService::class)->rejectParent($guardian, 'The document is blurred.');
 
         $second = $this->attempt($guardian, ['target_submission_round' => 2, 'attempt_number' => 2]);
-        $this->actingAs($guardian)->post(route('guardian.verification.store'), $this->guardianFiles())
-            ->assertRedirect(route('guardian.verification.status'));
+        app(PersonaReviewSubmission::class)->submit($second);
 
         $audits = GuardianIdentityAudit::query()->where('guardian_id', $guardian->id)->orderBy('id')->get();
         $this->assertSame(['submitted', 'rejected', 'submitted'], $audits->pluck('action')->all());
@@ -149,6 +146,8 @@ class PersonaGuardianIntegrationTest extends TestCase
             'idempotency_key' => (string) str()->uuid(),
             'persona_inquiry_id' => 'inq_guardian_'.str()->random(10),
             'persona_status' => 'completed',
+            'government_id_verification_id' => 'ver_test_gov',
+            'selfie_verification_id' => 'ver_test_selfie',
             'verification_outcome' => PersonaInquiry::OUTCOME_ELIGIBLE,
             'country_code' => 'PH',
             'id_class' => 'pp',

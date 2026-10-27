@@ -54,4 +54,18 @@ class LearnerIdentityVerification extends Model
     {
         return $this->hasMany(PersonaInquiry::class, 'learner_identity_verification_id');
     }
+
+    public function usesPersonaSelfie(): bool
+    {
+        if ($this->pathway !== 'teen' || ! in_array($this->document_type, ['school_id', 'institution_id'], true)) {
+            return false;
+        }
+
+        return $this->evidence_source === 'persona_selfie'
+            || (! $this->evidence()->where('slot', 'selfie')->exists()
+                && $this->personaInquiries()->where('user_id', $this->user_id)
+                    ->where('target_submission_round', $this->submission_round)
+                    ->whereNull('superseded_at')->where('flow_type', PersonaInquiry::FLOW_TEEN_SCHOOL)
+                    ->whereNotNull('selfie_verification_id')->exists());
+    }
 }

@@ -18,6 +18,9 @@
             <section class="space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5" aria-labelledby="pending-review-title">
                 <div>
                     <h2 id="pending-review-title" class="text-lg font-semibold text-amber-950">Your identity verification is under review</h2>
+                    @if($case->evidence_source === 'persona')
+                        <p class="mt-2 text-sm text-gray-700">Your Persona ID and selfie were submitted for administrator review. No additional upload is required. Simulated Sandbox result.</p>
+                    @endif
                     <p class="mt-2 text-sm leading-6 text-gray-700">
                         We’ll email you at <span class="font-semibold">{{ $case->learner?->email ?? auth()->user()->email }}</span> when the review is complete.
                         You can return here to check your status.

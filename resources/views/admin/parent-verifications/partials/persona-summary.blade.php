@@ -15,7 +15,7 @@
         <p class="mt-4 text-sm text-purple-950">No Persona attempt is recorded for this application. Review the grandfathered local evidence rules before deciding.</p>
     @else
         <p class="mt-4 text-sm leading-6 text-purple-950">
-            Persona is supporting evidence only. The local application evidence remains the administrator's source for the final decision.
+            Review the submitted evidence and account details before making the final decision. Persona images stay with Persona and are displayed securely here when requested.
         </p>
         @if($personaAttempts->first()?->flow_type === \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL)
             <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -46,13 +46,15 @@
                         Country policy: {{ $attempt->country_policy_status }} · Document policy: {{ $attempt->document_policy_status }}
                     </p>
                     @if($attempt->isCurrent() && $attempt->is_sandbox && $attempt->verification_outcome === \App\Models\PersonaInquiry::OUTCOME_ELIGIBLE)
-                        <div class="mt-4 flex flex-wrap gap-2">
+                        <div class="mt-4 grid gap-4 md:grid-cols-2">
                             @if($attempt->selfie_verification_id)
-                                <a href="{{ route('admin.parent-verifications.persona.evidence', [$attempt, 'selfie']) }}" target="_blank" rel="noopener" class="rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm font-semibold text-purple-900 hover:bg-purple-100">View Persona selfie</a>
+                                @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'selfie', 'label' => 'Persona selfie'])
                             @endif
                             @if($attempt->flow_type !== \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL && $attempt->government_id_verification_id)
-                                <a href="{{ route('admin.parent-verifications.persona.evidence', [$attempt, 'government-id-front']) }}" target="_blank" rel="noopener" class="rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm font-semibold text-purple-900 hover:bg-purple-100">View Persona ID front</a>
-                                <a href="{{ route('admin.parent-verifications.persona.evidence', [$attempt, 'government-id-back']) }}" target="_blank" rel="noopener" class="rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm font-semibold text-purple-900 hover:bg-purple-100">View Persona ID back</a>
+                                @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'government-id-front', 'label' => 'Persona ID front'])
+                                @if(data_get(config('guardian_identity.id_types'), $attempt->local_government_id_type.'.requires_back', false))
+                                    @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'government-id-back', 'label' => 'Persona ID back'])
+                                @endif
                             @endif
                         </div>
                     @endif

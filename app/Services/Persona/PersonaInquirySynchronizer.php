@@ -15,6 +15,7 @@ class PersonaInquirySynchronizer
     public function __construct(
         private readonly PersonaClient $client,
         private readonly PersonaPolicyEvaluator $evaluator,
+        private readonly PersonaReviewSubmission $reviewSubmission,
     ) {}
 
     public function sync(PersonaInquiry $attempt, ?CarbonImmutable $eventCreatedAt = null): PersonaInquiry
@@ -29,6 +30,11 @@ class PersonaInquirySynchronizer
         $sourceAt = $this->sourceTimestamp($inquiry, $eventCreatedAt);
 
         return DB::transaction(function () use ($attempt, $result, $sourceAt): PersonaInquiry {
+            // Match start/replacement lock order so webhook and browser reconciliation serialize.
+            \App\Models\User::query()->whereKey($attempt->user_id)->lockForUpdate()->firstOrFail();
+            if ($attempt->learner_identity_verification_id) {
+                \App\Models\LearnerIdentityVerification::query()->whereKey($attempt->learner_identity_verification_id)->lockForUpdate()->first();
+            }
             $current = PersonaInquiry::query()->whereKey($attempt->getKey())->lockForUpdate()->firstOrFail();
             if (! $current->isCurrent()
                 || ($sourceAt && $current->persona_event_at && $sourceAt->lessThan($current->persona_event_at))) {
@@ -47,7 +53,9 @@ class PersonaInquirySynchronizer
                 'last_synced_at' => now(),
             ])->save();
 
-            if ($becameEligible || $needsAction) {
+            $this->reviewSubmission->submit($current);
+
+            if (($becameEligible && $current->flow_type === PersonaInquiry::FLOW_TEEN_SCHOOL) || $needsAction) {
                 $user = $current->user;
                 $actionUrl = $user?->isParentRegistration()
                     ? route('guardian.verification.status')
@@ -63,12 +71,11 @@ class PersonaInquirySynchronizer
 
                     try {
                         $user->notify($notification);
-                    } catch (\Throwable $exception) {
+                    } catch (\Throwable) {
                         Log::warning('Persona transition notification failed.', [
                             'user_id' => $user->id,
                             'attempt_id' => $current->id,
                             'notification' => $notification::class,
-                            'error' => $exception->getMessage(),
                         ]);
                     }
                 });

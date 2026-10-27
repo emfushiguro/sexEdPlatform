@@ -3,7 +3,7 @@
     $personaAttempt = $personaAttempt ?? null;
     $selectedId = $personaAttempt?->local_document_type === 'government_id'
         ? 'government_id:'.$personaAttempt->local_government_id_type
-        : old('id_selection', $draft['id_selection'] ?? ($case->document_type === 'government_id' ? 'government_id:'.$case->government_id_type : $case->document_type));
+        : ($personaAttempt?->local_document_type ?? old('id_selection', $draft['id_selection'] ?? ($case->document_type === 'government_id' ? 'government_id:'.$case->government_id_type : $case->document_type)));
     $idRequirements = collect(config('guardian_identity.id_types', []))->mapWithKeys(fn ($type, $key) => ['government_id:'.$key => (bool) $type['requires_back']])->all();
 @endphp
 <x-auth-split-layout :showTabs="false">
@@ -19,8 +19,8 @@
         <x-wizard-stepper :is-parent-flow="false" />
         <header>
             <p class="text-sm font-semibold uppercase tracking-wider text-purple-700">Identity verification · Step 1 of 2</p>
-            <h1 class="mt-2 text-3xl font-bold text-gray-900">Upload your ID</h1>
-            <p class="mt-2 text-gray-700">Choose one ID type, then add a clear photo of its front. Some IDs also need the back.</p>
+            <h1 class="mt-2 text-3xl font-bold text-gray-900">{{ $personaRequired ? 'Verify your identity' : 'Upload your ID' }}</h1>
+            <p class="mt-2 text-gray-700">{{ $personaRequired ? 'Submit your government ID and selfie once through Persona. An administrator will review the same evidence.' : 'Choose one ID type, then add a clear photo of its front. Some IDs also need the back.' }}</p>
         </header>
         @if($draft)
             <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 text-sm text-gray-800" role="status">
@@ -40,7 +40,7 @@
             ])
         @endif
 
-        @if(!$personaRequired || $personaAttempt?->isPolicyEligible())
+        @if(!$personaRequired || ($personaAttempt?->isPolicyEligible() && $personaAttempt->flow_type === \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL))
         <form method="POST" action="{{ route('learner.identity.document.store') }}" enctype="multipart/form-data" class="space-y-5"
               x-data="{
                   idSelection: @js($selectedId),

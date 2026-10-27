@@ -47,6 +47,9 @@
         <section class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm lg:col-span-2">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Government ID</h2>
             <p class="mt-3 text-sm font-semibold text-gray-900">{{ $idTypeLabel }}</p>
+            @if($guardian->parent_identity_evidence_source === 'persona')
+                <p class="mt-3 text-sm text-gray-700">The government ID and selfie were submitted through Persona. Review the Persona images below; no local copy is stored.</p>
+            @else
             <div class="mt-4 grid gap-4 md:grid-cols-2">
                 <div class="rounded-xl border border-gray-200 p-4">
                     <p class="text-sm font-semibold text-gray-800">Front Image</p>
@@ -73,6 +76,7 @@
                     @endif
                 </div>
             </div>
+            @endif
         </section>
     </div>
 

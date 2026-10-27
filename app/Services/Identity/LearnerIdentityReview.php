@@ -26,8 +26,7 @@ class LearnerIdentityReview
         LearnerIdentityVerification $case,
         int $submissionRound,
         bool $personaPortraitCompared = false,
-    ): void
-    {
+    ): void {
         $this->decide($reviewer, $case, VerificationStatus::Approved, null, $submissionRound, $personaPortraitCompared);
     }
 
@@ -43,8 +42,7 @@ class LearnerIdentityReview
         ?LearnerIdentityRejectionReason $reason,
         int $submissionRound,
         bool $personaPortraitCompared = false,
-    ): void
-    {
+    ): void {
         abort_unless($reviewer->hasRole('admin'), 403);
 
         DB::transaction(function () use ($reviewer, $case, $decision, $reason, $submissionRound, $personaPortraitCompared): void {
@@ -71,7 +69,7 @@ class LearnerIdentityReview
                     abort(422, 'Persona verification is required before learner approval.');
                 }
 
-                if (config('persona.enabled', false)
+                if ((config('persona.enabled', false) || $locked->usesPersonaSelfie())
                     && $locked->pathway === 'teen'
                     && in_array($locked->document_type, ['school_id', 'institution_id'], true)
                     && ! $personaPortraitCompared) {
@@ -113,6 +111,12 @@ class LearnerIdentityReview
 
     private function requiredEvidenceExists(LearnerIdentityVerification $case): bool
     {
+        if ($case->evidence_source === 'persona') {
+            return $case->personaInquiries()->where('user_id', $case->user_id)
+                ->where('target_submission_round', $case->submission_round)
+                ->whereNull('superseded_at')->where('is_sandbox', true)
+                ->whereNotNull('government_id_verification_id')->whereNotNull('selfie_verification_id')->exists();
+        }
         $documentTypes = $case->pathway === 'teen'
             ? ['school_id', 'institution_id', 'government_id'] : ['government_id'];
         if (! in_array($case->document_type, $documentTypes, true)
@@ -120,7 +124,7 @@ class LearnerIdentityReview
                 && ! array_key_exists((string) $case->government_id_type, config('guardian_identity.id_types', [])))) {
             return false;
         }
-        $slots = ['identity_front', 'selfie'];
+        $slots = $case->usesPersonaSelfie() ? ['identity_front'] : ['identity_front', 'selfie'];
         if ($case->document_type === 'government_id'
             && (bool) data_get(config('guardian_identity.id_types', []), $case->government_id_type.'.requires_back', false)) {
             $slots[] = 'identity_back';

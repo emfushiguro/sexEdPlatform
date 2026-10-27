@@ -49,11 +49,8 @@ class GuardianIdentityVerificationController extends Controller
         $idType = (string) $request->string('government_id_type');
 
         if ($personaInquiryService->isRequired()) {
-            try {
-                $personaInquiryService->assertGuardianMaySubmit($request->user(), $idType);
-            } catch (DomainException $exception) {
-                return back()->withErrors(['persona' => $exception->getMessage()])->withInput();
-            }
+            return redirect()->route('guardian.verification.status')
+                ->withErrors(['persona' => 'Submit your government ID and selfie once through Persona.']);
         }
 
         $storedPaths = [];

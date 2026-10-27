@@ -2,6 +2,16 @@
 
 This runbook is for the Conscious Connections Persona Sandbox integration. It does not enable production processing. Do not place secret values in this file, tickets, screenshots, logs, or commits.
 
+## Single-submission revision (2026-10-27)
+
+The approved workflow now uses Persona-hosted government ID and selfie evidence directly for manual administrator review. Government-ID learners and guardians do not upload a second ID or selfie. An authoritative eligible synchronization submits a pending application exactly once; it does not approve the account. The administrator sees inline images through the existing protected proxy, with an availability message if retention or provider availability prevents retrieval. No local Persona image copy is retained. Reviewers must not approve without reviewing the required evidence.
+
+The additive evidence-source migration defaults existing applications to `local`. Previously submitted local evidence, decisions, and dependent/relationship checks retain their original behavior. Teen school/institution learners still submit their local ID and use their Persona selfie; administrator portrait comparison remains mandatory.
+
+Government eligibility requires authoritative `PH` country and the exact selected supported class. `completed` and `approved` provider statuses can qualify only with passed required resources; `declined` and `needs-review` do not qualify. Configure Sandbox simulated data to return PH and the selected class; default US simulation data is correctly blocked. Completed but mismatched/inconclusive attempts now explain the failure and allow a new inquiry with a corrected supported ID choice.
+
+For local retesting: apply `2026_10_27_000000_add_persona_evidence_source` normally, restart queue workers, use authenticated refresh or complete a new supported-PH Sandbox attempt, and verify the application reaches the pending admin queue without any local government-ID/selfie upload. Check duplicate delivery, return/refresh, admin approval/rejection, and new-round resubmission. Legacy local submissions must remain reviewable. Existing blocked attempts are not reset or rewritten by the migration.
+
 ## Configuration
 
 Set these server-side variables in the local environment only:
@@ -39,12 +49,12 @@ For each scenario, record the date, browser/device, synthetic account, template,
 
 1. Teen school ID: Persona Selfie, then the existing local school ID; the administrator manually compares the local portrait and Persona selfie.
 2. Teen institution ID: Persona Selfie, then the existing local institution ID; the same manual comparison applies.
-3. Teen supported government ID: GovID + Selfie, then the existing local government ID and local selfie.
-4. Adult supported government ID: GovID + Selfie, then the existing local government ID and local selfie.
-5. Guardian supported government ID: GovID + Selfie, then the existing local government ID only.
+3. Teen supported government ID: GovID + Selfie once through Persona, then pending manual review with remote previews.
+4. Adult supported government ID: GovID + Selfie once through Persona, then pending manual review with remote previews.
+5. Guardian supported government ID: GovID + Selfie once through Persona, then pending manual review with remote previews.
 6. Dependent: verify that Persona is not used for dependent identity or relationship evidence.
 
-For every user path, check same-tab return, a new-tab resume, refresh, provider-unavailable handling, expiration/replacement, local upload, rejection reason, resubmission, and that Persona success alone does not approve the application or unlock dependent creation.
+For every user path, check same-tab return, a new-tab resume, refresh, provider-unavailable handling, expiration/replacement, rejection reason, resubmission, and that Persona success alone does not approve the application or unlock dependent creation. Local upload applies only to school/institution IDs and legacy local cases.
 
 ## Government-ID mappings
 

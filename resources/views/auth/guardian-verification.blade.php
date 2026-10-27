@@ -41,7 +41,7 @@
             ])
         @endif
 
-        @if($personaEligible)
+        @if(!$personaRequired)
         <form method="POST"
               action="{{ route('guardian.verification.store') }}"
               enctype="multipart/form-data"

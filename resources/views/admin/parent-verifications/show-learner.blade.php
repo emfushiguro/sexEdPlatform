@@ -47,9 +47,13 @@
         'personaAttempts' => $case->personaInquiries,
     ])
 
+    @if($case->evidence_source === 'persona')
+        <p class="text-sm text-gray-700">This submission uses the Persona images above. No local ID or selfie copy is required.</p>
+    @else
+    <h2 class="text-lg font-semibold text-gray-900">Submitted to Conscious Connections</h2>
     <section class="grid gap-6 lg:grid-cols-3">
         @foreach(['identity_front' => 'ID front', 'identity_back' => 'ID back', 'selfie' => 'Selfie'] as $slot => $label)
-            @if($images->has($slot))
+            @if($images->has($slot) && ($slot !== 'selfie' || ! $case->usesPersonaSelfie()))
                 <div class="p-4 bg-white border border-gray-200 shadow-sm rounded-2xl">
                     <h2 class="mb-3 font-semibold text-gray-900">{{ $label }}</h2>
                     <a href="{{ route('admin.parent-verifications.learners.evidence', [$case, $slot]) }}" target="_blank" rel="noopener" aria-label="Open {{ $label }} full size">
@@ -60,8 +64,8 @@
             @endif
         @endforeach
     </section>
+    @endif
 
-    
         @if($case->status === 'pending' && $case->superseded_at === null)
             <div class="flex flex-wrap gap-3 pt-6 mt-6 border-t border-gray-100">
                 <button type="button" data-testid="approve-identity-trigger" @click="$refs.approveDialog.showModal()"
@@ -108,6 +112,13 @@
                         <form method="POST" action="{{ route('admin.parent-verifications.learners.approve', $case) }}" class="mt-6">
                             @csrf
                             <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
+                            @if((config('persona.enabled', false) || $case->usesPersonaSelfie()) && $case->pathway === 'teen' && in_array($case->document_type, ['school_id', 'institution_id'], true))
+                                <label class="mb-4 flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-sm text-gray-700">
+                                    <input type="checkbox" name="persona_portrait_compared" value="1" required @checked(old('persona_portrait_compared')) class="mt-0.5 h-5 w-5 rounded border-gray-300 text-emerald-700">
+                                    <span>I viewed the submitted school/institution ID and the Persona selfie and manually compared the portraits.</span>
+                                </label>
+                                @error('persona_portrait_compared')<p class="mb-3 text-sm text-rose-700">{{ $message }}</p>@enderror
+                            @endif
                             <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                                 <button type="button" @click="$refs.approveDialog.close()" class="px-5 py-3 text-sm font-semibold text-gray-700 border border-gray-300 min-h-11 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">Cancel</button>
                                 <button type="submit" class="px-5 py-3 text-sm font-semibold text-white min-h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2">Confirm approval</button>

@@ -61,7 +61,7 @@ class LearnerIdentityVerificationController extends Controller
             'submission_round' => ['required', 'integer', 'min:1'],
             'confirm_government_issued' => $case->pathway === 'adult' && $case->government_id_type === 'other'
                 ? ['accepted'] : ['sometimes', 'accepted'],
-            'persona_portrait_compared' => config('persona.enabled', false)
+            'persona_portrait_compared' => (config('persona.enabled', false) || $case->usesPersonaSelfie())
                 && $case->pathway === 'teen'
                 && in_array($case->document_type, ['school_id', 'institution_id'], true)
                 ? ['accepted'] : ['sometimes', 'accepted'],

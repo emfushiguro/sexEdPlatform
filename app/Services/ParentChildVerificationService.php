@@ -146,6 +146,7 @@ class ParentChildVerificationService
                 'parent_verification_reviewed_at' => null,
                 'parent_verification_approved_at' => null,
             ]);
+            $lockedParent->forceFill(['parent_identity_evidence_source' => 'local'])->save();
 
             foreach ([$oldFrontPath, $oldBackPath] as $oldPath) {
                 if (! empty($oldPath) && ! in_array($oldPath, [$frontPath, $backPath], true)) {
