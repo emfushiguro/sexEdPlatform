@@ -40,6 +40,9 @@ class DirectInstructorSchemaTest extends TestCase
             'persona_inquiry_id',
             'metadata',
         ]));
+        $this->assertTrue($this->hasIndex('instructor_identity_verifications', 'instructor_idv_user_round_uq'));
+        $this->assertTrue($this->hasIndex('instructor_identity_verifications', 'instructor_idv_current_lookup_idx'));
+        $this->assertTrue($this->hasIndex('instructor_identity_verifications', 'instructor_idv_review_queue_idx'));
         $this->assertTrue(Schema::hasColumns('persona_inquiries', [
             'instructor_identity_verification_id',
         ]));
@@ -52,6 +55,13 @@ class DirectInstructorSchemaTest extends TestCase
         $this->assertSame(18, config('instructor_application.minimum_age'));
         $this->assertSame('402100000', config('instructor_application.province_code'));
         $this->assertSame('local', config('instructor_application.document_disk'));
+    }
+
+    private function hasIndex(string $table, string $name): bool
+    {
+        return collect(Schema::getIndexes($table))->contains(
+            static fn (array $index): bool => $index['name'] === $name,
+        );
     }
 
     public function test_existing_pending_application_can_remain_without_identity_link(): void
