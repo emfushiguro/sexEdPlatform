@@ -104,4 +104,11 @@ class InstructorIdentityVerification extends Model
     {
         return $this->hasMany(PersonaInquiry::class);
     }
+
+    public function isAccessEligible(): bool
+    {
+        return $this->superseded_at === null
+            && $this->status === self::STATUS_APPROVED
+            && (! $this->sandbox_manual_review || PersonaInquiry::localManualReviewEnabled());
+    }
 }

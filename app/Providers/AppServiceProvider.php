@@ -33,6 +33,7 @@ use App\Observers\PaymentObserver;
 use App\Policies\AdminCreatorProfilePolicy;
 use App\Policies\DependentSupportProfilePolicy;
 use App\Policies\InstructorProfilePolicy;
+use App\Policies\InstructorIdentityVerificationPolicy;
 use App\Policies\LearningPathPolicy;
 use App\Policies\LessonPolicy;
 use App\Policies\ModulePolicy;
@@ -107,6 +108,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(DependentSupportProfile::class, DependentSupportProfilePolicy::class);
         Gate::policy(AdminCreatorProfile::class, AdminCreatorProfilePolicy::class);
         Gate::policy(InstructorProfile::class, InstructorProfilePolicy::class);
+        Gate::policy(\App\Models\InstructorIdentityVerification::class, InstructorIdentityVerificationPolicy::class);
         Gate::policy(Module::class, ModulePolicy::class);
         Gate::policy(LearningPath::class, LearningPathPolicy::class);
         Gate::policy(Lesson::class, LessonPolicy::class);

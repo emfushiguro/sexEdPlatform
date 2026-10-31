@@ -4,20 +4,10 @@ namespace Tests\Feature\InstructorApplication;
 
 use App\Models\User;
 use App\Support\AuthenticatedHomeRouteResolver;
-use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class ApplicantRoutingAuthorizationTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        Route::get('/__test/instructor-applicant-dashboard', static fn () => 'applicant dashboard')
-            ->name('instructor-application.dashboard');
-        Route::getRoutes()->refreshNameLookups();
-    }
-
     public function test_applicant_cannot_open_learner_instructor_or_admin_routes(): void
     {
         $applicant = User::factory()->create(['role' => 'applicant']);

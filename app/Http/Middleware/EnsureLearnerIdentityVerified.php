@@ -20,7 +20,7 @@ class EnsureLearnerIdentityVerified
             || $request->routeIs(
                 'verification.*', 'learner.identity.*', 'persona.identity.*', 'logout', 'instructor.logout', 'admin.logout',
                 'password.*', 'profile.password.update', 'profile.account.delete',
-                'privacy', 'terms', 'moderation.suspension-status', 'moderation.appeals.*',
+                'privacy', 'terms', 'moderation.suspension-status', 'moderation.appeals.*', 'instructor-application.*',
             )) {
             return $next($request);
         }

@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\GuardianOnboardingController;
 use App\Http\Controllers\Auth\InstructorAuthController;
 use App\Http\Controllers\Auth\InstructorApplicantRegistrationController;
 use App\Http\Controllers\InstructorApplication\PersonalInformationController;
+use App\Http\Controllers\InstructorApplication\DashboardController;
 use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\ParentApprovalLinkController;
@@ -119,6 +120,8 @@ Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
 
 Route::middleware('auth')->group(function () {
     Route::middleware(['verified', 'direct.instructor.enabled'])->group(function () {
+        Route::get('instructor-application', DashboardController::class)
+            ->name('instructor-application.dashboard');
         Route::get('instructor-application/personal-information', [PersonalInformationController::class, 'edit'])
             ->name('instructor-application.personal-information.edit');
         Route::put('instructor-application/personal-information', [PersonalInformationController::class, 'update'])
