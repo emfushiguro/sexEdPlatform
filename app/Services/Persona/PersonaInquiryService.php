@@ -540,11 +540,14 @@ class PersonaInquiryService
 
     private function isReplaceable(PersonaInquiry $attempt): bool
     {
-        $instructorActionRequired = $attempt->instructor_identity_verification_id !== null
-            && $attempt->instructorIdentityVerification?->status === \App\Models\InstructorIdentityVerification::STATUS_ACTION_REQUIRED;
+        $instructorResubmissionAllowed = $attempt->instructor_identity_verification_id !== null
+            && in_array($attempt->instructorIdentityVerification?->status, [
+                \App\Models\InstructorIdentityVerification::STATUS_ACTION_REQUIRED,
+                \App\Models\InstructorIdentityVerification::STATUS_REJECTED,
+            ], true);
 
         return $attempt->isCurrent()
-            && ($instructorActionRequired
+            && ($instructorResubmissionAllowed
                 || $attempt->expired_at !== null
                 || in_array($attempt->persona_status, ['failed', 'expired'], true)
                 || (in_array($attempt->persona_status, ['completed', 'approved', 'declined', 'needs-review'], true)

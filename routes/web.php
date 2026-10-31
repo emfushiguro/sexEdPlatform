@@ -150,10 +150,13 @@ Route::get('/', function () {
 
 Route::get('/be-our-partner', function (Request $request) {
     $user = $request->user();
-    $canResume = $user?->hasVerifiedEmail() && ($user->isInstructorApplicant() || $user->isLearner());
+    $enabled = (bool) config('instructor_application.enabled');
+    $canResume = $enabled && $user?->hasVerifiedEmail() && ($user->isInstructorApplicant() || $user->isLearner());
 
     return view('landing.instructor-partner', [
-        'enabled' => (bool) config('instructor_application.enabled'),
+        'enabled' => $enabled,
+        'showStart' => $enabled && ! $user,
+        'canResume' => $canResume,
         'resumeUrl' => $canResume ? route('instructor-application.dashboard') : route('login'),
     ]);
 })->name('instructor-application.recruitment');

@@ -135,7 +135,8 @@ class InstructorIdentityWorkflowTest extends TestCase
             ->get(route('instructor-application.dashboard'))
             ->assertOk()
             ->assertSee('Awaiting Verification')
-            ->assertSee('Identity review');
+            ->assertSee('Identity review')
+            ->assertSee('Start identity verification');
 
         $learner = $this->learner(24);
         LearnerIdentityVerification::create([

@@ -45,6 +45,7 @@ class DashboardController extends Controller
         return view('instructor-application.dashboard', [
             'user' => $user,
             'case' => $case,
+            'attempt' => $case?->personaInquiries()->current()->latest('attempt_number')->first(),
             'learnerIdentity' => $learnerIdentity,
             'identityMessage' => $identityMessage,
             'application' => $user->instructorApplications()->latest()->first(),

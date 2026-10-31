@@ -41,6 +41,38 @@
                     @default Your identity case is being processed.
                 @endswitch
             </p>
+            @if ($user->isInstructorApplicant() && in_array($case->status, ['awaiting_verification', 'verification_in_progress', 'action_required', 'rejected'], true))
+                @php($governmentIdTypes = config('persona.government_id_classes', []))
+                @if ($case->status === 'awaiting_verification' || ($case->status === 'verification_in_progress' && ! $attempt?->persona_inquiry_id))
+                    <form method="POST" action="{{ route('instructor-application.identity.persona.start') }}" class="mt-4 flex flex-wrap items-end gap-3" data-instructor-form>
+                        @csrf
+                        <label for="government_id_type" class="text-sm font-medium text-gray-700">Government ID type
+                            <select id="government_id_type" name="government_id_type" required class="mt-1 block min-h-11 rounded-xl border-gray-300">
+                                @foreach ($governmentIdTypes as $value => $label)<option value="{{ $value }}">{{ str($label)->headline() }}</option>@endforeach
+                            </select>
+                        </label>
+                        <button type="submit" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white">Start identity verification</button>
+                        <p data-submit-status class="w-full text-sm text-gray-600" role="status" aria-live="polite"></p>
+                    </form>
+                @elseif ($case->status === 'verification_in_progress')
+                    <form method="POST" action="{{ route('instructor-application.identity.persona.resume') }}" class="mt-4" data-instructor-form>
+                        @csrf
+                        <button type="submit" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white">Continue identity verification</button>
+                        <p data-submit-status class="mt-2 text-sm text-gray-600" role="status" aria-live="polite"></p>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('instructor-application.identity.persona.replace') }}" class="mt-4 flex flex-wrap items-end gap-3" data-instructor-form>
+                        @csrf
+                        <label for="replacement_government_id_type" class="text-sm font-medium text-gray-700">Government ID type
+                            <select id="replacement_government_id_type" name="government_id_type" required class="mt-1 block min-h-11 rounded-xl border-gray-300">
+                                @foreach ($governmentIdTypes as $value => $label)<option value="{{ $value }}" @selected($attempt?->local_government_id_type === $value)>{{ str($label)->headline() }}</option>@endforeach
+                            </select>
+                        </label>
+                        <button type="submit" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white">Start a replacement attempt</button>
+                        <p data-submit-status class="w-full text-sm text-gray-600" role="status" aria-live="polite"></p>
+                    </form>
+                @endif
+            @endif
         @endif
     </div>
 

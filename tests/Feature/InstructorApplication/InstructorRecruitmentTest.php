@@ -36,6 +36,8 @@ class InstructorRecruitmentTest extends TestCase
 
     public function test_verified_learner_gets_application_hub_as_resume_destination(): void
     {
+        config(['instructor_application.enabled' => true]);
+
         $learner = User::factory()->create([
             'role' => 'learner',
             'email_verified_at' => now(),

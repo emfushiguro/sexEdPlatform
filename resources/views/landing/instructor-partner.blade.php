@@ -28,12 +28,12 @@
                 <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-700">Bring thoughtful, age-appropriate sexual health education to Filipino learners through Conscious Connections.</p>
                 <p class="mt-4 max-w-2xl text-sm leading-6 text-slate-600">The process has two separate decisions: administrator identity review first, then a current instructor application and final administrator review. Neither step guarantees approval.</p>
                 <div class="mt-8 flex flex-wrap gap-3">
-                    @if ($enabled)
+                    @if ($showStart)
                         <a href="{{ route('instructor-application.register.personal') }}" class="inline-flex min-h-11 items-center rounded-full bg-purple-700 px-6 py-3 text-sm font-bold text-white hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">Start your application</a>
-                    @else
+                    @elseif (! $enabled)
                         <span class="inline-flex min-h-11 items-center rounded-full bg-slate-300 px-6 py-3 text-sm font-bold text-slate-700" role="status">Start is currently unavailable</span>
                     @endif
-                    <a href="{{ $resumeUrl }}" class="inline-flex min-h-11 items-center rounded-full border border-purple-300 px-6 py-3 text-sm font-bold text-purple-800 hover:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">{{ $resumeUrl === route('login') ? 'Sign in to resume' : 'Resume your application' }}</a>
+                    <a href="{{ $resumeUrl }}" class="inline-flex min-h-11 items-center rounded-full border border-purple-300 px-6 py-3 text-sm font-bold text-purple-800 hover:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">{{ $canResume ? 'Resume your application' : 'Sign in to resume' }}</a>
                 </div>
             </div>
             <aside class="rounded-3xl border border-purple-200 bg-white p-6 shadow-sm" aria-labelledby="prepare-heading">
@@ -79,7 +79,7 @@
                 <h2 id="privacy-heading" class="mt-3 text-2xl font-bold">Verification is not automatic acceptance</h2>
                 <p class="mt-3 text-sm leading-6 text-slate-300">A successful provider flow does not write a local approval, unlock Stage Two by itself, or grant instructor access. Sandbox is simulated where applicable, and administrator review remains authoritative.</p>
             </div>
-            <a href="{{ route('login') }}" class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-bold text-purple-900 hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-slate-950">Sign in to resume</a>
+            <a href="{{ $resumeUrl }}" class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-bold text-purple-900 hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-slate-950">{{ $canResume ? 'Resume your application' : 'Sign in to resume' }}</a>
         </div>
     </section>
 </main>

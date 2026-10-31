@@ -46,7 +46,6 @@ export function preventRepeatedSubmit(form) {
         setStatus(form, 'Submitting. Please wait.');
     });
     form.addEventListener('invalid', restore, true);
-    form.addEventListener('instructor:request-failed', restore);
 }
 
 export function focusErrorSummary(root = globalThis.document) {

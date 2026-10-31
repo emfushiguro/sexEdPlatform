@@ -41,9 +41,11 @@
                 @endif
                 <p class="mt-1 text-xs text-gray-500" data-upload-name-for="government_id" aria-live="polite">No file selected</p>
                 <label class="mt-4 block text-sm font-medium text-gray-700" for="clearance">NBI / Police clearance <span class="text-red-600">*</span></label>
-                <input id="clearance" name="clearance" type="file" accept=".pdf,.jpg,.jpeg,.png" class="mt-1 block w-full rounded-lg border p-2" @if (! $application?->clearance_path) required @endif>
+                <input id="clearance" name="clearance" type="file" accept=".pdf,.jpg,.jpeg,.png" class="mt-1 block w-full rounded-lg border p-2" data-draft-upload @if (! $application?->clearance_path) required @endif>
+                <p class="mt-1 text-xs text-gray-500" data-upload-name-for="clearance" aria-live="polite">No file selected</p>
                 <label class="mt-4 block text-sm font-medium text-gray-700" for="cv_resume">CV or resume <span class="text-red-600">*</span></label>
-                <input id="cv_resume" name="cv_resume" type="file" accept=".pdf,.doc,.docx" class="mt-1 block w-full rounded-lg border p-2" @if (! $application?->cv_resume_path) required @endif>
+                <input id="cv_resume" name="cv_resume" type="file" accept=".pdf,.doc,.docx" class="mt-1 block w-full rounded-lg border p-2" data-draft-upload @if (! $application?->cv_resume_path) required @endif>
+                <p class="mt-1 text-xs text-gray-500" data-upload-name-for="cv_resume" aria-live="polite">No file selected</p>
             </div>
 
             <div class="rounded-xl border border-gray-200 bg-white p-5">
@@ -62,7 +64,8 @@
                 <p class="mt-2 text-sm text-gray-600">Upload at least one Tier 2 document.</p>
                 @foreach (['teaching_credential' => 'Teaching credential', 'sexed_certificate' => 'Certificate', 'professional_license' => 'Professional license'] as $field => $label)
                     <label class="mt-3 block text-sm font-medium text-gray-700" for="{{ $field }}">{{ $label }}</label>
-                    <input id="{{ $field }}" name="{{ $field }}" type="file" accept=".pdf,.jpg,.jpeg,.png" class="mt-1 block w-full rounded-lg border p-2">
+                    <input id="{{ $field }}" name="{{ $field }}" type="file" accept=".pdf,.jpg,.jpeg,.png" class="mt-1 block w-full rounded-lg border p-2" data-draft-upload>
+                    <p class="mt-1 text-xs text-gray-500" data-upload-name-for="{{ $field }}" aria-live="polite">No file selected</p>
                 @endforeach
             </div>
 
