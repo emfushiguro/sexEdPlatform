@@ -148,6 +148,16 @@ Route::get('/', function () {
     return view('landing.index', ['testimonials' => \App\Models\Testimonial::query()->publiclyVisible()->with(['user.learnerProfile', 'user.instructorProfile', 'user.profile'])->orderBy('sort_order')->latest('published_at')->limit(6)->get()]);
 })->name('home');
 
+Route::get('/be-our-partner', function (Request $request) {
+    $user = $request->user();
+    $canResume = $user?->hasVerifiedEmail() && ($user->isInstructorApplicant() || $user->isLearner());
+
+    return view('landing.instructor-partner', [
+        'enabled' => (bool) config('instructor_application.enabled'),
+        'resumeUrl' => $canResume ? route('instructor-application.dashboard') : route('login'),
+    ]);
+})->name('instructor-application.recruitment');
+
 Route::get('/help', [HelpCenterController::class, 'index'])->name('help.index');
 Route::get('/help/{helpArticle:slug}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'show'])->withoutScopedBindings()->name('help.section.image');
 Route::get('/help/{helpArticle:slug}', [HelpCenterController::class, 'show'])->name('help.show');

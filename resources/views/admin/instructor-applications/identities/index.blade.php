@@ -12,10 +12,10 @@
             <p class="mt-1 text-sm text-gray-600">Stage One review for direct instructor applicants.</p>
         </div>
         <div class="flex gap-2 text-sm">
-            <a href="{{ route('admin.instructor-applications.identities.index', ['status' => 'pending_review']) }}" class="rounded-full px-3 py-1.5 {{ $status === 'pending_review' ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-700' }}">Pending ({{ $pendingCount }})</a>
-            <a href="{{ route('admin.instructor-applications.identities.index', ['status' => 'action_required']) }}" class="rounded-full px-3 py-1.5 {{ $status === 'action_required' ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-700' }}">Action required ({{ $actionRequiredCount }})</a>
-            <a href="{{ route('admin.instructor-applications.identities.index', ['status' => 'approved']) }}" class="rounded-full px-3 py-1.5 {{ $status === 'approved' ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-700' }}">Approved</a>
-            <a href="{{ route('admin.instructor-applications.identities.index', ['status' => 'rejected']) }}" class="rounded-full px-3 py-1.5 {{ $status === 'rejected' ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-700' }}">Rejected</a>
+            <a href="{{ route('admin.instructor-applications.identities.index', ['status' => 'pending_review']) }}" @if($status === 'pending_review') aria-current="page" @endif class="rounded-full px-3 py-1.5 {{ $status === 'pending_review' ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-700' }}">Pending ({{ $pendingCount }})</a>
+            <a href="{{ route('admin.instructor-applications.identities.index', ['status' => 'action_required']) }}" @if($status === 'action_required') aria-current="page" @endif class="rounded-full px-3 py-1.5 {{ $status === 'action_required' ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-700' }}">Action required ({{ $actionRequiredCount }})</a>
+            <a href="{{ route('admin.instructor-applications.identities.index', ['status' => 'approved']) }}" @if($status === 'approved') aria-current="page" @endif class="rounded-full px-3 py-1.5 {{ $status === 'approved' ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-700' }}">Approved</a>
+            <a href="{{ route('admin.instructor-applications.identities.index', ['status' => 'rejected']) }}" @if($status === 'rejected') aria-current="page" @endif class="rounded-full px-3 py-1.5 {{ $status === 'rejected' ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-700' }}">Rejected</a>
         </div>
     </div>
 

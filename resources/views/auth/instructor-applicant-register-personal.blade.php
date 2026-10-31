@@ -12,7 +12,7 @@
     </div>
 
     @if ($errors->any())
-        <div role="alert" tabindex="-1" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div id="applicant-registration-error-summary" data-error-summary role="alert" tabindex="-1" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             <p class="font-semibold">Please correct the highlighted fields.</p>
             <ul class="mt-2 list-disc pl-5">
                 @foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach
@@ -20,7 +20,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('instructor-application.register.personal.store') }}" x-data="{ city: @js(old('city_code', $personalInfo['city_code'] ?? '')), barangays: @js($barangays->map(fn ($item) => ['code' => $item->code, 'name' => $item->name])->values()), loading: false, async loadBarangays() { this.barangays = []; if (!this.city) return; const response = await fetch('/api/barangays/' + encodeURIComponent(this.city)); this.barangays = await response.json(); } }" @submit="loading = true">
+    <form method="POST" action="{{ route('instructor-application.register.personal.store') }}" data-instructor-form @if ($errors->any()) aria-describedby="applicant-registration-error-summary" @endif x-data="{ city: @js(old('city_code', $personalInfo['city_code'] ?? '')), barangays: @js($barangays->map(fn ($item) => ['code' => $item->code, 'name' => $item->name])->values()), loading: false, async loadBarangays() { this.barangays = []; if (!this.city) return; const response = await fetch('/api/barangays/' + encodeURIComponent(this.city)); this.barangays = await response.json(); } }" @submit="loading = true">
         @csrf
         <div class="space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
@@ -53,7 +53,7 @@
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label for="city_code" class="block text-sm font-medium text-gray-700">Cavite city or municipality <span class="text-red-600">*</span></label>
-                    <select id="city_code" name="city_code" required x-model="city" @change="loadBarangays()" class="mt-1 w-full rounded-xl border-gray-300" aria-describedby="error-city_code">
+                    <select id="city_code" name="city_code" required data-dependent-select data-dependent-target="barangay_code" x-model="city" @change="loadBarangays()" class="mt-1 w-full rounded-xl border-gray-300" aria-describedby="error-city_code">
                         <option value="">Select a city or municipality</option>
                         @foreach ($cities as $cityOption)<option value="{{ $cityOption->code }}">{{ $cityOption->name }}</option>@endforeach
                     </select>
@@ -83,6 +83,7 @@
                 </div>
             </div>
             <button type="submit" :disabled="loading" class="w-full rounded-xl bg-purple-700 px-5 py-3 font-semibold text-white disabled:opacity-50">Continue</button>
+            <p data-submit-status class="text-sm text-gray-600" role="status" aria-live="polite"></p>
         </div>
     </form>
 </x-auth-split-layout>

@@ -12,13 +12,13 @@
     </div>
 
     @if ($errors->any())
-        <div role="alert" tabindex="-1" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div id="applicant-account-error-summary" data-error-summary role="alert" tabindex="-1" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             <p class="font-semibold">Please correct the highlighted fields.</p>
             <ul class="mt-2 list-disc pl-5">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
         </div>
     @endif
 
-    <form method="POST" action="{{ route('instructor-application.register.account.store') }}" @submit="loading = true" x-data="{ loading: false }">
+    <form method="POST" action="{{ route('instructor-application.register.account.store') }}" data-instructor-form @if ($errors->any()) aria-describedby="applicant-account-error-summary" @endif @submit="loading = true" x-data="{ loading: false }">
         @csrf
         <div class="space-y-4">
             <div>
@@ -36,6 +36,7 @@
                 <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" class="mt-1 w-full rounded-xl border-gray-300">
             </div>
             <button type="submit" :disabled="loading" class="w-full rounded-xl bg-purple-700 px-5 py-3 font-semibold text-white disabled:opacity-50">Create applicant account</button>
+            <p data-submit-status class="text-sm text-gray-600" role="status" aria-live="polite"></p>
             <a class="block text-center text-sm text-purple-700" href="{{ route('instructor-application.register.personal') }}">Back to personal information</a>
         </div>
     </form>
