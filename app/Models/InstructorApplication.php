@@ -65,6 +65,16 @@ class InstructorApplication extends Model
         return $query->where('status', 'pending');
     }
 
+    public function scopeDraft($query)
+    {
+        return $query->where('status', 'draft');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereIn('status', ['draft', 'pending']);
+    }
+
     public function scopeRejected($query)
     {
         return $query->where('status', 'rejected');
@@ -104,6 +114,11 @@ class InstructorApplication extends Model
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
     }
 
     public function resolveDocumentUrl(?string $path): ?string

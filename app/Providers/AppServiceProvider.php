@@ -110,6 +110,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AdminCreatorProfile::class, AdminCreatorProfilePolicy::class);
         Gate::policy(InstructorProfile::class, InstructorProfilePolicy::class);
         Gate::policy(\App\Models\InstructorIdentityVerification::class, InstructorIdentityVerificationPolicy::class);
+        Gate::policy(\App\Models\InstructorApplication::class, \App\Policies\InstructorApplicationPolicy::class);
         Gate::policy(Module::class, ModulePolicy::class);
         Gate::policy(LearningPath::class, LearningPathPolicy::class);
         Gate::policy(Lesson::class, LessonPolicy::class);

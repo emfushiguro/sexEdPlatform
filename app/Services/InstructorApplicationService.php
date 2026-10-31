@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Str;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class InstructorApplicationService
@@ -36,42 +37,73 @@ class InstructorApplicationService
 
     public function submitApplication(User $user, array $data): InstructorApplication
     {
-        $basePath = 'instructor-applications/' . $user->id;
-        $paths = [
-            'government_id_path' => $this->storeDocument(Arr::get($data, 'government_id'), $basePath, 'government_id'),
-            'clearance_path' => $this->storeDocument(Arr::get($data, 'clearance'), $basePath, 'clearance'),
-            'cv_resume_path' => $this->storeDocument(Arr::get($data, 'cv_resume'), $basePath, 'cv_resume'),
-            'teaching_credential_path' => $this->storeDocument(Arr::get($data, 'teaching_credential'), $basePath, 'teaching_credential'),
-            'sexed_certificate_path' => $this->storeDocument(Arr::get($data, 'sexed_certificate'), $basePath, 'sexed_certificate'),
-            'professional_license_path' => $this->storeDocument(Arr::get($data, 'professional_license'), $basePath, 'professional_license'),
-        ];
+        return DB::transaction(function () use ($user, $data): InstructorApplication {
+            $application = $user->instructorApplications()
+                ->where('status', 'draft')
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
+            $metadata = is_array($application?->application_metadata) ? $application->application_metadata : [];
+            $submittedAt = now();
+            $attributes = [
+                'status' => 'pending',
+                'submitted_at' => $submittedAt,
+                'instructor_identity_verification_id' => $user->instructorIdentityVerifications()->current()->accessApproved()->value('id'),
+                'educational_background' => $this->educationalBackground($data, $application?->educational_background),
+                'bio' => array_key_exists('bio', $data) ? (string) $data['bio'] : (string) ($application?->bio ?? ''),
+                'application_metadata' => array_replace_recursive($metadata, [
+                    'submission_ip' => request()?->ip(),
+                    'submitted_at' => $submittedAt->toDateTimeString(),
+                    'files' => array_replace($metadata['files'] ?? [], $this->buildFileMetadata($data)),
+                ]),
+            ];
+            $attributes = array_merge($attributes, $this->documentPaths($user, $data, $application));
 
-        $metadata = [
-            'submission_ip' => request()?->ip(),
-            'submitted_at' => now()->toDateTimeString(),
-            'files' => $this->buildFileMetadata($data),
-        ];
+            if ($application) {
+                $application->update($attributes);
+                $application = $application->fresh();
+            } else {
+                $application = $user->instructorApplications()->create($attributes);
+            }
 
-        $educationalBg = Arr::get($data, 'educational_background');
-        if ($educationalBg === 'other' && !empty($data['educational_background_other'])) {
-            $educationalBg = $data['educational_background_other'];
-        }
+            $this->instructorApplicationModerationAdapter->syncSubmission($application);
+            DB::afterCommit(function () use ($application): void {
+                User::role('admin')->get()->each(function (User $admin) use ($application): void {
+                    $this->notifySafely($admin, new InstructorApplicationSubmitted($application));
+                });
+            });
 
-        $application = InstructorApplication::create(array_merge([
-            'user_id' => $user->id,
-            'status' => 'pending',
-            'educational_background' => (string) $educationalBg,
-            'bio' => (string) Arr::get($data, 'bio'),
-            'application_metadata' => $metadata,
-        ], $paths));
-
-        $this->instructorApplicationModerationAdapter->syncSubmission($application);
-
-        User::role('admin')->get()->each(function (User $admin) use ($application): void {
-            $this->notifySafely($admin, new InstructorApplicationSubmitted($application));
+            return $application;
         });
+    }
 
-        return $application;
+    public function saveDraft(User $user, array $data): InstructorApplication
+    {
+        return DB::transaction(function () use ($user, $data): InstructorApplication {
+            $application = $user->instructorApplications()
+                ->where('status', 'draft')
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
+            $metadata = is_array($application?->application_metadata) ? $application->application_metadata : [];
+            $attributes = array_merge([
+                'status' => 'draft',
+                'document_disk' => $application?->document_disk ?? 'public',
+                'educational_background' => $this->educationalBackground($data, $application?->educational_background),
+                'bio' => array_key_exists('bio', $data) ? (string) $data['bio'] : (string) ($application?->bio ?? ''),
+                'application_metadata' => array_replace_recursive($metadata, [
+                    'files' => array_replace($metadata['files'] ?? [], $this->buildFileMetadata($data)),
+                ]),
+            ], $this->documentPaths($user, $data, $application));
+
+            if ($application) {
+                $application->update($attributes);
+
+                return $application->fresh();
+            }
+
+            return $user->instructorApplications()->create($attributes);
+        });
     }
 
     public function approve(InstructorApplication $application, ?string $adminMessage = null): void
@@ -187,8 +219,42 @@ class InstructorApplicationService
             return null;
         }
 
-        $filename = now()->format('YmdHis') . '_' . $prefix . '.' . $file->getClientOriginalExtension();
+        $filename = Str::uuid().'_'.$prefix.'.'.$file->getClientOriginalExtension();
         return $file->storeAs($basePath, $filename, 'public');
+    }
+
+    private function documentPaths(User $user, array $data, ?InstructorApplication $application): array
+    {
+        $basePath = 'instructor-applications/'.$user->id;
+        $fields = [
+            'government_id' => 'government_id_path',
+            'clearance' => 'clearance_path',
+            'cv_resume' => 'cv_resume_path',
+            'teaching_credential' => 'teaching_credential_path',
+            'sexed_certificate' => 'sexed_certificate_path',
+            'professional_license' => 'professional_license_path',
+        ];
+        $paths = [];
+        foreach ($fields as $input => $column) {
+            if (Arr::get($data, $input) instanceof UploadedFile) {
+                $paths[$column] = $this->storeDocument($data[$input], $basePath, $input);
+            } elseif ($application?->{$column}) {
+                $paths[$column] = $application->{$column};
+            }
+        }
+
+        return $paths;
+    }
+
+    private function educationalBackground(array $data, ?string $fallback = null): string
+    {
+        $value = Arr::get($data, 'educational_background', $fallback);
+
+        if ($value === 'other' && filled($data['educational_background_other'] ?? null)) {
+            return (string) $data['educational_background_other'];
+        }
+
+        return (string) ($value ?? '');
     }
 
     private function buildFileMetadata(array $data): array

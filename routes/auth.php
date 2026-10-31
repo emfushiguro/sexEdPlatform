@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\InstructorAuthController;
 use App\Http\Controllers\Auth\InstructorApplicantRegistrationController;
 use App\Http\Controllers\InstructorApplication\PersonalInformationController;
 use App\Http\Controllers\InstructorApplication\DashboardController;
+use App\Http\Controllers\InstructorApplication\ApplicationController as InstructorApplicationController;
 use App\Http\Controllers\InstructorApplication\PersonaIdentityController as InstructorPersonaIdentityController;
 use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -137,6 +138,13 @@ Route::middleware('auth')->group(function () {
             ->name('instructor-application.identity.persona.refresh');
         Route::post('instructor-application/identity/persona/replace', [InstructorPersonaIdentityController::class, 'replace'])
             ->name('instructor-application.identity.persona.replace');
+        Route::prefix('instructor-application/application')->name('instructor-application.application.')->group(function (): void {
+            Route::get('/', [InstructorApplicationController::class, 'edit'])->name('edit');
+            Route::post('/draft', [InstructorApplicationController::class, 'saveDraft'])->name('save-draft');
+            Route::post('/submit', [InstructorApplicationController::class, 'submit'])->name('submit');
+            Route::get('/submitted', [InstructorApplicationController::class, 'submitted'])->name('submitted');
+            Route::delete('/withdraw', [InstructorApplicationController::class, 'withdraw'])->name('withdraw');
+        });
     });
 
     Route::middleware('verified')->group(function () {
