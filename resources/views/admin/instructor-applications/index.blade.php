@@ -179,6 +179,10 @@
                 <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                     <div>
                         <h2 class="mt-2 text-xl font-bold text-gray-900">Instructor Applications Table</h2>
+                        <a href="{{ route('admin.instructor-applications.identities.index') }}" class="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-brand-700 hover:underline">
+                            Identity Review
+                            <span class="rounded-full bg-brand-100 px-2 py-0.5 text-xs">{{ number_format($pendingIdentityCount ?? 0) }} pending</span>
+                        </a>
                     </div>
                     <form method="GET" action="{{ route('admin.instructor-applications.index') }}" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" data-testid="admin-table-filter-bar">
                         <label class="block xl:col-span-2">

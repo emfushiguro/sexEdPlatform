@@ -14,6 +14,7 @@ use App\Models\AdminCreatorProfile;
 use App\Models\ContentReport;
 use App\Models\DependentSupportProfile;
 use App\Models\InstructorApplication;
+use App\Models\InstructorIdentityVerification;
 use App\Models\InstructorProfile;
 use App\Models\LearnerIdentityVerification;
 use App\Models\LearningPath;
@@ -127,6 +128,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.admin', function ($view): void {
             $moderationCounts = [
                 'pending_instructor_applications' => InstructorApplication::query()->where('status', 'pending')->count(),
+                'pending_instructor_identity_reviews' => InstructorIdentityVerification::pendingReview()->count(),
                 'pending_module_reviews' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
                 'pending_parent_verifications' => User::query()
                     ->where('is_parent_registration', true)

@@ -351,6 +351,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     });
 
     Route::prefix('instructor-applications')->name('instructor-applications.')->group(function () {
+        Route::prefix('identities')->name('identities.')->middleware('permission:review instructor identities')->group(function () {
+            Route::get('/', [Admin\InstructorIdentityVerificationController::class, 'index'])->name('index');
+            Route::get('/{instructorIdentityVerification}', [Admin\InstructorIdentityVerificationController::class, 'show'])->name('show');
+            Route::post('/{instructorIdentityVerification}/approve', [Admin\InstructorIdentityVerificationController::class, 'approve'])->name('approve');
+            Route::post('/{instructorIdentityVerification}/reject', [Admin\InstructorIdentityVerificationController::class, 'reject'])->name('reject');
+            Route::post('/{instructorIdentityVerification}/request-action', [Admin\InstructorIdentityVerificationController::class, 'requestAction'])->name('request-action');
+        });
         Route::get('/', [Admin\InstructorApplicationController::class, 'index'])->name('index');
         Route::get('/{application}', [Admin\InstructorApplicationController::class, 'show'])->name('show');
         Route::post('/{application}/approve', [Admin\InstructorApplicationController::class, 'approve'])->name('approve');

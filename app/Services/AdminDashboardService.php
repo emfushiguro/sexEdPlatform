@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\InstructorApplication;
+use App\Models\InstructorIdentityVerification;
 use App\Models\ContentReport;
 use App\Models\MessageReport;
 use App\Models\Module;
@@ -85,6 +86,12 @@ class AdminDashboardService
                     'accent' => 'orange',
                 ],
                 [
+                    'label' => 'Pending Instructor Identity Reviews',
+                    'value' => InstructorIdentityVerification::pendingReview()->count(),
+                    'description' => 'Direct applicants waiting for Stage One identity review.',
+                    'accent' => 'violet',
+                ],
+                [
                     'label' => 'Pending Module Reviews',
                     'value' => ModuleReviewRequest::query()->whereIn('status', ['submitted', 'in_review'])->count(),
                     'description' => 'Submitted modules currently queued for moderation.',
@@ -105,6 +112,14 @@ class AdminDashboardService
                     'cta_route' => route('admin.instructor-applications.index', ['status' => 'pending']),
                     'description' => 'Review learner requests to become instructors.',
                     'accent' => 'amber',
+                ],
+                [
+                    'label' => 'Instructor Identity Reviews',
+                    'count' => InstructorIdentityVerification::pendingReview()->count(),
+                    'cta_label' => 'Open Queue',
+                    'cta_route' => route('admin.instructor-applications.identities.index'),
+                    'description' => 'Review direct applicants before Stage Two opens.',
+                    'accent' => 'violet',
                 ],
                 [
                     'label' => 'Module Published Review',

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ApproveInstructorApplicationRequest;
 use App\Http\Requests\RejectInstructorApplicationRequest;
 use App\Models\InstructorApplication;
+use App\Models\InstructorIdentityVerification;
 use App\Services\InstructorApplicationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -77,6 +78,7 @@ class InstructorApplicationController extends Controller
             'focusApplicationId' => $focusApplicationId,
             'applications' => $applications,
             'pendingCount' => InstructorApplication::pending()->count(),
+            'pendingIdentityCount' => InstructorIdentityVerification::pendingReview()->count(),
             'approvedCount' => InstructorApplication::approved()->count(),
             'rejectedCount' => InstructorApplication::rejected()->count(),
             'hasPendingOnPage' => $applications->getCollection()->contains(fn (InstructorApplication $application): bool => $application->status === 'pending'),

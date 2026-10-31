@@ -68,6 +68,7 @@ class PersonaEvidenceController extends Controller
             $case = $attempt->instructorIdentityVerification;
 
             return $case !== null
+                && auth()->user()?->hasPermissionTo('review instructor identities')
                 && (int) $case->user_id === (int) $user->id
                 && $case->superseded_at === null
                 && (int) $attempt->instructor_identity_verification_id === (int) $case->id
