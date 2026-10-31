@@ -41,6 +41,7 @@ class PersonaInquiry extends Model
     protected $fillable = [
         'user_id',
         'learner_identity_verification_id',
+        'instructor_identity_verification_id',
         'flow_type',
         'target_submission_round',
         'attempt_number',
@@ -98,6 +99,11 @@ class PersonaInquiry extends Model
     public function learnerVerification(): BelongsTo
     {
         return $this->belongsTo(LearnerIdentityVerification::class, 'learner_identity_verification_id');
+    }
+
+    public function instructorIdentityVerification(): BelongsTo
+    {
+        return $this->belongsTo(InstructorIdentityVerification::class);
     }
 
     public function isCurrent(): bool

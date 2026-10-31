@@ -37,6 +37,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public const ACCOUNT_TYPE_INSTRUCTOR = 'instructor';
 
+    public const ACCOUNT_TYPE_APPLICANT = 'applicant';
+
     public const ACCOUNT_TYPE_ADMIN = 'admin';
 
     /**
@@ -146,6 +148,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function identityVerifications(): HasMany
     {
         return $this->hasMany(LearnerIdentityVerification::class);
+    }
+
+    public function instructorIdentityVerifications(): HasMany
+    {
+        return $this->hasMany(InstructorIdentityVerification::class);
+    }
+
+    public function instructorIdentityVerification(): HasOne
+    {
+        return $this->hasOne(InstructorIdentityVerification::class)->latestOfMany('submission_round');
     }
 
     public function personaInquiries(): HasMany
@@ -779,13 +791,20 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isLearner(): bool
     {
-        if ($this->isAdmin() || $this->isInstructor()) {
+        if ($this->isAdmin() || $this->isInstructor() || $this->isInstructorApplicant()) {
             return false;
         }
 
         return $this->hasRole('learner')
             || $this->role === 'learner'
             || $this->can('access learner platform');
+    }
+
+    public function isInstructorApplicant(): bool
+    {
+        return ! $this->isAdmin()
+            && ! $this->isInstructor()
+            && ($this->hasRole(self::ACCOUNT_TYPE_APPLICANT) || $this->role === self::ACCOUNT_TYPE_APPLICANT);
     }
 
     public function canAccessChat(): bool
@@ -884,6 +903,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
         if ($this->isInstructor()) {
             return self::ACCOUNT_TYPE_INSTRUCTOR;
+        }
+
+        if ($this->isInstructorApplicant()) {
+            return self::ACCOUNT_TYPE_APPLICANT;
         }
 
         if ($this->hasRole('parent') || $this->isParent()) {

@@ -25,7 +25,10 @@ class InstructorApplication extends Model
 
     protected $fillable = [
         'user_id',
+        'instructor_identity_verification_id',
         'status',
+        'submitted_at',
+        'document_disk',
         'educational_background',
         'government_id_path',
         'clearance_path',
@@ -48,6 +51,7 @@ class InstructorApplication extends Model
         return [
             'application_metadata' => 'array',
             'approved_at' => 'datetime',
+            'submitted_at' => 'datetime',
         ];
     }
 
@@ -69,6 +73,11 @@ class InstructorApplication extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function instructorIdentityVerification(): BelongsTo
+    {
+        return $this->belongsTo(InstructorIdentityVerification::class);
     }
 
     public function approvedBy(): BelongsTo
