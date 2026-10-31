@@ -90,3 +90,13 @@ Search logs and storage only for synthetic operational markers. Expected: local 
 To stop Sandbox starts, set `PERSONA_ENABLED=false` and restart the application. Retain Persona rows, guardian audits, existing local evidence, pending reviews, and approvals. Existing pending and approved cases must remain operable.
 
 Production activation requires separate approval for privacy notice and consent, biometric processing, minors, legal basis, retention/deletion, security review, Dashboard configuration, verified ID mappings, queue/webhook operations, monitoring, incident response, and browser/accessibility checks. This Sandbox change does not satisfy those gates.
+
+## Direct instructor application flow (2026-10-31)
+
+The public **Be Our Partner** entry point is disabled until the direct-instructor release gate is approved. When enabled, an adult applicant completes personal information, Persona Government ID plus Selfie evidence, administrator Stage One identity review, and the existing instructor application. A Persona Sandbox completion remains simulated evidence: it does not approve identity, unlock Stage Two, or grant instructor access.
+
+Direct applicants use an applicant-only account and do not receive learner permissions or a learner profile. Existing adult learners retain their learner account and may reuse their locally approved learner identity case when the application rules allow it. Cavite address values are server-derived and validated; browser-supplied province/city/barangay pairs are not trusted.
+
+Administrators review protected evidence through the instructor identity queue. New instructor documents are stored on the private disk and served only through authorized no-store responses. Stage One approval and Stage Two application approval remain separate decisions; only final application approval activates the instructor role and profile. Rejection and action-required states use controlled resubmission paths without deleting prior identity or audit history.
+
+For a real Sandbox walkthrough, use synthetic accounts, record only sanitized outcomes, and keep the walkthrough separate from mocked PHPUnit and Playwright evidence. Do not record document numbers, inquiry IDs, raw Persona payloads, provider URLs, signed media URLs, identity images, or screenshots containing evidence. The direct-instructor operations guide covers deployment order, isolated browser-test setup, private document migration, recovery, and external release gates.
