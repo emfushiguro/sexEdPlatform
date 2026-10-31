@@ -351,6 +351,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     });
 
     Route::prefix('instructor-applications')->name('instructor-applications.')->group(function () {
+        Route::get('/{application}/documents/{slot}', [\App\Http\Controllers\InstructorApplication\DocumentController::class, 'show'])->name('documents.show');
         Route::prefix('identities')->name('identities.')->middleware('permission:review instructor identities')->group(function () {
             Route::get('/', [Admin\InstructorIdentityVerificationController::class, 'index'])->name('index');
             Route::get('/{instructorIdentityVerification}', [Admin\InstructorIdentityVerificationController::class, 'show'])->name('show');

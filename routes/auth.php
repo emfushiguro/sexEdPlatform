@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\InstructorApplicantRegistrationController;
 use App\Http\Controllers\InstructorApplication\PersonalInformationController;
 use App\Http\Controllers\InstructorApplication\DashboardController;
 use App\Http\Controllers\InstructorApplication\ApplicationController as InstructorApplicationController;
+use App\Http\Controllers\InstructorApplication\DocumentController as InstructorApplicationDocumentController;
 use App\Http\Controllers\InstructorApplication\PersonaIdentityController as InstructorPersonaIdentityController;
 use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -144,6 +145,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/submit', [InstructorApplicationController::class, 'submit'])->name('submit');
             Route::get('/submitted', [InstructorApplicationController::class, 'submitted'])->name('submitted');
             Route::delete('/withdraw', [InstructorApplicationController::class, 'withdraw'])->name('withdraw');
+        Route::get('/{application}/documents/{slot}', [InstructorApplicationDocumentController::class, 'show'])->name('documents.show');
         });
     });
 

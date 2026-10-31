@@ -19,6 +19,7 @@ class InstructorApplicationSubmissionTest extends TestCase
     public function test_learner_can_submit_valid_application(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         Notification::fake();
 
         /** @var User $learner */
@@ -44,14 +45,15 @@ class InstructorApplicationSubmissionTest extends TestCase
         ]);
 
         $application = InstructorApplication::where('user_id', $learner->id)->firstOrFail();
-        $this->assertTrue(Storage::disk('public')->exists($application->government_id_path));
-        $this->assertTrue(Storage::disk('public')->exists($application->clearance_path));
-        $this->assertTrue(Storage::disk('public')->exists($application->cv_resume_path));
+        $this->assertTrue(Storage::disk('local')->exists($application->government_id_path));
+        $this->assertTrue(Storage::disk('local')->exists($application->clearance_path));
+        $this->assertTrue(Storage::disk('local')->exists($application->cv_resume_path));
     }
 
     public function test_application_requires_at_least_one_tier2_document(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         /** @var User $learner */
         $learner = User::factory()->create(['role' => 'learner']);
@@ -74,6 +76,7 @@ class InstructorApplicationSubmissionTest extends TestCase
     public function test_learner_parent_can_submit_valid_application(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         Notification::fake();
 
         /** @var User $learnerParent */

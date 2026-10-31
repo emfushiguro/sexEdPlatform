@@ -368,14 +368,14 @@
             $avatarUrl = $profile?->avatar_path ? asset('storage/' . $profile->avatar_path) : null;
             $completedModules = $application->user->moduleEnrollments;
             $tierOneDocuments = [
-                ['label' => 'Government ID', 'path' => $application->government_id_path],
-                ['label' => 'Verification Document (NBI/Police Clearance)', 'path' => $application->clearance_path],
-                ['label' => 'CV or Resume', 'path' => $application->cv_resume_path],
+                ['label' => 'Government ID', 'slot' => 'government_id', 'path' => $application->government_id_path],
+                ['label' => 'Verification Document (NBI/Police Clearance)', 'slot' => 'clearance', 'path' => $application->clearance_path],
+                ['label' => 'CV or Resume', 'slot' => 'cv_resume', 'path' => $application->cv_resume_path],
             ];
             $tierTwoDocuments = [
-                ['label' => 'Teaching Credential', 'path' => $application->teaching_credential_path],
-                ['label' => 'Sex Education Certificate', 'path' => $application->sexed_certificate_path],
-                ['label' => 'Professional License', 'path' => $application->professional_license_path],
+                ['label' => 'Teaching Credential', 'slot' => 'teaching_credential', 'path' => $application->teaching_credential_path],
+                ['label' => 'Sex Education Certificate', 'slot' => 'sexed_certificate', 'path' => $application->sexed_certificate_path],
+                ['label' => 'Professional License', 'slot' => 'professional_license', 'path' => $application->professional_license_path],
             ];
             $defaultReasonCode = old('review_application_id') == $application->id ? old('rejection_reason_code') : '';
             $defaultAdminMessage = old('review_application_id') == $application->id ? old('admin_message') : null;
@@ -487,7 +487,7 @@
                                         @if(! empty($document['path']))
                                             @php
                                                 $documentPath = (string) $document['path'];
-                                                $documentUrl = $application->resolveDocumentUrl($documentPath);
+                                                $documentUrl = route('admin.instructor-applications.documents.show', [$application, $document['slot']]);
                                                 $extensionSourcePath = parse_url($documentPath, PHP_URL_PATH) ?: $documentPath;
                                                 $extension = strtolower(pathinfo((string) $extensionSourcePath, PATHINFO_EXTENSION));
                                                 $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
@@ -539,7 +539,7 @@
                                         @if(! empty($document['path']))
                                             @php
                                                 $documentPath = (string) $document['path'];
-                                                $documentUrl = $application->resolveDocumentUrl($documentPath);
+                                                $documentUrl = route('admin.instructor-applications.documents.show', [$application, $document['slot']]);
                                                 $extensionSourcePath = parse_url($documentPath, PHP_URL_PATH) ?: $documentPath;
                                                 $extension = strtolower(pathinfo((string) $extensionSourcePath, PATHINFO_EXTENSION));
                                                 $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);

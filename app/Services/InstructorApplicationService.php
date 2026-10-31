@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Notifications\InstructorApplicationStatusUpdate;
 use App\Notifications\InstructorApplicationSubmitted;
 use App\Services\Admin\RoleSyncService;
+use App\Services\InstructorApplication\InstructorApplicationDocumentStorage;
 use App\Services\Moderation\SourceAdapters\InstructorApplicationModerationAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -18,7 +19,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Str;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class InstructorApplicationService
@@ -30,6 +30,7 @@ class InstructorApplicationService
     public function __construct(
         private readonly SubscriptionService $subscriptionService,
         private readonly RoleSyncService $roleSyncService,
+        private readonly InstructorApplicationDocumentStorage $documentStorage,
         private readonly InstructorApplicationModerationAdapter $instructorApplicationModerationAdapter,
     )
     {
@@ -45,9 +46,11 @@ class InstructorApplicationService
                 ->first();
             $metadata = is_array($application?->application_metadata) ? $application->application_metadata : [];
             $submittedAt = now();
+            $documentData = $this->documentPaths($user, $data, $application);
             $attributes = [
                 'status' => 'pending',
                 'submitted_at' => $submittedAt,
+                'document_disk' => $application?->document_disk ?? config('instructor_application.document_disk', 'local'),
                 'instructor_identity_verification_id' => $user->instructorIdentityVerifications()->current()->accessApproved()->value('id'),
                 'educational_background' => $this->educationalBackground($data, $application?->educational_background),
                 'bio' => array_key_exists('bio', $data) ? (string) $data['bio'] : (string) ($application?->bio ?? ''),
@@ -55,9 +58,10 @@ class InstructorApplicationService
                     'submission_ip' => request()?->ip(),
                     'submitted_at' => $submittedAt->toDateTimeString(),
                     'files' => array_replace($metadata['files'] ?? [], $this->buildFileMetadata($data)),
+                    'documents' => array_replace($metadata['documents'] ?? [], $documentData['metadata']),
                 ]),
             ];
-            $attributes = array_merge($attributes, $this->documentPaths($user, $data, $application));
+            $attributes = array_merge($attributes, $documentData['paths']);
 
             if ($application) {
                 $application->update($attributes);
@@ -86,15 +90,17 @@ class InstructorApplicationService
                 ->latest('id')
                 ->first();
             $metadata = is_array($application?->application_metadata) ? $application->application_metadata : [];
+            $documentData = $this->documentPaths($user, $data, $application);
             $attributes = array_merge([
                 'status' => 'draft',
-                'document_disk' => $application?->document_disk ?? 'public',
+                'document_disk' => $application?->document_disk ?? config('instructor_application.document_disk', 'local'),
                 'educational_background' => $this->educationalBackground($data, $application?->educational_background),
                 'bio' => array_key_exists('bio', $data) ? (string) $data['bio'] : (string) ($application?->bio ?? ''),
                 'application_metadata' => array_replace_recursive($metadata, [
                     'files' => array_replace($metadata['files'] ?? [], $this->buildFileMetadata($data)),
+                    'documents' => array_replace($metadata['documents'] ?? [], $documentData['metadata']),
                 ]),
-            ], $this->documentPaths($user, $data, $application));
+            ], $documentData['paths']);
 
             if ($application) {
                 $application->update($attributes);
@@ -213,19 +219,8 @@ class InstructorApplicationService
         );
     }
 
-    private function storeDocument(mixed $file, string $basePath, string $prefix): ?string
-    {
-        if (! $file instanceof UploadedFile) {
-            return null;
-        }
-
-        $filename = Str::uuid().'_'.$prefix.'.'.$file->getClientOriginalExtension();
-        return $file->storeAs($basePath, $filename, 'public');
-    }
-
     private function documentPaths(User $user, array $data, ?InstructorApplication $application): array
     {
-        $basePath = 'instructor-applications/'.$user->id;
         $fields = [
             'government_id' => 'government_id_path',
             'clearance' => 'clearance_path',
@@ -235,15 +230,18 @@ class InstructorApplicationService
             'professional_license' => 'professional_license_path',
         ];
         $paths = [];
+        $metadata = [];
         foreach ($fields as $input => $column) {
             if (Arr::get($data, $input) instanceof UploadedFile) {
-                $paths[$column] = $this->storeDocument($data[$input], $basePath, $input);
+                $stored = $this->documentStorage->store($user, $data[$input], $input);
+                $paths[$column] = $stored['path'];
+                $metadata[$input] = $stored;
             } elseif ($application?->{$column}) {
                 $paths[$column] = $application->{$column};
             }
         }
 
-        return $paths;
+        return ['paths' => $paths, 'metadata' => $metadata];
     }
 
     private function educationalBackground(array $data, ?string $fallback = null): string
