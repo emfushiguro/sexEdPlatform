@@ -9,6 +9,8 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\GuardianIdentityVerificationController;
 use App\Http\Controllers\Auth\GuardianOnboardingController;
 use App\Http\Controllers\Auth\InstructorAuthController;
+use App\Http\Controllers\Auth\InstructorApplicantRegistrationController;
+use App\Http\Controllers\InstructorApplication\PersonalInformationController;
 use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\ParentApprovalLinkController;
@@ -23,6 +25,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    Route::middleware('direct.instructor.enabled')->group(function () {
+        Route::get('instructor/apply', [InstructorApplicantRegistrationController::class, 'createPersonal'])
+            ->name('instructor-application.register.personal');
+        Route::post('instructor/apply', [InstructorApplicantRegistrationController::class, 'storePersonal'])
+            ->name('instructor-application.register.personal.store');
+        Route::get('instructor/apply/account', [InstructorApplicantRegistrationController::class, 'createAccount'])
+            ->name('instructor-application.register.account');
+        Route::post('instructor/apply/account', [InstructorApplicantRegistrationController::class, 'storeAccount'])
+            ->name('instructor-application.register.account.store');
+    });
+
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
@@ -105,6 +118,13 @@ Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
     ->name('parent.verification.approval-link');
 
 Route::middleware('auth')->group(function () {
+    Route::middleware(['verified', 'direct.instructor.enabled'])->group(function () {
+        Route::get('instructor-application/personal-information', [PersonalInformationController::class, 'edit'])
+            ->name('instructor-application.personal-information.edit');
+        Route::put('instructor-application/personal-information', [PersonalInformationController::class, 'update'])
+            ->name('instructor-application.personal-information.update');
+    });
+
     Route::middleware('verified')->group(function () {
         Route::get('learner/identity', [LearnerIdentityVerificationController::class, 'create'])->name('learner.identity.create');
         Route::post('learner/identity', [LearnerIdentityVerificationController::class, 'storeDocument'])->name('learner.identity.document.store');
