@@ -63,3 +63,8 @@ fix-index.cjs
 # Keep user-facing assets/media trackable
 !/public/media/
 !/public/media/**
+# Playwright CLI output (may contain credentials)
+/playwright-report/
+/test-results/
+/.playwright/
+/tests/Browser/.auth/
