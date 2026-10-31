@@ -40,6 +40,7 @@ use App\Http\Controllers\SeminarInteractionController;
 use App\Http\Controllers\TestimonialController;
 use App\Models\Conversation;
 use App\Services\Chat\ChatAuthorizationService;
+use App\Support\AuthenticatedHomeRouteResolver;
 use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -139,7 +140,9 @@ $resolveLocalApkFile = static function (): ?array {
 // Default entry point — landing page for guests, dashboard for authenticated users
 Route::get('/', function () {
     if (Auth::check()) {
-        return redirect('/learn/dashboard');
+        return redirect()->route(
+            app(AuthenticatedHomeRouteResolver::class)->routeName(Auth::user()),
+        );
     }
 
     return view('landing.index', ['testimonials' => \App\Models\Testimonial::query()->publiclyVisible()->with(['user.learnerProfile', 'user.instructorProfile', 'user.profile'])->orderBy('sort_order')->latest('published_at')->limit(6)->get()]);

@@ -34,6 +34,8 @@ class PermissionSeeder extends Seeder
             'access learner platform',
             'access parent dashboard',
             'manage users',
+            'review instructor identities',
+            'review instructor applications',
             'view users',
             'create users',
             'edit users',

@@ -18,6 +18,10 @@ class EnsureProfileCompleted
     {
         $user = $request->user();
 
+        if ($user?->isInstructorApplicant() && $request->routeIs('learner.*')) {
+            abort(403);
+        }
+
         if ($user && $user->isLearner() && $user->isParentRegistration()) {
             if (! $user->parent_verification_status) {
                 return redirect()->route('guardian.verification.create');
