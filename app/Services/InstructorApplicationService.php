@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Notifications\Notification;
+use DomainException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class InstructorApplicationService
@@ -112,11 +113,28 @@ class InstructorApplicationService
         });
     }
 
-    public function approve(InstructorApplication $application, ?string $adminMessage = null): void
+    public function approve(InstructorApplication $application, ?string $adminMessage = null, ?User $reviewer = null): void
     {
-        DB::transaction(function () use ($application): void {
-            $application->loadMissing('user.learnerProfile', 'user.instructorProfile');
-            $user = $application->user;
+        $reviewer ??= Auth::user();
+
+        DB::transaction(function () use ($application, $adminMessage, $reviewer): void {
+            $lockedApplication = InstructorApplication::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+            if ($lockedApplication->status !== 'pending') {
+                throw new DomainException('This application is no longer pending. Reload the review before deciding.');
+            }
+
+            $user = User::query()->whereKey($lockedApplication->user_id)->lockForUpdate()->firstOrFail();
+            $lockedApplication->setRelation('user', $user);
+            $user->load('learnerProfile', 'instructorProfile');
+            if ($reviewer) {
+                if ((int) $reviewer->id === (int) $user->id) {
+                    throw new DomainException('An applicant cannot approve their own application.');
+                }
+                if (! $reviewer->isAdmin() || ! $reviewer->hasPermissionTo('review instructor applications')) {
+                    throw new DomainException('You are not authorized to approve instructor applications.');
+                }
+            }
+            $this->assertActivationEligible($user, $lockedApplication);
             $reviewedAt = now();
             $sanitizedMessage = $this->sanitizeAdminMessage($adminMessage ?? self::DEFAULT_APPROVAL_MESSAGE, self::DEFAULT_APPROVAL_MESSAGE);
 
@@ -133,7 +151,7 @@ class InstructorApplicationService
                 'user_id' => $user->id,
                 'from_role' => $user->role,
                 'to_role' => 'instructor',
-                'approved_by' => Auth::id(),
+                'approved_by' => $reviewer?->id,
                 'reason' => 'Instructor application approved',
                 'preserved_data' => $snapshot,
                 'transitioned_at' => now(),
@@ -146,16 +164,16 @@ class InstructorApplicationService
             InstructorProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'bio' => $application->bio,
-                    'educational_background' => $application->educational_background,
-                    'professional_background' => $application->bio,
+                    'bio' => $lockedApplication->bio,
+                    'educational_background' => $lockedApplication->educational_background,
+                    'professional_background' => $lockedApplication->bio,
                     'profile_photo_path' => $profilePhotoPath,
                 ]
             );
 
-            $application->update([
+            $lockedApplication->update([
                 'status' => 'approved',
-                'approved_by' => Auth::id(),
+                'approved_by' => $reviewer?->id,
                 'approved_at' => $reviewedAt,
                 'rejection_reason' => null,
                 'rejection_reason_code' => null,
@@ -163,60 +181,94 @@ class InstructorApplicationService
                 'review_message' => $sanitizedMessage,
             ]);
 
-            $this->instructorApplicationModerationAdapter->syncSubmission($application->fresh());
+            $this->instructorApplicationModerationAdapter->syncSubmission($lockedApplication->fresh());
 
             InstructorApplicationReview::query()->create([
-                'instructor_application_id' => $application->id,
+                'instructor_application_id' => $lockedApplication->id,
                 'status' => 'approved',
-                'reviewed_by' => Auth::id(),
+                'reviewed_by' => $reviewer?->id,
                 'reviewed_at' => $reviewedAt,
                 'admin_message' => $sanitizedMessage,
             ]);
 
-            $this->notifySafely($user, new InstructorApplicationStatusUpdate('approved', $sanitizedMessage));
-
-            if ($user->subscription && $user->subscription->status === 'active') {
-                $this->subscriptionService->cancel($user->subscription, 'Role changed to instructor');
-            }
+            DB::afterCommit(function () use ($user, $sanitizedMessage): void {
+                $this->notifySafely($user, new InstructorApplicationStatusUpdate('approved', $sanitizedMessage));
+                if ($user->subscription && $user->subscription->status === 'active') {
+                    $this->subscriptionService->cancel($user->subscription, 'Role changed to instructor');
+                }
+            });
         });
     }
 
-    public function reject(InstructorApplication $application, string $reasonCode, ?string $reasonNote = null, ?string $adminMessage = null): void
+    public function reject(InstructorApplication $application, string $reasonCode, ?string $reasonNote = null, ?string $adminMessage = null, ?User $reviewer = null): void
     {
-        $resolvedReason = InstructorApplicationRejectionReason::tryFrom($reasonCode);
-        $reasonLabel = $resolvedReason?->label() ?? str_replace('_', ' ', $reasonCode);
-        $reviewedAt = now();
-        $composedReason = trim($reasonLabel . (! empty($reasonNote) ? ': ' . trim($reasonNote) : ''));
-        $sanitizedMessage = $this->sanitizeAdminMessage($adminMessage ?? self::DEFAULT_REJECTION_MESSAGE, self::DEFAULT_REJECTION_MESSAGE);
+        $reviewer ??= Auth::user();
+        DB::transaction(function () use ($application, $reasonCode, $reasonNote, $adminMessage, $reviewer): void {
+            $lockedApplication = InstructorApplication::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+            if ($lockedApplication->status !== 'pending') {
+                throw new DomainException('This application is no longer pending. Reload the review before deciding.');
+            }
 
-        $application->update([
-            'status' => 'rejected',
-            'rejection_reason_code' => $reasonCode,
-            'rejection_reason_note' => $reasonNote,
-            'rejection_reason' => $composedReason,
-            'approved_by' => Auth::id(),
-            'approved_at' => $reviewedAt,
-            'review_message' => $sanitizedMessage,
-        ]);
+            $user = User::query()->whereKey($lockedApplication->user_id)->lockForUpdate()->firstOrFail();
+            if ($reviewer && (! $reviewer->isAdmin() || ! $reviewer->hasPermissionTo('review instructor applications'))) {
+                throw new DomainException('You are not authorized to review instructor applications.');
+            }
+            $resolvedReason = InstructorApplicationRejectionReason::tryFrom($reasonCode);
+            $reasonLabel = $resolvedReason?->label() ?? str_replace('_', ' ', $reasonCode);
+            $reviewedAt = now();
+            $composedReason = trim($reasonLabel . (! empty($reasonNote) ? ': ' . trim($reasonNote) : ''));
+            $sanitizedMessage = $this->sanitizeAdminMessage($adminMessage ?? self::DEFAULT_REJECTION_MESSAGE, self::DEFAULT_REJECTION_MESSAGE);
 
-        $this->instructorApplicationModerationAdapter->syncSubmission($application->fresh());
+            $lockedApplication->update([
+                'status' => 'rejected',
+                'rejection_reason_code' => $reasonCode,
+                'rejection_reason_note' => $reasonNote,
+                'rejection_reason' => $composedReason,
+                'approved_by' => $reviewer?->id,
+                'approved_at' => $reviewedAt,
+                'review_message' => $sanitizedMessage,
+            ]);
 
-        InstructorApplicationReview::query()->create([
-            'instructor_application_id' => $application->id,
-            'status' => 'rejected',
-            'reviewed_by' => Auth::id(),
-            'reviewed_at' => $reviewedAt,
-            'admin_message' => $sanitizedMessage,
-            'reason_code' => $reasonCode,
-            'reason_label' => $reasonLabel,
-            'reason_note' => $reasonNote,
-        ]);
+            $this->instructorApplicationModerationAdapter->syncSubmission($lockedApplication->fresh());
+            InstructorApplicationReview::query()->create([
+                'instructor_application_id' => $lockedApplication->id,
+                'status' => 'rejected',
+                'reviewed_by' => $reviewer?->id,
+                'reviewed_at' => $reviewedAt,
+                'admin_message' => $sanitizedMessage,
+                'reason_code' => $reasonCode,
+                'reason_label' => $reasonLabel,
+                'reason_note' => $reasonNote,
+            ]);
 
-        $application->loadMissing('user');
-        $this->notifySafely(
-            $application->user,
-            new InstructorApplicationStatusUpdate('rejected', $sanitizedMessage, $reasonCode, $reasonLabel, $reasonNote)
-        );
+            DB::afterCommit(function () use ($user, $sanitizedMessage, $reasonCode, $reasonLabel, $reasonNote): void {
+                $this->notifySafely(
+                    $user,
+                    new InstructorApplicationStatusUpdate('rejected', $sanitizedMessage, $reasonCode, $reasonLabel, $reasonNote)
+                );
+            });
+        });
+    }
+
+    private function assertActivationEligible(User $user, InstructorApplication $application): void
+    {
+        if ($user->status !== User::STATUS_ACTIVE || ! $user->hasVerifiedEmail()) {
+            throw new DomainException('The applicant account must be active with a verified email before approval.');
+        }
+        if (($user->calculateAge() ?? 0) < (int) config('instructor_application.minimum_age', 18)) {
+            throw new DomainException('The applicant must be at least 18 years old before approval.');
+        }
+
+        $identity = $user->instructorIdentityVerifications()->current()->accessApproved()->lockForUpdate()->first();
+        $requiresIdentity = $user->isInstructorApplicant()
+            || (config('instructor_application.identity_enforced_from')
+                && $application->submitted_at?->greaterThanOrEqualTo(config('instructor_application.identity_enforced_from')));
+        if ($requiresIdentity && ! $identity) {
+            throw new DomainException('Stage One identity approval is required before final application approval.');
+        }
+        if ($identity && ! $identity->isAccessEligible()) {
+            throw new DomainException('The current identity approval is not access-eligible.');
+        }
     }
 
     private function documentPaths(User $user, array $data, ?InstructorApplication $application): array

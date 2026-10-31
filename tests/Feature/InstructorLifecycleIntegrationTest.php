@@ -14,13 +14,14 @@ class InstructorLifecycleIntegrationTest extends TestCase
     public function test_complete_instructor_lifecycle_from_learner_to_instructor(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         /** @var User $admin */
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $admin->assignRole('admin');
 
         /** @var User $learner */
-        $learner = User::factory()->create(['role' => 'learner']);
+        $learner = User::factory()->create(['role' => 'learner', 'status' => 'active', 'birthdate' => now()->subYears(21)->toDateString()]);
         $learner->assignRole('learner');
         $learner->learnerProfile()->create([
             'username' => 'lifecycle-learner-' . $learner->id,

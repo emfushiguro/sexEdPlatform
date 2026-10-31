@@ -10,7 +10,8 @@ class RejectInstructorApplicationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->isAdmin();
+        return (bool) $this->user()?->isAdmin()
+            && $this->user()->hasPermissionTo('review instructor applications');
     }
 
     public function rules(): array

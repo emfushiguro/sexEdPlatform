@@ -11,6 +11,7 @@ use App\Services\InstructorApplicationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use DomainException;
 
 class InstructorApplicationController extends Controller
 {
@@ -97,22 +98,28 @@ class InstructorApplicationController extends Controller
 
     public function approve(ApproveInstructorApplicationRequest $request, InstructorApplication $application): RedirectResponse
     {
-        $this->service->approve(
-            $application,
-            (string) $request->string('admin_message')
-        );
+        try {
+            $this->service->approve($application, (string) $request->string('admin_message'), $request->user());
+        } catch (DomainException $exception) {
+            return redirect()->back()->withErrors(['application' => $exception->getMessage()])->withInput();
+        }
 
         return redirect()->back()->with('success', 'Instructor application approved successfully.');
     }
 
     public function reject(RejectInstructorApplicationRequest $request, InstructorApplication $application): RedirectResponse
     {
-        $this->service->reject(
-            $application,
-            (string) $request->string('rejection_reason_code'),
-            $request->filled('rejection_reason_note') ? (string) $request->string('rejection_reason_note') : null,
-            (string) $request->string('admin_message')
-        );
+        try {
+            $this->service->reject(
+                $application,
+                (string) $request->string('rejection_reason_code'),
+                $request->filled('rejection_reason_note') ? (string) $request->string('rejection_reason_note') : null,
+                (string) $request->string('admin_message'),
+                $request->user(),
+            );
+        } catch (DomainException $exception) {
+            return redirect()->back()->withErrors(['application' => $exception->getMessage()])->withInput();
+        }
 
         return redirect()->back()->with('success', 'Instructor application rejected successfully.');
     }

@@ -13,11 +13,11 @@ class InstructorProfileSeedingTest extends TestCase
     public function test_approval_seeds_educational_and_professional_background_from_application(): void
     {
         /** @var User $admin */
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $admin->assignRole('admin');
 
         /** @var User $learner */
-        $learner = User::factory()->create(['role' => 'learner']);
+        $learner = User::factory()->create(['role' => 'learner', 'status' => 'active', 'birthdate' => now()->subYears(23)->toDateString()]);
         $learner->assignRole('learner');
         $learner->learnerProfile()->create([
             'username' => 'seeding-learner-' . $learner->id,
