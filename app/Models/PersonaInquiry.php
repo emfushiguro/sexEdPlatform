@@ -16,6 +16,8 @@ class PersonaInquiry extends Model
 
     public const FLOW_GUARDIAN_GOVERNMENT = 'guardian_government';
 
+    public const FLOW_INSTRUCTOR_GOVERNMENT = 'instructor_government';
+
     public const TEMPLATE_SELFIE = 'selfie';
 
     public const TEMPLATE_GOVID_SELFIE = 'govid_selfie';
@@ -29,6 +31,12 @@ class PersonaInquiry extends Model
     public const OUTCOME_RETRYABLE = 'retryable';
 
     public const OUTCOME_INCONCLUSIVE = 'inconclusive';
+
+    public const OUTCOME_SANDBOX_REVIEW = 'sandbox_review';
+
+    public const SANDBOX_REVIEW_REASON = 'Persona Sandbox manual review: country and ID type were not automatically verified.';
+
+    public const SANDBOX_APPROVAL_REASON = 'Persona Sandbox test-only approval: administrator confirmed Philippine issuance, selected ID type and ID/selfie portrait match.';
 
     public const POLICY_NOT_APPLICABLE = 'not_applicable';
 
@@ -125,6 +133,26 @@ class PersonaInquiry extends Model
 
         return $this->country_policy_status === self::POLICY_ELIGIBLE
             && $this->document_policy_status === self::POLICY_ELIGIBLE;
+    }
+
+    public static function localManualReviewEnabled(): bool
+    {
+        return config('persona.enabled', false)
+            && config('persona.environment') === 'sandbox'
+            && ((app()->environment('local') && config('persona.local_manual_review', false))
+                || (app()->environment('staging') && config('persona.demo_manual_review', false)));
+    }
+
+    public function isSandboxReviewable(): bool
+    {
+        return self::localManualReviewEnabled() && $this->is_sandbox && $this->isCurrent()
+            && $this->verification_outcome === self::OUTCOME_SANDBOX_REVIEW
+            && $this->local_document_type === 'government_id'
+            && in_array($this->flow_type, [self::FLOW_TEEN_GOVERNMENT, self::FLOW_ADULT_GOVERNMENT, self::FLOW_GUARDIAN_GOVERNMENT, self::FLOW_INSTRUCTOR_GOVERNMENT], true)
+            && is_string(config('persona.government_id_classes.'.$this->local_government_id_type))
+            && in_array($this->persona_status, ['completed', 'approved'], true)
+            && $this->government_id_verification_id && $this->selfie_verification_id
+            && $this->country_code && $this->id_class;
     }
 
     public function scopeCurrent(Builder $query): Builder

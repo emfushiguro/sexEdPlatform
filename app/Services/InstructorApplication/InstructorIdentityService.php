@@ -25,6 +25,11 @@ final class InstructorIdentityService
             ->first();
     }
 
+    public function assertDirectApplicant(User $user): void
+    {
+        $this->eligibility->assertDirectApplicant($user);
+    }
+
     public function ensureAwaitingVerification(User $user): InstructorIdentityVerification
     {
         $this->eligibility->assertDirectApplicant($user);
@@ -149,9 +154,14 @@ final class InstructorIdentityService
         });
     }
 
-    public function markPendingReview(InstructorIdentityVerification $case, PersonaInquiry $attempt, array $comparison): void
+    public function markPendingReview(
+        InstructorIdentityVerification $case,
+        PersonaInquiry $attempt,
+        array $comparison,
+        bool $sandboxManualReview = false,
+    ): void
     {
-        DB::transaction(function () use ($case, $attempt, $comparison): void {
+        DB::transaction(function () use ($case, $attempt, $comparison, $sandboxManualReview): void {
             $locked = InstructorIdentityVerification::query()->whereKey($case->id)->lockForUpdate()->firstOrFail();
             $this->assertCurrentCase($locked);
             if ($locked->status === InstructorIdentityVerification::STATUS_PENDING_REVIEW) {
@@ -168,6 +178,7 @@ final class InstructorIdentityService
             $locked->forceFill([
                 'status' => InstructorIdentityVerification::STATUS_PENDING_REVIEW,
                 'comparison_summary' => $comparison,
+                'sandbox_manual_review' => $sandboxManualReview,
                 'submitted_at' => $locked->submitted_at ?? now(),
                 'reason_code' => null,
                 'reason_note' => null,

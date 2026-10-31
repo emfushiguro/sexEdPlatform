@@ -3,6 +3,8 @@
 namespace App\Services\Persona;
 
 use App\Models\PersonaInquiry;
+use App\Services\Persona\PersonaGovernmentIdAttributes;
+use App\Models\InstructorIdentityVerification;
 use App\Notifications\PersonaActionRequiredNotification;
 use App\Notifications\PersonaReadyForLocalEvidenceNotification;
 use Carbon\CarbonImmutable;
@@ -16,6 +18,7 @@ class PersonaInquirySynchronizer
         private readonly PersonaClient $client,
         private readonly PersonaPolicyEvaluator $evaluator,
         private readonly PersonaReviewSubmission $reviewSubmission,
+        private readonly PersonaGovernmentIdAttributes $governmentIdAttributes,
     ) {}
 
     public function sync(PersonaInquiry $attempt, ?CarbonImmutable $eventCreatedAt = null): PersonaInquiry
@@ -28,11 +31,19 @@ class PersonaInquirySynchronizer
         $this->includeTypedVerifications($inquiry);
         $result = $this->evaluator->evaluate($attempt, $inquiry);
         $sourceAt = $this->sourceTimestamp($inquiry, $eventCreatedAt);
+        $providerAttributes = $attempt->instructor_identity_verification_id !== null
+            ? $this->governmentIdAttributes->fromInquiry($inquiry)
+            : null;
 
-        return DB::transaction(function () use ($attempt, $result, $sourceAt): PersonaInquiry {
+        return DB::transaction(function () use ($attempt, $result, $sourceAt, $providerAttributes): PersonaInquiry {
             // Match start/replacement lock order so webhook and browser reconciliation serialize.
             \App\Models\User::query()->whereKey($attempt->user_id)->lockForUpdate()->firstOrFail();
-            if ($attempt->learner_identity_verification_id) {
+            if ($attempt->instructor_identity_verification_id) {
+                InstructorIdentityVerification::query()
+                    ->whereKey($attempt->instructor_identity_verification_id)
+                    ->lockForUpdate()
+                    ->first();
+            } elseif ($attempt->learner_identity_verification_id) {
                 \App\Models\LearnerIdentityVerification::query()->whereKey($attempt->learner_identity_verification_id)->lockForUpdate()->first();
             }
             $current = PersonaInquiry::query()->whereKey($attempt->getKey())->lockForUpdate()->firstOrFail();
@@ -53,13 +64,15 @@ class PersonaInquirySynchronizer
                 'last_synced_at' => now(),
             ])->save();
 
-            $this->reviewSubmission->submit($current);
+            $this->reviewSubmission->submit($current, $providerAttributes);
 
             if (($becameEligible && $current->flow_type === PersonaInquiry::FLOW_TEEN_SCHOOL) || $needsAction) {
                 $user = $current->user;
                 $actionUrl = $user?->isParentRegistration()
                     ? route('guardian.verification.status')
-                    : route('learner.identity.status');
+                    : ($current->flow_type === PersonaInquiry::FLOW_INSTRUCTOR_GOVERNMENT
+                        ? route('instructor-application.dashboard')
+                        : route('learner.identity.status'));
                 $notification = $becameEligible
                     ? new PersonaReadyForLocalEvidenceNotification($actionUrl)
                     : new PersonaActionRequiredNotification($actionUrl);

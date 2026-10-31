@@ -3,6 +3,7 @@
 namespace App\Services\Persona;
 
 use App\Models\LearnerIdentityVerification;
+use App\Models\InstructorIdentityVerification;
 use App\Models\PersonaInquiry;
 use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
@@ -78,6 +79,36 @@ class PersonaTemplateSelector
         return $this->governmentSelection(
             $pathway === 'teen' ? PersonaInquiry::FLOW_TEEN_GOVERNMENT : PersonaInquiry::FLOW_ADULT_GOVERNMENT,
             $documentType,
+            $governmentIdType,
+        );
+    }
+
+    /**
+     * @return array{
+     *   flow_type: string,
+     *   template_key: string,
+     *   template_id: string,
+     *   local_document_type: string,
+     *   local_government_id_type: ?string
+     * }
+     */
+    public function selectForInstructor(
+        User $user,
+        InstructorIdentityVerification $case,
+        string $governmentIdType,
+    ): array {
+        $this->assertAvailable();
+
+        if (! $user->isInstructorApplicant()
+            || (int) $case->user_id !== (int) $user->id
+            || $case->source !== InstructorIdentityVerification::SOURCE_DIRECT_PERSONA
+            || $case->superseded_at !== null) {
+            $this->invalid('This account is not eligible for instructor verification.');
+        }
+
+        return $this->governmentSelection(
+            PersonaInquiry::FLOW_INSTRUCTOR_GOVERNMENT,
+            'government_id',
             $governmentIdType,
         );
     }

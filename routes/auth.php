@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\InstructorAuthController;
 use App\Http\Controllers\Auth\InstructorApplicantRegistrationController;
 use App\Http\Controllers\InstructorApplication\PersonalInformationController;
 use App\Http\Controllers\InstructorApplication\DashboardController;
+use App\Http\Controllers\InstructorApplication\PersonaIdentityController as InstructorPersonaIdentityController;
 use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\ParentApprovalLinkController;
@@ -126,6 +127,16 @@ Route::middleware('auth')->group(function () {
             ->name('instructor-application.personal-information.edit');
         Route::put('instructor-application/personal-information', [PersonalInformationController::class, 'update'])
             ->name('instructor-application.personal-information.update');
+        Route::post('instructor-application/identity/persona/start', [InstructorPersonaIdentityController::class, 'start'])
+            ->name('instructor-application.identity.persona.start');
+        Route::post('instructor-application/identity/persona/continue', [InstructorPersonaIdentityController::class, 'resume'])
+            ->name('instructor-application.identity.persona.resume');
+        Route::get('instructor-application/identity/persona/return', [InstructorPersonaIdentityController::class, 'handleReturn'])
+            ->name('instructor-application.identity.persona.return');
+        Route::post('instructor-application/identity/persona/refresh', [InstructorPersonaIdentityController::class, 'refresh'])
+            ->name('instructor-application.identity.persona.refresh');
+        Route::post('instructor-application/identity/persona/replace', [InstructorPersonaIdentityController::class, 'replace'])
+            ->name('instructor-application.identity.persona.replace');
     });
 
     Route::middleware('verified')->group(function () {

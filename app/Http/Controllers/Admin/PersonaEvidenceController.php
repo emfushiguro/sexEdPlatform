@@ -64,6 +64,16 @@ class PersonaEvidenceController extends Controller
                 && $attempt->target_submission_round === $round;
         }
 
+        if ($attempt->flow_type === PersonaInquiry::FLOW_INSTRUCTOR_GOVERNMENT) {
+            $case = $attempt->instructorIdentityVerification;
+
+            return $case !== null
+                && (int) $case->user_id === (int) $user->id
+                && $case->superseded_at === null
+                && (int) $attempt->instructor_identity_verification_id === (int) $case->id
+                && $attempt->target_submission_round === $case->submission_round;
+        }
+
         $case = $attempt->learnerVerification;
 
         return $user->isLearner() && ! $user->isParentRegistration() && $case

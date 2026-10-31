@@ -3,9 +3,12 @@
 namespace App\Services\Persona;
 
 use App\Models\LearnerIdentityVerification;
+use App\Models\InstructorIdentityVerification;
 use App\Models\PersonaInquiry;
 use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
+use App\Services\InstructorApplication\InstructorApplicantPersonalInformation;
+use App\Services\InstructorApplication\InstructorIdentityService;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +24,8 @@ class PersonaInquiryService
         private readonly PersonaTemplateSelector $selector,
         private readonly LearnerIdentityRequirement $requirement,
         private readonly PersonaInquirySynchronizer $synchronizer,
+        private readonly InstructorIdentityService $instructorIdentities,
+        private readonly InstructorApplicantPersonalInformation $instructorPersonalInformation,
     ) {}
 
     /** @return array{attempt: PersonaInquiry, session_token: string} */
@@ -65,11 +70,75 @@ class PersonaInquiryService
     }
 
     /** @return array{attempt: PersonaInquiry, session_token: string} */
+    public function startForInstructor(User $user, string $governmentIdType): array
+    {
+        $case = $this->instructorIdentities->ensureAwaitingVerification($user);
+        $case = $this->instructorIdentities->startAttempt(
+            $user,
+            $this->instructorPersonalInformation->for($user),
+        );
+
+        if ($case->status !== InstructorIdentityVerification::STATUS_VERIFICATION_IN_PROGRESS) {
+            $this->invalid('This identity verification is already under review or complete.');
+        }
+
+        $selection = $this->selector->selectForInstructor($user, $case, $governmentIdType);
+        $attempt = DB::transaction(function () use ($user, $case, $selection): PersonaInquiry {
+            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $lockedCase = InstructorIdentityVerification::query()->whereKey($case->id)->lockForUpdate()->firstOrFail();
+            $attempt = PersonaInquiry::query()
+                ->where('user_id', $lockedUser->id)
+                ->where('instructor_identity_verification_id', $lockedCase->id)
+                ->where('target_submission_round', $lockedCase->submission_round)
+                ->whereNull('superseded_at')
+                ->latest('attempt_number')
+                ->lockForUpdate()
+                ->first();
+
+            if ($attempt) {
+                if ($attempt->local_government_id_type !== $selection['local_government_id_type']) {
+                    throw ValidationException::withMessages([
+                        'persona' => 'A new Persona attempt is required to change the identity document choice.',
+                    ]);
+                }
+
+                return $attempt;
+            }
+
+            return PersonaInquiry::query()->create([
+                'user_id' => $lockedUser->id,
+                'instructor_identity_verification_id' => $lockedCase->id,
+                'flow_type' => $selection['flow_type'],
+                'target_submission_round' => $lockedCase->submission_round,
+                'attempt_number' => ((int) PersonaInquiry::query()
+                    ->where('user_id', $lockedUser->id)
+                    ->max('attempt_number')) + 1,
+                'local_document_type' => $selection['local_document_type'],
+                'local_government_id_type' => $selection['local_government_id_type'],
+                'template_key' => $selection['template_key'],
+                'template_id' => $selection['template_id'],
+                'reference_id' => (string) Str::uuid(),
+                'idempotency_key' => (string) Str::uuid(),
+                'verification_outcome' => PersonaInquiry::OUTCOME_NOT_READY,
+                'is_sandbox' => true,
+            ]);
+        });
+
+        return $this->openAttempt($attempt);
+    }
+
+    /** @return array{attempt: PersonaInquiry, session_token: string} */
     public function resume(User $user): array
     {
         $attempt = $this->ownedCurrentAttempt($user);
 
         return $this->openAttempt($attempt);
+    }
+
+    /** @return array{attempt: PersonaInquiry, session_token: string} */
+    public function resumeForInstructor(User $user): array
+    {
+        return $this->openAttempt($this->ownedCurrentInstructorAttempt($user));
     }
 
     public function returnFromPersona(User $user, string $personaInquiryId): PersonaInquiry
@@ -88,9 +157,33 @@ class PersonaInquiryService
         return $attempt->fresh();
     }
 
+    public function returnForInstructor(User $user, string $personaInquiryId): PersonaInquiry
+    {
+        if ($personaInquiryId === '') {
+            abort(404);
+        }
+
+        $attempt = $this->ownedCurrentInstructorAttempt($user);
+        if ($attempt->persona_inquiry_id !== $personaInquiryId) {
+            abort(404);
+        }
+
+        $this->synchronizer->sync($attempt);
+
+        return $attempt->fresh();
+    }
+
     public function refresh(User $user): PersonaInquiry
     {
         $attempt = $this->ownedCurrentAttempt($user);
+        $this->synchronizer->sync($attempt);
+
+        return $attempt->fresh();
+    }
+
+    public function refreshForInstructor(User $user): PersonaInquiry
+    {
+        $attempt = $this->ownedCurrentInstructorAttempt($user);
         $this->synchronizer->sync($attempt);
 
         return $attempt->fresh();
@@ -140,6 +233,19 @@ class PersonaInquiryService
         return $this->openAttempt($state);
     }
 
+    /** @return array{attempt: PersonaInquiry, session_token: string} */
+    public function replaceForInstructor(User $user, string $governmentIdType): array
+    {
+        $attempt = $this->ownedCurrentInstructorAttempt($user);
+        if (! $this->isReplaceable($attempt)) {
+            throw ValidationException::withMessages([
+                'persona' => 'Only an unsuccessful or expired Persona attempt can be replaced.',
+            ]);
+        }
+
+        return $this->startForInstructor($user, $governmentIdType);
+    }
+
     public function currentAttempt(User $user): ?PersonaInquiry
     {
         try {
@@ -153,10 +259,20 @@ class PersonaInquiryService
 
     public function hostedFlowUrl(PersonaInquiry $attempt, string $sessionToken): string
     {
+        return $this->hostedFlowUrlForRoute($attempt, $sessionToken, 'persona.identity.return');
+    }
+
+    public function hostedFlowUrlForInstructor(PersonaInquiry $attempt, string $sessionToken): string
+    {
+        return $this->hostedFlowUrlForRoute($attempt, $sessionToken, 'instructor-application.identity.persona.return');
+    }
+
+    private function hostedFlowUrlForRoute(PersonaInquiry $attempt, string $sessionToken, string $routeName): string
+    {
         return rtrim((string) config('persona.hosted_flow_url'), '/').'?'.http_build_query([
             'inquiry-id' => $attempt->persona_inquiry_id,
             'session-token' => $sessionToken,
-            'redirect-uri' => route('persona.identity.return'),
+            'redirect-uri' => route($routeName),
         ]);
     }
 
@@ -357,6 +473,29 @@ class PersonaInquiryService
         return $attempt;
     }
 
+    private function ownedCurrentInstructorAttempt(User $user): PersonaInquiry
+    {
+        $this->instructorIdentities->assertDirectApplicant($user);
+        $case = $this->instructorIdentities->current($user);
+        if (! $case || $case->superseded_at !== null) {
+            abort(404);
+        }
+
+        $attempt = PersonaInquiry::query()
+            ->where('user_id', $user->id)
+            ->where('instructor_identity_verification_id', $case->id)
+            ->where('target_submission_round', $case->submission_round)
+            ->whereNull('superseded_at')
+            ->latest('attempt_number')
+            ->first();
+
+        if (! $attempt) {
+            abort(404);
+        }
+
+        return $attempt;
+    }
+
     private function findAttempt(
         User $user,
         ?LearnerIdentityVerification $case,
@@ -401,8 +540,12 @@ class PersonaInquiryService
 
     private function isReplaceable(PersonaInquiry $attempt): bool
     {
+        $instructorActionRequired = $attempt->instructor_identity_verification_id !== null
+            && $attempt->instructorIdentityVerification?->status === \App\Models\InstructorIdentityVerification::STATUS_ACTION_REQUIRED;
+
         return $attempt->isCurrent()
-            && ($attempt->expired_at !== null
+            && ($instructorActionRequired
+                || $attempt->expired_at !== null
                 || in_array($attempt->persona_status, ['failed', 'expired'], true)
                 || (in_array($attempt->persona_status, ['completed', 'approved', 'declined', 'needs-review'], true)
                     && in_array($attempt->verification_outcome, [PersonaInquiry::OUTCOME_INELIGIBLE, PersonaInquiry::OUTCOME_INCONCLUSIVE], true))

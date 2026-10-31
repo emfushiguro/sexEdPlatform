@@ -98,6 +98,19 @@ class PersonaPolicyEvaluator
                     : PersonaInquiry::OUTCOME_INCONCLUSIVE);
         }
 
+        if (PersonaInquiry::localManualReviewEnabled() && $attempt->is_sandbox && $attempt->isCurrent()
+            && ($countryPolicy !== PersonaInquiry::POLICY_ELIGIBLE || $documentPolicy !== PersonaInquiry::POLICY_ELIGIBLE)
+            && $attempt->local_document_type === 'government_id'
+            && in_array($attempt->flow_type, [PersonaInquiry::FLOW_TEEN_GOVERNMENT, PersonaInquiry::FLOW_ADULT_GOVERNMENT, PersonaInquiry::FLOW_GUARDIAN_GOVERNMENT, PersonaInquiry::FLOW_INSTRUCTOR_GOVERNMENT], true)
+            && is_string(config('persona.government_id_classes.'.$attempt->local_government_id_type))
+            && is_string($government['id'] ?? null) && $government['id'] !== ''
+            && is_string($selfie['id'] ?? null) && $selfie['id'] !== ''
+            && $this->normalized($government['attributes']['country-code'] ?? null) !== null
+            && $this->normalized($government['attributes']['id-class'] ?? null) !== null
+            && $this->resourceOutcome($government) === 'passed' && $this->resourceOutcome($selfie) === 'passed') {
+            return PersonaInquiry::OUTCOME_SANDBOX_REVIEW;
+        }
+
         if ($countryPolicy !== PersonaInquiry::POLICY_ELIGIBLE
             || $documentPolicy !== PersonaInquiry::POLICY_ELIGIBLE) {
             return ($countryPolicy === PersonaInquiry::POLICY_INELIGIBLE
