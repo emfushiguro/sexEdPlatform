@@ -17,6 +17,13 @@
     $guidance = $case->pathway === 'adult'
         ? ['Account name, ID details, and date of birth are consistent.', 'The document is readable and appears valid.', 'The selfie is clear and recent.', 'The selfie reasonably corresponds to the ID photo.']
         : ['The document is readable.', 'Submitted information and age are consistent.', 'The selfie is clear and recent.', 'Check linked guardian requirements when present.'];
+    $correctionItems = $case->evidence_source === 'persona'
+        ? ['persona_identity' => 'ID and selfie']
+        : array_filter([
+            'identity_front' => 'ID front',
+            'identity_back' => $images->has('identity_back') ? 'ID back' : null,
+            'selfie' => 'Selfie',
+        ]);
 @endphp
 
 <div class="px-4 py-8 mx-auto space-y-6 max-w-7xl">
@@ -44,11 +51,12 @@
     </section>
 
     @include('admin.parent-verifications.partials.persona-summary', [
+        'compactPersonaSummary' => true,
         'personaAttempts' => $case->personaInquiries,
+        'sandboxManualReview' => $case->sandbox_manual_review,
     ])
 
     @if($case->evidence_source === 'persona')
-        <p class="text-sm text-gray-700">This submission uses the Persona images above. No local ID or selfie copy is required.</p>
     @else
     <h2 class="text-lg font-semibold text-gray-900">Submitted to Conscious Connections</h2>
     <section class="grid gap-6 lg:grid-cols-3">
@@ -69,16 +77,18 @@
         @if($case->status === 'pending' && $case->superseded_at === null)
             <div class="flex flex-wrap gap-3 pt-6 mt-6 border-t border-gray-100">
                 <button type="button" data-testid="approve-identity-trigger" @click="$refs.approveDialog.showModal()"
+                        @disabled($case->sandbox_manual_review && ! \App\Models\PersonaInquiry::localManualReviewEnabled())
                         class="px-5 py-3 text-sm font-semibold text-white transition min-h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2">
                     Approve identity
                 </button>
                 <button type="button" data-testid="reject-identity-trigger" @click="$refs.rejectDialog.showModal()"
                         class="px-5 py-3 text-sm font-semibold text-white transition min-h-11 rounded-xl bg-rose-700 hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-700 focus:ring-offset-2">
-                    Reject identity
+                    Request changes
                 </button>
             </div>
 
             <dialog x-ref="approveDialog" role="dialog" aria-modal="true" data-testid="approve-identity-dialog" @click.self="$refs.approveDialog.close()"
+                    @if($errors->hasAny(['confirm_government_issued', 'sandbox_philippine_id_confirmed', 'sandbox_id_type_confirmed', 'persona_portrait_compared'])) x-init="$nextTick(() => $refs.approveDialog.showModal())" @endif
                     aria-labelledby="approve-identity-title" aria-describedby="approve-identity-description"
                     class="m-auto max-h-[90vh] w-[min(92vw,34rem)] overflow-y-auto rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
                 <div class="p-6 sm:p-7">
@@ -93,27 +103,34 @@
                         <button type="button" @click="$refs.approveDialog.close()" aria-label="Close approval dialog"
                                 class="p-2 text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-700">×</button>
                     </div>
-                    @if($case->pathway === 'adult' && $case->government_id_type === 'other')
                         <form method="POST" action="{{ route('admin.parent-verifications.learners.approve', $case) }}" class="mt-6 space-y-5">
                             @csrf
                             <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
+                            @if($case->pathway === 'adult' && $case->government_id_type === 'other')
                             <label class="flex items-start gap-3 p-4 text-sm text-gray-700 border border-gray-200 rounded-xl">
                                 <input type="checkbox" name="confirm_government_issued" value="1" required @checked(old('confirm_government_issued'))
                                        class="mt-0.5 h-5 w-5 rounded border-gray-300 text-emerald-700 focus:ring-emerald-700">
                                 <span>I confirm I determined this Other ID is government-issued.</span>
                             </label>
                             @error('confirm_government_issued')<p class="text-sm text-rose-700">{{ $message }}</p>@enderror
-                            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                                <button type="button" @click="$refs.approveDialog.close()" class="px-5 py-3 text-sm font-semibold text-gray-700 border border-gray-300 min-h-11 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">Cancel</button>
-                                <button type="submit" class="px-5 py-3 text-sm font-semibold text-white min-h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2">Confirm approval</button>
-                            </div>
-                        </form>
-                    @else
-                        <form method="POST" action="{{ route('admin.parent-verifications.learners.approve', $case) }}" class="mt-6">
-                            @csrf
-                            <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
-                            @if((config('persona.enabled', false) || $case->usesPersonaSelfie()) && $case->pathway === 'teen' && in_array($case->document_type, ['school_id', 'institution_id'], true))
-                                <label class="mb-4 flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-sm text-gray-700">
+                            @endif
+                            @if($case->sandbox_manual_review)
+                                <fieldset class="space-y-3">
+                                    <legend class="text-sm font-semibold text-gray-900">Required confirmations</legend>
+                                    @foreach([
+                                        'sandbox_philippine_id_confirmed' => 'I confirm the ID was issued in the Philippines.',
+                                        'sandbox_id_type_confirmed' => 'I confirm the ID matches the selected ID type.',
+                                        'persona_portrait_compared' => 'I compared the ID and selfie portraits.',
+                                    ] as $field => $label)
+                                        <label class="flex items-start gap-3 p-3 text-sm text-gray-700 border border-gray-200 rounded-xl">
+                                            <input type="checkbox" name="{{ $field }}" value="1" required @checked(old($field)) class="mt-0.5 h-5 w-5 rounded border-gray-300 text-emerald-700 focus:ring-emerald-700">
+                                            <span>{{ $label }} (required)</span>
+                                        </label>
+                                        @error($field)<p class="text-sm text-rose-700" role="alert">{{ $message }}</p>@enderror
+                                    @endforeach
+                                </fieldset>
+                            @elseif((config('persona.enabled', false) || $case->usesPersonaSelfie()) && $case->pathway === 'teen' && in_array($case->document_type, ['school_id', 'institution_id'], true))
+                                <label class="flex items-start gap-3 p-4 mb-4 text-sm text-gray-700 border border-gray-200 rounded-xl">
                                     <input type="checkbox" name="persona_portrait_compared" value="1" required @checked(old('persona_portrait_compared')) class="mt-0.5 h-5 w-5 rounded border-gray-300 text-emerald-700">
                                     <span>I viewed the submitted school/institution ID and the Persona selfie and manually compared the portraits.</span>
                                 </label>
@@ -124,28 +141,35 @@
                                 <button type="submit" class="px-5 py-3 text-sm font-semibold text-white min-h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2">Confirm approval</button>
                             </div>
                         </form>
-                    @endif
                 </div>
             </dialog>
 
-            <dialog x-ref="rejectDialog" role="dialog" aria-modal="true" data-testid="reject-identity-dialog" @click.self="$refs.rejectDialog.close()" @if($errors->has('reason')) x-init="$nextTick(() => $refs.rejectDialog.showModal())" @endif
+            <dialog x-ref="rejectDialog" role="dialog" aria-modal="true" data-testid="reject-identity-dialog" @click.self="$refs.rejectDialog.close()" @if($errors->hasAny(['reason', 'allow_resubmission', 'requested_corrections', 'requested_corrections.*', 'correction_note'])) x-init="$nextTick(() => $refs.rejectDialog.showModal())" @endif
                     aria-labelledby="reject-identity-title" aria-describedby="reject-identity-description"
                     class="m-auto max-h-[90vh] w-[min(92vw,34rem)] overflow-y-auto rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
                 <div class="p-6 sm:p-7">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">Confirm decision</p>
-                            <h3 id="reject-identity-title" class="mt-2 text-xl font-bold text-gray-900">Reject this identity?</h3>
+                            <h3 id="reject-identity-title" class="mt-2 text-xl font-bold text-gray-900">Record review decision</h3>
                             <p id="reject-identity-description" class="mt-2 text-sm leading-6 text-gray-600">
-                                Choose a reason the learner can use to correct their submission.
+                                Request specific changes or record a final rejection.
                             </p>
                         </div>
                         <button type="button" @click="$refs.rejectDialog.close()" aria-label="Close rejection dialog"
                                 class="p-2 text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-700">×</button>
                     </div>
-                    <form method="POST" action="{{ route('admin.parent-verifications.learners.reject', $case) }}" class="mt-6 space-y-5">
+                    <form method="POST" action="{{ route('admin.parent-verifications.learners.reject', $case) }}" class="mt-6 space-y-5" x-data="{ allowResubmission: @js((string) old('allow_resubmission', '1')) }">
                         @csrf
                         <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
+                        <div>
+                            <label for="allow_resubmission" class="block text-sm font-semibold text-gray-800">Decision</label>
+                            <select id="allow_resubmission" name="allow_resubmission" x-model="allowResubmission" required class="w-full p-3 mt-2 text-sm bg-white border border-gray-300 rounded-xl">
+                                <option value="1" @selected((string) old('allow_resubmission', '1') === '1')>Request changes</option>
+                                <option value="0" @selected((string) old('allow_resubmission', '1') === '0')>Final rejection</option>
+                            </select>
+                            @error('allow_resubmission')<p class="mt-2 text-sm text-rose-700" role="alert">{{ $message }}</p>@enderror
+                        </div>
                         <div>
                             <label for="reason" class="block text-sm font-semibold text-gray-800">Rejection reason</label>
                             <select id="reason" name="reason" required aria-invalid="{{ $errors->has('reason') ? 'true' : 'false' }}"
@@ -157,9 +181,25 @@
                             </select>
                             @error('reason')<p class="mt-2 text-sm text-rose-700">{{ $message }}</p>@enderror
                         </div>
+                        <fieldset x-show="allowResubmission === '1'" :disabled="allowResubmission !== '1'" class="space-y-3">
+                            <legend class="text-sm font-semibold text-gray-800">Requested items</legend>
+                            @foreach($correctionItems as $slot => $label)
+                                <label class="flex items-start gap-3 p-3 text-sm text-gray-700 border border-gray-200 rounded-xl">
+                                    <input type="checkbox" name="requested_corrections[]" value="{{ $slot }}" @checked(in_array($slot, (array) old('requested_corrections', []), true)) class="mt-0.5 h-5 w-5 rounded border-gray-300 text-rose-700 focus:ring-rose-700">
+                                    <span>{{ $label }}</span>
+                                </label>
+                            @endforeach
+                            @error('requested_corrections')<p class="text-sm text-rose-700" role="alert">{{ $message }}</p>@enderror
+                            @error('requested_corrections.*')<p class="text-sm text-rose-700" role="alert">{{ $message }}</p>@enderror
+                        </fieldset>
+                        <div>
+                            <label for="correction_note" class="block text-sm font-semibold text-gray-800">Note for the learner</label>
+                            <textarea id="correction_note" name="correction_note" rows="3" maxlength="2000" class="w-full p-3 mt-2 text-sm border border-gray-300 rounded-xl">{{ old('correction_note') }}</textarea>
+                            @error('correction_note')<p class="mt-2 text-sm text-rose-700" role="alert">{{ $message }}</p>@enderror
+                        </div>
                         <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                             <button type="button" @click="$refs.rejectDialog.close()" class="px-5 py-3 text-sm font-semibold text-gray-700 border border-gray-300 min-h-11 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">Cancel</button>
-                            <button type="submit" class="px-5 py-3 text-sm font-semibold text-white min-h-11 rounded-xl bg-rose-700 hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-700 focus:ring-offset-2">Confirm rejection</button>
+                            <button type="submit" class="px-5 py-3 text-sm font-semibold text-white min-h-11 rounded-xl bg-rose-700 hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-700 focus:ring-offset-2">Record decision</button>
                         </div>
                     </form>
                 </div>
@@ -172,7 +212,14 @@
         <div class="mt-4 overflow-x-auto"><table class="min-w-full text-sm text-left">
             <thead><tr class="text-gray-500 border-b border-gray-200"><th class="py-2">When</th><th>Action</th><th>Actor</th><th>Change</th><th>Reason</th></tr></thead>
             <tbody>@foreach($case->audits->sortByDesc('id') as $audit)
-                <tr class="border-b border-gray-100"><td class="py-2">{{ $audit->created_at?->format('M d, Y h:i A') }}</td><td class="capitalize">{{ $audit->action }}</td><td>{{ $audit->actor?->full_name ?? 'System' }}</td><td>{{ $audit->from_status ?? '—' }} → {{ $audit->to_status ?? '—' }}</td><td>{{ $audit->reason ?? '—' }}</td></tr>
+                @php
+                    $auditReason = match (true) {
+                        preg_match('/^(?:(?:Local|Persona) ){1,2}Sandbox manual review(?::|$)/i', (string) $audit->reason) === 1 => 'Submitted for administrator review',
+                        preg_match('/^(?:(?:Local|Persona) ){1,2}Sandbox test-only approval(?::|$)/i', (string) $audit->reason) === 1 => 'Approved after manual review',
+                        default => $audit->reason ?? '—',
+                    };
+                @endphp
+                <tr class="border-b border-gray-100"><td class="py-2">{{ $audit->created_at?->format('M d, Y h:i A') }}</td><td class="capitalize">{{ $audit->action }}</td><td>{{ $audit->actor?->full_name ?? 'System' }}</td><td>{{ $audit->from_status ?? '—' }} → {{ $audit->to_status ?? '—' }}</td><td>{{ $auditReason }}</td></tr>
             @endforeach</tbody>
         </table></div>
     </section>

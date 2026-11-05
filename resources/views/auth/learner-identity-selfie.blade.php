@@ -12,19 +12,23 @@
         <header>
             <p class="text-sm font-semibold uppercase tracking-wider text-purple-700">Identity verification · Step 2 of 2</p>
             <h1 class="mt-2 text-3xl font-bold text-gray-900">Take your selfie</h1>
-            <p class="mt-2 text-gray-700">Show your whole face in good light. Use your camera or choose a photo from your device.</p>
+            <p class="mt-2 text-gray-700">{{ ($personaRequired ?? false) ? 'Follow the camera instructions to capture your selfie, then return here to submit for review.' : 'Show your whole face in good light. Use your camera or choose a photo from your device.' }}</p>
         </header>
         <div class="rounded-xl border border-purple-200 bg-purple-50 p-3 text-sm text-purple-900" role="status">Your ID is saved. <a href="{{ route('learner.identity.create') }}" class="font-semibold underline">Change your ID</a></div>
         @if($errors->any())
             <div role="alert" class="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">Please review your selfie and confirmation below.</div>
         @endif
 
+        @if(($personaRequired ?? false) && (! $personaAttempt?->isPolicyEligible() || $personaAttempt->local_document_type !== $draft['document_type']))
+            @include('auth.partials.persona-identity-step', ['attempt' => $personaAttempt?->local_document_type === $draft['document_type'] ? $personaAttempt : null, 'documentType' => $draft['document_type'], 'allowSchoolDocuments' => true, 'selfieOnly' => true])
+        @else
         <form method="POST" action="{{ route('learner.identity.store') }}" enctype="multipart/form-data" class="space-y-5">
             @csrf
+            <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
             @if(($personaRequired ?? false) && ($personaAttempt?->flow_type ?? null) === \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL)
                 <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900" role="status">
-                    <p class="font-semibold">Persona selfie evidence is already collected.</p>
-                    <p class="mt-1">This school or institution path does not ask for a duplicate local selfie. The administrator will still review your local identity evidence.</p>
+                    <p class="font-semibold">Your selfie is ready.</p>
+                    <p class="mt-1">Submit your ID and selfie for review.</p>
                 </div>
             @else
             <section x-data="identitySelfie" data-testid="selfie-capture" class="space-y-4" aria-labelledby="selfie-heading">
@@ -74,5 +78,6 @@
             @error('confirm_submission')<p class="text-sm text-red-700">{{ $message }}</p>@enderror
             <button type="submit" class="min-h-11 w-full rounded-xl bg-purple-800 px-6 py-3 font-semibold text-white hover:bg-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">Submit for review</button>
         </form>
+        @endif
     </main>
 </x-auth-split-layout>

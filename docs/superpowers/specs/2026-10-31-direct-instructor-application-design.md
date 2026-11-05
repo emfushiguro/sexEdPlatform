@@ -1,6 +1,6 @@
 # Direct Instructor Application with Two-Stage Verification Design
 
-**Status:** Architecture approved; written specification pending review
+**Status:** Approved for implementation planning
 
 **Date:** 2026-10-31
 

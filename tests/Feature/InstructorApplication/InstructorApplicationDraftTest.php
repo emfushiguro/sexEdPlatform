@@ -18,6 +18,7 @@ class InstructorApplicationDraftTest extends TestCase
     {
         parent::setUp();
         config(['instructor_application.enabled' => true, 'instructor_application.identity_enforced_from' => now()->subDay()->toIso8601String()]);
+        Storage::fake('local');
         Storage::fake('public');
         Notification::fake();
     }

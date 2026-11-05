@@ -23,7 +23,6 @@ class PersonaSingleSubmissionTest extends TestCase
             'persona.environment' => 'sandbox',
             'persona.api_key' => 'test-only',
             'persona.templates.govid_selfie' => 'itmpl_test',
-            'persona.government_id_classes' => ['passport' => 'pp', 'drivers_license' => 'dl'],
         ]);
         Http::preventStrayRequests();
     }
@@ -47,7 +46,7 @@ class PersonaSingleSubmissionTest extends TestCase
 
         $this->actingAs($attempt->user)->get(route('learner.identity.create'))
             ->assertRedirect(route('learner.identity.status'));
-        $this->get(route('learner.identity.status'))->assertOk()->assertSee('under review');
+        $this->get(route('learner.identity.status'))->assertOk()->assertSee('Pending review');
 
         $this->actingAs($this->admin())->get(route('admin.parent-verifications.index', ['type' => 'learners']))
             ->assertOk()->assertSee(route('admin.parent-verifications.learners.show', $case), false);
@@ -72,6 +71,34 @@ class PersonaSingleSubmissionTest extends TestCase
         $this->actingAs($this->admin())->postJson(route('admin.parent-verifications.parents.approve', $guardian))
             ->assertOk();
         $this->assertSame('approved', $guardian->fresh()->parent_verification_status);
+    }
+
+    public function test_all_twelve_philippine_ids_submit_learners_and_guardians_for_review(): void
+    {
+        $classes = config('persona.government_id_classes');
+        $this->assertCount(12, $classes);
+        foreach ($classes as $type => $class) {
+            foreach ([false, true] as $isGuardian) {
+                $attempt = $this->attempt($isGuardian);
+                $attempt->forceFill(['local_government_id_type' => $type])->save();
+                $this->fakeInquiry('completed', 'PH', $class);
+                app(PersonaInquirySynchronizer::class)->sync($attempt);
+                $this->assertSame('eligible', $attempt->fresh()->verification_outcome, $type);
+                if ($isGuardian) {
+                    $guardian = $attempt->user->fresh();
+                    $this->assertSame('pending', $guardian->parent_verification_status);
+                    $this->assertSame($type, $guardian->parent_id_type);
+                    $this->assertSame('persona', $guardian->parent_identity_evidence_source);
+                } else {
+                    $case = $attempt->learnerVerification->fresh();
+                    $this->assertSame('pending', $case->status);
+                    $this->assertSame($type, $case->government_id_type);
+                    $this->assertSame('persona', $case->evidence_source);
+                    $this->assertSame(0, $case->evidence()->count());
+                }
+            }
+        }
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_foreign_mismatched_and_declined_results_do_not_submit(): void
@@ -110,6 +137,27 @@ class PersonaSingleSubmissionTest extends TestCase
             ->assertDontSee('name="identity_front"', false);
     }
 
+    public function test_mismatched_country_requires_another_attempt_without_environment_details(): void
+    {
+        foreach ([false, true] as $isGuardian) {
+            $attempt = $this->attempt($isGuardian);
+            $attempt->forceFill(['local_government_id_type' => 'national_id'])->save();
+            $this->fakeInquiry('completed', 'US', 'dl');
+            app(PersonaInquirySynchronizer::class)->sync($attempt);
+
+            $this->assertSame('ineligible', $attempt->fresh()->verification_outcome);
+            $this->assertSame('us', $attempt->fresh()->country_code);
+            $this->assertSame('dl', $attempt->fresh()->id_class);
+            $this->actingAs($attempt->user)->get(route($isGuardian ? 'guardian.verification.create' : 'learner.identity.create'))
+                ->assertOk()->assertSee('A Philippine-issued government ID is required.')
+                ->assertSee('National ID (PhilSys)')
+                ->assertDontSee('Sandbox test data')
+                ->assertSee('Start a new Persona attempt');
+            $this->assertSame(0, $attempt->user->guardianIdentityAudits()->where('action', 'submitted')->count());
+            $this->assertNull($isGuardian ? $attempt->user->fresh()->parent_verification_status : $attempt->learnerVerification->fresh()->status);
+        }
+    }
+
     public function test_admin_previews_are_inline_and_a_foreign_case_cannot_be_viewed(): void
     {
         $attempt = $this->attempt();
@@ -139,7 +187,7 @@ class PersonaSingleSubmissionTest extends TestCase
         ])->save();
         $case = $attempt->learnerVerification;
         $this->actingAs($attempt->user)->get(route('learner.identity.create'))
-            ->assertOk()->assertSee('type="hidden" name="id_selection" value="school_id"', false);
+            ->assertOk()->assertSee('Open ID camera');
         $case->forceFill(['status' => 'pending', 'submission_round' => 1, 'document_type' => 'school_id', 'submitted_at' => now()])->save();
         Storage::disk('local')->put('school.png', 'private-test-image');
         $case->evidence()->create([
@@ -270,6 +318,9 @@ class PersonaSingleSubmissionTest extends TestCase
 
     private function fakeInquiry(string $status = 'completed', string $country = 'PH', string $class = 'pp'): void
     {
+        // Http::fake appends stubs, so each scenario needs a fresh factory.
+        Http::swap(new \Illuminate\Http\Client\Factory);
+        Http::preventStrayRequests();
         Http::fake([
             '*/inquiries/*' => Http::response(['data' => [
                 'attributes' => ['status' => $status],

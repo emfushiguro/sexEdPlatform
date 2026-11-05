@@ -39,6 +39,11 @@ class InstructorApplicationActivationTest extends TestCase
         $this->assertNotNull($applicant->instructorProfile);
         $this->assertNull($applicant->learnerProfile);
         $this->assertDatabaseCount('instructor_application_reviews', 1);
+
+        $this->actingAs($applicant)
+            ->get(route('instructor-application.dashboard'))
+            ->assertRedirect(route('instructor.dashboard'));
+        $this->actingAs($applicant)->get(route('instructor.dashboard'))->assertOk();
     }
 
     public function test_persona_or_stage_one_without_access_eligible_identity_cannot_activate(): void

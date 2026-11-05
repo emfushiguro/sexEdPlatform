@@ -180,7 +180,7 @@
                     <div>
                         <h2 class="mt-2 text-xl font-bold text-gray-900">Instructor Applications Table</h2>
                         <a href="{{ route('admin.instructor-applications.identities.index') }}" class="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-brand-700 hover:underline">
-                            Identity Review
+                            Instructor Applications
                             <span class="rounded-full bg-brand-100 px-2 py-0.5 text-xs">{{ number_format($pendingIdentityCount ?? 0) }} pending</span>
                         </a>
                     </div>

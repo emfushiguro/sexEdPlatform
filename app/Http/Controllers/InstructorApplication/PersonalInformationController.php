@@ -4,6 +4,7 @@ namespace App\Http\Controllers\InstructorApplication;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\StoreInstructorApplicantPersonalInformationRequest;
+use App\Models\InstructorIdentityVerification;
 use App\Models\User;
 use App\Services\Location\CaviteAddressResolver;
 use Illuminate\Http\RedirectResponse;
@@ -19,12 +20,14 @@ class PersonalInformationController extends Controller
     {
         $user = $this->applicant($request->user());
         $profile = $user->load('profile')->profile;
+        $case = $user->instructorIdentityVerifications()->current()->latest('submission_round')->first();
         $barangays = $profile?->city_code
             ? Barangay::query()->where('city_code', $profile->city_code)->orderBy('name')->get(['code', 'name'])
             : collect();
 
         return view('instructor-application.personal-information', [
             'user' => $user,
+            'correctionRequested' => $this->canCorrect($case),
             'barangays' => $barangays,
             'cities' => City::query()
                 ->where('province_code', config('instructor_application.province_code'))
@@ -39,14 +42,17 @@ class PersonalInformationController extends Controller
     ): RedirectResponse {
         $user = $this->applicant($request->user());
 
-        if ($user->instructorIdentityVerifications()->exists()) {
-            return back()->withErrors(['personal_information' => 'Personal information is locked after identity verification starts. Start a replacement attempt to change it.']);
-        }
-
         $validated = $request->validated();
         $address = $addressResolver->resolve($validated['city_code'], $validated['barangay_code']);
 
-        DB::transaction(function () use ($user, $validated, $address): void {
+        $updated = DB::transaction(function () use ($user, $validated, $address): bool {
+            $user = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $case = $user->instructorIdentityVerifications()->current()->latest('submission_round')->lockForUpdate()->first();
+            if (($case && ! $this->canCorrect($case))
+                || (! $case && $user->instructorIdentityVerifications()->exists())) {
+                return false;
+            }
+
             $user->update([
                 'name' => trim($validated['first_name'].' '.($validated['middle_initial'] ?? '').' '.$validated['last_name'].' '.($validated['suffix'] ?? '')),
                 'first_name' => $validated['first_name'],
@@ -66,9 +72,33 @@ class PersonalInformationController extends Controller
                 'barangay_code' => $address['barangay_code'],
                 'address_line' => $validated['address_line'] ?? null,
             ]);
+
+            if ($case) {
+                $case->audits()->create([
+                    'actor_id' => $user->id,
+                    'action' => 'personal_information_corrected',
+                    'from_status' => $case->status,
+                    'to_status' => $case->status,
+                    'submission_round' => $case->submission_round,
+                ]);
+            }
+
+            return true;
         });
 
+        if (! $updated) {
+            return back()->withErrors(['personal_information' => 'Personal information is locked while identity verification is in progress or under review.']);
+        }
+
         return back()->with('success', 'Personal information updated.');
+    }
+
+    private function canCorrect(?InstructorIdentityVerification $case): bool
+    {
+        return $case !== null
+            && $case->status === InstructorIdentityVerification::STATUS_ACTION_REQUIRED
+            && $case->resubmission_allowed
+            && in_array('clarify_personal_information', $case->requested_action_codes ?? [], true);
     }
 
     private function applicant(User $user): User

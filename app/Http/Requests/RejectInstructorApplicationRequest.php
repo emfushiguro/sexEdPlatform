@@ -18,6 +18,7 @@ class RejectInstructorApplicationRequest extends FormRequest
     {
         return [
             'review_application_id' => ['nullable', 'integer'],
+            'identity_case_id' => ['nullable', 'integer'],
             'rejection_reason_code' => ['required', 'string', Rule::in(InstructorApplicationRejectionReason::values())],
             'rejection_reason_note' => [
                 'nullable',

@@ -26,23 +26,23 @@ class PersonaLearnerIntegrationTest extends TestCase
         ]);
     }
 
-    public function test_new_learner_sees_persona_before_any_local_file_input(): void
+    public function test_teen_captures_school_id_before_persona_selfie(): void
     {
         [$teen] = $this->learner('2010-01-01');
 
         $this->actingAs($teen)->get(route('learner.identity.create'))
             ->assertOk()
-            ->assertSee('Identity evidence step')
-            ->assertSee('Simulated Sandbox result')
-            ->assertDontSee('name="identity_front"', false)
+            ->assertSee('Open ID camera')
+            ->assertDontSee('Simulated Sandbox result')
+            ->assertSee('name="identity_front"', false)
             ->assertDontSee('name="identity_back"', false);
 
         $this->post(route('learner.identity.document.store'), [
             'id_selection' => 'school_id',
             'identity_front' => $this->image('front.png'),
-        ])->assertSessionHasErrors('persona');
-        $this->assertNull(session('learner_identity_document_draft'));
-        $this->assertSame([], Storage::disk('local')->allFiles());
+        ])->assertRedirect(route('learner.identity.selfie.create'));
+        $this->assertNotNull(session('learner_identity_document_draft'));
+        $this->assertNotEmpty(Storage::disk('local')->allFiles());
     }
 
     public function test_eligible_government_attempt_does_not_request_duplicate_local_images(): void
@@ -85,7 +85,7 @@ class PersonaLearnerIntegrationTest extends TestCase
 
         $this->get(route('learner.identity.selfie.create'))
             ->assertOk()
-            ->assertSee('Persona selfie evidence is already collected')
+            ->assertSee('Your selfie is ready.')
             ->assertDontSee('name="selfie"', false);
 
         $this->post(route('learner.identity.store'), [

@@ -53,4 +53,5 @@ class ApproveInstructorIdentityRequest extends FormRequest
             }
         });
     }
+
 }

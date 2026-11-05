@@ -49,6 +49,7 @@ class ParentVerificationApprovedNotification extends Notification
             'type' => 'parent_verification_approved',
             'title' => 'Guardian verification approved',
             'message' => 'Your guardian account has been approved. Complete your profile to continue.',
+            'action_url' => route('guardian.onboarding.show', [], false),
             'approval_url' => $this->approvalUrl($notifiable),
         ];
     }

@@ -33,7 +33,7 @@ class PersonaGuardianIntegrationTest extends TestCase
         $this->actingAs($guardian)->get(route('guardian.verification.create'))
             ->assertOk()
             ->assertSee('Identity evidence step')
-            ->assertSee('Simulated Sandbox result')
+            ->assertDontSee('Simulated Sandbox result')
             ->assertDontSee('name="government_id_front"', false);
 
         $this->post(route('guardian.verification.store'), $this->guardianFiles())
@@ -93,7 +93,7 @@ class PersonaGuardianIntegrationTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $admin->assignRole('admin');
         $this->actingAs($admin);
-        app(ParentChildVerificationService::class)->rejectParent($guardian, 'The document is blurred.');
+        app(ParentChildVerificationService::class)->rejectParent($guardian, 'The document is blurred.', personaAttemptId: $first->id);
 
         $second = $this->attempt($guardian, ['target_submission_round' => 2, 'attempt_number' => 2]);
         app(PersonaReviewSubmission::class)->submit($second);

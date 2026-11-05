@@ -57,6 +57,7 @@ class GuardianIdentityVerificationAdminTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.parent-verifications.parents.reject', $guardian), [
                 'reason_code' => 'blurry_document',
+                'requested_corrections' => ['id'],
             ])
             ->assertRedirect();
 

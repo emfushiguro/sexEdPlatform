@@ -35,7 +35,21 @@ class PersonaInquiryService
             $lockedUser = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             [$case, $targetRound] = $this->lockedContext($lockedUser);
             $selection = $this->selector->select($lockedUser, $case, $documentType, $governmentIdType);
+            if ($selection['flow_type'] === PersonaInquiry::FLOW_TEEN_SCHOOL) {
+                $draft = app(\App\Services\Identity\LearnerIdentityDocumentDraft::class)->current($lockedUser, $case);
+                if (! $draft || $draft['document_type'] !== $documentType) {
+                    $this->invalid('Capture and save your selected ID before starting selfie verification.');
+                }
+            }
             $attempt = $this->findAttempt($lockedUser, $case, $targetRound, true);
+            if ($attempt && $case?->pathway === 'teen'
+                && ($attempt->flow_type === PersonaInquiry::FLOW_TEEN_SCHOOL
+                    || $selection['flow_type'] === PersonaInquiry::FLOW_TEEN_SCHOOL)
+                && $attempt->local_document_type !== $documentType
+                && in_array($case->status, [null, 'rejected'], true)) {
+                $attempt->forceFill(['superseded_at' => now()])->save();
+                $attempt = null;
+            }
 
             if (! $attempt) {
                 $this->supersedeStaleAttempts($lockedUser, $case, $targetRound);
@@ -73,10 +87,14 @@ class PersonaInquiryService
     public function startForInstructor(User $user, string $governmentIdType): array
     {
         $case = $this->instructorIdentities->ensureAwaitingVerification($user);
-        $case = $this->instructorIdentities->startAttempt(
-            $user,
-            $this->instructorPersonalInformation->for($user),
-        );
+        $case = DB::transaction(function () use ($user): InstructorIdentityVerification {
+            $user = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            return $this->instructorIdentities->startAttempt(
+                $user,
+                $this->instructorPersonalInformation->for($user),
+            );
+        });
 
         if ($case->status !== InstructorIdentityVerification::STATUS_VERIFICATION_IN_PROGRESS) {
             $this->invalid('This identity verification is already under review or complete.');
@@ -209,6 +227,12 @@ class PersonaInquiryService
                 $documentType ?? $current->local_document_type,
                 $documentType === null ? $current->local_government_id_type : $governmentIdType,
             );
+            if ($selection['flow_type'] === PersonaInquiry::FLOW_TEEN_SCHOOL) {
+                $draft = app(\App\Services\Identity\LearnerIdentityDocumentDraft::class)->current($lockedUser, $case);
+                if (! $draft || $draft['document_type'] !== $selection['local_document_type']) {
+                    $this->invalid('Capture and save your selected ID before starting selfie verification.');
+                }
+            }
             $current->forceFill(['superseded_at' => now()])->save();
 
             return PersonaInquiry::query()->create([
@@ -339,6 +363,9 @@ class PersonaInquiryService
 
     public function assertLearnerMayApprove(User $learner, LearnerIdentityVerification $case): ?PersonaInquiry
     {
+        if ($case->sandbox_manual_review && ! PersonaInquiry::localManualReviewEnabled()) {
+            throw new DomainException('Local Sandbox manual review is disabled.');
+        }
         if (! $this->isRequired() && $case->evidence_source !== 'persona' && ! $case->usesPersonaSelfie()) {
             return null;
         }
@@ -346,7 +373,9 @@ class PersonaInquiryService
         $attempt = PersonaInquiry::query()
             ->where('user_id', $learner->id)
             ->where('learner_identity_verification_id', $case->id)
-            ->where('target_submission_round', $case->submission_round)
+            ->when($case->canReusePersonaSelfie(),
+                fn ($query) => $query->whereKey($case->persona_evidence_attempt_id),
+                fn ($query) => $query->where('target_submission_round', $case->submission_round))
             ->whereNull('superseded_at')
             ->latest('attempt_number')
             ->lockForUpdate()
@@ -374,7 +403,7 @@ class PersonaInquiryService
             || ($case->evidence_source === 'persona' && (! $attempt->government_id_verification_id || ! $attempt->selfie_verification_id))
             || ($case->usesPersonaSelfie() && ! $attempt->selfie_verification_id)
             || ! in_array($attempt->persona_status, ['completed', 'approved'], true)
-            || ! $attempt->isPolicyEligible()) {
+            || ($case->sandbox_manual_review ? ! $attempt->isSandboxReviewable() : ! $attempt->isPolicyEligible())) {
             throw new DomainException('Persona verification is required before learner approval.');
         }
 
@@ -383,6 +412,9 @@ class PersonaInquiryService
 
     public function assertGuardianMayApprove(User $guardian): ?PersonaInquiry
     {
+        if ($guardian->parent_identity_sandbox_manual_review && ! PersonaInquiry::localManualReviewEnabled()) {
+            throw new DomainException('Local Sandbox manual review is disabled.');
+        }
         if (! $this->isRequired() && $guardian->parent_identity_evidence_source !== 'persona') {
             return null;
         }
@@ -414,7 +446,7 @@ class PersonaInquiryService
             || $attempt->local_government_id_type !== $guardian->parent_id_type
             || ($guardian->parent_identity_evidence_source === 'persona' && (! $attempt->government_id_verification_id || ! $attempt->selfie_verification_id))
             || ! in_array($attempt->persona_status, ['completed', 'approved'], true)
-            || ! $attempt->isPolicyEligible()) {
+            || ($guardian->parent_identity_sandbox_manual_review ? ! $attempt->isSandboxReviewable() : ! $attempt->isPolicyEligible())) {
             throw new DomainException('Persona verification is required before guardian approval.');
         }
 
@@ -510,7 +542,16 @@ class PersonaInquiryService
             ->when(! $case, fn ($query) => $query->whereNull('learner_identity_verification_id'))
             ->latest('attempt_number');
 
-        return ($lock ? $query->lockForUpdate() : $query)->first();
+        $attempt = ($lock ? $query->lockForUpdate() : $query)->first();
+        if (! $attempt && $case?->canReusePersonaSelfie()) {
+            $retained = PersonaInquiry::query()->whereKey($case->persona_evidence_attempt_id)
+                ->where('user_id', $user->id)->where('learner_identity_verification_id', $case->id)
+                ->where('flow_type', PersonaInquiry::FLOW_TEEN_SCHOOL)
+                ->where('local_document_type', $case->document_type)->whereNull('superseded_at');
+            $attempt = ($lock ? $retained->lockForUpdate() : $retained)->first();
+        }
+
+        return $attempt;
     }
 
     private function supersedeStaleAttempts(User $user, ?LearnerIdentityVerification $case, int $targetRound): void

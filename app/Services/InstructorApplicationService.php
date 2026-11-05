@@ -122,6 +122,9 @@ class InstructorApplicationService
             if ($lockedApplication->status !== 'pending') {
                 throw new DomainException('This application is no longer pending. Reload the review before deciding.');
             }
+            if (! empty($lockedApplication->application_metadata['document_change_request']['slots'])) {
+                throw new DomainException('Requested documents must be resubmitted before this application can be approved.');
+            }
 
             $user = User::query()->whereKey($lockedApplication->user_id)->lockForUpdate()->firstOrFail();
             $lockedApplication->setRelation('user', $user);

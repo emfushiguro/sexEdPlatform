@@ -139,6 +139,39 @@ class InstructorPersonaIntegrationTest extends TestCase
         $this->assertStringNotContainsString('fraud', (string) $case->reason_note);
     }
 
+    public function test_requested_correction_is_included_in_the_replacement_persona_attempt(): void
+    {
+        $user = $this->applicant();
+        $user->update(['middle_initial' => 'WRONG']);
+        $attempt = $this->startAttempt($user);
+        $case = $attempt->instructorIdentityVerification;
+        $case->update([
+            'status' => InstructorIdentityVerification::STATUS_ACTION_REQUIRED,
+            'resubmission_allowed' => true,
+            'requested_action_codes' => ['clarify_personal_information'],
+        ]);
+        $this->actingAs($user)->get(route('instructor-application.dashboard'))
+            ->assertOk()->assertSee('Correct personal information');
+
+        $user->update(['middle_initial' => null]);
+        Http::swap(new \Illuminate\Http\Client\Factory);
+        Http::preventStrayRequests();
+        Http::fake(fn (HttpRequest $request) => str_ends_with((string) parse_url($request->url(), PHP_URL_PATH), '/inquiries')
+            ? Http::response(['data' => ['id' => 'inq_replacement', 'attributes' => ['status' => 'created']]])
+            : Http::response(['meta' => ['session-token' => 'session-replacement']]));
+
+        $this->post(route('instructor-application.identity.persona.replace'), ['government_id_type' => 'national_id'])
+            ->assertRedirect();
+
+        $replacement = $user->instructorIdentityVerifications()->current()->firstOrFail();
+        $this->assertSame(2, $replacement->submission_round);
+        $this->assertNull($replacement->declared_snapshot['middle_initial']);
+        $this->assertSame('WRONG', $case->fresh()->declared_snapshot['middle_initial']);
+        $this->assertNotNull($case->fresh()->superseded_at);
+        $this->assertSame('inq_replacement', $replacement->personaInquiries()->firstOrFail()->persona_inquiry_id);
+        $this->assertSame(InstructorIdentityVerification::STATUS_VERIFICATION_IN_PROGRESS, $replacement->status);
+    }
+
     private function applicant(): User
     {
         $user = User::factory()->create([

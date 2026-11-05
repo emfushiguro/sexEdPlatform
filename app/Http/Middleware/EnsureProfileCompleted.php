@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\ParentChildAccount;
+use App\Models\PersonaInquiry;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +24,10 @@ class EnsureProfileCompleted
         }
 
         if ($user && $user->isLearner() && $user->isParentRegistration()) {
+            if ($user->parent_identity_sandbox_manual_review && ! PersonaInquiry::localManualReviewEnabled()) {
+                return redirect()->route('guardian.verification.status');
+            }
+
             if (! $user->parent_verification_status) {
                 return redirect()->route('guardian.verification.create');
             }
@@ -51,9 +56,9 @@ class EnsureProfileCompleted
         }
 
         // If user is a learner and hasn't completed their profile
-        if ($user && $user->isLearner() && !$user->hasCompletedProfile()) {
+        if ($user && $user->isLearner() && ! $user->hasCompletedProfile()) {
             // Allow access to profile completion routes
-            if (!$request->routeIs('profile.complete') && !$request->routeIs('profile.store')) {
+            if (! $request->routeIs('profile.complete') && ! $request->routeIs('profile.store')) {
                 return redirect()->route('profile.complete')
                     ->with('warning', 'Please complete your profile to access learning modules.');
             }

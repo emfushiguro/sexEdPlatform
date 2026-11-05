@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ParentChildModerationReason;
 use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\ReviewGuardianRelationshipVerificationRequest;
 use App\Http\Requests\Admin\RejectChildVerificationRequest;
 use App\Http\Requests\Admin\RejectParentVerificationRequest;
+use App\Http\Requests\Admin\ReviewGuardianRelationshipVerificationRequest;
 use App\Models\GuardianRelationshipVerificationDocument;
 use App\Models\LearnerIdentityVerification;
 use App\Models\ParentChildAccount;
+use App\Models\PersonaInquiry;
 use App\Models\User;
 use App\Services\GuardianRelationshipVerificationService;
 use App\Services\ParentChildVerificationService;
@@ -27,8 +28,7 @@ class ParentChildVerificationController extends Controller
     public function __construct(
         private readonly ParentChildVerificationService $service,
         private readonly GuardianRelationshipVerificationService $relationshipVerificationService,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): View
     {
@@ -137,7 +137,24 @@ class ParentChildVerificationController extends Controller
             return $this->respondError($request, 'Decision already finalized. Only pending records can be moderated.', 409);
         }
 
-        $this->service->approveParent($user);
+        $request->validate([
+            'persona_attempt_id' => $user->parent_identity_sandbox_manual_review
+                ? ['required', 'integer', 'min:1'] : ['nullable', 'integer', 'min:1'],
+            'sandbox_philippine_id_confirmed' => $user->parent_identity_sandbox_manual_review
+                ? ['accepted'] : ['sometimes', 'accepted'],
+            'sandbox_id_type_confirmed' => $user->parent_identity_sandbox_manual_review
+                ? ['accepted'] : ['sometimes', 'accepted'],
+            'persona_portrait_compared' => $user->parent_identity_sandbox_manual_review
+                ? ['accepted'] : ['sometimes', 'accepted'],
+        ]);
+
+        $this->service->approveParent(
+            $user,
+            $request->boolean('sandbox_philippine_id_confirmed'),
+            $request->boolean('sandbox_id_type_confirmed'),
+            $request->boolean('persona_portrait_compared'),
+            $request->filled('persona_attempt_id') ? $request->integer('persona_attempt_id') : null,
+        );
         $user->refresh();
 
         return $this->respondSuccess(
@@ -163,7 +180,13 @@ class ParentChildVerificationController extends Controller
             $request->filled('custom_reason') ? (string) $request->string('custom_reason') : null,
         );
 
-        $this->service->rejectParent($user, $reason);
+        $this->service->rejectParent(
+            parent: $user,
+            reason: $reason,
+            allowResubmission: $request->boolean('allow_resubmission', true),
+            personaAttemptId: $request->filled('persona_attempt_id') ? $request->integer('persona_attempt_id') : null,
+            requestedCorrections: (array) $request->validated('requested_corrections', []),
+        );
         $user->refresh();
 
         return $this->respondSuccess(
@@ -247,7 +270,19 @@ class ParentChildVerificationController extends Controller
     {
         abort_unless($this->isRelationshipReviewRecord($parentChildAccount), 404);
 
+        $guardian = $parentChildAccount->parent;
+        $guardianPersonaAttempt = $guardian?->parent_identity_evidence_source === 'persona'
+            ? $guardian->personaInquiries()
+                ->where('flow_type', PersonaInquiry::FLOW_GUARDIAN_GOVERNMENT)
+                ->whereNull('learner_identity_verification_id')
+                ->whereNull('superseded_at')
+                ->where('target_submission_round', max(1, (int) $guardian->guardianIdentityAudits()->max('attempt_number')))
+                ->latest('attempt_number')
+                ->first()
+            : null;
+
         return view('admin.parent-verifications.show-relationship', [
+            'guardianPersonaAttempt' => $guardianPersonaAttempt,
             'relationship' => $parentChildAccount->load([
                 'parent.learnerProfile',
                 'child.learnerProfile',
@@ -267,7 +302,8 @@ class ParentChildVerificationController extends Controller
             return $this->respondError($request, 'Only relationship submissions under review can be approved.', 409);
         }
 
-        $this->relationshipVerificationService->approve($parentChildAccount, $request->user());
+        $request->validate(['current_evidence_round' => ['required', 'integer', 'min:1']]);
+        $this->relationshipVerificationService->approve($parentChildAccount, $request->user(), $request->integer('current_evidence_round'));
 
         return $this->respondSuccess(
             request: $request,
@@ -284,6 +320,9 @@ class ParentChildVerificationController extends Controller
             (string) $request->string('reason_code'),
             $request->filled('note') ? (string) $request->string('note') : null,
             (bool) $request->boolean('allow_resubmission', true),
+            (array) $request->validated('requested_document_ids', []),
+            (array) $request->validated('requested_document_types', []),
+            (int) $request->validated('current_evidence_round'),
         );
 
         return $this->respondSuccess(
@@ -495,7 +534,13 @@ class ParentChildVerificationController extends Controller
         $query = ParentChildAccount::query()
             ->whereNotNull('verification_document_path')
             ->with([
+                'parent' => fn ($query) => $query->withMax('guardianIdentityAudits', 'attempt_number'),
                 'parent.learnerProfile',
+                'parent.personaInquiries' => fn ($query) => $query
+                    ->where('flow_type', PersonaInquiry::FLOW_GUARDIAN_GOVERNMENT)
+                    ->whereNull('learner_identity_verification_id')
+                    ->whereNull('superseded_at')
+                    ->orderByDesc('attempt_number'),
                 'child.learnerProfile',
             ])
             ->latest();
@@ -585,8 +630,7 @@ class ParentChildVerificationController extends Controller
         string $message,
         string $status,
         ?string $rejectionReason = null,
-    ): RedirectResponse|JsonResponse
-    {
+    ): RedirectResponse|JsonResponse {
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'message' => $message,

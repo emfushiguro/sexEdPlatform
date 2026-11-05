@@ -1,8 +1,23 @@
-<ol aria-label="Instructor application stages" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    @foreach ([['Identity information', 'identity'], ['Identity review', 'review'], ['Instructor application', 'application'], ['Final decision', 'final']] as [$label, $key])
-        @php $active = $stage === $key; @endphp
-        <li @if($active) aria-current="step" @endif class="rounded-xl border p-3 {{ $active ? 'border-purple-500 bg-purple-50' : 'border-gray-200 bg-white' }}">
-            <span class="text-sm font-semibold text-gray-900">{{ $label }}</span>
-        </li>
-    @endforeach
-</ol>
+@php
+    $stageOrder = ['identity', 'review', 'application', 'final'];
+    $stageLabels = [
+        'identity' => 'Identity information',
+        'review' => 'Identity review',
+        'application' => 'Instructor application',
+        'final' => 'Final decision',
+    ];
+    $currentStage = array_search($stage, $stageOrder, true);
+    $currentStage = $currentStage === false ? 0 : $currentStage;
+    $steps = [];
+
+    foreach ($stageLabels as $key => $label) {
+        $step = array_search($key, $stageOrder, true);
+        $steps[] = [
+            'label' => $label,
+            'done' => $step < $currentStage,
+            'active' => $step === $currentStage,
+        ];
+    }
+@endphp
+
+<x-wizard-stepper :steps="$steps" />

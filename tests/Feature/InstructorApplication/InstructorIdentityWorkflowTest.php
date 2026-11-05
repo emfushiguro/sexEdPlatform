@@ -136,7 +136,18 @@ class InstructorIdentityWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Awaiting Verification')
             ->assertSee('Identity review')
+            ->assertSee('National ID (PhilSys)')
             ->assertSee('Start identity verification');
+
+        $case = app(InstructorIdentityService::class)->startAttempt($applicant, $this->snapshot());
+        $attempt = $this->personaAttempt($applicant, $case);
+        app(InstructorIdentityService::class)->markPendingReview($case, $attempt, ['normalization_version' => 'v1', 'fields' => []]);
+
+        $this->actingAs($applicant)
+            ->get(route('instructor-application.dashboard'))
+            ->assertOk()
+            ->assertSee('Your identity submission is being reviewed')
+            ->assertSee('no action is needed');
 
         $learner = $this->learner(24);
         LearnerIdentityVerification::create([

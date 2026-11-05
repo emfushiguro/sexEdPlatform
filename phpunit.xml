@@ -38,6 +38,8 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="PERSONA_ENABLED" value="false" force="true"/>
         <env name="PERSONA_ENVIRONMENT" value="sandbox" force="true"/>
+        <env name="PERSONA_LOCAL_MANUAL_REVIEW" value="false" force="true"/>
+        <env name="PERSONA_DEMO_MANUAL_REVIEW" value="false" force="true"/>
         <env name="PERSONA_API_KEY" value="" force="true"/>
         <env name="PERSONA_SELFIE_TEMPLATE_ID" value="" force="true"/>
         <env name="PERSONA_GOVID_SELFIE_TEMPLATE_ID" value="" force="true"/>

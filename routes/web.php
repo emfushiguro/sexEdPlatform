@@ -509,6 +509,8 @@ Route::middleware('auth')->group(function () {
             ->name('relationship-verifications.show');
         Route::post('/relationship-verifications/{parentChildAccount}', [GuardianRelationshipVerificationController::class, 'store'])
             ->name('relationship-verifications.store');
+        Route::post('/relationship-verifications/{parentChildAccount}/draft', [GuardianRelationshipVerificationController::class, 'storeDraft'])
+            ->name('relationship-verifications.draft.store');
         Route::get('/relationship-verifications/{parentChildAccount}/documents/{document}', [GuardianRelationshipVerificationController::class, 'document'])
             ->name('relationship-verifications.documents.show');
 

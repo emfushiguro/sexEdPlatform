@@ -33,17 +33,12 @@ class LearnerIdentityVerificationController extends Controller
         if ($case->status === 'approved') {
             return redirect()->route('profile.complete');
         }
-        if ($case->status === 'pending') {
+        if ($case->status === 'pending' || ($case->status === 'rejected' && ! $case->resubmission_allowed)) {
             return redirect()->route('learner.identity.status');
         }
         $personaRequired = $this->personaInquiries->isRequired();
         $personaAttempt = $personaRequired ? $this->personaInquiries->currentAttempt($request->user()) : null;
-        $draft = $personaRequired && ! $personaAttempt?->isPolicyEligible()
-            ? null
-            : $drafts->current($request->user(), $case);
-        if ($personaRequired && ! $personaAttempt?->isPolicyEligible()) {
-            $drafts->clear();
-        }
+        $draft = $drafts->current($request->user(), $case);
 
         return view('auth.learner-identity-verification', compact(
             'case', 'draft', 'personaAttempt', 'personaRequired',
@@ -59,17 +54,6 @@ class LearnerIdentityVerificationController extends Controller
             if ($request->input('document_type') === 'government_id') {
                 return redirect()->route('learner.identity.status')
                     ->withErrors(['persona' => 'Submit your government ID and selfie once through Persona.']);
-            }
-            try {
-                $this->personaInquiries->assertLearnerMaySubmit(
-                    $request->user(),
-                    $case,
-                    (string) $request->input('document_type'),
-                    $request->filled('government_id_type') ? (string) $request->input('government_id_type') : null,
-                );
-            } catch (DomainException) {
-                return redirect()->route('learner.identity.create')
-                    ->withErrors(['persona' => 'Complete the Persona evidence step before uploading local evidence.']);
             }
         }
 
@@ -93,19 +77,17 @@ class LearnerIdentityVerificationController extends Controller
         if ($case->status === 'approved') {
             return redirect()->route('profile.complete');
         }
-        if ($case->status === 'pending') {
+        if ($case->status === 'pending' || ($case->status === 'rejected' && ! $case->resubmission_allowed)) {
             return redirect()->route('learner.identity.status');
         }
         $personaRequired = $this->personaInquiries->isRequired();
         $personaAttempt = $personaRequired ? $this->personaInquiries->currentAttempt($request->user()) : null;
-        if ($personaRequired && ! $personaAttempt?->isPolicyEligible()) {
-            return redirect()->route('learner.identity.create');
-        }
-        if (! $drafts->current($request->user(), $case)) {
+        $draft = $drafts->current($request->user(), $case);
+        if (! $draft) {
             return redirect()->route('learner.identity.create');
         }
 
-        return view('auth.learner-identity-selfie', compact('case', 'personaAttempt', 'personaRequired'));
+        return view('auth.learner-identity-selfie', compact('case', 'draft', 'personaAttempt', 'personaRequired'));
     }
 
     public function store(SubmitLearnerIdentitySelfieRequest $request, LearnerIdentitySubmission $submission, LearnerIdentityDocumentDraft $drafts): RedirectResponse
@@ -126,6 +108,7 @@ class LearnerIdentityVerificationController extends Controller
             'government_id_type' => $draft['government_id_type'],
             'government_id_type_other' => $draft['government_id_type_other'],
             'confirm_submission' => $request->input('confirm_submission'),
+            'submission_round' => $draft['submission_round'],
         ], $files);
         if (DB::transactionLevel() > 0) {
             DB::afterCommit(fn () => $drafts->clear());

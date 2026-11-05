@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\VerificationStatus;
+use App\Models\PersonaInquiry;
 use App\Services\Identity\LearnerIdentityRequirement;
 use Closure;
 use DomainException;
@@ -32,7 +33,8 @@ class EnsureLearnerIdentityVerified
         } catch (DomainException) {
             return redirect()->route('learner.identity.status');
         }
-        if ($case === null || $case->status === VerificationStatus::Approved->value) {
+        if ($case === null || ($case->status === VerificationStatus::Approved->value
+            && (! $case->sandbox_manual_review || PersonaInquiry::localManualReviewEnabled()))) {
             return $next($request);
         }
 

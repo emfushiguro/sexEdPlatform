@@ -140,7 +140,7 @@ class PersonaInquiry extends Model
         return config('persona.enabled', false)
             && config('persona.environment') === 'sandbox'
             && ((app()->environment('local') && config('persona.local_manual_review', false))
-                || (app()->environment('staging') && config('persona.demo_manual_review', false)));
+                || (app()->environment(['staging', 'production']) && config('persona.demo_manual_review', false)));
     }
 
     public function isSandboxReviewable(): bool

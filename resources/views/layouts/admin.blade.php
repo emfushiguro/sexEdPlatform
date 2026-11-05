@@ -248,7 +248,7 @@
                         </h2>
                         <ul class="flex flex-col gap-1">
                             <li>
-                                <a href="{{ route('admin.instructor-applications.index') }}"
+                                <a href="{{ route('admin.instructor-applications.identities.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
                                     {{ request()->routeIs('admin.instructor-applications.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
                                 @if(request()->routeIs('admin.instructor-applications.*'))
@@ -265,38 +265,10 @@
                                           x-cloak class="flex min-w-0 flex-1 items-center gap-2">
                                         <span class="truncate">Instructor Applications</span>
                                         <span class="{{ $adminSidebarBadgeSlotClasses }}">
-                                            @if(($adminModerationCounts['pending_instructor_applications'] ?? 0) > 0)
+                                            @if(($adminModerationCounts['pending_instructor_reviews'] ?? 0) > 0)
                                                 <span data-testid="admin-nav-badge-instructor-applications"
                                                       class="{{ $adminSidebarBadgeClasses }}">
-                                                    {{ ($adminModerationCounts['pending_instructor_applications'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_instructor_applications'] ?? 0) }}
-                                                </span>
-                                            @endif
-                                        </span>
-                                    </span>
-                                </a>
-                            </li>
-
-                            <li>
-                                <a href="{{ route('admin.instructor-applications.identities.index') }}"
-                                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
-                                    {{ request()->routeIs('admin.instructor-applications.identities.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
-                                @if(request()->routeIs('admin.instructor-applications.identities.*'))
-                                    style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
-                                @endif
-                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
-                                    <span class="flex-shrink-0 text-gray-500 group-hover:text-purple-600">
-                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                                        </svg>
-                                    </span>
-                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                          x-cloak class="flex min-w-0 flex-1 items-center gap-2">
-                                        <span class="truncate">Identity Review</span>
-                                        <span class="{{ $adminSidebarBadgeSlotClasses }}">
-                                            @if(($adminModerationCounts['pending_instructor_identity_reviews'] ?? 0) > 0)
-                                                <span data-testid="admin-nav-badge-instructor-identity-reviews"
-                                                      class="{{ $adminSidebarBadgeClasses }}">
-                                                    {{ ($adminModerationCounts['pending_instructor_identity_reviews'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_instructor_identity_reviews'] ?? 0) }}
+                                                    {{ ($adminModerationCounts['pending_instructor_reviews'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_instructor_reviews'] ?? 0) }}
                                                 </span>
                                             @endif
                                         </span>

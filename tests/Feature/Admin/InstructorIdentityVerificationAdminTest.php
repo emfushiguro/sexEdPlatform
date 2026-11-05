@@ -34,7 +34,7 @@ class InstructorIdentityVerificationAdminTest extends TestCase
         Http::preventStrayRequests();
     }
 
-    public function test_queue_and_detail_require_the_identity_review_permission(): void
+    public function test_queue_view_can_use_stage_two_permission_but_identity_actions_cannot(): void
     {
         $applicant = $this->applicant();
         $case = $this->pendingCase($applicant);
@@ -49,7 +49,7 @@ class InstructorIdentityVerificationAdminTest extends TestCase
         $this->actingAs($reviewer)
             ->get(route('admin.instructor-applications.identities.show', $case))
             ->assertOk()
-            ->assertSee('Identity Review');
+            ->assertSee('Instructor Applications');
 
         $reviewer->roles()->where('name', 'admin')->firstOrFail()->revokePermissionTo('review instructor identities');
         $reviewer->revokePermissionTo('review instructor identities');
@@ -58,6 +58,14 @@ class InstructorIdentityVerificationAdminTest extends TestCase
         $this->assertFalse($reviewer->hasPermissionTo('review instructor identities'));
         $this->actingAs($reviewer)
             ->get(route('admin.instructor-applications.identities.index'))
+            ->assertOk();
+
+        $this->actingAs($reviewer)
+            ->post(route('admin.instructor-applications.identities.reject', $case), [
+                'submission_round' => $case->submission_round,
+                'persona_inquiry_id' => $case->personaInquiries()->value('id'),
+                'reason_code' => 'identity_mismatch',
+            ])
             ->assertForbidden();
 
         $this->actingAs($applicant)
@@ -76,8 +84,11 @@ class InstructorIdentityVerificationAdminTest extends TestCase
             ->get(route('admin.instructor-applications.identities.show', $case));
 
         $response->assertOk()
-            ->assertSee('Provider values are fetched for this review only.')
-            ->assertSee('Provider First')
+            ->assertSee('Submitted identity evidence')
+            ->assertSee('Approve identity')
+            ->assertSee('Request changes')
+            ->assertDontSee('<h2 class="text-lg font-bold text-gray-900">Identity details</h2>', false)
+            ->assertDontSee('Provider First')
             ->assertDontSee('provider-secret-document-number');
         $this->assertSame(InstructorIdentityVerification::STATUS_PENDING_REVIEW, $case->fresh()->status);
         $this->assertStringNotContainsString('Provider First', json_encode($case->fresh()->comparison_summary));
@@ -105,6 +116,66 @@ class InstructorIdentityVerificationAdminTest extends TestCase
         Notification::assertSentTo($applicant, InstructorIdentityStatusNotification::class, function (InstructorIdentityStatusNotification $notification): bool {
             return $notification->status === InstructorIdentityVerification::STATUS_APPROVED;
         });
+    }
+
+    public function test_production_demo_instructor_review_requires_opt_in_and_confirmations(): void
+    {
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->app['env'] = 'production';
+        config(['persona.demo_manual_review' => false]);
+        $case = $this->pendingCase($this->applicant(), sandbox: true);
+        $case->forceFill(['sandbox_manual_review' => true])->save();
+        $attempt = $case->personaInquiries()->firstOrFail();
+        $attempt->forceFill(['verification_outcome' => PersonaInquiry::OUTCOME_SANDBOX_REVIEW, 'country_code' => 'US', 'id_class' => 'dl'])->save();
+        $payload = [
+            'submission_round' => $case->submission_round,
+            'persona_inquiry_id' => $attempt->id,
+            'declared_confirmed' => '1', 'provider_confirmed' => '1',
+            'sandbox_philippine_id_confirmed' => '1', 'sandbox_id_type_confirmed' => '1', 'sandbox_portraits_compared' => '1',
+        ];
+        $this->actingAs($this->reviewer())->post(route('admin.instructor-applications.identities.approve', $case), $payload)->assertRedirect();
+        $this->assertSame(InstructorIdentityVerification::STATUS_PENDING_REVIEW, $case->fresh()->status);
+
+        config(['persona.demo_manual_review' => true]);
+        $incomplete = $payload;
+        unset($incomplete['sandbox_portraits_compared']);
+        $this->postJson(route('admin.instructor-applications.identities.approve', $case), $incomplete)->assertUnprocessable();
+        $this->post(route('admin.instructor-applications.identities.approve', $case), $payload)->assertRedirect();
+        $this->assertTrue($case->fresh()->isAccessEligible());
+        config(['persona.demo_manual_review' => false]);
+        $this->assertFalse($case->fresh()->isAccessEligible());
+    }
+
+    public function test_mismatched_approval_does_not_show_or_require_a_rationale(): void
+    {
+        $applicant = $this->applicant();
+        $case = $this->pendingCase($applicant);
+        $case->update([
+            'comparison_summary' => [
+                'normalization_version' => 'v1',
+                'fields' => ['first_name' => ['outcome' => 'mismatch']],
+            ],
+        ]);
+        $reviewer = $this->reviewer();
+        $payload = [
+            'submission_round' => $case->submission_round,
+            'persona_inquiry_id' => $case->personaInquiries()->value('id'),
+            'declared_confirmed' => '1',
+            'provider_confirmed' => '1',
+        ];
+
+        $this->actingAs($reviewer)
+            ->post(route('admin.instructor-applications.identities.approve', $case), $payload)
+            ->assertRedirect();
+
+        $this->assertSame(InstructorIdentityVerification::STATUS_APPROVED, $case->fresh()->status);
+
+        $this->actingAs($reviewer)
+            ->get(route('admin.instructor-applications.identities.show', $case))
+            ->assertOk()
+            ->assertDontSee('Field comparison summary')
+            ->assertDontSee('A field mismatch was detected')
+            ->assertDontSee('Note about any mismatch');
     }
 
     public function test_stale_round_returns_a_reload_message_and_does_not_decide(): void

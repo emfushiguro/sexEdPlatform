@@ -23,6 +23,7 @@ class GuardianRelationshipVerificationDocument extends Model
         'content_sha256',
         'submitted_at',
         'superseded_at',
+        'review_status',
     ];
 
     protected $casts = [

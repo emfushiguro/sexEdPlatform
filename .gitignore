@@ -64,6 +64,7 @@ fix-index.cjs
 !/public/media/
 !/public/media/**
 # Playwright CLI output (may contain credentials)
+.playwright-cli/
 /playwright-report/
 /test-results/
 /.playwright/

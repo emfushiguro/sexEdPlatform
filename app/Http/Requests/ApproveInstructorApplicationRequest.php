@@ -17,6 +17,7 @@ class ApproveInstructorApplicationRequest extends FormRequest
         return [
             'admin_message' => ['required', 'string', 'max:10000'],
             'review_application_id' => ['nullable', 'integer'],
+            'identity_case_id' => ['nullable', 'integer'],
         ];
     }
 }

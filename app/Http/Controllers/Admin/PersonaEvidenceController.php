@@ -21,6 +21,8 @@ class PersonaEvidenceController extends Controller
         try {
             $url = match ($artifact) {
                 'selfie' => $this->selfieUrl($personaInquiry),
+                'selfie-left' => $this->selfieUrl($personaInquiry, 'left'),
+                'selfie-right' => $this->selfieUrl($personaInquiry, 'right'),
                 'government-id-front' => $this->governmentIdUrl($personaInquiry, 'front'),
                 'government-id-back' => $this->governmentIdUrl($personaInquiry, 'back'),
                 default => null,
@@ -79,17 +81,20 @@ class PersonaEvidenceController extends Controller
 
         return $user->isLearner() && ! $user->isParentRegistration() && $case
             && (int) $case->user_id === (int) $user->id && $case->superseded_at === null
-            && $attempt->target_submission_round === $case->submission_round;
+            && ($attempt->target_submission_round === $case->submission_round
+                || ($attempt->flow_type === PersonaInquiry::FLOW_TEEN_SCHOOL
+                    && $case->canReusePersonaSelfie()
+                    && (int) $case->persona_evidence_attempt_id === (int) $attempt->id));
     }
 
-    private function selfieUrl(PersonaInquiry $attempt): ?string
+    private function selfieUrl(PersonaInquiry $attempt, string $pose = 'center'): ?string
     {
         if (! $attempt->selfie_verification_id) {
             return null;
         }
 
         $response = $this->personaClient->retrieveSelfie($attempt->selfie_verification_id);
-        $url = data_get($response, 'data.attributes.center-photo-url');
+        $url = data_get($response, 'data.attributes.'.$pose.'-photo-url');
 
         return is_string($url) && $url !== '' ? $url : null;
     }

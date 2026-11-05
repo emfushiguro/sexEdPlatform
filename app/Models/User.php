@@ -76,6 +76,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'guardian_onboarding_status',
         'guardian_onboarding_started_at',
         'guardian_onboarding_completed_at',
+        'parent_identity_requested_corrections',
     ];
 
     /**
@@ -86,6 +87,11 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    protected $attributes = [
+        'parent_identity_sandbox_manual_review' => false,
+        'parent_identity_resubmission_allowed' => true,
     ];
 
     /**
@@ -101,6 +107,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'verified' => 'boolean',
             'birthdate' => 'date',
             'is_parent_registration' => 'boolean',
+            'parent_identity_sandbox_manual_review' => 'boolean',
+            'parent_identity_resubmission_allowed' => 'boolean',
+            'parent_identity_requested_corrections' => 'array',
             'parent_verification_submitted_at' => 'datetime',
             'parent_verification_reviewed_at' => 'datetime',
             'parent_verification_approved_at' => 'datetime',
@@ -754,7 +763,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isParentVerificationApproved(): bool
     {
-        return $this->parent_verification_status === 'approved';
+        $testOnly = $this->parent_identity_sandbox_manual_review;
+
+        return $this->parent_verification_status === 'approved'
+            && ($testOnly === false || ($testOnly === true && PersonaInquiry::localManualReviewEnabled()));
     }
 
     public function isParentVerificationPending(): bool

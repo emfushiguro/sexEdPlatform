@@ -4,6 +4,9 @@ export function createIdentitySelfie(dependencies = {}) {
     const url = dependencies.url ?? globalThis.URL;
     const Transfer = dependencies.DataTransfer === undefined ? globalThis.DataTransfer : dependencies.DataTransfer;
     const ImageFile = dependencies.File ?? globalThis.File;
+    const subject = dependencies.subject ?? 'selfie';
+    const cameraOnly = dependencies.cameraOnly ?? false;
+    const recovery = cameraOnly ? 'Allow camera access or continue on another device.' : 'Please upload a selfie instead.';
 
     return {
         stream: null,
@@ -13,7 +16,9 @@ export function createIdentitySelfie(dependencies = {}) {
         previewUrl: null,
         candidate: null,
         photoReady: false,
-        uploadAvailable: true,
+        uploadAvailable: !cameraOnly,
+        cameras: [],
+        selectedCamera: '',
         requestId: 0,
 
         stopCamera() {
@@ -39,11 +44,13 @@ export function createIdentitySelfie(dependencies = {}) {
             this.clearSelection();
             this.cameraError = '';
             if (!mediaDevices?.getUserMedia || !createCanvas || !Transfer || !ImageFile) {
-                this.cameraError = 'Camera capture is unavailable. Please upload a selfie instead.';
+                this.cameraError = `Camera capture is unavailable. ${recovery}`;
                 return;
             }
             try {
-                const stream = await mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+                const stream = await mediaDevices.getUserMedia({ video: this.selectedCamera
+                    ? { deviceId: { exact: this.selectedCamera } }
+                    : { facingMode: dependencies.facingMode ?? 'user' }, audio: false });
                 if (request !== this.requestId) {
                     stream.getTracks().forEach((track) => track.stop());
                     return;
@@ -54,11 +61,15 @@ export function createIdentitySelfie(dependencies = {}) {
                 await this.$refs.video.play();
                 if (request !== this.requestId) return;
                 this.cameraActive = true;
-                this.status = 'Camera ready. Capture your selfie.';
+                this.status = `Camera ready. Capture your ${subject}.`;
+                if (mediaDevices.enumerateDevices) {
+                    const devices = await mediaDevices.enumerateDevices().catch(() => []);
+                    if (request === this.requestId) this.cameras = devices.filter((device) => device.kind === 'videoinput');
+                }
             } catch {
                 if (request !== this.requestId) return;
                 this.stopCamera();
-                this.cameraError = 'Camera could not start. Please upload a selfie instead.';
+                this.cameraError = `Camera could not start. ${recovery}`;
             }
         },
         async capturePhoto() {
@@ -80,11 +91,11 @@ export function createIdentitySelfie(dependencies = {}) {
                 if (request !== this.requestId) return;
                 if (!blob) throw new Error('Capture failed');
                 this.clearPreview();
-                this.candidate = new ImageFile([blob], 'selfie.jpg', { type: 'image/jpeg' });
+                this.candidate = new ImageFile([blob], subject === 'ID' ? 'id.jpg' : 'selfie.jpg', { type: 'image/jpeg' });
                 this.previewUrl = url.createObjectURL(this.candidate);
                 this.status = 'Photo captured. Review it, then choose Use Photo.';
             } catch {
-                if (request === this.requestId) this.cameraError = 'Photo capture failed. Please upload a selfie instead.';
+                if (request === this.requestId) this.cameraError = `Photo capture failed. ${recovery}`;
             } finally {
                 if (request === this.requestId) this.stopCamera();
             }
@@ -96,10 +107,10 @@ export function createIdentitySelfie(dependencies = {}) {
                 transfer.items.add(this.candidate);
                 this.$refs.selfieInput.files = transfer.files;
                 this.photoReady = true;
-                this.status = 'Selfie selected. It will be sent when you submit for review.';
+                this.status = `${subject === 'ID' ? 'ID' : 'Selfie'} selected. Continue when you are ready.`;
                 this.cameraError = '';
             } catch {
-                this.cameraError = 'Could not select the captured photo. Please upload a selfie instead.';
+                this.cameraError = `Could not select the captured photo. ${recovery}`;
             }
         },
         async retakePhoto() {
@@ -107,6 +118,7 @@ export function createIdentitySelfie(dependencies = {}) {
             await this.startCamera();
         },
         replacePhoto() {
+            if (cameraOnly) return this.retakePhoto();
             this.requestId += 1;
             this.stopCamera();
             this.clearSelection();
@@ -114,6 +126,7 @@ export function createIdentitySelfie(dependencies = {}) {
             this.$refs?.selfieInput?.click?.();
         },
         uploadSelected(event) {
+            if (cameraOnly) return;
             this.requestId += 1;
             this.stopCamera();
             this.clearPreview();

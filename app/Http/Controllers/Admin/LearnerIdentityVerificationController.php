@@ -61,16 +61,22 @@ class LearnerIdentityVerificationController extends Controller
             'submission_round' => ['required', 'integer', 'min:1'],
             'confirm_government_issued' => $case->pathway === 'adult' && $case->government_id_type === 'other'
                 ? ['accepted'] : ['sometimes', 'accepted'],
-            'persona_portrait_compared' => (config('persona.enabled', false) || $case->usesPersonaSelfie())
+            'persona_portrait_compared' => $case->sandbox_manual_review || ((config('persona.enabled', false) || $case->usesPersonaSelfie())
                 && $case->pathway === 'teen'
-                && in_array($case->document_type, ['school_id', 'institution_id'], true)
+                && in_array($case->document_type, ['school_id', 'institution_id'], true))
+                ? ['accepted'] : ['sometimes', 'accepted'],
+            'sandbox_philippine_id_confirmed' => $case->sandbox_manual_review
+                ? ['accepted'] : ['sometimes', 'accepted'],
+            'sandbox_id_type_confirmed' => $case->sandbox_manual_review
                 ? ['accepted'] : ['sometimes', 'accepted'],
         ]);
         $this->review->approve(
             $request->user(),
             $case,
             (int) $data['submission_round'],
-            (bool) ($data['persona_portrait_compared'] ?? false),
+            $request->boolean('persona_portrait_compared'),
+            $request->boolean('sandbox_philippine_id_confirmed'),
+            $request->boolean('sandbox_id_type_confirmed'),
         );
 
         return redirect()->route('admin.parent-verifications.learners.show', $case)
@@ -82,12 +88,18 @@ class LearnerIdentityVerificationController extends Controller
         $data = $request->validate([
             'submission_round' => ['required', 'integer', 'min:1'],
             'reason' => ['required', new Enum(LearnerIdentityRejectionReason::class)],
+            'requested_corrections' => ['sometimes', 'array', 'min:1'],
+            'requested_corrections.*' => ['required', 'string', 'distinct', 'in:identity_front,identity_back,selfie,persona_identity'],
+            'correction_note' => ['nullable', 'string', 'max:2000'],
+            'allow_resubmission' => ['sometimes', 'boolean'],
         ]);
         $this->review->reject(
             $request->user(),
             $case,
             LearnerIdentityRejectionReason::from($data['reason']),
             (int) $data['submission_round'],
+            $data['requested_corrections'] ?? null, $data['correction_note'] ?? null,
+            $request->boolean('allow_resubmission', true),
         );
 
         return redirect()->route('admin.parent-verifications.learners.show', $case)

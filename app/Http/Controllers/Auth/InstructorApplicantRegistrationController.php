@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Schoolees\Psgc\Models\Barangay;
 use Schoolees\Psgc\Models\City;
+use Spatie\Permission\Models\Role;
 
 class InstructorApplicantRegistrationController extends Controller
 {
@@ -107,6 +108,7 @@ class InstructorApplicantRegistrationController extends Controller
                 'address_line' => $personal['address_line'] ?? null,
             ]);
 
+            Role::findOrCreate(User::ACCOUNT_TYPE_APPLICANT, 'web');
             $roleSyncService->assignPrimaryRole($user, User::ACCOUNT_TYPE_APPLICANT);
             $user->refreshClassificationCache();
 

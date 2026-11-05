@@ -81,14 +81,9 @@ class AdminDashboardService
                 ],
                 [
                     'label' => 'Pending Instructor Applications',
-                    'value' => InstructorApplication::query()->where('status', 'pending')->count(),
-                    'description' => 'Learner applications waiting for instructor approval.',
-                    'accent' => 'orange',
-                ],
-                [
-                    'label' => 'Pending Instructor Identity Reviews',
-                    'value' => InstructorIdentityVerification::pendingReview()->count(),
-                    'description' => 'Direct applicants waiting for Stage One identity review.',
+                    'value' => InstructorApplication::query()->where('status', 'pending')->count()
+                        + InstructorIdentityVerification::pendingReview()->count(),
+                    'description' => 'Stage One and Stage Two submissions waiting for review.',
                     'accent' => 'violet',
                 ],
                 [
@@ -107,18 +102,11 @@ class AdminDashboardService
             'moderation_queues' => [
                 [
                     'label' => 'Instructor Applications',
-                    'count' => InstructorApplication::query()->where('status', 'pending')->count(),
-                    'cta_label' => 'Open Queue',
-                    'cta_route' => route('admin.instructor-applications.index', ['status' => 'pending']),
-                    'description' => 'Review learner requests to become instructors.',
-                    'accent' => 'amber',
-                ],
-                [
-                    'label' => 'Instructor Identity Reviews',
-                    'count' => InstructorIdentityVerification::pendingReview()->count(),
+                    'count' => InstructorApplication::query()->where('status', 'pending')->count()
+                        + InstructorIdentityVerification::pendingReview()->count(),
                     'cta_label' => 'Open Queue',
                     'cta_route' => route('admin.instructor-applications.identities.index'),
-                    'description' => 'Review direct applicants before Stage Two opens.',
+                    'description' => 'Review Stage One identity evidence and Stage Two applications.',
                     'accent' => 'violet',
                 ],
                 [
@@ -383,10 +371,7 @@ class AdminDashboardService
                     'title' => ($application->user?->name ?? 'Learner') . ' application is ' . str_replace('_', ' ', $status),
                     'meta' => 'Application #' . $application->id,
                     'occurred_at' => $application->updated_at,
-                    'href' => route('admin.instructor-applications.index', [
-                        'status' => $status,
-                        'focus' => $application->id,
-                    ]),
+                    'href' => route('admin.instructor-applications.review', $application),
                     'tone' => $tone,
                 ];
             })

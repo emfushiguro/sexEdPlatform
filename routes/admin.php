@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\Connector\VerificationDocumentController;
 use App\Http\Controllers\Instructor;
 use App\Http\Middleware\EnsureLearnerIdentityVerified;
-use App\Http\Controllers\Connector\VerificationDocumentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,10 +32,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/notifications/{id}/read', [Admin\NotificationController::class, 'markRead'])->name('notifications.read');
 
     Route::prefix('help')->name('help.')->group(function () {
-      Route::resource('categories', Admin\HelpCategoryController::class)->except(['show', 'destroy'])->parameters(['categories' => 'helpCategory']);
+        Route::resource('categories', Admin\HelpCategoryController::class)->except(['show', 'destroy'])->parameters(['categories' => 'helpCategory']);
         Route::post('categories/{helpCategory}/deactivate', [Admin\HelpCategoryController::class, 'deactivate'])->name('categories.deactivate');
         Route::post('categories/order', [Admin\HelpCategoryController::class, 'order'])->name('categories.order');
-      Route::resource('articles', Admin\HelpArticleController::class)->except(['show', 'destroy'])->parameters(['articles' => 'helpArticle']);
+        Route::resource('articles', Admin\HelpArticleController::class)->except(['show', 'destroy'])->parameters(['articles' => 'helpArticle']);
         Route::get('articles/{helpArticle}/preview', [Admin\HelpArticleController::class, 'preview'])->name('articles.preview');
         Route::get('articles/{helpArticle}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'adminShow'])->withoutScopedBindings()->name('articles.section.image');
         Route::post('articles/{helpArticle}/publish', [Admin\HelpArticleController::class, 'publish'])->name('articles.publish');
@@ -352,7 +352,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     Route::prefix('instructor-applications')->name('instructor-applications.')->group(function () {
         Route::get('/{application}/documents/{slot}', [\App\Http\Controllers\InstructorApplication\DocumentController::class, 'show'])->name('documents.show');
-        Route::prefix('identities')->name('identities.')->middleware('permission:review instructor identities')->group(function () {
+        Route::prefix('identities')->name('identities.')->group(function () {
             Route::get('/', [Admin\InstructorIdentityVerificationController::class, 'index'])->name('index');
             Route::get('/{instructorIdentityVerification}', [Admin\InstructorIdentityVerificationController::class, 'show'])->name('show');
             Route::post('/{instructorIdentityVerification}/approve', [Admin\InstructorIdentityVerificationController::class, 'approve'])->name('approve');
@@ -360,8 +360,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             Route::post('/{instructorIdentityVerification}/request-action', [Admin\InstructorIdentityVerificationController::class, 'requestAction'])->name('request-action');
         });
         Route::get('/', [Admin\InstructorApplicationController::class, 'index'])->name('index');
+        Route::get('/review/{application}', [Admin\InstructorIdentityVerificationController::class, 'showApplication'])->name('review');
         Route::get('/{application}', [Admin\InstructorApplicationController::class, 'show'])->name('show');
         Route::post('/{application}/approve', [Admin\InstructorApplicationController::class, 'approve'])->name('approve');
+        Route::post('/{application}/request-documents', [Admin\InstructorApplicationController::class, 'requestDocuments'])->name('request-documents');
         Route::post('/{application}/reject', [Admin\InstructorApplicationController::class, 'reject'])->name('reject');
         Route::post('/{application}/archive', [Admin\InstructorApplicationController::class, 'archive'])->name('archive');
         Route::delete('/{application}', [Admin\InstructorApplicationController::class, 'destroy'])->name('destroy');
@@ -405,7 +407,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->whereIn('side', ['front', 'back'])
             ->name('parents.document');
         Route::get('/persona/{personaInquiry}/{artifact}', [Admin\PersonaEvidenceController::class, 'show'])
-            ->whereIn('artifact', ['government-id-front', 'government-id-back', 'selfie'])
+            ->whereIn('artifact', ['government-id-front', 'government-id-back', 'selfie', 'selfie-left', 'selfie-right'])
             ->name('persona.evidence');
         Route::get('/children/{parentChildAccount}/document', [Admin\ParentChildVerificationController::class, 'childDocument'])
             ->name('children.document');

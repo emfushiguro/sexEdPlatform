@@ -20,7 +20,7 @@
         <header>
             <p class="text-sm font-semibold uppercase tracking-wider text-purple-700">Identity verification · Step 1 of 2</p>
             <h1 class="mt-2 text-3xl font-bold text-gray-900">{{ $personaRequired ? 'Verify your identity' : 'Upload your ID' }}</h1>
-            <p class="mt-2 text-gray-700">{{ $personaRequired ? 'Submit your government ID and selfie once through Persona. An administrator will review the same evidence.' : 'Choose one ID type, then add a clear photo of its front. Some IDs also need the back.' }}</p>
+            <p class="mt-2 text-gray-700">{{ $personaRequired && $case->pathway === 'teen' ? 'Choose your ID, capture it, then complete your selfie.' : ($personaRequired ? 'Submit your government ID and selfie once through Persona. An administrator will review your submission.' : 'Choose one ID type, then add a clear photo of its front. Some IDs also need the back.') }}</p>
         </header>
         @if($draft)
             <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 text-sm text-gray-800" role="status">
@@ -31,7 +31,12 @@
             <div role="alert" class="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">Please review the fields below and try again.</div>
         @endif
 
-        @if($personaRequired)
+        @if($personaRequired && $case->pathway === 'teen')
+            @if($personaAttempt && $personaAttempt->local_document_type === 'government_id')
+                @include('auth.partials.persona-identity-step', ['attempt' => $personaAttempt, 'allowSchoolDocuments' => false])
+            @endif
+            @include('auth.partials.teen-identity-document')
+        @elseif($personaRequired)
             @include('auth.partials.persona-identity-step', [
                 'attempt' => $personaAttempt,
                 'allowSchoolDocuments' => $case->pathway === 'teen',
@@ -40,7 +45,7 @@
             ])
         @endif
 
-        @if(!$personaRequired || ($personaAttempt?->isPolicyEligible() && $personaAttempt->flow_type === \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL))
+        @if(!$personaRequired)
         <form method="POST" action="{{ route('learner.identity.document.store') }}" enctype="multipart/form-data" class="space-y-5"
               x-data="{
                   idSelection: @js($selectedId),

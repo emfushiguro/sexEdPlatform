@@ -31,6 +31,9 @@ class PersonaTemplateSelector
         $this->assertAvailable();
 
         if ($user->isParentRegistration()) {
+            if ($user->parent_verification_status === 'rejected' && ! $user->parent_identity_resubmission_allowed) {
+                $this->invalid('This verification was closed. Contact support to continue.');
+            }
             if ($case !== null || ($user->calculateAge() ?? 0) < 18) {
                 $this->invalid('This account is not eligible for guardian verification.');
             }
@@ -53,6 +56,7 @@ class PersonaTemplateSelector
         }
 
         if ($case->superseded_at !== null
+            || ($case->status === 'rejected' && ! $case->resubmission_allowed)
             || $case->pathway !== $pathway
             || in_array($case->status, ['pending', 'approved'], true)) {
             $this->invalid('This identity case cannot start a new Persona attempt.');

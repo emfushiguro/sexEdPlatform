@@ -11,6 +11,10 @@ use App\Services\InstructorApplicationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use App\Services\InstructorApplication\InstructorApplicationDocumentStorage;
+use App\Notifications\InstructorApplicationDocumentsRequested;
 use DomainException;
 
 class InstructorApplicationController extends Controller
@@ -19,81 +23,28 @@ class InstructorApplicationController extends Controller
     {
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): RedirectResponse
     {
-        $status = $request->string('status')->toString() ?: 'pending';
-        $search = trim((string) $request->string('search'));
-        if (! in_array($status, ['pending', 'approved', 'rejected'], true)) {
-            $status = 'pending';
-        }
-
-        $applications = InstructorApplication::query()
-            ->with([
-                'approvedBy',
-                'latestReview.reviewedBy',
-                'reviews' => function ($reviewQuery): void {
-                    $reviewQuery->with('reviewedBy')->latest('reviewed_at');
-                },
-                'user' => function ($userQuery): void {
-                    $userQuery->withCount([
-                        'moduleEnrollments as enrolled_modules_count',
-                        'moduleEnrollments as finished_modules_count' => fn ($enrollmentQuery) => $enrollmentQuery->whereNotNull('completed_at'),
-                        'certificates as certificates_earned_count',
-                    ])->with([
-                        'learnerProfile.city',
-                        'learnerProfile.barangayLocation',
-                        'moduleEnrollments' => fn ($enrollmentQuery) => $enrollmentQuery
-                            ->whereNotNull('completed_at')
-                            ->with('module:id,title')
-                            ->latest('completed_at'),
-                    ]);
-                },
-            ])
-            ->when($status, fn ($query) => $query->where('status', $status))
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($nested) use ($search): void {
-                    $nested->where('educational_background', 'like', '%' . $search . '%')
-                        ->orWhere('bio', 'like', '%' . $search . '%')
-                        ->orWhereHas('user', function ($userQuery) use ($search): void {
-                            $userQuery->where('name', 'like', '%' . $search . '%')
-                                ->orWhere('email', 'like', '%' . $search . '%')
-                                ->orWhereHas('learnerProfile', function ($profileQuery) use ($search): void {
-                                    $profileQuery->where('username', 'like', '%' . $search . '%')
-                                        ->orWhere('barangay', 'like', '%' . $search . '%');
-                                });
-                        });
-                });
-            })
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
-
         $focusApplicationId = $request->integer('focus');
-        if ($focusApplicationId <= 0) {
-            $focusApplicationId = null;
+        if ($focusApplicationId > 0) {
+            $application = InstructorApplication::query()->find($focusApplicationId);
+            if ($application) {
+                return redirect()->route('admin.instructor-applications.review', $application);
+            }
         }
 
-        return view('admin.instructor-applications.index', [
-            'status' => $status,
-            'search' => $search,
-            'focusApplicationId' => $focusApplicationId,
-            'applications' => $applications,
-            'pendingCount' => InstructorApplication::pending()->count(),
-            'pendingIdentityCount' => InstructorIdentityVerification::pendingReview()->count(),
-            'approvedCount' => InstructorApplication::approved()->count(),
-            'rejectedCount' => InstructorApplication::rejected()->count(),
-            'hasPendingOnPage' => $applications->getCollection()->contains(fn (InstructorApplication $application): bool => $application->status === 'pending'),
-            'defaultApprovalMessage' => InstructorApplicationService::defaultApprovalMessage(),
-            'defaultRejectionMessage' => InstructorApplicationService::defaultRejectionMessage(),
-        ]);
+        return redirect()->route('admin.instructor-applications.identities.index', array_filter([
+            'status' => $request->string('status')->toString() ?: null,
+            'stage' => $request->string('stage')->toString() ?: null,
+            'search' => trim((string) $request->string('search')) ?: null,
+        ]));
     }
 
-    public function show(InstructorApplication $application): RedirectResponse
+    public function show(Request $request, InstructorApplication $application): View|RedirectResponse
     {
-        return redirect()->route('admin.instructor-applications.index', [
-            'status' => $application->status,
-            'focus' => $application->id,
-        ]);
+        $this->assertStageTwoPermission($request);
+
+        return app(InstructorIdentityVerificationController::class)->showApplication($request, $application);
     }
 
     public function approve(ApproveInstructorApplicationRequest $request, InstructorApplication $application): RedirectResponse
@@ -104,7 +55,52 @@ class InstructorApplicationController extends Controller
             return redirect()->back()->withErrors(['application' => $exception->getMessage()])->withInput();
         }
 
-        return redirect()->back()->with('success', 'Instructor application approved successfully.');
+        return $this->redirectAfterReview($request, $application)
+            ->with('success', 'Instructor application approved successfully.');
+    }
+
+    public function requestDocuments(Request $request, InstructorApplication $application, InstructorApplicationDocumentStorage $documents): RedirectResponse
+    {
+        $this->assertStageTwoPermission($request);
+        $data = $request->validate([
+            'slots' => ['required', 'array', 'min:1'],
+            'slots.*' => ['required', 'distinct', Rule::in(['government_id', 'clearance', 'cv_resume', 'teaching_credential', 'sexed_certificate', 'professional_license'])],
+            'note' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $saved = DB::transaction(function () use ($application, $documents, $data, $request): bool {
+            $locked = InstructorApplication::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'pending' || ! empty($locked->application_metadata['document_change_request']['slots'])) {
+                return false;
+            }
+            foreach ($data['slots'] as $slot) {
+                if (! filled($locked->{$documents->columnFor($slot)})) {
+                    return false;
+                }
+            }
+            $metadata = $locked->application_metadata ?? [];
+            $metadata['document_change_request'] = [
+                'slots' => array_values($data['slots']),
+                'note' => trim($data['note']),
+                'requested_at' => now()->toIso8601String(),
+                'token' => (string) \Illuminate\Support\Str::uuid(),
+                'requested_by' => $request->user()->id,
+            ];
+            $locked->update(['application_metadata' => $metadata]);
+            DB::afterCommit(function () use ($locked): void {
+                try {
+                    $locked->user?->notify(new InstructorApplicationDocumentsRequested($locked));
+                } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $exception) {
+                    report($exception);
+                }
+            });
+
+            return true;
+        });
+
+        return back()->with($saved ? 'success' : 'error', $saved
+            ? 'Document replacements requested from the applicant.'
+            : 'The application changed or the selected documents are unavailable. Reload and try again.');
     }
 
     public function reject(RejectInstructorApplicationRequest $request, InstructorApplication $application): RedirectResponse
@@ -121,7 +117,8 @@ class InstructorApplicationController extends Controller
             return redirect()->back()->withErrors(['application' => $exception->getMessage()])->withInput();
         }
 
-        return redirect()->back()->with('success', 'Instructor application rejected successfully.');
+        return $this->redirectAfterReview($request, $application)
+            ->with('success', 'Instructor application rejected successfully.');
     }
 
     public function archive(InstructorApplication $application): RedirectResponse
@@ -144,5 +141,24 @@ class InstructorApplicationController extends Controller
         $application->forceDelete();
 
         return redirect()->back()->with('success', 'Instructor application permanently deleted.');
+    }
+
+    private function redirectAfterReview(Request $request, InstructorApplication $application): RedirectResponse
+    {
+        $identityCaseId = $request->integer('identity_case_id');
+        if ($identityCaseId > 0 && InstructorIdentityVerification::query()
+            ->current()
+            ->whereKey($identityCaseId)
+            ->where('user_id', $application->user_id)
+            ->exists()) {
+            return redirect()->route('admin.instructor-applications.identities.show', $identityCaseId);
+        }
+
+        return redirect()->back();
+    }
+
+    private function assertStageTwoPermission(Request $request): void
+    {
+        abort_unless($request->user()?->isAdmin() && $request->user()->hasPermissionTo('review instructor applications'), 403);
     }
 }

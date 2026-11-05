@@ -11,7 +11,7 @@ class AdminInstructorApplicationsUiTest extends TestCase
 {
     use DatabaseTransactions;
 
-    public function test_instructor_applications_index_uses_enhanced_table_structure(): void
+    public function test_instructor_applications_index_redirects_to_the_centralized_queue(): void
     {
         $this->withoutVite();
 
@@ -21,24 +21,16 @@ class AdminInstructorApplicationsUiTest extends TestCase
             'status' => 'active',
         ]);
         $admin->assignRole('admin');
+        $admin->givePermissionTo('review instructor applications');
 
         $application = $this->createPendingApplication();
 
         $this->actingAs($admin)
             ->get(route('admin.instructor-applications.index'))
-            ->assertOk()
-            ->assertSeeText($application->user->name)
-            ->assertSee('storage/avatars/applicant-avatar.png', false)
-            ->assertSee('data-testid="applications-col-applicant"', false)
-            ->assertSee('data-testid="applications-col-email"', false)
-            ->assertSee('Date Applied', false)
-            ->assertSee('Status', false)
-            ->assertSee('Reviewed By', false)
-            ->assertSee('Decision Date', false)
-            ->assertSee('data-testid="admin-table-filter-bar"', false);
+            ->assertRedirect(route('admin.instructor-applications.identities.index'));
     }
 
-    public function test_instructor_application_review_modal_renders_structured_sections_and_reject_inputs(): void
+    public function test_standalone_instructor_application_detail_renders_stage_two_review(): void
     {
         $this->withoutVite();
 
@@ -48,27 +40,18 @@ class AdminInstructorApplicationsUiTest extends TestCase
             'status' => 'active',
         ]);
         $admin->assignRole('admin');
+        $admin->givePermissionTo('review instructor applications');
 
         $application = $this->createPendingApplication();
 
         $this->actingAs($admin)
-            ->get(route('admin.instructor-applications.index', ['focus' => $application->id]))
+            ->get(route('admin.instructor-applications.show', $application))
             ->assertOk()
-            ->assertSee('data-testid="review-application-button-' . $application->id . '"', false)
-            ->assertSee('data-testid="application-review-modal-' . $application->id . '"', false)
-            ->assertSee('Section 1 - Application Information', false)
-            ->assertSee('Section 2 - Submitted Documents', false)
-            ->assertSee('Section 3 - Learner Data Snapshot', false)
-            ->assertSee('Section 4 - Moderation History', false)
-            ->assertSee('Section 5 - Moderation Actions', false)
-            ->assertSee('Age:', false)
-            ->assertSee('Finished Modules Breakdown', false)
+            ->assertSee('Stage Two application', false)
+            ->assertSee('Submitted documents', false)
+            ->assertSee('NBI / Police clearance', false)
             ->assertSee('name="rejection_reason_code"', false)
-            ->assertDontSee('name="rejection_reason_note"', false)
-            ->assertSee('name="admin_message"', false)
-                ->assertSee('getModerationEditors()', false)
-                ->assertDontSee('tinymce.editors.filter(', false)
-            ->assertSee('Reject Application', false);
+            ->assertSee('name="admin_message"', false);
     }
 
     private function createPendingApplication(): InstructorApplication

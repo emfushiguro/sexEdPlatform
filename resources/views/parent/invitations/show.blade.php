@@ -89,6 +89,9 @@
 					<div class="min-w-0">
 						<p class="text-xs text-gray-500">Guardian</p>
 						<p class="mt-1 font-semibold text-gray-900">{{ $guardianSummary['name'] }}</p>
+						@if($guardianSummary['identity_verified'])
+							<p class="mt-1 text-xs font-semibold text-emerald-700">Guardian identity administratively verified</p>
+						@endif
 					</div>
 				</div>
 			</div>
@@ -187,7 +190,7 @@
 						<svg class="w-4 h-4 transition-transform duration-200" :class="showDetails ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 						</svg>
-						<span x-text="showDetails ? 'Hide Details' : 'View Details'"></span>
+						<span x-text="showDetails ? 'Hide Guardian Information' : 'View Guardian Information'"></span>
 					</button>
 				</div>
 			</article>

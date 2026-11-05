@@ -61,8 +61,12 @@ class PersonaIdentityController extends Controller
 
     private function statusRoute($user): string
     {
-        return $user->isParentRegistration()
-            ? 'guardian.verification.status'
-            : 'learner.identity.status';
+        if ($user->isParentRegistration()) {
+            return 'guardian.verification.status';
+        }
+        $attempt = $this->inquiries->currentAttempt($user);
+
+        return $attempt?->flow_type === \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL
+            ? 'learner.identity.selfie.create' : 'learner.identity.status';
     }
 }

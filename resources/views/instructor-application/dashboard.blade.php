@@ -21,6 +21,8 @@
     </div>
 
     @include('instructor-application.partials.stage-tracker', ['stage' => $stage])
+    @if(session('status'))<p class="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800" role="status">{{ session('status') }}</p>@endif
+    @if(session('error'))<p class="mt-5 rounded-xl bg-rose-50 p-4 text-sm text-rose-800" role="alert">{{ session('error') }}</p>@endif
 
     <div class="mt-6 rounded-2xl border border-gray-200 bg-white p-5" aria-live="polite">
         @if ($identityMessage)
@@ -30,45 +32,90 @@
                 <a href="{{ route($learnerIdentity ? 'learner.identity.status' : 'learner.identity.create') }}" class="mt-4 inline-flex rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white">Continue learner verification</a>
             @endif
         @elseif ($case)
-            <h2 class="text-lg font-semibold text-gray-900">Stage One: {{ str($case->status)->headline() }}</h2>
-            <p class="mt-2 text-sm text-gray-600">
-                @switch($case->status)
-                    @case('awaiting_verification') Start your Government ID and Selfie verification when ready. @break
-                    @case('verification_in_progress') Finish the current verification attempt. @break
-                    @case('pending_review') An administrator is reviewing your identity evidence. @break
-                    @case('action_required') Review the requested correction and start a replacement attempt. @break
-                    @case('approved') Stage One is approved. The Stage Two application will be available next. @break
-                    @default Your identity case is being processed.
-                @endswitch
-            </p>
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <h2 class="text-lg font-semibold text-gray-900">Stage One: {{ str($case->status)->headline() }}</h2>
+                @if ($case->status === 'pending_review')
+                    <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">Pending review</span>
+                @endif
+            </div>
+            @if ($case->status === 'pending_review')
+                <div class="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" role="status">
+                    <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <path stroke-linecap="round" d="M12 7v5l3 2"></path>
+                    </svg>
+                    <div>
+                        <p class="font-semibold">Your identity submission is being reviewed</p>
+                        <p class="mt-1">Your Government ID and selfie were submitted successfully. An administrator is reviewing them now, so no action is needed.</p>
+                        <a href="{{ route('instructor-application.dashboard') }}" class="mt-4 inline-flex min-h-11 items-center rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white transition hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">Check status again</a>
+                    </div>
+                </div>
+            @else
+                <p class="mt-2 text-sm text-gray-600">
+                    @switch($case->status)
+                        @case('awaiting_verification') Start your Government ID and selfie verification when ready. @break
+                        @case('verification_in_progress') Finish the current verification attempt. @break
+                        @case('action_required') Review the requested correction and start a replacement attempt. @break
+                        @case('approved') Stage One is approved. The Stage Two application will be available next. @break
+                        @default Your identity case is being processed.
+                    @endswitch
+                </p>
+            @endif
+            @if ($user->isInstructorApplicant() && $case->status === 'action_required' && $case->resubmission_allowed && in_array('clarify_personal_information', $case->requested_action_codes ?? [], true))
+                <a href="{{ route('instructor-application.personal-information.edit') }}" class="mt-4 inline-flex min-h-11 items-center rounded-xl border border-purple-700 px-4 py-2 font-semibold text-purple-700">Correct personal information</a>
+            @endif
             @if ($user->isInstructorApplicant() && in_array($case->status, ['awaiting_verification', 'verification_in_progress', 'action_required', 'rejected'], true))
-                @php($governmentIdTypes = config('persona.government_id_classes', []))
+                @php
+                    $governmentIdTypes = collect(config('persona.government_id_classes', []))
+                        ->mapWithKeys(fn ($personaClass, $value) => [
+                            $value => data_get(config('guardian_identity.id_types', []), $value.'.label', str($value)->headline()),
+                        ])
+                        ->all();
+                @endphp
                 @if ($case->status === 'awaiting_verification' || ($case->status === 'verification_in_progress' && ! $attempt?->persona_inquiry_id))
-                    <form method="POST" action="{{ route('instructor-application.identity.persona.start') }}" class="mt-4 flex flex-wrap items-end gap-3" data-instructor-form>
+                    <form method="POST" action="{{ route('instructor-application.identity.persona.start') }}" class="mt-4 flex flex-wrap items-end gap-3" data-instructor-form x-data="{ loading: false }" @submit="loading = true">
                         @csrf
-                        <label for="government_id_type" class="text-sm font-medium text-gray-700">Government ID type
-                            <select id="government_id_type" name="government_id_type" required class="mt-1 block min-h-11 rounded-xl border-gray-300">
-                                @foreach ($governmentIdTypes as $value => $label)<option value="{{ $value }}">{{ str($label)->headline() }}</option>@endforeach
+                        <label for="government_id_type" class="min-w-56 text-sm font-medium text-gray-700">Government ID type
+                            <select id="government_id_type" name="government_id_type" required class="mt-1 block min-h-11 w-full rounded-xl border-gray-300">
+                                @foreach ($governmentIdTypes as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
                             </select>
                         </label>
-                        <button type="submit" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white">Start identity verification</button>
+                        <button type="submit" :disabled="loading" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white disabled:cursor-wait disabled:opacity-60">
+                            <span x-show="!loading">Start identity verification</span>
+                            <span x-show="loading" class="inline-flex items-center gap-2">
+                                <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                Opening verification…
+                            </span>
+                        </button>
                         <p data-submit-status class="w-full text-sm text-gray-600" role="status" aria-live="polite"></p>
                     </form>
                 @elseif ($case->status === 'verification_in_progress')
-                    <form method="POST" action="{{ route('instructor-application.identity.persona.resume') }}" class="mt-4" data-instructor-form>
+                    <form method="POST" action="{{ route('instructor-application.identity.persona.resume') }}" class="mt-4" data-instructor-form x-data="{ loading: false }" @submit="loading = true">
                         @csrf
-                        <button type="submit" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white">Continue identity verification</button>
+                        <button type="submit" :disabled="loading" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white disabled:cursor-wait disabled:opacity-60">
+                            <span x-show="!loading">Continue identity verification</span>
+                            <span x-show="loading" class="inline-flex items-center gap-2">
+                                <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                Opening verification…
+                            </span>
+                        </button>
                         <p data-submit-status class="mt-2 text-sm text-gray-600" role="status" aria-live="polite"></p>
                     </form>
                 @else
-                    <form method="POST" action="{{ route('instructor-application.identity.persona.replace') }}" class="mt-4 flex flex-wrap items-end gap-3" data-instructor-form>
+                    <form method="POST" action="{{ route('instructor-application.identity.persona.replace') }}" class="mt-4 flex flex-wrap items-end gap-3" data-instructor-form x-data="{ loading: false }" @submit="loading = true">
                         @csrf
-                        <label for="replacement_government_id_type" class="text-sm font-medium text-gray-700">Government ID type
-                            <select id="replacement_government_id_type" name="government_id_type" required class="mt-1 block min-h-11 rounded-xl border-gray-300">
-                                @foreach ($governmentIdTypes as $value => $label)<option value="{{ $value }}" @selected($attempt?->local_government_id_type === $value)>{{ str($label)->headline() }}</option>@endforeach
+                        <label for="replacement_government_id_type" class="min-w-56 text-sm font-medium text-gray-700">Government ID type
+                            <select id="replacement_government_id_type" name="government_id_type" required class="mt-1 block min-h-11 w-full rounded-xl border-gray-300">
+                                @foreach ($governmentIdTypes as $value => $label)<option value="{{ $value }}" @selected($attempt?->local_government_id_type === $value)>{{ $label }}</option>@endforeach
                             </select>
                         </label>
-                        <button type="submit" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white">Start a replacement attempt</button>
+                        <button type="submit" :disabled="loading" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white disabled:cursor-wait disabled:opacity-60">
+                            <span x-show="!loading">Start a replacement attempt</span>
+                            <span x-show="loading" class="inline-flex items-center gap-2">
+                                <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                Opening verification…
+                            </span>
+                        </button>
                         <p data-submit-status class="w-full text-sm text-gray-600" role="status" aria-live="polite"></p>
                     </form>
                 @endif
@@ -91,7 +138,12 @@
                     <a href="{{ route('instructor-application.application.edit') }}" class="mt-4 inline-flex min-h-11 items-center rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white">Resume Stage Two</a>
                     @break
                 @case('pending')
-                    <p class="mt-2 text-sm text-gray-600">An administrator is reviewing your current qualifications. Instructor access remains unchanged until a final decision.</p>
+                    @if(!empty($application->application_metadata['document_change_request']['slots']))
+                        <p class="mt-2 text-sm text-amber-800">An administrator has requested replacement documents before your review can continue.</p>
+                        <a href="{{ route('instructor-application.documents.requested', $application) }}" class="mt-4 inline-flex min-h-11 items-center rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white">Review requested documents</a>
+                    @else
+                        <p class="mt-2 text-sm text-gray-600">An administrator is reviewing your current qualifications. Instructor access remains unchanged until a final decision.</p>
+                    @endif
                     @break
                 @case('approved')
                     <p class="mt-2 text-sm text-emerald-700">Final application approval is recorded. Your instructor workspace is now available.</p>

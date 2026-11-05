@@ -115,7 +115,7 @@ class PersonaReviewTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.parent-verifications.learners.show', $case))
             ->assertOk()
-            ->assertSee('Simulated Sandbox result', false)
+            ->assertDontSee('Simulated Sandbox result', false)
             ->assertSee('View Persona selfie', false)
             ->assertDontSee('gov_secret_identifier', false)
             ->assertDontSee('selfie_secret_identifier', false)

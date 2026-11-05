@@ -35,9 +35,12 @@ class LearnerIdentitySubmission
                 }
                 $pathway = $actor->deriveAgeBracketCache();
                 if ($case->user_id !== $actor->id || $case->superseded_at !== null
-                    || $case->pathway !== match ($pathway) { 'teens' => 'teen', 'adults' => 'adult', default => null }
+                    || $case->pathway !== match ($pathway) {
+                        'teens' => 'teen', 'adults' => 'adult', default => null
+                    }
                     || ! $actor->isLearner() || $actor->isParentRegistration() || ! $actor->hasVerifiedEmail()
                     || ! in_array($case->status, [null, 'rejected'], true)
+                    || ($case->status === 'rejected' && ! $case->resubmission_allowed)
                     || $actor->identityVerifications()->whereNull('superseded_at')->whereKeyNot($case->id)->exists()) {
                     throw new DomainException('Learner identity case is not available for submission.');
                 }
@@ -54,9 +57,8 @@ class LearnerIdentitySubmission
                 $previousStatus = $case->status;
                 $type = $data['document_type'];
                 $subtype = $type === 'government_id' ? $data['government_id_type'] : null;
-                if ($this->personaInquiries->isRequired()) {
-                    $this->personaInquiries->assertLearnerMaySubmit($actor, $case, $type, $subtype);
-                }
+                $personaAttempt = $this->personaInquiries->isRequired()
+                    ? $this->personaInquiries->assertLearnerMaySubmit($actor, $case, $type, $subtype) : null;
                 $requiresBack = $type === 'government_id'
                     && (bool) data_get(config('guardian_identity.id_types', []), $subtype.'.requires_back', false);
 
@@ -95,7 +97,10 @@ class LearnerIdentitySubmission
                 }
 
                 $case->forceFill([
+                    'persona_evidence_attempt_id' => $personaAttempt?->flow_type === \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL ? $personaAttempt->id : null,
+                    'requested_corrections' => null, 'correction_note' => null,
                     'document_type' => $type,
+                    'sandbox_manual_review' => false,
                     'evidence_source' => $this->personaInquiries->isRequired() && in_array($type, ['school_id', 'institution_id'], true)
                         ? 'persona_selfie' : 'local',
                     'government_id_type' => $subtype,

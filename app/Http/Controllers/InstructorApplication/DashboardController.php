@@ -8,6 +8,7 @@ use App\Services\Identity\LearnerIdentityRequirement;
 use App\Services\InstructorApplication\InstructorIdentityService;
 use DomainException;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -16,9 +17,13 @@ class DashboardController extends Controller
         Request $request,
         InstructorIdentityService $identityService,
         LearnerIdentityRequirement $learnerIdentityRequirement,
-    ): View {
+    ): View|RedirectResponse {
         /** @var User $user */
         $user = $request->user();
+        if ($user->isInstructor()) {
+            return redirect()->route('instructor.dashboard');
+        }
+
         $case = null;
         $learnerIdentity = null;
         $identityMessage = null;

@@ -96,9 +96,6 @@
                     Switch to Instructor View
                 </a>
             @elseif(auth()->user()->isLearner() && !auth()->user()->isInstructor())
-                <a href="{{ route('instructor-application.recruitment') }}" class="hidden xl:inline-flex items-center gap-2 rounded-lg border border-purple-200 px-3 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors">
-                    Be Our Partner
-                </a>
                 @if(auth()->user()->instructorApplications()->where('status', 'pending')->exists())
                     <a href="{{ route('learner.instructor.submitted') }}" class="hidden sm:inline-flex items-center gap-2 rounded-lg bg-orange-100 text-orange-700 px-3 py-2 text-xs font-semibold hover:bg-orange-200 transition-colors">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

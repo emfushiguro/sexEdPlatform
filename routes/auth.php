@@ -122,6 +122,10 @@ Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
     ->name('parent.verification.approval-link');
 
 Route::middleware('auth')->group(function () {
+    Route::middleware('verified')->group(function () {
+        Route::get('instructor-application/{application}/requested-documents', [InstructorApplicationController::class, 'requestedDocuments'])->name('instructor-application.documents.requested');
+        Route::post('instructor-application/{application}/requested-documents', [InstructorApplicationController::class, 'replaceDocuments'])->name('instructor-application.documents.replace');
+    });
     Route::middleware(['verified', 'direct.instructor.enabled'])->group(function () {
         Route::get('instructor-application', DashboardController::class)
             ->name('instructor-application.dashboard');
@@ -141,6 +145,9 @@ Route::middleware('auth')->group(function () {
             ->name('instructor-application.identity.persona.replace');
         Route::prefix('instructor-application/application')->name('instructor-application.application.')->group(function (): void {
             Route::get('/', [InstructorApplicationController::class, 'edit'])->name('edit');
+            Route::post('/documents', [InstructorApplicationController::class, 'saveDocuments'])->name('documents.save');
+            Route::get('/expertise', [InstructorApplicationController::class, 'expertise'])->name('expertise');
+            Route::post('/expertise/draft', [InstructorApplicationController::class, 'saveExpertiseDraft'])->name('expertise.save-draft');
             Route::post('/draft', [InstructorApplicationController::class, 'saveDraft'])->name('save-draft');
             Route::post('/submit', [InstructorApplicationController::class, 'submit'])->name('submit');
             Route::get('/submitted', [InstructorApplicationController::class, 'submitted'])->name('submitted');

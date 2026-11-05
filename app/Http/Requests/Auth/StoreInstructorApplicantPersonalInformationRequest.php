@@ -41,7 +41,7 @@ class StoreInstructorApplicantPersonalInformationRequest extends FormRequest
                 'before_or_equal:'.$minimumBirthdate,
                 'after:'.now()->subYears(100)->format('Y-m-d'),
             ],
-            'gender' => ['nullable', 'string', 'max:40'],
+            'gender' => ['nullable', 'string', 'in:male,female,prefer_not_to_say'],
             'contact' => ['nullable', 'string', 'max:40'],
             'city_code' => ['required', 'string', 'max:32'],
             'barangay_code' => ['required', 'string', 'max:32'],

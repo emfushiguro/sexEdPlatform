@@ -38,6 +38,26 @@ class RejectParentVerificationRequest extends FormRequest
                 },
             ],
             'issue_warning' => ['nullable', 'boolean'],
+            'allow_resubmission' => ['sometimes', 'boolean'],
+            'requested_corrections' => [
+                Rule::requiredIf(fn (): bool => $this->boolean('allow_resubmission', true)),
+                'array',
+                'min:1',
+            ],
+            'requested_corrections.*' => [
+                'required',
+                'string',
+                'distinct',
+                Rule::in($this->requestedCorrectionTypes()),
+            ],
+            'persona_attempt_id' => [$this->route('user')?->parent_identity_evidence_source === 'persona' ? 'required' : 'nullable', 'integer', 'min:1'],
         ];
+    }
+
+    private function requestedCorrectionTypes(): array
+    {
+        return $this->route('user')?->parent_identity_evidence_source === 'persona'
+            ? ['persona_identity']
+            : ['id'];
     }
 }

@@ -27,7 +27,8 @@ class GuardianIdentityVerificationController extends Controller
             return redirect()->route('verification.notice');
         }
 
-        if ($user->isParentVerificationPending() || $user->isParentVerificationApproved()) {
+        if ($user->isParentVerificationPending() || $user->isParentVerificationApproved()
+            || ($user->parent_verification_status === 'rejected' && ! $user->parent_identity_resubmission_allowed)) {
             return redirect()->route('guardian.verification.status');
         }
 

@@ -6,10 +6,6 @@
         </div>
     </x-slot>
     <main class="mx-auto max-w-2xl space-y-5">
-        @php
-            $personaRequired = $personaRequired ?? false;
-            $personaAttempt = $personaAttempt ?? null;
-        @endphp
         @unless($supportHold)<x-wizard-stepper :is-parent-flow="false" />@endunless
         <h1 class="text-3xl font-bold text-gray-900">Identity verification status</h1>
         @if($supportHold)
@@ -17,9 +13,9 @@
         @elseif($case->status === 'pending')
             <section class="space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5" aria-labelledby="pending-review-title">
                 <div>
-                    <h2 id="pending-review-title" class="text-lg font-semibold text-amber-950">Your identity verification is under review</h2>
+                    <h2 id="pending-review-title" class="text-lg font-semibold text-amber-950">Pending review</h2>
                     @if($case->evidence_source === 'persona')
-                        <p class="mt-2 text-sm text-gray-700">Your Persona ID and selfie were submitted for administrator review. No additional upload is required. Simulated Sandbox result.</p>
+                        <p class="mt-2 text-sm text-gray-700">Your ID and selfie were submitted for review. No additional upload is required.</p>
                     @endif
                     <p class="mt-2 text-sm leading-6 text-gray-700">
                         We’ll email you at <span class="font-semibold">{{ $case->learner?->email ?? auth()->user()->email }}</span> when the review is complete.
@@ -40,22 +36,38 @@
                 </div>
             </section>
         @elseif($case->status === 'rejected')
-            @if($personaRequired)
-                @include('auth.partials.persona-identity-step', [
-                    'attempt' => $personaAttempt,
-                    'allowSchoolDocuments' => $case->pathway === 'teen',
-                    'documentType' => $personaAttempt?->local_document_type,
-                    'governmentIdType' => $personaAttempt?->local_government_id_type,
-                ])
-            @endif
-            <p class="text-gray-800">Your identity verification needs another submission.</p>
+            @php
+                $resubmissionAllowed = $case->resubmission_allowed !== false;
+                $correctionLabels = ['identity_front' => 'ID front', 'identity_back' => 'ID back', 'selfie' => 'Selfie', 'persona_identity' => 'ID and selfie'];
+            @endphp
+            <h2 class="text-lg font-semibold text-gray-900">{{ $resubmissionAllowed ? 'Changes required' : 'Rejected' }}</h2>
             @if($case->rejection_reason)
                 <p class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-gray-900">{{ $case->rejection_reason }}</p>
             @endif
-            <a href="{{ route('learner.identity.create') }}" class="inline-block rounded-lg bg-purple-800 px-5 py-3 font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">Resubmit identity images</a>
+            @if($resubmissionAllowed)
+                <p class="text-gray-800">Update the requested items and submit them for another review.</p>
+                @if($case->requested_corrections)
+                    <ul class="list-inside list-disc space-y-1 text-gray-800">
+                        @foreach($case->requested_corrections as $slot)
+                            @if(isset($correctionLabels[$slot]))<li>{{ $correctionLabels[$slot] }}</li>@endif
+                        @endforeach
+                    </ul>
+                @endif
+                @if($case->correction_note)
+                    <p class="whitespace-pre-line rounded-lg border border-amber-200 bg-amber-50 p-4 text-gray-900">{{ $case->correction_note }}</p>
+                @endif
+                <a href="{{ route('learner.identity.create') }}" class="inline-block rounded-lg bg-purple-800 px-5 py-3 font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">Update requested items</a>
+            @else
+                <p class="text-gray-800" role="status">Contact support to continue.</p>
+            @endif
         @elseif($case->status === 'approved')
-            <p class="text-gray-800">Your identity verification is approved.</p>
-            <a href="{{ route('profile.complete') }}" class="inline-block rounded-lg bg-purple-800 px-5 py-3 font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">Continue to profile</a>
+            @if($case->sandbox_manual_review && ! \App\Models\PersonaInquiry::localManualReviewEnabled())
+                <p class="text-gray-800" role="status">Contact support to continue.</p>
+            @else
+                <h2 class="text-lg font-semibold text-gray-900">Approved</h2>
+                <p class="text-gray-800">Your identity verification is approved.</p>
+                <a href="{{ route('profile.complete') }}" class="inline-block rounded-lg bg-purple-800 px-5 py-3 font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">Continue to profile</a>
+            @endif
         @endif
         <p><a href="{{ route('privacy') }}" class="font-semibold text-purple-800 underline">Privacy policy</a></p>
     </main>

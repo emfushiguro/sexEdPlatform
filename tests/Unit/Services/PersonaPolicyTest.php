@@ -67,8 +67,6 @@ class PersonaPolicyTest extends TestCase
 
         foreach ([
             ['document_type' => 'government_id', 'government_id_type' => 'other'],
-            ['document_type' => 'government_id', 'government_id_type' => 'national_id'],
-            ['document_type' => 'government_id', 'government_id_type' => 'philhealth'],
             ['document_type' => 'government_id', 'government_id_type' => 'senior_citizen_id'],
             ['document_type' => 'government_id', 'government_id_type' => 'pwd_id'],
             ['document_type' => 'government_id', 'government_id_type' => 'prc_id'],
@@ -149,6 +147,52 @@ class PersonaPolicyTest extends TestCase
         $this->assertSame(PersonaInquiry::OUTCOME_ELIGIBLE, $result['verification_outcome']);
         $this->assertSame(PersonaInquiry::POLICY_ELIGIBLE, $result['country_policy_status']);
         $this->assertSame(PersonaInquiry::POLICY_ELIGIBLE, $result['document_policy_status']);
+    }
+
+    public function test_all_template_philippine_ids_can_be_selected_and_require_their_exact_class(): void
+    {
+        $expected = [
+            'drivers_license' => 'dl', 'national_id' => 'id', 'passport' => 'pp',
+            'philhealth' => 'hic', 'nbi_clearance' => 'nbi', 'ofw_id' => 'ofw',
+            'postal_id' => 'pid', 'seafarers_id' => 'sid', 'sss_id' => 'sss',
+            'tin_card' => 'tin', 'umid' => 'umid', 'voters_id' => 'vid',
+        ];
+        $this->assertSame($expected, config('persona.government_id_classes'));
+        $learner = $this->learner(21);
+        $case = $this->case($learner, 'adult');
+        $guardian = User::factory()->create([
+            'role' => 'learner', 'birthdate' => '1990-01-01', 'is_parent_registration' => true,
+        ]);
+        $selector = app(PersonaTemplateSelector::class);
+        $policy = app(PersonaPolicyEvaluator::class);
+
+        foreach ($expected as $type => $class) {
+            $this->assertSame($type, $selector->select($learner, $case, 'government_id', $type)['local_government_id_type']);
+            $this->assertSame($type, $selector->select($guardian, null, 'government_id', $type)['local_government_id_type']);
+            $attempt = $this->attempt(PersonaInquiry::FLOW_ADULT_GOVERNMENT, 'government_id', $type);
+            $this->assertSame(PersonaInquiry::OUTCOME_ELIGIBLE, $policy->evaluate($attempt, $this->inquiryResponse('PH', $class))['verification_outcome']);
+            foreach ([['US', $class], ['PH', $class === 'pp' ? 'id' : 'pp'], ['PH', 'other'], ['PH', null]] as [$country, $wrongClass]) {
+                $this->assertNotSame(PersonaInquiry::OUTCOME_ELIGIBLE, $policy->evaluate($attempt, $this->inquiryResponse($country, $wrongClass))['verification_outcome']);
+            }
+        }
+    }
+
+    public function test_shared_persona_selector_lists_all_twelve_template_choices_only(): void
+    {
+        $view = $this->view('auth.partials.persona-identity-step', [
+            'documentType' => 'government_id', 'governmentIdType' => null,
+            'errors' => new \Illuminate\Support\ViewErrorBag,
+        ]);
+        foreach ([
+            'drivers_license', 'national_id', 'passport', 'philhealth', 'nbi_clearance', 'ofw_id',
+            'postal_id', 'seafarers_id', 'sss_id', 'tin_card', 'umid', 'voters_id',
+        ] as $type) {
+            $view->assertSee('value="'.$type.'"', false);
+            $view->assertSee(config('guardian_identity.id_types.'.$type.'.label'));
+        }
+        foreach (['senior_citizen_id', 'pwd_id', 'prc_id', 'other'] as $type) {
+            $view->assertDontSee('value="'.$type.'"', false);
+        }
     }
 
     /** @dataProvider ineligibleGovernmentResults */

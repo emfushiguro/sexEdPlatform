@@ -23,6 +23,23 @@ function fixture(overrides = {}) {
     return { component, input, video, stopped, revoked };
 }
 
+test('ID capture uses the rear camera and never offers a file-upload fallback', async () => {
+    let constraints;
+    const { component, input } = fixture({ subject: 'ID', cameraOnly: true, facingMode: 'environment',
+        mediaDevices: { getUserMedia: async (value) => { constraints = value; return { getTracks: () => [{ stop() {} }] }; } },
+    });
+    await component.startCamera();
+    assert.equal(constraints.video.facingMode, 'environment');
+    await component.capturePhoto();
+    component.usePhoto();
+    assert.equal(input.files[0].name, 'id.jpg');
+    assert.equal(component.uploadAvailable, false);
+    const failed = fixture({ subject: 'ID', cameraOnly: true, mediaDevices: null }).component;
+    await failed.startCamera();
+    assert.doesNotMatch(failed.cameraError, /upload/i);
+    assert.match(failed.cameraError, /another device/i);
+});
+
 test('camera starts on request and capture remains local until Use Photo', async () => {
     const { component, input, video } = fixture();
     await component.startCamera();

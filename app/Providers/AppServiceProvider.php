@@ -130,6 +130,8 @@ class AppServiceProvider extends ServiceProvider
             $moderationCounts = [
                 'pending_instructor_applications' => InstructorApplication::query()->where('status', 'pending')->count(),
                 'pending_instructor_identity_reviews' => InstructorIdentityVerification::pendingReview()->count(),
+                'pending_instructor_reviews' => InstructorApplication::query()->where('status', 'pending')->count()
+                    + InstructorIdentityVerification::pendingReview()->count(),
                 'pending_module_reviews' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
                 'pending_parent_verifications' => User::query()
                     ->where('is_parent_registration', true)

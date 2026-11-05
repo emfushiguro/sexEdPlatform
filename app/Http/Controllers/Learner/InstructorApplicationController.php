@@ -4,14 +4,20 @@ namespace App\Http\Controllers\Learner;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SubmitInstructorApplicationRequest;
+use App\Models\InstructorApplication;
 use App\Services\InstructorApplicationService;
+use App\Services\InstructorApplication\InstructorIdentityService;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class InstructorApplicationController extends Controller
 {
-    public function __construct(private readonly InstructorApplicationService $service)
+    public function __construct(
+        private readonly InstructorApplicationService $service,
+        private readonly InstructorIdentityService $identityService,
+    )
     {
     }
 
@@ -24,10 +30,29 @@ class InstructorApplicationController extends Controller
                 ->with('error', 'Only learners can submit instructor applications.');
         }
 
+        if ($user->isParentRegistration()) {
+            return redirect()->route('learner.dashboard')
+                ->with('error', 'Guardian-registration accounts cannot apply as instructors in this workflow.');
+        }
+
         $pending = $user->instructorApplications()->where('status', 'pending')->exists();
         if ($pending) {
-            return redirect()->route('learner.dashboard')
+            return redirect()->route('learner.instructor.submitted')
                 ->with('info', 'You already have a pending instructor application.');
+        }
+
+        if (config('instructor_application.identity_enforced_from')) {
+            try {
+                $this->identityService->satisfyFromApprovedLearnerIdentity($user);
+            } catch (DomainException $exception) {
+                return redirect()->route('learner.dashboard')
+                    ->with('error', $exception->getMessage());
+            }
+        }
+
+        if (! $user->can('view', InstructorApplication::class)) {
+            return redirect()->route('learner.dashboard')
+                ->with('error', 'Complete your approved learner identity verification before applying as an instructor.');
         }
 
         return view('learner.instructor-application.form');
