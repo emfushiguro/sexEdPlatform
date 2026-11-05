@@ -1,5 +1,9 @@
 @php
-    $selectedId = old('id_selection', $draft['id_selection'] ?? ($case->document_type === 'government_id' ? 'government_id:'.$case->government_id_type : $case->document_type));
+    $personaRequired = $personaRequired ?? false;
+    $personaAttempt = $personaAttempt ?? null;
+    $selectedId = $personaAttempt?->local_document_type === 'government_id'
+        ? 'government_id:'.$personaAttempt->local_government_id_type
+        : ($personaAttempt?->local_document_type ?? old('id_selection', $draft['id_selection'] ?? ($case->document_type === 'government_id' ? 'government_id:'.$case->government_id_type : $case->document_type)));
     $idRequirements = collect(config('guardian_identity.id_types', []))->mapWithKeys(fn ($type, $key) => ['government_id:'.$key => (bool) $type['requires_back']])->all();
 @endphp
 <x-auth-split-layout :showTabs="false">
@@ -15,8 +19,8 @@
         <x-wizard-stepper :is-parent-flow="false" />
         <header>
             <p class="text-sm font-semibold uppercase tracking-wider text-purple-700">Identity verification · Step 1 of 2</p>
-            <h1 class="mt-2 text-3xl font-bold text-gray-900">Upload your ID</h1>
-            <p class="mt-2 text-gray-700">Choose one ID type, then add a clear photo of its front. Some IDs also need the back.</p>
+            <h1 class="mt-2 text-3xl font-bold text-gray-900">{{ $personaRequired ? 'Verify your identity' : 'Upload your ID' }}</h1>
+            <p class="mt-2 text-gray-700">{{ $personaRequired && $case->pathway === 'teen' ? 'Choose your ID, capture it, then complete your selfie.' : ($personaRequired ? 'Submit your government ID and selfie once through Persona. An administrator will review your submission.' : 'Choose one ID type, then add a clear photo of its front. Some IDs also need the back.') }}</p>
         </header>
         @if($draft)
             <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 text-sm text-gray-800" role="status">
@@ -27,6 +31,21 @@
             <div role="alert" class="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">Please review the fields below and try again.</div>
         @endif
 
+        @if($personaRequired && $case->pathway === 'teen')
+            @if($personaAttempt && $personaAttempt->local_document_type === 'government_id')
+                @include('auth.partials.persona-identity-step', ['attempt' => $personaAttempt, 'allowSchoolDocuments' => false])
+            @endif
+            @include('auth.partials.teen-identity-document')
+        @elseif($personaRequired)
+            @include('auth.partials.persona-identity-step', [
+                'attempt' => $personaAttempt,
+                'allowSchoolDocuments' => $case->pathway === 'teen',
+                'documentType' => $personaAttempt?->local_document_type,
+                'governmentIdType' => $personaAttempt?->local_government_id_type,
+            ])
+        @endif
+
+        @if(!$personaRequired)
         <form method="POST" action="{{ route('learner.identity.document.store') }}" enctype="multipart/form-data" class="space-y-5"
               x-data="{
                   idSelection: @js($selectedId),
@@ -54,6 +73,10 @@
             @csrf
             <div>
                 <label for="id_selection" class="block font-semibold text-gray-900">ID type</label>
+                @if($personaAttempt?->isPolicyEligible())
+                    <input type="hidden" name="id_selection" value="{{ $selectedId }}">
+                    <p class="mt-2 rounded-xl border border-purple-200 bg-purple-50 p-3 text-sm text-purple-900">Persona locked this choice to <strong>{{ $selectedId }}</strong>.</p>
+                @else
                 <select id="id_selection" name="id_selection" x-model="idSelection" @change="if (!requiresBack()) clearDocument('back')" required
                         aria-invalid="{{ $errors->has('id_selection') ? 'true' : 'false' }}"
                         class="mt-2 w-full rounded-xl border border-gray-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-purple-700">
@@ -70,6 +93,7 @@
                         @endforeach
                     </optgroup>
                 </select>
+                @endif
                 <p class="mt-2 text-sm text-gray-600" x-text="!idSelection ? 'Select an ID type to see what you need.' : (requiresBack() ? 'Front and back images required.' : 'Front image only required.')"></p>
                 @error('id_selection')<p class="mt-1 text-sm text-red-700">{{ $message }}</p>@enderror
             </div>
@@ -111,5 +135,6 @@
             </dialog>
             <button type="submit" class="min-h-11 w-full rounded-xl bg-purple-800 px-6 py-3 font-semibold text-white hover:bg-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">Continue to selfie</button>
         </form>
+        @endif
     </main>
 </x-auth-split-layout>

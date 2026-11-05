@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Support\AuthenticatedHomeRouteResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request, AuthenticatedHomeRouteResolver $homeRouteResolver): RedirectResponse
     {
         $request->authenticate();
 
@@ -45,13 +46,7 @@ class AuthenticatedSessionController extends Controller
         // Role-based redirect after login
         $user = Auth::user();
 
-        if ($user->can('access instructor panel')) {
-            return redirect()->intended(route('instructor.dashboard'))
-                ->with('success', "Welcome back, {$userName}!");
-        }
-
-        // Learner (default)
-        return redirect()->intended(route('learner.dashboard'))
+        return redirect()->intended(route($homeRouteResolver->routeName($user)))
             ->with('success', "Welcome back, {$userName}!");
     }
 

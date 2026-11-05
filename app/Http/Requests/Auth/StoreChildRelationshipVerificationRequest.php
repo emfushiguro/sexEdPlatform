@@ -26,7 +26,7 @@ class StoreChildRelationshipVerificationRequest extends FormRequest
 
         return $guardian instanceof User
             && $guardian->status === User::STATUS_ACTIVE
-            && $guardian->parent_verification_status === 'approved';
+            && $guardian->isParentVerificationApproved();
     }
 
     public function rules(): array

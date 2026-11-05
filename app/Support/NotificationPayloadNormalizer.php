@@ -25,9 +25,9 @@ class NotificationPayloadNormalizer
 
     public function resolveActionUrl(array $data): ?string
     {
-        $candidate = $data['action_url'] ?? $data['url'] ?? $data['module_url'] ?? null;
+        $candidate = $data['action_url'] ?? $data['url'] ?? $data['module_url'] ?? $data['approval_url'] ?? null;
 
-        if (!is_string($candidate)) {
+        if (! is_string($candidate)) {
             return null;
         }
 
@@ -71,7 +71,7 @@ class NotificationPayloadNormalizer
     {
         $title = $data['title'] ?? $data['subject'] ?? null;
 
-        if (!is_string($title) || trim($title) === '') {
+        if (! is_string($title) || trim($title) === '') {
             return 'Notification';
         }
 
@@ -82,7 +82,7 @@ class NotificationPayloadNormalizer
     {
         $message = $data['message'] ?? $data['body'] ?? '';
 
-        if (!is_string($message)) {
+        if (! is_string($message)) {
             return '';
         }
 
@@ -93,7 +93,7 @@ class NotificationPayloadNormalizer
     {
         $preview = $data['message_preview'] ?? $data['preview'] ?? $data['message'] ?? $data['body'] ?? '';
 
-        if (!is_string($preview)) {
+        if (! is_string($preview)) {
             return '';
         }
 
@@ -104,7 +104,7 @@ class NotificationPayloadNormalizer
     {
         $senderName = $data['sender_name'] ?? $data['actor_name'] ?? null;
 
-        if (!is_string($senderName)) {
+        if (! is_string($senderName)) {
             return null;
         }
 
@@ -117,7 +117,7 @@ class NotificationPayloadNormalizer
     {
         $avatarUrl = $data['sender_avatar_url'] ?? $data['actor_avatar_url'] ?? null;
 
-        if (!is_string($avatarUrl)) {
+        if (! is_string($avatarUrl)) {
             return null;
         }
 

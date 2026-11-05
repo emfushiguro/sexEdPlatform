@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\InstructorApplication;
+use App\Models\InstructorIdentityVerification;
 use App\Models\ContentReport;
 use App\Models\MessageReport;
 use App\Models\Module;
@@ -80,9 +81,10 @@ class AdminDashboardService
                 ],
                 [
                     'label' => 'Pending Instructor Applications',
-                    'value' => InstructorApplication::query()->where('status', 'pending')->count(),
-                    'description' => 'Learner applications waiting for instructor approval.',
-                    'accent' => 'orange',
+                    'value' => InstructorApplication::query()->where('status', 'pending')->count()
+                        + InstructorIdentityVerification::pendingReview()->count(),
+                    'description' => 'Stage One and Stage Two submissions waiting for review.',
+                    'accent' => 'violet',
                 ],
                 [
                     'label' => 'Pending Module Reviews',
@@ -100,11 +102,12 @@ class AdminDashboardService
             'moderation_queues' => [
                 [
                     'label' => 'Instructor Applications',
-                    'count' => InstructorApplication::query()->where('status', 'pending')->count(),
+                    'count' => InstructorApplication::query()->where('status', 'pending')->count()
+                        + InstructorIdentityVerification::pendingReview()->count(),
                     'cta_label' => 'Open Queue',
-                    'cta_route' => route('admin.instructor-applications.index', ['status' => 'pending']),
-                    'description' => 'Review learner requests to become instructors.',
-                    'accent' => 'amber',
+                    'cta_route' => route('admin.instructor-applications.identities.index'),
+                    'description' => 'Review Stage One identity evidence and Stage Two applications.',
+                    'accent' => 'violet',
                 ],
                 [
                     'label' => 'Module Published Review',
@@ -368,10 +371,7 @@ class AdminDashboardService
                     'title' => ($application->user?->name ?? 'Learner') . ' application is ' . str_replace('_', ' ', $status),
                     'meta' => 'Application #' . $application->id,
                     'occurred_at' => $application->updated_at,
-                    'href' => route('admin.instructor-applications.index', [
-                        'status' => $status,
-                        'focus' => $application->id,
-                    ]),
+                    'href' => route('admin.instructor-applications.review', $application),
                     'tone' => $tone,
                 ];
             })

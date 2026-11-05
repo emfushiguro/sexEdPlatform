@@ -93,7 +93,14 @@
                             {{ $item['label'] }}
                         </a>
                     </li>
-                    @endforeach
+                @endforeach
+                    <li>
+                        <a href="{{ route('instructor-application.recruitment') }}"
+                           :class="scrolled ? 'text-gray-600 hover:text-purple-700' : 'text-white/85 hover:text-white'"
+                           class="nav-link text-[14px] font-medium transition-colors">
+                            Be Our Partner
+                        </a>
+                    </li>
                 </ul>
                 <div class="flex items-center gap-3">
                     <a href="{{ route('login') }}"
@@ -143,6 +150,12 @@
                     {{ $item['label'] }}
                 </a>
                 @endforeach
+                <a href="{{ route('instructor-application.recruitment') }}"
+                   @click="mobileOpen = false"
+                   :class="scrolled ? 'text-purple-700 hover:bg-purple-50' : 'text-white hover:bg-white/10'"
+                   class="px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors">
+                    Be Our Partner
+                </a>
                 <div class="flex gap-2 px-4 pt-3 mt-1 border-t"
                      :class="scrolled ? 'border-purple-100' : 'border-white/20'">
                     <a href="{{ route('login') }}"
@@ -533,6 +546,18 @@
 @endif
 
 
+{{-- INSTRUCTOR PARTNER --}}
+<section class="bg-white px-6 py-16 lg:px-8 lg:py-20" aria-labelledby="partner-heading">
+    <div class="mx-auto grid max-w-7xl gap-8 rounded-3xl border border-purple-100 bg-purple-50 p-8 lg:grid-cols-[1fr_auto] lg:items-center lg:p-12">
+        <div>
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-purple-700">For educators</p>
+            <h2 id="partner-heading" class="mt-3 text-3xl font-black text-purple-950">Bring your perspective to the classroom</h2>
+            <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">Learn about the two-stage identity and instructor review before you decide whether to apply. Verification and application review are separate administrator decisions.</p>
+        </div>
+        <a href="{{ route('instructor-application.recruitment') }}" class="inline-flex min-h-11 items-center justify-center rounded-full bg-purple-700 px-6 py-3 text-sm font-bold text-white hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">Be Our Partner</a>
+    </div>
+</section>
+
 {{-- FOOTER --}}
 <footer class="lp-brand-gradient-bg">
     <div class="max-w-7xl mx-auto px-6 lg:px-8 py-14">
@@ -576,6 +601,7 @@
                     @endforeach
                     <li><a href="{{ route('landing.apk') }}" class="lp-footer-link text-sm">Download APK</a></li>
                     <li><a href="{{ route('help.index') }}" class="lp-footer-link text-sm">Help Center</a></li>
+                    <li><a href="{{ route('instructor-application.recruitment') }}" class="lp-footer-link text-sm">Be Our Partner</a></li>
                 </ul>
             </div>
 

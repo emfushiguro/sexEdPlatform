@@ -45,6 +45,7 @@ class ParentChildAccount extends Model
         'relationship_status',
         'relationship_verified_status',
         'current_evidence_round',
+        'relationship_correction_request',
         'relationship_verification_submitted_at',
         'relationship_verification_reviewed_by',
         'relationship_verification_reviewed_at',
@@ -81,6 +82,7 @@ class ParentChildAccount extends Model
         'relationship_verification_revoked_at' => 'datetime',
         'relationship_deactivated_at' => 'datetime',
         'current_evidence_round' => 'integer',
+        'relationship_correction_request' => 'array',
     ];
 
     /**
@@ -159,7 +161,8 @@ class ParentChildAccount extends Model
             ->verifiedActive()
             ->whereHas('parent', fn (Builder $parent) => $parent
                 ->where('status', User::STATUS_ACTIVE)
-                ->where('parent_verification_status', 'approved'))
+                ->where('parent_verification_status', 'approved')
+                ->when(! PersonaInquiry::localManualReviewEnabled(), fn (Builder $guardian) => $guardian->where('parent_identity_sandbox_manual_review', false)))
             ->whereHas('child', fn (Builder $child) => $child->where('status', User::STATUS_ACTIVE))
             ->where(function (Builder $childVerification): void {
                 $childVerification

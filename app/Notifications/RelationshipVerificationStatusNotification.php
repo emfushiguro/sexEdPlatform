@@ -47,8 +47,8 @@ class RelationshipVerificationStatusNotification extends Notification
             'status' => $this->relationship->relationship_verified_status,
             'relationship_status' => $this->relationship->relationship_status,
             'action_url' => (int) $notifiable->id === (int) $this->relationship->child_user_id
-                ? route('learner.parent.index')
-                : route('parent.relationship-verifications.show', $this->relationship),
+                ? route('learner.parent.index', [], false)
+                : route('parent.relationship-verifications.show', $this->relationship, false),
             'severity' => $this->action === 'approved' ? 'success' : 'warning',
         ];
     }

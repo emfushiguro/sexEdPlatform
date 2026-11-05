@@ -10,13 +10,15 @@ class RejectInstructorApplicationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->isAdmin();
+        return (bool) $this->user()?->isAdmin()
+            && $this->user()->hasPermissionTo('review instructor applications');
     }
 
     public function rules(): array
     {
         return [
             'review_application_id' => ['nullable', 'integer'],
+            'identity_case_id' => ['nullable', 'integer'],
             'rejection_reason_code' => ['required', 'string', Rule::in(InstructorApplicationRejectionReason::values())],
             'rejection_reason_note' => [
                 'nullable',

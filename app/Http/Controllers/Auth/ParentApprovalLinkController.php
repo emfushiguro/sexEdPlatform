@@ -22,7 +22,7 @@ class ParentApprovalLinkController extends Controller
             abort(403);
         }
 
-        if (! $user->is_parent_registration || $user->parent_verification_status !== 'approved') {
+        if (! $user->is_parent_registration || ! $user->isParentVerificationApproved()) {
             return redirect()->route('login')
                 ->with('error', 'This approval link is no longer valid.');
         }

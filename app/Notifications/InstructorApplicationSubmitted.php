@@ -25,9 +25,9 @@ class InstructorApplicationSubmitted extends Notification
         return [
             'type' => 'instructor_application_submitted',
             'title' => 'New Instructor Application',
-            'message' => 'A learner has submitted an instructor application.',
+            'message' => 'An instructor application is ready for review.',
             'application_id' => $this->application->id,
-            'url' => route('admin.instructor-applications.index', ['focus' => $this->application->id]),
+            'url' => route('admin.instructor-applications.review', $this->application),
         ];
     }
 
@@ -35,7 +35,7 @@ class InstructorApplicationSubmitted extends Notification
     {
         return (new MailMessage)
             ->subject('New Instructor Application Submitted')
-            ->line('A learner has submitted an instructor application and it is ready for review.')
-            ->action('Review Application', route('admin.instructor-applications.index', ['focus' => $this->application->id]));
+            ->line('An instructor application is ready for review.')
+            ->action('Review Application', route('admin.instructor-applications.review', $this->application));
     }
 }

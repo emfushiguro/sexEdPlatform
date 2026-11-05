@@ -1,0 +1,41 @@
+<?php
+
+return [
+    'enabled' => (bool) env('PERSONA_ENABLED', false),
+    'environment' => env('PERSONA_ENVIRONMENT', 'sandbox'),
+    'local_manual_review' => (bool) env('PERSONA_LOCAL_MANUAL_REVIEW', false),
+    'demo_manual_review' => (bool) env('PERSONA_DEMO_MANUAL_REVIEW', false),
+    'enforced_from' => env('PERSONA_ENFORCED_FROM'),
+    'api_key' => env('PERSONA_API_KEY'),
+    'api_base_url' => 'https://api.withpersona.com/api/v1',
+    'hosted_flow_url' => 'https://inquiry.withpersona.com/verify',
+    'api_version' => '2026-09-29',
+    'webhook_secret' => env('PERSONA_WEBHOOK_SECRET'),
+    'webhook_secrets' => array_values(array_filter([
+        env('PERSONA_WEBHOOK_SECRET'),
+        env('PERSONA_WEBHOOK_SECRET_PREVIOUS'),
+    ])),
+    'webhook_tolerance_seconds' => 300,
+    'templates' => [
+        'selfie' => env('PERSONA_SELFIE_TEMPLATE_ID'),
+        'govid_selfie' => env('PERSONA_GOVID_SELFIE_TEMPLATE_ID'),
+    ],
+    'government_id_classes' => [
+        'drivers_license' => 'dl',
+        'national_id' => 'id',
+        'passport' => 'pp',
+        'philhealth' => 'hic',
+        'nbi_clearance' => 'nbi',
+        'ofw_id' => 'ofw',
+        'postal_id' => 'pid',
+        'seafarers_id' => 'sid',
+        'sss_id' => 'sss',
+        'tin_card' => 'tin',
+        'umid' => 'umid',
+        'voters_id' => 'vid',
+    ],
+    'media_hosts' => ['files.withpersona.com'],
+    'media_max_bytes' => 10 * 1024 * 1024,
+    'connect_timeout_seconds' => 5,
+    'timeout_seconds' => 15,
+];

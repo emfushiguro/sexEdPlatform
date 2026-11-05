@@ -9,12 +9,19 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\GuardianIdentityVerificationController;
 use App\Http\Controllers\Auth\GuardianOnboardingController;
 use App\Http\Controllers\Auth\InstructorAuthController;
+use App\Http\Controllers\Auth\InstructorApplicantRegistrationController;
+use App\Http\Controllers\InstructorApplication\PersonalInformationController;
+use App\Http\Controllers\InstructorApplication\DashboardController;
+use App\Http\Controllers\InstructorApplication\ApplicationController as InstructorApplicationController;
+use App\Http\Controllers\InstructorApplication\DocumentController as InstructorApplicationDocumentController;
+use App\Http\Controllers\InstructorApplication\PersonaIdentityController as InstructorPersonaIdentityController;
 use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\PersonaIdentityController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\RegistrationTempDocumentController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -22,6 +29,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    Route::middleware('direct.instructor.enabled')->group(function () {
+        Route::get('instructor/apply', [InstructorApplicantRegistrationController::class, 'createPersonal'])
+            ->name('instructor-application.register.personal');
+        Route::post('instructor/apply', [InstructorApplicantRegistrationController::class, 'storePersonal'])
+            ->name('instructor-application.register.personal.store');
+        Route::get('instructor/apply/account', [InstructorApplicantRegistrationController::class, 'createAccount'])
+            ->name('instructor-application.register.account');
+        Route::post('instructor/apply/account', [InstructorApplicantRegistrationController::class, 'storeAccount'])
+            ->name('instructor-application.register.account.store');
+    });
+
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
@@ -105,11 +123,50 @@ Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
 
 Route::middleware('auth')->group(function () {
     Route::middleware('verified')->group(function () {
+        Route::get('instructor-application/{application}/requested-documents', [InstructorApplicationController::class, 'requestedDocuments'])->name('instructor-application.documents.requested');
+        Route::post('instructor-application/{application}/requested-documents', [InstructorApplicationController::class, 'replaceDocuments'])->name('instructor-application.documents.replace');
+    });
+    Route::middleware(['verified', 'direct.instructor.enabled'])->group(function () {
+        Route::get('instructor-application', DashboardController::class)
+            ->name('instructor-application.dashboard');
+        Route::get('instructor-application/personal-information', [PersonalInformationController::class, 'edit'])
+            ->name('instructor-application.personal-information.edit');
+        Route::put('instructor-application/personal-information', [PersonalInformationController::class, 'update'])
+            ->name('instructor-application.personal-information.update');
+        Route::post('instructor-application/identity/persona/start', [InstructorPersonaIdentityController::class, 'start'])
+            ->name('instructor-application.identity.persona.start');
+        Route::post('instructor-application/identity/persona/continue', [InstructorPersonaIdentityController::class, 'resume'])
+            ->name('instructor-application.identity.persona.resume');
+        Route::get('instructor-application/identity/persona/return', [InstructorPersonaIdentityController::class, 'handleReturn'])
+            ->name('instructor-application.identity.persona.return');
+        Route::post('instructor-application/identity/persona/refresh', [InstructorPersonaIdentityController::class, 'refresh'])
+            ->name('instructor-application.identity.persona.refresh');
+        Route::post('instructor-application/identity/persona/replace', [InstructorPersonaIdentityController::class, 'replace'])
+            ->name('instructor-application.identity.persona.replace');
+        Route::prefix('instructor-application/application')->name('instructor-application.application.')->group(function (): void {
+            Route::get('/', [InstructorApplicationController::class, 'edit'])->name('edit');
+            Route::post('/documents', [InstructorApplicationController::class, 'saveDocuments'])->name('documents.save');
+            Route::get('/expertise', [InstructorApplicationController::class, 'expertise'])->name('expertise');
+            Route::post('/expertise/draft', [InstructorApplicationController::class, 'saveExpertiseDraft'])->name('expertise.save-draft');
+            Route::post('/draft', [InstructorApplicationController::class, 'saveDraft'])->name('save-draft');
+            Route::post('/submit', [InstructorApplicationController::class, 'submit'])->name('submit');
+            Route::get('/submitted', [InstructorApplicationController::class, 'submitted'])->name('submitted');
+            Route::delete('/withdraw', [InstructorApplicationController::class, 'withdraw'])->name('withdraw');
+        Route::get('/{application}/documents/{slot}', [InstructorApplicationDocumentController::class, 'show'])->name('documents.show');
+        });
+    });
+
+    Route::middleware('verified')->group(function () {
         Route::get('learner/identity', [LearnerIdentityVerificationController::class, 'create'])->name('learner.identity.create');
         Route::post('learner/identity', [LearnerIdentityVerificationController::class, 'storeDocument'])->name('learner.identity.document.store');
         Route::get('learner/identity/selfie', [LearnerIdentityVerificationController::class, 'selfie'])->name('learner.identity.selfie.create');
         Route::post('learner/identity/selfie', [LearnerIdentityVerificationController::class, 'store'])->name('learner.identity.store');
         Route::get('learner/identity/status', [LearnerIdentityVerificationController::class, 'status'])->name('learner.identity.status');
+        Route::post('identity/persona/start', [PersonaIdentityController::class, 'start'])->name('persona.identity.start');
+        Route::post('identity/persona/continue', [PersonaIdentityController::class, 'resume'])->name('persona.identity.resume');
+        Route::get('identity/persona/return', [PersonaIdentityController::class, 'handleReturn'])->name('persona.identity.return');
+        Route::post('identity/persona/refresh', [PersonaIdentityController::class, 'refresh'])->name('persona.identity.refresh');
+        Route::post('identity/persona/replace', [PersonaIdentityController::class, 'replace'])->name('persona.identity.replace');
     });
 
     Route::get('verify-email', EmailVerificationPromptController::class)

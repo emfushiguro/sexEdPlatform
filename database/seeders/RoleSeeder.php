@@ -20,6 +20,7 @@ class RoleSeeder extends Seeder
         $instructor = Role::findOrCreate('instructor', 'web');
         $learner = Role::findOrCreate('learner', 'web');
         $parent = Role::findOrCreate('parent', 'web');
+        $applicant = Role::findOrCreate('applicant', 'web');
 
         $admin->syncPermissions(Permission::query()->pluck('name')->all());
 
@@ -94,6 +95,8 @@ class RoleSeeder extends Seeder
             'view learner progress',
             'view learner enrollments',
         ]);
+
+        $applicant->syncPermissions([]);
 
         // Compatibility roles still used by legacy account types.
         $counselor = Role::findOrCreate('counselor', 'web');

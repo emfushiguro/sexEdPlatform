@@ -6,6 +6,7 @@ use App\Http\Requests\StoreGuardianRelationshipVerificationRequest;
 use App\Models\GuardianRelationshipVerificationDocument;
 use App\Models\ParentChildAccount;
 use App\Models\User;
+use App\Services\GuardianRelationshipCorrectionDraft;
 use App\Services\GuardianRelationshipVerificationService;
 use App\Support\GuardianRelationshipTypes;
 use Illuminate\Http\RedirectResponse;
@@ -15,9 +16,10 @@ use Illuminate\View\View;
 
 class GuardianRelationshipVerificationController extends Controller
 {
-    public function __construct(private readonly GuardianRelationshipVerificationService $service)
-    {
-    }
+    public function __construct(
+        private readonly GuardianRelationshipVerificationService $service,
+        private readonly GuardianRelationshipCorrectionDraft $drafts,
+    ) {}
 
     public function show(Request $request, ParentChildAccount $parentChildAccount): View
     {
@@ -36,6 +38,8 @@ class GuardianRelationshipVerificationController extends Controller
             'requiredDocumentTypes' => GuardianRelationshipTypes::requiredDocumentTypes($parentChildAccount->relationship_type),
             'requiresCircumstances' => GuardianRelationshipTypes::requiresCircumstances($parentChildAccount->relationship_type),
             'requiresVerification' => $parentChildAccount->requiresRelationshipVerification(),
+            'savedDrafts' => collect($this->drafts->current($request->user(), $parentChildAccount))
+                ->map(fn (array $saved) => ['name' => $saved['name']])->all(),
         ]);
     }
 
@@ -46,15 +50,36 @@ class GuardianRelationshipVerificationController extends Controller
 
         $validated = $request->validated();
 
-        $this->service->submit(
+        $submit = fn () => $this->service->submit(
             $parentChildAccount,
             $request->user(),
             $validated['documents'],
             $validated['relationship_notes'] ?? null,
+            currentEvidenceRound: (int) $validated['current_evidence_round'],
         );
+        if ($parentChildAccount->relationship_correction_request !== null) {
+            $this->drafts->submit($request, $request->user(), $parentChildAccount, $submit);
+        } else {
+            $submit();
+        }
 
         return redirect()->route('parent.relationship-verifications.show', $parentChildAccount)
             ->with('success', 'Relationship verification submitted for admin review.');
+    }
+
+    public function storeDraft(Request $request, ParentChildAccount $parentChildAccount): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeGuardian($request, $parentChildAccount);
+        abort_unless($parentChildAccount->requiresRelationshipVerification(), 404);
+        $validated = $request->validate([
+            'current_evidence_round' => ['required', 'integer', 'min:0'],
+            'slot' => ['required', 'string', 'max:100'],
+            'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'],
+            'documents' => ['prohibited'],
+        ]);
+        $saved = $this->drafts->save($request->user(), $parentChildAccount, (int) $validated['current_evidence_round'], $validated['slot'], $validated['file']);
+
+        return response()->json(['name' => $saved['name']]);
     }
 
     public function document(Request $request, ParentChildAccount $parentChildAccount, GuardianRelationshipVerificationDocument $document)
@@ -83,7 +108,7 @@ class GuardianRelationshipVerificationController extends Controller
             $user instanceof User
                 && (int) $relationship->parent_user_id === (int) $user->id
                 && $user->status === User::STATUS_ACTIVE
-                && $user->parent_verification_status === 'approved',
+                && $user->isParentVerificationApproved(),
             403,
         );
     }

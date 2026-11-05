@@ -14,8 +14,7 @@ class NotificationController extends Controller
     public function __construct(
         private readonly NotificationReadService $readService,
         private readonly NotificationDeepLinkResolver $deepLinkResolver,
-    ) {
-    }
+    ) {}
 
     public function index()
     {
@@ -66,7 +65,8 @@ class NotificationController extends Controller
 
         $url = $this->deepLinkResolver->resolve(
             (array) $notification->data,
-            route('admin.notifications.index')
+            route('admin.notifications.index'),
+            $user,
         );
 
         return redirect($url);

@@ -40,6 +40,7 @@ use App\Http\Controllers\SeminarInteractionController;
 use App\Http\Controllers\TestimonialController;
 use App\Models\Conversation;
 use App\Services\Chat\ChatAuthorizationService;
+use App\Support\AuthenticatedHomeRouteResolver;
 use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -139,11 +140,26 @@ $resolveLocalApkFile = static function (): ?array {
 // Default entry point — landing page for guests, dashboard for authenticated users
 Route::get('/', function () {
     if (Auth::check()) {
-        return redirect('/learn/dashboard');
+        return redirect()->route(
+            app(AuthenticatedHomeRouteResolver::class)->routeName(Auth::user()),
+        );
     }
 
     return view('landing.index', ['testimonials' => \App\Models\Testimonial::query()->publiclyVisible()->with(['user.learnerProfile', 'user.instructorProfile', 'user.profile'])->orderBy('sort_order')->latest('published_at')->limit(6)->get()]);
 })->name('home');
+
+Route::get('/be-our-partner', function (Request $request) {
+    $user = $request->user();
+    $enabled = (bool) config('instructor_application.enabled');
+    $canResume = $enabled && $user?->hasVerifiedEmail() && ($user->isInstructorApplicant() || $user->isLearner());
+
+    return view('landing.instructor-partner', [
+        'enabled' => $enabled,
+        'showStart' => $enabled && ! $user,
+        'canResume' => $canResume,
+        'resumeUrl' => $canResume ? route('instructor-application.dashboard') : route('login'),
+    ]);
+})->name('instructor-application.recruitment');
 
 Route::get('/help', [HelpCenterController::class, 'index'])->name('help.index');
 Route::get('/help/{helpArticle:slug}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'show'])->withoutScopedBindings()->name('help.section.image');
@@ -493,6 +509,8 @@ Route::middleware('auth')->group(function () {
             ->name('relationship-verifications.show');
         Route::post('/relationship-verifications/{parentChildAccount}', [GuardianRelationshipVerificationController::class, 'store'])
             ->name('relationship-verifications.store');
+        Route::post('/relationship-verifications/{parentChildAccount}/draft', [GuardianRelationshipVerificationController::class, 'storeDraft'])
+            ->name('relationship-verifications.draft.store');
         Route::get('/relationship-verifications/{parentChildAccount}/documents/{document}', [GuardianRelationshipVerificationController::class, 'document'])
             ->name('relationship-verifications.documents.show');
 

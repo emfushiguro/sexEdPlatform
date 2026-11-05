@@ -14,6 +14,7 @@ class InstructorApplicationServiceTest extends TestCase
     public function test_submit_application_stores_files_and_record(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
 
         $learner = User::factory()->create(['role' => 'learner']);
         $learner->assignRole('learner');
@@ -32,16 +33,16 @@ class InstructorApplicationServiceTest extends TestCase
             'id' => $application->id,
             'status' => 'pending',
         ]);
-        Storage::disk('public')->assertExists($application->government_id_path);
+        Storage::disk('local')->assertExists($application->government_id_path);
     }
 
     public function test_approve_and_reject_methods_update_status(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $admin->assignRole('admin');
         $this->actingAs($admin);
 
-        $learner = User::factory()->create(['role' => 'learner']);
+        $learner = User::factory()->create(['role' => 'learner', 'status' => 'active', 'birthdate' => now()->subYears(24)->toDateString()]);
         $learner->assignRole('learner');
 
         $application = InstructorApplication::create([

@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Models\ParentChildAccount;
+use App\Http\Middleware\EnsureGuardianVerified;
+use App\Http\Middleware\EnsureProfileCompleted;
 use App\Models\GuardianRelationshipVerificationDocument;
+use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Services\GuardianRelationshipEvidenceService;
 use App\Support\GuardianRelationshipEvidenceRules;
 use App\Support\GuardianRelationshipTypes;
-use App\Http\Middleware\EnsureGuardianVerified;
-use App\Http\Middleware\EnsureProfileCompleted;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -40,6 +40,7 @@ class GuardianRelationshipEvidenceSubmissionTest extends TestCase
         self::assertStringNotContainsString('x-init="init()"', $evidenceFormMarkup);
 
         $this->actingAs($guardian)->post(route('parent.relationship-verifications.store', $relationship), [
+            'current_evidence_round' => $relationship->current_evidence_round,
             'documents' => [
                 ['document_type' => 'adoption_order', 'document_side' => 'not_applicable', 'pairing_key' => null, 'file' => UploadedFile::fake()->createWithContent('front.jpg', 'front-evidence')->mimeType('image/jpeg')],
                 ['document_type' => 'other_supporting_document', 'document_side' => 'not_applicable', 'pairing_key' => null, 'file' => UploadedFile::fake()->create('support.pdf', 100, 'application/pdf')],

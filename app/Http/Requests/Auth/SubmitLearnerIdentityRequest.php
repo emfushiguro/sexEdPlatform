@@ -20,7 +20,8 @@ class SubmitLearnerIdentityRequest extends FormRequest
 
         return $case !== null
             && $case->pathway === ($user->deriveAgeBracketCache() === 'teens' ? 'teen' : 'adult')
-            && in_array($case->status, [null, 'rejected'], true);
+            && in_array($case->status, [null, 'rejected'], true)
+            && ($case->status !== 'rejected' || $case->resubmission_allowed);
     }
 
     public function rules(): array
@@ -38,14 +39,16 @@ class SubmitLearnerIdentityRequest extends FormRequest
             : ['government_id'];
 
         return [
+            'submission_round' => [$case?->status === 'rejected' && $case->requested_corrections !== null ? 'required' : 'sometimes', 'integer', Rule::in([$case?->submission_round ?? 0])],
             'document_type' => ['required', Rule::in($types)],
             'government_id_type' => [$type === 'government_id' ? 'required' : 'prohibited', 'nullable', Rule::in(array_keys($governmentTypes))],
             'government_id_type_other' => [$subtype === 'other' && $type === 'government_id' ? 'required' : 'prohibited', 'nullable', 'string', 'max:80'],
-            'identity_front' => [$documentChanged || ! $this->hasValidSlot($case, 'identity_front') ? 'required' : 'sometimes', ...$image],
+            'identity_front' => [$documentChanged || $case?->requestsCorrection('identity_front') || ! $this->hasValidSlot($case, 'identity_front') ? 'required' : 'sometimes', ...$image],
             'identity_back' => [$requiresBack
-                ? ($documentChanged || ! $this->hasValidSlot($case, 'identity_back') ? 'required' : 'sometimes')
+                ? ($documentChanged || $case?->requestsCorrection('identity_back') || ! $this->hasValidSlot($case, 'identity_back') ? 'required' : 'sometimes')
                 : 'prohibited', ...$image],
-            'selfie' => [! $this->hasValidSlot($case, 'selfie') ? 'required' : 'sometimes', ...$image],
+            'selfie' => [($type === 'government_id' && ! $this->hasValidSlot($case, 'selfie'))
+                || ($case?->requestsCorrection('selfie') && ! config('persona.enabled')) ? 'required' : 'sometimes', ...$image],
             'confirm_submission' => ['accepted'],
         ];
     }

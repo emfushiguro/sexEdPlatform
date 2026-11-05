@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\Identity\LearnerIdentityRequirement;
+use App\Support\AuthenticatedHomeRouteResolver;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,11 +15,19 @@ class EmailVerificationPromptController extends Controller
     /**
      * Display the email verification prompt.
      */
-    public function __invoke(Request $request, LearnerIdentityRequirement $requirement): RedirectResponse|View
+    public function __invoke(
+        Request $request,
+        LearnerIdentityRequirement $requirement,
+        AuthenticatedHomeRouteResolver $homeRouteResolver,
+    ): RedirectResponse|View
     {
         $user = $request->user();
 
         if ($user->hasVerifiedEmail()) {
+            if ($user->isInstructorApplicant()) {
+                return redirect()->route($homeRouteResolver->routeName($user));
+            }
+
             if ($user->isParentRegistration() && ! $user->parent_verification_status) {
                 return redirect()->route('guardian.verification.create');
             }
@@ -50,11 +59,7 @@ class EmailVerificationPromptController extends Controller
             }
 
             if ($user->hasCompletedProfile()) {
-                if ($user->can('access instructor panel')) {
-                    return redirect()->route('instructor.dashboard');
-                }
-
-                return redirect()->route('learner.dashboard');
+                return redirect()->route($homeRouteResolver->routeName($user));
             }
 
             return redirect()->route('profile.complete');

@@ -506,6 +506,7 @@ class ParentChildInvitationFlowTest extends TestCase
             ->postJson(route('admin.parent-verifications.relationships.reject', $relationship), [
                 'reason_code' => 'unclear_document',
                 'allow_resubmission' => false,
+                'current_evidence_round' => $relationship->fresh()->current_evidence_round,
             ])
             ->assertOk()
             ->assertJson([
@@ -522,9 +523,9 @@ class ParentChildInvitationFlowTest extends TestCase
             ->first();
 
         $this->assertNotNull($guardianNotification);
-        $this->assertSame(route('parent.relationship-verifications.show', $relationship), data_get($guardianNotification->data, 'action_url'));
+        $this->assertSame(route('parent.relationship-verifications.show', $relationship, false), data_get($guardianNotification->data, 'action_url'));
         $this->assertNotNull($dependentNotification);
-        $this->assertSame(route('learner.parent.index'), data_get($dependentNotification->data, 'action_url'));
+        $this->assertSame(route('learner.parent.index', [], false), data_get($dependentNotification->data, 'action_url'));
     }
 
     public function test_accepting_proof_required_invitation_with_missing_staged_document_leaves_state_unchanged(): void

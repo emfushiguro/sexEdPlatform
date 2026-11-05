@@ -445,8 +445,18 @@
                                 <td class="px-4 py-4 text-sm"><strong>{{ $application->learner?->full_name }}</strong><div class="text-xs text-gray-500">{{ $application->learner?->email }}</div></td>
                                 <td class="px-4 py-4 text-sm capitalize">{{ $application->pathway }}</td>
                                 <td class="px-4 py-4 text-sm">{{ $application->submitted_at?->format('M d, Y h:i A') }}</td>
-                                <td class="px-4 py-4 text-sm capitalize">{{ $application->status }}</td>
-                                <td class="px-4 py-4 text-right"><a class="inline-flex rounded-xl border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700" href="{{ route('admin.parent-verifications.learners.show', $application) }}">Review</a></td>
+                                <td class="px-4 py-4 text-sm capitalize">{{ $application->status }}
+                                </td>
+                                <td class="px-4 py-4 text-right">
+                                    <a href="{{ route('admin.parent-verifications.learners.show', $application) }}"
+                                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                                       title="View learner verification"
+                                       aria-label="View learner verification">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 4h7l3 3v13H7z" />
+                                        </svg>
+                                    </a>
+                                </td>
                             </tr>
                         @endforeach
                         <tr x-show="!hasRowsForCurrent()"><td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">No learner identity cases for this filter.</td></tr>
@@ -473,20 +483,9 @@
                                 $parentDocumentPath = (string) ($application->parent_id_document_path ?? '');
                                 $hasParentDocument = $parentDocumentPath !== '';
                                 $parentDocumentUrl = $hasParentDocument ? route('admin.parent-verifications.parents.document', [$application, 'front']) : null;
-                                $parentIdTypeLabels = [
-                                    'national_id' => 'National ID (PhilSys)',
-                                    'passport' => 'Passport',
-                                    'drivers_license' => "Driver's License",
-                                    'umid' => 'UMID',
-                                    'philhealth' => 'PhilHealth ID',
-                                    'postal_id' => 'Postal ID',
-                                    'senior_citizen_id' => 'Senior Citizen ID',
-                                    'pwd_id' => 'PWD ID',
-                                    'prc_id' => 'PRC ID',
-                                    'voters_id' => "Voter's ID (if applicable)",
-                                    'other' => $application->parent_id_type_other ?: 'Other',
-                                ];
-                                $parentIdTypeLabel = $parentIdTypeLabels[$application->parent_id_type] ?? 'Not submitted';
+                                $parentIdTypeLabel = $application->parent_id_type === 'other'
+                                    ? ($application->parent_id_type_other ?: 'Other')
+                                    : config('guardian_identity.id_types.'.$application->parent_id_type.'.label', 'Not submitted');
                                 $parentDocumentExtension = $hasParentDocument ? strtolower(pathinfo($parentDocumentPath, PATHINFO_EXTENSION)) : null;
                                 $parentPreviewType = $hasParentDocument
                                     ? (in_array($parentDocumentExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
@@ -529,8 +528,6 @@
                                     processingApprove: false,
                                     processingReject: false,
                                     reviewModalOpen: false,
-                                    actionConfirmOpen: false,
-                                    actionType: 'archive',
                                     rejectModalOpen: false,
                                     modalReasonCode: '',
                                     modalCustomReason: '',
@@ -539,21 +536,6 @@
                                     },
                                     closeReviewModal() {
                                         this.reviewModalOpen = false;
-                                    },
-                                    openActionConfirm(type) {
-                                        this.actionType = type;
-                                        this.actionConfirmOpen = true;
-                                    },
-                                    closeActionConfirm() {
-                                        this.actionConfirmOpen = false;
-                                    },
-                                    submitAction() {
-                                        if (this.actionType === 'delete') {
-                                            this.$refs.deleteForm.submit();
-                                            return;
-                                        }
-
-                                        this.$refs.archiveForm.submit();
                                     },
                                     openRejectModal() {
                                         if (this.currentStatus !== 'pending') {
@@ -727,72 +709,14 @@
                                 <td class="px-4 py-3 align-top whitespace-nowrap text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('admin.parent-verifications.parents.show', $application) }}"
-                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50"
-                                           title="View Details"
-                                           aria-label="View Details">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                                           title="View guardian verification"
+                                           aria-label="View guardian verification">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 4h7l3 3v13H7z" />
                                             </svg>
                                         </a>
-                                        <button type="button"
-                                                @click="openActionConfirm('archive')"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
-                                                title="Archive Application"
-                                                aria-label="Archive Application">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M6 8l1 10h10l1-10M9 8V6a1 1 0 011-1h4a1 1 0 011 1v2" />
-                                            </svg>
-                                        </button>
-
-                                        <button type="button"
-                                                @click="openActionConfirm('delete')"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
-                                                title="Delete Application"
-                                                aria-label="Delete Application">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
                                     </div>
-
-                                     <div x-show="actionConfirmOpen"
-                                         x-cloak
-                                         @keydown.escape.window="closeActionConfirm()"
-                                         class="fixed inset-0 z-[60] flex items-center justify-center p-4 text-left sm:p-6 lg:p-8">
-                                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="closeActionConfirm()"></div>
-
-                                        <div class="relative z-10 w-full max-w-md rounded-2xl bg-white text-left shadow-2xl">
-                                            <div class="border-b border-gray-100 px-5 py-4">
-                                                <h3 class="text-sm font-semibold text-gray-900" x-text="actionType === 'delete' ? 'Delete Application?' : 'Archive Application?'"></h3>
-                                            </div>
-                                            <div class="px-5 py-5">
-                                                <p class="text-sm text-gray-700" x-show="actionType === 'archive'" x-cloak>Archive this guardian verification application?</p>
-                                                <p class="text-sm text-gray-700" x-show="actionType === 'delete'" x-cloak>Permanently delete this guardian verification application?</p>
-                                            </div>
-                                            <div class="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
-                                                <button type="button"
-                                                        @click="closeActionConfirm()"
-                                                        class="inline-flex rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">
-                                                    Cancel
-                                                </button>
-                                                <button type="button"
-                                                        @click="submitAction()"
-                                                        :class="actionType === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'"
-                                                        class="inline-flex rounded-lg px-3 py-1.5 text-xs font-semibold text-white">
-                                                    Confirm
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <form method="POST" action="{{ route('admin.parent-verifications.parents.archive', $application) }}" x-ref="archiveForm" class="hidden">
-                                        @csrf
-                                    </form>
-
-                                    <form method="POST" action="{{ route('admin.parent-verifications.parents.destroy', $application) }}" x-ref="deleteForm" class="hidden">
-                                        @csrf
-                                        @method('DELETE')
-                                    </form>
 
                                 </td>
                             </tr>
@@ -830,6 +754,10 @@
                                         ? 'image'
                                         : ($verificationDocumentExtension === 'pdf' ? 'pdf' : 'file'))
                                     : 'file';
+                                  $guardianPersonaAttempt = $application->parent?->parent_identity_evidence_source === 'persona'
+                                      ? $application->parent->personaInquiries->first(fn ($attempt) =>
+                                          (int) $attempt->target_submission_round === max(1, (int) $application->parent->guardian_identity_audits_max_attempt_number))
+                                      : null;
                                   $guardianIdentityDocuments = collect([
                                       'front' => (string) ($application->parent?->parent_id_document_path ?? ''),
                                       'back' => (string) ($application->parent?->parent_id_document_back_path ?? ''),
@@ -1131,6 +1059,9 @@
                                                         <button type="button" @click="open = !open" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50" x-text="open ? 'Hide' : 'Show'"></button>
                                                     </div>
 
+                                                    @if($application->parent)
+                                                        <a href="{{ route('admin.parent-verifications.parents.show', $application->parent) }}" class="mt-4 inline-flex min-h-11 items-center rounded-lg border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500">View guardian information</a>
+                                                    @endif
                                                     <dl x-show="open" x-cloak class="mt-4 grid gap-3 sm:grid-cols-2">
                                                         @foreach($childPreviewDetails as $label => $value)
                                                             <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
@@ -1182,6 +1113,26 @@
                                                             @endif
                                                         </article>
 
+                                                          @if($application->parent?->parent_identity_evidence_source === 'persona')
+                                                              @if($guardianPersonaAttempt?->government_id_verification_id)
+                                                                  @include('admin.parent-verifications.partials.persona-image', [
+                                                                      'attempt' => $guardianPersonaAttempt,
+                                                                      'artifact' => 'government-id-front',
+                                                                      'label' => 'Guardian Government ID - Front',
+                                                                      'compactPersonaSummary' => true,
+                                                                  ])
+                                                                  @if(data_get(config('guardian_identity.id_types'), $guardianPersonaAttempt->local_government_id_type.'.requires_back', false))
+                                                                      @include('admin.parent-verifications.partials.persona-image', [
+                                                                          'attempt' => $guardianPersonaAttempt,
+                                                                          'artifact' => 'government-id-back',
+                                                                          'label' => 'Guardian Government ID - Back',
+                                                                          'compactPersonaSummary' => true,
+                                                                      ])
+                                                                  @endif
+                                                              @else
+                                                                  <p class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600" role="status">Guardian ID images are unavailable. Open the guardian information to review the identity submission.</p>
+                                                              @endif
+                                                          @else
                                                           @foreach($guardianIdentityDocuments as $document)
                                                               <article class="rounded-xl border border-gray-200 bg-gray-50 p-3" data-testid="guardian-identity-document-card">
                                                                   <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">{{ $document['label'] }}</p>
@@ -1207,6 +1158,7 @@
                                                                   @endif
                                                               </article>
                                                           @endforeach
+                                                          @endif
                                                     </div>
                                                 </section>
 

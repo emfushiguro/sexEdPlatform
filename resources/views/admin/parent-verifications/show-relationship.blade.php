@@ -26,6 +26,12 @@
     $evidenceRounds = $relationship->verificationDocuments
         ->groupBy('submission_round')
         ->sortKeysDesc();
+    $currentDocuments = $relationship->verificationDocuments
+        ->where('submission_round', $relationship->current_evidence_round)->whereNull('superseded_at');
+    $missingDocumentTypes = array_diff_key(
+        \App\Support\GuardianRelationshipTypes::documentTypeOptions($relationship->relationship_type),
+        array_flip($currentDocuments->pluck('document_type')->all()),
+    );
     $guardianIdentityDocuments = collect([
         'front' => [
             'label' => 'Front of guardian ID',
@@ -85,22 +91,39 @@
         <a href="{{ route('admin.parent-verifications.index', ['type' => 'relationships']) }}" class="text-sm font-semibold text-brand-700 hover:text-brand-900">
             Back to Guardian & Dependent Verification
         </a>
-        <div>
+        <div class="max-w-xl">
             <p class="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 sm:text-right">Administrative Decision</p>
-            <div class="flex flex-wrap gap-2">
-            @if($canApprove)
-                <button type="button" @click="decisionModal = 'approve'" class="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700">
+            <div class="flex flex-wrap gap-2 sm:justify-end">
+                <button type="button" @disabled(! $canApprove) @click="decisionModal = 'approve'" class="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
                     Approve
                 </button>
-            @endif
-            @if($canReject)
-                <button type="button" @click="decisionModal = 'reject'" class="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700">
-                    Reject / Request Resubmission
+                <button type="button" @disabled(! $canReject) @click="decisionModal = 'changes'" class="px-4 py-2 text-sm font-semibold text-amber-800 border border-amber-300 rounded-lg bg-amber-50 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50">
+                    Request changes
                 </button>
-            @endif
+                <button type="button" @disabled(! $canReject) @click="decisionModal = 'reject'" class="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50">
+                    Final reject
+                </button>
             </div>
+            @unless($canApprove || $canReject)
+                <p class="mt-2 text-sm text-gray-500 sm:text-right" role="status">{{ match ($status) {
+                    'pending' => 'Awaiting the guardian’s document submission before review.',
+                    'resubmission_required' => 'Awaiting the guardian’s updated documents before another review.',
+                    'verified' => 'This relationship has already been approved.',
+                    'rejected' => 'This relationship has received a final rejection.',
+                    'revoked' => 'This relationship verification has been revoked.',
+                    default => 'Moderation is available when a submission is under review.',
+                } }}</p>
+            @endunless
         </div>
     </div>
+
+    @if($errors->any())
+        <div role="alert" class="p-4 text-sm text-rose-800 border border-rose-200 rounded-xl bg-rose-50">
+            @foreach($errors->all() as $message)
+                <p>{{ $message }}</p>
+            @endforeach
+        </div>
+    @endif
 
     <section class="p-5 bg-white border border-gray-200 shadow-sm rounded-xl">
         <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -180,11 +203,38 @@
     </section>
 
     <section class="p-5 bg-white border border-gray-200 shadow-sm rounded-xl">
-        <div>
-            <h2 class="text-lg font-semibold text-gray-900">Guardian identity documents</h2>
-            <p class="mt-1 text-sm text-gray-500">Compare the guardian’s ID with the relationship evidence below.</p>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900">Guardian identity documents</h2>
+                <p class="mt-1 text-sm text-gray-500">Compare the guardian’s ID with the relationship evidence below.</p>
+            </div>
+            @if($relationship->parent)
+                <a href="{{ route('admin.parent-verifications.parents.show', $relationship->parent) }}" class="inline-flex min-h-11 items-center rounded-lg border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500">View guardian information</a>
+            @endif
         </div>
 
+        @if($relationship->parent?->parent_identity_evidence_source === 'persona')
+            @if(($guardianPersonaAttempt ?? null)?->government_id_verification_id)
+                <div class="grid gap-4 mt-4 lg:grid-cols-2">
+                    @include('admin.parent-verifications.partials.persona-image', [
+                        'attempt' => $guardianPersonaAttempt,
+                        'artifact' => 'government-id-front',
+                        'label' => 'Front of guardian ID',
+                        'compactPersonaSummary' => true,
+                    ])
+                    @if(data_get(config('guardian_identity.id_types'), $guardianPersonaAttempt->local_government_id_type.'.requires_back', false))
+                        @include('admin.parent-verifications.partials.persona-image', [
+                            'attempt' => $guardianPersonaAttempt,
+                            'artifact' => 'government-id-back',
+                            'label' => 'Back of guardian ID',
+                            'compactPersonaSummary' => true,
+                        ])
+                    @endif
+                </div>
+            @else
+                <p class="mt-4 text-sm text-gray-500" role="status">Guardian ID images are unavailable. Open the guardian information to review the identity submission.</p>
+            @endif
+        @else
         <div class="grid gap-4 mt-4 lg:grid-cols-2">
             @foreach($guardianIdentityDocuments as $document)
                 <article class="overflow-hidden border border-gray-200 rounded-xl bg-gray-50">
@@ -212,6 +262,7 @@
                 </article>
             @endforeach
         </div>
+        @endif
     </section>
 
     <section class="p-5 bg-white border border-gray-200 shadow-sm rounded-xl">
@@ -243,7 +294,7 @@
                             <div class="flex flex-wrap items-center gap-2">
                                 <h3 class="font-semibold text-gray-900">{{ $documentTypeLabel }}</h3>
                                 <span class="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-600">{{ $sideLabel }}</span>
-                                <span class="rounded-full border px-2.5 py-1 text-xs font-semibold {{ $badge($status) }}">{{ $humanStatus($status) }}</span>
+                                <span class="rounded-full border px-2.5 py-1 text-xs font-semibold {{ $badge($document->review_status) }}">{{ $document->review_status ? $humanStatus($document->review_status) : ((int) $round === (int) $relationship->current_evidence_round ? 'Pending review' : 'Review state not recorded') }}</span>
                             </div>
                             <dl class="grid gap-2 mt-3 text-sm text-gray-600 sm:grid-cols-2">
                                 <div>
@@ -357,6 +408,7 @@
         <div class="fixed inset-0 bg-gray-900/50" @click="decisionModal = null"></div>
         <form method="POST" action="{{ route('admin.parent-verifications.relationships.approve', $relationship) }}" class="relative z-10 w-full max-w-lg overflow-hidden bg-white shadow-2xl rounded-xl">
             @csrf
+            <input type="hidden" name="current_evidence_round" value="{{ $relationship->current_evidence_round }}">
             <div class="px-6 py-5 border-b border-gray-100">
                 <h3 class="text-lg font-semibold text-gray-900">Confirm approval</h3>
                 <p class="mt-2 text-sm text-gray-600">Approve this guardian-dependent relationship verification as a single administrative decision.</p>
@@ -368,13 +420,15 @@
         </form>
     </div>
 
-    <div x-show="decisionModal === 'reject'" x-cloak @keydown.escape.window="decisionModal = null" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div x-show="decisionModal === 'reject' || decisionModal === 'changes'" x-cloak @keydown.escape.window="decisionModal = null" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="fixed inset-0 bg-gray-900/50" @click="decisionModal = null"></div>
-        <form method="POST" action="{{ route('admin.parent-verifications.relationships.reject', $relationship) }}" class="relative z-10 w-full max-w-2xl overflow-hidden bg-white shadow-2xl rounded-xl">
+        <form method="POST" action="{{ route('admin.parent-verifications.relationships.reject', $relationship) }}" class="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white shadow-2xl rounded-xl">
             @csrf
+            <input type="hidden" name="current_evidence_round" value="{{ $relationship->current_evidence_round }}">
+            <input type="hidden" name="allow_resubmission" :value="decisionModal === 'changes' ? '1' : '0'">
             <div class="px-6 py-5 border-b border-gray-100">
-                <h3 class="text-lg font-semibold text-gray-900">Reject or request resubmission</h3>
-                <p class="mt-2 text-sm text-gray-600">Choose a built-in reason and clearly identify what the guardian needs to correct or re-upload.</p>
+                <h3 class="text-lg font-semibold text-gray-900" x-text="decisionModal === 'changes' ? 'Request targeted changes' : 'Final rejection'"></h3>
+                <p class="mt-2 text-sm text-gray-600" x-text="decisionModal === 'changes' ? 'Select the current evidence that needs replacement, any missing document types, and explain what to correct. Other evidence is kept.' : 'Reject this relationship claim without allowing resubmission.'"></p>
             </div>
             <div class="px-6 py-5 space-y-4">
                 <div>
@@ -382,31 +436,43 @@
                     <select id="relationship-reject-reason" name="reason_code" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100">
                         <option value="">Select reason</option>
                         @foreach($rejectionReasons as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
+                            <option value="{{ $value }}" @selected(old('reason_code') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
-                <fieldset class="p-4 border border-gray-200 rounded-xl">
-                    <legend class="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">Needs correction or re-upload</legend>
-                    <div class="grid gap-2 mt-2 text-sm text-gray-700 sm:grid-cols-2">
-                        <label class="flex items-center gap-2"><input type="checkbox" name="correction_items[]" value="guardian_identity" class="border-gray-300 rounded"> Guardian identity details</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" name="correction_items[]" value="dependent_identity" class="border-gray-300 rounded"> Dependent identity details</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" name="correction_items[]" value="relationship_document" class="border-gray-300 rounded"> Relationship document</label>
-                        <label class="flex items-center gap-2"><input type="checkbox" name="correction_items[]" value="supporting_document" class="border-gray-300 rounded"> Supporting document</label>
+                <fieldset x-show="decisionModal === 'changes'" :disabled="decisionModal !== 'changes'" class="p-4 border border-gray-200 rounded-xl">
+                    <legend class="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">Current evidence to replace</legend>
+                    <p class="text-xs text-gray-500">Selecting either side of a front/back pair requests both sides.</p>
+                    <div class="mt-3 space-y-2 text-sm text-gray-700">
+                        @foreach($currentDocuments as $document)
+                            <label class="flex items-start gap-2">
+                                <input type="checkbox" name="requested_document_ids[]" value="{{ $document->id }}" @checked(in_array($document->id, (array) old('requested_document_ids', []))) class="mt-1 border-gray-300 rounded">
+                                <span>{{ config('guardian_relationships.document_types.' . $document->document_type, $document->document_type) }} - {{ $document->original_name }} ({{ $humanStatus($document->document_side) }})</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </fieldset>
+                <fieldset x-show="decisionModal === 'changes'" :disabled="decisionModal !== 'changes'" class="p-4 border border-gray-200 rounded-xl">
+                    <legend class="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">Missing document types to add (optional)</legend>
+                    <div class="mt-2 space-y-2 text-sm text-gray-700">
+                        @forelse($missingDocumentTypes as $value => $label)
+                            <label class="flex items-start gap-2">
+                                <input type="checkbox" name="requested_document_types[]" value="{{ $value }}" @checked(in_array($value, (array) old('requested_document_types', []))) class="mt-1 border-gray-300 rounded">
+                                <span>{{ $label }}</span>
+                            </label>
+                        @empty
+                            <p class="text-gray-500">All accepted document types are already present.</p>
+                        @endforelse
                     </div>
                 </fieldset>
                 <div>
-                    <label for="relationship-reject-note" class="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">Optional explanation</label>
-                    <textarea id="relationship-reject-note" name="note" rows="4" maxlength="1000" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" placeholder="Add specific instructions for correction or re-upload."></textarea>
+                    <label for="relationship-reject-note" class="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-600" x-text="decisionModal === 'changes' ? 'Correction instructions (required)' : 'Explanation (required for Other)'"></label>
+                    <textarea id="relationship-reject-note" name="note" rows="4" maxlength="1000" :required="decisionModal === 'changes'" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" placeholder="Explain the decision and any required corrections.">{{ old('note') }}</textarea>
                 </div>
-                <label class="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <input type="checkbox" name="allow_resubmission" value="1" checked class="border-gray-300 rounded">
-                    Request resubmission instead of final rejection
-                </label>
             </div>
             <div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
                 <button type="button" @click="decisionModal = null" class="px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button type="submit" class="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700">Save Decision</button>
+                <button type="submit" class="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700" x-text="decisionModal === 'changes' ? 'Request changes' : 'Confirm final rejection'"></button>
             </div>
         </form>
     </div>

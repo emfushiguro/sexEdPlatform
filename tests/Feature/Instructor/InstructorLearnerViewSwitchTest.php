@@ -98,6 +98,17 @@ class InstructorLearnerViewSwitchTest extends TestCase
         $this->get(route('instructor.dashboard'))->assertForbidden();
     }
 
+    public function test_learner_header_shows_only_the_apply_as_instructor_action(): void
+    {
+        $user = User::factory()->create(['role' => 'learner']);
+        $user->assignRole('learner');
+
+        $this->actingAs($user)
+            ->view('layouts.learner-header')
+            ->assertSee('Apply as Instructor')
+            ->assertDontSee('Be Our Partner');
+    }
+
     public function test_instructor_switch_accepts_the_module_creation_permission_used_by_instructor_routes(): void
     {
         $user = User::factory()->create(['role' => 'instructor']);

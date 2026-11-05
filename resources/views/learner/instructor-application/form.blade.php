@@ -130,7 +130,7 @@
                             <div x-data="{ fileName: null, previewUrl: null }">
                                 <label for="government_id" class="block text-sm font-semibold text-gray-700 mb-1">Government ID <span class="text-red-500">*</span></label>
                                 <div class="relative group">
-                                    <input id="government_id" name="government_id" type="file" accept=".pdf,.jpg,.jpeg,.png" x-bind:required="step === 1"
+                                    <input id="government_id" name="government_id" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" x-bind:required="step === 1"
                                            @change="
                                                 const file = $event.target.files && $event.target.files.length ? $event.target.files[0] : null;
                                                 if (!file) {
@@ -163,14 +163,14 @@
                                     </template>
                                     <span x-text="fileName" class="text-xs text-gray-600 font-medium truncate"></span>
                                 </div>
-                                <p class="mt-1 text-xs text-gray-400">Accepted: JPG, PNG, PDF. Max size: 5MB.</p>
+                                <p class="mt-1 text-xs text-gray-400">Accepted: JPG, PNG, WebP, PDF. Max size: 5MB.</p>
                                 @error('government_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
 
                             <div x-data="{ fileName: null, previewUrl: null }">
                                 <label for="clearance" class="block text-sm font-semibold text-gray-700 mb-1">NBI / Police Clearance <span class="text-red-500">*</span></label>
                                 <div>
-                                    <input id="clearance" name="clearance" type="file" accept=".pdf,.jpg,.jpeg,.png" x-bind:required="step === 1"
+                                    <input id="clearance" name="clearance" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" x-bind:required="step === 1"
                                            @change="
                                                 const file = $event.target.files && $event.target.files.length ? $event.target.files[0] : null;
                                                 if (!file) {
@@ -203,7 +203,7 @@
                                     </template>
                                     <span x-text="fileName" class="text-xs text-gray-600 font-medium truncate"></span>
                                 </div>
-                                <p class="mt-1 text-xs text-gray-400">Accepted: JPG, PNG, PDF. Max size: 5MB.</p>
+                                <p class="mt-1 text-xs text-gray-400">Accepted: JPG, PNG, WebP, PDF. Max size: 5MB.</p>
                                 @error('clearance') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
 
@@ -279,7 +279,7 @@
                             <div x-data="{ fileName: null, previewUrl: null }" class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:border-indigo-300 transition-colors">
                                 <label for="teaching_credential" class="block text-sm font-semibold text-gray-800 mb-1">Teaching Credential</label>
                                 <p class="text-xs text-gray-500 mb-3">Copy of your teaching license or certification.</p>
-                                <input id="teaching_credential" name="teaching_credential" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                                <input id="teaching_credential" name="teaching_credential" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
                                        @change="
                                             const file = $event.target.files && $event.target.files.length ? $event.target.files[0] : null;
                                             if (!file) {
@@ -311,14 +311,14 @@
                                     </template>
                                     <span x-text="fileName" class="text-xs text-gray-600 font-medium truncate"></span>
                                 </div>
-                                <p class="mt-2 text-xs text-gray-400">Accepted: JPG, PNG, PDF. Max size: 5MB.</p>
+                                <p class="mt-2 text-xs text-gray-400">Accepted: JPG, PNG, WebP, PDF. Max size: 5MB.</p>
                                 @error('teaching_credential') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
 
                             <div x-data="{ fileName: null, previewUrl: null }" class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:border-indigo-300 transition-colors">
                                 <label for="sexed_certificate" class="block text-sm font-semibold text-gray-800 mb-1">Sex Education Training Certificate</label>
                                 <p class="text-xs text-gray-500 mb-3">A valid certificate from recognized health or sex education training.</p>
-                                <input id="sexed_certificate" name="sexed_certificate" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                                <input id="sexed_certificate" name="sexed_certificate" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
                                        @change="
                                             const file = $event.target.files && $event.target.files.length ? $event.target.files[0] : null;
                                             if (!file) {
@@ -350,14 +350,14 @@
                                     </template>
                                     <span x-text="fileName" class="text-xs text-gray-600 font-medium truncate"></span>
                                 </div>
-                                <p class="mt-2 text-xs text-gray-400">Accepted: JPG, PNG, PDF. Max size: 5MB.</p>
+                                <p class="mt-2 text-xs text-gray-400">Accepted: JPG, PNG, WebP, PDF. Max size: 5MB.</p>
                                 @error('sexed_certificate') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
 
                             <div x-data="{ fileName: null, previewUrl: null }" class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:border-indigo-300 transition-colors">
                                 <label for="professional_license" class="block text-sm font-semibold text-gray-800 mb-1">Professional License</label>
                                 <p class="text-xs text-gray-500 mb-3">Relevant licenses (e.g. Registered Nurse, Medical Doctor, Psychologist).</p>
-                                <input id="professional_license" name="professional_license" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                                <input id="professional_license" name="professional_license" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
                                        @change="
                                             const file = $event.target.files && $event.target.files.length ? $event.target.files[0] : null;
                                             if (!file) {
@@ -384,7 +384,7 @@
                                     </template>
                                     <span x-text="fileName" class="text-xs text-gray-600 font-medium truncate"></span>
                                 </div>
-                                <p class="mt-2 text-xs text-gray-400">Accepted: JPG, PNG, PDF. Max size: 5MB.</p>
+                                <p class="mt-2 text-xs text-gray-400">Accepted: JPG, PNG, WebP, PDF. Max size: 5MB.</p>
                                 @error('professional_license') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                         </div>
