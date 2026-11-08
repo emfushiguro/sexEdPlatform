@@ -11,7 +11,7 @@ use Tests\TestCase;
 
 class ParentRegistrationUploadPersistenceTest extends TestCase
 {
-    public function test_parent_account_submission_waits_for_post_email_guardian_verification(): void
+    public function test_non_gmail_parent_account_submission_waits_for_post_email_guardian_verification(): void
     {
         Storage::fake('public');
         Notification::fake();
@@ -27,14 +27,14 @@ class ParentRegistrationUploadPersistenceTest extends TestCase
             ->assertRedirect(route('parent.register.account'));
 
         $this->post(route('parent.register.account.store'), [
-            'email' => 'newparent@gmail.com',
+            'email' => 'newparent@yahoo.com',
             'password' => 'UltraSecureParent#2026A',
             'password_confirmation' => 'UltraSecureParent#2026A',
         ])
             ->assertStatus(302)
             ->assertSessionHasNoErrors();
 
-        $parent = User::query()->where('email', 'newparent@gmail.com')->firstOrFail();
+        $parent = User::query()->where('email', 'newparent@yahoo.com')->firstOrFail();
 
         $this->assertNull($parent->parent_verification_status);
         $this->assertNull($parent->parent_id_document_path);

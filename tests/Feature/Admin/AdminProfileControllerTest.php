@@ -3,8 +3,10 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\User;
+use App\Notifications\CustomVerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -111,7 +113,7 @@ class AdminProfileControllerTest extends TestCase
             ->assertSessionHasErrors('new_password');
     }
 
-    public function test_credentials_tab_rejects_non_gmail_admin_login_email(): void
+    public function test_credentials_tab_accepts_non_gmail_admin_login_email(): void
     {
         $this->withoutVite();
 
@@ -126,13 +128,21 @@ class AdminProfileControllerTest extends TestCase
         ]);
         $admin->assignRole('admin');
 
+        Notification::fake();
+
         $this->actingAs($admin)
             ->from(route('admin.profile.edit', ['tab' => 'credentials']))
             ->put(route('admin.profile.update'), [
                 'profile_tab' => 'credentials',
                 'email' => 'admin.manager@yahoo.com',
+                'current_password' => 'CurrentPassword1!',
             ])
-            ->assertRedirect(route('admin.profile.edit', ['tab' => 'credentials']))
-            ->assertSessionHasErrors('email');
+            ->assertRedirect(route('admin.profile.show'))
+            ->assertSessionHasNoErrors();
+
+        $admin->refresh();
+
+        $this->assertSame('admin.manager@yahoo.com', $admin->email);
+        Notification::assertSentTo($admin, CustomVerifyEmail::class);
     }
 }

@@ -38,6 +38,32 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('learner.dashboard', absolute: false));
     }
 
+    public function test_users_can_authenticate_with_a_non_gmail_email_address(): void
+    {
+        $user = User::factory()->create(['email' => 'learner@yahoo.com']);
+
+        $response = $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect(route('learner.dashboard', absolute: false));
+    }
+
+    public function test_users_can_authenticate_with_an_rfc_valid_email_that_filter_validate_email_may_reject(): void
+    {
+        $user = User::factory()->create(['email' => '"quoted"@example.com']);
+
+        $response = $this->post('/login', [
+            'email' => '"quoted"@example.com',
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect(route('learner.dashboard', absolute: false));
+    }
+
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();

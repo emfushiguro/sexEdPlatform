@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\AccountEmail;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ChangeUserRoleRequest;
 use App\Http\Requests\Admin\IndexUserRequest;
@@ -11,7 +12,9 @@ use App\Http\Requests\Admin\UpdateUserStatusRequest;
 use App\Models\User;
 use App\Services\Admin\UserManagementService;
 use Illuminate\Http\Request;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use InvalidArgumentException;
@@ -76,11 +79,20 @@ class UserAdminController extends Controller
 
     public function store(StoreUserRequest $request)
     {
-        $this->userManagementService->createUser(
+        $user = $this->userManagementService->createUser(
             payload: $request->validated(),
             actorId: (int) $request->user()->id,
             request: $request,
         );
+
+        try {
+            event(new Registered($user));
+        } catch (\Throwable $exception) {
+            Log::warning('Verification email dispatch failed during admin user creation.', [
+                'user_id' => $user->id,
+                'exception' => $exception::class,
+            ]);
+        }
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User created successfully!');
@@ -149,8 +161,10 @@ class UserAdminController extends Controller
 
     public function update(UpdateUserRequest $request, User $user)
     {
+        $emailBefore = AccountEmail::normalize((string) $user->email);
+
         try {
-            $this->userManagementService->updateUser(
+            $updatedUser = $this->userManagementService->updateUser(
                 user: $user,
                 payload: $request->validated(),
                 actorId: (int) $request->user()->id,
@@ -160,6 +174,17 @@ class UserAdminController extends Controller
             return back()
                 ->withErrors(['role_change_reason' => $exception->getMessage()])
                 ->withInput();
+        }
+
+        if ($emailBefore !== AccountEmail::normalize((string) $updatedUser->email)) {
+            try {
+                event(new Registered($updatedUser));
+            } catch (\Throwable $exception) {
+                Log::warning('Verification email dispatch failed during admin email update.', [
+                    'user_id' => $updatedUser->id,
+                    'exception' => $exception::class,
+                ]);
+            }
         }
 
         return redirect()->route('admin.users.index')

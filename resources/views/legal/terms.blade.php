@@ -84,7 +84,7 @@
                         <p class="leading-relaxed"><strong>Account Creation:</strong></p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
                             <li>You must provide accurate, complete information during registration</li>
-                            <li>Currently, only Gmail accounts (@gmail.com) are accepted for email verification</li>
+                            <li>You must provide a valid email address and complete email verification</li>
                             <li>You are responsible for maintaining the confidentiality of your account credentials</li>
                             <li>Guardian accounts are verified through email confirmation</li>
                         </ul>

@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Support\AccountEmail;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -26,15 +30,40 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $user->fill($request->validated());
+        $emailChanged = $user->isDirty('email');
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        if ($emailChanged) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        try {
+            $user->save();
+        } catch (QueryException $exception) {
+            if (AccountEmail::isUsersEmailUniqueViolation($exception)) {
+                throw ValidationException::withMessages([
+                    'email' => 'This email address is already registered.',
+                ]);
+            }
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+            throw $exception;
+        }
+
+        if ($emailChanged) {
+            try {
+                $user->sendEmailVerificationNotification();
+            } catch (\Throwable $exception) {
+                Log::warning('Verification email dispatch failed after profile email change.', [
+                    'user_id' => $user->id,
+                    'exception' => $exception::class,
+                ]);
+            }
+        }
+
+        return $emailChanged
+            ? Redirect::route('verification.notice')->with('status', 'profile-updated')
+            : Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
 
     /**

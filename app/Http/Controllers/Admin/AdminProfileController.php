@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateAdminCreatorProfileRequest;
 use App\Services\Admin\AdminCreatorProfileService;
+use App\Support\AccountEmail;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AdminProfileController extends Controller
@@ -61,8 +65,12 @@ class AdminProfileController extends Controller
         $activeTab = (string) ($validated['profile_tab'] ?? 'public');
 
         if ($activeTab === 'credentials') {
+            $emailChanged = false;
+
             if ((string) $user->email !== (string) $validated['email']) {
                 $user->email = (string) $validated['email'];
+                $user->email_verified_at = null;
+                $emailChanged = true;
             }
 
             if (!empty($validated['new_password'])) {
@@ -70,7 +78,31 @@ class AdminProfileController extends Controller
             }
 
             if ($user->isDirty()) {
-                $user->save();
+                try {
+                    $user->save();
+                } catch (QueryException $exception) {
+                    if (AccountEmail::isUsersEmailUniqueViolation($exception)) {
+                        throw ValidationException::withMessages([
+                            'email' => 'This email address is already in use.',
+                        ]);
+                    }
+
+                    throw $exception;
+                }
+            }
+
+            if ($emailChanged) {
+                try {
+                    $user->sendEmailVerificationNotification();
+                } catch (\Throwable $exception) {
+                    Log::warning('Verification email dispatch failed after admin email change.', [
+                        'user_id' => $user->id,
+                        'exception' => $exception::class,
+                    ]);
+                }
+
+                return redirect()->route('verification.notice')
+                    ->with('success', 'Email updated. Please verify the new email address.');
             }
 
             return redirect()->route('admin.profile.show')

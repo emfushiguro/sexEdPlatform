@@ -25,13 +25,15 @@ Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    Route::post('register', [RegisteredUserController::class, 'store'])
+        ->middleware('throttle:registration-step');
 
     // Step 2: Account info (email + password)
     Route::get('register/account', [RegisteredUserController::class, 'showAccount'])
         ->name('register.account');
 
-    Route::post('register/account', [RegisteredUserController::class, 'storeAccount']);
+    Route::post('register/account', [RegisteredUserController::class, 'storeAccount'])
+        ->middleware(['throttle:registration-step', 'throttle:registration-create']);
 
     // Parent registration routes
     Route::get('parent-registration-required', [ParentRegistrationController::class, 'requiredPage'])
@@ -41,9 +43,11 @@ Route::middleware('guest')->group(function () {
         ->name('parent.register');
 
     Route::post('parent/register', [ParentRegistrationController::class, 'storePersonal'])
+        ->middleware('throttle:registration-step')
         ->name('parent.register.store');
 
     Route::post('parent/register/temp-upload', [ParentRegistrationController::class, 'uploadParentTempDocument'])
+        ->middleware('throttle:registration-step')
         ->name('parent.register.temp-upload');
 
     Route::delete('parent/register/temp-upload', [ParentRegistrationController::class, 'removeParentTempDocument'])
@@ -54,6 +58,7 @@ Route::middleware('guest')->group(function () {
         ->name('parent.register.account');
 
     Route::post('parent/register-account', [ParentRegistrationController::class, 'storeAccount'])
+        ->middleware(['throttle:registration-step', 'throttle:registration-create'])
         ->name('parent.register.account.store');
 
     // Learner login
@@ -82,6 +87,7 @@ Route::middleware('guest')->group(function () {
         ->name('password.request');
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:password-reset-request')
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
@@ -123,7 +129,7 @@ Route::middleware('auth')->group(function () {
     })->name('verification.status');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
-        ->middleware('throttle:6,1')
+        ->middleware('throttle:verification-resend')
         ->name('verification.send');
 
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])

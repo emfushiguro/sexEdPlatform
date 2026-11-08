@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Support\AccountEmail;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -15,6 +16,13 @@ class UpdateAdminCreatorProfileRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('email'))) {
+            $this->merge(['email' => AccountEmail::normalize($this->input('email'))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
@@ -25,7 +33,6 @@ class UpdateAdminCreatorProfileRequest extends FormRequest
                 'string',
                 'email:rfc',
                 'max:255',
-                'ends_with:@gmail.com',
                 Rule::unique('users', 'email')->ignore($this->user()?->id),
             ],
             'public_display_name' => ['required_unless:profile_tab,credentials', 'nullable', 'string', 'max:255'],
@@ -36,7 +43,7 @@ class UpdateAdminCreatorProfileRequest extends FormRequest
             'current_password' => [
                 'nullable',
                 'prohibited_unless:profile_tab,credentials',
-                'required_with:new_password',
+                Rule::requiredIf(fn (): bool => $this->credentialsEmailChanged() || filled($this->input('new_password'))),
                 'current_password',
             ],
             'new_password' => [
@@ -52,10 +59,18 @@ class UpdateAdminCreatorProfileRequest extends FormRequest
         ];
     }
 
+    private function credentialsEmailChanged(): bool
+    {
+        if ($this->input('profile_tab') !== 'credentials' || ! $this->user() || ! is_string($this->input('email'))) {
+            return false;
+        }
+
+        return AccountEmail::normalize($this->input('email')) !== AccountEmail::normalize((string) $this->user()->email);
+    }
+
     public function messages(): array
     {
         return [
-            'email.ends_with' => 'Only Gmail addresses (@gmail.com) are accepted for admin login.',
             'email.unique' => 'This email is already in use.',
             'current_password.current_password' => 'The current password is incorrect.',
             'new_password.confirmed' => 'New password confirmation does not match.',

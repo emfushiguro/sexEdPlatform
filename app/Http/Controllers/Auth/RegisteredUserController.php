@@ -7,14 +7,17 @@ use App\Http\Requests\AccountInfoRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
+use App\Support\AccountEmail;
 use Carbon\Carbon;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
@@ -85,25 +88,35 @@ class RegisteredUserController extends Controller
 
         $account = $request->validated();
 
-        $user = DB::transaction(function () use ($personal, $account, $requirement): User {
-            $user = User::create([
-                'name' => trim($personal['first_name'].' '.$personal['last_name']),
-                'first_name' => $personal['first_name'],
-                'middle_initial' => $personal['middle_initial'] ?? null,
-                'last_name' => $personal['last_name'],
-                'suffix' => $personal['suffix'] ?? null,
-                'email' => $account['email'],
-                'birthdate' => $personal['birthdate'],
-                'age' => $personal['age'],
-                'password' => Hash::make($account['password']),
-            ]);
+        try {
+            $user = DB::transaction(function () use ($personal, $account, $requirement): User {
+                $user = User::create([
+                    'name' => trim($personal['first_name'].' '.$personal['last_name']),
+                    'first_name' => $personal['first_name'],
+                    'middle_initial' => $personal['middle_initial'] ?? null,
+                    'last_name' => $personal['last_name'],
+                    'suffix' => $personal['suffix'] ?? null,
+                    'email' => $account['email'],
+                    'birthdate' => $personal['birthdate'],
+                    'age' => $personal['age'],
+                    'password' => Hash::make($account['password']),
+                ]);
 
-            Role::findOrCreate('learner', 'web');
-            $user->assignRole('learner');
-            $requirement->createForNewLearner($user);
+                Role::findOrCreate('learner', 'web');
+                $user->assignRole('learner');
+                $requirement->createForNewLearner($user);
 
-            return $user;
-        });
+                return $user;
+            });
+        } catch (QueryException $exception) {
+            if (AccountEmail::isUsersEmailUniqueViolation($exception)) {
+                throw ValidationException::withMessages([
+                    'email' => 'This email address is already registered.',
+                ]);
+            }
+
+            throw $exception;
+        }
 
         $verificationDispatchFailed = false;
 
@@ -114,8 +127,7 @@ class RegisteredUserController extends Controller
 
             Log::warning('Verification email dispatch failed during registration.', [
                 'user_id' => $user->id,
-                'email' => $user->email,
-                'error' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
         }
 

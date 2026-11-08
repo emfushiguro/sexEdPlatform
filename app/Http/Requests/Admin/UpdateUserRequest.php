@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Support\AccountEmail;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,6 +20,9 @@ class UpdateUserRequest extends FormRequest
         $customNotes = trim((string) $this->input('role_change_custom_notes', ''));
 
         $this->merge([
+            'email' => is_string($this->input('email'))
+                ? AccountEmail::normalize($this->input('email'))
+                : $this->input('email'),
             'role' => trim((string) $this->input('role', '')),
             'new_role_name' => trim((string) $this->input('new_role_name', '')),
             'role_change_reason' => $reason === '' ? null : $reason,
@@ -37,7 +41,7 @@ class UpdateUserRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($targetUserId)],
+            'email' => ['required', 'email:rfc', 'max:255', Rule::unique('users', 'email')->ignore($targetUserId)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'string', 'max:100'],
             'new_role_name' => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9][a-z0-9\-\_ ]*$/i'],

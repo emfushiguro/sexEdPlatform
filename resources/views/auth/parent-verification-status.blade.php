@@ -2,6 +2,7 @@
     @php
         $status = $user->parent_verification_status ?? 'pending';
         $isApproved = $isApproved ?? ($status === 'approved');
+        $usesGmail = str_ends_with(strtolower((string) $user->email), '@gmail.com');
         $showApprovedModal = (bool) session('show_parent_approved_modal', false);
         $parentReasonRaw = (string) ($user->parent_verification_rejection_reason ?? '');
         $parentRejectionReasonText = trim((string) preg_replace(
@@ -146,12 +147,14 @@
                 </div>
             </div>
         @else
-            <a href="https://mail.google.com"
-               target="_blank"
-               rel="noopener"
-               class="w-full inline-flex justify-center items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition">
-                Open Gmail Inbox
-            </a>
+            @if($usesGmail)
+                <a href="https://mail.google.com"
+                   target="_blank"
+                   rel="noopener"
+                   class="w-full inline-flex justify-center items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition">
+                    Open Gmail Inbox
+                </a>
+            @endif
         @endif
 
         <form method="POST" action="{{ route('logout') }}" data-logout-form>

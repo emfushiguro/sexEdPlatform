@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Support\AccountEmail;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -47,9 +49,9 @@ class LoginRequest extends FormRequest
         // Detect if input is email or username
         $credentials = [];
         
-        if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
+        if ($this->inputIsEmail($loginField)) {
             // Input is email format - regular email login
-            $credentials = ['email' => $loginField, 'password' => $password];
+            $credentials = ['email' => AccountEmail::normalize($loginField), 'password' => $password];
         } else {
             // Input is username format - find user by learner_profile username
             $learnerProfile = \App\Models\LearnerProfile::where('username', $loginField)->first();
@@ -105,6 +107,17 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        $loginField = $this->string('email');
+        $normalized = $this->inputIsEmail($loginField)
+            ? AccountEmail::normalize($loginField)
+            : Str::lower($loginField);
+
+        return Str::transliterate($normalized.'|'.$this->ip());
+    }
+
+    private function inputIsEmail(string $value): bool
+    {
+        return str_contains($value, '@')
+            && Validator::make(['email' => $value], ['email' => 'email:rfc'])->passes();
     }
 }

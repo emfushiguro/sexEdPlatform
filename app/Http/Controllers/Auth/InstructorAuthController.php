@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\AccountEmail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -22,8 +23,12 @@ class InstructorAuthController extends Controller
      */
     public function login(Request $request)
     {
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => AccountEmail::normalize($request->input('email'))]);
+        }
+
         $request->validate([
-            'email' => 'required|email',
+            'email' => ['required', 'email:rfc'],
             'password' => 'required',
         ]);
 

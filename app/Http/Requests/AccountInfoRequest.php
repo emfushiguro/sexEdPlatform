@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\AccountEmail;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -15,7 +16,9 @@ class AccountInfoRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'email' => strtolower(trim($this->email)),
+            'email' => is_string($this->input('email'))
+                ? AccountEmail::normalize($this->input('email'))
+                : $this->input('email'),
         ]);
     }
 
@@ -25,10 +28,9 @@ class AccountInfoRequest extends FormRequest
             'email' => [
                 'required',
                 'string',
-                'email:rfc,dns',
+                'email:rfc',
                 'max:255',
                 'unique:users,email',
-                'ends_with:@gmail.com',
             ],
             'password' => [
                 'required',
@@ -45,7 +47,6 @@ class AccountInfoRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'email.ends_with' => 'Only Gmail addresses (@gmail.com) are accepted.',
             'email.unique'    => 'This email address is already registered.',
             'email.email'     => 'Please enter a valid email address.',
         ];

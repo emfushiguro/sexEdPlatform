@@ -5,12 +5,15 @@ namespace App\Services\Admin;
 use App\Models\RoleTransition;
 use App\Models\User;
 use App\Support\Permissions\PermissionOverrideDelta;
+use App\Support\AccountEmail;
 use App\Services\AdminActivityLogService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Spatie\Permission\Models\Role;
 
@@ -151,7 +154,8 @@ class UserManagementService
 
     public function createUser(array $payload, int $actorId, ?Request $request = null): User
     {
-        return DB::transaction(function () use ($payload, $actorId, $request): User {
+        try {
+            return DB::transaction(function () use ($payload, $actorId, $request): User {
             $targetRole = $this->resolveTargetRole($payload);
             $directPermissions = $this->resolveDirectPermissions($payload, $targetRole);
 
@@ -163,7 +167,7 @@ class UserManagementService
                 'status' => (string) $payload['status'],
                 'birthdate' => $payload['birthdate'] ?? null,
                 'verified' => true,
-                'email_verified_at' => now(),
+                'email_verified_at' => null,
             ]);
 
             $this->roleSyncService->assignPrimaryRole($user, $targetRole);
@@ -193,12 +197,22 @@ class UserManagementService
             );
 
             return $user->fresh(['roles']);
-        });
+            });
+        } catch (QueryException $exception) {
+            if (AccountEmail::isUsersEmailUniqueViolation($exception)) {
+                throw ValidationException::withMessages([
+                    'email' => 'This email address is already in use.',
+                ]);
+            }
+
+            throw $exception;
+        }
     }
 
     public function updateUser(User $user, array $payload, int $actorId, ?Request $request = null): User
     {
-        return DB::transaction(function () use ($user, $payload, $actorId, $request): User {
+        try {
+            return DB::transaction(function () use ($user, $payload, $actorId, $request): User {
             $before = $user->only(['id', 'name', 'email', 'role', 'status', 'account_type', 'age_bracket_cached']);
             $currentRole = $this->currentAssignedRole($user);
             $targetRole = array_key_exists('role', $payload)
@@ -229,6 +243,10 @@ class UserManagementService
                 'status' => (string) $payload['status'],
                 'birthdate' => $payload['birthdate'] ?? $user->birthdate,
             ]);
+
+            if ($user->isDirty('email')) {
+                $user->email_verified_at = null;
+            }
 
             if (! empty($payload['password'])) {
                 $user->password = Hash::make((string) $payload['password']);
@@ -265,7 +283,16 @@ class UserManagementService
             );
 
             return $user->fresh(['roles']);
-        });
+            });
+        } catch (QueryException $exception) {
+            if (AccountEmail::isUsersEmailUniqueViolation($exception)) {
+                throw ValidationException::withMessages([
+                    'email' => 'This email address is already in use.',
+                ]);
+            }
+
+            throw $exception;
+        }
     }
 
     public function updateStatus(User $user, string $status, ?string $reason, int $actorId, ?Request $request = null): User

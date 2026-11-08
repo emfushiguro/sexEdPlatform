@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\CustomVerifyEmail;
+use App\Support\AccountEmail;
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -104,6 +105,13 @@ class User extends Authenticatable implements MustVerifyEmail
             'guardian_onboarding_started_at' => 'datetime',
             'guardian_onboarding_completed_at' => 'datetime',
         ];
+    }
+
+    public function setEmailAttribute(mixed $value): void
+    {
+        $this->attributes['email'] = is_string($value)
+            ? AccountEmail::normalize($value)
+            : $value;
     }
 
     /**

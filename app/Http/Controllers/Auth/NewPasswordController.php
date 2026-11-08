@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AccountEmail;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,9 +31,13 @@ class NewPasswordController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => AccountEmail::normalize($request->input('email'))]);
+        }
+
         $request->validate([
             'token' => ['required'],
-            'email' => ['required', 'email'],
+            'email' => ['required', 'email:rfc'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 

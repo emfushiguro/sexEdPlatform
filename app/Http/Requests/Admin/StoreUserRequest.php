@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Support\AccountEmail;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreUserRequest extends FormRequest
@@ -15,6 +16,9 @@ class StoreUserRequest extends FormRequest
         }
 
         $this->merge([
+            'email' => is_string($this->input('email'))
+                ? AccountEmail::normalize($this->input('email'))
+                : $this->input('email'),
             'role' => trim((string) $this->input('role', '')),
             'new_role_name' => trim((string) $this->input('new_role_name', '')),
         ]);
@@ -29,7 +33,7 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'string', 'max:100'],
             'new_role_name' => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9][a-z0-9\-\_ ]*$/i'],

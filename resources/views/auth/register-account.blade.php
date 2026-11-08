@@ -64,10 +64,11 @@
                                 required
                                 autofocus
                                 autocomplete="username"
-                                placeholder="yourname@gmail.com"
+                                placeholder="name@example.com"
                                 class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200"
                             />
                             <p class="mt-1 text-xs text-gray-500">We'll send a verification link to this email</p>
+                            <p class="mt-1 text-xs text-gray-500">Use an email you can keep accessing. Temporary inboxes may expire and prevent future password recovery.</p>
                             @error('email')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror

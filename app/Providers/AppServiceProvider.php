@@ -43,6 +43,7 @@ use App\Policies\TestimonialPolicy;
 use App\Policies\TopicPolicy;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\SubscriptionService;
+use App\Support\AccountEmail;
 use App\Support\ContentPanelContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -102,6 +103,39 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by('feedback:'.($request->user()?->id ?? $request->ip()).':'.$payloadKey);
         });
         RateLimiter::for('helpfulness', fn (Request $request) => Limit::perMinute(30)->by('helpfulness:'.($request->user()?->id ?? $request->ip())));
+        RateLimiter::for('registration-step', fn (Request $request) => Limit::perMinute(30)->by('registration-step:'.$request->ip()));
+        RateLimiter::for('registration-create', function (Request $request) {
+            $email = is_string($request->input('email')) ? AccountEmail::normalize($request->input('email')) : '';
+            $limits = [
+                Limit::perMinute(10)->by('registration-create-ip:'.$request->ip()),
+                Limit::perHour(50)->by('registration-create-hour-ip:'.$request->ip()),
+            ];
+
+            if ($email !== '') {
+                $limits[] = Limit::perHour(3)->by('registration-create-email:'.AccountEmail::fingerprint($email));
+            }
+
+            return $limits;
+        });
+        RateLimiter::for('verification-resend', function (Request $request) {
+            return [
+                Limit::perMinutes(15, 3)->by('verification-resend-user:'.($request->user()?->id ?? 'guest')),
+                Limit::perHour(10)->by('verification-resend-ip:'.$request->ip()),
+            ];
+        });
+        RateLimiter::for('password-reset-request', function (Request $request) {
+            $email = is_string($request->input('email')) ? AccountEmail::normalize($request->input('email')) : '';
+            $limits = [
+                Limit::perMinute(5)->by('password-reset-ip:'.$request->ip()),
+                Limit::perHour(20)->by('password-reset-hour-ip:'.$request->ip()),
+            ];
+
+            if ($email !== '') {
+                $limits[] = Limit::perHour(3)->by('password-reset-email:'.AccountEmail::fingerprint($email));
+            }
+
+            return $limits;
+        });
 
         Gate::policy(User::class, ParentChildPolicy::class);
         Gate::policy(DependentSupportProfile::class, DependentSupportProfilePolicy::class);
