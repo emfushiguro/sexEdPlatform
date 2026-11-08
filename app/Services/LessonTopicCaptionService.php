@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\LessonTopic;
 use App\Models\LessonTopicCaption;
+use App\Support\SubRipCaption;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
@@ -71,12 +73,21 @@ final class LessonTopicCaptionService
                 $file = $track['file'] ?? null;
 
                 if ($file instanceof UploadedFile) {
-                    $path = $file->store('captions/'.$topic->id, 'public');
-                    if (! is_string($path) || $path === '') {
+                    $contents = file_get_contents($file->getRealPath());
+                    if ($contents === false) {
+                        throw new RuntimeException('Failed to read caption upload.');
+                    }
+                    if (strtolower($file->getClientOriginalExtension()) === 'srt') {
+                        $contents = SubRipCaption::toWebVtt($contents);
+                    }
+
+                    // Native video tracks require WebVTT, including converted SRT uploads.
+                    $path = 'captions/'.$topic->id.'/'.Str::uuid().'.vtt';
+                    $storedPaths[] = $path;
+                    if (! $disk->put($path, $contents)) {
                         throw new RuntimeException('Failed to store caption upload.');
                     }
 
-                    $storedPaths[] = $path;
                     $caption->file_path = $path;
                     if ($caption->exists && $oldPath) {
                         $obsoletePaths[] = $oldPath;
@@ -85,7 +96,7 @@ final class LessonTopicCaptionService
 
                 if (! $caption->file_path) {
                     throw ValidationException::withMessages([
-                        'captions.'.$index.'.file' => 'A WebVTT file is required.',
+                        'captions.'.$index.'.file' => 'A VTT or SRT caption file is required.',
                     ]);
                 }
 

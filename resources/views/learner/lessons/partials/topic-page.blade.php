@@ -81,9 +81,10 @@
                     <div class="rounded-2xl overflow-hidden bg-black" style="aspect-ratio: 16/9;">
                         <video id="plyr-video-{{ $currentTopic->id }}"
                                class="plyr-video w-full h-full"
+                               controls
                                playsinline
                                title="{{ $currentTopic->title }}">
-                            <source src="{{ $currentTopic->video_file_url }}" type="video/mp4">
+                            <source src="{{ $currentTopic->video_file_url }}">
                             @foreach($currentTopic->captions as $caption)
                                 <track
                                     kind="subtitles"
@@ -99,6 +100,7 @@
                     <!-- Embedded Video (YouTube/Vimeo) -->
                     <div class="relative bg-black rounded-lg overflow-hidden aspect-video">
                         <iframe 
+                            title="{{ $currentTopic->title }}"
                             src="{{ $currentTopic->video_embed_url }}"
                             class="absolute inset-0 w-full h-full"
                             frameborder="0"
@@ -115,6 +117,7 @@
                     </div>
                 @endif
 
+                <x-video-attribution :topic="$currentTopic" />
             </div>
 
         @elseif($currentTopic->type === 'text')

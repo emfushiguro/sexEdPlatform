@@ -115,7 +115,7 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
             ->assertDontSee('PRIVATE-ADMIN-ISOLATION-MARKER', false);
 
         $this->actingAs($admin)
-            ->postJson(route('admin.parent-verifications.relationships.approve', $relationship))
+            ->postJson(route('admin.parent-verifications.relationships.approve', $relationship), ['current_evidence_round' => $relationship->current_evidence_round])
             ->assertOk()
             ->assertJson([
                 'status' => 'approved',
@@ -131,9 +131,9 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
             ->first();
 
         $this->assertNotNull($guardianNotification);
-        $this->assertSame(route('parent.relationship-verifications.show', $relationship), data_get($guardianNotification->data, 'action_url'));
+        $this->assertSame(route('parent.relationship-verifications.show', $relationship, false), data_get($guardianNotification->data, 'action_url'));
         $this->assertNotNull($dependentNotification);
-        $this->assertSame(route('learner.parent.index'), data_get($dependentNotification->data, 'action_url'));
+        $this->assertSame(route('learner.parent.index', [], false), data_get($dependentNotification->data, 'action_url'));
         $this->assertDatabaseHas('parent_child_accounts', [
             'id' => $relationship->id,
             'relationship_status' => 'active',
@@ -173,7 +173,9 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
             ->get(route('admin.parent-verifications.index', ['type' => 'parents']))
             ->assertOk()
             ->assertSee(route('admin.parent-verifications.parents.show', $parentApplicant), false)
-            ->assertSee('View Details', false)
+            ->assertSee('View guardian verification', false)
+            ->assertDontSee('Archive Application', false)
+            ->assertDontSee('Delete Application', false)
             ->assertDontSee('Guardian Verification - '.$parentApplicant->full_name, false);
     }
 
@@ -188,7 +190,7 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
             ->assertSee('data-testid="guardian-approval-confirm-modal"', false)
             ->assertSee('data-testid="guardian-rejection-confirm-modal"', false)
             ->assertSee('Confirm Guardian Approval', false)
-            ->assertSee('Confirm Guardian Rejection', false)
+            ->assertSee('Record decision', false)
             ->assertSee('Identity matches submitted account details', false)
             ->assertSee('Invalid Government ID', false)
             ->assertSee('Cancel', false);
@@ -203,6 +205,7 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
             ->postJson(route('admin.parent-verifications.parents.reject', $parentApplicant), [
                 'reason_code' => 'others',
                 'custom_reason' => '<p><br></p>',
+                'requested_corrections' => ['id'],
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['custom_reason']);
@@ -233,6 +236,7 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
             ->postJson(route('admin.parent-verifications.parents.reject', $parentApplicant), [
                 'reason_code' => 'inaccurate_information',
                 'issue_warning' => 1,
+                'requested_corrections' => ['id'],
             ])
             ->assertOk();
 

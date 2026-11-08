@@ -2,7 +2,9 @@
 
 namespace App\Events\Chat;
 
+use App\Models\Conversation;
 use App\Models\Message;
+use App\Services\Chat\ConnectorConversationService;
 use App\Support\Chat\MessagePayloadFormatter;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -27,8 +29,21 @@ class MessageSent implements ShouldBroadcast
             : config('queue.default', 'sync');
     }
 
-    public function broadcastOn(): PrivateChannel
+    public function broadcastWhen(): bool
     {
+        $conversation = $this->message->conversation;
+
+        return $conversation->conversation_type !== Conversation::TYPE_CONNECTOR_NEGOTIATION
+            || ($conversation->participantOne !== null
+                && app(ConnectorConversationService::class)->visibleTo($conversation->participantOne)->whereKey($conversation->id)->exists());
+    }
+
+    public function broadcastOn(): PrivateChannel|array
+    {
+        if (! $this->broadcastWhen()) {
+            return [];
+        }
+
         return new PrivateChannel('chat.conversation.'.$this->message->conversation_id);
     }
 

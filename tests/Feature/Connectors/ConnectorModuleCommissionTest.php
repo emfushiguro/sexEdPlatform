@@ -12,13 +12,15 @@ use App\Models\ModuleSaleLedger;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\Connectors\ConnectorModulePurchaseService;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ConnectorModuleCommissionTest extends TestCase
 {
     use ConnectorTestHelpers;
 
-    public function test_instructor_policy_is_snapshotted_and_later_policy_changes_do_not_rewrite_ledger(): void
+    #[DataProvider('configuredCommissions')]
+    public function test_instructor_policy_is_snapshotted_and_later_policy_changes_do_not_rewrite_ledger(float $percent, string $expectedPercent, string $commission, string $net): void
     {
         $manager = User::factory()->create();
         $connector = $this->createVerifiedConnector($manager);
@@ -38,10 +40,10 @@ class ConnectorModuleCommissionTest extends TestCase
             'currency' => 'PHP',
             'seat_capacity' => 10,
         ]);
-        CommissionPolicy::query()->create([
+        $policy = CommissionPolicy::query()->create([
             'scope_type' => CommissionPolicy::SCOPE_INSTRUCTOR,
             'scope_id' => $instructor->id,
-            'commission_percent' => 10,
+            'commission_percent' => $percent,
             'tax_basis' => 'gross',
             'refund_policy' => 'disabled',
             'is_active' => true,
@@ -89,10 +91,20 @@ class ConnectorModuleCommissionTest extends TestCase
         $ledger = ModuleSaleLedger::query()
             ->where('payment_id', $payment->id)
             ->firstOrFail();
-        $this->assertSame('10.00', (string) $ledger->commission_percent_snapshot);
-        $this->assertSame('250.00', (string) $ledger->commission_amount);
-        $this->assertSame('2250.00', (string) $ledger->seller_net_amount);
-        $this->assertSame('2250.00', (string) $ledger->instructor_earnings_amount);
-        $this->assertSame(0, ConnectorModuleEntitlement::query()->whereKey($purchase->id)->count());
+        $this->assertSame($expectedPercent, (string) $ledger->commission_percent_snapshot);
+        $this->assertSame($commission, (string) $ledger->commission_amount);
+        $this->assertSame($net, (string) $ledger->seller_net_amount);
+        $this->assertSame($net, (string) $ledger->instructor_earnings_amount);
+        $this->assertSame(1, ConnectorModuleEntitlement::query()->where('connector_module_purchase_id', $purchase->id)->count());
+        $policy->update(['commission_percent' => 30]);
+        $this->assertTrue(app(ConnectorModulePurchaseService::class)->completePayment($payment->fresh()));
+        $this->assertSame($expectedPercent, (string) $ledger->fresh()->commission_percent_snapshot);
+        $this->assertSame($net, (string) $ledger->fresh()->seller_net_amount);
+        $this->assertSame(1, ModuleSaleLedger::where('payment_id', $payment->id)->count());
+    }
+
+    public static function configuredCommissions(): array
+    {
+        return [[10, '10.00', '250.00', '2250.00'], [17.5, '17.50', '437.50', '2062.50']];
     }
 }

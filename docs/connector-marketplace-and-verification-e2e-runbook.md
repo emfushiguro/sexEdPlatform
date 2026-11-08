@@ -65,6 +65,7 @@ The marketplace plan contains 15 completed task areas:
 ### C. Important boundaries
 
 - Connector subscriptions are not used for marketplace eligibility, capacity, checkout, or access.
+- Instructors can save and publish Connector marketplace listings without an instructor subscription or baseline plan. Instructor monetization permissions do not gate these listings; ownership, module visibility, pricing validation, and shared capacity limits still apply.
 - Verification decisions do not silently rewrite memberships, roles, seminars, community data, subscriptions, marketplace purchases, entitlements, or learning history.
 - Marketplace purchases are not automatically refunded. Administrators use append-only `void`, `restore`, or `retry_finalization` corrections with a reason.
 - Revoking access blocks new learning actions but preserves progress, quiz attempts, completion state, and issued certificates.
@@ -117,6 +118,7 @@ Before testing, prepare these personas:
 | --- | --- |
 | Applicant / primary representative | Register a Connector, upload evidence, view status, and resubmit requested evidence. |
 | Admin reviewer | Review evidence, request changes, approve, reject, suspend, and inspect audits. |
+| Approved instructor without a subscription | Start as an adult learner, apply for instructor, receive admin approval, then save and publish a Connector module listing without buying a plan. |
 | Verified Connector manager | Browse listings, start checkout, manage access rules, and assign seats. |
 | Ordinary Connector member | Browse where permitted but cannot buy or access private evidence/admin controls. |
 | Learner | Receive an assignment and exercise module learning actions. |
@@ -130,6 +132,14 @@ Record only safe identifiers: connector ID, purchase ID, entitlement ID, assignm
 In this Windows checkout, direct PHPUnit is the reliable path when the Laravel `artisan test` wrapper hits its Symfony Process working-directory issue. Run all database-backed commands with the isolated database variable above.
 
 ### 4.1 Marketplace lifecycle
+
+Run the instructor publishing regression first:
+
+```powershell
+php vendor/bin/phpunit --do-not-cache-result tests/Feature/Instructor/InstructorConnectorMarketplaceListingTest.php
+```
+
+This covers saving and publishing without any instructor plan, adult learner application approval followed by listing publication, and publication with restrictive instructor monetization permissions under strict rollout. It also checks denial for another instructor, unapproved/unpublished modules, and insufficient module capacity. All database-backed tests use the isolated test database; never remove development plans or subscriptions to reproduce the no-plan case.
 
 ```powershell
 php vendor/bin/phpunit tests/Feature/Connectors/ConnectorModuleMarketplaceLifecycleTest.php
@@ -269,8 +279,8 @@ The current repository-wide Pint baseline is not green. Do not run an auto-fix a
 
 ### Phase B — Publish and purchase a module
 
-1. As an instructor/platform owner, use an approved, learner-visible module with a fixed currency, price, and at least one seat.
-2. Publish the marketplace listing and record the listing ID, module ID, price, currency, and seat capacity.
+1. Start with an adult learner account without a subscription (for example, `adult@test.local`), submit an instructor application, and approve it as admin. If already approved, use the existing instructor account. No instructor subscription purchase or baseline-plan seed is required for listing eligibility.
+2. As that instructor, use an approved, learner-visible module. Select **Manage connector listing** to open the drawer. Set the package price and **Seats per Connector purchase**; the 10/25/50-learner suggestions are optional. Check the shared module capacity summary and use **Edit module learner limit** to change the overall limit in the existing module editor. Save a draft, then publish the listing. Record the listing ID, module ID, price, currency, and seat capacity. Confirm both actions succeed without a subscription. A platform-owned listing can be tested separately as admin. Verify Escape/backdrop/close-button dismissal, focus returning to the trigger, and retained input with the drawer reopened after validation errors.
 3. As an ordinary verified Connector member, confirm the listing is browseable but the purchase POST is forbidden.
 4. As a verified Connector manager, open the listing detail and start checkout.
 5. Confirm the pending purchase/payment history is created with listing and terms snapshots and a 30-minute capacity hold.
@@ -321,7 +331,7 @@ Check these explicitly during the run:
 - Accepted evidence is preserved when only one rejected requirement is replaced.
 - Internal review notes never appear in applicant/public responses or notifications.
 - An ordinary member cannot POST checkout even if the form is manually submitted.
-- An unverified, non-manager, unpublished, invisible, age-ineligible, or capacity-exhausted checkout is rejected server-side.
+- An unverified Connector, non-manager, unpublished/invisible module, or capacity-exhausted checkout is rejected server-side. Learner age eligibility is checked for assignment and learning access; an adult manager may purchase a module intended for younger members.
 - A duplicate webhook is harmless and idempotent.
 - A pending hold expires without deleting the historical purchase/payment row.
 - A payment received after capacity is lost becomes an attention case rather than granting unsafe access.
@@ -394,3 +404,102 @@ This is the latest recorded evidence from the implementation session, not a subs
 | Evidence retention/disposal approval | BLOCKED — owner and approval date are still required. |
 
 The implementation can be tested as a feature set, but production release should remain `NO-GO` until the open manual, staging, formatting, full-suite, and retention gates have owners and evidence.
+
+## 10. Marketplace drawer and restored route validation — 2026-10-14
+
+The [dated QA report](connector-marketplace-qa-2026-10-14.md) records the restored Connector marketplace routes, drawer refinement, local module/listing identifiers, Phase B–D test mapping, browser screenshots, and remaining limits. The final regression matrix passed 165 tests and 1,464 assertions, with three existing PHPUnit deprecation notices. Desktop/mobile drawer checks and the production frontend build also passed. These results supplement the older recorded baselines above; they do not close the real-provider, complete browser journey, staging, or retention gates.
+
+## 11. Shared learner presentation and multiple fixed packages — 2026-10-15
+
+The [October 15 report](connector-marketplace-qa-2026-10-15.md) documents learner-style Connector cards/details without personal progress, fixed package selection, separate personal/organization ownership, payment-binding hardening, pending-checkout recovery and the new automated/browser evidence. For Phase B2, configure additional fixed packages in the existing listing drawer; for B4–B8, record and verify the **selected** package's seats and price, not only the listing's default. Reopening a pending checkout must resume its saved package even when its hold exhausts available capacity.
+
+The October 15 regression matrix passed **185 tests and 1,579 assertions**, with three existing deprecation notices. Desktop/mobile Connector presentation and instructor package-drawer checks passed without submitting a purchase or changing existing offers. Real-provider and staging/release gates remain separate.
+
+## 12. Administrator module access management — 2026-10-15
+
+Use **Admin → Connectors → Manage module access**. Choose the organization and an existing module license; this workflow cannot create a license or charge an individual learner. See the [admin access QA report](connector-module-access-qa-2026-10-15.md) for files, authorization, commands, evidence and remaining limits.
+
+| Scenario | Expected result |
+| --- | --- |
+| Select a verified Connector and usable license for a published module | Module details, seats, full-roster counts, members/staff, roles and membership/access states appear. Search and role/membership/access filters work. |
+| Select eligible users, review, then confirm grant | Only explicit member rules are added; existing seats and guardian requirements apply. No individual purchase or charge is created. |
+| Repeat a grant/revoke, then regrant | Existing assignment/grant rows are reused. Real transitions are audited; no-op retries do not duplicate events. |
+| Bulk selection includes an outsider, removed/ineligible member, or unavailable seat | Entire operation is rejected with feedback; no partial assignments or audit events persist. |
+| Direct HTTP request uses a non-admin actor or another Connector's entitlement | Denied server-side. Client roles/status fields cannot bypass eligibility. |
+| Membership, module publication, license or Connector status changes after review | Confirmation revalidates current state and rejects unsafe grants. |
+| Revoke an assignment with progress, quiz results, completion, certificate or individual purchase | Only that Connector's source ends. Learning records and separate valid entitlements remain; issued certificates remain viewable. |
+| Manage a suspended license, removed member, or archived module | Grants are unavailable when ineligible; historical assignments remain visible and revocable. |
+| Inspect admin history | Acting admin, affected user, action/result and timestamp appear for the selected Connector/module license. |
+
+Automated regression evidence: **98 tests / 633 assertions** passed, with three existing metadata deprecations. Fixture-based desktop/mobile selection, keyboard and confirmation checks passed; live staging, full-suite, screen-reader and simultaneous race gates remain separate.
+
+### Member details and row actions
+
+On the Connector **Access Management** page, use **Grant Access** to select a specific eligible member. The roster now includes unassigned members, profile photos/initials, **View** learner information, age eligibility with explanations, and per-row grant/revoke actions. Admin rows offer the same learner/eligibility details and route individual actions through existing admin confirmation.
+
+Verify that a teen is eligible for a teen module and an adult is ineligible; also verify a Kids + Adults module excludes teens despite its broad minimum/maximum age range. Missing ages show a neutral warning under existing policy. Check active, revoked, inactive and guardian-pending rows, confirmation, Escape/focus restoration, photo fallback, and that an admin row action submits only that row even when bulk selection is active.
+
+Follow-up regression evidence: **104 tests / 680 assertions** passed, with three existing metadata deprecations. Desktop/mobile fixture browser checks, scoped Pint, Blade compilation, route listing, and the Vite stylesheet build passed. See the [follow-up QA details](connector-module-access-qa-2026-10-15.md#follow-up-member-photos-learner-details-and-row-actions) for the full-build disk limitation and remaining live QA gates.
+
+### Row Actions modal — 2026-10-16
+
+Open **Actions** in a member row to view learner information or choose an allowed grant/revoke action. View is now in this modal rather than the Member column. Check that ineligible members still have View, that switching to details/confirmation leaves only one dialog open, and that Escape returns focus to Actions. **Remove grant** must open a confirmation dialog. Admin row actions must still submit only that member regardless of bulk selection.
+
+Presentation refinement checks passed: **24 tests / 199 assertions**, scoped Pint, Blade compilation and intercepted desktop/mobile Chromium fixtures. No backend, database or asset changes were required. See the [October 16 QA entry](connector-module-access-qa-2026-10-15.md#action-modal-refinement--october-16-2026); live staging/full-suite gates remain separate.
+
+## 13. Connector organizer and instructor messaging — 2026-10-17
+
+Use **Connector → Educators → Message instructor** (chat icon). The adjacent **View profile** (eye icon) opens the instructor's saved public profile inside the Connector workspace. Seminar/webinar hosts with `connector.manage_seminars` can manage educators by default; `connector.manage_educators` also grants this independently. Both require active membership in a verified Connector. Owners retain access through their existing permissions. No subscription or learning enrollment is required.
+
+Threads are private to the acting organizer and instructor, labeled with the Connector name, and separate from personal/learning chats. Other organizers cannot view them. Instructors reply through **Chat**; organizers use **Connector → Messages**. Negotiation attachments are stored privately and downloaded through an authenticated participant-only route. Payment discussions do not change marketplace prices, checkout or financial history.
+
+Apply only the forward migration for this feature after inspecting the target schema and backing up the target environment:
+
+```powershell
+php artisan migrate --path=database/migrations/2026_10_17_000001_add_connector_id_to_conversations.php
+```
+
+Never reset development data. Run automated database tests serially against `cc_db_test`, using the existing PHPUnit configuration:
+
+```powershell
+php artisan test tests/Feature/Connectors/ConnectorInstructorMessagingTest.php tests/Feature/Chat tests/Unit/Chat tests/Feature/Connectors/ConnectorSeminarManagementTest.php tests/Feature/Connectors/ConnectorModuleRoleReconciliationTest.php
+node --test tests/JavaScript/connector-chat.test.mjs
+```
+
+| Manual scenario | Expected result |
+| --- | --- |
+| Sign in as a host with only `connector.manage_seminars`; open Educators | Directory and Messages appear. Search by instructor name and pagination work; ordinary members cannot open these pages or forge a start request. |
+| Message an instructor, return to Educators, and message them again | The same private thread opens. Messages can be sent without enrollment or subscription; duplicates do not create another thread. |
+| Reply as the instructor | Existing Chat shows the Connector name, unread count and notification. The organizer receives the reply in Connector Messages. |
+| Start threads for two Connectors, or as two different organizers | Conversations stay separate. Another organizer or unrelated admin cannot read the thread through ordinary chat URLs. |
+| Open Connector Messages with personal/other-Connector popup chats saved | Those popup windows and their unread state remain available; only the full-page sidebar is scoped to the current Connector. The initial full-page selection belongs to that Connector. |
+| Upload an agreement as a message attachment | Both participants can download it. An outsider, another organizer, or a signed-out browser cannot fetch it. The URL is not a public storage URL. Deleted message attachments become inaccessible. |
+| Remove organizer membership/permission, suspend the Connector or either participant, or remove the instructor role | Thread contents disappear from inbox results. History, send/edit/delete/report/read actions, private downloads, and new realtime subscriptions are denied. Queued broadcasts publish nothing to that thread. Stored history remains. |
+| Both participants are instructors and hosts; original organizer leaves, remaining host starts a negotiation with them | A distinct thread uses the remaining host's organizing permission. It does not reopen the revoked thread. |
+| Check desktop/mobile, keyboard navigation, screen reader labels and an interrupted send | Directory and inbox remain usable; failures show existing chat feedback without claiming success. |
+
+Record results in [the messaging QA report](connector-instructor-messaging-qa-2026-10-17.md). Automated checks do not close interactive browser, live realtime, staging migration or full-suite release gates.
+
+## 14. Shared chat access compatibility — 2026-10-17
+
+The [chat access QA report](chat-access-qa-2026-10-17.md) records the instructor `/chat` 403 fix and cross-role checks. Existing admin/instructor/learner accounts can access chat even when legacy permission entries are missing; registered parents still require verification and onboarding. Inactive, suspended, archived and deleted accounts are rejected by the shared route gate, including the admin messages alias. Unrelated roles require an explicit chat grant or eligible Connector organizer access.
+
+Verification passed **139 tests / 955 assertions** and **41 server-side HTTP checks** using the existing development accounts. The checks cover instructor requests/replies, learner/admin access, guardian gates, denied accounts, private Connector threads and the instructor message buttons. Development data and role assignments were preserved. Browser interaction and live realtime delivery remain separate manual checks.
+
+## 15. Educator profile viewing and icon actions — 2026-10-17
+
+The Educators directory provides two labeled icon actions: **View profile** (eye) and **Message instructor** (chat). The profile displays the instructor's saved photo, biography, expertise, experience, public credentials, professional background, certifications with public proofs, and education. Later edits through instructor profile management appear automatically. Missing fields retain the existing empty states; viewing a profile creates no profile or conversation record.
+
+The Connector profile uses the same public presentation and credential filtering as the learner instructor-background page. Private verification documents and account details remain excluded. Viewing requires educator-management permission in a verified Connector and an available instructor target; ordinary members and outsiders cannot open a profile through a forged URL. **Back to Educators** returns to the directory; the profile's chat icon opens the existing negotiation flow.
+
+Manual checks:
+
+| Action | Expected result |
+| --- | --- |
+| Open Educators as a seminar/webinar host or delegated educator manager | Both icons appear for each instructor; hover titles and keyboard focus identify their actions. |
+| Open the eye icon, including at a narrow viewport | Connector navigation remains visible; saved public profile fields and empty states render without overflow. |
+| Edit the instructor's profile, then reopen the organizer view | Updated public information appears without copying or synchronizing a second profile. |
+| Use the chat icon from the directory and profile | The existing private conversation opens; repeated use reuses the thread. |
+| Try the profile URL as an ordinary member/outsider, or target an unavailable account | Access is denied; private account and verification data are absent. |
+
+Verification passed **24 tests / 358 assertions**, scoped Pint, route registration and the production build. See [educator profile QA evidence](connector-educator-profile-qa-2026-10-17.md) for executed checks and remaining browser gates.

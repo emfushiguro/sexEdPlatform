@@ -572,7 +572,7 @@
                 if (topic.video_url) {
                     content += `<div class="aspect-video bg-black rounded-xl overflow-hidden"><iframe src="${topic.video_url}" class="w-full h-full" allowfullscreen></iframe></div>`;
                 } else if (topic.video_file_url) {
-                    content += `<video controls class="w-full rounded-xl"><source src="${topic.video_file_url}" type="video/mp4"></video>`;
+                    content += `<video controls class="w-full rounded-xl"><source src="${topic.video_file_url}"></video>`;
                 } else {
                     content += '<div class="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">No video source available for this topic.</div>';
                 }

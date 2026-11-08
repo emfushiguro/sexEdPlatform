@@ -20,8 +20,14 @@ class ModuleLessonQuizSeeder extends Seeder
      */
     public function run(): void
     {
-        $instructor = User::where('email', 'instructor@sexed.platform')->first()
-            ?? User::where('role', 'instructor')->first();
+        $instructor = User::query()
+            ->where(function ($query): void {
+                $query->where('role', 'instructor')
+                    ->orWhereHas('roles', fn ($roles) => $roles->where('name', 'instructor'));
+            })
+            ->orderByRaw("CASE WHEN email = 'instructor@sexed.platform' THEN 0 ELSE 1 END")
+            ->orderBy('id')
+            ->first();
         $admin = User::where('email', 'admin@sexed.platform')->first()
             ?? User::where('role', 'admin')->first();
 

@@ -28,13 +28,23 @@ Conscious Connections controls who can retrieve a link from this application. Af
 
 ## Attendance
 
-Connector managers and administrators can generate a code for an in-person or external event, optionally set its opening and closing times, and disable it. Codes are eight-digit numeric values generated with a secure random source. The database stores a password hash; the raw value is shown once after generation. Regenerating replaces the hash and invalidates the previous code. Do not put the raw code in messages or logs.
+Authorized Connector hosts can generate a code for an in-person or external event, optionally set its opening and closing times, and disable it. Admin attendance oversight is read-only. Codes are eight-digit numeric values generated with a secure random source. Verification uses a password hash; an unposted code is shown once after generation. Hosts can copy it or open a large presentation view to share during the session.
+
+Hosts may explicitly post the current code on the authenticated event page. Posting stores an encrypted copy for display, hidden from model JSON, admin pages, and audit metadata. Only confirmed eligible registrants see it, during the attendance window on published/completed events. Posting never records attendance automatically. It lets a registrant submit without joining the session, so it is evidence of code submission only. Unpost hides the display while keeping known-code entry open. Regenerating or closing attendance immediately removes the post and invalidates the previous code. A lost unposted code must be regenerated. Do not put codes in logs or notification payloads.
 
 If no custom times are set, entry opens 15 minutes before the event starts and closes 30 minutes after it ends. Form times use the configured display timezone (`Asia/Manila` by default); timestamps are stored and processed in UTC. The default limit is five incorrect attempts per user and event, and twenty per IP address in a ten-minute window.
 
 Code submission records one attendance row. It confirms that the learner submitted the event code; it does not prove continuous participation in an external event. The learner view labels this as “Attendance submitted.” Organizer-entered attendance is identified separately. Native Agora attendance keeps its measured join, leave, and duration data.
 
 The management roster starts with registered participants, including those without an attendance row, and paginates at 25 participants per page. The CSV export streams registrations in batches of 200 and includes registration status, attendance status and method, timestamps, and total minutes. Manual attendance changes are limited to active confirmed registrations. Corrections/removals require a reason and are recorded in the activity log.
+
+## Event thumbnails and authoring
+
+Connector hosts can optionally upload a JPG/PNG/WebP event thumbnail up to 2 MB; a 16:9 image is recommended. Create/edit supports preview, retention, replacement and removal. The public disk stores generated files under `seminars/thumbnails`; missing images show a calendar fallback throughout event browsing, detail and management pages. Incremental migration `2026_10_15_000003_add_thumbnail_path_to_seminars.php` adds the nullable path without changing existing events.
+
+Objectives is optional, including review and publication; Description remains required. Capacity accepts a whole number from 1 to 100,000, or blank for unlimited, and cannot be lower than confirmed registrations. Instructor speaker invitations show the verified organization's logo when available. Accepted speakers no longer show an invitation Cancel action on the host page.
+
+See [thumbnail QA and manual walkthrough](educational-event-thumbnails-qa.md) for checks and deployment limits.
 
 ## Scheduler and queue worker
 

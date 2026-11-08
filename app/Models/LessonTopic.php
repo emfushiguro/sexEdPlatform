@@ -21,6 +21,7 @@ class LessonTopic extends Model
         'video_provider',
         'video_id',
         'video_file_path',
+        'video_attribution',
         'text_content',
         'content_blocks',
         'file_path',
@@ -43,6 +44,7 @@ class LessonTopic extends Model
         'slideshow_data' => 'array',
         'worksheet_files' => 'array',
         'content_blocks' => 'array',
+        'video_attribution' => 'array',
     ];
 
     /**
@@ -167,7 +169,29 @@ class LessonTopic extends Model
 
     public function getVideoFileUrlAttribute(): ?string
     {
+        if ($this->video_provider === 'custom'
+            && \App\Helpers\VideoEmbedHelper::parseVideoUrl($this->video_id)['provider'] === 'custom') {
+            return $this->video_id;
+        }
+
         return $this->resolvePublicMediaUrl($this->video_file_path, 'videos');
+    }
+
+    public function getVideoUrlAttribute(): ?string
+    {
+        $url = $this->video_attribution['source_url'] ?? null;
+        if (\App\Helpers\VideoEmbedHelper::isHttpUrl($url)) {
+            return $url;
+        }
+
+        return match ($this->video_provider) {
+            'youtube' => \App\Helpers\VideoEmbedHelper::getEmbedUrl('youtube', $this->video_id ?? '')
+                ? 'https://www.youtube.com/watch?v='.$this->video_id : null,
+            'vimeo' => \App\Helpers\VideoEmbedHelper::getEmbedUrl('vimeo', $this->video_id ?? '')
+                ? 'https://vimeo.com/'.$this->video_id : null,
+            'custom' => \App\Helpers\VideoEmbedHelper::isHttpUrl($this->video_id) ? $this->video_id : null,
+            default => null,
+        };
     }
 
     public function getTextContentAttribute($value): ?string

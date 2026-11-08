@@ -11,7 +11,9 @@ use App\Models\Connector;
 use App\Services\Connectors\ConnectorVerificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ConnectorController extends Controller
 {
@@ -32,7 +34,7 @@ class ConnectorController extends Controller
         $organizationTypes = config('connector_verification.organization_types', []);
 
         $connectors = Connector::query()
-            ->with(['primaryRepresentative', 'creator', 'reviewer'])
+            ->with(['primaryRepresentative.learnerProfile', 'creator', 'reviewer'])
             ->withCount(['memberships', 'invitations'])
             ->when(in_array($status, $allowedStatuses, true), fn ($query) => $query->where('status', $status))
             ->when(in_array($verificationStatus, $allowedVerificationStatuses, true), fn ($query) => $query->where('verification_status', $verificationStatus))
@@ -67,6 +69,7 @@ class ConnectorController extends Controller
     public function show(Connector $connector): View
     {
         $connector->load([
+            'primaryRepresentative.learnerProfile',
             'primaryRepresentative.identityVerifications' => fn ($query) => $query
                 ->whereNull('superseded_at')
                 ->latest('approved_at'),
@@ -104,13 +107,20 @@ class ConnectorController extends Controller
     ): RedirectResponse {
         $data = $request->validated();
 
-        $verification->approve(
-            $connector,
-            $request->user(),
-            (int) $data['submission_round'],
-            $data['checklist'],
-            $data['internal_note'] ?? $data['reason'] ?? null,
-        );
+        try {
+            $verification->approve(
+                $connector,
+                $request->user(),
+                (int) $data['submission_round'],
+                $data['internal_note'] ?? $data['reason'] ?? null,
+            );
+        } catch (HttpException $exception) {
+            if ($exception->getStatusCode() !== 422) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages(['approval' => $exception->getMessage()]);
+        }
 
         return back()->with('success', 'Connector approved.');
     }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\Chat\ConversationController as ChatConversationController;
+use App\Http\Controllers\Chat\MessageAttachmentController as ChatMessageAttachmentController;
 use App\Http\Controllers\Chat\MessageController as ChatMessageController;
 use App\Http\Controllers\Chat\MessageRequestController as ChatMessageRequestController;
 use App\Http\Controllers\Chat\StatusController as ChatStatusController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\SeminarInteractionController;
 use App\Http\Controllers\TestimonialController;
 use App\Models\Conversation;
 use App\Services\Chat\ChatAuthorizationService;
+use App\Support\AuthenticatedHomeRouteResolver;
 use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -138,11 +140,26 @@ $resolveLocalApkFile = static function (): ?array {
 // Default entry point — landing page for guests, dashboard for authenticated users
 Route::get('/', function () {
     if (Auth::check()) {
-        return redirect('/learn/dashboard');
+        return redirect()->route(
+            app(AuthenticatedHomeRouteResolver::class)->routeName(Auth::user()),
+        );
     }
 
     return view('landing.index', ['testimonials' => \App\Models\Testimonial::query()->publiclyVisible()->with(['user.learnerProfile', 'user.instructorProfile', 'user.profile'])->orderBy('sort_order')->latest('published_at')->limit(6)->get()]);
 })->name('home');
+
+Route::get('/be-our-partner', function (Request $request) {
+    $user = $request->user();
+    $enabled = (bool) config('instructor_application.enabled');
+    $canResume = $enabled && $user?->hasVerifiedEmail() && ($user->isInstructorApplicant() || $user->isLearner());
+
+    return view('landing.instructor-partner', [
+        'enabled' => $enabled,
+        'showStart' => $enabled && ! $user,
+        'canResume' => $canResume,
+        'resumeUrl' => $canResume ? route('instructor-application.dashboard') : route('login'),
+    ]);
+})->name('instructor-application.recruitment');
 
 Route::get('/help', [HelpCenterController::class, 'index'])->name('help.index');
 Route::get('/help/{helpArticle:slug}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'show'])->withoutScopedBindings()->name('help.section.image');
@@ -492,6 +509,8 @@ Route::middleware('auth')->group(function () {
             ->name('relationship-verifications.show');
         Route::post('/relationship-verifications/{parentChildAccount}', [GuardianRelationshipVerificationController::class, 'store'])
             ->name('relationship-verifications.store');
+        Route::post('/relationship-verifications/{parentChildAccount}/draft', [GuardianRelationshipVerificationController::class, 'storeDraft'])
+            ->name('relationship-verifications.draft.store');
         Route::get('/relationship-verifications/{parentChildAccount}/documents/{document}', [GuardianRelationshipVerificationController::class, 'document'])
             ->name('relationship-verifications.documents.show');
 
@@ -520,18 +539,37 @@ Route::middleware('auth')->group(function () {
         ->name('chat.')
         ->middleware(['chat.access', 'guardian.verified'])
         ->group(function () {
-            Route::get('/', fn () => view('chat.page'))->name('page');
+            Route::get('/', function (Request $request) {
+                $conversation = Conversation::find((int) $request->query('conversation_id', 0));
+                if ($conversation?->conversation_type === Conversation::TYPE_CONNECTOR_NEGOTIATION
+                    && (int) $conversation->participant_one_id === (int) $request->user()->id
+                    && app(ChatAuthorizationService::class)->canViewConversation($request->user(), $conversation)) {
+                    return redirect()->route('connector.educators.messages', [
+                        $conversation->connector_id, 'conversation_id' => $conversation->id,
+                    ]);
+                }
+
+                return view('chat.page');
+            })->name('page');
             Route::get('/conversation/{conversation}', function (Request $request, Conversation $conversation) {
                 abort_unless(
                     app(ChatAuthorizationService::class)->canViewConversation($request->user(), $conversation),
                     403,
                 );
 
+                if ($conversation->conversation_type === Conversation::TYPE_CONNECTOR_NEGOTIATION
+                    && (int) $conversation->participant_one_id === (int) $request->user()->id) {
+                    return redirect()->route('connector.educators.messages', [
+                        $conversation->connector_id, 'conversation_id' => $conversation->id,
+                    ]);
+                }
+
                 return redirect()->route('chat.page', [
                     'conversation_id' => $conversation->id,
                 ]);
             })->name('conversation.open');
             Route::get('/conversations', [ChatConversationController::class, 'index'])->name('conversations.index');
+            Route::get('/attachments/{attachment}', ChatMessageAttachmentController::class)->name('attachments.show');
             Route::get('/discovery', [ChatConversationController::class, 'discover'])->name('discovery');
             Route::post('/conversations/start', [ChatConversationController::class, 'start'])->name('conversations.start');
             Route::get('/conversations/{conversation}/messages', [ChatMessageController::class, 'index'])->name('messages.index');

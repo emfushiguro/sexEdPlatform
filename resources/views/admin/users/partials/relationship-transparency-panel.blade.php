@@ -1,5 +1,5 @@
 @php
-    $canUseChat = auth()->user()?->can('access chat') ?? false;
+    $canUseChat = auth()->user()?->canAccessChat() ?? false;
 @endphp
 
 <h3 class="mb-4 text-sm font-semibold tracking-wide text-gray-700 uppercase">Guardian-Dependent Information</h3>

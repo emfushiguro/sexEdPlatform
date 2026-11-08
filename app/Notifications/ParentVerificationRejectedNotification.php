@@ -10,9 +10,7 @@ class ParentVerificationRejectedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly string $reason)
-    {
-    }
+    public function __construct(private readonly string $reason) {}
 
     public function via(object $notifiable): array
     {
@@ -36,7 +34,7 @@ class ParentVerificationRejectedNotification extends Notification
                 'greetingName' => $notifiable->first_name ?? 'Guardian',
                 'intro' => 'Your guardian verification was not approved at this time.',
                 'details' => [
-                    'Reason: ' . $this->reason,
+                    'Reason: '.$this->reason,
                     'Please correct the issue and submit an updated verification request.',
                 ],
                 'footerNote' => 'If you need help, contact support before re-submitting your documents.',
@@ -46,6 +44,8 @@ class ParentVerificationRejectedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'type' => 'parent_verification_rejected',
+            'action_url' => route('guardian.verification.status', [], false),
             'type' => 'parent_verification_rejected',
             'title' => 'Guardian verification rejected',
             'message' => 'Your guardian verification was not approved. Check your email for details.',

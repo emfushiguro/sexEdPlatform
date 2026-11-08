@@ -8,7 +8,8 @@ class ApproveInstructorApplicationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->isAdmin();
+        return (bool) $this->user()?->isAdmin()
+            && $this->user()->hasPermissionTo('review instructor applications');
     }
 
     public function rules(): array
@@ -16,6 +17,7 @@ class ApproveInstructorApplicationRequest extends FormRequest
         return [
             'admin_message' => ['required', 'string', 'max:10000'],
             'review_application_id' => ['nullable', 'integer'],
+            'identity_case_id' => ['nullable', 'integer'],
         ];
     }
 }

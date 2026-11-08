@@ -124,6 +124,7 @@ class SeminarAttendanceService
 
     private function authorizeAttendance(User $user, Seminar $seminar): void
     {
+        abort_if($user->role === 'admin' || $user->hasRole('admin'), 403);
         abort_unless($seminar->isNativeDelivery(), 403);
         abort_unless($this->tokens->canJoinLivestream($user, $seminar), 403);
     }

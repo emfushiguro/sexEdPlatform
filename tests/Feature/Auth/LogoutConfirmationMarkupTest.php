@@ -41,6 +41,12 @@ class LogoutConfirmationMarkupTest extends TestCase
             );
         }
 
+        $this->assertStringContainsString(
+            "@include('components.logout-confirmation-modal')",
+            file_get_contents($projectRoot.DIRECTORY_SEPARATOR.'resources/views/layouts/instructor-app.blade.php'),
+            'The instructor shell must render the shared logout confirmation modal.',
+        );
+
         $modal = file_get_contents(
             $projectRoot.DIRECTORY_SEPARATOR.'resources/views/components/logout-confirmation-modal.blade.php',
         );

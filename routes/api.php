@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\PersonaWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,3 +18,7 @@ use Illuminate\Support\Facades\Route;
 // Location data endpoints
 Route::get('/cities/{provinceCode}', [LocationController::class, 'getCities']);
 Route::get('/barangays/{cityCode}', [LocationController::class, 'getBarangays']);
+
+Route::post('/webhooks/persona', [PersonaWebhookController::class, 'store'])
+    ->middleware(['persona.webhook', 'throttle:60,1'])
+    ->name('api.webhooks.persona');

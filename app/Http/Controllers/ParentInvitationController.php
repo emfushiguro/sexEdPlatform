@@ -114,7 +114,7 @@ class ParentInvitationController extends Controller
 
         abort_if(! $isParentViewer && ! $isChildViewer, 403);
 
-        $inviterParentColumns = 'id,name,email,birthdate,status,parent_verification_status,created_at';
+        $inviterParentColumns = 'id,name,email,birthdate,status,parent_verification_status,parent_identity_sandbox_manual_review,created_at';
         $inviterProfileColumns = 'id,user_id,avatar_path';
         $inviterProfileColumns .= ',username,birthdate,gender,city_code,barangay_code,bio';
         if (Schema::hasColumn('learner_profiles', 'about')) {
@@ -138,7 +138,7 @@ class ParentInvitationController extends Controller
         $guardianSummary = [
             'name' => (string) ($invitation->inviterParent?->name ?: 'Guardian'),
             'avatar_path' => $invitation->inviterParent?->learnerProfile?->avatar_path,
-            'identity_verified' => $invitation->inviterParent?->parent_verification_status === 'approved',
+            'identity_verified' => $invitation->inviterParent?->isParentVerificationApproved() ?? false,
             'member_since' => $invitation->inviterParent?->created_at?->format('F Y'),
         ];
 

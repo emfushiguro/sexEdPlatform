@@ -41,7 +41,7 @@ return [
             'connector.manage_modules' => 'Manage modules',
         ],
         'educators' => [
-            'connector.manage_educators' => 'Manage educators',
+            'connector.manage_educators' => 'Manage educators (also available to seminar/webinar hosts)',
         ],
         'subscription' => [
             'connector.view_subscription' => 'View subscription',

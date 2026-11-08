@@ -15,6 +15,7 @@
             class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         >
 
+        @if(empty($connectorChat))
         <template x-if="$store.chat.currentUserRole !== 'admin' && $store.chat.discovery.supportAdmin">
             <button
                 type="button"
@@ -27,11 +28,12 @@
                 Contact Platform Support
             </button>
         </template>
+        @endif
     </div>
 
     <div class="max-h-[34vh] overflow-y-auto border-b border-gray-100">
         <template x-if="$store.chat.filteredConversations().length < 1">
-            <div class="px-4 py-4 text-xs text-gray-500">No conversations yet. Start one from contacts below.</div>
+            <div class="px-4 py-4 text-xs text-gray-500">{{ !empty($connectorChat) ? 'No conversations yet. Find an instructor in Educators to start one.' : 'No conversations yet. Start one from contacts below.' }}</div>
         </template>
 
         <template x-for="group in $store.chat.conversationGroups()" :key="group.key">
@@ -100,6 +102,7 @@
         </div>
     </div>
 
+    @if(empty($connectorChat))
     <div class="max-h-[30vh] overflow-y-auto">
         <div class="px-4 pt-3 pb-2 flex items-center justify-between gap-2">
             <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">Start New Conversation</p>
@@ -154,4 +157,5 @@
             </button>
         </template>
     </div>
+    @endif
 </section>

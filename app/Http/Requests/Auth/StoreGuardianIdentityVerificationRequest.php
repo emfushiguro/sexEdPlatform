@@ -17,6 +17,7 @@ class StoreGuardianIdentityVerificationRequest extends FormRequest
         return (bool) $user?->isParentRegistration()
             && (bool) $user?->hasVerifiedEmail()
             && ! $user->isParentVerificationPending()
+            && ($user->parent_verification_status !== 'rejected' || $user->parent_identity_resubmission_allowed)
             && ! $user->isParentVerificationApproved();
     }
 

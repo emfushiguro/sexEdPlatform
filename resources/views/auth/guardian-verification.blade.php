@@ -1,4 +1,13 @@
 <x-auth-split-layout :showTabs="false">
+    @php
+        $personaRequired = $personaRequired ?? false;
+        $personaAttempt = $personaAttempt ?? null;
+        $personaEligible = ! $personaRequired || $personaAttempt?->isPolicyEligible();
+        $personaGovernmentIdLabel = $personaAttempt?->local_government_id_type
+            ? config('guardian_identity.id_types.'.$personaAttempt->local_government_id_type.'.label', $personaAttempt->local_government_id_type)
+            : null;
+    @endphp
+
     <x-slot name="panel">
         <div class="flex flex-col items-center justify-center h-full p-12 text-center">
             <div class="mb-6">
@@ -22,12 +31,23 @@
             </div>
         @endif
 
+        @if($personaRequired)
+            @include('auth.partials.persona-identity-step', [
+                'attempt' => $personaAttempt,
+                'isGuardian' => true,
+                'allowSchoolDocuments' => false,
+                'documentType' => 'government_id',
+                'governmentIdType' => $personaAttempt?->local_government_id_type,
+            ])
+        @endif
+
+        @if(!$personaRequired)
         <form method="POST"
               action="{{ route('guardian.verification.store') }}"
               enctype="multipart/form-data"
               class="space-y-6"
               x-data="{
-                  idType: @js(old('government_id_type', '')),
+                  idType: @js($personaAttempt?->local_government_id_type ?? old('government_id_type', '')),
                   idTypeRequirements: @js($idTypeRequirements ?? []),
                   previewOpen: false,
                   previewUrl: '',
@@ -81,6 +101,12 @@
             @csrf
 
             <div>
+                @if($personaRequired)
+                    <input type="hidden" name="government_id_type" value="{{ $personaAttempt->local_government_id_type }}">
+                    <p class="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-900">
+                        Government-issued ID: <span class="font-semibold">{{ $personaGovernmentIdLabel }}</span>
+                    </p>
+                @else
                 <label for="government_id_type" class="block text-sm font-semibold text-gray-800">Government-Issued Identification Type</label>
                 <select id="government_id_type"
                         name="government_id_type"
@@ -94,6 +120,7 @@
                 </select>
                 <p class="mt-2 text-xs text-gray-600" x-text="requirementLabel()"></p>
                 @error('government_id_type')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                @endif
             </div>
 
             <div x-show="idType === 'other'" x-cloak>
@@ -174,5 +201,6 @@
                 </div>
             </div>
         </form>
+        @endif
     </div>
 </x-auth-split-layout>

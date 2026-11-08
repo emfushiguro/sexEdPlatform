@@ -28,15 +28,6 @@ use Throwable;
 
 final class ConnectorVerificationService
 {
-    private const APPROVAL_CHECKLIST_KEYS = [
-        'organization_identity_established',
-        'regulatory_evidence_resolved',
-        'representative_identity_verified',
-        'representative_authority_established',
-        'required_evidence_complete',
-        'application_consistent',
-    ];
-
     private const PERMANENT_REJECTION_REASON_CODES = [
         'ineligible',
         'fraudulent',
@@ -68,6 +59,7 @@ final class ConnectorVerificationService
                     'slug' => $this->uniqueSlug($data['name']),
                     'category' => $category,
                     'organization_type' => $organizationType,
+                    'organization_type_detail' => $organizationType === 'other' ? $data['organization_type_detail'] : null,
                     'organization_email' => $data['organization_email'] ?? null,
                     'contact_number' => $data['contact_number'],
                     'description' => $data['description'] ?? null,
@@ -562,14 +554,12 @@ final class ConnectorVerificationService
         Connector $connector,
         User $admin,
         int $expectedRound,
-        array $checklist,
         ?string $internalNote,
     ): Connector {
         return DB::transaction(function () use (
             $connector,
             $admin,
             $expectedRound,
-            $checklist,
             $internalNote,
         ): Connector {
             $locked = Connector::query()
@@ -583,8 +573,6 @@ final class ConnectorVerificationService
                 || $locked->verification_status !== Connector::VERIFICATION_UNDER_REVIEW) {
                 throw new ConflictHttpException('Only a pending connector under verification review can be approved.');
             }
-
-            $this->assertApprovalChecklist($checklist);
 
             $requirements = $locked->verificationRequirements()
                 ->whereNull('superseded_at')
@@ -1617,25 +1605,6 @@ final class ConnectorVerificationService
     {
         if ((int) $connector->current_submission_round !== $expectedRound) {
             throw new ConflictHttpException('This verification review is stale. Refresh the admin workspace.');
-        }
-    }
-
-    private function assertApprovalChecklist(array $checklist): void
-    {
-        $unknownKeys = array_diff(array_keys($checklist), self::APPROVAL_CHECKLIST_KEYS);
-
-        if ($unknownKeys !== []) {
-            throw ValidationException::withMessages([
-                'checklist' => 'The approval checklist contains an unsupported item.',
-            ]);
-        }
-
-        foreach (self::APPROVAL_CHECKLIST_KEYS as $key) {
-            if (! filter_var($checklist[$key] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                throw ValidationException::withMessages([
-                    'checklist.'.$key => 'Each approval checklist item must be confirmed.',
-                ]);
-            }
         }
     }
 

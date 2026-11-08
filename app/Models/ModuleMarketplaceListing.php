@@ -12,8 +12,11 @@ class ModuleMarketplaceListing extends Model
     use HasFactory;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_PUBLISHED = 'published';
+
     public const STATUS_UNPUBLISHED = 'unpublished';
+
     public const STATUS_SUSPENDED = 'suspended';
 
     protected $fillable = [
@@ -24,6 +27,7 @@ class ModuleMarketplaceListing extends Model
         'price_amount',
         'currency',
         'seat_capacity',
+        'seat_packages',
         'published_by',
         'published_at',
         'unpublished_by',
@@ -38,6 +42,7 @@ class ModuleMarketplaceListing extends Model
         return [
             'price_amount' => 'decimal:2',
             'seat_capacity' => 'integer',
+            'seat_packages' => 'array',
             'published_at' => 'datetime',
             'unpublished_at' => 'datetime',
             'suspended_at' => 'datetime',
@@ -82,5 +87,25 @@ class ModuleMarketplaceListing extends Model
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_PUBLISHED;
+    }
+
+    public function packages(): \Illuminate\Support\Collection
+    {
+        return collect([
+            ['seat_capacity' => $this->seat_capacity, 'price_amount' => $this->price_amount],
+            ...($this->seat_packages ?? []),
+        ])->sortBy('seat_capacity')->values();
+    }
+
+    public function packageForSeats(?int $seats = null): array
+    {
+        $package = $this->packages()->firstWhere('seat_capacity', $seats ?? $this->seat_capacity);
+        if (! $package) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'seat_capacity' => 'Choose an available seat package for this listing.',
+            ]);
+        }
+
+        return $package;
     }
 }

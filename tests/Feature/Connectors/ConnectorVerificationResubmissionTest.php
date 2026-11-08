@@ -15,6 +15,75 @@ class ConnectorVerificationResubmissionTest extends TestCase
 {
     use ConnectorTestHelpers;
 
+    public function test_status_form_submits_rejected_files_and_metadata_without_replacing_accepted_evidence(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $owner = User::factory()->create();
+        $connector = $this->submitInitialApplication($owner);
+        $accepted = $connector->verificationDocuments()
+            ->whereHas('requirement', fn ($query) => $query->where('requirement_key', 'sec_nonstock_registration'))
+            ->firstOrFail();
+        $accepted->update(['status' => ConnectorVerificationDocument::STATUS_ACCEPTED]);
+        $accepted->requirement()->update(['status' => ConnectorVerificationRequirement::STATUS_SATISFIED]);
+        $rejected = $connector->verificationDocuments()->whereKeyNot($accepted->id)->get();
+        foreach ($rejected as $document) {
+            $document->update(['status' => ConnectorVerificationDocument::STATUS_REJECTED]);
+            $document->requirement()->update(['status' => ConnectorVerificationRequirement::STATUS_REJECTED]);
+        }
+        $connector->update(['verification_status' => Connector::VERIFICATION_RESUBMISSION_REQUIRED]);
+
+        $response = $this->actingAs($owner)->get(route('connector.status', $connector))->assertOk();
+        $html = new \DOMDocument;
+        $previousErrors = libxml_use_internal_errors(true);
+        try {
+            $html->loadHTML($response->getContent());
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previousErrors);
+        }
+        $xpath = new \DOMXPath($html);
+        $form = $xpath->query('//form[@action="'.route('connector.verification.resubmit', $connector).'"]')->item(0);
+        $this->assertNotNull($form);
+        $formId = $form->getAttribute('id');
+        $this->assertNotEmpty($formId, 'Replacement inputs outside the form need an explicit form owner.');
+        $this->assertSame('POST', $form->getAttribute('method'));
+        $this->assertSame('multipart/form-data', $form->getAttribute('enctype'));
+
+        $evidence = [];
+        $controls = $xpath->query('//input[starts-with(@name, "evidence[")]');
+        $this->assertGreaterThan(0, $controls->length);
+        foreach ($controls as $input) {
+            $this->assertSame($formId, $input->getAttribute('form'), 'Every replacement file and metadata input must belong to the resubmission form.');
+            $this->assertSame(1, $xpath->query('//form[@id="'.$input->getAttribute('form').'"]')->length);
+            $this->assertSame(1, preg_match('/^evidence\[([^\]]+)\]\[([^\]]+)\](?:\[\])?$/', $input->getAttribute('name'), $parts));
+            [, $key, $field] = $parts;
+            $this->assertNotSame('sec_nonstock_registration', $key, 'Accepted evidence must not be editable.');
+            $evidence[$key][$field] = $input->getAttribute('type') === 'file'
+                ? [UploadedFile::fake()->createWithContent($key.'.pdf', 'new '.$key.' evidence')]
+                : ($input->getAttribute('type') === 'date' ? '2026-10-07' : 'Board of Trustees');
+        }
+        $this->assertCount(2, $evidence);
+
+        $this->post($form->getAttribute('action'), [
+            'submission_round' => 1,
+            'evidence' => $evidence,
+        ])->assertRedirect(route('connector.status', $connector))->assertSessionHasNoErrors();
+
+        $this->assertSame(2, $connector->fresh()->current_submission_round);
+        $this->assertSame(Connector::VERIFICATION_UNDER_REVIEW, $connector->fresh()->verification_status);
+        $this->assertSame(ConnectorVerificationDocument::STATUS_ACCEPTED, $accepted->fresh()->status);
+        foreach ($rejected as $document) {
+            $this->assertSame(ConnectorVerificationDocument::STATUS_SUPERSEDED, $document->fresh()->status);
+        }
+        $this->assertSame(2, $connector->verificationDocuments()->where('submission_round', 2)->count());
+        $authority = $connector->verificationDocuments()->where('submission_round', 2)
+            ->whereHas('requirement', fn ($query) => $query->where('requirement_key', 'representative_authority'))->firstOrFail();
+        $this->assertSame('Board of Trustees', $authority->issuer);
+        $this->assertSame('2026-10-07', $authority->issue_date->toDateString());
+    }
+
     public function test_applicant_can_replace_rejected_document_without_replacing_accepted_document(): void
     {
         Storage::fake('local');
@@ -344,6 +413,34 @@ class ConnectorVerificationResubmissionTest extends TestCase
                 'evidence' => ['representative_authority' => ['files' => []]],
             ])
             ->assertForbidden();
+    }
+
+    public function test_resubmission_rejects_metadata_not_configured_for_the_requirement(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $owner = User::factory()->create();
+        $connector = $this->submitInitialApplication($owner);
+        $requirement = $connector->verificationRequirements()->where('requirement_key', 'representative_identity')->firstOrFail();
+        $requirement->update(['status' => ConnectorVerificationRequirement::STATUS_REJECTED]);
+        $requirement->documents()->update(['status' => ConnectorVerificationDocument::STATUS_REJECTED]);
+        $connector->update(['verification_status' => Connector::VERIFICATION_RESUBMISSION_REQUIRED]);
+
+        $this->actingAs($owner)->from(route('connector.status', $connector))
+            ->post(route('connector.verification.resubmit', $connector), [
+                'submission_round' => 1,
+                'evidence' => [
+                    'representative_identity' => [
+                        'files' => [UploadedFile::fake()->createWithContent('replacement.pdf', 'new identity evidence')],
+                        'issuer' => 'Not configured for identity evidence',
+                    ],
+                ],
+            ])->assertRedirect(route('connector.status', $connector))->assertSessionHasErrors('evidence');
+
+        $this->assertSame(1, $connector->fresh()->current_submission_round);
+        $this->assertSame(ConnectorVerificationRequirement::STATUS_REJECTED, $requirement->fresh()->status);
+        $this->assertSame(0, $connector->verificationDocuments()->where('submission_round', 2)->count());
     }
 
     private function submitInitialApplication(User $owner): Connector

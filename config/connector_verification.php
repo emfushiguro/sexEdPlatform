@@ -1,11 +1,41 @@
 <?php
 
 return [
-    'version' => '2026-10-07',
+    'version' => '2026-10-12',
     'evidence_disk' => 'local',
     'logo_disk' => 'public',
     'expiration_warning_days' => [30, 7],
     'organization_types' => [
+        'government' => [
+            'label' => 'Government',
+            'categories' => ['government'],
+            'requirements' => ['other_organization_identity', 'activity_specific_authority', 'representative_identity', 'representative_authority'],
+        ],
+        'ngo' => [
+            'label' => 'NGO',
+            'categories' => ['ngo'],
+            'requirements' => ['sec_nonstock_registration', 'activity_specific_authority', 'representative_identity', 'representative_authority'],
+        ],
+        'community_based_organization' => [
+            'label' => 'Community-based Organization',
+            'categories' => ['community_based_organization'],
+            'requirements' => ['other_organization_identity', 'activity_specific_authority', 'representative_identity', 'representative_authority'],
+        ],
+        'school_educational_institution' => [
+            'label' => 'School / Educational Institution',
+            'categories' => ['school_educational_institution'],
+            'requirements' => ['other_organization_identity', 'deped_authority', 'ched_authority', 'tesda_program_registration', 'representative_identity', 'representative_authority'],
+        ],
+        'health_organization' => [
+            'label' => 'Health Organization',
+            'categories' => ['health_organization'],
+            'requirements' => ['other_organization_identity', 'activity_specific_authority', 'representative_identity', 'representative_authority'],
+        ],
+        'advocacy_group' => [
+            'label' => 'Advocacy Group',
+            'categories' => ['advocacy_group'],
+            'requirements' => ['other_organization_identity', 'activity_specific_authority', 'representative_identity', 'representative_authority'],
+        ],
         'barangay_lgu' => [
             'label' => 'Barangay / LGU',
             'categories' => ['government'],
@@ -423,7 +453,7 @@ return [
         ],
         'other_organization_identity' => [
             'label' => 'Organization identity evidence',
-            'guidance' => 'Upload evidence that establishes the organization as claimed.',
+            'guidance' => 'Upload an official charter, registration, institutional recognition, or community certification establishing the organization as claimed. Include the issuing organization and jurisdiction where applicable.',
             'evidence_category' => 'organization_identity',
             'required' => true,
             'rule_group' => 'organization_identity',

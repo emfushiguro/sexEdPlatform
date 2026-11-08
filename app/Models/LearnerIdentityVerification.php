@@ -28,6 +28,10 @@ class LearnerIdentityVerification extends Model
     {
         return [
             'submission_round' => 'integer',
+            'sandbox_manual_review' => 'boolean',
+            'requested_corrections' => 'array',
+            'resubmission_allowed' => 'boolean',
+            'persona_evidence_attempt_id' => 'integer',
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
             'approved_at' => 'datetime',
@@ -48,5 +52,39 @@ class LearnerIdentityVerification extends Model
     public function audits(): HasMany
     {
         return $this->hasMany(LearnerIdentityAudit::class, 'verification_id');
+    }
+
+    public function personaInquiries(): HasMany
+    {
+        return $this->hasMany(PersonaInquiry::class, 'learner_identity_verification_id');
+    }
+
+    public function usesPersonaSelfie(): bool
+    {
+        if ($this->pathway !== 'teen' || ! in_array($this->document_type, ['school_id', 'institution_id'], true)) {
+            return false;
+        }
+
+        return $this->evidence_source === 'persona_selfie'
+            || (! $this->evidence()->where('slot', 'selfie')->exists()
+                && $this->personaInquiries()->where('user_id', $this->user_id)
+                    ->where('target_submission_round', $this->submission_round)
+                    ->whereNull('superseded_at')->where('flow_type', PersonaInquiry::FLOW_TEEN_SCHOOL)
+                    ->whereNotNull('selfie_verification_id')->exists());
+    }
+
+    public function requestsCorrection(string $slot): bool
+    {
+        return $this->status === 'rejected' && in_array($slot, $this->requested_corrections ?? [], true);
+    }
+
+    public function canReusePersonaSelfie(): bool
+    {
+        return $this->pathway === 'teen' && $this->evidence_source === 'persona_selfie'
+            && in_array($this->document_type, ['school_id', 'institution_id'], true)
+            && $this->persona_evidence_attempt_id !== null
+            && (in_array($this->status, ['pending', 'approved'], true)
+                || ($this->status === 'rejected' && $this->resubmission_allowed
+                    && $this->requested_corrections !== null && ! $this->requestsCorrection('selfie')));
     }
 }

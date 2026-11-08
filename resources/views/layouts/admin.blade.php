@@ -248,7 +248,7 @@
                         </h2>
                         <ul class="flex flex-col gap-1">
                             <li>
-                                <a href="{{ route('admin.instructor-applications.index') }}"
+                                <a href="{{ route('admin.instructor-applications.identities.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
                                     {{ request()->routeIs('admin.instructor-applications.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
                                 @if(request()->routeIs('admin.instructor-applications.*'))
@@ -265,10 +265,10 @@
                                           x-cloak class="flex min-w-0 flex-1 items-center gap-2">
                                         <span class="truncate">Instructor Applications</span>
                                         <span class="{{ $adminSidebarBadgeSlotClasses }}">
-                                            @if(($adminModerationCounts['pending_instructor_applications'] ?? 0) > 0)
+                                            @if(($adminModerationCounts['pending_instructor_reviews'] ?? 0) > 0)
                                                 <span data-testid="admin-nav-badge-instructor-applications"
                                                       class="{{ $adminSidebarBadgeClasses }}">
-                                                    {{ ($adminModerationCounts['pending_instructor_applications'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_instructor_applications'] ?? 0) }}
+                                                    {{ ($adminModerationCounts['pending_instructor_reviews'] ?? 0) > 99 ? '99+' : ($adminModerationCounts['pending_instructor_reviews'] ?? 0) }}
                                                 </span>
                                             @endif
                                         </span>

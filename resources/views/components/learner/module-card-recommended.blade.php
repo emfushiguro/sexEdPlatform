@@ -10,6 +10,7 @@
     'actionLabel' => 'Start Learning',
     'priceLabel' => null,
     'seatLabel' => null,
+    'showEnrollmentState' => true,
 ])
 
 @php
@@ -37,7 +38,7 @@
 
     $approvedCount = (int) ($module->approved_enrollments_count ?? 0);
     $enrollmentLimit = $module->enrollment_limit !== null ? (int) $module->enrollment_limit : null;
-    $isFull = $enrollmentLimit !== null && $approvedCount >= $enrollmentLimit;
+    $isFull = $showEnrollmentState && $enrollmentLimit !== null && $approvedCount >= $enrollmentLimit;
     $enrollmentLabel = $enrollmentLimit !== null
         ? sprintf('%d / %d Enrolled', $approvedCount, $enrollmentLimit)
         : sprintf('%d Enrolled', $approvedCount);
@@ -75,7 +76,7 @@
                     FULL
                 </span>
             @endif
-            @if($module->enrollment_mode === 'approval')
+            @if($showEnrollmentState && $module->enrollment_mode === 'approval')
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
                     Approval
                 </span>

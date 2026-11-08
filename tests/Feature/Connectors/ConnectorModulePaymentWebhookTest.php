@@ -53,5 +53,10 @@ class ConnectorModulePaymentWebhookTest extends TestCase
         $this->assertSame(1, ConnectorModuleEntitlement::query()
             ->where('connector_module_purchase_id', $purchase->id)
             ->count());
+
+        $this->postJson(route('webhook.paymongo'), $payload)->assertOk();
+        $this->assertDatabaseCount('connector_module_entitlements', 1);
+        $this->assertDatabaseCount('module_sale_ledgers', 1);
+        $this->assertDatabaseCount('connector_module_purchases', 1);
     }
 }

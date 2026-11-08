@@ -11,7 +11,10 @@ use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 
 class ChatService
 {
@@ -216,33 +219,45 @@ class ChatService
             throw new InvalidArgumentException('Message body or attachments are required.');
         }
 
-        return DB::transaction(function () use ($sender, $conversation, $trimmedBody, $uploadedFiles) {
-            $message = Message::query()->create([
-                'conversation_id' => $conversation->id,
-                'sender_id' => $sender->id,
-                'message_body' => $trimmedBody,
-                'message_type' => $this->resolveMessageType($trimmedBody, $uploadedFiles),
-            ]);
+        $disk = $conversation->conversation_type === Conversation::TYPE_CONNECTOR_NEGOTIATION ? 'local' : 'public';
+        $storedPaths = [];
 
-            foreach ($uploadedFiles as $uploadedFile) {
-                $path = $uploadedFile->store($this->resolveAttachmentDirectory($uploadedFile), 'public');
-
-                $message->attachments()->create([
-                    'uploaded_by_id' => $sender->id,
-                    'disk' => 'public',
-                    'path' => $path,
-                    'file_name' => $uploadedFile->getClientOriginalName() ?: $uploadedFile->hashName(),
-                    'mime_type' => $uploadedFile->getClientMimeType(),
-                    'size_bytes' => (int) $uploadedFile->getSize(),
+        try {
+            return DB::transaction(function () use ($sender, $conversation, $trimmedBody, $uploadedFiles, $disk, &$storedPaths) {
+                $message = Message::query()->create([
+                    'conversation_id' => $conversation->id,
+                    'sender_id' => $sender->id,
+                    'message_body' => $trimmedBody,
+                    'message_type' => $this->resolveMessageType($trimmedBody, $uploadedFiles),
                 ]);
-            }
 
-            $conversation->forceFill([
-                'last_message_at' => $message->created_at,
-            ])->save();
+                foreach ($uploadedFiles as $uploadedFile) {
+                    $path = $uploadedFile->store($this->resolveAttachmentDirectory($uploadedFile), $disk);
+                    if ($path === false) {
+                        throw new RuntimeException('Unable to store the message attachment.');
+                    }
+                    $storedPaths[] = $path;
 
-            return $message->fresh(['attachments']);
-        });
+                    $message->attachments()->create([
+                        'uploaded_by_id' => $sender->id,
+                        'disk' => $disk,
+                        'path' => $path,
+                        'file_name' => $uploadedFile->getClientOriginalName() ?: $uploadedFile->hashName(),
+                        'mime_type' => $uploadedFile->getClientMimeType(),
+                        'size_bytes' => (int) $uploadedFile->getSize(),
+                    ]);
+                }
+
+                $conversation->forceFill([
+                    'last_message_at' => $message->created_at,
+                ])->save();
+
+                return $message->fresh(['attachments']);
+            });
+        } catch (Throwable $exception) {
+            Storage::disk($disk)->delete($storedPaths);
+            throw $exception;
+        }
     }
 
     protected function resolveAttachmentDirectory(UploadedFile $uploadedFile): string
@@ -314,6 +329,10 @@ class ChatService
 
     protected function assertConversationTypeAuthorization(User $initiator, User $target, string $conversationType): void
     {
+        if ($conversationType === Conversation::TYPE_CONNECTOR_NEGOTIATION) {
+            throw new AuthorizationException('Start negotiations from the Connector Educators directory.');
+        }
+
         if ($conversationType !== Conversation::TYPE_ADMIN_SUPPORT) {
             return;
         }

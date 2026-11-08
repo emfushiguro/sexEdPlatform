@@ -20,8 +20,7 @@ class SeminarModerationController extends Controller
     public function __construct(
         private readonly SeminarInteractionService $interactions,
         private readonly SeminarLifecycleService $lifecycle,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): View
     {
@@ -66,7 +65,10 @@ class SeminarModerationController extends Controller
                 'attendances.user',
                 'comments.user',
                 'questions.user',
-                'speakers.user',
+                'speakers.user.learnerProfile',
+                'speakers.user.instructorProfile',
+                'submittedForReviewBy',
+                'publishedBy',
                 'moderationReviews.moderator',
             ]),
         ]);

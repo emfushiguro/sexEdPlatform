@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\Connectors\ConnectorInstructorMessagingTest" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php" tests="8" assertions="157" errors="0" failures="1" skipped="0" time="44.875483">
+    <testcase name="test_seminar_hosts_can_manage_educators_by_default_but_ordinary_members_cannot" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php" line="22" class="Tests\Feature\Connectors\ConnectorInstructorMessagingTest" classname="Tests.Feature.Connectors.ConnectorInstructorMessagingTest" assertions="7" time="41.725746">
+      <system-out>
+
+</system-out>
+    </testcase>
+    <testcase name="test_start_is_idempotent_and_both_participants_can_message_without_enrollment_or_subscription" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php" line="33" class="Tests\Feature\Connectors\ConnectorInstructorMessagingTest" classname="Tests.Feature.Connectors.ConnectorInstructorMessagingTest" assertions="20" time="0.895414"/>
+    <testcase name="test_directory_search_only_exposes_active_instructors_and_accepts_delegated_educator_managers" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php" line="60" class="Tests\Feature\Connectors\ConnectorInstructorMessagingTest" classname="Tests.Feature.Connectors.ConnectorInstructorMessagingTest" assertions="7" time="0.234753"/>
+    <testcase name="test_threads_are_private_and_separate_from_personal_chats_and_other_connectors_and_organizers" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php" line="73" class="Tests\Feature\Connectors\ConnectorInstructorMessagingTest" classname="Tests.Feature.Connectors.ConnectorInstructorMessagingTest" assertions="11" time="0.256870"/>
+    <testcase name="test_revoking_host_membership_or_permission_disables_all_negotiation_access_and_preserves_messages" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php" line="97" class="Tests\Feature\Connectors\ConnectorInstructorMessagingTest" classname="Tests.Feature.Connectors.ConnectorInstructorMessagingTest" assertions="96" time="1.057173"/>
+    <testcase name="test_generic_chat_start_cannot_bypass_connector_authorization" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php" line="126" class="Tests\Feature\Connectors\ConnectorInstructorMessagingTest" classname="Tests.Feature.Connectors.ConnectorInstructorMessagingTest" assertions="2" time="0.158100"/>
+    <testcase name="test_host_access_does_not_depend_on_global_chat_permissions" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php" line="136" class="Tests\Feature\Connectors\ConnectorInstructorMessagingTest" classname="Tests.Feature.Connectors.ConnectorInstructorMessagingTest" assertions="2" time="0.161066">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\Connectors\ConnectorInstructorMessagingTest::test_host_access_does_not_depend_on_global_chat_permissions&#13;
+Failed asserting that false is true.
+&#13;
+C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php:142</failure>
+    </testcase>
+    <testcase name="test_negotiation_attachments_are_private_and_downloads_require_current_participant_access" file="C:\Users\Jaded\ConciousConnections\tests\Feature\Connectors\ConnectorInstructorMessagingTest.php" line="146" class="Tests\Feature\Connectors\ConnectorInstructorMessagingTest" classname="Tests.Feature.Connectors.ConnectorInstructorMessagingTest" assertions="12" time="0.386362"/>
+  </testsuite>
+</testsuites>

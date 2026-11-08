@@ -14,6 +14,7 @@ use App\Models\AdminCreatorProfile;
 use App\Models\ContentReport;
 use App\Models\DependentSupportProfile;
 use App\Models\InstructorApplication;
+use App\Models\InstructorIdentityVerification;
 use App\Models\InstructorProfile;
 use App\Models\LearnerIdentityVerification;
 use App\Models\LearningPath;
@@ -33,6 +34,7 @@ use App\Observers\PaymentObserver;
 use App\Policies\AdminCreatorProfilePolicy;
 use App\Policies\DependentSupportProfilePolicy;
 use App\Policies\InstructorProfilePolicy;
+use App\Policies\InstructorIdentityVerificationPolicy;
 use App\Policies\LearningPathPolicy;
 use App\Policies\LessonPolicy;
 use App\Policies\ModulePolicy;
@@ -141,6 +143,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(DependentSupportProfile::class, DependentSupportProfilePolicy::class);
         Gate::policy(AdminCreatorProfile::class, AdminCreatorProfilePolicy::class);
         Gate::policy(InstructorProfile::class, InstructorProfilePolicy::class);
+        Gate::policy(\App\Models\InstructorIdentityVerification::class, InstructorIdentityVerificationPolicy::class);
+        Gate::policy(\App\Models\InstructorApplication::class, \App\Policies\InstructorApplicationPolicy::class);
         Gate::policy(Module::class, ModulePolicy::class);
         Gate::policy(LearningPath::class, LearningPathPolicy::class);
         Gate::policy(Lesson::class, LessonPolicy::class);
@@ -159,6 +163,9 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.admin', function ($view): void {
             $moderationCounts = [
                 'pending_instructor_applications' => InstructorApplication::query()->where('status', 'pending')->count(),
+                'pending_instructor_identity_reviews' => InstructorIdentityVerification::pendingReview()->count(),
+                'pending_instructor_reviews' => InstructorApplication::query()->where('status', 'pending')->count()
+                    + InstructorIdentityVerification::pendingReview()->count(),
                 'pending_module_reviews' => ModuleReviewRequest::query()->where('status', 'in_review')->count(),
                 'pending_parent_verifications' => User::query()
                     ->where('is_parent_registration', true)

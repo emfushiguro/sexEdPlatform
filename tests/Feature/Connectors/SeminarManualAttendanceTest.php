@@ -43,7 +43,7 @@ class SeminarManualAttendanceTest extends TestCase
     public function test_code_decision_can_be_corrected_with_reason_and_code_cannot_restore_it(): void
     {
         [$owner, $connector, $seminar, $registrant] = $this->event();
-        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, null, null);
+        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
         $this->actingAs($registrant->user)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code])->assertSessionHas('success');
 
         $this->actingAs($owner)->post(route('connector.seminars.attendance.manual', [$connector, $seminar, $registrant]), [
@@ -69,7 +69,7 @@ class SeminarManualAttendanceTest extends TestCase
     public function test_same_state_code_decision_requires_a_reason_to_transfer_to_manual_control(): void
     {
         [$owner, $connector, $seminar, $registrant] = $this->event();
-        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, null, null);
+        $code = app(SeminarCodeAttendanceService::class)->generate($seminar, $owner);
         $this->actingAs($registrant->user)->post(route('seminars.attendance.code.submit', $seminar), ['code' => $code])->assertSessionHas('success');
         $route = route('connector.seminars.attendance.manual', [$connector, $seminar, $registrant]);
 

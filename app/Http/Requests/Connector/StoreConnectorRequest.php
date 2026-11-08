@@ -12,6 +12,15 @@ use Illuminate\Validation\Validator;
 
 class StoreConnectorRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $organizationType = $this->input('organization_type');
+
+        if (is_string($organizationType) && in_array($organizationType, ConnectorOptions::categoryKeys(), true)) {
+            $this->merge(['category' => $organizationType]);
+        }
+    }
+
     public function authorize(): bool
     {
         return $this->user() !== null;
@@ -30,6 +39,7 @@ class StoreConnectorRequest extends FormRequest
                 'string',
                 Rule::in(array_keys(app(ConnectorVerificationRequirements::class)->organizationTypes())),
             ],
+            'organization_type_detail' => ['required_if:organization_type,other', 'prohibited_unless:organization_type,other', 'string', 'max:255'],
             'organization_email' => ['nullable', 'email', 'max:255', Rule::unique('connectors', 'organization_email')],
             'contact_number' => ['required', 'string', 'max:30'],
             'city_code' => [

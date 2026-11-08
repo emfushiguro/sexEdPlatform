@@ -6,6 +6,7 @@ use App\Models\InstructorApplication;
 use App\Models\User;
 use App\Notifications\InstructorApplicationStatusUpdate;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -21,13 +22,20 @@ class InstructorApplicationStatusNotificationTest extends TestCase
         $learner = $this->createUserWithRole('learner');
         $application = $this->createPendingApplication($learner);
 
-        $this->actingAs($admin)
-            ->post(route('admin.instructor-applications.reject', $application), [
-                'rejection_reason_code' => 'invalid_credentials',
-                'rejection_reason_note' => 'Professional license could not be verified from the issuing body.',
-                'admin_message' => '<p>Professional license could not be verified from the issuing body.</p>',
-            ])
-            ->assertRedirect();
+        DB::commit();
+
+        try {
+            $response = $this->actingAs($admin)
+                ->post(route('admin.instructor-applications.reject', $application), [
+                    'rejection_reason_code' => 'invalid_credentials',
+                    'rejection_reason_note' => 'Professional license could not be verified from the issuing body.',
+                    'admin_message' => '<p>Professional license could not be verified from the issuing body.</p>',
+                ]);
+        } finally {
+            DB::beginTransaction();
+        }
+
+        $response->assertRedirect();
 
         Notification::assertSentTo($learner, InstructorApplicationStatusUpdate::class, function (InstructorApplicationStatusUpdate $notification, array $channels) use ($learner): bool {
             $payload = $notification->toArray($learner);

@@ -32,7 +32,7 @@
 
     <style>
         [x-cloak] { display: none !important; }
-        html { scroll-behavior: smooth; }
+        html { scroll-behavior: auto; }
         body { font-family: 'Poppins', sans-serif; }
     </style>
 
@@ -41,16 +41,6 @@
 <body class="antialiased" style="background-color: #F9F7FF;">
 
     @yield('content')
-
-    {{-- Back to top --}}
-    <button id="back-to-top"
-            aria-label="Back to top"
-            class="fixed bottom-7 right-7 z-50 w-11 h-11 rounded-full text-white flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 hover:scale-110 active:scale-95"
-            style="background: linear-gradient(135deg, #A30EB2, #3B0CB1); box-shadow: 0 4px 14px rgba(115,13,177,0.4);">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/>
-        </svg>
-    </button>
 
     @stack('scripts')
 </body>

@@ -153,9 +153,9 @@
                 </label>
                 <select name="video_source" id="video_source"
                     class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
-                    onchange="toggleVideoSource()">
+                    data-video-source>
                     <option value="">Select video source</option>
-                    <option value="url" {{ old('video_source') === 'url' ? 'selected' : '' }}>YouTube/Vimeo URL
+                    <option value="url" {{ old('video_source') === 'url' ? 'selected' : '' }}>YouTube/Vimeo or direct video URL
                     </option>
                     <option value="upload" {{ old('video_source') === 'upload' ? 'selected' : '' }}>Upload Video File
                     </option>
@@ -163,7 +163,7 @@
             </div>
 
             <!-- YouTube/Vimeo URL -->
-            <div id="videoUrlField" class="hidden mb-6">
+            <div id="videoUrlField" data-video-url-field class="hidden mb-6">
                 <label for="video_url" class="block mb-2 text-sm font-medium text-gray-700">
                     Video URL <span class="text-red-500">*</span>
                 </label>
@@ -173,41 +173,35 @@
                 @error('video_url')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
-                <p class="mt-1 text-sm text-gray-500">Supports YouTube and Vimeo URLs</p>
+                <p class="mt-1 text-sm text-gray-500">Supports HTTP/HTTPS YouTube, Vimeo, and direct video file URLs.</p>
             </div>
 
             <!-- Upload Video File -->
-            <div id="videoFileField" class="hidden mb-6">
+            <div id="videoFileField" data-video-file-field class="hidden mb-6">
                 <label for="video_file" class="block mb-2 text-sm font-medium text-gray-700">
                     Upload Video <span class="text-red-500">*</span>
                 </label>
-                <div class="relative">
+                <div class="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-2">
+                    <label for="video_file" data-video-file-trigger
+                        class="inline-flex min-h-[40px] items-center justify-center rounded-md bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+                        Choose video file
+                    </label>
                     <input type="file" name="video_file" id="video_file"
                         accept=".mp4,.mpeg,.mpg,.mov,.avi,.webm,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
-                        class="sr-only" data-video-file-input
+                        class="sr-only" data-video-file-input aria-label="Choose video file"
                         aria-describedby="videoFileName videoFileClientError{{ $errors->has('video_file') ? ' videoFileServerError' : '' }}"
                         aria-invalid="{{ $errors->has('video_file') ? 'true' : 'false' }}">
-                    <label for="video_file"
-                        class="flex items-center justify-center w-full px-6 py-4 transition border-2 border-gray-200 border-dashed cursor-pointer rounded-xl hover:border-purple-400 hover:bg-purple-50 focus-within:border-purple-400 focus-within:bg-purple-50 focus-within:ring-2 focus-within:ring-purple-300">
-                        <div class="text-center">
-                            <svg class="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            <p class="mt-2 text-sm text-gray-600"><span class="font-semibold text-purple-700">Click to
-                                    upload video</span></p>
-                            <p class="mt-1 text-xs text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
-                        </div>
-                    </label>
                 </div>
+                <p class="mt-2 break-all text-xs text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
                 <p id="videoFileClientError" data-video-error class="hidden mt-1 text-sm text-red-600" role="alert"></p>
+                @include('instructor.topics.partials.video-file-preview')
                 @error('video_file')
                     <p id="videoFileServerError" class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
 
             @include('instructor.topics.partials.caption-tracks')
+            @include('instructor.topics.partials.video-attribution')
 
             <!-- Video Description/Instructions -->
             <div class="mb-6">
@@ -585,29 +579,7 @@
                 }
             }
 
-            // Initialize video source visibility
-            toggleVideoSource();
         });
-
-        // Toggle video source fields
-        function toggleVideoSource() {
-            const videoSource = document.getElementById('video_source');
-            const urlField = document.getElementById('videoUrlField');
-            const fileField = document.getElementById('videoFileField');
-
-            if (!videoSource || !urlField || !fileField) {
-                return;
-            }
-
-            urlField.classList.add('hidden');
-            fileField.classList.add('hidden');
-
-            if (videoSource.value === 'url') {
-                urlField.classList.remove('hidden');
-            } else if (videoSource.value === 'upload') {
-                fileField.classList.remove('hidden');
-            }
-        }
 
         // Image handling - track excluded indices instead of manipulating FileList
         let selectedImages = [];

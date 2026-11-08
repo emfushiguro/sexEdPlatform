@@ -331,7 +331,9 @@ class ConnectorSeminarManagementTest extends TestCase
             ->get(route('connector.seminars.edit', [$connector, $seminar]))
             ->assertOk()
             ->assertSee('value="2026-07-20T16:00"', false)
-            ->assertSee('Starts At (Philippine Time)');
+            ->assertSee('Event schedule (Philippine Time / PHT)')
+            ->assertSee('Start date (PHT)')
+            ->assertSee('Start time (PHT)');
     }
 
     public function test_other_category_requires_custom_category(): void

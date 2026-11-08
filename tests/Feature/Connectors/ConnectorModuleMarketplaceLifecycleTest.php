@@ -8,16 +8,13 @@ use App\Models\Certificate;
 use App\Models\ConnectorModuleAccessRule;
 use App\Models\ConnectorModulePurchase;
 use App\Models\ConnectorModuleSeatAssignment;
-use App\Models\FeatureCatalog;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\Module;
 use App\Models\ModuleMarketplaceListing;
 use App\Models\Payment;
-use App\Models\PlanFeatureEntitlement;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
-use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Services\Connectors\ConnectorModuleAccessService;
 use App\Services\PayMongoPaymentLinkService;
@@ -35,7 +32,7 @@ class ConnectorModuleMarketplaceLifecycleTest extends TestCase
 
         $instructor = User::factory()->create(['role' => 'instructor']);
         $instructor->assignRole('instructor');
-        $this->createPaidDistributionPlan();
+        $this->assertFalse($instructor->subscriptions()->exists());
 
         $module = Module::factory()->create([
             'created_by' => $instructor->id,
@@ -313,44 +310,5 @@ class ConnectorModuleMarketplaceLifecycleTest extends TestCase
             'status' => ConnectorModuleSeatAssignment::STATUS_ACTIVE,
             'consumes_seat' => 1,
         ]);
-    }
-
-    private function createPaidDistributionPlan(): SubscriptionPlan
-    {
-        $plan = SubscriptionPlan::query()->create([
-            'name' => 'Marketplace Lifecycle Instructor Plan',
-            'slug' => 'marketplace-lifecycle-'.uniqid(),
-            'description' => 'Connector marketplace lifecycle test plan',
-            'price' => 0,
-            'features' => [],
-            'plan_audience' => 'instructor',
-            'billing_mode' => 'monthly',
-            'trial_days' => 0,
-            'is_active' => true,
-            'sort_order' => 1,
-        ]);
-
-        foreach ([
-            'instructor_can_publish_paid_modules',
-            'instructor_can_receive_paid_enrollments',
-        ] as $key) {
-            $feature = FeatureCatalog::query()->updateOrCreate(
-                ['key' => $key],
-                [
-                    'name' => $key,
-                    'value_type' => 'boolean',
-                    'category' => 'instructor',
-                    'is_active' => true,
-                ],
-            );
-            PlanFeatureEntitlement::query()->create([
-                'plan_id' => $plan->id,
-                'feature_id' => $feature->id,
-                'is_enabled' => true,
-                'is_unlimited' => true,
-            ]);
-        }
-
-        return $plan;
     }
 }

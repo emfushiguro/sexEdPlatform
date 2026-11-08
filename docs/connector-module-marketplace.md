@@ -4,13 +4,21 @@ This runbook covers one-time Connector purchases of published learning modules. 
 
 ## Lifecycle at a glance
 
-1. An instructor or platform owner publishes an approved, learner-visible module listing with a price, currency, and seat capacity.
+1. An instructor or platform owner publishes an approved, learner-visible module listing with a default fixed seat package and optional alternative packages, each with its own price and seat quantity in the configured currency. This does not change personal learner pricing.
 2. A verified Connector member can browse published listings. Only a Connector manager can start checkout.
 3. Checkout creates a historical pending purchase and payment attempt, then holds the requested capacity for 30 minutes.
 4. Provider confirmation finalizes payment, purchase, entitlement, and the append-only sale ledger atomically and idempotently.
 5. Completion does not assign members. A Connector manager configures all-member, role, or individual-member access rules.
 6. Active assignments create the shared module access grant and approved enrollment needed for learning.
 7. Revocation, membership removal, entitlement release, or an ineligible member ends new learning access without deleting progress, attempts, completion state, or certificates.
+
+## Fixed seat packages (Model C)
+
+Use **Manage connector listing** on the instructor/admin module page to configure the default package and add/remove alternatives. Seat quantities must be unique and prices positive. A listing supports up to ten fixed packages in total; no Connector subscription is created. Published package sizes must fit the shared module/instructor capacity at publication; checkout checks capacity again.
+
+Connectors select one package on the detail page. Checkout resolves price and seats on the server and saves them on the organizational purchase and entitlement. Existing single-package listings continue unchanged. There is no automatic package upgrade or second purchase for an already-owned module in this refinement.
+
+A live pending checkout reserves its chosen package for 30 minutes. Use **Continue pending checkout** to resume it. A different package cannot overwrite a checkout still initializing. Paid purchases and financial snapshots are not rewritten by later package or commission changes. See the [October 15 QA report](connector-marketplace-qa-2026-10-15.md).
 
 ## Listing states
 
@@ -21,7 +29,7 @@ This runbook covers one-time Connector purchases of published learning modules. 
 | 'unpublished' | Deliberately removed from browse/checkout | Existing completed purchases and entitlements are not deleted. |
 | 'suspended' | Admin safety hold | Resolve the reason before restoring marketplace availability. |
 
-Publishing requires an approved and learner-visible module. Instructor paid distribution also requires the instructor plan capabilities for publishing paid modules and receiving paid enrollments. Listing price and seat capacity are independent values; a published listing uses the configured billing currency and at least one seat.
+Publishing requires an approved and learner-visible module and authorization to manage its listing. Instructors can save and publish Connector marketplace listings without an instructor subscription or baseline plan, including after approval of a learner-to-instructor application. The instructor plan permissions for paid individual modules and enrollments do not gate Connector listing eligibility. Existing shared module capacity limits still apply. Listing price and seat capacity are independent values; a published listing uses the configured billing currency and at least one seat.
 
 ## Purchase and finalization states
 

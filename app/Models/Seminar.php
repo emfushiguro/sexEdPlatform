@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class Seminar extends Model
 {
@@ -16,6 +17,7 @@ class Seminar extends Model
         'type',
         'event_format',
         'title',
+        'thumbnail_path',
         'description',
         'purpose',
         'category',
@@ -72,7 +74,7 @@ class Seminar extends Model
         'archived_by',
     ];
 
-    protected $hidden = ['external_url', 'attendance_code_hash'];
+    protected $hidden = ['external_url', 'attendance_code_hash', 'attendance_code_posted_ciphertext'];
 
     protected function casts(): array
     {
@@ -85,6 +87,7 @@ class Seminar extends Model
             'registration_deadline_at' => 'datetime',
             'attendance_code_enabled' => 'boolean',
             'attendance_code_generated_at' => 'datetime',
+            'attendance_code_posted_at' => 'datetime',
             'attendance_start_at' => 'datetime',
             'attendance_end_at' => 'datetime',
             'reminder_sent_for_starts_at' => 'datetime',
@@ -101,6 +104,11 @@ class Seminar extends Model
             'published_at' => 'datetime',
             'archived_at' => 'datetime',
         ];
+    }
+
+    public function thumbnailUrl(): ?string
+    {
+        return $this->thumbnail_path ? Storage::disk('public')->url($this->thumbnail_path) : null;
     }
 
     public function isNativeDelivery(): bool

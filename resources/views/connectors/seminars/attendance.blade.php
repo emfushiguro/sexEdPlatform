@@ -4,10 +4,12 @@
 @section('page-title', 'Attendance')
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between gap-3">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-900">{{ $seminar->title }}</h2>
-            <p class="mt-1 text-sm text-gray-600">Full registration and attendance roster.</p>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex min-w-0 items-center gap-4">
+            @include('seminars._thumbnail', ['variant' => 'compact', 'loading' => 'eager'])
+            <div class="min-w-0"><h2 class="text-2xl font-bold text-gray-900">{{ $seminar->title }}</h2>
+            <p class="mt-1 text-sm text-gray-600">Full registration and attendance roster. {{ $submissionCount }} attendance submissions.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('connector.seminars.attendance.export', [$connector, $seminar]) }}" class="rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">Export CSV</a>

@@ -1,6 +1,8 @@
 @php
     /** @var \App\Models\User $headerUser */
     $headerUser    = Auth::user();
+    $canSwitchToInstructorView = $headerUser->isInstructor()
+        && $headerUser->canAny(['access instructor panel', 'create modules']);
     $headerProfile = $headerUser->learnerProfile;
     $headerName    = $headerProfile?->username ?? $headerUser->name;
     $headerAvatar  = $headerProfile?->avatar_path
@@ -89,7 +91,11 @@
         {{-- ─── Right: Dark mode + Notifications + User ─── --}}
         <div class="flex items-center gap-2 sm:gap-3">
 
-            @if(auth()->user()->isLearner() && !auth()->user()->isInstructor())
+            @if($canSwitchToInstructorView)
+                <a href="{{ route('instructor.dashboard') }}" class="hidden lg:inline-flex items-center gap-2 rounded-lg bg-purple-50 text-purple-700 px-3 py-2 text-xs font-semibold hover:bg-purple-100 transition-colors dark:bg-gray-800 dark:text-purple-300 dark:hover:bg-gray-700">
+                    Switch to Instructor View
+                </a>
+            @elseif(auth()->user()->isLearner() && !auth()->user()->isInstructor())
                 @if(auth()->user()->instructorApplications()->where('status', 'pending')->exists())
                     <a href="{{ route('learner.instructor.submitted') }}" class="hidden sm:inline-flex items-center gap-2 rounded-lg bg-orange-100 text-orange-700 px-3 py-2 text-xs font-semibold hover:bg-orange-200 transition-colors">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -289,16 +295,16 @@
                     x-transition:leave="transition ease-in duration-100"
                     x-transition:leave-start="opacity-100 scale-100"
                     x-transition:leave-end="opacity-0 scale-95"
-                    class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
+                    class="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
                     x-cloak
                 >
-                    @if($headerUser->can('access instructor panel'))
+                    @if($canSwitchToInstructorView)
                         <a
                             href="{{ route('instructor.dashboard') }}"
-                            class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-purple-700 bg-purple-50/50 hover:bg-purple-100/80 transition-colors border-l-4 border-purple-500"
+                            class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-purple-700 bg-purple-50/50 hover:bg-purple-100/80 transition-colors border-l-4 border-purple-500 dark:bg-gray-800 dark:text-purple-300 dark:hover:bg-gray-700"
                         >
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
-                            Instructor Dashboard
+                            <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+                            Switch to Instructor View
                         </a>
                         <div class="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
                     @endif

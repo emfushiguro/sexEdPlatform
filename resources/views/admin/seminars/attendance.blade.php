@@ -7,21 +7,16 @@
     <div class="space-y-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">{{ $seminar->title }}</h1>
-                <p class="mt-1 text-sm text-gray-600">Full registration and attendance roster.</p>
+                <div class="mb-3">@include('seminars._thumbnail', ['variant' => 'compact', 'loading' => 'eager'])</div>                <h1 class="text-2xl font-bold text-gray-900">{{ $seminar->title }}</h1>
+                <p class="mt-1 text-sm text-gray-600">Read-only registration and attendance roster. {{ $seminar->connector?->name }} · {{ $seminar->formattedSchedule() }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
+                <a href="{{ route('admin.seminars.attendance.monitor') }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700">All attendance</a>
                 <a href="{{ route('admin.seminars.attendance.export', $seminar) }}" class="rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">Export CSV</a>
                 <a href="{{ route('admin.seminars.show', $seminar) }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Back to event</a>
             </div>
         </div>
 
-        @if(in_array($seminar->event_format, ['in_person', 'external'], true) && ! in_array($seminar->status, ['cancelled', 'archived'], true))
-            @include('seminars._attendance-code-management', [
-                'generateAction' => route('admin.seminars.attendance.code.generate', $seminar),
-                'disableAction' => route('admin.seminars.attendance.code.disable', $seminar),
-            ])
-        @endif
 
         @foreach(['success', 'error', 'warning'] as $type)
             @if(session($type))
@@ -31,7 +26,8 @@
             @endif
         @endforeach
 
-        @include('seminars._attendance-roster')
+        @include('seminars._attendance-roster', ['canCorrectAttendance' => false])
         <div>{{ $registrants->links() }}</div>
+        @include('seminars._attendance-audit')
     </div>
 @endsection

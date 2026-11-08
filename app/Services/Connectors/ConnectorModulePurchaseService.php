@@ -11,9 +11,9 @@ use App\Models\ModuleMarketplaceListing;
 use App\Models\Payment;
 use App\Models\User;
 use App\Notifications\Connectors\ConnectorModulePurchaseNotification;
-use App\Services\Monetization\ModuleSaleLedgerService;
 use App\Services\Modules\ModuleAccessService;
 use App\Services\Modules\ModuleCapacityService;
+use App\Services\Monetization\ModuleSaleLedgerService;
 use App\Services\PayMongoPaymentLinkService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,15 +26,14 @@ class ConnectorModulePurchaseService
         private readonly ModuleCapacityService $capacity,
         private readonly ModuleAccessService $moduleAccess,
         private readonly ModuleSaleLedgerService $ledger,
-    ) {
-    }
+    ) {}
 
     public function completePayment(
         Payment $payment,
         ?string $paymentMethod = null,
         ?string $paymongoPaymentId = null,
     ): bool {
-        if (!$payment->isConnectorModulePurchase()) {
+        if (! $payment->isConnectorModulePurchase()) {
             return false;
         }
 
@@ -55,6 +54,11 @@ class ConnectorModulePurchaseService
                 ->whereKey($purchaseId)
                 ->lockForUpdate()
                 ->firstOrFail();
+            if ((int) $purchase->payment_id !== (int) $lockedPayment->id
+                || (int) $purchase->purchased_by !== (int) $lockedPayment->user_id
+                || (string) $purchase->gross_amount !== (string) $lockedPayment->amount) {
+                return false;
+            }
             $module = Module::query()
                 ->whereKey($purchase->module_id)
                 ->lockForUpdate()
@@ -65,7 +69,7 @@ class ConnectorModulePurchaseService
                 return true;
             }
 
-            if (!$lockedPayment->isCompleted()) {
+            if (! $lockedPayment->isCompleted()) {
                 $details = is_array($lockedPayment->payment_details)
                     ? $lockedPayment->payment_details
                     : [];
@@ -85,7 +89,7 @@ class ConnectorModulePurchaseService
                 ])->save();
             }
 
-            if (!$module->isLearnerVisible()) {
+            if (! $module->isLearnerVisible()) {
                 $purchase->forceFill([
                     'status' => ConnectorModulePurchase::STATUS_ATTENTION_REQUIRED,
                     'capacity_hold_expires_at' => null,
@@ -97,7 +101,7 @@ class ConnectorModulePurchaseService
                 return false;
             }
 
-            if (!$purchase->capacity_hold_expires_at?->isFuture()) {
+            if (! $purchase->capacity_hold_expires_at?->isFuture()) {
                 try {
                     $this->capacity->assertAvailable(
                         $module,
@@ -163,7 +167,7 @@ class ConnectorModulePurchaseService
                 ])
                 ->find($purchaseId);
 
-            if (!$purchase) {
+            if (! $purchase) {
                 return;
             }
 
@@ -194,7 +198,7 @@ class ConnectorModulePurchaseService
 
     public function verifyAndCompletePendingPayment(Payment $payment): bool
     {
-        if (!$payment->isConnectorModulePurchase()) {
+        if (! $payment->isConnectorModulePurchase()) {
             return false;
         }
 
@@ -209,7 +213,7 @@ class ConnectorModulePurchaseService
 
         $response = $this->payMongo->retrieveCheckoutSession($sessionId);
         $status = strtolower((string) data_get($response, 'data.attributes.status', ''));
-        if (!in_array($status, ['paid', 'completed'], true)) {
+        if (! in_array($status, ['paid', 'completed'], true)) {
             return false;
         }
 
@@ -224,10 +228,11 @@ class ConnectorModulePurchaseService
         ModuleMarketplaceListing $listing,
         ?string $paymentMethod,
         array $billing = [],
+        ?int $seatCapacity = null,
     ): array {
         $this->access->abortUnlessPermission($actor, $connector, 'connector.manage_modules');
 
-        $state = DB::transaction(function () use ($connector, $actor, $listing, $paymentMethod, $billing): array {
+        $state = DB::transaction(function () use ($connector, $actor, $listing, $paymentMethod, $billing, $seatCapacity): array {
             $lockedListing = ModuleMarketplaceListing::query()
                 ->with('module.creator')
                 ->whereKey($listing->id)
@@ -254,7 +259,14 @@ class ConnectorModulePurchaseService
                 ->lockForUpdate()
                 ->first();
             $existingUrl = data_get($purchase?->payment?->payment_details, 'checkout_url');
-            if ($purchase?->capacity_hold_expires_at?->isFuture() && is_string($existingUrl) && $existingUrl !== '') {
+            if ($purchase?->capacity_hold_expires_at?->isFuture()) {
+                if ((int) $purchase->seat_capacity !== ($seatCapacity ?? (int) $lockedListing->seat_capacity)) {
+                    throw ValidationException::withMessages(['seat_capacity' => 'A different package checkout is pending. Complete it or wait for its 30-minute hold to expire.']);
+                }
+                if (! is_string($existingUrl) || $existingUrl === '') {
+                    throw ValidationException::withMessages(['seat_capacity' => 'Your checkout is being initialized. Please try again shortly.']);
+                }
+
                 return [
                     'status' => 'checkout_created',
                     'checkout_url' => $existingUrl,
@@ -263,13 +275,15 @@ class ConnectorModulePurchaseService
                 ];
             }
 
+            $package = $lockedListing->packageForSeats($seatCapacity);
+
             if ($purchase?->payment && $purchase->payment->status === PaymentStatus::Pending) {
                 $purchase->payment->update(['status' => PaymentStatus::Failed]);
             }
 
             $this->capacity->assertAvailable(
                 $module,
-                (int) $lockedListing->seat_capacity,
+                (int) $package['seat_capacity'],
                 excludeConnectorPurchaseId: $purchase?->id,
             );
 
@@ -286,10 +300,10 @@ class ConnectorModulePurchaseService
             $payment = Payment::query()->create([
                 'user_id' => $actor->id,
                 'subscription_id' => null,
-                'amount' => (float) $lockedListing->price_amount,
+                'amount' => (float) $package['price_amount'],
                 'method' => $selectedMethod,
                 'status' => PaymentStatus::Pending,
-                'transaction_id' => 'CMP-' . strtoupper(uniqid()),
+                'transaction_id' => 'CMP-'.strtoupper(uniqid()),
                 'payment_details' => [
                     'payment_scope' => 'connector_module_purchase',
                     'payment_method' => $selectedMethod,
@@ -302,7 +316,7 @@ class ConnectorModulePurchaseService
                 ],
             ]);
 
-            $purchase ??= new ConnectorModulePurchase();
+            $purchase ??= new ConnectorModulePurchase;
             $purchase->forceFill([
                 'connector_id' => $connector->id,
                 'module_marketplace_listing_id' => $lockedListing->id,
@@ -310,9 +324,9 @@ class ConnectorModulePurchaseService
                 'purchased_by' => $actor->id,
                 'payment_id' => $payment->id,
                 'status' => ConnectorModulePurchase::STATUS_PENDING,
-                'gross_amount' => $lockedListing->price_amount,
+                'gross_amount' => $package['price_amount'],
                 'currency' => strtoupper((string) $lockedListing->currency),
-                'seat_capacity' => (int) $lockedListing->seat_capacity,
+                'seat_capacity' => (int) $package['seat_capacity'],
                 'seller_type_snapshot' => $sellerType,
                 'seller_user_id_snapshot' => $sellerType === 'instructor' ? $module->created_by : null,
                 'module_title_snapshot' => (string) $module->title,
@@ -360,8 +374,8 @@ class ConnectorModulePurchaseService
         try {
             $response = $this->payMongo->createCheckoutSession(
                 amount: (float) $state['amount'],
-                description: 'Connector Module: ' . $state['module_title'],
-                remarks: 'Connector module purchase for ' . $actor->name,
+                description: 'Connector Module: '.$state['module_title'],
+                remarks: 'Connector module purchase for '.$actor->name,
                 metadata: $state['metadata'],
                 successUrl: route('payment.pending', ['payment' => $state['payment_id']]),
                 cancelUrl: route('payment.cancel', [
@@ -410,7 +424,7 @@ class ConnectorModulePurchaseService
         ModuleMarketplaceListing $listing,
         Module $module,
     ): void {
-        if ($listing->status !== ModuleMarketplaceListing::STATUS_PUBLISHED || !$module->isLearnerVisible()) {
+        if ($listing->status !== ModuleMarketplaceListing::STATUS_PUBLISHED || ! $module->isLearnerVisible()) {
             throw ValidationException::withMessages(['listing' => 'This marketplace listing is no longer available.']);
         }
 
@@ -427,7 +441,7 @@ class ConnectorModulePurchaseService
             Payment::query()->whereKey($paymentId)->update([
                 'status' => PaymentStatus::Failed,
                 'payment_details' => DB::raw(
-                    "JSON_SET(COALESCE(payment_details, JSON_OBJECT()), '$.provider_error', " . DB::getPdo()->quote($reason) . ')'
+                    "JSON_SET(COALESCE(payment_details, JSON_OBJECT()), '$.provider_error', ".DB::getPdo()->quote($reason).')'
                 ),
             ]);
             ConnectorModulePurchase::query()->whereKey($purchaseId)->update([

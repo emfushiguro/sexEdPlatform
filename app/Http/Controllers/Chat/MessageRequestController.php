@@ -20,7 +20,7 @@ class MessageRequestController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->can('manage message requests')) {
+        if (! $user->can('manage message requests') && ! $user->isInstructor()) {
             return response()->json([
                 'requests' => [],
             ]);

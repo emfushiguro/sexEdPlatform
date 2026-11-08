@@ -7,6 +7,7 @@
             @foreach($upcomingSeminars as $seminar)
                 @php $starts = $seminar->localStartsAt(); @endphp
                 <a href="{{ route('connector.seminars.show', [$connector, $seminar]) }}" class="block rounded-xl border border-gray-100 bg-gray-50 p-3 transition hover:border-brand-200 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+                    <div class="mb-2">@include('seminars._thumbnail', ['variant' => 'compact'])</div>
                     <p class="line-clamp-2 text-sm font-bold text-gray-950">{{ $seminar->title }}</p>
                     <p class="mt-1 text-xs font-medium text-gray-500">{{ $starts?->format('M d, h:i A') ?? 'Schedule to be announced' }}</p>
                 </a>

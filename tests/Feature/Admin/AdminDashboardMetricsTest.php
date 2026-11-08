@@ -66,7 +66,7 @@ class AdminDashboardMetricsTest extends TestCase
             ->assertOk()
             ->assertSee('Instructor Applications', false)
             ->assertSee('Module Published Review', false)
-            ->assertSee(route('admin.instructor-applications.index'), false)
+            ->assertSee(route('admin.instructor-applications.identities.index'), false)
             ->assertSee(route('admin.content-reviews.index'), false);
     }
 }

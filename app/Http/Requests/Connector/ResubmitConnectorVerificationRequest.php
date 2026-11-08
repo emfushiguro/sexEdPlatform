@@ -33,6 +33,10 @@ class ResubmitConnectorVerificationRequest extends FormRequest
             'evidence.*' => ['array'],
             'evidence.*.files' => ['nullable', 'array'],
             'evidence.*.files.*' => ['file'],
+            'evidence.*.issuer' => ['nullable', 'string', 'max:255'],
+            'evidence.*.document_number' => ['nullable', 'string', 'max:255'],
+            'evidence.*.issue_date' => ['nullable', 'date_format:Y-m-d'],
+            'evidence.*.expiry_date' => ['nullable', 'date_format:Y-m-d'],
         ];
     }
 }

@@ -34,10 +34,10 @@ class ActivityLog extends Model
 
     // Helper Methods
 
-    public static function log(string $activityType, ?string $description = null, ?array $metadata = null): void
+    public static function log(string $activityType, ?string $description = null, ?array $metadata = null, ?int $actorId = null): void
     {
         static::create([
-            'user_id' => auth()->check() ? auth()->id() : null,
+            'user_id' => $actorId ?? auth()->id(),
             'activity_type' => $activityType,
             'description' => $description,
             'metadata' => $metadata,

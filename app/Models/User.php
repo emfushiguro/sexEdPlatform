@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Notifications\CustomVerifyEmail;
 use App\Support\AccountEmail;
+use App\Services\Connectors\ConnectorAccessService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,6 +37,8 @@ class User extends Authenticatable implements MustVerifyEmail
     public const ACCOUNT_TYPE_PARENT = 'parent';
 
     public const ACCOUNT_TYPE_INSTRUCTOR = 'instructor';
+
+    public const ACCOUNT_TYPE_APPLICANT = 'applicant';
 
     public const ACCOUNT_TYPE_ADMIN = 'admin';
 
@@ -74,6 +77,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'guardian_onboarding_status',
         'guardian_onboarding_started_at',
         'guardian_onboarding_completed_at',
+        'parent_identity_requested_corrections',
     ];
 
     /**
@@ -84,6 +88,11 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    protected $attributes = [
+        'parent_identity_sandbox_manual_review' => false,
+        'parent_identity_resubmission_allowed' => true,
     ];
 
     /**
@@ -99,6 +108,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'verified' => 'boolean',
             'birthdate' => 'date',
             'is_parent_registration' => 'boolean',
+            'parent_identity_sandbox_manual_review' => 'boolean',
+            'parent_identity_resubmission_allowed' => 'boolean',
+            'parent_identity_requested_corrections' => 'array',
             'parent_verification_submitted_at' => 'datetime',
             'parent_verification_reviewed_at' => 'datetime',
             'parent_verification_approved_at' => 'datetime',
@@ -153,6 +165,26 @@ class User extends Authenticatable implements MustVerifyEmail
     public function identityVerifications(): HasMany
     {
         return $this->hasMany(LearnerIdentityVerification::class);
+    }
+
+    public function instructorIdentityVerifications(): HasMany
+    {
+        return $this->hasMany(InstructorIdentityVerification::class);
+    }
+
+    public function instructorIdentityVerification(): HasOne
+    {
+        return $this->hasOne(InstructorIdentityVerification::class)->latestOfMany('submission_round');
+    }
+
+    public function personaInquiries(): HasMany
+    {
+        return $this->hasMany(PersonaInquiry::class);
+    }
+
+    public function guardianIdentityAudits(): HasMany
+    {
+        return $this->hasMany(GuardianIdentityAudit::class, 'guardian_id');
     }
 
     public function adminCreatorProfile()
@@ -739,7 +771,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isParentVerificationApproved(): bool
     {
-        return $this->parent_verification_status === 'approved';
+        $testOnly = $this->parent_identity_sandbox_manual_review;
+
+        return $this->parent_verification_status === 'approved'
+            && ($testOnly === false || ($testOnly === true && PersonaInquiry::localManualReviewEnabled()));
     }
 
     public function isParentVerificationPending(): bool
@@ -776,7 +811,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isLearner(): bool
     {
-        if ($this->isAdmin() || $this->isInstructor()) {
+        if ($this->isAdmin() || $this->isInstructor() || $this->isInstructorApplicant()) {
             return false;
         }
 
@@ -785,9 +820,21 @@ class User extends Authenticatable implements MustVerifyEmail
             || $this->can('access learner platform');
     }
 
+    public function isInstructorApplicant(): bool
+    {
+        return ! $this->isAdmin()
+            && ! $this->isInstructor()
+            && ($this->hasRole(self::ACCOUNT_TYPE_APPLICANT) || $this->role === self::ACCOUNT_TYPE_APPLICANT);
+    }
+
     public function canAccessChat(): bool
     {
-        return $this->can('access chat') || $this->isLearner();
+        return $this->can('access chat') || $this->isAdmin() || $this->isInstructor() || $this->isLearner()
+            || $this->connectorMemberships()->where('status', 'active')
+                ->whereHas('connector', fn ($query) => $query->where('status', 'verified'))
+                ->whereHas('role.permissions', fn ($query) => $query->whereIn('permission_key',
+                    app(ConnectorAccessService::class)->effectivePermissionKeys('connector.manage_educators')))
+                ->exists();
     }
 
     public function hasLearnerToInstructorTransition(): bool
@@ -876,6 +923,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
         if ($this->isInstructor()) {
             return self::ACCOUNT_TYPE_INSTRUCTOR;
+        }
+
+        if ($this->isInstructorApplicant()) {
+            return self::ACCOUNT_TYPE_APPLICANT;
         }
 
         if ($this->hasRole('parent') || $this->isParent()) {

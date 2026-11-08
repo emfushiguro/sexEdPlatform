@@ -3,8 +3,10 @@
 namespace App\Listeners\Chat;
 
 use App\Events\Chat\MessageSent;
+use App\Models\Conversation;
 use App\Models\User;
 use App\Notifications\Chat\NewChatMessageNotification;
+use App\Services\Chat\ChatAuthorizationService;
 
 class SendInAppChatMessageNotification
 {
@@ -13,7 +15,7 @@ class SendInAppChatMessageNotification
         $message = $event->message->loadMissing('conversation');
         $conversation = $message->conversation;
 
-        if (!$conversation) {
+        if (! $conversation) {
             return;
         }
 
@@ -29,7 +31,12 @@ class SendInAppChatMessageNotification
 
         $recipient = User::query()->find($recipientId);
 
-        if (!$recipient) {
+        if (! $recipient) {
+            return;
+        }
+
+        if ($conversation->conversation_type === Conversation::TYPE_CONNECTOR_NEGOTIATION
+            && ! app(ChatAuthorizationService::class)->canSendMessage($recipient, $conversation)) {
             return;
         }
 

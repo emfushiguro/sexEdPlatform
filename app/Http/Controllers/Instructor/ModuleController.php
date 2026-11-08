@@ -13,6 +13,7 @@ use App\Services\Content\ContentAuthoringService;
 use App\Services\ContentGovernanceService;
 use App\Services\Instructor\InstructorPlanCapabilityService;
 use App\Services\Monetization\CommissionPolicyResolver;
+use App\Services\Modules\ModuleCapacityService;
 use App\Support\ContentPanelContext;
 use App\Support\InstructorRestrictionGate;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -32,6 +33,7 @@ class ModuleController extends Controller
         private readonly ContentAuthoringService $contentAuthoringService,
         private readonly ContentGovernanceService $contentGovernanceService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
+        private readonly ModuleCapacityService $moduleCapacity,
     ) {
     }
 
@@ -232,8 +234,9 @@ class ModuleController extends Controller
         ]);
 
         $pendingEnrollmentsCount = $module->enrollments->where('status', 'pending')->count();
+        $marketplaceCapacity = $this->moduleCapacity->usage($module);
 
-        return view('instructor.modules.show', compact('module', 'pendingEnrollmentsCount'));
+        return view('instructor.modules.show', compact('module', 'pendingEnrollmentsCount', 'marketplaceCapacity'));
     }
 
     public function edit(Module $module)
@@ -256,6 +259,7 @@ class ModuleController extends Controller
             'restrictionProfile' => $restrictionProfile,
             'restrictionMessage' => $restrictionProfile ? $this->instructorRestrictionGate->restrictionMessage($user) : null,
             'effectiveCommissionPolicy' => $this->resolveEffectiveCommissionPolicyPayload($user),
+            'marketplaceCapacity' => $this->moduleCapacity->usage($module),
         ]);
     }
 

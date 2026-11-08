@@ -17,6 +17,7 @@ class RoleSyncService
         'clinic',
         'counselor',
         'admin',
+        'applicant',
     ];
 
     public function assignPrimaryRole(User $user, string $targetRole): void

@@ -166,6 +166,20 @@ class InteractiveCheckpointAuthoringTest extends TestCase
         ]);
     }
 
+    public function test_admin_checkpoint_create_page_renders_all_shared_authoring_partials(): void
+    {
+        [$admin, $lesson] = $this->authoringFixture('admin');
+
+        $this->actingAs($admin)
+            ->get(route('admin.topics.create', ['lesson' => $lesson]))
+            ->assertOk()
+            ->assertSee('Interactive Checkpoint')
+            ->assertSee('id="checkpointQuestionFields" disabled', false)
+            ->assertSee('id="activity_type_selector"', false)
+            ->assertSee('Add item')
+            ->assertSee('Matching pairs');
+    }
+
     public function test_admin_can_create_identification_checkpoint_when_hidden_option_fields_are_empty(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

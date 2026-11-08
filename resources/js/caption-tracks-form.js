@@ -1,18 +1,18 @@
 export const CAPTION_MAX_BYTES = 2 * 1024 * 1024;
-const CAPTION_MIMES = new Set(['text/vtt', 'text/plain']);
+const CAPTION_MIMES = new Set(['text/vtt', 'text/plain', 'text/srt', 'application/srt', 'application/x-srt', 'application/x-subrip', 'application/octet-stream']);
 
 export function captionFileError(file) {
     if (!file) {
         return null;
     }
     if (file.size > CAPTION_MAX_BYTES) {
-        return 'WebVTT caption files must be 2 MB or smaller.';
+        return 'Caption files must be 2 MB or smaller.';
     }
-    if (!file.name.toLowerCase().endsWith('.vtt')) {
-        return 'Caption files must use the WebVTT (.vtt) format.';
+    if (!/\.(vtt|srt)$/i.test(file.name)) {
+        return 'Caption files must use VTT (.vtt) or SRT (.srt) format.';
     }
     if (file.type && !CAPTION_MIMES.has(file.type)) {
-        return 'Caption files must contain WebVTT text.';
+        return 'Caption files must contain VTT or SRT text.';
     }
 
     return null;

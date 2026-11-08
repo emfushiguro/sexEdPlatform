@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\Connector\VerificationDocumentController;
 use App\Http\Controllers\Instructor;
 use App\Http\Middleware\EnsureLearnerIdentityVerified;
-use App\Http\Controllers\Connector\VerificationDocumentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,10 +32,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'role:ad
     Route::get('/notifications/{id}/read', [Admin\NotificationController::class, 'markRead'])->name('notifications.read');
 
     Route::prefix('help')->name('help.')->group(function () {
-      Route::resource('categories', Admin\HelpCategoryController::class)->except(['show', 'destroy'])->parameters(['categories' => 'helpCategory']);
+        Route::resource('categories', Admin\HelpCategoryController::class)->except(['show', 'destroy'])->parameters(['categories' => 'helpCategory']);
         Route::post('categories/{helpCategory}/deactivate', [Admin\HelpCategoryController::class, 'deactivate'])->name('categories.deactivate');
         Route::post('categories/order', [Admin\HelpCategoryController::class, 'order'])->name('categories.order');
-      Route::resource('articles', Admin\HelpArticleController::class)->except(['show', 'destroy'])->parameters(['articles' => 'helpArticle']);
+        Route::resource('articles', Admin\HelpArticleController::class)->except(['show', 'destroy'])->parameters(['articles' => 'helpArticle']);
         Route::get('articles/{helpArticle}/preview', [Admin\HelpArticleController::class, 'preview'])->name('articles.preview');
         Route::get('articles/{helpArticle}/sections/{section}/image', [\App\Http\Controllers\HelpArticleImageController::class, 'adminShow'])->withoutScopedBindings()->name('articles.section.image');
         Route::post('articles/{helpArticle}/publish', [Admin\HelpArticleController::class, 'publish'])->name('articles.publish');
@@ -351,15 +351,28 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'role:ad
     });
 
     Route::prefix('instructor-applications')->name('instructor-applications.')->group(function () {
+        Route::get('/{application}/documents/{slot}', [\App\Http\Controllers\InstructorApplication\DocumentController::class, 'show'])->name('documents.show');
+        Route::prefix('identities')->name('identities.')->group(function () {
+            Route::get('/', [Admin\InstructorIdentityVerificationController::class, 'index'])->name('index');
+            Route::get('/{instructorIdentityVerification}', [Admin\InstructorIdentityVerificationController::class, 'show'])->name('show');
+            Route::post('/{instructorIdentityVerification}/approve', [Admin\InstructorIdentityVerificationController::class, 'approve'])->name('approve');
+            Route::post('/{instructorIdentityVerification}/reject', [Admin\InstructorIdentityVerificationController::class, 'reject'])->name('reject');
+            Route::post('/{instructorIdentityVerification}/request-action', [Admin\InstructorIdentityVerificationController::class, 'requestAction'])->name('request-action');
+        });
         Route::get('/', [Admin\InstructorApplicationController::class, 'index'])->name('index');
+        Route::get('/review/{application}', [Admin\InstructorIdentityVerificationController::class, 'showApplication'])->name('review');
         Route::get('/{application}', [Admin\InstructorApplicationController::class, 'show'])->name('show');
         Route::post('/{application}/approve', [Admin\InstructorApplicationController::class, 'approve'])->name('approve');
+        Route::post('/{application}/request-documents', [Admin\InstructorApplicationController::class, 'requestDocuments'])->name('request-documents');
         Route::post('/{application}/reject', [Admin\InstructorApplicationController::class, 'reject'])->name('reject');
         Route::post('/{application}/archive', [Admin\InstructorApplicationController::class, 'archive'])->name('archive');
         Route::delete('/{application}', [Admin\InstructorApplicationController::class, 'destroy'])->name('destroy');
     });
 
     Route::prefix('connectors')->name('connectors.')->group(function () {
+        Route::get('/module-access', [Admin\ConnectorModuleAccessController::class, 'index'])->name('module-access.index');
+        Route::post('/{connector}/module-access/{entitlement}/review', [Admin\ConnectorModuleAccessController::class, 'review'])->name('module-access.review');
+        Route::post('/{connector}/module-access/{entitlement}', [Admin\ConnectorModuleAccessController::class, 'update'])->name('module-access.update');
         Route::get('/', [Admin\ConnectorController::class, 'index'])->name('index');
         Route::get('/{connector}', [Admin\ConnectorController::class, 'show'])->name('show');
         Route::get('/{connector}/verification/documents/{document}', VerificationDocumentController::class)
@@ -393,6 +406,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'role:ad
         Route::get('/parents/{user}/document/{side}', [Admin\ParentChildVerificationController::class, 'parentDocument'])
             ->whereIn('side', ['front', 'back'])
             ->name('parents.document');
+        Route::get('/persona/{personaInquiry}/{artifact}', [Admin\PersonaEvidenceController::class, 'show'])
+            ->whereIn('artifact', ['government-id-front', 'government-id-back', 'selfie', 'selfie-left', 'selfie-right'])
+            ->name('persona.evidence');
         Route::get('/children/{parentChildAccount}/document', [Admin\ParentChildVerificationController::class, 'childDocument'])
             ->name('children.document');
         Route::post('/parents/{user}/reset-onboarding', [Admin\ParentChildVerificationController::class, 'resetGuardianOnboarding'])
@@ -439,13 +455,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'role:ad
     // Seminars
     Route::prefix('seminars')->name('seminars.')->group(function () {
         Route::get('/', [Admin\SeminarModerationController::class, 'index'])->name('index');
+        Route::get('/attendance', [Admin\SeminarAttendanceController::class, 'monitor'])->name('attendance.monitor');
         Route::get('/{seminar}', [Admin\SeminarModerationController::class, 'show'])->name('show');
         Route::put('/{seminar}/delivery', [Admin\SeminarDeliveryController::class, 'update'])->name('delivery.update');
         Route::get('/{seminar}/attendance', [Admin\SeminarAttendanceController::class, 'index'])->name('attendance');
         Route::get('/{seminar}/attendance/export', [Admin\SeminarAttendanceController::class, 'export'])->name('attendance.export');
-        Route::post('/{seminar}/attendance/code', [Admin\SeminarAttendanceController::class, 'generate'])->name('attendance.code.generate');
-        Route::post('/{seminar}/attendance/code/disable', [Admin\SeminarAttendanceController::class, 'disable'])->name('attendance.code.disable');
-        Route::post('/{seminar}/attendance/{registrant}/manual', [Admin\SeminarAttendanceController::class, 'manual'])->name('attendance.manual');
         Route::post('/{seminar}/approve', [Admin\SeminarModerationController::class, 'approve'])->name('approve');
         Route::post('/{seminar}/reject', [Admin\SeminarModerationController::class, 'reject'])->name('reject');
         Route::post('/{seminar}/cancel', [Admin\SeminarModerationController::class, 'cancel'])->name('cancel');
@@ -455,6 +469,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified', 'role:ad
     });
 
     // Messages
-    Route::get('/messages', fn () => view('admin.messages.index'))->name('messages.index');
+    Route::get('/messages', fn () => view('admin.messages.index'))
+        ->middleware(['chat.access', 'guardian.verified'])->name('messages.index');
 
 });

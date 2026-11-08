@@ -171,6 +171,7 @@
                             type="radio" 
                             name="video_source" 
                             value="url" 
+                            data-video-source
                             class="text-purple-700 focus:ring-purple-300"
                             {{ old('video_source', $topic->video_provider !== 'local' ? 'url' : '') === 'url' ? 'checked' : '' }}
                         >
@@ -181,6 +182,7 @@
                             type="radio" 
                             name="video_source" 
                             value="upload" 
+                            data-video-source
                             class="text-purple-700 focus:ring-purple-300"
                             {{ old('video_source', $topic->video_provider === 'local' ? 'upload' : '') === 'upload' ? 'checked' : '' }}
                         >
@@ -190,7 +192,7 @@
             </div>
 
             <!-- Video URL Input -->
-            <div id="videoUrlInput" class="mb-6">
+            <div id="videoUrlInput" data-video-url-field class="mb-6">
                 <label for="video_url" class="block text-sm font-medium text-gray-700 mb-2">
                     Video URL
                 </label>
@@ -202,24 +204,24 @@
                     placeholder="https://www.youtube.com/watch?v=... or https://vimeo.com/..."
                     class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('video_url') border-red-500 @enderror"
                 >
-                <p class="mt-1 text-sm text-gray-500">Enter a YouTube or Vimeo URL</p>
+                <p class="mt-1 text-sm text-gray-500">Supports HTTP/HTTPS YouTube, Vimeo, and direct video file URLs.</p>
                 @error('video_url')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
 
             <!-- Video File Upload -->
-            <div id="videoFileInput" class="mb-6 hidden">
+            <div id="videoFileInput" data-video-file-field class="mb-6 hidden">
                 @if($topic->video_file_path)
-                    <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                    <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <svg class="w-8 h-8 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <svg class="w-6 h-6 flex-shrink-0 text-brand-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                                 </svg>
-                                <div>
+                                <div class="min-w-0">
                                     <p class="text-sm font-medium text-gray-900">Current Video File</p>
-                                    <p class="text-xs text-gray-500">{{ basename($topic->video_file_path) }}</p>
+                                    <p class="mt-1 break-all text-xs text-gray-500">{{ basename($topic->video_file_path) }}</p>
                                 </div>
                             </div>
                         </div>
@@ -229,24 +231,33 @@
                 <label for="video_file" class="block text-sm font-medium text-gray-700 mb-2">
                     {{ $topic->video_file_path ? 'Replace Video File' : 'Video File' }}
                 </label>
-                <input 
+                <div class="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-2">
+                    <label for="video_file" data-video-file-trigger
+                        class="inline-flex min-h-[40px] items-center justify-center rounded-md bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+                        Choose video file
+                    </label>
+                    <input
                     type="file" 
                     name="video_file" 
                     id="video_file" 
                     accept=".mp4,.mpeg,.mpg,.mov,.avi,.webm,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
-                    class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 @error('video_file') border-red-500 @enderror"
+                    class="sr-only"
                     data-video-file-input
+                    aria-label="Choose video file"
                     aria-describedby="videoFileName videoFileClientError{{ $errors->has('video_file') ? ' videoFileServerError' : '' }}"
                     aria-invalid="{{ $errors->has('video_file') ? 'true' : 'false' }}"
-                >
-                <p class="mt-1 text-sm text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
+                    >
+                </div>
+                <p class="mt-2 break-all text-xs text-gray-500" id="videoFileName" data-video-file-name>MP4, MPEG, MOV, AVI, or WebM up to 100 MB</p>
                 <p id="videoFileClientError" data-video-error class="hidden mt-1 text-sm text-red-600" role="alert"></p>
+                @include('instructor.topics.partials.video-file-preview')
                 @error('video_file')
                     <p id="videoFileServerError" class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
 
             @include('instructor.topics.partials.caption-tracks')
+            @include('instructor.topics.partials.video-attribution')
 
             <div class="mb-6">
                 <label for="video_description" class="block text-sm font-medium text-gray-700 mb-2">
@@ -521,9 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const typeRadios = document.querySelectorAll('.topic-type-radio');
     const typeCards = document.querySelectorAll('.topic-type-card');
     const contentSections = document.querySelectorAll('.content-section');
-    const videoSourceRadios = document.querySelectorAll('input[name="video_source"]');
-    const videoUrlInput = document.getElementById('videoUrlInput');
-    const videoFileInput = document.getElementById('videoFileInput');
 
     // Function to update card styles
     function updateCardStyles() {
@@ -551,21 +559,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Function to toggle video source inputs
-    function toggleVideoSource() {
-        const selectedSource = document.querySelector('input[name="video_source"]:checked');
-        if (selectedSource) {
-            if (selectedSource.value === 'url') {
-                videoUrlInput.classList.remove('hidden');
-                videoFileInput.classList.add('hidden');
-            } else {
-                videoUrlInput.classList.add('hidden');
-                videoFileInput.classList.remove('hidden');
-            }
-        }
-    }
-
-
     // Event listeners for topic type selection
     typeRadios.forEach(radio => {
         radio.addEventListener('change', function() {
@@ -573,12 +566,6 @@ document.addEventListener('DOMContentLoaded', function() {
             showContentSection(this.value);
         });
     });
-
-    // Event listeners for video source
-    videoSourceRadios.forEach(radio => {
-        radio.addEventListener('change', toggleVideoSource);
-    });
-
 
     // Initialize on page load
     updateCardStyles();
@@ -588,9 +575,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (selectedType) {
         showContentSection(selectedType.value);
     }
-
-    // Initialize video source visibility
-    toggleVideoSource();
 
 });
 </script>

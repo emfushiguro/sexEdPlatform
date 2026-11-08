@@ -15,8 +15,8 @@ class ChatAuthorizationService
 {
     public function __construct(
         private readonly ModuleAccessService $moduleAccessService,
-    ) {
-    }
+        private readonly ConnectorConversationService $connectorConversations,
+    ) {}
 
     /**
      * @return array{allowed: bool, requires_request: bool, reason: ?string}
@@ -156,6 +156,10 @@ class ChatAuthorizationService
 
     public function canViewConversation(User $user, Conversation $conversation): bool
     {
+        if ($conversation->conversation_type === Conversation::TYPE_CONNECTOR_NEGOTIATION) {
+            return $this->connectorConversations->visibleTo($user)->whereKey($conversation->id)->exists();
+        }
+
         if ((string) User::query()->whereKey($user->id)->value('status') !== User::STATUS_ACTIVE) {
             return false;
         }

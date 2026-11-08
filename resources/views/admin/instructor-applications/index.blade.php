@@ -179,6 +179,10 @@
                 <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                     <div>
                         <h2 class="mt-2 text-xl font-bold text-gray-900">Instructor Applications Table</h2>
+                        <a href="{{ route('admin.instructor-applications.identities.index') }}" class="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-brand-700 hover:underline">
+                            Instructor Applications
+                            <span class="rounded-full bg-brand-100 px-2 py-0.5 text-xs">{{ number_format($pendingIdentityCount ?? 0) }} pending</span>
+                        </a>
                     </div>
                     <form method="GET" action="{{ route('admin.instructor-applications.index') }}" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" data-testid="admin-table-filter-bar">
                         <label class="block xl:col-span-2">
@@ -364,14 +368,14 @@
             $avatarUrl = $profile?->avatar_path ? asset('storage/' . $profile->avatar_path) : null;
             $completedModules = $application->user->moduleEnrollments;
             $tierOneDocuments = [
-                ['label' => 'Government ID', 'path' => $application->government_id_path],
-                ['label' => 'Verification Document (NBI/Police Clearance)', 'path' => $application->clearance_path],
-                ['label' => 'CV or Resume', 'path' => $application->cv_resume_path],
+                ['label' => 'Government ID', 'slot' => 'government_id', 'path' => $application->government_id_path],
+                ['label' => 'Verification Document (NBI/Police Clearance)', 'slot' => 'clearance', 'path' => $application->clearance_path],
+                ['label' => 'CV or Resume', 'slot' => 'cv_resume', 'path' => $application->cv_resume_path],
             ];
             $tierTwoDocuments = [
-                ['label' => 'Teaching Credential', 'path' => $application->teaching_credential_path],
-                ['label' => 'Sex Education Certificate', 'path' => $application->sexed_certificate_path],
-                ['label' => 'Professional License', 'path' => $application->professional_license_path],
+                ['label' => 'Teaching Credential', 'slot' => 'teaching_credential', 'path' => $application->teaching_credential_path],
+                ['label' => 'Sex Education Certificate', 'slot' => 'sexed_certificate', 'path' => $application->sexed_certificate_path],
+                ['label' => 'Professional License', 'slot' => 'professional_license', 'path' => $application->professional_license_path],
             ];
             $defaultReasonCode = old('review_application_id') == $application->id ? old('rejection_reason_code') : '';
             $defaultAdminMessage = old('review_application_id') == $application->id ? old('admin_message') : null;
@@ -483,7 +487,7 @@
                                         @if(! empty($document['path']))
                                             @php
                                                 $documentPath = (string) $document['path'];
-                                                $documentUrl = $application->resolveDocumentUrl($documentPath);
+                                                $documentUrl = route('admin.instructor-applications.documents.show', [$application, $document['slot']]);
                                                 $extensionSourcePath = parse_url($documentPath, PHP_URL_PATH) ?: $documentPath;
                                                 $extension = strtolower(pathinfo((string) $extensionSourcePath, PATHINFO_EXTENSION));
                                                 $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
@@ -535,7 +539,7 @@
                                         @if(! empty($document['path']))
                                             @php
                                                 $documentPath = (string) $document['path'];
-                                                $documentUrl = $application->resolveDocumentUrl($documentPath);
+                                                $documentUrl = route('admin.instructor-applications.documents.show', [$application, $document['slot']]);
                                                 $extensionSourcePath = parse_url($documentPath, PHP_URL_PATH) ?: $documentPath;
                                                 $extension = strtolower(pathinfo((string) $extensionSourcePath, PATHINFO_EXTENSION));
                                                 $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);

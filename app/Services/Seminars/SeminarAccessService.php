@@ -9,9 +9,7 @@ use App\Services\Connectors\ConnectorAccessService;
 
 class SeminarAccessService
 {
-    public function __construct(private readonly ConnectorAccessService $connectorAccess)
-    {
-    }
+    public function __construct(private readonly ConnectorAccessService $connectorAccess) {}
 
     public function canManageConnectorSeminars(User $user, Connector $connector): bool
     {
@@ -31,6 +29,13 @@ class SeminarAccessService
     public function abortUnlessConnectorOwnsSeminar(Connector $connector, Seminar $seminar): void
     {
         abort_unless((int) $seminar->connector_id === (int) $connector->id, 404);
+    }
+
+    public function abortUnlessCanManageAttendance(User $user, Seminar $seminar): void
+    {
+        abort_if($user->role === 'admin' || $user->hasRole('admin'), 403);
+        abort_unless($seminar->connector, 403);
+        $this->abortUnlessCanManageConnectorSeminars($user, $seminar->connector);
     }
 
     public function activeRegistrantCount(Seminar $seminar): int

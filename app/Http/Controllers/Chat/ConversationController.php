@@ -6,13 +6,16 @@ use App\Enums\EnrollmentStatus;
 use App\Events\Chat\MessageRequestCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\StartConversationRequest;
+use App\Models\Connector;
 use App\Models\Conversation;
 use App\Models\MessageRequest;
 use App\Models\ModuleEnrollment;
 use App\Models\User;
 use App\Services\Chat\ChatAuthorizationService;
 use App\Services\Chat\ChatService;
+use App\Services\Chat\ConnectorConversationService;
 use App\Services\Chat\SupportAdminResolver;
+use App\Services\Connectors\ConnectorAccessService;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +30,7 @@ class ConversationController extends Controller
         protected ChatService $chatService,
         protected ChatAuthorizationService $chatAuthorizationService,
         protected SupportAdminResolver $supportAdminResolver,
+        protected ConnectorConversationService $connectorConversations,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -36,6 +40,11 @@ class ConversationController extends Controller
         $userId = (int) $user->id;
         $isAdminContext = $this->isAdminContext($user);
         $perPage = min(max((int) $request->integer('per_page', 20), 1), 50);
+        $validated = $request->validate(['connector_id' => ['nullable', 'integer', 'min:1']]);
+        $connectorId = $validated['connector_id'] ?? null;
+        if ($connectorId !== null) {
+            app(ConnectorAccessService::class)->abortUnlessPermission($user, Connector::findOrFail($connectorId), 'connector.manage_educators');
+        }
 
         $conversationPage = Conversation::query()
             ->where(function ($query) use ($userId, $isAdminContext) {
@@ -46,7 +55,14 @@ class ConversationController extends Controller
                     $query->orWhere('conversation_type', Conversation::TYPE_ADMIN_SUPPORT);
                 }
             })
+            ->where(function ($query) use ($user) {
+                $query->where('conversation_type', '!=', Conversation::TYPE_CONNECTOR_NEGOTIATION)
+                    ->orWhereIn('id', $this->connectorConversations->visibleTo($user)->select('conversations.id'));
+            })
+            ->when($connectorId !== null, fn ($query) => $query->where('connector_id', $connectorId)
+                ->where('conversation_type', Conversation::TYPE_CONNECTOR_NEGOTIATION))
             ->with([
+                'connector:id,name',
                 'participantOne:id,name,role,status,chat_status',
                 'participantOne.learnerProfile:id,user_id,avatar_path',
                 'participantOne.instructorProfile:id,user_id,profile_photo_path',
@@ -108,6 +124,7 @@ class ConversationController extends Controller
                     'participant_one_id' => $conversation->participant_one_id,
                     'participant_two_id' => $conversation->participant_two_id,
                     'conversation_type' => $conversation->conversation_type,
+                    'connector_id' => $conversation->connector_id,
                     'status' => $conversation->status,
                     'context_key' => $conversation->context_key,
                     'context_label' => $this->buildContextLabel($conversation),
@@ -432,7 +449,7 @@ class ConversationController extends Controller
     private function isInstructorContext(User $user): bool
     {
         return ! $this->isAdminContext($user)
-            && ($user->can('access instructor panel') || $user->can('view learners'));
+            && ($user->isInstructor() || $user->can('view learners'));
     }
 
     private function isLearnerContext(User $user): bool
@@ -487,6 +504,7 @@ class ConversationController extends Controller
             Conversation::TYPE_QUIZ_HELP => 'Quiz Help - '.($conversation->quiz?->title ?? 'Quiz'),
             Conversation::TYPE_ADMIN_SUPPORT => 'Platform Support',
             Conversation::TYPE_GUARDIAN_INVITATION => 'Guardian Invitation',
+            Conversation::TYPE_CONNECTOR_NEGOTIATION => $conversation->connector?->name.' · Negotiation',
             default => 'Direct Conversation',
         };
     }

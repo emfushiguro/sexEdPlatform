@@ -30,10 +30,10 @@ class LearnerIdentityRejectedNotification extends Notification
             ->subject('Update on Your Identity Verification')
             ->view('emails.moderation-status', [
                 'title' => 'Identity Verification Update',
-                'subtitle' => 'Please update your submission',
+                'subtitle' => $this->case->resubmission_allowed ? 'Please update your submission' : 'Your review is complete',
                 'greetingName' => $notifiable->first_name ?? 'Learner',
                 'intro' => 'We could not approve your identity verification yet.',
-                'details' => ['Reason: '.$this->reason->label(), 'Please review the reason and submit updated evidence.'],
+                'details' => ['Reason: '.$this->reason->label(), $this->case->resubmission_allowed ? 'Please review the requested corrections and submit updated evidence.' : 'Contact support if you need help with this decision.'],
                 'actionUrl' => route('learner.identity.status'),
                 'actionText' => 'View next steps',
             ]);
@@ -44,8 +44,8 @@ class LearnerIdentityRejectedNotification extends Notification
         return [
             'type' => 'learner_identity_rejected',
             'status' => 'rejected',
-            'title' => 'Identity verification needs an update',
-            'message' => 'Please review the reason and update your identity evidence.',
+            'title' => $this->case->resubmission_allowed ? 'Identity verification needs an update' : 'Identity verification rejected',
+            'message' => $this->case->resubmission_allowed ? 'Please review the requested corrections and update your identity evidence.' : 'Contact support if you need help with this decision.',
             'reason' => $this->reason->label(),
             'verification_id' => $this->case->id,
             'action_url' => route('learner.identity.status'),

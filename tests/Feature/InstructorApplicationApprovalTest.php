@@ -24,11 +24,11 @@ class InstructorApplicationApprovalTest extends TestCase
     public function test_admin_can_approve_application(): void
     {
         /** @var User $admin */
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $admin->assignRole('admin');
 
         /** @var User $learner */
-        $learner = User::factory()->create(['role' => 'learner']);
+        $learner = User::factory()->create(['role' => 'learner', 'status' => 'active', 'birthdate' => now()->subYears(24)->toDateString()]);
         $learner->assignRole('learner');
 
         $application = $this->makePendingApplication($learner);
@@ -71,11 +71,11 @@ class InstructorApplicationApprovalTest extends TestCase
     public function test_admin_can_reject_application_with_reason(): void
     {
         /** @var User $admin */
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $admin->assignRole('admin');
 
         /** @var User $learner */
-        $learner = User::factory()->create(['role' => 'learner']);
+        $learner = User::factory()->create(['role' => 'learner', 'status' => 'active', 'birthdate' => now()->subYears(24)->toDateString()]);
         $learner->assignRole('learner');
 
         $application = $this->makePendingApplication($learner);

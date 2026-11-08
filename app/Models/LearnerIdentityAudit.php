@@ -18,6 +18,7 @@ class LearnerIdentityAudit extends Model
         'to_status',
         'submission_round',
         'reason',
+        'correction_request',
         'created_at',
     ];
 
@@ -25,6 +26,7 @@ class LearnerIdentityAudit extends Model
     {
         return [
             'submission_round' => 'integer',
+            'correction_request' => 'array',
             'created_at' => 'datetime',
         ];
     }

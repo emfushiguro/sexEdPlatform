@@ -1,0 +1,59 @@
+﻿{
+    "database": "cc_db",
+    "chat_permission_exists": false,
+    "roles": [
+        {
+            "role": "instructor",
+            "chat_permission": false
+        },
+        {
+            "role": "admin",
+            "chat_permission": false
+        },
+        {
+            "role": "learner",
+            "chat_permission": false
+        },
+        {
+            "role": "parent",
+            "chat_permission": false
+        }
+    ],
+    "account_summary": {
+        "admin:active": {
+            "accounts": 1,
+            "explicit_chat_permission": 1,
+            "shared_chat_access": 1
+        },
+        "instructor:active": {
+            "accounts": 3,
+            "explicit_chat_permission": 0,
+            "shared_chat_access": 3
+        },
+        "learner:active": {
+            "accounts": 6,
+            "explicit_chat_permission": 0,
+            "shared_chat_access": 6
+        }
+    },
+    "http_checks": {
+        "admin \/chat 200": 1,
+        "admin \/chat\/conversations 200": 1,
+        "admin \/chat\/discovery 200": 1,
+        "admin \/chat\/requests 200": 1,
+        "admin \/admin\/messages 200": 1,
+        "instructor \/chat 200": 3,
+        "instructor \/chat\/conversations 200": 3,
+        "instructor \/chat\/discovery 200": 3,
+        "instructor \/chat\/requests 200": 3,
+        "learner \/chat 200": 5,
+        "learner \/chat\/conversations 200": 5,
+        "learner \/chat\/discovery 200": 5,
+        "learner \/chat\/requests 200": 5,
+        "parent \/chat 200": 1,
+        "parent \/chat\/conversations 200": 1,
+        "parent \/chat\/discovery 200": 1,
+        "parent \/chat\/requests 200": 1
+    },
+    "development_counts_unchanged": true
+}

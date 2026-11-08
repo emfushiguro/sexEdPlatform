@@ -40,7 +40,15 @@ class ConnectorAccessService
         }
 
         return $membership->role?->permissions
-            ->contains('permission_key', $permissionKey) ?? false;
+            ->whereIn('permission_key', $this->effectivePermissionKeys($permissionKey))
+            ->isNotEmpty() ?? false;
+    }
+
+    public function effectivePermissionKeys(string $permissionKey): array
+    {
+        return $permissionKey === 'connector.manage_educators'
+            ? [$permissionKey, 'connector.manage_seminars']
+            : [$permissionKey];
     }
 
     public function abortUnlessWorkspace(User $user, Connector $connector): ConnectorMembership

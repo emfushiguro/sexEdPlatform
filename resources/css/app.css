@@ -60,6 +60,30 @@ body.admin-sidebar-locked {
 
 /* Instructor Brand Theme Styles */
 @layer components {
+    .topic-file-input {
+        @apply block w-full min-w-0 cursor-pointer rounded-lg border border-gray-200 bg-white p-2 text-sm text-gray-600 transition-colors;
+    }
+
+    .topic-file-input::file-selector-button {
+        @apply mr-3 cursor-pointer rounded-md border-0 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors;
+    }
+
+    .topic-file-input:hover::file-selector-button {
+        @apply bg-brand-100;
+    }
+
+    .topic-file-input:focus-visible {
+        @apply border-brand-500 outline-none ring-2 ring-brand-200 ring-offset-2;
+    }
+
+    .topic-file-input[aria-invalid="true"] {
+        @apply border-rose-500;
+    }
+
+    .topic-file-input:disabled {
+        @apply cursor-not-allowed bg-gray-50 opacity-60;
+    }
+
     /* Instructor input focus states */
     .instructor-input:focus {
         @apply ring-2 ring-offset-0 border-transparent;

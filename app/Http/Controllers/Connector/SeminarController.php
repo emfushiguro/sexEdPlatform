@@ -20,8 +20,12 @@ use App\Services\Seminars\SeminarRegistrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 class SeminarController extends Controller
 {
@@ -65,7 +69,7 @@ class SeminarController extends Controller
     {
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
 
-        $seminar = $connector->seminars()->create([
+        $seminar = $this->saveWithThumbnail($request, new Seminar(['connector_id' => $connector->id]), [
             ...$this->payload($request->validated()),
             'status' => SeminarStatus::Draft->value,
         ]);
@@ -75,7 +79,7 @@ class SeminarController extends Controller
             ->with('success', 'Seminar draft created.');
     }
 
-    public function show(Request $request, Connector $connector, Seminar $seminar): View
+    public function show(Request $request, Connector $connector, Seminar $seminar): \Illuminate\Http\Response
     {
         $this->access->abortUnlessWorkspace($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
@@ -84,7 +88,8 @@ class SeminarController extends Controller
             $registrations = app(SeminarRegistrationService::class);
             $externalAccess = app(SeminarExternalAccessService::class);
 
-            return view('seminars.show', [
+            return response()->view('seminars.show', [
+                'postedAttendanceCode' => app(\App\Services\Seminars\SeminarCodeAttendanceService::class)->postedCodeFor($request->user(), $seminar),
                 'seminar' => $seminar->load(['connector', 'speakers.user']),
                 'registration' => $registrations->activeRegistration($request->user(), $seminar),
                 'attendance' => $seminar->attendances()->where('user_id', $request->user()->id)->first(),
@@ -94,14 +99,14 @@ class SeminarController extends Controller
                 'canJoinLivestream' => false,
                 'canJoinExternal' => $seminar->isExternalDelivery() && $externalAccess->canJoin($request->user(), $seminar),
                 'externalJoinMessage' => $seminar->isExternalDelivery() ? $externalAccess->messageFor($request->user(), $seminar) : null,
-            ]);
+            ])->header('Cache-Control', 'no-store, private');
         }
 
-        return view('connectors.seminars.show', [
+        return response()->view('connectors.seminars.show', [
             'connector' => $connector,
             'seminar' => $seminar->load(['registrants.user.learnerProfile', 'registrants.user.instructorProfile', 'speakers.user.instructorProfile', 'speakers.user.learnerProfile', 'comments.user', 'questions.user']),
             'activeRegistrantCount' => $this->access->activeRegistrantCount($seminar),
-        ]);
+        ])->header('Cache-Control', 'no-store, private');
     }
 
     public function edit(Request $request, Connector $connector, Seminar $seminar): View
@@ -137,7 +142,7 @@ class SeminarController extends Controller
             }
         }
 
-        $seminar->update($data);
+        $seminar = $this->saveWithThumbnail($request, $seminar, $data);
         if ($seminar->isNativeDelivery() && blank($seminar->livestream_channel)) {
             $seminar->forceFill(['livestream_channel' => 'seminar-'.$seminar->id.'-'.Str::lower(Str::random(8))])->save();
         }
@@ -184,9 +189,14 @@ class SeminarController extends Controller
         $this->access->abortUnlessCanManageConnectorSeminars($request->user(), $connector);
         $this->access->abortUnlessConnectorOwnsSeminar($connector, $seminar);
 
-        abort_if($seminar->published_at !== null || in_array($seminar->status, ['published', 'completed', 'cancelled', 'archived'], true), 422, 'Published seminars cannot be deleted.');
+        $thumbnailPath = DB::transaction(function () use ($seminar): ?string {
+            $current = Seminar::query()->lockForUpdate()->findOrFail($seminar->id);
+            abort_if($current->published_at !== null || in_array($current->status, ['published', 'completed', 'cancelled', 'archived'], true), 422, 'Published seminars cannot be deleted.');
+            $current->delete();
 
-        $seminar->delete();
+            return $current->thumbnail_path;
+        });
+        $this->deleteThumbnail($thumbnailPath);
 
         return redirect()
             ->route('connector.seminars.index', $connector)
@@ -222,6 +232,45 @@ class SeminarController extends Controller
         return back()->with('success', 'Seminar marked completed.');
     }
 
+    private function saveWithThumbnail(Request $request, Seminar $seminar, array $data): Seminar
+    {
+        $uploadedPath = $request->file('thumbnail')?->store('seminars/thumbnails', 'public');
+        if ($uploadedPath === false) {
+            throw ValidationException::withMessages(['thumbnail' => 'The thumbnail could not be saved. Please try again.']);
+        }
+
+        $previousPath = null;
+        try {
+            $seminar = DB::transaction(function () use ($request, $seminar, $data, $uploadedPath, &$previousPath): Seminar {
+                $current = $seminar->exists ? Seminar::query()->lockForUpdate()->findOrFail($seminar->id) : $seminar;
+                $previousPath = $current->thumbnail_path;
+                $current->fill($data);
+                if ($uploadedPath || $request->boolean('remove_thumbnail')) {
+                    $current->thumbnail_path = $uploadedPath ?: null;
+                }
+                $current->save();
+
+                return $current;
+            });
+        } catch (Throwable $exception) {
+            $this->deleteThumbnail($uploadedPath);
+            throw $exception;
+        }
+
+        if ($previousPath !== $seminar->thumbnail_path) {
+            $this->deleteThumbnail($previousPath);
+        }
+
+        return $seminar;
+    }
+
+    private function deleteThumbnail(?string $path): void
+    {
+        if ($path && preg_match('~\Aseminars/thumbnails/[a-zA-Z0-9_-]+\.(?:jpe?g|png|webp)\z~', $path)) {
+            rescue(fn () => Storage::disk('public')->delete($path));
+        }
+    }
+
     private function payload(array $validated): array
     {
         $startsAt = $validated['starts_at'];
@@ -255,6 +304,7 @@ class SeminarController extends Controller
                 'attendance_end_at',
             ]),
             'custom_category' => $this->categories->normalizeCustomCategory($validated['category'] ?? null, $validated['custom_category'] ?? null),
+            'purpose' => $validated['purpose'] ?? null,
             'learner_age_categories' => array_values((array) ($validated['learner_age_categories'] ?? [])),
             'location' => $validated['event_format'] === 'in_person' ? ($validated['location'] ?? null) : null,
             'venue_address' => $validated['event_format'] === 'in_person' ? ($validated['venue_address'] ?? null) : null,

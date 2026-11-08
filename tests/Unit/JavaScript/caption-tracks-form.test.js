@@ -15,17 +15,24 @@ test('accepts VTT through the exact 2 MiB boundary', () => {
     }), null);
 });
 
-test('rejects oversized and non-VTT selections', () => {
+test('accepts SRT files with common browser MIME types', () => {
+    for (const type of ['application/x-subrip', 'application/x-srt', 'text/srt', 'text/plain', 'application/octet-stream', '']) {
+        assert.equal(captionFileError({ name: 'english.SRT', size: 100, type }), null);
+    }
+});
+
+test('rejects oversized and unsupported caption selections', () => {
     assert.match(captionFileError({
         name: 'english.vtt',
         size: CAPTION_MAX_BYTES + 1,
         type: 'text/vtt',
     }), /2 MB/);
     assert.match(captionFileError({
-        name: 'english.srt',
+        name: 'english.ass',
         size: 100,
         type: 'text/plain',
-    }), /WebVTT/);
+    }), /VTT.*SRT/);
+    assert.match(captionFileError({ name: 'english.srt', size: 100, type: 'application/pdf' }), /text/);
 });
 
 test('substitutes every template index', () => {

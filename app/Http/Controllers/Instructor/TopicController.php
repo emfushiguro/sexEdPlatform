@@ -8,11 +8,12 @@ use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\Quiz;
 use App\Models\QuizQuestion;
-use App\Rules\WebVttFile;
+use App\Rules\CaptionFile;
 use App\Services\Content\ContentOwnershipGuard;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityAuthoringService;
 use App\Services\Learning\QuestionAuthoringService;
 use App\Services\LessonTopicCaptionService;
+use App\Services\VideoAttributionService;
 use App\Support\ContentPanelContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ class TopicController extends Controller
         private QuestionAuthoringService $questionAuthoring,
         private InteractiveActivityAuthoringService $activityAuthoring,
         private LessonTopicCaptionService $captionService,
+        private VideoAttributionService $videoAttribution,
     ) {}
 
     public function create(Request $request)
@@ -126,6 +128,7 @@ class TopicController extends Controller
             throw $e;
         }
 
+        $validated['video_attribution'] = $this->videoAttribution->validate($request);
         $captionInput = $this->validateCaptionInput(
             $request,
             null,
@@ -166,7 +169,7 @@ class TopicController extends Controller
 
         // Handle video
         if ($validated['type'] === 'video') {
-            if ($request->hasFile('video_file')) {
+            if ($request->input('video_source') === 'upload' && $request->hasFile('video_file')) {
                 $videoPath = $request->file('video_file')->store('videos', 'public');
                 if ($videoPath === false) {
                     if ($request->wantsJson() || $request->ajax()) {
@@ -183,7 +186,7 @@ class TopicController extends Controller
                 $storedVideoPaths[] = $videoPath;
                 $validated['video_provider'] = 'local';
                 $validated['video_id'] = null;
-            } elseif (! empty($validated['video_url'])) {
+            } elseif ($request->input('video_source') === 'url' && ! empty($validated['video_url'])) {
                 $videoData = VideoEmbedHelper::parseVideoUrl($validated['video_url']);
                 $validated['video_provider'] = $videoData['provider'];
                 $validated['video_id'] = $videoData['video_id'];
@@ -416,6 +419,7 @@ class TopicController extends Controller
 
         ]);
 
+        $validated['video_attribution'] = $this->videoAttribution->validate($request, $topic);
         $captionInputProvided = $request->exists('captions')
             || $request->exists('caption_default');
         $finalVideoSource = $request->input('video_source');
@@ -478,7 +482,7 @@ class TopicController extends Controller
 
         // Handle video
         if ($validated['type'] === 'video') {
-            if ($request->hasFile('video_file')) {
+            if ($finalVideoSource === 'upload' && $request->hasFile('video_file')) {
                 $videoPath = $request->file('video_file')->store('videos', 'public');
                 if ($videoPath === false) {
                     if ($request->wantsJson() || $request->ajax()) {
@@ -496,7 +500,7 @@ class TopicController extends Controller
                 $oldVideoPathToDelete = $topic->video_file_path;
                 $validated['video_provider'] = 'local';
                 $validated['video_id'] = null;
-            } elseif (! empty($validated['video_url'])) {
+            } elseif ($finalVideoSource === 'url' && ! empty($validated['video_url'])) {
                 $videoData = VideoEmbedHelper::parseVideoUrl($validated['video_url']);
                 $oldVideoPathToDelete = $topic->video_file_path;
                 $validated['video_provider'] = $videoData['provider'];
@@ -811,7 +815,7 @@ class TopicController extends Controller
             'captions' => ['nullable', 'array'],
             'captions.*' => ['array'],
             'captions.*.id' => ['nullable', 'integer'],
-            'captions.*.file' => ['nullable', 'file', 'max:2048', new WebVttFile],
+            'captions.*.file' => ['bail', 'nullable', 'file', 'max:2048', new CaptionFile],
             'captions.*.language_code' => [
                 'nullable',
                 'string',
@@ -871,7 +875,7 @@ class TopicController extends Controller
                 if (! $id && ! $file) {
                     $validator->errors()->add(
                         'captions.'.$index.'.file',
-                        'A WebVTT file is required.',
+                        'A VTT or SRT caption file is required.',
                     );
                 }
                 if ($language === '') {
@@ -1000,7 +1004,7 @@ class TopicController extends Controller
     public function preview(LessonTopic $topic)
     {
         $this->authorize('view', $topic);
-        $topic->loadMissing(['interactiveActivities', 'checkpointQuestions.options']);
+        $topic->loadMissing(['captions', 'interactiveActivities', 'checkpointQuestions.options']);
 
         $worksheetFiles = [];
 
@@ -1053,6 +1057,14 @@ class TopicController extends Controller
             'video_id' => $topic->video_id,
             'video_file_path' => $topic->video_file_path,
             'video_file_url' => $topic->video_file_url,
+            'captions' => $topic->type === 'video' && $topic->video_provider === 'local'
+                ? $topic->captions->map(fn ($caption) => [
+                    'file_url' => $caption->file_url,
+                    'language_code' => $caption->language_code,
+                    'label' => $caption->label,
+                    'is_default' => $caption->is_default,
+                ])->values()
+                : [],
             'video_description' => $topic->video_description,
             'text_content' => $topic->text_content,
             'image_attachments' => $imageAttachments,

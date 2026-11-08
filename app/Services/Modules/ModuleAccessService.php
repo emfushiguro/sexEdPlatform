@@ -46,12 +46,12 @@ class ModuleAccessService
             ->where('module_id', $purchase->module_id)
             ->first();
         $manualApprovalRequired = $purchase->module?->enrollment_mode === 'manual'
-            && (!$enrollment || in_array($enrollment->status, [
+            && (! $enrollment || in_array($enrollment->status, [
                 EnrollmentStatus::Pending,
                 EnrollmentStatus::PendingParentApproval,
             ], true));
 
-        if (!$enrollment && $manualApprovalRequired) {
+        if (! $enrollment && $manualApprovalRequired) {
             $enrollment = ModuleEnrollment::query()->create([
                 'user_id' => $purchase->user_id,
                 'module_id' => $purchase->module_id,
@@ -90,7 +90,7 @@ class ModuleAccessService
             ConnectorModuleSeatAssignment::STATUS_INDEPENDENT,
         ], true);
 
-        $status = !$isUsable || (!$isPending && !$isActive)
+        $status = ! $isUsable || (! $isPending && ! $isActive)
             ? ModuleAccessGrant::STATUS_INACTIVE
             : ($isPending ? ModuleAccessGrant::STATUS_PENDING : ModuleAccessGrant::STATUS_ACTIVE);
 
@@ -105,7 +105,7 @@ class ModuleAccessService
 
         $grant = $this->syncGrant($grant);
 
-        if (!$isPending && $status === ModuleAccessGrant::STATUS_ACTIVE) {
+        if (! $isPending && $status === ModuleAccessGrant::STATUS_ACTIVE) {
             $enrollment = ModuleEnrollment::query()
                 ->where('user_id', $grant->user_id)
                 ->where('module_id', $grant->module_id)
@@ -149,7 +149,7 @@ class ModuleAccessService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$grant) {
+            if (! $grant) {
                 return;
             }
 
@@ -161,7 +161,7 @@ class ModuleAccessService
 
             $this->syncEnrollment(
                 User::query()->findOrFail($grant->user_id),
-                Module::query()->findOrFail($grant->module_id),
+                Module::withTrashed()->findOrFail($grant->module_id),
             );
         });
     }
@@ -181,7 +181,7 @@ class ModuleAccessService
                 ->where('status', ModuleAccessGrant::STATUS_ACTIVE)
                 ->exists();
 
-            if (!$enrollment) {
+            if (! $enrollment) {
                 $pendingGrant = ModuleAccessGrant::query()
                     ->where('user_id', $user->id)
                     ->where('module_id', $module->id)
@@ -200,7 +200,7 @@ class ModuleAccessService
                 ]);
             }
 
-            if ($hasActiveGrant && !in_array($enrollment->status, [
+            if ($hasActiveGrant && ! in_array($enrollment->status, [
                 EnrollmentStatus::PendingParentApproval,
                 EnrollmentStatus::Rejected,
             ], true)) {
@@ -210,7 +210,7 @@ class ModuleAccessService
                     'inactive_reason' => null,
                     'inactivated_at' => null,
                 ])->save();
-            } elseif (!$hasActiveGrant && $enrollment->status === EnrollmentStatus::Approved) {
+            } elseif (! $hasActiveGrant && $enrollment->status === EnrollmentStatus::Approved) {
                 $enrollment->forceFill([
                     'status' => EnrollmentStatus::Inactive,
                     'inactive_reason' => 'no_active_access_source',
@@ -224,11 +224,7 @@ class ModuleAccessService
 
     public function hasActiveAccess(User $user, Module $module): bool
     {
-        if (in_array($user->status, [
-            User::STATUS_SUSPENDED,
-            User::STATUS_INACTIVE,
-            User::STATUS_ARCHIVED,
-        ], true) || !$module->isLearnerVisible()) {
+        if (! $this->userCanAccessModule($user, $module)) {
             return false;
         }
 
@@ -262,9 +258,40 @@ class ModuleAccessService
             ->exists();
     }
 
+    public function accessSummaryForUsers(\Illuminate\Support\Collection $users, Module $module): \Illuminate\Support\Collection
+    {
+        $grants = ModuleAccessGrant::query()->where('module_id', $module->id)
+            ->whereIn('user_id', $users->pluck('id'))->get();
+        $assignments = ConnectorModuleSeatAssignment::query()->with('entitlement.connector', 'membership')
+            ->whereIn('id', $grants->where('source_type', ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT)->pluck('source_id'))
+            ->get()->keyBy('id');
+        $legacy = ModuleEnrollment::query()->where('module_id', $module->id)->whereIn('user_id', $users->pluck('id'))
+            ->where('status', EnrollmentStatus::Approved)->pluck('user_id')->flip();
+        $byUser = $grants->groupBy('user_id');
+
+        return $users->mapWithKeys(function (User $user) use ($module, $byUser, $assignments, $legacy): array {
+            $userGrants = $byUser->get($user->id, collect());
+            $active = $userGrants->where('status', ModuleAccessGrant::STATUS_ACTIVE);
+            $allowed = $this->userCanAccessModule($user, $module);
+            $independent = $allowed && ($active->where('source_type', '!=', ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT)->isNotEmpty()
+                || ($userGrants->isEmpty() && $legacy->has($user->id)));
+            $connectorIds = $allowed ? $active->where('source_type', ModuleAccessGrant::SOURCE_CONNECTOR_ASSIGNMENT)
+                ->filter(fn (ModuleAccessGrant $grant): bool => $this->connectorAssignmentIsValid($assignments->get($grant->source_id), $user, $module))
+                ->map(fn (ModuleAccessGrant $grant) => (int) $assignments->get($grant->source_id)->entitlement->connector_id)->unique()->values()->all() : [];
+
+            return [$user->id => ['independent' => $independent, 'connector_ids' => $connectorIds]];
+        });
+    }
+
+    private function userCanAccessModule(User $user, Module $module): bool
+    {
+        return ! in_array($user->status, [User::STATUS_SUSPENDED, User::STATUS_INACTIVE, User::STATUS_ARCHIVED], true)
+            && $module->isLearnerVisible();
+    }
+
     public function assertCanLearn(User $user, Module $module): void
     {
-        if (!$this->hasActiveAccess($user, $module)) {
+        if (! $this->hasActiveAccess($user, $module)) {
             throw new AuthorizationException('You do not have active access to this module.');
         }
 
@@ -273,7 +300,7 @@ class ModuleAccessService
             ->where('module_id', $module->id)
             ->first();
 
-        if (!$enrollment || $enrollment->status !== EnrollmentStatus::Approved) {
+        if (! $enrollment || $enrollment->status !== EnrollmentStatus::Approved) {
             throw new AuthorizationException('Your enrollment does not permit learning this module.');
         }
     }
@@ -334,7 +361,7 @@ class ModuleAccessService
             'reason' => $status === ModuleAccessGrant::STATUS_INACTIVE ? $grant->reason : null,
         ]);
 
-        if (!$grant->exists || (!$wasActive && $status === ModuleAccessGrant::STATUS_ACTIVE)) {
+        if (! $grant->exists || (! $wasActive && $status === ModuleAccessGrant::STATUS_ACTIVE)) {
             $grant->granted_at = now();
         }
 
@@ -363,7 +390,15 @@ class ModuleAccessService
             ->whereKey($grant->source_id)
             ->first();
 
+        return $this->connectorAssignmentIsValid($assignment, $user, $module);
+    }
+
+    private function connectorAssignmentIsValid(?ConnectorModuleSeatAssignment $assignment, User $user, Module $module): bool
+    {
+        $age = $user->calculateAge();
+
         return $assignment !== null
+            && ($age === null || $module->isAppropriateForAge($age))
             && (int) $assignment->user_id === (int) $user->id
             && $assignment->released_at === null
             && in_array($assignment->status, [

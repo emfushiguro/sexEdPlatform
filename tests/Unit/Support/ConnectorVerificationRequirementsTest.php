@@ -11,7 +11,7 @@ class ConnectorVerificationRequirementsTest extends TestCase
     {
         $registry = app(ConnectorVerificationRequirements::class);
 
-        $this->assertCount(14, $registry->organizationTypes());
+        $this->assertCount(20, $registry->organizationTypes());
 
         foreach (array_keys($registry->organizationTypes()) as $type) {
             $category = $this->compatibleCategoryFor($registry, $type);

@@ -10,35 +10,49 @@ class VideoEmbedHelper
      */
     public static function parseVideoUrl(?string $url): array
     {
-        if (empty($url)) {
+        if (! self::isHttpUrl($url)) {
             return ['provider' => null, 'video_id' => null];
         }
 
-        // YouTube patterns
-        if (preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i', $url, $match)) {
-            return [
-                'provider' => 'youtube',
-                'video_id' => $match[1]
-            ];
+        $host = strtolower(parse_url($url, PHP_URL_HOST));
+        $path = parse_url($url, PHP_URL_PATH) ?? '';
+        parse_str(parse_url($url, PHP_URL_QUERY) ?? '', $query);
+
+        if (in_array($host, ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com', 'youtu.be'], true)) {
+            $id = null;
+            if ($host === 'youtu.be') {
+                $id = trim($path, '/');
+            } elseif ($path === '/watch') {
+                $id = $query['v'] ?? null;
+            } elseif (preg_match('~^/(?:embed|shorts|live|v|e)/([^/]+)/?$~', $path, $match)) {
+                $id = $match[1];
+            }
+
+            return is_string($id) && preg_match('/^[A-Za-z0-9_-]{11}$/D', $id)
+                ? ['provider' => 'youtube', 'video_id' => $id]
+                : ['provider' => null, 'video_id' => null];
         }
 
-        // Vimeo patterns
-        if (preg_match('/(?:vimeo\.com\/)(\d+)/i', $url, $match)) {
-            return [
-                'provider' => 'vimeo',
-                'video_id' => $match[1]
-            ];
+        if (in_array($host, ['vimeo.com', 'www.vimeo.com', 'player.vimeo.com'], true)) {
+            return preg_match('~^/(?:video/)?(\d+)/?$~', $path, $match)
+                ? ['provider' => 'vimeo', 'video_id' => $match[1]]
+                : ['provider' => null, 'video_id' => null];
         }
 
-        // Direct video file or custom embed
-        if (filter_var($url, FILTER_VALIDATE_URL)) {
-            return [
-                'provider' => 'custom',
-                'video_id' => $url
-            ];
+        if (preg_match('/\.(?:mp4|mpeg|mpg|mov|avi|webm|ogv|ogg)$/i', $path)) {
+            return ['provider' => 'custom', 'video_id' => $url];
         }
 
         return ['provider' => null, 'video_id' => null];
+    }
+
+    public static function isHttpUrl(?string $url): bool
+    {
+        return $url !== null
+            && filter_var($url, FILTER_VALIDATE_URL) !== false
+            && in_array(strtolower(parse_url($url, PHP_URL_SCHEME) ?? ''), ['http', 'https'], true)
+            && parse_url($url, PHP_URL_USER) === null
+            && parse_url($url, PHP_URL_PASS) === null;
     }
 
     /**
@@ -47,10 +61,9 @@ class VideoEmbedHelper
     public static function getEmbedUrl(string $provider, string $videoId): ?string
     {
         return match ($provider) {
-            'youtube' => "https://www.youtube.com/embed/{$videoId}",
-            'vimeo' => "https://player.vimeo.com/video/{$videoId}",
-            'custom' => $videoId, // Already a full URL
-            default => null
+            'youtube' => preg_match('/^[A-Za-z0-9_-]{11}$/D', $videoId) ? "https://www.youtube.com/embed/{$videoId}" : null,
+            'vimeo' => ctype_digit($videoId) ? "https://player.vimeo.com/video/{$videoId}" : null,
+            default => null,
         };
     }
 
@@ -66,4 +79,3 @@ class VideoEmbedHelper
         };
     }
 }
-

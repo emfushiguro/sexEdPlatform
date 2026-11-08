@@ -15,13 +15,6 @@ class ApproveConnectorRequest extends FormRequest
     {
         return [
             'submission_round' => ['required', 'integer', 'min:1'],
-            'checklist' => ['required', 'array'],
-            'checklist.organization_identity_established' => ['required', 'accepted'],
-            'checklist.regulatory_evidence_resolved' => ['required', 'accepted'],
-            'checklist.representative_identity_verified' => ['required', 'accepted'],
-            'checklist.representative_authority_established' => ['required', 'accepted'],
-            'checklist.required_evidence_complete' => ['required', 'accepted'],
-            'checklist.application_consistent' => ['required', 'accepted'],
             'internal_note' => ['nullable', 'string', 'max:2000'],
             'reason' => ['nullable', 'string', 'max:2000'],
         ];
