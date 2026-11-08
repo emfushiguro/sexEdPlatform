@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -91,5 +92,128 @@ class RegistrationTest extends TestCase
 
         $user = User::where('email', 'teenlearner@gmail.com')->firstOrFail();
         $this->assertSame('teen', $user->identityVerifications()->sole()->pathway);
+    }
+
+    #[DataProvider('providerNeutralEmails')]
+    public function test_registration_accepts_provider_neutral_email_domains(string $email): void
+    {
+        $this->withSession(['pending_personal_info' => [
+            'first_name' => 'Provider',
+            'middle_initial' => null,
+            'last_name' => 'Tester',
+            'suffix' => null,
+            'birthdate' => '2000-01-01',
+            'age' => 25,
+        ]]);
+
+        $response = $this->post('/register/account', [
+            'email' => $email,
+            'password' => 'Xk#9mP2@qL7nR4wZ',
+            'password_confirmation' => 'Xk#9mP2@qL7nR4wZ',
+        ]);
+
+        $response->assertRedirect(route('verification.notice'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertAuthenticated();
+        $this->assertDatabaseHas('users', [
+            'email' => strtolower(trim($email)),
+        ]);
+    }
+
+    public static function providerNeutralEmails(): array
+    {
+        return [
+            'Gmail' => ['provider.test@gmail.com'],
+            'Yahoo' => ['provider.test@yahoo.com'],
+            'Outlook' => ['provider.test@outlook.com'],
+            'Education' => ['provider.test@school.edu.ph'],
+            'Custom' => ['provider.test@custom.example'],
+            'Privacy relay' => ['provider.test@privaterelay.appleid.com'],
+            'Temporary' => ['provider.test@temporary-mail.com'],
+            'Non-resolving' => ['provider.test@example.invalid'],
+        ];
+    }
+
+    #[DataProvider('malformedEmails')]
+    public function test_registration_rejects_clearly_malformed_email_formats(string $email): void
+    {
+        $this->withSession(['pending_personal_info' => [
+            'first_name' => 'Invalid',
+            'middle_initial' => null,
+            'last_name' => 'Tester',
+            'suffix' => null,
+            'birthdate' => '2000-01-01',
+            'age' => 25,
+        ]]);
+
+        $this->post('/register/account', [
+            'email' => $email,
+            'password' => 'Xk#9mP2@qL7nR4wZ',
+            'password_confirmation' => 'Xk#9mP2@qL7nR4wZ',
+        ])
+            ->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['email' => $email]);
+    }
+
+    public static function malformedEmails(): array
+    {
+        return [
+            'plain address' => ['plain-address'],
+            'missing domain' => ['person@'],
+            'missing local part' => ['@example.com'],
+            'doubled at sign' => ['person@@example.com'],
+            'embedded whitespace' => ['person example@example.com'],
+        ];
+    }
+
+    public function test_registration_normalizes_mixed_case_and_surrounding_whitespace(): void
+    {
+        $this->withSession(['pending_personal_info' => [
+            'first_name' => 'Normalized',
+            'middle_initial' => null,
+            'last_name' => 'Tester',
+            'suffix' => null,
+            'birthdate' => '2000-01-01',
+            'age' => 25,
+        ]]);
+
+        $this->post('/register/account', [
+            'email' => '  Provider.Test@Yahoo.COM  ',
+            'password' => 'Xk#9mP2@qL7nR4wZ',
+            'password_confirmation' => 'Xk#9mP2@qL7nR4wZ',
+        ])
+            ->assertRedirect(route('verification.notice'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertAuthenticated();
+        $this->assertDatabaseHas('users', ['email' => 'provider.test@yahoo.com']);
+    }
+
+    public function test_registration_still_rejects_duplicate_email_addresses(): void
+    {
+        User::factory()->create(['email' => 'duplicate@example.com']);
+
+        $this->withSession(['pending_personal_info' => [
+            'first_name' => 'Duplicate',
+            'middle_initial' => null,
+            'last_name' => 'Tester',
+            'suffix' => null,
+            'birthdate' => '2000-01-01',
+            'age' => 25,
+        ]]);
+
+        $this->post('/register/account', [
+            'email' => 'duplicate@example.com',
+            'password' => 'Xk#9mP2@qL7nR4wZ',
+            'password_confirmation' => 'Xk#9mP2@qL7nR4wZ',
+        ])
+            ->assertSessionHasErrors([
+                'email' => 'This email address is already registered.',
+            ]);
+
+        $this->assertGuest();
     }
 }

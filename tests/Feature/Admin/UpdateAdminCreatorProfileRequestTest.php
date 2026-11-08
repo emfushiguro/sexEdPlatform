@@ -71,13 +71,25 @@ class UpdateAdminCreatorProfileRequestTest extends TestCase
         $this->assertFalse($validCredentialsOnly->fails());
     }
 
-    public function test_credentials_tab_rejects_non_gmail_email(): void
+    public function test_credentials_tab_accepts_non_gmail_email(): void
+    {
+        $request = new UpdateAdminCreatorProfileRequest();
+
+        $validCredentials = Validator::make([
+            'profile_tab' => 'credentials',
+            'email' => 'admin.owner@yahoo.com',
+        ], $request->rules());
+
+        $this->assertFalse($validCredentials->fails());
+    }
+
+    public function test_credentials_tab_rejects_malformed_email(): void
     {
         $request = new UpdateAdminCreatorProfileRequest();
 
         $invalidCredentials = Validator::make([
             'profile_tab' => 'credentials',
-            'email' => 'admin.owner@yahoo.com',
+            'email' => 'admin.owner',
         ], $request->rules());
 
         $this->assertTrue($invalidCredentials->fails());

@@ -64,9 +64,10 @@
                     Email Address
                 </label>
                 <input id="email" name="email" type="email" required value="{{ old('email') }}"
-                       placeholder="guardian@gmail.com"
+                       placeholder="name@example.com"
                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
-                <p class="mt-1 text-xs text-gray-500">Must be a Gmail address. A verification link will be sent here.</p>
+                <p class="mt-1 text-xs text-gray-500">Use a valid email address. A verification link will be sent here.</p>
+                <p class="mt-1 text-xs text-gray-500">Use an email you can keep accessing. Temporary inboxes may expire and prevent future password recovery.</p>
                 @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
 

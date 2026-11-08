@@ -78,7 +78,7 @@
                 <h3 class="text-base font-semibold text-purple-900 mb-2">3. User Accounts</h3>
                 <ul class="list-disc list-inside pl-2 space-y-1">
                     <li>You must provide accurate, complete information during registration.</li>
-                    <li>Only Gmail accounts (@gmail.com) are currently accepted for email verification.</li>
+                    <li>A valid email address is required for email verification.</li>
                     <li>You are responsible for maintaining the confidentiality of your credentials.</li>
                     <li>Never share your password with anyone.</li>
                     <li>Guardians are responsible for securing their child accounts.</li>
@@ -357,13 +357,13 @@
             @php
                 $faqs = [
                     ['q' => 'What email format is accepted?',
-                     'a' => 'Currently, only Gmail accounts (@gmail.com) are accepted for registration. This helps us ensure reliable email verification. Support for other email providers is planned for a future update.'],
+                     'a' => 'You can register with any valid email address, including temporary or disposable addresses. After registration, complete email verification. Keep access to the inbox because temporary inboxes may expire and prevent future password recovery.'],
                     ['q' => 'How do I verify my email?',
-                     'a' => 'After creating your account, we send a verification link to your Gmail address. Open the email and click the link. If you don\'t see it, check your Spam or Promotions folder, then use the "Resend Verification Email" button on the verification page.'],
+                     'a' => 'After creating your account, we send a verification link to your email address. Open the email and click the link. If you don\'t see it, check your Spam or Promotions folder, then use the "Resend Verification Email" button on the verification page.'],
                     ['q' => 'What if my child is under 13?',
                      'a' => 'Children under 13 cannot register independently. A guardian (18+) must register first, verify their email, then create a child account under their guardian account. This complies with COPPA (Children\'s Online Privacy Protection Act).'],
                     ['q' => 'How do I reset my password?',
-                     'a' => 'On the login page, click "Forgot Password?" and enter your registered Gmail address. We\'ll send you a password reset link. The link expires in 60 minutes — if it expires, you can request a new one.'],
+                     'a' => 'On the login page, click "Forgot Password?" and enter your registered email address. We\'ll send you a password reset link. The link expires in 60 minutes — if it expires, you can request a new one.'],
                     ['q' => 'What age groups does this platform serve?',
                      'a' => 'The platform serves learners aged 5 and up. Content is filtered by age bracket to ensure age-appropriate material. Children (5–12) require a guardian account. Teens (13–17) and adults (18+) can register independently.'],
                     ['q' => 'Can I go back and edit my registration information?',

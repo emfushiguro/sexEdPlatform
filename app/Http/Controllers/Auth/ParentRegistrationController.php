@@ -17,9 +17,11 @@ use App\Services\GuardianRelationshipEvidenceService;
 use App\Services\GuardianRelationshipVerificationService;
 use App\Services\ParentChildInvitationService;
 use App\Services\ParentChildVerificationService;
+use App\Support\AccountEmail;
 use App\Support\GuardianRelationshipTypes;
 use Carbon\Carbon;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,6 +33,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use InvalidArgumentException;
 use Spatie\Permission\Models\Role;
@@ -165,14 +168,17 @@ class ParentRegistrationController extends Controller
                 ->with('error', 'Session expired. Please start over.');
         }
 
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => AccountEmail::normalize($request->input('email'))]);
+        }
+
         $validated = $request->validate([
             'email' => [
                 'required',
                 'string',
-                'email:rfc,dns',
+                'email:rfc',
                 'max:255',
                 'unique:users,email',
-                'ends_with:@gmail.com',
             ],
             'password' => [
                 'required',
@@ -194,18 +200,28 @@ class ParentRegistrationController extends Controller
                 ->with('error', 'You must be at least 18 years old to register as a guardian.');
         }
 
-        $parent = User::create([
-            'name' => trim($personalInfo['first_name'].' '.$personalInfo['last_name']),
-            'first_name' => $personalInfo['first_name'],
-            'middle_initial' => $personalInfo['middle_initial'] ?? null,
-            'last_name' => $personalInfo['last_name'],
-            'suffix' => $personalInfo['suffix'] ?? null,
-            'email' => strtolower($validated['email']),
-            'birthdate' => $personalInfo['birthdate'],
-            'age' => $birthdate->age,
-            'password' => Hash::make($validated['password']),
-            'is_parent_registration' => true,
-        ]);
+        try {
+            $parent = User::create([
+                'name' => trim($personalInfo['first_name'].' '.$personalInfo['last_name']),
+                'first_name' => $personalInfo['first_name'],
+                'middle_initial' => $personalInfo['middle_initial'] ?? null,
+                'last_name' => $personalInfo['last_name'],
+                'suffix' => $personalInfo['suffix'] ?? null,
+                'email' => $validated['email'],
+                'birthdate' => $personalInfo['birthdate'],
+                'age' => $birthdate->age,
+                'password' => Hash::make($validated['password']),
+                'is_parent_registration' => true,
+            ]);
+        } catch (QueryException $exception) {
+            if (AccountEmail::isUsersEmailUniqueViolation($exception)) {
+                throw ValidationException::withMessages([
+                    'email' => 'This email address is already registered.',
+                ]);
+            }
+
+            throw $exception;
+        }
 
         Role::findOrCreate('learner', 'web');
         $parent->assignRole('learner');
@@ -219,8 +235,7 @@ class ParentRegistrationController extends Controller
 
             Log::warning('Verification email dispatch failed during guardian registration.', [
                 'user_id' => $parent->id,
-                'email' => $parent->email,
-                'error' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
         }
 

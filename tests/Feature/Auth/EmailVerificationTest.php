@@ -22,6 +22,28 @@ class EmailVerificationTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_gmail_user_sees_gmail_inbox_shortcut(): void
+    {
+        $user = User::factory()->unverified()->create(['email' => 'notice@gmail.com']);
+
+        $this->actingAs($user)
+            ->get('/verify-email')
+            ->assertOk()
+            ->assertSee('Open Gmail', false)
+            ->assertSee('https://mail.google.com', false);
+    }
+
+    public function test_non_gmail_user_does_not_see_gmail_inbox_shortcut(): void
+    {
+        $user = User::factory()->unverified()->create(['email' => 'notice@yahoo.com']);
+
+        $this->actingAs($user)
+            ->get('/verify-email')
+            ->assertOk()
+            ->assertDontSee('Open Gmail', false)
+            ->assertDontSee('https://mail.google.com', false);
+    }
+
     public function test_email_can_be_verified(): void
     {
         $user = User::factory()->unverified()->create();

@@ -42,7 +42,7 @@
                 </label>
                 <input id="email" name="email" type="email" required autofocus autocomplete="username"
                        value="{{ old('email', $request->email) }}"
-                       placeholder="your@gmail.com"
+                       placeholder="name@example.com"
                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200">
                 @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>

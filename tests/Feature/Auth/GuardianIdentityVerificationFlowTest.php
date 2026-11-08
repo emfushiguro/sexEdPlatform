@@ -44,6 +44,42 @@ class GuardianIdentityVerificationFlowTest extends TestCase
             ->assertSee('removeDocument', false);
     }
 
+    public function test_gmail_guardian_sees_gmail_inbox_shortcut_on_verification_status(): void
+    {
+        $guardian = User::factory()->create([
+            'email' => 'guardian@gmail.com',
+            'role' => 'learner',
+            'is_parent_registration' => true,
+            'email_verified_at' => now(),
+            'parent_verification_status' => 'pending',
+        ]);
+        $guardian->assignRole('learner');
+
+        $this->actingAs($guardian)
+            ->get(route('guardian.verification.status'))
+            ->assertOk()
+            ->assertSee('Open Gmail Inbox', false)
+            ->assertSee('https://mail.google.com', false);
+    }
+
+    public function test_non_gmail_guardian_does_not_see_gmail_inbox_shortcut_on_verification_status(): void
+    {
+        $guardian = User::factory()->create([
+            'email' => 'guardian@yahoo.com',
+            'role' => 'learner',
+            'is_parent_registration' => true,
+            'email_verified_at' => now(),
+            'parent_verification_status' => 'pending',
+        ]);
+        $guardian->assignRole('learner');
+
+        $this->actingAs($guardian)
+            ->get(route('guardian.verification.status'))
+            ->assertOk()
+            ->assertDontSee('Open Gmail Inbox', false)
+            ->assertDontSee('https://mail.google.com', false);
+    }
+
     public function test_guardian_submits_private_identity_documents_and_admins_are_notified(): void
     {
         Storage::fake('local');

@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\CustomVerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
@@ -30,6 +32,7 @@ class ProfileTest extends TestCase
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
+                'current_password' => 'password',
             ]);
 
         $response
@@ -41,6 +44,30 @@ class ProfileTest extends TestCase
         $this->assertSame('Test User', $user->name);
         $this->assertSame('test@example.com', $user->email);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_changing_email_requires_current_password_and_sends_verification(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->from('/profile')
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => 'new-address@example.com',
+            ])
+            ->assertSessionHasErrors('current_password');
+
+        $this->actingAs($user)
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => 'new-address@example.com',
+                'current_password' => 'password',
+            ])
+            ->assertSessionHasNoErrors();
+
+        Notification::assertSentTo($user->fresh(), CustomVerifyEmail::class);
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void

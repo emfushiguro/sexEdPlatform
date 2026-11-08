@@ -8,6 +8,7 @@ use App\Models\Connector;
 use App\Models\ConnectorInvitation;
 use App\Models\ConnectorRole;
 use App\Models\User;
+use App\Support\AccountEmail;
 use App\Services\Connectors\ConnectorInvitationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class InvitationController extends Controller
 
     public function store(InviteConnectorMemberRequest $request, Connector $connector): RedirectResponse
     {
-        $target = User::where('email', $request->string('email'))->firstOrFail();
+        $target = User::where('email', AccountEmail::normalize((string) $request->string('email')))->firstOrFail();
         $role = ConnectorRole::where('connector_id', $connector->id)->findOrFail($request->integer('connector_role_id'));
 
         $this->invitations->invite($connector, $request->user(), $target, $role);

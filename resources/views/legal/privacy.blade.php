@@ -76,7 +76,7 @@
                             <ul class="list-disc list-inside pl-4 space-y-2 text-gray-700">
                                 <li><strong>Personal Information:</strong> First name, middle initial (optional), last name, suffix (optional)</li>
                                 <li><strong>Birthdate:</strong> To calculate age and determine appropriate content access</li>
-                                <li><strong>Email Address:</strong> Currently limited to Gmail accounts for verification</li>
+                                <li><strong>Email Address:</strong> Used for account access and verification</li>
                                 <li><strong>Password:</strong> Stored securely using industry-standard encryption</li>
                                 <li><strong>Location:</strong> Region, province, city, barangay (for Philippine users)</li>
                                 <li><strong>Username:</strong> Created during profile completion</li>
@@ -232,8 +232,7 @@
                             <li><strong>Educational Updates:</strong> Course completion notifications, achievement unlocks</li>
                         </ul>
                         <p class="leading-relaxed mt-4">
-                            <strong>Gmail Requirement:</strong> Currently, we only accept Gmail addresses (@gmail.com) for email verification. 
-                            This may expand in the future.
+                            <strong>Email Verification:</strong> A valid email address is required to receive account verification messages.
                         </p>
                         <p class="leading-relaxed">
                             You cannot opt out of essential account emails (verification, security), but can control optional notifications 

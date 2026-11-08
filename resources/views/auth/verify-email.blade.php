@@ -1,4 +1,7 @@
 ﻿{{-- Alpine store — shared state between panel and main content --}}
+@php
+    $usesGmail = str_ends_with(strtolower((string) auth()->user()?->email), '@gmail.com');
+@endphp
 @if($showSuccess)
 <script>
     document.addEventListener('alpine:init', () => {
@@ -41,7 +44,7 @@
                     <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Conscious Connections</p>
                 </div>
                 <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Check your inbox</h2>
-                <p class="text-white/80 text-lg max-w-xs">We sent a link to your Gmail address</p>
+                <p class="text-white/80 text-lg max-w-xs">We sent a verification link to your email address</p>
             @endif
         </div>
     </x-slot>
@@ -350,11 +353,13 @@
                         <p class="mt-3 text-sm text-gray-600">Open the email and click the verification link to activate your account.</p>
                     </article>
 
-                    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <a href="https://mail.google.com"
-                           class="inline-flex w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
-                            Open Gmail
-                        </a>
+                    <div class="mt-4 grid grid-cols-1 gap-3 {{ $usesGmail ? 'sm:grid-cols-2' : '' }}">
+                        @if($usesGmail)
+                            <a href="https://mail.google.com"
+                               class="inline-flex w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
+                                Open Gmail
+                            </a>
+                        @endif
 
                         <form method="POST" action="{{ route('verification.send') }}" class="w-full">
                             @csrf

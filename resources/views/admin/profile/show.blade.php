@@ -212,7 +212,7 @@
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700">Admin Login Email</label>
                         <input id="email" type="email" name="email" value="{{ old('email', $user->email) }}" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500" required>
-                        <p class="mt-1 text-xs text-gray-500">Use a valid Gmail address (for example: name@gmail.com). This email is used for admin login.</p>
+                        <p class="mt-1 text-xs text-gray-500">Use a valid email address (for example: name@example.com). This email is used for admin login.</p>
                         @error('email')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
 

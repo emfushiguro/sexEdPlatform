@@ -30,6 +30,20 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, ResetPassword::class);
     }
 
+    public function test_unknown_email_gets_the_same_public_reset_response(): void
+    {
+        Notification::fake();
+
+        $response = $this->from('/forgot-password')
+            ->post('/forgot-password', ['email' => 'unknown@example.com']);
+
+        $response
+            ->assertSessionHas('status', 'If an account exists for that email address, a password reset link has been sent.')
+            ->assertSessionHasNoErrors();
+
+        Notification::assertNothingSent();
+    }
+
     public function test_reset_password_screen_can_be_rendered(): void
     {
         Notification::fake();
