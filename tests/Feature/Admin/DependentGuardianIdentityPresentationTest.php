@@ -45,7 +45,7 @@ class DependentGuardianIdentityPresentationTest extends TestCase
             ->assertSee('View guardian information');
 
         $attempt->local_government_id_type = 'philhealth';
-        $render()->assertSee('government-id-front')->assertDontSee('government-id-back');
+        $render()->assertSee('government-id-front')->assertSee('government-id-back');
 
         $attempt->target_submission_round = 2;
         $render()->assertSee('Guardian ID images are unavailable.')->assertDontSee('government-id-front');

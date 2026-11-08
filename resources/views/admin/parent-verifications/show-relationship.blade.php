@@ -222,14 +222,12 @@
                         'label' => 'Front of guardian ID',
                         'compactPersonaSummary' => true,
                     ])
-                    @if(data_get(config('guardian_identity.id_types'), $guardianPersonaAttempt->local_government_id_type.'.requires_back', false))
-                        @include('admin.parent-verifications.partials.persona-image', [
-                            'attempt' => $guardianPersonaAttempt,
-                            'artifact' => 'government-id-back',
-                            'label' => 'Back of guardian ID',
-                            'compactPersonaSummary' => true,
-                        ])
-                    @endif
+                    @include('admin.parent-verifications.partials.persona-image', [
+                        'attempt' => $guardianPersonaAttempt,
+                        'artifact' => 'government-id-back',
+                        'label' => 'Back of guardian ID',
+                        'compactPersonaSummary' => true,
+                    ])
                 </div>
             @else
                 <p class="mt-4 text-sm text-gray-500" role="status">Guardian ID images are unavailable. Open the guardian information to review the identity submission.</p>

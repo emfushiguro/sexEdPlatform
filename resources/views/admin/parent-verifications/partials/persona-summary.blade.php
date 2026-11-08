@@ -103,9 +103,7 @@
                                     @endif
                                     <div @class(['grid gap-4 md:grid-cols-2' => $compactPersonaSummary, 'contents' => ! $compactPersonaSummary])>
                                         @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'government-id-front', 'label' => 'Persona ID front'])
-                                        @if(data_get(config('guardian_identity.id_types'), $attempt->local_government_id_type.'.requires_back', false))
-                                            @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'government-id-back', 'label' => 'Persona ID back'])
-                                        @endif
+                                        @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'government-id-back', 'label' => 'Persona ID back'])
                                     </div>
                                 </div>
                             @endif

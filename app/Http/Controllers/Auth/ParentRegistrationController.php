@@ -598,8 +598,8 @@ class ParentRegistrationController extends Controller
                     'birthdate' => $step1['birthdate'],
                     'age' => $step1['age'],
                     'password' => Hash::make($step3['password']),
-                    'email_verified_at' => now(),
                 ]);
+                $child->markEmailAsVerified();
 
                 Role::findOrCreate('learner', 'web');
                 $child->assignRole('learner');

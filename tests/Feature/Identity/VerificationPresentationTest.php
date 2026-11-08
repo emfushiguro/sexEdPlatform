@@ -11,6 +11,18 @@ use Tests\TestCase;
 
 class VerificationPresentationTest extends TestCase
 {
+    public function test_persona_summary_shows_back_preview_for_front_only_id_types(): void
+    {
+        $attempt = new PersonaInquiry([
+            'attempt_number' => 1, 'flow_type' => PersonaInquiry::FLOW_GUARDIAN_GOVERNMENT,
+            'local_government_id_type' => 'philhealth', 'government_id_verification_id' => 'test-gov',
+            'is_sandbox' => true, 'verification_outcome' => PersonaInquiry::OUTCOME_ELIGIBLE,
+        ]);
+        $attempt->id = 123;
+        $this->view('admin.parent-verifications.partials.persona-summary', ['personaAttempts' => collect([$attempt])])
+            ->assertSee(route('admin.parent-verifications.persona.evidence', [$attempt, 'government-id-back']), false);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

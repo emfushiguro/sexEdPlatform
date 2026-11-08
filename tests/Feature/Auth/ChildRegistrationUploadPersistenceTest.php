@@ -240,6 +240,7 @@ class ChildRegistrationUploadPersistenceTest extends TestCase
             ->first();
 
         $this->assertNotNull($link);
+        $this->assertNotNull(User::findOrFail($link->child_user_id)->email_verified_at);
         $this->assertNotEmpty($link->verification_document_path);
         $this->assertStringStartsWith('child-verifications/'.$parent->id.'/', $link->verification_document_path);
         Storage::disk('local')->assertExists($link->verification_document_path);
