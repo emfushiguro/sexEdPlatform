@@ -107,6 +107,19 @@ class PersonaEvidenceTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_government_id_back_uses_personas_back_photo_url_when_page_array_is_missing(): void
+    {
+        $attempt = $this->guardianAttempt(['government_id_verification_id' => 'gov_back']);
+        Http::fake([
+            'https://api.withpersona.com/api/v1/verification/government-ids/gov_back' => Http::response([
+                'data' => ['attributes' => ['back-photo-url' => 'https://files.withpersona.com/back.jpg']],
+            ]),
+            'https://files.withpersona.com/back.jpg' => Http::response('back-bytes', 200, ['Content-Type' => 'image/jpeg', 'Content-Length' => '10']),
+        ]);
+        $this->actingAs($this->admin())->get(route('admin.parent-verifications.persona.evidence', [$attempt, 'government-id-back']))
+            ->assertOk()->assertSee('back-bytes');
+    }
+
     public function test_each_selfie_pose_uses_its_own_returned_url_and_is_never_stored(): void
     {
         $attempt = $this->guardianAttempt(['selfie_verification_id' => 'selfie_poses']);

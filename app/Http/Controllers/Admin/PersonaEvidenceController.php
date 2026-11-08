@@ -115,9 +115,13 @@ class PersonaEvidenceController extends Controller
 
             $url = $photo['url'] ?? null;
 
-            return is_string($url) && $url !== '' ? $url : null;
+            if (is_string($url) && $url !== '') {
+                return $url;
+            }
         }
 
-        return null;
+        $url = data_get($response, 'data.attributes.'.$page.'-photo-url');
+
+        return is_string($url) && $url !== '' ? $url : null;
     }
 }

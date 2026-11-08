@@ -34,7 +34,7 @@ class RelationshipGuardianIdentityPresentationTest extends TestCase
             ->assertSee(route('admin.parent-verifications.parents.show', $guardian), false)
             ->assertSee('View guardian information')->assertDontSee('Not submitted');
         $attempt->local_government_id_type = 'philhealth';
-        $render($attempt)->assertSee('government-id-front')->assertDontSee('government-id-back');
+        $render($attempt)->assertSee('government-id-front')->assertSee('government-id-back');
         $render(null)->assertSee('Guardian ID images are unavailable.')->assertSee('View guardian information');
         $guardian->forceFill(['parent_identity_evidence_source' => 'local', 'parent_id_document_path' => 'parent-verifications/test.pdf']);
         $render(null)->assertSee(route('admin.parent-verifications.parents.document', [$guardian, 'front']), false)

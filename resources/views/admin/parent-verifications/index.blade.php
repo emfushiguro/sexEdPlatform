@@ -1121,14 +1121,12 @@
                                                                       'label' => 'Guardian Government ID - Front',
                                                                       'compactPersonaSummary' => true,
                                                                   ])
-                                                                  @if(data_get(config('guardian_identity.id_types'), $guardianPersonaAttempt->local_government_id_type.'.requires_back', false))
-                                                                      @include('admin.parent-verifications.partials.persona-image', [
-                                                                          'attempt' => $guardianPersonaAttempt,
-                                                                          'artifact' => 'government-id-back',
-                                                                          'label' => 'Guardian Government ID - Back',
-                                                                          'compactPersonaSummary' => true,
-                                                                      ])
-                                                                  @endif
+                                                                  @include('admin.parent-verifications.partials.persona-image', [
+                                                                      'attempt' => $guardianPersonaAttempt,
+                                                                      'artifact' => 'government-id-back',
+                                                                      'label' => 'Guardian Government ID - Back',
+                                                                      'compactPersonaSummary' => true,
+                                                                  ])
                                                               @else
                                                                   <p class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600" role="status">Guardian ID images are unavailable. Open the guardian information to review the identity submission.</p>
                                                               @endif

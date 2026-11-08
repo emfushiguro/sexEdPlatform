@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\ParentChildAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -48,6 +49,29 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertGuest();
+    }
+
+    public function test_legacy_guardian_created_dependent_is_verified_after_login(): void
+    {
+        $child = User::factory()->unverified()->create(['role' => 'learner']);
+        $guardian = User::factory()->create();
+        ParentChildAccount::create(['parent_user_id' => $guardian->id, 'child_user_id' => $child->id,
+            'verification_document_path' => 'child-verifications/test.pdf', 'verification_status' => 'pending']);
+
+        $this->post('/login', ['email' => $child->email, 'password' => 'password'])->assertRedirect();
+        $this->assertAuthenticatedAs($child);
+        $this->assertNotNull($child->fresh()->email_verified_at);
+        $this->assertSame('pending', $child->parentChildLink()->firstOrFail()->verification_status);
+        $this->get(route('learner.dashboard'))->assertRedirect(route('child.verification.status'));
+    }
+
+    public function test_unverified_invited_or_unrelated_learner_is_not_automatically_verified(): void
+    {
+        $child = User::factory()->unverified()->create(['role' => 'learner']);
+        $guardian = User::factory()->create();
+        ParentChildAccount::create(['parent_user_id' => $guardian->id, 'child_user_id' => $child->id]);
+        $this->post('/login', ['email' => $child->email, 'password' => 'password'])->assertRedirect();
+        $this->assertNull($child->fresh()->email_verified_at);
     }
 
     public function test_users_can_logout(): void
