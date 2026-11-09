@@ -107,6 +107,7 @@ class PermissionSeeder extends Seeder
             'view activity logs',
             'manage system settings',
             'manage notifications',
+            'manage onboarding guides',
             'community.view_any',
             'community.moderate_any',
             'community.manage_settings',

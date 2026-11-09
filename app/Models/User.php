@@ -314,6 +314,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Connector::class, 'created_by');
     }
 
+    public function onboardingGuideStates(): HasMany
+    {
+        return $this->hasMany(UserOnboardingGuideState::class);
+    }
+
+    public function createdOnboardingGuides(): HasMany
+    {
+        return $this->hasMany(OnboardingGuide::class, 'created_by');
+    }
+
     public function moduleEnrollments()
     {
         return $this->hasMany(ModuleEnrollment::class);
