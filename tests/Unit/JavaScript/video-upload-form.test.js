@@ -279,3 +279,65 @@ test('shows the first nested validation error returned by the server', () => {
         globalThis.FormData = previousFormData;
     }
 });
+
+test('uses form-specific saving and failure copy', () => {
+    const previousDocument = globalThis.document;
+    const previousFormData = globalThis.FormData;
+    const formError = new FakeElement();
+    const document = {
+        activeElement: null,
+        addEventListener() {},
+        querySelector(selector) {
+            return selector === '[data-video-upload-form-error]' ? formError : null;
+        },
+    };
+    const form = new FakeElement();
+    const fileInput = new FakeElement();
+    const submitButton = new FakeElement();
+    form.dataset = {};
+    form.dataset.videoSavingLabel = 'Saving guide...';
+    form.dataset.videoFinalizingLabel = 'Finalizing guide...';
+    form.dataset.videoFailureLabel = 'The guide could not be saved.';
+    form.method = 'POST';
+    form.action = '/admin/onboarding-guides';
+    form.querySelector = (selector) => ({
+        '[data-video-file-input]': fileInput,
+        '[type="submit"]': submitButton,
+        'input[name="_token"]': null,
+    }[selector] ?? null);
+    fileInput.files = [{ name: 'guide.mp4', size: 100, type: 'video/mp4' }];
+
+    class FakeXhr {
+        constructor() {
+            this.upload = new FakeElement();
+            this.listeners = {};
+            this.status = 500;
+            this.response = {};
+        }
+
+        open() {}
+
+        setRequestHeader() {}
+
+        addEventListener(type, listener) {
+            this.listeners[type] = listener;
+        }
+
+        send() {
+            this.listeners.load();
+        }
+    }
+
+    globalThis.document = document;
+    globalThis.FormData = class {};
+
+    try {
+        initializeVideoUploadForm(form, () => new FakeXhr());
+        form.dispatch('submit', { preventDefault() {} });
+
+        assert.equal(formError.textContent, 'The guide could not be saved.');
+    } finally {
+        globalThis.document = previousDocument;
+        globalThis.FormData = previousFormData;
+    }
+});

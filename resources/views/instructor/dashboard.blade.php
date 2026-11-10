@@ -269,4 +269,8 @@
         </x-instructor.mini-calendar-shell>
     </div>
 </div>
+
+@if($onboardingGuidePresentation)
+    <x-onboarding.guide-modal :presentation="$onboardingGuidePresentation" />
+@endif
 @endsection

@@ -372,5 +372,9 @@
         </script>
     @endpush
 @endif
+
+@if($onboardingGuidePresentation)
+    <x-onboarding.guide-modal :presentation="$onboardingGuidePresentation" />
+@endif
 </div>
 @endsection

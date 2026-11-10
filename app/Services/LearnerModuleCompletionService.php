@@ -138,6 +138,7 @@ class LearnerModuleCompletionService
         $completedLessonIds = UserProgress::query()
             ->where('user_id', $user->id)
             ->where('module_id', $module->id)
+            ->whereIn('lesson_id', $lessons->modelKeys())
             ->where('completed', true)
             ->pluck('lesson_id')
             ->unique();

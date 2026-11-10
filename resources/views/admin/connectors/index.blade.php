@@ -126,7 +126,7 @@
                             <option value="verified">Verified</option>
                             <option value="rejected">Rejected</option>
                             <option value="suspended">Suspended</option>
-                        </select>
+                        </select>   
                     </label>
                     <label class="block">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Category</span>

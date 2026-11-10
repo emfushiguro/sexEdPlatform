@@ -1,3 +1,5 @@
+@php($savingLabel = $savingLabel ?? 'Saving topic...')
+
 <div
     data-video-upload-overlay
     class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 px-4"
@@ -29,7 +31,7 @@
         </div>
 
         <p id="videoUploadStatus" data-upload-status class="mt-4 text-center text-lg font-semibold text-gray-900" aria-live="polite">
-            Saving topic...
+            {{ $savingLabel }}
         </p>
         <p data-upload-detail class="mt-1 text-center text-sm text-gray-500">
             Please keep this page open.

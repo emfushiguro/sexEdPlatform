@@ -121,8 +121,9 @@ class ModuleController extends Controller
             $totalLessons = $module->lessons->count();
             $completedLessons = UserProgress::where('user_id', $user->id)
                 ->where('module_id', $module->id)
+                ->whereIn('lesson_id', $module->lessons->modelKeys())
                 ->where('completed', true)
-                ->count();
+                ->distinct()->count('lesson_id');
             
             if ($totalLessons > 0) {
                 $progressPercentage = ($completedLessons / $totalLessons) * 100;
@@ -278,8 +279,9 @@ class ModuleController extends Controller
         $totalLessons = $lessons->count();
         $completedLessons = UserProgress::where('user_id', $user->id)
             ->where('module_id', $module->id)
+            ->whereIn('lesson_id', $lessons->modelKeys())
             ->where('completed', true)
-            ->count();
+            ->distinct()->count('lesson_id');
         
         $progressPercentage = $totalLessons > 0 ? ($completedLessons / $totalLessons) * 100 : 0;
         

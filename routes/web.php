@@ -285,6 +285,19 @@ Route::middleware('auth')->group(function () {
 */
 
 Route::middleware('auth')->group(function () {
+    Route::get(
+        '/onboarding-guides/versions/{version}/video',
+        \App\Http\Controllers\Onboarding\GuideVideoController::class
+    )->name('onboarding-guides.video');
+    Route::post(
+        '/onboarding-guides/versions/{version}/dismiss',
+        [\App\Http\Controllers\Onboarding\GuideStateController::class, 'dismiss'],
+    )->name('onboarding-guides.dismiss');
+    Route::post(
+        '/onboarding-guides/versions/{version}/complete',
+        [\App\Http\Controllers\Onboarding\GuideStateController::class, 'complete'],
+    )->name('onboarding-guides.complete');
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -363,6 +376,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('learn')->name('learner.')->middleware('profile.completed')->group(function () {
         // Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Learner\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/guide', [\App\Http\Controllers\Onboarding\GuideController::class, 'learner'])->name('guide');
         Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
         Route::get('/my-parent', [ParentVisibilityController::class, 'index'])->name('parent.index');

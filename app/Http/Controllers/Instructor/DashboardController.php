@@ -5,13 +5,19 @@ namespace App\Http\Controllers\Instructor;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Models\ModuleEnrollment;
+use App\Models\OnboardingGuide;
 use App\Models\Quiz;
+use App\Services\Onboarding\OnboardingGuideAudienceService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private readonly OnboardingGuideAudienceService $onboardingGuides,
+    ) {}
+
     public function index()
     {
         $instructorId = Auth::id();
@@ -280,11 +286,16 @@ class DashboardController extends Controller
             ->limit(8)
             ->get();
 
+        $onboardingGuidePresentation = $this->onboardingGuides->presentationFor(
+            Auth::user(),
+            OnboardingGuide::ROLE_INSTRUCTOR,
+        );
+
         return view('instructor.dashboard', compact(
             'stats', 'recentActivities', 'pendingEnrollments',
             'moduleStats', 'quizStats', 'instructorModules', 'calendarDates',
             'statCards', 'avgQuizScoreScopes', 'dashboardHero',
-            'quizTakingSummary', 'instructorNotifications'
+            'quizTakingSummary', 'instructorNotifications', 'onboardingGuidePresentation'
         ));
     }
 }

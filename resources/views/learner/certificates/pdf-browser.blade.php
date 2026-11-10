@@ -6,20 +6,8 @@
     @php
         $learnerNameLength = mb_strlen((string) $certificate->learner_name);
         $moduleTitleLength = mb_strlen((string) $certificate->module_title);
-        $learnerNameFontSize = match (true) {
-            $learnerNameLength > 90 => 13,
-            $learnerNameLength > 60 => 18,
-            $learnerNameLength > 38 => 26,
-            $learnerNameLength > 22 => 32,
-            $learnerNameLength > 14 => 38,
-            default => 42,
-        };
-        $moduleTitleFontSize = match (true) {
-            $moduleTitleLength > 140 => 12,
-            $moduleTitleLength > 90 => 16,
-            $moduleTitleLength > 60 => 21,
-            default => 28,
-        };
+        $learnerNameFontSize = max(8, min(34, 800 / max(1, $learnerNameLength)));
+        $moduleTitleFontSize = max(8, min(25, 1400 / max(1, $moduleTitleLength)));
     @endphp
     <style>
         @page {
@@ -55,11 +43,11 @@
         }
 
         .learner-name {
-            left: 31.04%;
-            top: 44.62%;
-            width: 38.05%;
+            left: 22%;
+            top: 43%;
+            width: 56%;
             text-align: center;
-            white-space: nowrap;
+            white-space: normal;
             font-size: {{ $learnerNameFontSize }}pt;
             font-weight: 700;
             line-height: 1.02;
@@ -67,9 +55,9 @@
         }
 
         .module-name {
-            left: 23.47%;
-            top: 64.57%;
-            width: 52.86%;
+            left: 22%;
+            top: 64%;
+            width: 56%;
             text-align: center;
             font-size: {{ $moduleTitleFontSize }}pt;
             font-weight: 500;

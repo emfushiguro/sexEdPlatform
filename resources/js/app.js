@@ -24,6 +24,7 @@ import './chat/global-popup';
 import './seminar-livestream';
 import './seminar-schedule';
 import './instructor-application';
+import './onboarding-guide-modal';
 
 const emptyInstructorSearchResults = () => ({
     modules: [],

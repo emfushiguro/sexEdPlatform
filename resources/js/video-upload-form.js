@@ -117,6 +117,16 @@ function setText(element, value) {
     }
 }
 
+function uploadCopy(form) {
+    return {
+        saving: form.dataset.videoSavingLabel || 'Saving topic...',
+        finalizing: form.dataset.videoFinalizingLabel
+            || 'Upload complete. Finalizing the topic...',
+        failure: form.dataset.videoFailureLabel
+            || 'The topic could not be saved. Please try again.',
+    };
+}
+
 function parsePayload(xhr) {
     if (xhr.response && typeof xhr.response === 'object') {
         return xhr.response;
@@ -144,6 +154,7 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
     const submitButton = form.querySelector('[type="submit"]');
     const originalButtonHtml = submitButton?.innerHTML;
     const maxBytes = Number(form.dataset.videoMaxBytes || VIDEO_UPLOAD_MAX_BYTES);
+    const copy = uploadCopy(form);
     let previouslyFocusedElement;
     let invalidFileSelection = false;
 
@@ -240,7 +251,7 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
         }
 
         showOverlay();
-        setText(status, file ? 'Uploading video...' : 'Saving topic...');
+        setText(status, file ? 'Uploading video...' : copy.saving);
         toggle(spinner, Boolean(file));
         toggle(progressPanel, !file);
 
@@ -273,8 +284,8 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
         });
 
         xhr.upload.addEventListener('load', () => {
-            setText(status, 'Saving topic...');
-            setText(detail, 'Upload complete. Finalizing the topic...');
+            setText(status, copy.saving);
+            setText(detail, copy.finalizing);
         });
 
         xhr.addEventListener('load', () => {
@@ -291,7 +302,7 @@ export function initializeVideoUploadForm(form, xhrFactory = () => new XMLHttpRe
                 ? 'The upload is larger than the server request limit.'
                 : firstValidationError
                     || payload.message
-                    || 'The topic could not be saved. Please try again.';
+                    || copy.failure;
             restoreAfterFailure(message);
         });
 

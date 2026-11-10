@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('instructor')->name('instructor.')->middleware(['auth', 'verified', 'permission:access instructor panel|create modules'])->group(function () {
     // Instructor Dashboard
     Route::get('/dashboard', [Instructor\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/guide', [\App\Http\Controllers\Onboarding\GuideController::class, 'instructor'])->name('guide');
     Route::get('/guidelines', Instructor\GuidelinesController::class)->name('guidelines');
 
     // Context switch back to learner view for transitioned accounts.
