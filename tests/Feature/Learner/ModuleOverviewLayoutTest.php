@@ -18,6 +18,29 @@ class ModuleOverviewLayoutTest extends DatabaseTestCase
 {
     use RefreshDatabase;
 
+    public function test_progress_excludes_unpublished_lessons_on_list_and_detail(): void
+    {
+        $this->withoutMiddleware(EnsureProfileCompleted::class);
+        [$learner, $instructor, $module] = $this->createLearnerAndModule();
+        Lesson::factory()->create(['module_id' => $module->id, 'is_published' => true]);
+        $hidden = Lesson::factory()->create(['module_id' => $module->id, 'is_published' => false]);
+        UserProgress::query()->create([
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+            'lesson_id' => $hidden->id,
+            'completed' => true,
+            'progress_percentage' => 100,
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($learner)->get(route('learner.modules.index'))
+            ->assertOk()->assertViewHas('progress', fn ($progress) => $progress[$module->id]->progress_percentage == 50
+                && $progress[$module->id]->completed_lessons === 1);
+        $this->get(route('learner.modules.show', $module))
+            ->assertOk()->assertViewHas('progress', fn ($progress) => $progress->progress_percentage == 50
+                && $progress->completed_lessons === 1);
+    }
+
     public function test_module_show_page_uses_expected_right_rail_order_and_hides_module_assessment_section(): void
     {
         $this->withoutMiddleware(EnsureProfileCompleted::class);

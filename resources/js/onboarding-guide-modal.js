@@ -7,11 +7,32 @@ export function createOnboardingGuideModal(
         saving: false,
         error: '',
 
-        startWatching() {
-            void this.$refs.video?.play();
+        async startWatching() {
+            this.error = '';
+            const video = this.$refs.video;
+
+            try {
+                if (video.requestFullscreen) {
+                    Promise.resolve(video.requestFullscreen()).catch(() => {});
+                } else if (video.webkitEnterFullscreen) {
+                    video.webkitEnterFullscreen();
+                }
+            } catch {
+                // Playback remains available when fullscreen is unavailable.
+            }
+
+            try {
+                await video.play();
+                video.focus?.();
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    this.error = 'Playback could not start. Try the video controls or try again.';
+                }
+            }
         },
 
         dismiss() {
+            this.$refs.video?.pause();
             this.$refs.dialog.close();
             void this.post(config.dismissUrl).catch(() => {
                 notifyError('Your choice could not be saved. The guide may appear again.');

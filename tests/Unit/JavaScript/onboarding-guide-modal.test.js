@@ -16,22 +16,64 @@ const response = (ok = true) => ({
     },
 });
 
-test('start watching only plays the preview video', () => {
+test('start watching requests fullscreen and plays without recording completion', async () => {
     let plays = 0;
+    let fullscreen = 0;
     let requests = 0;
     const modal = createOnboardingGuideModal(config, async () => {
         requests += 1;
         return response();
     });
     modal.$refs = {
-        video: { play: () => { plays += 1; } },
+        video: { requestFullscreen: () => { fullscreen += 1; return Promise.resolve(); }, play: () => { plays += 1; } },
         dialog: { close() {} },
     };
 
-    modal.startWatching();
+    await modal.startWatching();
 
     assert.equal(plays, 1);
+    assert.equal(fullscreen, 1);
     assert.equal(requests, 0);
+});
+
+test('playback still starts when fullscreen is denied', async () => {
+    let plays = 0;
+    const modal = createOnboardingGuideModal(config, async () => response());
+    modal.$refs = { video: { requestFullscreen: () => Promise.reject(new Error('Denied')), play: () => { plays += 1; } } };
+
+    await modal.startWatching();
+
+    assert.equal(plays, 1);
+    assert.equal(modal.error, '');
+});
+
+test('uses native video fullscreen where standard fullscreen is unavailable', async () => {
+    let fullscreen = 0;
+    const modal = createOnboardingGuideModal(config, async () => response());
+    modal.$refs = { video: { webkitEnterFullscreen: () => { fullscreen += 1; }, play() {} } };
+
+    await modal.startWatching();
+
+    assert.equal(fullscreen, 1);
+});
+
+test('playback errors offer a retry instead of leaving an unhandled rejection', async () => {
+    const modal = createOnboardingGuideModal(config, async () => response());
+    modal.$refs = { video: { play: () => Promise.reject(new Error('Playback failed')) } };
+
+    await modal.startWatching();
+
+    assert.match(modal.error, /playback|play/i);
+});
+
+test('dismissing the guide stops its video', () => {
+    let paused = false;
+    const modal = createOnboardingGuideModal(config, async () => response());
+    modal.$refs = { video: { pause: () => { paused = true; } }, dialog: { close() {} } };
+
+    modal.dismiss();
+
+    assert.equal(paused, true);
 });
 
 test('skip, close, and escape close before saving dismissal', async () => {

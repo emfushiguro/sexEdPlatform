@@ -84,10 +84,18 @@
     </section>
 
     @if($guide->status === \App\Models\OnboardingGuide::STATUS_PUBLISHED)
-        <form method="POST" action="{{ route('admin.onboarding-guides.unpublish', $guide) }}" class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            @csrf
-            <button type="submit" class="text-sm font-semibold text-amber-800 hover:underline">Unpublish this guide</button>
-        </form>
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <button type="button" onclick="document.getElementById('unpublish-guide-confirmation').showModal()" aria-haspopup="dialog" class="text-sm font-semibold text-amber-800 hover:underline">Unpublish this guide</button>
+            <dialog id="unpublish-guide-confirmation" aria-labelledby="unpublish-guide-title" class="m-auto w-11/12 max-w-md rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-2xl backdrop:bg-slate-950/60">
+                <h2 id="unpublish-guide-title" class="text-lg font-bold text-gray-900">Unpublish this guide?</h2>
+                <p class="mt-2 text-sm leading-6 text-gray-600">This guide will no longer be available to users. Its video, version history, and user progress will be kept.</p>
+                <form method="POST" action="{{ route('admin.onboarding-guides.unpublish', $guide) }}" class="mt-6 flex justify-end gap-3">
+                    @csrf
+                    <button type="button" onclick="this.closest('dialog').close()" autofocus class="min-h-11 rounded-xl border border-gray-300 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="min-h-11 rounded-xl bg-amber-700 px-4 text-sm font-semibold text-white hover:bg-amber-800">Unpublish</button>
+                </form>
+            </dialog>
+        </div>
     @endif
 </div>
 @endsection

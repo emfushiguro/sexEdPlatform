@@ -53,7 +53,7 @@ final class OnboardingGuideModalTest extends TestCase
             ->assertSee(route('onboarding-guides.video', $version), false)
             ->assertSee('Start Watching')
             ->assertSee('Skip')
-            ->assertSee('Mark guide complete');
+            ->assertDontSee('Mark guide complete');
     }
 
     public function test_dismissed_and_completed_guides_do_not_render_the_dashboard_modal(): void
@@ -103,7 +103,7 @@ final class OnboardingGuideModalTest extends TestCase
             ->assertOk()
             ->assertSee('Instructor navigation tour')
             ->assertSee(route('onboarding-guides.video', $version), false)
-            ->assertSee('Mark guide complete');
+            ->assertDontSee('Mark guide complete');
     }
 
     public function test_no_current_guide_renders_no_modal(): void

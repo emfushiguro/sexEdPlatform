@@ -62,8 +62,9 @@ class DashboardController extends Controller
             // Lesson-level count for card display ("X/Y lessons completed")
             $completedLessons = UserProgress::where('user_id', $user->id)
                 ->where('module_id', $module->id)
+                ->whereIn('lesson_id', $module->lessons()->where('is_published', true)->select('id'))
                 ->where('completed', true)
-                ->count();
+                ->distinct()->count('lesson_id');
 
             $progressPercent = $totalLessons > 0
                 ? round(($completedLessons / $totalLessons) * 100)
