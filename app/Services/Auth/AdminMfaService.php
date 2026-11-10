@@ -209,7 +209,7 @@ class AdminMfaService
 
     private function passwordRateKey(Request $request): string
     {
-        return 'admin-login:'.(string) $request->ip();
+        return 'admin-login:'.hash_hmac('sha256', (string) $request->ip(), (string) config('app.key'));
     }
 
     private function sessionFingerprint(Request $request): string

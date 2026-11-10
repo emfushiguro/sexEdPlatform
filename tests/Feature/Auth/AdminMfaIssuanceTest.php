@@ -109,6 +109,54 @@ class AdminMfaIssuanceTest extends TestCase
         $this->assertSame(0, RateLimiter::attempts('admin-mfa-start:ip:198.51.100.1'));
     }
 
+    public function test_password_limit_uses_a_keyed_ip_digest_and_releases_after_a_limited_request(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $service = app(AdminMfaService::class);
+        $ip = '203.0.113.44';
+        $passwordKey = 'admin-login:'.hash_hmac('sha256', $ip, (string) config('app.key'));
+
+        foreach (range(1, 5) as $attempt) {
+            try {
+                $service->beginFromAdminPortal(
+                    $this->request('/secure-panel-access', $ip),
+                    $admin->email,
+                    'wrong-password',
+                );
+            } catch (ValidationException) {
+                // Expected invalid-credential response.
+            }
+        }
+
+        $this->assertSame(5, RateLimiter::attempts($passwordKey));
+        $this->assertSame(0, RateLimiter::attempts('admin-login:'.$ip));
+
+        try {
+            $service->beginFromAdminPortal(
+                $this->request('/secure-panel-access', $ip),
+                $admin->email,
+                'password',
+            );
+            $this->fail('Expected the password limit to fail.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                ['Too many login attempts. Please try again in 60 seconds.'],
+                $exception->errors()['email'],
+            );
+        }
+
+        RateLimiter::clear($passwordKey);
+
+        $challenge = $service->beginFromAdminPortal(
+            $this->request('/secure-panel-access', $ip),
+            $admin->email,
+            'password',
+        );
+
+        $this->assertSame($admin->id, $challenge->user_id);
+    }
+
     public function test_invalid_or_ineligible_admin_credentials_fail_with_the_same_public_message(): void
     {
         $unverified = $this->admin(['email_verified_at' => null]);
