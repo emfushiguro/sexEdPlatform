@@ -31,6 +31,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/notifications/dropdown-open', [Admin\NotificationController::class, 'markDropdownRead'])->name('notifications.dropdown-open');
     Route::get('/notifications/{id}/read', [Admin\NotificationController::class, 'markRead'])->name('notifications.read');
 
+    Route::prefix('onboarding-guides')
+        ->name('onboarding-guides.')
+        ->middleware('permission:manage onboarding guides')
+        ->group(function (): void {
+            Route::get('/', [Admin\OnboardingGuideController::class, 'index'])->name('index');
+            Route::get('/create', [Admin\OnboardingGuideController::class, 'create'])->name('create');
+            Route::post('/', [Admin\OnboardingGuideController::class, 'store'])->name('store');
+            Route::get('/{guide}/edit', [Admin\OnboardingGuideController::class, 'edit'])->name('edit');
+            Route::put('/{guide}', [Admin\OnboardingGuideController::class, 'update'])->name('update');
+            Route::get('/{guide}/history', [Admin\OnboardingGuideController::class, 'history'])->name('history');
+            Route::post('/{guide}/publish', [Admin\OnboardingGuideController::class, 'publish'])->name('publish');
+            Route::post('/{guide}/unpublish', [Admin\OnboardingGuideController::class, 'unpublish'])->name('unpublish');
+            Route::post('/{guide}/archive', [Admin\OnboardingGuideController::class, 'archive'])->name('archive');
+        });
+
     Route::prefix('help')->name('help.')->group(function () {
         Route::resource('categories', Admin\HelpCategoryController::class)->except(['show', 'destroy'])->parameters(['categories' => 'helpCategory']);
         Route::post('categories/{helpCategory}/deactivate', [Admin\HelpCategoryController::class, 'deactivate'])->name('categories.deactivate');
