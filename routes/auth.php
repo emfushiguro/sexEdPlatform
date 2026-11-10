@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AdminAuthController;
+use App\Http\Controllers\Auth\AdminMfaController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\DependentSupportRegistrationController;
@@ -100,6 +101,17 @@ Route::middleware('guest')->group(function () {
 
     Route::post('secure-panel-access', [AdminAuthController::class, 'login'])
         ->name('admin.login.submit');
+
+    Route::get('secure-panel-access/verify', [AdminMfaController::class, 'show'])
+        ->name('admin.mfa.show');
+    Route::post('secure-panel-access/verify', [AdminMfaController::class, 'verify'])
+        ->middleware('throttle:10,1')
+        ->name('admin.mfa.verify');
+    Route::post('secure-panel-access/resend', [AdminMfaController::class, 'resend'])
+        ->middleware('throttle:6,1')
+        ->name('admin.mfa.resend');
+    Route::post('secure-panel-access/cancel', [AdminMfaController::class, 'cancel'])
+        ->name('admin.mfa.cancel');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
