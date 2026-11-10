@@ -289,6 +289,14 @@ Route::middleware('auth')->group(function () {
         '/onboarding-guides/versions/{version}/video',
         \App\Http\Controllers\Onboarding\GuideVideoController::class
     )->name('onboarding-guides.video');
+    Route::post(
+        '/onboarding-guides/versions/{version}/dismiss',
+        [\App\Http\Controllers\Onboarding\GuideStateController::class, 'dismiss'],
+    )->name('onboarding-guides.dismiss');
+    Route::post(
+        '/onboarding-guides/versions/{version}/complete',
+        [\App\Http\Controllers\Onboarding\GuideStateController::class, 'complete'],
+    )->name('onboarding-guides.complete');
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

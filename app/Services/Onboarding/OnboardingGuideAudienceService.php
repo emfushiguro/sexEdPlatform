@@ -11,6 +11,7 @@ use App\Models\UserOnboardingGuideState;
 use App\Models\UserSuspension;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 final class OnboardingGuideAudienceService
 {
@@ -113,6 +114,52 @@ final class OnboardingGuideAudienceService
             || ! $this->canAccessRole($user, $guide->target_role)) {
             throw new AuthorizationException('This onboarding guide is not available.');
         }
+    }
+
+    public function dismiss(User $user, OnboardingGuideVersion $version): UserOnboardingGuideState
+    {
+        return DB::transaction(function () use ($user, $version): UserOnboardingGuideState {
+            $lockedUser = User::query()
+                ->whereKey($user->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertCanUseVersion($lockedUser, $version);
+
+            $state = UserOnboardingGuideState::query()->firstOrCreate([
+                'user_id' => $lockedUser->id,
+                'onboarding_guide_version_id' => $version->id,
+            ]);
+
+            if ($state->completed_at === null && $state->dismissed_at === null) {
+                $state->forceFill(['dismissed_at' => now()])->save();
+            }
+
+            return $state->refresh();
+        });
+    }
+
+    public function complete(User $user, OnboardingGuideVersion $version): UserOnboardingGuideState
+    {
+        return DB::transaction(function () use ($user, $version): UserOnboardingGuideState {
+            $lockedUser = User::query()
+                ->whereKey($user->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertCanUseVersion($lockedUser, $version);
+
+            $state = UserOnboardingGuideState::query()->firstOrCreate([
+                'user_id' => $lockedUser->id,
+                'onboarding_guide_version_id' => $version->id,
+            ]);
+
+            if ($state->completed_at === null) {
+                $state->forceFill(['completed_at' => now()])->save();
+            }
+
+            return $state->refresh();
+        });
     }
 
     /**
