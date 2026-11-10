@@ -10,9 +10,11 @@ use App\Models\RewardLog;
 use App\Models\UserDailyShield;
 use App\Models\UserProgress;
 use App\Models\InstructorApplication;
+use App\Models\OnboardingGuide;
 use App\Models\ParentChildInvitation;
 use App\Models\User;
 use App\Services\Gamification\GamificationPolicyResolver;
+use App\Services\Onboarding\OnboardingGuideAudienceService;
 use App\Services\SubscriptionService;
 use App\Support\SubscriptionFeatureKeys;
 use Illuminate\Support\Facades\Auth;
@@ -22,8 +24,8 @@ class DashboardController extends Controller
     public function __construct(
         private readonly SubscriptionService $subscriptionService,
         private readonly GamificationPolicyResolver $gamificationPolicyResolver,
-    ) {
-    }
+        private readonly OnboardingGuideAudienceService $onboardingGuides,
+    ) {}
 
     public function index()
     {
@@ -231,6 +233,11 @@ class DashboardController extends Controller
             ->filter(fn ($link) => $link->parent)
             ->values();
 
+        $onboardingGuidePresentation = $this->onboardingGuides->presentationFor(
+            $user,
+            OnboardingGuide::ROLE_LEARNER,
+        );
+
         return view('learner.dashboard', compact(
             'learnerProfile',
             'enrollmentData',
@@ -266,6 +273,7 @@ class DashboardController extends Controller
             'canApplyAsInstructor',
             'incomingParentInvitations',
             'approvedParentLinks',
+            'onboardingGuidePresentation',
         ));
     }
 
