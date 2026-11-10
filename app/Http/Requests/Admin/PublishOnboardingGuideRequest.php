@@ -26,8 +26,16 @@ final class PublishOnboardingGuideRequest extends FormRequest
         $validator->sometimes(
             'requires_recompletion',
             ['required', 'boolean'],
-            fn (): bool => ($this->route('guide') instanceof OnboardingGuide)
-                && $this->route('guide')->current_version_id !== null,
+            function (): bool {
+                $guide = $this->route('guide');
+
+                return $guide instanceof OnboardingGuide
+                    && $guide->current_version_id !== null
+                    && $guide->versions()
+                        ->whereNull('published_at')
+                        ->where('id', '!=', $guide->current_version_id)
+                        ->exists();
+            },
         );
     }
 }

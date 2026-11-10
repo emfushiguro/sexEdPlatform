@@ -166,7 +166,7 @@ final class AdminOnboardingGuideManagementTest extends TestCase
         Storage::disk('local')->assertExists($version->video_path);
 
         $this->actingAs($admin)
-            ->post(route('admin.onboarding-guides.publish', $unpublished), ['requires_recompletion' => '0'])
+            ->post(route('admin.onboarding-guides.publish', $unpublished))
             ->assertRedirect();
 
         $republished = $unpublished->fresh();
