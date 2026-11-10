@@ -376,6 +376,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('learn')->name('learner.')->middleware('profile.completed')->group(function () {
         // Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\Learner\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/guide', [\App\Http\Controllers\Onboarding\GuideController::class, 'learner'])->name('guide');
         Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
         Route::get('/my-parent', [ParentVisibilityController::class, 'index'])->name('parent.index');
