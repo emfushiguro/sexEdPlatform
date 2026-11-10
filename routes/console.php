@@ -36,3 +36,7 @@ Schedule::command('subscriptions:process-renewals')
     ->hourly()
     ->withoutOverlapping()
     ->runInBackground();
+
+Schedule::command('model:prune')
+    ->dailyAt('02:00')
+    ->withoutOverlapping();
