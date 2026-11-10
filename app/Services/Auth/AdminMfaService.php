@@ -64,6 +64,218 @@ class AdminMfaService
         return $this->beginForAdmin($request, $user, $password, 'general_login');
     }
 
+    public function currentChallenge(Request $request): ?AdminMfaChallenge
+    {
+        $id = $request->session()->get(self::PENDING_CHALLENGE_KEY);
+        if (! is_string($id)) {
+            return null;
+        }
+
+        $challenge = AdminMfaChallenge::query()->with('user')->find($id);
+        if ($challenge === null || ! hash_equals(
+            $challenge->session_fingerprint,
+            $this->sessionFingerprint($request),
+        )) {
+            $request->session()->forget(self::PENDING_CHALLENGE_KEY);
+
+            return null;
+        }
+
+        return $challenge;
+    }
+
+    public function verify(Request $request, string $code): User
+    {
+        $result = DB::transaction(function () use ($request, $code): array {
+            $challenge = $this->lockedCurrentChallenge($request);
+            if ($challenge === null) {
+                return ['user' => null, 'error' => 'This verification request is no longer valid. Sign in again.', 'clear' => true];
+            }
+
+            if ($error = $this->baseChallengeError($challenge)) {
+                return ['user' => null, 'error' => $error, 'clear' => true];
+            }
+
+            if ($challenge->delivered_at === null || $challenge->delivery_failed_at !== null) {
+                return ['user' => null, 'error' => 'The verification email was not delivered. Request a new code.', 'clear' => false];
+            }
+
+            if ($challenge->code_expires_at->isPast()) {
+                $this->audit('admin_mfa.expired', $challenge, ['scope' => 'code']);
+
+                return ['user' => null, 'error' => 'This code has expired. Request a new code.', 'clear' => false];
+            }
+
+            if (! Hash::check($code, $challenge->code_hash)) {
+                $challenge->attempt_count++;
+                $remaining = max(0, 5 - $challenge->attempt_count);
+                if ($remaining === 0) {
+                    $challenge->locked_at = now();
+                }
+                $challenge->save();
+                $this->audit('admin_mfa.verification_failed', $challenge, [
+                    'attempt_count' => $challenge->attempt_count,
+                    'remaining_attempts' => $remaining,
+                ]);
+
+                return [
+                    'user' => null,
+                    'error' => $remaining === 0
+                        ? 'Too many incorrect codes. Sign in again.'
+                        : "The verification code is incorrect. {$remaining} attempts remaining.",
+                    'clear' => $remaining === 0,
+                ];
+            }
+
+            $challenge->forceFill(['consumed_at' => now()])->save();
+            $this->audit('admin_mfa.verification_succeeded', $challenge);
+
+            return ['user' => $challenge->user, 'error' => null, 'clear' => false];
+        });
+
+        if (is_string($result['error'])) {
+            if ($result['clear']) {
+                $request->session()->forget(self::PENDING_CHALLENGE_KEY);
+            }
+
+            throw ValidationException::withMessages(['code' => [$result['error']]]);
+        }
+
+        return $result['user'];
+    }
+
+    public function resend(Request $request): AdminMfaChallenge
+    {
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $result = DB::transaction(function () use ($request, $code): array {
+            $challenge = $this->lockedCurrentChallenge($request);
+            if ($challenge === null) {
+                return ['challenge' => null, 'error' => 'This verification request is no longer valid. Sign in again.', 'clear' => true];
+            }
+
+            if ($error = $this->baseChallengeError($challenge)) {
+                return ['challenge' => null, 'error' => $error, 'clear' => true];
+            }
+
+            if ($challenge->resend_count >= 3) {
+                return ['challenge' => null, 'error' => 'The resend limit has been reached. Use the most recent code or sign in again.', 'clear' => false];
+            }
+
+            if ($challenge->resend_available_at->isFuture()) {
+                $seconds = now()->diffInSeconds($challenge->resend_available_at);
+
+                return ['challenge' => null, 'error' => "Please wait {$seconds} seconds before requesting another code.", 'clear' => false];
+            }
+
+            $codeExpiry = now()->addMinutes(5);
+            if ($codeExpiry->greaterThan($challenge->login_expires_at)) {
+                $codeExpiry = $challenge->login_expires_at->copy();
+            }
+
+            $challenge->forceFill([
+                'code_hash' => Hash::make($code),
+                'code_expires_at' => $codeExpiry,
+                'resend_available_at' => now()->addMinute(),
+                'resend_count' => $challenge->resend_count + 1,
+                'delivered_at' => null,
+                'delivery_failed_at' => null,
+            ])->save();
+            $this->audit('admin_mfa.resend_requested', $challenge, [
+                'resend_count' => $challenge->resend_count,
+            ]);
+
+            return ['challenge' => $challenge, 'error' => null, 'clear' => false];
+        });
+
+        if (is_string($result['error'])) {
+            if ($result['clear']) {
+                $request->session()->forget(self::PENDING_CHALLENGE_KEY);
+            }
+
+            throw ValidationException::withMessages(['resend' => [$result['error']]]);
+        }
+
+        $this->deliver($result['challenge'], $code);
+
+        return $result['challenge']->fresh();
+    }
+
+    public function cancel(Request $request): void
+    {
+        DB::transaction(function () use ($request): void {
+            $challenge = $this->lockedCurrentChallenge($request);
+            if ($challenge !== null && $challenge->consumed_at === null && $challenge->cancelled_at === null) {
+                $challenge->forceFill(['cancelled_at' => now()])->save();
+                $this->audit('admin_mfa.cancelled', $challenge, ['reason' => 'user_cancelled']);
+            }
+        });
+
+        $request->session()->forget([self::PENDING_CHALLENGE_KEY, 'url.intended']);
+        $request->session()->regenerate();
+        $request->session()->regenerateToken();
+    }
+
+    public function authenticate(Request $request, User $user): void
+    {
+        Auth::guard('web')->login($user);
+        $request->session()->regenerate();
+        $request->session()->forget(self::PENDING_CHALLENGE_KEY);
+        $request->session()->put($this->verifiedSessionData($user));
+    }
+
+    public function verifiedSessionData(User $user): array
+    {
+        return [
+            self::VERIFIED_USER_KEY => (int) $user->id,
+            self::VERIFIED_AT_KEY => now()->toIso8601String(),
+            self::VERIFIED_FINGERPRINT_KEY => $this->credentialFingerprint($user),
+        ];
+    }
+
+    public function sessionIsVerified(Request $request): bool
+    {
+        $user = $request->user();
+        $fingerprint = $request->session()->get(self::VERIFIED_FINGERPRINT_KEY);
+        $verifiedAt = $request->session()->get(self::VERIFIED_AT_KEY);
+
+        return $user instanceof User
+            && $this->isEligible($user)
+            && (int) $request->session()->get(self::VERIFIED_USER_KEY) === (int) $user->id
+            && is_string($verifiedAt)
+            && is_string($fingerprint)
+            && hash_equals($this->credentialFingerprint($user), $fingerprint);
+    }
+
+    public function logout(Request $request): void
+    {
+        $user = $request->user();
+        if ($user instanceof User && $user->hasRole('admin')) {
+            ActivityLog::log(
+                'admin_mfa.logout',
+                'Admin MFA logout',
+                null,
+                (int) $user->id,
+            );
+        }
+
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+    }
+
+    public function maskEmail(string $email): string
+    {
+        [$local, $domain] = array_pad(explode('@', AccountEmail::normalize($email), 2), 2, '');
+        if ($local === '' || $domain === '') {
+            return '***';
+        }
+
+        $domainParts = explode('.', $domain);
+        $domainParts[0] = substr($domainParts[0], 0, 1).'***';
+
+        return substr($local, 0, 1).'***@'.implode('.', $domainParts);
+    }
+
     private function beginForAdmin(Request $request, User $user, string $password, string $source): AdminMfaChallenge
     {
         $validPassword = Auth::getProvider()->validateCredentials($user, ['password' => $password]);
@@ -98,6 +310,61 @@ class AdminMfaService
         $this->deliver($challenge, $code);
 
         return $challenge->fresh();
+    }
+
+    private function lockedCurrentChallenge(Request $request): ?AdminMfaChallenge
+    {
+        $id = $request->session()->get(self::PENDING_CHALLENGE_KEY);
+        if (! is_string($id)) {
+            return null;
+        }
+
+        $challenge = AdminMfaChallenge::query()
+            ->with('user')
+            ->lockForUpdate()
+            ->find($id);
+
+        if ($challenge === null || ! hash_equals(
+            $challenge->session_fingerprint,
+            $this->sessionFingerprint($request),
+        )) {
+            return null;
+        }
+
+        return $challenge;
+    }
+
+    private function baseChallengeError(AdminMfaChallenge $challenge): ?string
+    {
+        if ($challenge->consumed_at !== null) {
+            return 'This verification code has already been used. Sign in again.';
+        }
+
+        if ($challenge->cancelled_at !== null) {
+            return 'This verification request was cancelled. Sign in again.';
+        }
+
+        if ($challenge->locked_at !== null) {
+            return 'Too many incorrect codes. Sign in again.';
+        }
+
+        if ($challenge->login_expires_at->isPast()) {
+            $challenge->forceFill(['cancelled_at' => now()])->save();
+            $this->audit('admin_mfa.expired', $challenge, ['scope' => 'login']);
+
+            return 'This login request has expired. Sign in again.';
+        }
+
+        if (! $this->isEligible($challenge->user) || ! hash_equals(
+            $challenge->credential_fingerprint,
+            $this->credentialFingerprint($challenge->user),
+        )) {
+            $challenge->forceFill(['cancelled_at' => now()])->save();
+
+            return 'This verification request is no longer valid. Sign in again.';
+        }
+
+        return null;
     }
 
     private function isEligible(User $user): bool
