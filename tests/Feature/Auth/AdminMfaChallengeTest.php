@@ -61,7 +61,7 @@ class AdminMfaChallengeTest extends TestCase
         ]));
         $active = AdminMfaChallenge::query()->create($this->attributes($user));
 
-        $ids = (new AdminMfaChallenge())->prunable()->pluck('id')->all();
+        $ids = (new AdminMfaChallenge)->prunable()->pluck('id')->all();
 
         $this->assertContains($old->id, $ids);
         $this->assertNotContains($recent->id, $ids);
