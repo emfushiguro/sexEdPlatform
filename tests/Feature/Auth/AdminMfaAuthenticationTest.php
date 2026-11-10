@@ -122,6 +122,26 @@ class AdminMfaAuthenticationTest extends TestCase
             ->assertRedirect(route('admin.login'));
     }
 
+    public function test_request_role_parameter_cannot_turn_a_learner_into_an_admin_challenge(): void
+    {
+        Notification::fake();
+        $learner = User::factory()->create([
+            'role' => 'learner',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $learner->assignRole('learner');
+
+        $this->post(route('admin.login.submit'), [
+            'email' => $learner->email,
+            'password' => 'password',
+            'role' => 'admin',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+        $this->assertDatabaseCount('admin_mfa_challenges', 0);
+        Notification::assertNothingSent();
+    }
+
     private function start(): array
     {
         Notification::fake();

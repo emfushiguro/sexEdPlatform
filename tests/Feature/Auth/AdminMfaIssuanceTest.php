@@ -157,6 +157,51 @@ class AdminMfaIssuanceTest extends TestCase
         $this->assertSame($admin->id, $challenge->user_id);
     }
 
+    public function test_challenge_start_limit_is_enforced_per_account_across_ips(): void
+    {
+        Notification::fake();
+        $admin = $this->admin();
+        $service = app(AdminMfaService::class);
+
+        foreach (range(1, 5) as $attempt) {
+            $service->beginFromAdminPortal(
+                $this->request('/secure-panel-access', '192.0.2.'.$attempt),
+                $admin->email,
+                'password',
+            );
+        }
+
+        $this->expectException(ValidationException::class);
+        $service->beginFromAdminPortal(
+            $this->request('/secure-panel-access', '192.0.2.99'),
+            $admin->email,
+            'password',
+        );
+    }
+
+    public function test_challenge_start_limit_is_enforced_per_ip_across_accounts(): void
+    {
+        Notification::fake();
+        $service = app(AdminMfaService::class);
+
+        foreach (range(1, 5) as $attempt) {
+            $admin = $this->admin(['email' => "admin{$attempt}@example.com"]);
+            $service->beginFromAdminPortal(
+                $this->request('/secure-panel-access', '198.51.100.20'),
+                $admin->email,
+                'password',
+            );
+        }
+
+        $blocked = $this->admin(['email' => 'blocked-admin@example.com']);
+        $this->expectException(ValidationException::class);
+        $service->beginFromAdminPortal(
+            $this->request('/secure-panel-access', '198.51.100.20'),
+            $blocked->email,
+            'password',
+        );
+    }
+
     public function test_invalid_or_ineligible_admin_credentials_fail_with_the_same_public_message(): void
     {
         $unverified = $this->admin(['email_verified_at' => null]);

@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Models\UserSuspension;
 use App\Notifications\AdminLoginCodeNotification;
 use App\Services\Auth\AdminMfaService;
 use Illuminate\Http\Request;
@@ -159,6 +160,68 @@ class AdminMfaLifecycleTest extends TestCase
 
         $this->assertStringNotContainsString($code, $payload);
         $this->assertStringNotContainsString($challenge->code_hash, $payload);
+    }
+
+    public function test_expired_code_can_be_replaced_while_overall_login_is_active(): void
+    {
+        Carbon::setTestNow('2026-11-11 10:00:00');
+        [$service, $request, $challenge] = $this->issued();
+        $challenge->forceFill([
+            'code_expires_at' => now()->subSecond(),
+            'resend_available_at' => now()->subSecond(),
+        ])->save();
+
+        try {
+            $service->verify($request, '123456');
+            $this->fail('Expected the expired code to fail.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('expired', $exception->errors()['code'][0]);
+        }
+
+        $replacement = $service->resend($request);
+
+        $this->assertSame(1, $replacement->resend_count);
+        $this->assertNull($replacement->cancelled_at);
+    }
+
+    public function test_role_status_email_and_suspension_changes_invalidate_pending_challenges(): void
+    {
+        [$service, $request, $challenge, $code, $admin] = $this->issued();
+        $admin->syncRoles(['learner']);
+        $this->assertPendingChallengeIsRejected($service, $request, $code);
+
+        $admin = $this->admin();
+        [$service, $request, $challenge, $code] = $this->issued($admin);
+        $admin->forceFill(['status' => User::STATUS_INACTIVE])->save();
+        $this->assertPendingChallengeIsRejected($service, $request, $code);
+
+        $admin = $this->admin();
+        [$service, $request, $challenge, $code] = $this->issued($admin);
+        $admin->forceFill(['email' => 'changed@example.com'])->save();
+        $this->assertPendingChallengeIsRejected($service, $request, $code);
+
+        $admin = $this->admin();
+        [$service, $request, $challenge, $code] = $this->issued($admin);
+        UserSuspension::query()->create([
+            'user_id' => $admin->id,
+            'status' => 'active',
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+        ]);
+        $this->assertPendingChallengeIsRejected($service, $request, $code);
+    }
+
+    private function assertPendingChallengeIsRejected(
+        AdminMfaService $service,
+        Request $request,
+        string $code,
+    ): void {
+        try {
+            $service->verify($request, $code);
+            $this->fail('Expected the pending challenge to be invalidated.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('code', $exception->errors());
+        }
     }
 
     private function issued(?User $admin = null): array
