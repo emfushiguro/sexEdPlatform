@@ -129,6 +129,8 @@ class PaymentAdminController extends Controller
      */
     public function markAsCompleted(Payment $payment)
     {
+        abort_if(\App\Services\GuardianSubscriptionGiftService::isGift($payment), 403,
+            'Gift subscriptions require verified PayMongo confirmation.');
         $before = $payment->only(['id', 'status', 'paid_at', 'subscription_id']);
 
         if ($payment->status === PaymentStatus::Completed) {

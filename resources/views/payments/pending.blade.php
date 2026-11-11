@@ -8,7 +8,9 @@
     $redirectUrl = $redirectUrl ?? route('subscription.index');
     $statusUrl = $statusUrl ?? route('payment.status', $payment);
     $historyUrl = $historyUrl ?? route('payment.history');
-    $contextLabel = $paymentContext === 'module' ? 'module access' : 'subscription';
+    $contextLabel = $paymentContext === 'gift' ? "dependent's subscription" : ($paymentContext === 'module' ? 'module access' : 'subscription');
+    $giftClosed = $paymentContext === 'gift' && $payment->status->value === 'cancelled'
+        && in_array(data_get($payment->payment_details, 'gift.checkout_state'), ['expired', 'unavailable'], true);
 @endphp
 <div class="max-w-3xl mx-auto space-y-6 py-6">
     @if(session('info'))
@@ -41,8 +43,8 @@
     <div class="rounded-2xl border border-purple-200/60 shadow-sm overflow-hidden">
         <div class="px-6 py-5 text-white" style="background: linear-gradient(135deg, #A30EB2 0%, #730DB1 45%, #3B0CB1 100%);">
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-purple-100">Payment Status</p>
-            <h1 class="mt-1 text-2xl font-extrabold tracking-tight">{{ $payment->isPending() ? 'Payment Pending' : 'Payment Update' }}</h1>
-            <p class="mt-1 text-sm text-purple-100">We are checking your transaction in real time.</p>
+            <h1 class="mt-1 text-2xl font-extrabold tracking-tight">{{ $giftClosed ? 'Payment Cancelled' : ($payment->isPending() ? 'Payment Pending' : 'Payment Update') }}</h1>
+            <p class="mt-1 text-sm text-purple-100">{{ $giftClosed ? 'This checkout is closed. Your existing access is unchanged.' : 'We are checking your transaction in real time.' }}</p>
         </div>
 
         <div class="bg-white px-6 py-6">
@@ -72,15 +74,19 @@
             <div class="mt-4 rounded-xl border border-gray-200 p-4">
                 <p class="text-sm font-semibold text-gray-900 mb-2">What happens next?</p>
                 <ul class="space-y-2 text-sm text-gray-600">
+                    @if($giftClosed)
+                    <li>No subscription was added by this payment. Choose an available plan from My Dependents to try again.</li>
+                    @else
                     <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>Once payment is confirmed, your {{ $contextLabel }} activates automatically.</span></li>
                     <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>You can stay on this page while we poll for status updates.</span></li>
+                    @endif
                     <li class="flex items-start gap-2"><span class="text-purple-600">•</span><span>Need to leave? You can return anytime from Payment History.</span></li>
                 </ul>
             </div>
         </div>
     </div>
 
-    @if(app()->environment('local'))
+    @if(app()->environment('local') && ($paymentContext ?? '') !== 'gift')
         <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
             <p class="text-sm font-semibold text-amber-800">Development Mode</p>
             <p class="text-sm text-amber-700 mt-1 mb-3">Use simulation for local testing when gateway callbacks are unavailable.</p>
@@ -94,7 +100,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
         <a href="{{ $redirectUrl }}" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <i class="fi fi-rr-arrow-small-left"></i>
-            {{ $paymentContext === 'module' ? 'Back to Module' : 'Back to Subscription' }}
+            {{ $paymentContext === 'gift' ? ($giftClosed ? 'Choose a subscription again' : 'Back to My Dependents') : ($paymentContext === 'module' ? 'Back to Module' : 'Back to Subscription') }}
         </a>
         <a href="{{ $historyUrl }}" class="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors">
             View Payment History
@@ -164,6 +170,12 @@
                         setTimeout(() => { window.location.href = data.redirect; }, 800);
                         return; // stop polling
                     }
+                    @if($paymentContext === 'gift')
+                    if (data.status === 'cancelled' || data.status === 'failed') {
+                        window.location.reload();
+                        return;
+                    }
+                    @endif
                     if (attempts < maxAttempts) setTimeout(poll, pollEvery);
                     else document.getElementById('poll-text').textContent = 'Visit your subscription page to verify payment.';
                 })

@@ -13,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\GuardianSubscriptionGiftService;
+use Illuminate\Validation\ValidationException;
 
 class WebhookController extends Controller
 {
@@ -39,19 +41,32 @@ class WebhookController extends Controller
                 Log::error('PayMongo Webhook: Invalid signature', [
                     'signature_provided' => $signature ? 'yes' : 'no',
                 ]);
+
                 return response()->json(['error' => 'Invalid signature'], 401);
             }
-
-            Log::info('PayMongo Webhook Received', [
-                'payload' => $request->all()
-            ]);
 
             $event = $request->input('data');
 
             if (!$event) {
                 Log::error('PayMongo Webhook: No event data');
+
                 return response()->json(['error' => 'No event data'], 400);
             }
+
+            if (data_get($event, 'attributes.type') === 'checkout_session.payment.paid') {
+                $payment = Payment::find(data_get($event, 'attributes.data.attributes.metadata.payment_id', 0));
+                if ($payment && GuardianSubscriptionGiftService::isGift($payment)) {
+                    try {
+                        app(GuardianSubscriptionGiftService::class)->completeFromWebhook($event);
+                    } catch (ValidationException $exception) {
+                        return response()->json(['error' => 'Gift payment confirmation mismatch'], 400);
+                    }
+
+                    return response()->json(['success' => true]);
+                }
+            }
+
+            Log::info('PayMongo webhook received', ['event_id' => $event['id'] ?? null, 'type' => data_get($event, 'attributes.type')]);
 
             // 2. Check for duplicate webhook processing (IDEMPOTENCY)
             $eventId = $event['id'] ?? null;
@@ -59,6 +74,7 @@ class WebhookController extends Controller
                 $cacheKey = "webhook_processed_{$eventId}";
                 if (Cache::has($cacheKey)) {
                     Log::info("Duplicate webhook ignored: {$eventId}");
+
                     return response()->json(['success' => true, 'already_processed' => true]);
                 }
                 // Mark as processed for 24 hours
@@ -164,8 +180,13 @@ class WebhookController extends Controller
             $payment = Payment::query()
                 ->where('subscription_id', $subscription->id)
                 ->whereIn('status', [PaymentStatus::Pending, PaymentStatus::Processing])
+                ->whereNull('payment_details->gift')
                 ->orderByDesc('id')
                 ->first();
+        }
+
+        if ($payment && GuardianSubscriptionGiftService::isGift($payment)) {
+            return;
         }
 
         // Wrap payment completion + subscription activation in a single transaction.
@@ -201,6 +222,7 @@ class WebhookController extends Controller
     {
         if (empty($secret)) {
             Log::error('Webhook secret (PAYMONGO_WEBHOOK_SECRET) is not configured. Request rejected.');
+
             return false;
         }
 
@@ -241,6 +263,7 @@ class WebhookController extends Controller
 
         // Backward-compatible fallback for legacy local tests that send a raw hash.
         $computedSignature = hash_hmac('sha256', $payload, $secret);
+
         return hash_equals($computedSignature, $signature);
     }
 

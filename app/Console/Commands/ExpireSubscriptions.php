@@ -29,6 +29,7 @@ class ExpireSubscriptions extends Command
 
         if ($count === 0) {
             $this->info('No subscriptions to expire.');
+
             return Command::SUCCESS;
         }
 
@@ -43,10 +44,11 @@ class ExpireSubscriptions extends Command
                     $s->user->email ?? 'N/A',
                     $s->getPlanLabel(),
                     ($s->ends_at ?? $s->end_date)?->format('Y-m-d H:i') ?? 'N/A',
-                    now()->diffInDays($s->ends_at ?? $s->end_date) . ' days'
+                    now()->diffInDays($s->ends_at ?? $s->end_date).' days',
                 ])
             );
             $this->warn('Dry run - no changes made.');
+
             return Command::SUCCESS;
         }
 
@@ -56,6 +58,9 @@ class ExpireSubscriptions extends Command
         foreach ($subscriptions as $subscription) {
             try {
                 $subscriptionService->expire($subscription);
+                if ($subscription->fresh()->status !== SubscriptionStatus::Expired) {
+                    continue;
+                }
 
                 // Dispatch event for notifications/logging
                 event(new SubscriptionExpired($subscription));

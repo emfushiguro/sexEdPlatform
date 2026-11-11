@@ -19,20 +19,22 @@
 
     @php
         $details = (array) ($payment->payment_details ?? []);
+        $gift = $details['gift'] ?? null;
         $isConnectorModulePurchase = $payment->isConnectorModulePurchase();
         $isModulePayment = $payment->isModuleCommercePurchase() || isset($details['module_id']);
         $paymongoRef = $details['paymongo_payment_id'] ?? $details['paymongo_link_id'] ?? null;
         $reference = $payment->transaction_id ?: ($paymongoRef ? strtoupper(substr((string) $paymongoRef, -10)) : (string) $payment->id);
         $datePaid = $payment->paid_at ?? $payment->created_at;
         $method = strtoupper((string) ($payment->method ?? $details['payment_method'] ?? 'N/A'));
-        $itemName = $isModulePayment
+        $itemName = $gift ? $gift['plan_name'] : ($isModulePayment
             ? ($connectorModulePurchase?->module?->title
                 ?? $payment->modulePurchase?->module?->title
                 ?? ($details['module_title'] ?? 'Module Purchase'))
             : ($payment->subscription?->plan?->name
-                ?? ($details['plan_name'] ?? $payment->subscription?->getPlanLabel() ?? 'Subscription Plan'));
-        $billingCycle = $isModulePayment ? 'One-time purchase' : ucfirst((string) ($details['billing_cycle'] ?? 'monthly'));
-        $validUntil = $isModulePayment ? 'Lifetime access' : ($payment->subscription?->end_date?->format('M d, Y') ?? 'N/A');
+                ?? ($details['plan_name'] ?? $payment->subscription?->getPlanLabel() ?? 'Subscription Plan')));
+        $billingCycle = $gift ? $gift['duration_label'] : ($isModulePayment ? 'One-time purchase' : ucfirst((string) ($details['billing_cycle'] ?? 'monthly')));
+        $validUntil = $gift ? \Carbon\Carbon::parse($gift['after_expires_at'])->format('M d, Y')
+            : ($isModulePayment ? 'Lifetime access' : ($payment->subscription?->end_date?->format('M d, Y') ?? 'N/A'));
     @endphp
 
     {{-- Main Receipt Card --}}
@@ -61,7 +63,7 @@
                     <span class="text-right">{{ $datePaid?->format('M d, Y h:i A') ?? 'N/A' }}</span>
                 </div>
                 <div class="flex items-start justify-between gap-8 py-3">
-                    <span class="font-medium">Learner Name</span>
+                    <span class="font-medium">{{ $gift ? 'Purchaser' : 'Learner Name' }}</span>
                     <span class="text-right">{{ $payment->user?->name ?? 'N/A' }}</span>
                 </div>
                 @if($isConnectorModulePurchase)
@@ -76,6 +78,12 @@
                     <div class="flex items-start justify-between gap-8 py-3">
                         <span class="font-medium">Terms Version</span>
                         <span class="text-right">{{ $connectorModulePurchase?->terms_version ?? 'N/A' }}</span>
+                    </div>
+                @endif
+                @if($gift)
+                    <div class="flex items-start justify-between gap-8 py-3">
+                        <span class="font-medium">Gift Recipient</span>
+                        <span class="text-right">{{ $gift['beneficiary_name'] }}</span>
                     </div>
                 @endif
                 <div class="flex items-start justify-between gap-8 py-3">
@@ -109,6 +117,9 @@
             </div>
 
             <p class="text-xs mt-10 pt-5 border-t border-gray-200 text-center">This receipt confirms successful payment processing. Keep a copy for your records.</p>
+            @if($gift)
+                <p class="text-xs mt-2 text-center">This gift purchase is non-refundable under the Terms and Agreement.</p>
+            @endif
         </div>
     </div>
 
@@ -118,8 +129,8 @@
             <i class="fi fi-rr-print"></i> Print Receipt
         </button>
 
-        <a href="{{ $isModulePayment ? route('payment.history') : route('subscription.index') }}" class="py-3 px-6 rounded-xl font-bold bg-brand-500 hover:bg-brand-600 text-white transition-all hover:shadow-lg hover:shadow-brand-500/25 flex items-center justify-center gap-2">
-            <i class="fi fi-rr-rocket-lunch"></i> {{ $isModulePayment ? 'Back to Payment History' : 'Back to Subscriptions' }}
+        <a href="{{ ($gift || $isModulePayment) ? route('payment.history') : route('subscription.index') }}" class="py-3 px-6 rounded-xl font-bold bg-brand-500 hover:bg-brand-600 text-white transition-all hover:shadow-lg hover:shadow-brand-500/25 flex items-center justify-center gap-2">
+            <i class="fi fi-rr-rocket-lunch"></i> {{ ($gift || $isModulePayment) ? 'Back to Payment History' : 'Back to Subscriptions' }}
         </a>
     </div>
 </div>
