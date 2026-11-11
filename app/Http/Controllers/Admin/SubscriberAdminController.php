@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
 use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
@@ -119,7 +120,7 @@ class SubscriberAdminController extends Controller
 
     public function destroy(Subscription $subscription): RedirectResponse
     {
-        if ((string) $subscription->status === 'active') {
+        if ($subscription->status === SubscriptionStatus::Active) {
             return redirect()->back()->with('error', 'Active subscriptions cannot be permanently deleted.');
         }
 
