@@ -103,6 +103,9 @@ Route::middleware('guest')->group(function () {
     Route::post('secure-panel-access', [AdminAuthController::class, 'login'])
         ->name('admin.login.submit');
 
+    Route::get('secure-panel-access/verify/copy/{challenge}', [AdminMfaController::class, 'copy'])
+        ->middleware('signed')
+        ->name('admin.mfa.copy');
     Route::get('secure-panel-access/verify', [AdminMfaController::class, 'show'])
         ->name('admin.mfa.show');
     Route::post('secure-panel-access/verify', [AdminMfaController::class, 'verify'])

@@ -19,7 +19,7 @@
         .code-label { margin: 0 0 8px; color: #6b7280; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
         .code-row { margin: 0 auto 20px; text-align: center; white-space: nowrap; }
         .code-digit { display: inline-block; width: 40px; height: 40px; margin: 0 3px; border-radius: 6px; background: #ffffff; color: #1f2937; text-align: center; font-family: Consolas, Monaco, monospace; font-size: 22px; font-weight: 700; line-height: 40px; }
-        .copy-button { display: inline-block; margin: 0 auto 22px; padding: 12px 26px; border-radius: 24px; background: #730DB1; color: #ffffff; font-size: 15px; font-weight: 700; }
+        .copy-button { display: table; margin: 0 auto 22px; padding: 12px 26px; border-radius: 24px; background: #730DB1; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; }
         .copy-note, .expiry { margin: 0 0 24px; color: #9ca3af; text-align: center; font-size: 13px; line-height: 1.5; }
         .warning { margin-bottom: 24px; padding: 14px 16px; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; background: #fef9f0; }
         .warning p { margin: 0; color: #92400e; font-size: 13px; line-height: 1.5; }
@@ -49,8 +49,13 @@
                     <span class="code-digit">{{ $digit }}</span>
                 @endforeach
             </div>
-            <div class="copy-button" aria-hidden="true">Copy code</div>
-            <p class="copy-note">Select and copy the code above into the verification page already open in your browser.</p>
+            @if(filled($copyUrl ?? null))
+                <a href="{{ $copyUrl }}" class="copy-button">Copy code</a>
+                <p class="copy-note">Open the verification page to copy this code directly, or select the code above manually.</p>
+            @else
+                <span class="copy-button" aria-hidden="true">Copy code</span>
+                <p class="copy-note">Select and copy the code above into the verification page already open in your browser.</p>
+            @endif
             <p class="expiry">This code expires in <strong>5 minutes</strong>.</p>
 
             <div class="warning">

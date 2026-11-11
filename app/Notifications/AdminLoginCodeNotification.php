@@ -10,7 +10,10 @@ class AdminLoginCodeNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(public readonly string $code) {}
+    public function __construct(
+        public readonly string $code,
+        public readonly string $copyUrl = '',
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -29,6 +32,7 @@ class AdminLoginCodeNotification extends Notification
             ->view('emails.admin-mfa-code', [
                 'user' => $notifiable,
                 'code' => $this->code,
+                'copyUrl' => $this->copyUrl,
             ]);
     }
 }

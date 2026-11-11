@@ -4,27 +4,42 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\VerifyAdminMfaRequest;
+use App\Models\AdminMfaChallenge;
 use App\Services\Auth\AdminMfaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 
 class AdminMfaController extends Controller
 {
-    public function show(Request $request, AdminMfaService $mfa): View|RedirectResponse
+    public function show(Request $request, AdminMfaService $mfa): Response|RedirectResponse
     {
         $challenge = $mfa->currentChallenge($request);
         if ($challenge === null) {
             return redirect()->route('admin.login');
         }
 
-        return view('auth.admin-mfa', [
+        return response()->view('auth.admin-mfa', [
             'maskedEmail' => $mfa->maskEmail((string) $challenge->user->email),
             'codeExpiresAt' => $challenge->code_expires_at->getTimestamp(),
             'resendAvailableAt' => $challenge->resend_available_at->getTimestamp(),
             'deliveryFailed' => $challenge->delivery_failed_at !== null,
-        ]);
+            'copyCode' => $request->boolean('copy') ? $mfa->pendingCode($request, $challenge) : null,
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function copy(
+        Request $request,
+        AdminMfaChallenge $challenge,
+        AdminMfaService $mfa,
+    ): RedirectResponse {
+        $currentChallenge = $mfa->currentChallenge($request);
+        if ($currentChallenge === null || ! $currentChallenge->is($challenge)) {
+            return redirect()->route('admin.login');
+        }
+
+        return redirect()->route('admin.mfa.show', ['copy' => 1]);
     }
 
     public function verify(

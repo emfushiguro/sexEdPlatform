@@ -63,12 +63,14 @@ class AdminMfaAuthenticationTest extends TestCase
 
         $this->get(route('admin.mfa.show'))
             ->assertOk()
+            ->assertHeader('Cache-Control', 'private, no-store')
             ->assertSee('Two-Step Verification', false)
             ->assertSee('a***@e***.com', false)
             ->assertDontSee($admin->email, false)
             ->assertSee('name="digits[]"', false)
             ->assertSee('data-otp-row', false)
             ->assertSee('flex-nowrap', false)
+            ->assertDontSee($code, false)
             ->assertSee(route('admin.mfa.resend'), false)
             ->assertSee(route('admin.mfa.cancel'), false);
 
@@ -82,6 +84,25 @@ class AdminMfaAuthenticationTest extends TestCase
             $admin->id,
             session(AdminMfaService::VERIFIED_USER_KEY),
         );
+    }
+
+    public function test_signed_email_copy_link_opens_the_current_mfa_page_with_clipboard_data(): void
+    {
+        [$admin, $code, $challenge] = $this->start();
+        $notification = Notification::sent($admin, AdminLoginCodeNotification::class)->last();
+
+        $this->assertNotSame('', $notification->copyUrl);
+        $this->assertStringNotContainsString($code, $notification->copyUrl);
+        $this->get(route('admin.mfa.copy', ['challenge' => $challenge]))
+            ->assertForbidden();
+
+        $this->get($notification->copyUrl)
+            ->assertRedirect(route('admin.mfa.show', ['copy' => 1]));
+
+        $this->get(route('admin.mfa.show', ['copy' => 1]))
+            ->assertOk()
+            ->assertSee('copyVerificationCode', false)
+            ->assertSee($code, false);
     }
 
     public function test_invalid_code_returns_to_the_prompt_and_cancel_returns_to_login(): void
@@ -98,6 +119,7 @@ class AdminMfaAuthenticationTest extends TestCase
 
         $this->assertGuest();
         $this->assertNull(session(AdminMfaService::PENDING_CHALLENGE_KEY));
+        $this->assertNull(session(AdminMfaService::PENDING_CODE_KEY));
     }
 
     public function test_admin_logout_clears_session_and_records_audit_event(): void

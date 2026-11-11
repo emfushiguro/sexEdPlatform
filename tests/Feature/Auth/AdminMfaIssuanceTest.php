@@ -42,9 +42,16 @@ class AdminMfaIssuanceTest extends TestCase
             function (AdminLoginCodeNotification $notification) use ($challenge): bool {
                 $this->assertMatchesRegularExpression('/^\d{6}$/', $notification->code);
                 $this->assertTrue(Hash::check($notification->code, $challenge->fresh()->code_hash));
+                $this->assertStringContainsString('signature=', $notification->copyUrl);
+                $this->assertStringNotContainsString($notification->code, $notification->copyUrl);
 
                 return true;
             },
+        );
+        $notification = Notification::sent($admin, AdminLoginCodeNotification::class)->last();
+        $this->assertNotSame(
+            $notification->code,
+            $request->session()->get(AdminMfaService::PENDING_CODE_KEY),
         );
 
         $this->assertDatabaseHas('activity_logs', [
@@ -246,14 +253,16 @@ class AdminMfaIssuanceTest extends TestCase
             ->andThrow(new RuntimeException('SMTP unavailable'));
 
         $admin = $this->admin();
+        $request = $this->request();
         $challenge = app(AdminMfaService::class)->beginFromAdminPortal(
-            $this->request(),
+            $request,
             $admin->email,
             'password',
         )->fresh();
 
         $this->assertNull($challenge->delivered_at);
         $this->assertNotNull($challenge->delivery_failed_at);
+        $this->assertNull($request->session()->get(AdminMfaService::PENDING_CODE_KEY));
         $this->assertFalse(Auth::check());
 
         $log = ActivityLog::query()
@@ -265,10 +274,11 @@ class AdminMfaIssuanceTest extends TestCase
         $this->assertStringNotContainsString($challenge->code_hash, json_encode($log->metadata));
     }
 
-    public function test_notification_renders_the_current_email_visual_language_without_an_otp_link(): void
+    public function test_notification_renders_the_current_email_visual_language_with_a_safe_copy_handoff(): void
     {
         $admin = $this->admin();
-        $html = (new AdminLoginCodeNotification('123456'))->toMail($admin)->render();
+        $copyUrl = 'https://example.test/secure-panel-access/verify/copy/challenge';
+        $html = (new AdminLoginCodeNotification('123456', $copyUrl))->toMail($admin)->render();
 
         $this->assertStringContainsString('Admin Login Verification', $html);
         $this->assertStringContainsString('123456', $html);
@@ -277,10 +287,10 @@ class AdminMfaIssuanceTest extends TestCase
         $this->assertStringContainsString('#3B0CB1', $html);
         $this->assertStringContainsString('Never share this code', $html);
         $this->assertStringContainsString('Copy code', $html);
+        $this->assertStringContainsString('href="'.$copyUrl.'"', $html);
         $this->assertSame(6, substr_count($html, 'class="code-digit"'));
         $this->assertStringNotContainsString('<script', strtolower($html));
-        $this->assertStringNotContainsString('123456?', $html);
-        $this->assertStringNotContainsString('/verify?code=123456', $html);
+        $this->assertStringNotContainsString('123456', parse_url($copyUrl, PHP_URL_QUERY) ?: '');
     }
 
     private function admin(array $attributes = []): User

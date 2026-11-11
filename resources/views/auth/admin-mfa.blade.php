@@ -10,12 +10,27 @@
     <div
         x-data="{
             digits: @js(old('digits', array_fill(0, 6, ''))),
+            copyCode: @js($copyCode ?? ''),
+            copyStatus: '',
             expiresAt: {{ $codeExpiresAt * 1000 }},
             resendAt: {{ $resendAvailableAt * 1000 }},
             now: Date.now(),
             loading: false,
             resending: false,
             start() { this.tick = setInterval(() => this.now = Date.now(), 1000) },
+            async copyVerificationCode() {
+                if (!this.copyCode) {
+                    this.copyStatus = 'The copy link is no longer available. Select the code in the email.';
+                    return;
+                }
+                try {
+                    await navigator.clipboard.writeText(this.copyCode)
+                    this.copyStatus = 'Copied. Paste the code into the fields below.'
+                    this.inputs()[0]?.focus()
+                } catch {
+                    this.copyStatus = 'Clipboard access was blocked. Select the code in the email and paste it here.'
+                }
+            },
             remaining(target) { return Math.max(0, Math.ceil((target - this.now) / 1000)) },
             clock(target) { const value = this.remaining(target); return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}` },
             inputs() { return [...this.$root.querySelectorAll('[data-otp-digit]')] },
@@ -33,11 +48,29 @@
                 this.inputs()[Math.min(value.length, 6) - 1]?.focus()
             }
         }"
-        x-init="start()"
+        x-init="start(); if (copyCode) $nextTick(() => copyVerificationCode())"
     >
         <div class="mb-8">
             <h1 class="text-4xl font-bold text-purple-900">Two-Step Verification</h1>
             <p class="mt-2 text-sm text-gray-600">Enter the code sent to <strong>{{ $maskedEmail }}</strong>.</p>
+        </div>
+
+        <div
+            x-show="copyCode"
+            x-cloak
+            class="mb-5 rounded-xl border border-purple-100 bg-purple-50 p-4 text-sm text-purple-900"
+        >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="font-semibold">Your code is ready to copy.</p>
+                <button
+                    type="button"
+                    @click="copyVerificationCode()"
+                    class="rounded-lg bg-purple-700 px-3 py-2 text-xs font-semibold text-white hover:bg-purple-800"
+                >
+                    Copy code
+                </button>
+            </div>
+            <p x-show="copyStatus" x-text="copyStatus" role="status" aria-live="polite" class="mt-2 text-xs text-purple-800"></p>
         </div>
 
         @if($deliveryFailed)

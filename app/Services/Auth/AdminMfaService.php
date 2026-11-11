@@ -10,16 +10,20 @@ use App\Support\AccountEmail;
 use Illuminate\Contracts\Notifications\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class AdminMfaService
 {
     public const PENDING_CHALLENGE_KEY = 'admin_mfa.pending_challenge_id';
+
+    public const PENDING_CODE_KEY = 'admin_mfa.pending_code';
 
     public const VERIFIED_USER_KEY = 'admin_mfa.verified_user_id';
 
@@ -76,12 +80,41 @@ class AdminMfaService
             $challenge->session_fingerprint,
             $this->sessionFingerprint($request),
         )) {
-            $request->session()->forget(self::PENDING_CHALLENGE_KEY);
+            $request->session()->forget([self::PENDING_CHALLENGE_KEY, self::PENDING_CODE_KEY]);
 
             return null;
         }
 
         return $challenge;
+    }
+
+    public function pendingCode(Request $request, AdminMfaChallenge $challenge): ?string
+    {
+        if ((string) $request->session()->get(self::PENDING_CHALLENGE_KEY) !== (string) $challenge->getKey()
+            || $challenge->delivered_at === null
+            || $challenge->delivery_failed_at !== null
+            || $challenge->consumed_at !== null
+            || $challenge->cancelled_at !== null
+            || $challenge->locked_at !== null
+            || $challenge->code_expires_at->isPast()
+            || $challenge->login_expires_at->isPast()) {
+            return null;
+        }
+
+        $ciphertext = $request->session()->get(self::PENDING_CODE_KEY);
+        if (! is_string($ciphertext)) {
+            return null;
+        }
+
+        try {
+            $code = Crypt::decryptString($ciphertext);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return preg_match('/^\d{6}$/D', $code) === 1 && Hash::check($code, $challenge->code_hash)
+            ? $code
+            : null;
     }
 
     public function verify(Request $request, string $code): User
@@ -135,7 +168,7 @@ class AdminMfaService
 
         if (is_string($result['error'])) {
             if ($result['clear']) {
-                $request->session()->forget(self::PENDING_CHALLENGE_KEY);
+                $request->session()->forget([self::PENDING_CHALLENGE_KEY, self::PENDING_CODE_KEY]);
             }
 
             throw ValidationException::withMessages(['code' => [$result['error']]]);
@@ -189,13 +222,13 @@ class AdminMfaService
 
         if (is_string($result['error'])) {
             if ($result['clear']) {
-                $request->session()->forget(self::PENDING_CHALLENGE_KEY);
+                $request->session()->forget([self::PENDING_CHALLENGE_KEY, self::PENDING_CODE_KEY]);
             }
 
             throw ValidationException::withMessages(['resend' => [$result['error']]]);
         }
 
-        $this->deliver($result['challenge'], $code);
+        $this->deliver($request, $result['challenge'], $code);
 
         return $result['challenge']->fresh();
     }
@@ -210,7 +243,11 @@ class AdminMfaService
             }
         });
 
-        $request->session()->forget([self::PENDING_CHALLENGE_KEY, 'url.intended']);
+        $request->session()->forget([
+            self::PENDING_CHALLENGE_KEY,
+            self::PENDING_CODE_KEY,
+            'url.intended',
+        ]);
         $request->session()->regenerate();
         $request->session()->regenerateToken();
     }
@@ -219,7 +256,7 @@ class AdminMfaService
     {
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
-        $request->session()->forget(self::PENDING_CHALLENGE_KEY);
+        $request->session()->forget([self::PENDING_CHALLENGE_KEY, self::PENDING_CODE_KEY]);
         $request->session()->put($this->verifiedSessionData($user));
     }
 
@@ -307,7 +344,7 @@ class AdminMfaService
         $this->audit('admin_mfa.challenge_created', $challenge, [
             'source' => $source,
         ]);
-        $this->deliver($challenge, $code);
+        $this->deliver($request, $challenge, $code);
 
         return $challenge->fresh();
     }
@@ -383,16 +420,23 @@ class AdminMfaService
             ->exists();
     }
 
-    private function deliver(AdminMfaChallenge $challenge, string $code): void
+    private function deliver(Request $request, AdminMfaChallenge $challenge, string $code): void
     {
         try {
-            $this->notifications->sendNow($challenge->user, new AdminLoginCodeNotification($code));
+            $request->session()->put(self::PENDING_CODE_KEY, Crypt::encryptString($code));
+            $copyUrl = URL::temporarySignedRoute(
+                'admin.mfa.copy',
+                $challenge->code_expires_at,
+                ['challenge' => $challenge->id],
+            );
+            $this->notifications->sendNow($challenge->user, new AdminLoginCodeNotification($code, $copyUrl));
             $challenge->forceFill([
                 'delivered_at' => now(),
                 'delivery_failed_at' => null,
             ])->save();
             $this->audit('admin_mfa.email_sent', $challenge);
         } catch (Throwable $exception) {
+            $request->session()->forget(self::PENDING_CODE_KEY);
             $challenge->forceFill([
                 'delivered_at' => null,
                 'delivery_failed_at' => now(),
@@ -412,6 +456,8 @@ class AdminMfaService
     {
         $id = $request->session()->get(self::PENDING_CHALLENGE_KEY);
         if (! is_string($id)) {
+            $request->session()->forget(self::PENDING_CODE_KEY);
+
             return;
         }
 
@@ -421,7 +467,7 @@ class AdminMfaService
             $this->audit('admin_mfa.cancelled', $challenge, ['reason' => $reason]);
         }
 
-        $request->session()->forget(self::PENDING_CHALLENGE_KEY);
+        $request->session()->forget([self::PENDING_CHALLENGE_KEY, self::PENDING_CODE_KEY]);
     }
 
     private function ensurePasswordIsNotLimited(Request $request): void
