@@ -16,9 +16,9 @@ return new class extends Migration
             $table->string('credential_fingerprint', 64);
             $table->unsignedTinyInteger('attempt_count')->default(0);
             $table->unsignedTinyInteger('resend_count')->default(0);
-            $table->timestamp('code_expires_at');
-            $table->timestamp('login_expires_at');
-            $table->timestamp('resend_available_at');
+            $table->dateTime('code_expires_at');
+            $table->dateTime('login_expires_at');
+            $table->dateTime('resend_available_at');
             $table->timestamp('delivered_at')->nullable();
             $table->timestamp('delivery_failed_at')->nullable();
             $table->timestamp('consumed_at')->nullable();

@@ -46,6 +46,13 @@ class AdminMfaChallengeTest extends TestCase
         $this->assertTrue($challenge->user->is($challenge->user()->firstOrFail()));
     }
 
+    public function test_required_challenge_times_use_datetime_columns_without_implicit_defaults(): void
+    {
+        foreach (['code_expires_at', 'login_expires_at', 'resend_available_at'] as $column) {
+            $this->assertSame('datetime', Schema::getColumnType('admin_mfa_challenges', $column));
+        }
+    }
+
     public function test_prunable_query_keeps_terminal_rows_for_twenty_four_hours(): void
     {
         Carbon::setTestNow('2026-11-11 10:00:00');
