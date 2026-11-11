@@ -153,6 +153,12 @@ class ModerationSuspensionDashboardService
         $moderationCase->loadMissing([
             'reporter:id,name,email,role',
             'reportedUser:id,name,email,role',
+            'reporter.learnerProfile:id,user_id,avatar_path',
+            'reporter.instructorProfile:id,user_id,profile_photo_path',
+            'reporter.adminCreatorProfile:id,user_id,avatar_path',
+            'reportedUser.learnerProfile:id,user_id,avatar_path',
+            'reportedUser.instructorProfile:id,user_id,profile_photo_path',
+            'reportedUser.adminCreatorProfile:id,user_id,avatar_path',
             'reviewedByAdmin:id,name,email,role',
         ]);
 
@@ -169,7 +175,7 @@ class ModerationSuspensionDashboardService
 
             $conversationMessages = $sourceReport?->conversation
                 ? $sourceReport->conversation->messages()
-                    ->with('sender:id,name,email,role')
+                    ->with(['sender:id,name,email,role', 'sender.learnerProfile:id,user_id,avatar_path', 'sender.instructorProfile:id,user_id,profile_photo_path', 'sender.adminCreatorProfile:id,user_id,avatar_path'])
                     ->oldest('id')
                     ->get()
                 : new Collection();

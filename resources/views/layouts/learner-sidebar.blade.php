@@ -20,12 +20,6 @@
             'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M3.25 5.5A2.25 2.25 0 0 1 5.5 3.25H9A2.25 2.25 0 0 1 11.25 5.5V9A2.25 2.25 0 0 1 9 11.25H5.5A2.25 2.25 0 0 1 3.25 9V5.5Zm0 9A2.25 2.25 0 0 1 5.5 12.25H9A2.25 2.25 0 0 1 11.25 14.5V18A2.25 2.25 0 0 1 9 20.25H5.5A2.25 2.25 0 0 1 3.25 18v-3.5Zm9-9A2.25 2.25 0 0 1 14.5 3.25H18A2.25 2.25 0 0 1 20.25 5.5V9A2.25 2.25 0 0 1 18 11.25h-3.5A2.25 2.25 0 0 1 12.25 9V5.5Zm0 9A2.25 2.25 0 0 1 14.5 12.25H18A2.25 2.25 0 0 1 20.25 14.5V18A2.25 2.25 0 0 1 18 20.25h-3.5A2.25 2.25 0 0 1 12.25 18v-3.5Z"/></svg>',
         ],
         [
-            'label'  => 'Guide',
-            'route'  => 'learner.guide',
-            'active' => request()->routeIs('learner.guide'),
-            'icon'   => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M4.75 4.75A2.75 2.75 0 0 1 7.5 2h9A2.75 2.75 0 0 1 19.25 4.75v14.5A2.75 2.75 0 0 1 16.5 22h-9a2.75 2.75 0 0 1-2.75-2.75V4.75ZM7.5 3.5a1.25 1.25 0 0 0-1.25 1.25v14.5A1.25 1.25 0 0 0 7.5 20.5h9a1.25 1.25 0 0 0 1.25-1.25V4.75A1.25 1.25 0 0 0 16.5 3.5h-9ZM9 7.25A.75.75 0 0 1 9.75 6.5h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 9 7.25Zm0 4a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Zm0 4a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5H9.75a.75.75 0 0 1-.75-.75Z"/></svg>',
-        ],
-        [
             'label'  => 'Subscriptions',
             'route'  => 'subscription.index',
             'active' => request()->routeIs('subscription.*'),
@@ -102,6 +96,12 @@
     }
 
     $supportNavItems = [
+        [
+            'label' => 'Guide',
+            'route' => 'learner.guide',
+            'active' => request()->routeIs('learner.guide'),
+            'icon' => 'document',
+        ],
         [
             'label' => 'Help Center',
             'route' => 'help.index',

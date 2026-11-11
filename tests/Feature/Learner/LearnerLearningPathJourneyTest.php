@@ -15,6 +15,8 @@ use App\Models\User;
 use App\Services\Chat\ChatSuggestionCatalog;
 use App\Services\EntitlementService;
 use App\Services\GamificationService;
+use App\Http\Middleware\EnsureProfileCompleted;
+use App\Http\Middleware\EnsureLearnerIdentityVerified;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -29,6 +31,9 @@ class LearnerLearningPathJourneyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->withoutMiddleware(EnsureProfileCompleted::class);
+        $this->withoutMiddleware(EnsureLearnerIdentityVerified::class);
 
         app()->instance(EntitlementService::class, new class
         {
@@ -74,6 +79,8 @@ class LearnerLearningPathJourneyTest extends TestCase
             $table->string('remember_token')->nullable();
             $table->string('role')->nullable();
             $table->string('status')->nullable();
+            $table->boolean('parent_identity_sandbox_manual_review')->default(false);
+            $table->boolean('parent_identity_resubmission_allowed')->default(true);
             $table->date('birthdate')->nullable();
             $table->string('account_type')->nullable();
             $table->string('age_bracket_cached')->nullable();

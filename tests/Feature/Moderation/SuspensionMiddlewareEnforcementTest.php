@@ -46,6 +46,35 @@ class SuspensionMiddlewareEnforcementTest extends DatabaseTestCase
         $response->assertOk();
     }
 
+    public function test_expired_suspension_restores_access_and_account_status_on_next_request(): void
+    {
+        $user = User::factory()->create(['status' => User::STATUS_SUSPENDED]);
+        $suspension = $this->makeActiveSuspension($user);
+        $suspension->forceFill(['ends_at' => now()->subMinute()])->save();
+        $suspension->enforcementAction->forceFill(['ends_at' => now()->subMinute()])->save();
+
+        $this->actingAs($user)->get('/profile')->assertOk();
+
+        $this->assertSame('expired', $suspension->fresh()->status);
+        $this->assertSame(User::STATUS_ACTIVE, $user->fresh()->status);
+    }
+
+    public function test_expiring_one_suspension_does_not_restore_access_if_another_is_active(): void
+    {
+        $user = User::factory()->create(['status' => User::STATUS_SUSPENDED]);
+        $expired = $this->makeActiveSuspension($user);
+        $active = $this->makeActiveSuspension($user);
+        $expired->forceFill(['ends_at' => now()->subMinute()])->save();
+        $expired->enforcementAction->forceFill(['ends_at' => now()->subMinute()])->save();
+
+        $this->actingAs($user)->get('/profile')
+            ->assertRedirect(route('moderation.suspension-status'));
+
+        $this->assertSame('expired', $expired->fresh()->status);
+        $this->assertSame('active', $active->fresh()->status);
+        $this->assertSame(User::STATUS_SUSPENDED, $user->fresh()->status);
+    }
+
     private function makeActiveSuspension(User $user): UserSuspension
     {
         $action = EnforcementAction::query()->create([

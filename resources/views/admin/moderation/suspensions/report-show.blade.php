@@ -26,16 +26,25 @@
             </div>
 
             <div class="grid gap-4 px-6 py-6 md:grid-cols-2 xl:grid-cols-4">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Reporter</p>
-                    <p class="mt-1 text-sm font-semibold text-gray-900">{{ $case->reporter?->name ?? 'Unknown reporter' }}</p>
-                    <p class="text-xs text-gray-500">{{ $case->reporter?->email ?? 'No email' }}</p>
-                </div>
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Reported User</p>
-                    <p class="mt-1 text-sm font-semibold text-gray-900">{{ $case->reportedUser?->name ?? 'Unknown user' }}</p>
-                    <p class="text-xs text-gray-500">{{ $case->reportedUser?->email ?? 'No email' }}</p>
-                </div>
+                @foreach(['Reporter' => $case->reporter, 'Reported User' => $case->reportedUser] as $label => $person)
+                    @php
+                        $avatarPath = $person?->learnerProfile?->avatar_path ?? $person?->instructorProfile?->profile_photo_path ?? $person?->adminCreatorProfile?->avatar_path;
+                    @endphp
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $label }}</p>
+                        <div class="mt-2 flex items-center gap-3">
+                            @if($avatarPath)
+                                <img src="{{ Storage::disk('public')->url($avatarPath) }}" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover">
+                            @else
+                                <span aria-hidden="true" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600">{{ strtoupper(mb_substr($person?->name ?? '?', 0, 1)) }}</span>
+                            @endif
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-900">{{ $person?->name ?? 'Unknown user' }}</p>
+                                <p class="break-all text-xs text-gray-500">{{ $person?->email ?? 'No email' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Case Status</p>
                     <p class="mt-1 text-sm font-semibold text-gray-900">{{ str_replace('_', ' ', ucfirst($caseStatus)) }}</p>
@@ -84,7 +93,15 @@
                 <div class="divide-y divide-gray-100">
                     @forelse($conversationMessages as $message)
                         <div class="px-6 py-4">
+                            @php
+                                $avatarPath = $message->sender?->learnerProfile?->avatar_path ?? $message->sender?->instructorProfile?->profile_photo_path ?? $message->sender?->adminCreatorProfile?->avatar_path;
+                            @endphp
                             <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                @if($avatarPath)
+                                    <img src="{{ Storage::disk('public')->url($avatarPath) }}" alt="" class="h-8 w-8 shrink-0 rounded-full object-cover">
+                                @else
+                                    <span aria-hidden="true" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 font-semibold text-gray-600">{{ strtoupper(mb_substr($message->sender?->name ?? '?', 0, 1)) }}</span>
+                                @endif
                                 <span class="font-semibold text-gray-700">{{ $message->sender?->name ?? 'Unknown sender' }}</span>
                                 <span>{{ $message->sender?->email }}</span>
                                 <span>{{ optional($message->created_at)?->format('M d, Y g:i A') }}</span>
@@ -119,7 +136,27 @@
                                 <option value="{{ $action->value }}" @selected((string) $sourceReport->action_taken === $action->value)>{{ $action->label() }}</option>
                             @endforeach
                         </select>
+                        <span class="mt-1 block text-xs text-gray-500">Chat restriction blocks sending until this report's action is changed. Restrictions from other reports still apply.</span>
                     </label>
+                    <fieldset class="rounded-xl border border-gray-200 p-4 md:col-span-2">
+                        <legend class="px-1 text-sm font-semibold text-gray-800">Temporary suspension duration</legend>
+                        <p class="mb-3 text-xs text-gray-500">Starts immediately. Used only when Temporary Suspension is selected. Maximum: 8,760 hours or 365 days.</p>
+                        <div class="grid gap-3 sm:grid-cols-[minmax(0,12rem)_12rem]">
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-medium text-gray-600">Duration</span>
+                                <input type="number" name="duration_amount" min="1" value="{{ old('duration_amount', 3) }}" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm">
+                                @error('duration_amount')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-medium text-gray-600">Unit</span>
+                                <select name="duration_unit" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm">
+                                    <option value="hours" @selected(old('duration_unit') === 'hours')>Hours</option>
+                                    <option value="days" @selected(old('duration_unit', 'days') === 'days')>Days</option>
+                                </select>
+                                @error('duration_unit')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
+                            </label>
+                        </div>
+                    </fieldset>
                     <label class="block md:col-span-2">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Moderation Notes</span>
                         <textarea name="moderation_notes" rows="4" class="w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm">{{ old('moderation_notes', $sourceReport->moderation_notes) }}</textarea>

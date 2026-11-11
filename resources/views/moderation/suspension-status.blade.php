@@ -35,7 +35,7 @@
                 </div>
                 <div>
                     <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Ends At</dt>
-                    <dd class="mt-1 text-sm text-gray-800">{{ $suspension->ends_at?->format('M d, Y h:i A') ?? 'Permanent' }}</dd>
+                    <dd class="mt-1 text-sm text-gray-800">{{ $suspension->ends_at?->format('M d, Y h:i A T') ?? 'Permanent' }}</dd>
                 </div>
                 <div>
                     <dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Case Reference</dt>
@@ -46,6 +46,12 @@
                     <dd class="mt-1 text-sm text-gray-800">{{ str_replace('_', ' ', (string) $suspension->appeal_status) }}</dd>
                 </div>
             </dl>
+
+            @if($suspension->ends_at)
+                <p class="mt-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    Access is expected to resume after {{ $suspension->ends_at->format('M d, Y h:i A T') }}. Sign in again after that time.
+                </p>
+            @endif
 
             @if($suspension->notes)
                 <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

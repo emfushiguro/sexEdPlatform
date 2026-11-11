@@ -50,8 +50,8 @@
                             ? $path->thumbnail
                             : Storage::url(ltrim($path->thumbnail, '/')))
                         : null;
-                    $actionUrl = $summary['action_url'] ?? route('learner.learning-paths.show', $path);
-                    $actionLabel = $summary['action_label'] ?? 'View path';
+                    $actionUrl = route('learner.learning-paths.show', $path);
+                    $actionLabel = ($summary['completed_path'] ?? false) ? 'Review journey' : 'Open journey';
                 @endphp
 
                 <article class="flex h-full flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
@@ -96,10 +96,6 @@
                             <a href="{{ $actionUrl ?? route('learner.learning-paths.show', $path) }}"
                                class="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-purple-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800">
                                 {{ $actionLabel ?: 'View path' }}
-                            </a>
-                            <a href="{{ route('learner.learning-paths.show', $path) }}"
-                               class="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-purple-400 hover:text-purple-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:border-gray-600 dark:text-gray-200 dark:hover:border-purple-400 dark:hover:text-purple-200 dark:focus-visible:ring-offset-gray-800">
-                                View
                             </a>
                         </div>
                     </div>

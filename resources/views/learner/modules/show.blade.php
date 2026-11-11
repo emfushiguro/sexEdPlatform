@@ -65,6 +65,8 @@
 
 <div class="space-y-5">
 
+    @include('learner.learning-paths.next-steps', ['nextSteps' => $nextSteps ?? ['paths' => [], 'suggestions' => collect()]])
+
     @if($isModuleDeactivated)
     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
         This module is currently unavailable because it has been deactivated by the instructor.
@@ -379,6 +381,13 @@
                                     Download PDF
                                 </a>
                             </div>
+                        @elseif($finalQuizAvailable)
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Your learning is complete. Take the final quiz to unlock your certificate.</p>
+                            <a href="{{ route('quizzes.show', $finalQuiz) }}"
+                               class="inline-flex items-center justify-center gap-2 mt-4 text-sm font-semibold text-white px-4 py-2.5 rounded-xl transition hover:opacity-90"
+                               style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                                Take Final Quiz
+                            </a>
                         @elseif($certificateEligible)
                             <p class="text-sm text-gray-600 dark:text-gray-400">You completed this module. Generate your certificate now.</p>
                             <form method="POST" action="{{ route('learner.certificates.check', $module) }}" class="mt-4">
@@ -453,6 +462,11 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
                                 </svg>
                                 View Certificate
+                            </a>
+                        @elseif($finalQuizAvailable)
+                            <a href="{{ route('quizzes.show', $finalQuiz) }}"
+                               class="flex items-center gap-2 w-full text-sm font-semibold text-white bg-purple-600 dark:bg-purple-700 px-4 py-2.5 rounded-xl hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors justify-center">
+                                Take Final Quiz
                             </a>
                         @elseif($certificateEligible)
                             <form method="POST" action="{{ route('learner.certificates.check', $module) }}">

@@ -8,6 +8,7 @@ use App\Models\EnforcementAction;
 use App\Models\ModerationCase;
 use App\Models\User;
 use App\Notifications\Moderation\EnforcementIssuedNotification;
+use Illuminate\Support\Carbon;
 use InvalidArgumentException;
 
 class EnforcementActionService
@@ -22,6 +23,7 @@ class EnforcementActionService
         ?ModerationCase $moderationCase = null,
         ?User $issuedByAdmin = null,
         ?string $notes = null,
+        ?Carbon $endsAt = null,
     ): EnforcementAction {
         $this->guardEscalationSkipPolicy($severity, $skipLadder, $skipRationale);
         $this->guardPermanentSuspensionIssuance($actionType, $triggerType);
@@ -33,7 +35,7 @@ class EnforcementActionService
             'severity_level' => $severity,
             'trigger_type' => $triggerType,
             'starts_at' => now(),
-            'ends_at' => $this->resolveEndsAt($actionType),
+            'ends_at' => $this->resolveEndsAt($actionType, $endsAt),
             'status' => 'executed',
             'issued_by_admin_id' => $issuedByAdmin?->id,
             'skip_ladder' => $skipLadder,
@@ -51,7 +53,7 @@ class EnforcementActionService
         bool $skipLadder,
         ?string $skipRationale,
     ): void {
-        if (!$skipLadder) {
+        if (! $skipLadder) {
             return;
         }
 
@@ -73,8 +75,16 @@ class EnforcementActionService
         }
     }
 
-    private function resolveEndsAt(EnforcementActionType $actionType): ?\Illuminate\Support\Carbon
+    private function resolveEndsAt(EnforcementActionType $actionType, ?Carbon $endsAt): ?Carbon
     {
+        if ($endsAt !== null) {
+            if ($actionType !== EnforcementActionType::TemporarySuspension || $endsAt->isPast()) {
+                throw new InvalidArgumentException('A custom end time is only valid for a future temporary suspension.');
+            }
+
+            return $endsAt;
+        }
+
         return match ($actionType) {
             EnforcementActionType::TemporarySuspension => now()->addDays(3),
             EnforcementActionType::ExtendedSuspension => now()->addDays(14),

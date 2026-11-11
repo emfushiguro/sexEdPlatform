@@ -1,7 +1,7 @@
 # Admin-Only Email MFA Design
 
 **Date:** 2026-11-10
-**Status:** Approved design; pending written-spec review
+**Status:** Approved for implementation planning
 
 ## Summary
 

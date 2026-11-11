@@ -1,6 +1,21 @@
 @props(['name'])
 
 @switch($name)
+    @case('document')
+        <svg
+            {{ $attributes->class(['h-5 w-5']) }}
+            data-support-icon="document"
+            aria-hidden="true"
+            focusable="false"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="1.8"
+        >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z" />
+        </svg>
+        @break
+
     @case('help')
         <svg
             {{ $attributes->class(['h-5 w-5']) }}

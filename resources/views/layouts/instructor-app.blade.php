@@ -158,8 +158,6 @@
                         'label' => 'MAIN',
                         'items' => [
                             ['label' => 'Dashboard', 'route' => 'instructor.dashboard', 'active' => request()->routeIs('instructor.dashboard'), 'badge' => 0, 'icon' => 'grid'],
-                            ['label' => 'Guide', 'route' => 'instructor.guide', 'active' => request()->routeIs('instructor.guide'), 'badge' => 0, 'icon' => 'document'],
-                            ['label' => 'Guidelines', 'route' => 'instructor.guidelines', 'active' => request()->routeIs('instructor.guidelines'), 'badge' => 0, 'icon' => 'document'],
                             ['label' => 'Profile', 'route' => 'instructor.profile.show', 'active' => request()->routeIs('instructor.profile.*'), 'badge' => 0, 'icon' => 'users'],
                         ],
                     ],
@@ -200,6 +198,8 @@
                     [
                         'label' => 'SUPPORT',
                         'items' => [
+                            ['label' => 'Guide', 'route' => 'instructor.guide', 'active' => request()->routeIs('instructor.guide'), 'badge' => 0, 'icon' => 'support-document'],
+                            ['label' => 'Guidelines', 'route' => 'instructor.guidelines', 'active' => request()->routeIs('instructor.guidelines'), 'badge' => 0, 'icon' => 'support-document'],
                             ['label' => 'Help Center', 'route' => 'help.index', 'active' => request()->routeIs('help.*'), 'badge' => 0, 'icon' => 'support-help'],
                         ],
                     ],

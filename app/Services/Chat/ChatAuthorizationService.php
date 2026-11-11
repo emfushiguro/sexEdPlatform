@@ -3,8 +3,10 @@
 namespace App\Services\Chat;
 
 use App\Enums\ParentChildInvitationStatus;
+use App\Enums\MessageReportAction;
 use App\Models\Conversation;
 use App\Models\MessageRequest;
+use App\Models\MessageReport;
 use App\Models\Module;
 use App\Models\ParentChildAccount;
 use App\Models\ParentChildInvitation;
@@ -91,6 +93,10 @@ class ChatAuthorizationService
     public function canSendMessage(User $user, Conversation $conversation): bool
     {
         return $this->canSubscribeToConversation($user, $conversation)
+            && ! MessageReport::query()
+                ->where('action_taken', MessageReportAction::ChatRestriction->value)
+                ->whereHas('message', fn ($query) => $query->where('sender_id', $user->id))
+                ->exists()
             && in_array((string) $conversation->status, [
                 Conversation::STATUS_ACTIVE,
                 Conversation::STATUS_ACCEPTED,

@@ -40,6 +40,8 @@ class LearningPathController extends Controller
             ->forLearnerCategory($category)
             ->findOrFail($learningPath);
 
+        $request->session()->put('learning_path_context.'.$request->user()->id, $path->id);
+
         return view('learner.learning-paths.show', [
             'path' => $this->presentation->presentFor($request->user(), $path),
         ]);

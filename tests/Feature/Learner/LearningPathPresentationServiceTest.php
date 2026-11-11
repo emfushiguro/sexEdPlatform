@@ -42,6 +42,8 @@ class LearningPathPresentationServiceTest extends TestCase
             $table->string('remember_token')->nullable();
             $table->string('role')->nullable();
             $table->string('status')->nullable();
+            $table->boolean('parent_identity_sandbox_manual_review')->default(false);
+            $table->boolean('parent_identity_resubmission_allowed')->default(true);
             $table->date('birthdate')->nullable();
             $table->softDeletes();
             $table->timestamps();
@@ -204,6 +206,68 @@ class LearningPathPresentationServiceTest extends TestCase
         $this->assertSame(['recommended', 'available', 'available'], collect($view['nodes'])->pluck('state')->all());
         $this->assertSame($modules[0]->id, $view['current']['module']->id);
         $this->assertSame(0, $view['progress_percentage']);
+    }
+
+    public function test_next_step_follows_path_order_and_skips_unavailable_modules(): void
+    {
+        $learner = $this->learner();
+        $first = $this->module('First');
+        $hidden = $this->module('Hidden', ['is_published' => false]);
+        $next = $this->module('Next');
+        [$path] = $this->pathWithModules(0, [$first, $hidden, $next]);
+
+        $options = $this->service()->nextStepsFor($learner, $first);
+
+        $this->assertCount(1, $options['paths']);
+        $this->assertSame($path->id, $options['paths'][0]['path']->id);
+        $this->assertSame($next->id, $options['paths'][0]['next']['module']->id);
+    }
+
+    public function test_multiple_paths_honor_context_and_keep_other_choices(): void
+    {
+        $learner = $this->learner();
+        $first = $this->module('Shared');
+        $one = $this->module('One');
+        $two = $this->module('Two');
+        [$pathOne] = $this->pathWithModules(0, [$first, $one]);
+        [$pathTwo] = $this->pathWithModules(0, [$first, $two]);
+
+        $options = $this->service()->nextStepsFor($learner, $first, $pathTwo->id);
+
+        $this->assertSame([$pathTwo->id, $pathOne->id], collect($options['paths'])->pluck('path.id')->all());
+        $this->assertSame([$two->id, $one->id], collect($options['paths'])->pluck('next.module.id')->all());
+    }
+
+    public function test_standalone_suggestions_exclude_completed_and_ineligible_modules(): void
+    {
+        $learner = $this->learner();
+        $current = $this->module('Standalone');
+        $available = $this->module('Available');
+        $completed = $this->module('Completed');
+        $hidden = $this->module('Hidden', ['is_published' => false]);
+        $adult = $this->module('Adults');
+        $pending = $this->module('Pending');
+        $adult->syncLearnerCategories(['adults']);
+        $this->enroll($learner, $completed, ['completion_percentage' => 100]);
+        $this->enroll($learner, $pending, ['status' => EnrollmentStatus::Pending->value]);
+
+        $options = $this->service()->nextStepsFor($learner, $current);
+
+        $this->assertSame([], $options['paths']);
+        $this->assertSame([$available->id], $options['suggestions']->pluck('id')->all());
+    }
+
+    public function test_end_of_path_has_no_next_module(): void
+    {
+        $learner = $this->learner();
+        $first = $this->module('First');
+        $last = $this->module('Last');
+        [$path] = $this->pathWithModules(0, [$first, $last]);
+
+        $options = $this->service()->nextStepsFor($learner, $last);
+
+        $this->assertSame($path->id, $options['paths'][0]['path']->id);
+        $this->assertNull($options['paths'][0]['next']);
     }
 
     public function test_progress_uses_topic_completion_and_excludes_unavailable_incomplete_nodes(): void
