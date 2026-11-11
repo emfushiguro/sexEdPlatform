@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 class ProcessSubscriptionRenewals extends Command
 {
     protected $signature = 'subscriptions:process-renewals';
+
     protected $description = 'Process subscription renewals and handle payment failures';
 
     public function handle(SubscriptionDunningService $dunningService)
@@ -48,12 +49,12 @@ class ProcessSubscriptionRenewals extends Command
             $subscription->update([
                 'status' => SubscriptionStatus::Cancelled,
                 'cancelled_at' => now(),
-                'cancellation_reason' => 'Grace period expired - payment failed'
+                'cancellation_reason' => 'Grace period expired - payment failed',
             ]);
 
             Log::info('Subscription cancelled after grace period', [
                 'subscription_id' => $subscription->id,
-                'user_id' => $subscription->user_id
+                'user_id' => $subscription->user_id,
             ]);
         }
 
@@ -64,6 +65,7 @@ class ProcessSubscriptionRenewals extends Command
     {
         // Cancel payments older than 7 days that are still pending
         $oldPendingPayments = Payment::where('status', PaymentStatus::Pending)
+            ->whereNull('payment_details->gift')
             ->where('created_at', '<', now()->subDays(7))
             ->get();
 
@@ -72,8 +74,8 @@ class ProcessSubscriptionRenewals extends Command
                 'status' => PaymentStatus::Failed,
                 'payment_details' => array_merge($payment->payment_details ?? [], [
                     'failure_reason' => 'Payment timeout - cancelled after 7 days',
-                    'cancelled_at' => now()->toDateTimeString()
-                ])
+                    'cancelled_at' => now()->toDateTimeString(),
+                ]),
             ]);
         }
 

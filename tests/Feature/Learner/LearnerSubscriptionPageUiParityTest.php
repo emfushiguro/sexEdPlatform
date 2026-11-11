@@ -32,6 +32,23 @@ class LearnerSubscriptionPageUiParityTest extends TestCase
             ->assertDontSee('Certificate downloads unlock on supported premium plans.', false);
     }
 
+    public function test_subscription_page_displays_legacy_catalogue_price_when_no_plan_price_row_exists(): void
+    {
+        /** @var User $user */
+        $user = User::factory()->create();
+        SubscriptionPlan::create([
+            'name' => 'Legacy Basic', 'slug' => 'legacy-basic', 'description' => 'Legacy basic description',
+            'price' => 199, 'plan_audience' => 'learner', 'billing_mode' => 'monthly',
+            'is_active' => true, 'sort_order' => 1, 'features' => [],
+        ]);
+
+        $this->actingAs($user)->get(route('subscription.index'))
+            ->assertOk()
+            ->assertSee('Legacy Basic')
+            ->assertSee('199.00')
+            ->assertSee('Monthly');
+    }
+
     public function test_subscription_page_shows_renewal_notice_for_expired_subscription(): void
     {
         /** @var User $user */

@@ -12,6 +12,7 @@ use App\Services\PayMongoPaymentLinkService;
 use App\Services\RefundService;
 use App\Services\SubscriptionService;
 use App\Services\EntitlementService;
+use App\Services\LearnerSubscriptionPlanCatalog;
 use App\Enums\PaymentStatus;
 use App\Enums\SubscriptionStatus;
 use App\Support\SubscriptionFeatureKeys;
@@ -25,6 +26,7 @@ class SubscriptionController extends Controller
     public function __construct(
         protected SubscriptionService $subscriptionService,
         protected EntitlementService $entitlementService,
+        protected LearnerSubscriptionPlanCatalog $planCatalog,
     ) {}
 
     /**
@@ -41,6 +43,7 @@ class SubscriptionController extends Controller
         // (e.g. closed browser, poor connection, PayMongo didn't redirect back).
         $pendingSubscription = $user->subscriptions()
             ->where('status', 'pending')
+            ->whereDoesntHave('payments', fn ($query) => $query->whereNotNull('payment_details->gift'))
             ->with('payments')
             ->latest()
             ->first();
@@ -109,11 +112,12 @@ class SubscriptionController extends Controller
         $activeSubscription = $subscription && $subscription->status === SubscriptionStatus::Active
             ? $subscription
             : null;
+        $giftManaged = $subscription && $this->subscriptionService->isGiftManaged($subscription);
 
         // Compute refund eligibility in the controller — keeps Blade free of DB queries.
         $canRequestRefund  = false;
         $latestPaidPayment = null;
-        if ($activeSubscription) {
+        if ($activeSubscription && ! $giftManaged) {
             $refundWindowDays  = config('billing.subscription.refund_window_days', 3);
             $latestPaidPayment = $activeSubscription->payments()
                 ->where('status', PaymentStatus::Completed->value)
@@ -126,20 +130,23 @@ class SubscriptionController extends Controller
 
         $subscriptionSummary = $this->entitlementService->getSubscriptionSummary($user);
 
-        $availablePlans = SubscriptionPlan::active()
-            ->where('plan_audience', 'learner')
-            ->ordered()
-            ->with(['planPrices' => function ($q) {
-                $q->where('is_active', true)
-                    ->orderByDesc('is_default')
-                    ->orderBy('duration_count');
-            }, 'featureEntitlements.feature'])
-            ->get();
+        $availablePlans = $this->planCatalog->activeLearnerPlans();
 
         $planCards = $this->buildPlanCards($availablePlans, $activeSubscription);
         $planCards = $this->prependFreeBaselineCard($planCards, $activeSubscription);
         $comparisonFeatures = $this->buildComparisonFeatures($planCards);
         $renewalNotice = $this->buildRenewalNotice($latestSubscription);
+
+        if ($giftManaged) {
+            $planCards = array_map(static function (array $plan): array {
+                $plan['is_eligible'] = false;
+                $plan['is_recommended'] = false;
+                $plan['ineligible_reason'] = $plan['is_current'] ? 'Current plan' : 'Ask your guardian about plan changes';
+
+                return $plan;
+            }, $planCards);
+            $renewalNotice = null;
+        }
 
         return view('subscriptions.index', compact(
             'subscription',
@@ -148,7 +155,8 @@ class SubscriptionController extends Controller
             'subscriptionSummary',
             'planCards',
             'comparisonFeatures',
-            'renewalNotice'
+            'renewalNotice',
+            'giftManaged'
         ));
     }
 
@@ -173,6 +181,7 @@ class SubscriptionController extends Controller
 
         return false;
     }
+
     /**
      * Show the upgrade page with available plans
      */
@@ -315,6 +324,9 @@ class SubscriptionController extends Controller
         $user         = Auth::user();
         $subscription = $user->subscription;
 
+        abort_if($subscription && $this->subscriptionService->isGiftManaged($subscription), 403,
+            'Gift subscription payments are final and non-refundable.');
+
         if (!$subscription || !$subscription->canCancel()) {
             return redirect()->route('subscription.index')
                 ->with('error', 'No active subscription to cancel.');
@@ -335,6 +347,9 @@ class SubscriptionController extends Controller
         /** @var User $user */
         $user         = Auth::user();
         $subscription = $user->subscription;
+
+        abort_if($subscription && $this->subscriptionService->hasGiftPayments($subscription), 403,
+            'Gift subscription payments are final and non-refundable.');
 
         if (!$subscription || $subscription->status !== SubscriptionStatus::Active) {
             return redirect()->back()->with('error', 'No active subscription to refund.');
@@ -368,6 +383,7 @@ class SubscriptionController extends Controller
                 'payment_id' => $payment->id,
                 'error'      => $e->getMessage(),
             ]);
+
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
@@ -376,6 +392,9 @@ class SubscriptionController extends Controller
     {
         /** @var User $user */
         $user         = Auth::user();
+        $latest = $user->subscriptions()->latest('id')->first();
+        abort_if($latest && $this->subscriptionService->isGiftManaged($latest), 403,
+            'Ask your guardian to renew through My Dependents.');
         $subscription = $user->subscriptions()
             ->latest('id')
             ->get()
@@ -386,42 +405,53 @@ class SubscriptionController extends Controller
                 ->with('error', 'Your current subscription is not yet eligible for renewal.');
         }
 
+        abort_if($this->subscriptionService->isGiftManaged($subscription), 403,
+            'Ask your guardian to renew through My Dependents.');
+
         try {
-            $pendingPayment = $subscription->payments()
-                ->where('status', PaymentStatus::Pending->value)
-                ->latest('id')
-                ->first();
-
-            if (!$pendingPayment) {
-                $renewalAmount = (float) $subscription->getAmount();
-
-                if ($renewalAmount <= 0) {
-                    return redirect()->route('subscription.index')
-                        ->with('error', 'Unable to determine the renewal amount for your plan.');
+            DB::transaction(function () use ($user, $subscription) {
+                User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $subscription = Subscription::query()->lockForUpdate()->findOrFail($subscription->id);
+                $this->subscriptionService->assertNoUnresolvedGift($user);
+                if ($this->subscriptionService->isGiftManaged($subscription)
+                    || ! $this->subscriptionService->isRenewableNow($subscription)) {
+                    throw new \RuntimeException('Your current subscription is not yet eligible for renewal.');
                 }
+                $pendingPayment = $subscription->payments()
+                    ->where('status', PaymentStatus::Pending->value)
+                    ->where('user_id', $user->id)
+                    ->whereNull('payment_details->gift')
+                    ->latest('id')
+                    ->first();
 
-                $pendingPayment = $subscription->payments()->create([
-                    'user_id' => $user->id,
-                    'amount' => $renewalAmount,
-                    'method' => null,
-                    'status' => PaymentStatus::Pending,
-                    'transaction_id' => 'RENCHK-' . strtoupper(uniqid()),
-                    'payment_details' => [
-                        'payment_scope' => 'subscription',
-                        'lifecycle_action' => 'renewal_checkout',
-                        'requested_at' => now()->toDateTimeString(),
-                    ],
-                ]);
-            } else {
-                $pendingPayment->update([
-                    'amount' => (float) $subscription->getAmount(),
-                    'payment_details' => array_merge((array) $pendingPayment->payment_details, [
-                        'payment_scope' => 'subscription',
-                        'lifecycle_action' => 'renewal_checkout',
-                        'requested_at' => now()->toDateTimeString(),
-                    ]),
-                ]);
-            }
+                if (! $pendingPayment) {
+                    $renewalAmount = (float) $subscription->getAmount();
+                    if ($renewalAmount <= 0) {
+                        throw new \RuntimeException('Unable to determine the renewal amount for your plan.');
+                    }
+                    $subscription->payments()->create([
+                        'user_id' => $user->id,
+                        'amount' => $renewalAmount,
+                        'method' => null,
+                        'status' => PaymentStatus::Pending,
+                        'transaction_id' => 'RENCHK-' . strtoupper(uniqid()),
+                        'payment_details' => [
+                            'payment_scope' => 'subscription',
+                            'lifecycle_action' => 'renewal_checkout',
+                            'requested_at' => now()->toDateTimeString(),
+                        ],
+                    ]);
+                } else {
+                    $pendingPayment->update([
+                        'amount' => (float) $subscription->getAmount(),
+                        'payment_details' => array_merge((array) $pendingPayment->payment_details, [
+                            'payment_scope' => 'subscription',
+                            'lifecycle_action' => 'renewal_checkout',
+                            'requested_at' => now()->toDateTimeString(),
+                        ]),
+                    ]);
+                }
+            });
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
@@ -496,27 +526,12 @@ class SubscriptionController extends Controller
         $cards = collect($plans)->map(function ($plan) use ($currentSubscription, $hasActiveSubscription, $today, $labelMap, $hiddenKeys, $freeFeatureLabels) {
             $isCurrentPlan = $currentSubscription?->plan_id === $plan->id;
 
-            $prices = collect($plan->planPrices ?? [])->map(function ($price) {
-                $label = $price->duration_label
-                    ?: ucfirst((string) ($price->duration_unit ?? 'Plan'));
-
-                $amountMinor = (int) ($price->amount_minor ?? 0);
-
-                return [
-                    'id' => $price->id,
-                    'label' => $label,
-                    'duration_unit' => $price->duration_unit,
-                    'duration_count' => (int) ($price->duration_count ?? 1),
-                    'amount_minor' => $amountMinor,
-                    'amount_display' => number_format($amountMinor / 100, 2),
-                    'is_default' => (bool) ($price->is_default ?? false),
-                ];
-            })->values()->all();
+            $prices = $this->planCatalog->priceOptions($plan);
 
             $defaultPrice = collect($prices)->firstWhere('is_default', true)
                 ?? (count($prices) > 0 ? $prices[0] : null);
 
-            $resolvedFeatureLabels = $this->extractEntitlementFeatureLabels($plan, $labelMap, $hiddenKeys);
+            $resolvedFeatureLabels = $this->planCatalog->featureLabels($plan);
 
             if (empty($resolvedFeatureLabels)) {
                 $resolvedFeatureLabels = $this->flattenFeatureLabels((array) ($plan->features ?? []), $labelMap, $hiddenKeys);
@@ -581,55 +596,19 @@ class SubscriptionController extends Controller
 
         return $cards->map(function ($card) use ($recommendedPlanId) {
             $card['is_recommended'] = $recommendedPlanId !== null && $card['id'] === $recommendedPlanId;
+
             return $card;
         })->all();
     }
 
     private function prependFreeBaselineCard(array $planCards, ?Subscription $currentSubscription): array
     {
-        $hasFreePlan = collect($planCards)->contains(fn ($card) => (bool) ($card['is_free'] ?? false));
-
-        if ($hasFreePlan) {
-            return $planCards;
-        }
-
-        $hasPremiumSubscription = $currentSubscription && $currentSubscription->status === SubscriptionStatus::Active;
-
-        $freeFeatureLabels = $this->defaultFreePlanFeatureLabels();
-
-        $baselineCard = [
-            'id' => -1,
-            'name' => 'Free Plan',
-            'slug' => 'free-baseline',
-            'description' => 'Baseline learner access available to all accounts with no checkout required.',
-            'is_free' => true,
-            'is_current' => !$hasPremiumSubscription,
-            'is_eligible' => false,
-            'ineligible_reason' => !$hasPremiumSubscription ? 'Current baseline access' : 'Premium plan currently active',
-            'prices' => [],
-            'default_price' => null,
-            'feature_labels' => $freeFeatureLabels,
-            'feature_keys' => array_keys($freeFeatureLabels),
-            'comparison_feature_labels' => $freeFeatureLabels,
-            'includes_free_features' => false,
-            'visible_feature_count' => count($freeFeatureLabels),
-            'is_recommended' => false,
-            'is_baseline' => true,
-        ];
-
-        return array_values(array_merge([$baselineCard], $planCards));
+        return $this->planCatalog->prependFreeBaselineCard($planCards, $currentSubscription);
     }
 
     private function defaultFreePlanFeatureLabels(): array
     {
-        return [
-            'free_core_learning' => 'Access to core age-appropriate learning modules',
-            'free_quiz_shields' => '3 quiz shields per day',
-            'free_username_changes' => 'Username change every 7 days',
-            'free_certificate_downloads' => 'View and download completion certificates',
-            'free_progress_tracking' => 'Track module progress and quiz completion history',
-            'free_upgrade_anytime' => 'Upgrade any time for premium controls',
-        ];
+        return $this->planCatalog->freeFeatureLabels();
     }
 
     private function filterOutDuplicateLabels(array $candidateLabels, array $referenceLabels): array
@@ -656,25 +635,7 @@ class SubscriptionController extends Controller
 
     private function mergeUniqueLabels(array $primaryLabels, array $secondaryLabels): array
     {
-        $output = $primaryLabels;
-        $existing = [];
-
-        foreach ($primaryLabels as $featureLabel) {
-            $existing[$this->normalizeLabel((string) $featureLabel)] = true;
-        }
-
-        foreach ($secondaryLabels as $featureKey => $featureLabel) {
-            $normalized = $this->normalizeLabel((string) $featureLabel);
-
-            if (isset($existing[$normalized])) {
-                continue;
-            }
-
-            $output[$featureKey] = $featureLabel;
-            $existing[$normalized] = true;
-        }
-
-        return $output;
+        return $this->planCatalog->mergeFeatureLabels($primaryLabels, $secondaryLabels);
     }
 
     private function normalizeLabel(string $label): string
@@ -702,11 +663,13 @@ class SubscriptionController extends Controller
                         $output[$key] = $labelMap[$key] ?? ucwords(str_replace('_', ' ', $key));
                     }
                 }
+
                 continue;
             }
 
             if (is_string($groupOrIndex) && !in_array($groupOrIndex, $hiddenKeys, true) && ($value === true || $value === 1 || $value === '1')) {
                 $output[$groupOrIndex] = $labelMap[$groupOrIndex] ?? ucwords(str_replace('_', ' ', $groupOrIndex));
+
                 continue;
             }
 

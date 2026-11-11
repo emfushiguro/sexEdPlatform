@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Payment;
+use Illuminate\Support\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -18,7 +19,8 @@ class PaymentReceiptMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Payment Received – Your Subscription is Active',
+            subject: \App\Services\GuardianSubscriptionGiftService::isGift($this->payment)
+                ? 'Gift Subscription Payment Received' : 'Payment Received – Your Subscription is Active',
             from: config('mail.from.address', 'noreply@sexedplatform.com')
         );
     }
@@ -26,6 +28,9 @@ class PaymentReceiptMail extends Mailable
     public function content(): Content
     {
         $subscription = $this->payment->subscription;
+        $isGift = \App\Services\GuardianSubscriptionGiftService::isGift($this->payment);
+        $giftPlanName = data_get($this->payment->payment_details, 'gift.plan_name');
+        $giftEndDate = data_get($this->payment->payment_details, 'gift.after_expires_at');
 
         return new Content(
             markdown: 'emails.payment-receipt',
@@ -35,9 +40,14 @@ class PaymentReceiptMail extends Mailable
                 'user'         => $this->payment->user,
                 'amount'       => number_format($this->payment->amount, 2),
                 'paidAt'       => $this->payment->paid_at?->format('M d, Y h:i A'),
-                'planName'     => $subscription?->getPlanLabel() ?? 'Premium Subscription',
-                'endDate'      => $subscription?->end_date?->format('M d, Y'),
-                'invoiceUrl'   => route('subscription.index'),
+                'planName'     => $isGift && $giftPlanName
+                    ? $giftPlanName : ($subscription?->getPlanLabel() ?? 'Premium Subscription'),
+                'endDate'      => $isGift && $giftEndDate
+                    ? Carbon::parse($giftEndDate)->format('M d, Y') : $subscription?->end_date?->format('M d, Y'),
+                'isGift' => $isGift,
+                'giftBeneficiary' => data_get($this->payment->payment_details, 'gift.beneficiary_name'),
+                'invoiceUrl' => \App\Services\GuardianSubscriptionGiftService::isGift($this->payment)
+                    ? route('payment.receipt', $this->payment) : route('subscription.index'),
             ]
         );
     }

@@ -6,13 +6,13 @@
 <div class="max-w-5xl mx-auto space-y-6">
 
     {{-- Gradient banner header --}}
-    <div class="flex items-center justify-between p-6 text-white rounded-2xl"
+    <div class="flex flex-col gap-4 p-6 text-white rounded-2xl sm:flex-row sm:items-center sm:justify-between"
          style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
         <div>
             <h1 class="text-2xl font-bold">My Dependents</h1>
             <p class="mt-1 text-sm text-white/80">Manage dependent applications and monitor approved accounts.</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2 sm:justify-end">
             <a href="{{ route('parent.invitations.history') }}"
                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white transition border bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-sm border-white/20">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,6 +218,13 @@
             @foreach($children as $child)
                 @php
                     $verificationStatus = $child->pivot->verification_status ?? 'pending';
+                    $childName = $child->full_name ?: $child->name;
+                    $ageBracketLabel = match ($child->learnerProfile?->getAgeBracket()) {
+                        'kids' => 'Kids',
+                        'teens' => 'Teen',
+                        'adults' => 'Adult',
+                        default => null,
+                    };
                     $childAvatarUrl = $child->learnerProfile?->avatar_path
                         ? asset('storage/' . ltrim((string) $child->learnerProfile->avatar_path, '/'))
                         : null;
@@ -237,41 +244,55 @@
                         'resubmission_required' => 'bg-orange-100 text-orange-700',
                         default => 'bg-amber-100 text-amber-700',
                     };
+                    $moduleCount = $child->moduleEnrollments()->count();
+                    $quizCount = $child->quizAttempts()->count();
+                    $achievementCount = $child->achievements()->count();
                 @endphp
-                <div class="relative overflow-hidden transition bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md">
+                <article class="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md dark:border-gray-800 dark:bg-black">
+                    <div class="flex items-center justify-between gap-3 px-5 pt-4">
+                        <h2 class="min-w-0 truncate text-base font-semibold text-gray-900 dark:text-gray-200">{{ $childName }}</h2>
+                        <div class="flex shrink-0 items-center gap-2">
+                            @if($isApprovedChild && $canUseChat)
+                                <button type="button"
+                                        onclick='window.dispatchEvent(new CustomEvent("open-global-chat", { detail: { target_user_id: {{ (int) $child->id }}, conversation_type: "direct", name: @json($childName) } }))'
+                                        class="inline-flex h-7 w-7 items-center justify-center rounded-lg text-purple-700 transition hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950"
+                                        title="Message {{ $childName }}"
+                                        aria-label="Message {{ $childName }}">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8m-8 4h5m-9 6l1.683-3.367A2 2 0 014 15.764V6a2 2 0 012-2h12a2 2 0 012 2v9.764a2 2 0 01-1.683 1.969L20 20l-4.317-2.267a2 2 0 00-.934-.233H6.934A2 2 0 015 18.764V20z"/>
+                                    </svg>
+                                </button>
+                            @endif
+                            @if($ageBracketLabel)
+                                <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-400">{{ $ageBracketLabel }}</span>
+                            @endif
+                            @if(!$isApprovedChild)
+                                <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $verificationStatus === 'rejected' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' }}">
+                                    {{ ucfirst($verificationStatus) }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
 
-                    @if($isApprovedChild && $canUseChat)
-                        <button type="button"
-                                onclick='window.dispatchEvent(new CustomEvent("open-global-chat", { detail: { target_user_id: {{ (int) $child->id }}, conversation_type: "direct", name: @json($child->full_name ?: $child->name) } }))'
-                                class="absolute z-10 inline-flex items-center justify-center text-purple-700 border border-purple-200 rounded-lg right-4 top-4 h-9 w-9 bg-purple-50 hover:bg-purple-100"
-                                title="Message {{ $child->full_name }}"
-                                aria-label="Message {{ $child->full_name }}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8m-8 4h5m-9 6l1.683-3.367A2 2 0 014 15.764V6a2 2 0 012-2h12a2 2 0 012 2v9.764a2 2 0 01-1.683 1.969L20 20l-4.317-2.267a2 2 0 00-.934-.233H6.934A2 2 0 015 18.764V20z"/>
-                            </svg>
-                        </button>
-                    @endif
-
-                    {{-- Card top: avatar + info + badge --}}
-                    <div class="flex items-center gap-4 p-5 pr-14">
+                    {{-- Profile row --}}
+                    <div class="flex items-center gap-3 px-5 pb-5 pt-4">
                         {{-- Avatar initials --}}
                         @if($childAvatarUrl)
                             <img src="{{ $childAvatarUrl }}"
-                                 alt="{{ $child->full_name }} avatar"
-                                 class="flex-shrink-0 object-cover border border-gray-200 rounded-full shadow w-14 h-14">
+                                 alt="{{ $childName }} avatar"
+                                 class="h-11 w-11 shrink-0 rounded-full border border-gray-200 object-cover dark:border-gray-800">
                         @else
-                            <div class="flex items-center justify-center flex-shrink-0 text-xl font-bold text-white rounded-full shadow w-14 h-14"
-                                 style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-purple-700 text-sm font-bold text-white">
                                 {{ strtoupper(substr($child->first_name ?? $child->name, 0, 1)) }}{{ strtoupper(substr($child->last_name ?? '', 0, 1)) }}
                             </div>
                         @endif
 
                         {{-- Name & age --}}
                         <div class="flex-1 min-w-0">
-                            <h3 class="font-semibold text-gray-900 truncate">{{ $child->full_name }}</h3>
-                            <p class="text-xs text-gray-500 mt-0.5">
+                            <p class="truncate text-base font-semibold text-gray-900 dark:text-gray-200">{{ $childName }}</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 @if($child->learnerProfile?->birthdate)
-                                    {{ \Carbon\Carbon::parse($child->learnerProfile->birthdate)->age }} years old.
+                                    {{ $child->learnerProfile->getAge() }} years old <span aria-hidden="true">·</span>
                                 @endif
                                 Added {{ $child->created_at->diffForHumans() }}
                             </p>
@@ -289,19 +310,6 @@
                                     {{ $relationshipVerificationLabel }}
                                 </span>
                             </div>
-                        </div>
-
-                        {{-- Consent + verification badges --}}
-                        <div class="flex flex-col items-end gap-1">
-                            @if(!$child->learnerProfile?->requires_parental_consent)
-                                <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Teen</span>
-                            @endif
-
-                            @if(!$isApprovedChild)
-                                <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full {{ $verificationStatus === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700' }}">
-                                    {{ ucfirst($verificationStatus) }}
-                                </span>
-                            @endif
                         </div>
                     </div>
 
@@ -335,24 +343,25 @@
                     @endif
 
                     {{-- Stats row --}}
-                    <div class="grid grid-cols-3 py-3 text-center border-t border-gray-100 divide-x divide-gray-100 bg-gray-50/50">
+                    <div class="mx-5 grid grid-cols-3 border-t border-gray-100 py-5 text-center dark:border-gray-900">
                         <div class="px-2">
-                            <p class="text-lg font-bold text-purple-700">{{ $child->moduleEnrollments()->count() }}</p>
-                            <p class="text-xs text-gray-500">Modules</p>
+                            <p class="text-xl font-semibold text-gray-900 dark:text-gray-200">{{ $moduleCount }}</p>
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Modules</p>
                         </div>
                         <div class="px-2">
-                            <p class="text-lg font-bold text-purple-700">{{ $child->quizAttempts()->count() }}</p>
-                            <p class="text-xs text-gray-500">Quizzes</p>
+                            <p class="text-xl font-semibold text-gray-900 dark:text-gray-200">{{ $quizCount }}</p>
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Quizzes</p>
                         </div>
                         <div class="px-2">
-                            <p class="text-lg font-bold text-purple-700">{{ $child->achievements()->count() }}</p>
-                            <p class="text-xs text-gray-500">Achievements</p>
+                            <p class="text-xl font-semibold text-gray-900 dark:text-gray-200">{{ $achievementCount }}</p>
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Achievements</p>
                         </div>
                     </div>
 
                     {{-- Progress bar --}}
-                    @if($child->moduleEnrollments()->count() > 0)
-                        @php
+                    @php
+                        $pct = 0;
+                        if ($moduleCount > 0) {
                             $enrolledModuleIds = $child->moduleEnrollments()
                                 ->whereIn('status', ['approved', 'completed'])
                                 ->pluck('module_id');
@@ -368,25 +377,23 @@
                                 ->distinct('lesson_id')
                                 ->count('lesson_id');
 
-                            $pct = $totalLessons > 0 ? round(($completedLessons / $totalLessons) * 100) : 0;
-                        @endphp
-                        <div class="px-5 py-3 border-t border-gray-100">
-                            <div class="flex justify-between mb-1 text-xs text-gray-500">
-                                <span>Overall Progress</span>
-                                <span class="font-medium text-gray-700">{{ $pct }}%</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-1.5">
-                                <div class="h-1.5 rounded-full transition-all"
-                                     style="width: {{ $pct }}%; background: linear-gradient(90deg, #A30EB2, #3B0CB1);">
-                                </div>
+                            $pct = $totalLessons > 0 ? min(100, round(($completedLessons / $totalLessons) * 100)) : 0;
+                        }
+                    @endphp
+                    <div class="mx-5 border-t border-gray-100 py-5 dark:border-gray-900">
+                        <div class="mb-1 flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                            <span>Overall Progress</span>
+                            <span class="font-medium text-gray-700 dark:text-gray-300">{{ $pct }}%</span>
+                        </div>
+                        <div class="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-800" role="progressbar" aria-label="{{ $childName }} overall progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $pct }}">
+                            <div class="h-2 rounded-full bg-purple-700 transition-all" style="width: {{ $pct }}%;">
                             </div>
                         </div>
-                    @endif
+                    </div>
 
                     {{-- Actions --}}
-                    <div class="flex items-center justify-between px-5 py-4 border-t border-gray-100">
+                    <div class="mx-5 mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 py-5 dark:border-gray-900">
                         @if($isApprovedChild)
-                            <div class="flex items-center gap-2">
                                 @if($relationshipVerificationNeedsAction)
                                     <a href="{{ route('parent.relationship-verifications.show', $child->pivot->id) }}"
                                        class="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-900">
@@ -394,18 +401,23 @@
                                     </a>
                                 @endif
                                 <a href="{{ route('parent.children.show', $child->id) }}"
-                                   class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
+                                   aria-label="View Dependent Dashboard for {{ $childName }}"
+                                   class="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                                     </svg>
-                                    View Dependent Dashboard
+                                    View Dashboard
                                 </a>
-                            </div>
-
-                            <span class="text-sm text-gray-400">
-                                {{ $child->quizAttempts()->count() > 0 ? 'Quiz activity available' : 'No quiz data yet' }}
-                            </span>
+                                @can('giftSubscription', $child)
+                                    <a href="{{ route('parent.children.subscription-gift.create', $child) }}"
+                                       class="ml-auto inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-purple-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500">
+                                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 7v14m-8-10v10h16V11M3 7h18v4H3V7zm9 0H8.5A2.5 2.5 0 1111 4.5L12 7zm0 0h3.5A2.5 2.5 0 1013 4.5L12 7z" />
+                                        </svg>
+                                        Gift Subscription
+                                    </a>
+                                @endcan
                         @else
                             @if($verificationStatus === 'rejected')
                                 <form method="POST"
@@ -413,7 +425,7 @@
                                       enctype="multipart/form-data"
                                       class="w-full space-y-2">
                                     @csrf
-                                    <label for="verification_document_{{ $child->id }}" class="block text-xs font-medium text-gray-700">
+                                    <label for="verification_document_{{ $child->id }}" class="block text-xs font-medium text-gray-700 dark:text-gray-300">
                                         Upload corrected PSA document
                                     </label>
                                     <input id="verification_document_{{ $child->id }}"
@@ -432,11 +444,11 @@
                                     </div>
                                 </form>
                             @else
-                                <span class="text-sm text-gray-500">Pending verification</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400">Pending verification</span>
                             @endif
                         @endif
                     </div>
-                </div>
+                </article>
             @endforeach
         </div>
     @endif

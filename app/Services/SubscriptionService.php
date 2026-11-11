@@ -136,6 +136,16 @@ class SubscriptionService
 
     public function reconcileLifecycleState(Subscription $subscription, ?CarbonInterface $referenceTime = null): Subscription
     {
+        return DB::transaction(function () use ($subscription, $referenceTime) {
+            User::query()->whereKey($subscription->user_id)->lockForUpdate()->firstOrFail();
+            $fresh = Subscription::query()->lockForUpdate()->findOrFail($subscription->id);
+
+            return $this->reconcileUnlocked($fresh, $referenceTime);
+        });
+    }
+
+    private function reconcileUnlocked(Subscription $subscription, ?CarbonInterface $referenceTime): Subscription
+    {
         $referenceTime ??= now();
         $status = (string) $subscription->status->value;
         $effectiveEnd = $this->resolveEffectiveEndTimestamp($subscription);
@@ -421,7 +431,29 @@ class SubscriptionService
      *
      * @throws \RuntimeException
      */
-    public function create(User $user, SubscriptionPlan $plan): Subscription
+    public function create(User $user, SubscriptionPlan $plan, ?User $purchaser = null): Subscription
+    {
+        return DB::transaction(function () use ($user, $plan, $purchaser) {
+            $user = User::query()->lockForUpdate()->findOrFail($user->id);
+            if ($purchaser === null) {
+                $this->assertNoUnresolvedGift($user);
+            }
+
+            return $this->createPending($user, $plan, $purchaser);
+        });
+    }
+
+    public function assertNoUnresolvedGift(User $user): void
+    {
+        if (GuardianSubscriptionGiftService::unresolvedPayments($user)
+            ->whereNotNull('payment_details->gift')->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'plan_id' => 'A guardian purchase is awaiting confirmation. Complete it before starting another checkout.',
+            ]);
+        }
+    }
+
+    private function createPending(User $user, SubscriptionPlan $plan, ?User $purchaser): Subscription
     {
         if (!$plan->is_active) {
             throw new \RuntimeException("Plan '{$plan->name}' is not available.");
@@ -439,11 +471,14 @@ class SubscriptionService
         }
 
         // Cancel any dangling pending subscriptions to avoid orphans
-        $user->subscriptions()->where('status', 'pending')->update([
+        if ($purchaser === null) {
+            $user->subscriptions()->where('status', 'pending')
+                ->whereDoesntHave('payments', fn ($query) => $query->whereNotNull('payment_details->gift'))->update([
             'status'              => 'cancelled',
             'cancelled_at'        => now(),
             'cancellation_reason' => 'Superseded by new subscription attempt',
         ]);
+        }
 
         $price = $resolvedAmount;
         $startDate = now();
@@ -482,11 +517,12 @@ class SubscriptionService
                 'next_billing_at' => $endDate,
                 'trial_ends_at' => $trialEnds,
                 'price_paid'    => $price,
-                'auto_renew'    => true,
+                'auto_renew' => $purchaser === null,
+                'source_provider' => $purchaser ? 'guardian_gift' : null,
             ]);
 
             $subscription->payments()->create([
-                'user_id'         => $user->id,
+                'user_id' => $purchaser?->id ?? $user->id,
                 'amount'          => $price,
                 // Method is selected later in PaymentController::process().
                 'method'          => null,
@@ -530,6 +566,35 @@ class SubscriptionService
             'year' => $startDate->copy()->addYears($count),
             default => $startDate->copy()->addMonths($count),
         };
+    }
+
+    public function calculatePrepaidEnd(CarbonInterface $startDate, string $durationUnit, int $durationCount): CarbonInterface
+    {
+        return $this->resolvePlanEndDate($startDate, $durationUnit, $durationCount);
+    }
+
+    public function hasGiftPayments(Subscription $subscription): bool
+    {
+        return $subscription->source_provider === 'guardian_gift'
+            || $subscription->payments()->whereNotNull('payment_details->gift')
+                ->where(function ($query) {
+                    // Only certified closed, unapplied purchases can stop protecting this row.
+                    $query->where('status', '!=', PaymentStatus::Cancelled)
+                        ->orWhereNotNull('payment_details->gift->applied_at')
+                        ->orWhereNull('payment_details->gift->checkout_state')
+                        ->orWhereNotIn('payment_details->gift->checkout_state', ['expired', 'unavailable'])
+                        ->orWhere(function ($query) {
+                            $query->where('payment_details->gift->checkout_state', 'unavailable')
+                                ->whereNotNull('payment_details->paymongo_checkout_session_id');
+                        });
+                })->exists();
+    }
+
+    public function isGiftManaged(Subscription $subscription): bool
+    {
+        return $subscription->source_provider === 'guardian_gift'
+            || $subscription->payments()->where('status', PaymentStatus::Completed)
+                ->whereNotNull('payment_details->gift->applied_at')->exists();
     }
 
     private function normalizeDurationUnit(string $durationUnit): string
@@ -617,6 +682,7 @@ class SubscriptionService
 
         if ($plan?->hasFeature('duration_minutes')) {
             $durationMinutes = (int) $plan->getFeatureValue('duration_minutes', 10);
+
             return $startDate->copy()->addMinutes(max(1, $durationMinutes));
         }
 
@@ -652,6 +718,9 @@ class SubscriptionService
      */
     public function activate(Subscription $subscription): void
     {
+        if ($this->hasGiftPayments($subscription)) {
+            return; // Gift fulfillment requires its exact signed payment, not a generic activation call.
+        }
         if ($subscription->status === SubscriptionStatus::Active) {
             return; // idempotent
         }
@@ -718,13 +787,17 @@ class SubscriptionService
      */
     public function cancel(Subscription $subscription, ?string $reason = null): void
     {
-        if (!$subscription->canCancel()) {
-            throw new \RuntimeException('This subscription cannot be cancelled.');
-        }
-
         DB::beginTransaction();
 
         try {
+            User::query()->whereKey($subscription->user_id)->lockForUpdate()->firstOrFail();
+            $subscription = Subscription::query()->lockForUpdate()->findOrFail($subscription->id);
+            if ($this->isGiftManaged($subscription)) {
+                throw new \RuntimeException('Gift subscription payments are final and non-refundable. Paid access remains available until expiry.');
+            }
+            if (! $subscription->canCancel()) {
+                throw new \RuntimeException('This subscription cannot be cancelled.');
+            }
             $subscription->update([
                 'status'              => 'cancelled',
                 'cancelled_at'        => now(),
@@ -754,6 +827,9 @@ class SubscriptionService
      */
     public function renew(Subscription $subscription): void
     {
+        if ($this->hasGiftPayments($subscription)) {
+            throw new \RuntimeException('Ask your guardian to renew through My Dependents.');
+        }
         $subscription = $this->reconcileLifecycleState($subscription->fresh());
 
         if (!$this->isRenewableNow($subscription)) {
@@ -835,6 +911,9 @@ class SubscriptionService
      */
     public function renewFromPayment(Subscription $subscription, Payment $payment): void
     {
+        if ($this->hasGiftPayments($subscription)) {
+            throw new \RuntimeException('Gift renewals require their exact signed payment confirmation.');
+        }
         $subscription = $this->reconcileLifecycleState($subscription->fresh());
 
         if (!$this->isRenewableNow($subscription)) {
@@ -913,27 +992,8 @@ class SubscriptionService
      */
     public function expire(Subscription $subscription): void
     {
-        if ($subscription->status !== SubscriptionStatus::Active) {
-            return;
-        }
-
-        DB::beginTransaction();
-
-        try {
-            $subscription->update(['status' => SubscriptionStatus::Expired]);
-
-            DB::commit();
-
-            Log::info('Subscription expired', [
-                'subscription_id' => $subscription->id,
-                'user_id'         => $subscription->user_id,
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('SubscriptionService::expire failed', ['error' => $e->getMessage()]);
-            throw new \RuntimeException('Failed to expire subscription: ' . $e->getMessage(), 0, $e);
-        }
+        $fresh = $this->reconcileLifecycleState($subscription);
+        $subscription->setRawAttributes($fresh->getAttributes(), true);
     }
 
     /**
@@ -1020,6 +1080,7 @@ class SubscriptionService
 
         // Create the new subscription (has its own transaction internally)
         $user = $current->user;
+
         return $this->create($user, $newPlan);
     }
 
@@ -1033,6 +1094,7 @@ class SubscriptionService
      * checkout URL so the controller stays as a thin HTTP layer.
      *
      * @return array{subscription: Subscription, checkout_url: string}
+     *
      * @throws \RuntimeException
      */
     public function createWithPayMongoLink(
@@ -1073,12 +1135,23 @@ class SubscriptionService
      * Creates an immediately-active subscription with a PayMongo payment link.
      *
      * @return array{subscription: Subscription, checkout_url: string}
+     *
      * @throws \RuntimeException
      */
     public function createLegacy(
         User $user,
         PayMongoPaymentLinkService $paymongoService
     ): array {
+        return DB::transaction(function () use ($user, $paymongoService) {
+            $user = User::query()->lockForUpdate()->findOrFail($user->id);
+            $this->assertNoUnresolvedGift($user);
+
+            return $this->createLegacyPending($user, $paymongoService);
+        });
+    }
+
+    private function createLegacyPending(User $user, PayMongoPaymentLinkService $paymongoService): array
+    {
         // Prices read from config so no value is hardcoded in source code.
         $plans  = config('billing.subscription.plans', []);
         $amount = (float) ($plans['premium']['price'] ?? 299.00);

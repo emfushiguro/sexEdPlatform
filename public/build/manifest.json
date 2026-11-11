@@ -1,48 +1,48 @@
 {
-  "_agora-Lx6xI2T2.js": {
-    "file": "assets/agora-Lx6xI2T2.js",
+  "_agora-By7UI9zt.js": {
+    "file": "assets/agora-By7UI9zt.js",
     "name": "agora",
     "isDynamicEntry": true
   },
-  "_howler-DosbB3nB.js": {
-    "file": "assets/howler-DosbB3nB.js",
+  "_howler-DZeOXej7.js": {
+    "file": "assets/howler-DZeOXej7.js",
     "name": "howler",
     "isDynamicEntry": true,
     "imports": [
-      "_agora-Lx6xI2T2.js"
+      "_agora-By7UI9zt.js"
     ]
   },
-  "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs": {
-    "file": "assets/pdf-B75MOh95.js",
+  "node_modules/pdfjs-dist/build/pdf.mjs": {
+    "file": "assets/pdf-vkbVaD7t.js",
     "name": "pdf",
-    "src": "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs",
+    "src": "node_modules/pdfjs-dist/build/pdf.mjs",
     "isDynamicEntry": true
   },
-  "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs": {
-    "file": "assets/pdf.worker-B1D2UnXD.mjs",
-    "src": "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs"
+  "node_modules/pdfjs-dist/build/pdf.worker.mjs": {
+    "file": "assets/pdf.worker-CliDBb4N.mjs",
+    "src": "node_modules/pdfjs-dist/build/pdf.worker.mjs"
   },
-  "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs?url": {
-    "file": "assets/pdf.worker-BKOSSBnB.js",
+  "node_modules/pdfjs-dist/build/pdf.worker.mjs?url": {
+    "file": "assets/pdf.worker-D6Qti-vA.js",
     "name": "pdf.worker",
-    "src": "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
+    "src": "node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
     "isDynamicEntry": true,
     "assets": [
-      "assets/pdf.worker-B1D2UnXD.mjs"
+      "assets/pdf.worker-CliDBb4N.mjs"
     ]
   },
-  "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.css": {
-    "file": "assets/plyr-DrglphuB.css",
-    "src": "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.css"
+  "node_modules/plyr/dist/plyr.css": {
+    "file": "assets/plyr-CG92-drw.css",
+    "src": "node_modules/plyr/dist/plyr.css"
   },
-  "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.mjs": {
-    "file": "assets/plyr-C41Bdcew.js",
+  "node_modules/plyr/dist/plyr.mjs": {
+    "file": "assets/plyr-Cwtstkjp.js",
     "name": "plyr",
-    "src": "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.mjs",
+    "src": "node_modules/plyr/dist/plyr.mjs",
     "isDynamicEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-Dnh_yujO.css",
+    "file": "assets/app-DuIU8QKP.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -51,19 +51,19 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Cw2K4D03.js",
+    "file": "assets/app-CONgZF0n.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
-      "_agora-Lx6xI2T2.js"
+      "_agora-By7UI9zt.js"
     ],
     "dynamicImports": [
-      "_howler-DosbB3nB.js",
-      "_agora-Lx6xI2T2.js",
-      "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs",
-      "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
-      "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.mjs"
+      "_howler-DZeOXej7.js",
+      "_agora-By7UI9zt.js",
+      "node_modules/pdfjs-dist/build/pdf.mjs",
+      "node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
+      "node_modules/plyr/dist/plyr.mjs"
     ]
   }
 }
