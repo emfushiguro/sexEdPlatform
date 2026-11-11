@@ -67,6 +67,8 @@ class AdminMfaAuthenticationTest extends TestCase
             ->assertSee('a***@e***.com', false)
             ->assertDontSee($admin->email, false)
             ->assertSee('name="digits[]"', false)
+            ->assertSee('data-otp-row', false)
+            ->assertSee('flex-nowrap', false)
             ->assertSee(route('admin.mfa.resend'), false)
             ->assertSee(route('admin.mfa.cancel'), false);
 

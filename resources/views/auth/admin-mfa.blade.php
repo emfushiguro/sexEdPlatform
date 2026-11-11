@@ -50,7 +50,7 @@
             @csrf
             <fieldset>
                 <legend class="block text-sm font-semibold text-gray-700 mb-3">Six-digit verification code</legend>
-                <div class="grid grid-cols-6 gap-2" @paste.prevent="paste($event)">
+                <div data-otp-row class="flex flex-nowrap justify-center gap-1 sm:gap-2" @paste.prevent="paste($event)">
                     @foreach(range(0, 5) as $index)
                         <input
                             data-otp-digit
@@ -65,7 +65,7 @@
                             maxlength="1"
                             autocomplete="{{ $index === 0 ? 'one-time-code' : 'off' }}"
                             aria-label="Digit {{ $index + 1 }} of 6"
-                            class="h-14 w-full rounded-xl border border-gray-200 bg-gray-50 text-center text-xl font-bold text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-purple-primary"
+                            class="h-14 w-10 shrink-0 rounded-xl border border-gray-200 bg-gray-50 text-center text-xl font-bold text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-purple-primary sm:w-12"
                             {{ $index === 0 ? 'autofocus' : '' }}
                         >
                     @endforeach

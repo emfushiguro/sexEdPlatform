@@ -17,14 +17,16 @@
         .greeting { margin: 0 0 16px; font-size: 16px; }
         .message { margin: 0 0 24px; color: #6b7280; font-size: 15px; line-height: 1.7; }
         .code-label { margin: 0 0 8px; color: #6b7280; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
-        .code { margin: 0 0 12px; padding: 20px 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #f9fafb; color: #3B0CB1; text-align: center; font-family: Consolas, Monaco, monospace; font-size: 36px; font-weight: 800; letter-spacing: 10px; }
+        .code-row { margin: 0 auto 20px; text-align: center; white-space: nowrap; }
+        .code-digit { display: inline-block; width: 40px; height: 40px; margin: 0 3px; border-radius: 6px; background: #ffffff; color: #1f2937; text-align: center; font-family: Consolas, Monaco, monospace; font-size: 22px; font-weight: 700; line-height: 40px; }
+        .copy-button { display: inline-block; margin: 0 auto 22px; padding: 12px 26px; border-radius: 24px; background: #730DB1; color: #ffffff; font-size: 15px; font-weight: 700; }
         .copy-note, .expiry { margin: 0 0 24px; color: #9ca3af; text-align: center; font-size: 13px; line-height: 1.5; }
         .warning { margin-bottom: 24px; padding: 14px 16px; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; background: #fef9f0; }
         .warning p { margin: 0; color: #92400e; font-size: 13px; line-height: 1.5; }
         .footer { padding: 24px 40px; border-top: 1px solid #f3f4f6; background: #f9fafb; text-align: center; }
         .footer a { margin: 0 8px; color: #9ca3af; font-size: 12px; text-decoration: none; }
         .copyright { margin: 12px 0 0; color: #d1d5db; font-size: 12px; }
-        @media (max-width: 600px) { .wrapper { margin: 0; border-radius: 0; } .header, .body, .footer { padding-left: 24px; padding-right: 24px; } .code { font-size: 30px; letter-spacing: 7px; } }
+        @media (max-width: 600px) { .wrapper { margin: 0; border-radius: 0; } .header, .body, .footer { padding-left: 24px; padding-right: 24px; } .code-digit { width: 34px; height: 36px; margin: 0 2px; font-size: 20px; line-height: 36px; } }
     </style>
 </head>
 <body>
@@ -41,9 +43,14 @@
             <p class="greeting">Hi, <strong>{{ $user->first_name ?? $user->name }}</strong>!</p>
             <p class="message">Use the verification code below to finish signing in to the Conscious Connections Admin panel.</p>
 
-            <p class="code-label">Your verification code</p>
-            <div class="code" aria-label="Verification code {{ implode(' ', str_split($code)) }}">{{ $code }}</div>
-            <p class="copy-note">Select and copy this code into the verification page already open in your browser.</p>
+            <p class="code-label">Code requested</p>
+            <div class="code-row" role="img" aria-label="Verification code {{ implode(' ', str_split($code)) }}">
+                @foreach(str_split($code) as $digit)
+                    <span class="code-digit">{{ $digit }}</span>
+                @endforeach
+            </div>
+            <div class="copy-button" aria-hidden="true">Copy code</div>
+            <p class="copy-note">Select and copy the code above into the verification page already open in your browser.</p>
             <p class="expiry">This code expires in <strong>5 minutes</strong>.</p>
 
             <div class="warning">
