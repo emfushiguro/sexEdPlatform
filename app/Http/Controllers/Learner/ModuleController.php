@@ -302,6 +302,7 @@ class ModuleController extends Controller
         $moduleQuizzes = $hasActiveAccess
             ? $module->quizzes()->where('is_active', true)->with('questions')->get()
             : collect();
+        $finalQuiz = $moduleQuizzes->firstWhere('id', $module->final_quiz_id);
         
         // Get lesson quizzes
         $lessonQuizzes = [];
@@ -381,6 +382,18 @@ class ModuleController extends Controller
             && $allTopicsCompleted
             && $allLessonQuizzesCompleted
             && $finalQuizCompleted;
+
+        $finalQuizAvailable = $hasActiveAccess
+            && $finalQuiz
+            && $totalLessons > 0
+            && count($completedLessonIds) === $totalLessons
+            && $allTopicsCompleted
+            && $allLessonQuizzesCompleted
+            && !$finalQuizCompleted;
+
+        $nextSteps = $certificateEligible
+            ? app(\App\Services\LearningPathPresentationService::class)->nextStepsFor($user, $module, session('learning_path_context.'.$user->id))
+            : ['paths' => [], 'suggestions' => collect()];
 
         $reviewSummary = [
             'average' => round((float) (ModuleFeedback::query()->where('module_id', $module->id)->avg('rating') ?? 0), 1),
@@ -463,6 +476,9 @@ class ModuleController extends Controller
             'quizAttempts',
             'moduleCertificate',
             'certificateEligible',
+            'finalQuiz',
+            'finalQuizAvailable',
+            'nextSteps',
             'completedTopicIds',
             'shieldsRemaining',
             'reviewSummary',
@@ -1021,7 +1037,11 @@ class ModuleController extends Controller
             ->where('module_id', $module->id)
             ->first();
 
-        return view('learner.modules.completion', compact('module', 'certificate'));
+        $nextSteps = $enrollment->completed_at !== null || (int) $enrollment->completion_percentage >= 100
+            ? app(\App\Services\LearningPathPresentationService::class)->nextStepsFor($user, $module, session('learning_path_context.'.$user->id))
+            : ['paths' => [], 'suggestions' => collect()];
+
+        return view('learner.modules.completion', compact('module', 'certificate', 'nextSteps'));
     }
 
     /**

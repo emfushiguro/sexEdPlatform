@@ -107,6 +107,55 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
             ->assertSee('Return to Modules', false);
     }
 
+    public function test_completed_lessons_expose_the_final_quiz_action_before_certificate_claiming(): void
+    {
+        /** @var User $learner */
+        $learner = User::factory()->create(['role' => 'learner']);
+        $learner->assignRole('learner');
+        LearnerProfile::query()->create([
+            'user_id' => $learner->id,
+            'username' => 'final_quiz_action_learner',
+            'birthdate' => now()->subYears(20)->toDateString(),
+        ]);
+
+        $module = Module::factory()->create([
+            'is_published' => true,
+            'min_age' => 18,
+            'max_age' => 30,
+        ]);
+        $lesson = Lesson::factory()->create([
+            'module_id' => $module->id,
+            'is_published' => true,
+        ]);
+        $finalQuiz = Quiz::factory()->create([
+            'module_id' => $module->id,
+            'is_active' => true,
+        ]);
+        $module->update(['final_quiz_id' => $finalQuiz->id]);
+
+        ModuleEnrollment::query()->create([
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+            'status' => EnrollmentStatus::Approved,
+            'enrolled_at' => now(),
+        ]);
+        UserProgress::query()->create([
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+            'lesson_id' => $lesson->id,
+            'completed' => true,
+            'progress_percentage' => 100,
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($learner)
+            ->get(route('learner.modules.show', $module))
+            ->assertOk()
+            ->assertSee('Take Final Quiz', false)
+            ->assertSee(route('quizzes.show', $finalQuiz), false)
+            ->assertDontSee('Get Certificate', false);
+    }
+
     public function test_direct_module_completion_flashes_success_only_on_first_transition(): void
     {
         /** @var User $learner */

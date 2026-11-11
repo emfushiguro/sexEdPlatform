@@ -82,8 +82,9 @@
 
     <section aria-labelledby="learning-path-modules-heading">
         <div class="mb-5">
-            <p class="text-sm font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">The journey</p>
-            <h2 id="learning-path-modules-heading" class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Path modules</h2>
+            <p class="text-sm font-semibold uppercase tracking-[0.16em] text-purple-700 dark:text-purple-300">Your adventure</p>
+            <h2 id="learning-path-modules-heading" class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Follow your learning trail</h2>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Each milestone is a module. Explore at your own pace.</p>
         </div>
 
         <ol class="learning-path-route" aria-label="Learning path modules">
@@ -91,6 +92,9 @@
                 <x-learning-path.module-node :node="$node" :show-connector="!$loop->last" />
             @endforeach
         </ol>
+        @if(! $path['nodes'])
+            <p class="rounded-2xl border border-dashed border-gray-300 p-6 text-gray-600 dark:text-gray-300">No modules are currently available in this journey. Explore the module catalog for more learning.</p>
+        @endif
     </section>
 </div>
 @endsection

@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\Auth\AdminMfaService;
 use App\Support\AccountEmail;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Validation\ValidationException;
 
 class AdminAuthController extends Controller
 {
@@ -22,68 +21,32 @@ class AdminAuthController extends Controller
     /**
      * Handle admin login request.
      */
-    public function login(Request $request)
+    public function login(Request $request, AdminMfaService $mfa): RedirectResponse
     {
         if (is_string($request->input('email'))) {
             $request->merge(['email' => AccountEmail::normalize($request->input('email'))]);
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'email' => ['required', 'email:rfc'],
-            'password' => ['required'],
+            'password' => ['required', 'string'],
         ]);
 
-        // Rate limiting: max 5 attempts per minute
-        $key = 'admin-login:' . $request->ip();
-        
-        if (RateLimiter::tooManyAttempts($key, 5)) {
-            $seconds = RateLimiter::availableIn($key);
-            throw ValidationException::withMessages([
-                'email' => ["Too many login attempts. Please try again in {$seconds} seconds."],
-            ]);
-        }
+        $mfa->beginFromAdminPortal(
+            $request,
+            (string) $validated['email'],
+            (string) $validated['password'],
+        );
 
-        // Attempt authentication
-        $credentials = $request->only('email', 'password');
-
-        if (Auth::attempt($credentials, false)) {
-            $user = Auth::user();
-
-            // Verify user has admin access permission.
-            if ($user->can('access admin panel')) {
-                RateLimiter::clear($key);
-                $request->session()->regenerate();
-                
-                return redirect()->intended(route('admin.dashboard'));
-            }
-
-            // Not an admin, logout
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            throw ValidationException::withMessages([
-                'email' => ['Unauthorized access. Admin credentials required.'],
-            ]);
-        }
-
-        // Failed login attempt
-        RateLimiter::hit($key, 60);
-
-        throw ValidationException::withMessages([
-            'email' => ['The provided credentials do not match our records.'],
-        ]);
+        return redirect()->route('admin.mfa.show');
     }
 
     /**
      * Handle admin logout.
      */
-    public function logout(Request $request)
+    public function logout(Request $request, AdminMfaService $mfa): RedirectResponse
     {
-        Auth::logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $mfa->logout($request);
 
         return redirect()->route('admin.login');
     }

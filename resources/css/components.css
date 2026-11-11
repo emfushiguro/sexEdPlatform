@@ -421,7 +421,8 @@
 /* Learning Path journey */
 @layer components {
     .learning-path-route {
-        @apply mx-auto grid max-w-4xl list-none gap-0 p-0;
+        @apply mx-auto grid max-w-4xl list-none gap-0 rounded-3xl px-3 py-6 sm:px-8;
+        background-image: radial-gradient(circle at 12% 18%, rgb(167 139 250 / 0.12) 0 3px, transparent 4px), radial-gradient(circle at 86% 75%, rgb(56 189 248 / 0.12) 0 4px, transparent 5px);
     }
 
     .learning-path-node {
@@ -429,11 +430,11 @@
     }
 
     .learning-path-node__card {
-        @apply min-w-0 rounded-3xl border bg-white p-5 shadow-sm transition dark:bg-gray-800 sm:p-6;
+        @apply min-w-0 rounded-3xl border bg-white p-5 shadow-md transition dark:bg-gray-800 sm:p-6;
     }
 
     .learning-path-node__icon {
-        @apply inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border-2;
+        @apply inline-flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border-2 bg-white shadow-sm dark:bg-gray-800;
     }
 
     .learning-path-node__icon svg {
@@ -505,8 +506,9 @@
 
     .learning-path-node__connector path {
         stroke: currentColor;
-        stroke-dasharray: 3 4;
-        stroke-width: 1.5;
+        stroke-dasharray: 2 5;
+        stroke-linecap: round;
+        stroke-width: 3;
     }
 
     .learning-path-completion-card,

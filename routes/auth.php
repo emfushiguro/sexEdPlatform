@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\AdminAuthController;
+use App\Http\Controllers\Auth\AdminEmailVerificationController;
+use App\Http\Controllers\Auth\AdminMfaController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\DependentSupportRegistrationController;
@@ -101,6 +103,20 @@ Route::middleware('guest')->group(function () {
     Route::post('secure-panel-access', [AdminAuthController::class, 'login'])
         ->name('admin.login.submit');
 
+    Route::get('secure-panel-access/verify/copy/{challenge}', [AdminMfaController::class, 'copy'])
+        ->middleware('signed')
+        ->name('admin.mfa.copy');
+    Route::get('secure-panel-access/verify', [AdminMfaController::class, 'show'])
+        ->name('admin.mfa.show');
+    Route::post('secure-panel-access/verify', [AdminMfaController::class, 'verify'])
+        ->middleware('throttle:10,1')
+        ->name('admin.mfa.verify');
+    Route::post('secure-panel-access/resend', [AdminMfaController::class, 'resend'])
+        ->middleware('throttle:6,1')
+        ->name('admin.mfa.resend');
+    Route::post('secure-panel-access/cancel', [AdminMfaController::class, 'cancel'])
+        ->name('admin.mfa.cancel');
+
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
@@ -118,6 +134,12 @@ Route::middleware('guest')->group(function () {
 Route::get('registration/temp-document/{flow}/{step}', [RegistrationTempDocumentController::class, 'show'])
     ->whereIn('flow', ['parent', 'child'])
     ->name('registration.temp-document.preview');
+
+Route::get(
+    'secure-panel-access/verify-email/{user}/{hash}',
+    AdminEmailVerificationController::class,
+)->middleware(['signed', 'throttle:6,1'])
+    ->name('admin.email-verification.verify');
 
 Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
     ->middleware(['auth', 'signed', 'throttle:6,1'])

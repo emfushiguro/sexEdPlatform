@@ -57,6 +57,20 @@ class SuspensionService
         return $suspension->fresh();
     }
 
+    public function refreshExpiredForUser(User $user): void
+    {
+        $expired = UserSuspension::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->whereNotNull('ends_at')
+            ->where('ends_at', '<=', now())
+            ->update(['status' => 'expired', 'updated_at' => now()]);
+
+        if ($expired > 0) {
+            $this->syncUserStatus($user);
+        }
+    }
+
     public function revoke(UserSuspension $suspension, User $admin, string $reason): UserSuspension
     {
         if ($suspension->status !== 'active') {
@@ -95,7 +109,7 @@ class SuspensionService
             ? $enforcementAction->action_type
             : EnforcementActionType::from((string) $enforcementAction->action_type);
 
-        if (!in_array($actionType, [
+        if (! in_array($actionType, [
             EnforcementActionType::TemporarySuspension,
             EnforcementActionType::ExtendedSuspension,
             EnforcementActionType::PermanentSuspension,
@@ -119,7 +133,7 @@ class SuspensionService
 
     private function syncUserStatus(?User $user): void
     {
-        if (!$user) {
+        if (! $user) {
             return;
         }
 

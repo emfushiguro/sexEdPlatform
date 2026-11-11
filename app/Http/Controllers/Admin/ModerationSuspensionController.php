@@ -15,8 +15,8 @@ use App\Models\MessageReport;
 use App\Models\ModerationCase;
 use App\Models\User;
 use App\Models\UserSuspension;
-use App\Services\ContentReportService;
 use App\Services\Admin\ModerationSuspensionDashboardService;
+use App\Services\ContentReportService;
 use App\Services\Moderation\EnforcementActionService;
 use App\Services\Moderation\SourceAdapters\ChatReportModerationAdapter;
 use App\Services\Moderation\SuspensionService;
@@ -33,8 +33,7 @@ class ModerationSuspensionController extends Controller
         private readonly ContentReportService $contentReportService,
         private readonly EnforcementActionService $enforcementActionService,
         private readonly SuspensionService $suspensionService,
-    ) {
-    }
+    ) {}
 
     public function index(FilterModerationSuspensionsRequest $request): View
     {
@@ -98,8 +97,17 @@ class ModerationSuspensionController extends Controller
         $validated = $request->validate([
             'status' => ['required', Rule::in(['open', 'under_review', 'resolved', 'dismissed'])],
             'action_taken' => ['required', Rule::in(MessageReportAction::values())],
+            'duration_amount' => ['required_if:action_taken,'.MessageReportAction::TemporarySuspension->value, 'integer', 'min:1'],
+            'duration_unit' => ['required_if:action_taken,'.MessageReportAction::TemporarySuspension->value, Rule::in(['hours', 'days'])],
             'moderation_notes' => ['nullable', 'string', 'max:5000'],
         ]);
+
+        if (($validated['action_taken'] ?? null) === MessageReportAction::TemporarySuspension->value) {
+            $maximum = $validated['duration_unit'] === 'hours' ? 8760 : 365;
+            validator($validated, [
+                'duration_amount' => ['integer', 'max:'.$maximum],
+            ])->validate();
+        }
 
         /** @var MessageReport|null $messageReport */
         $messageReport = MessageReport::query()
@@ -126,6 +134,8 @@ class ModerationSuspensionController extends Controller
                 $messageReport,
                 $request->user(),
                 MessageReportAction::from($validated['action_taken']),
+                $validated['duration_amount'] ?? null,
+                $validated['duration_unit'] ?? null,
             );
         }
 
@@ -160,10 +170,12 @@ class ModerationSuspensionController extends Controller
         MessageReport $messageReport,
         ?User $admin,
         MessageReportAction $action,
+        ?int $durationAmount = null,
+        ?string $durationUnit = null,
     ): void {
         $reportedUser = $messageReport->message?->sender;
 
-        if (!$reportedUser) {
+        if (! $reportedUser) {
             return;
         }
 
@@ -174,7 +186,7 @@ class ModerationSuspensionController extends Controller
             default => null,
         };
 
-        if (!$enforcementType) {
+        if (! $enforcementType) {
             return;
         }
 
@@ -192,6 +204,9 @@ class ModerationSuspensionController extends Controller
             moderationCase: $moderationCase,
             issuedByAdmin: $admin,
             notes: $messageReport->moderation_notes,
+            endsAt: $enforcementType === EnforcementActionType::TemporarySuspension && $durationAmount
+                ? now()->add($durationUnit, $durationAmount)
+                : null,
         );
 
         if ($enforcementType === EnforcementActionType::TemporarySuspension) {
@@ -203,7 +218,7 @@ class ModerationSuspensionController extends Controller
     {
         $freshCase = $moderationCase->fresh();
 
-        if (!$freshCase) {
+        if (! $freshCase) {
             return;
         }
 

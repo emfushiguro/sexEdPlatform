@@ -49,5 +49,6 @@
             </div>
         </div>
     </div>
+    @include('learner.learning-paths.next-steps', ['nextSteps' => $nextSteps])
 </div>
 @endsection

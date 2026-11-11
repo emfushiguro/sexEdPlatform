@@ -45,6 +45,44 @@ class LearningPathPresentationService
         return $this->presentMany($user, collect([$path]))[(int) $path->id];
     }
 
+    public function nextStepsFor(User $user, Module $module, ?int $preferredPathId = null): array
+    {
+        $category = $user->learnerProfile?->getAgeBracket();
+        if ($category === null) {
+            return ['paths' => [], 'suggestions' => collect()];
+        }
+
+        $paths = LearningPath::query()->published()->forLearnerCategory($category)
+            ->whereHas('pathModules', fn ($query) => $query->where('module_id', $module->id))
+            ->with('pathModules.module')->get()
+            ->sortBy(fn (LearningPath $path) => $path->id === $preferredPathId ? 0 : 1)->values();
+        $presentations = $this->presentMany($user, $paths);
+        $steps = [];
+        foreach ($paths as $path) {
+            $position = $path->pathModules->firstWhere('module_id', $module->id)?->position;
+            $laterIds = $path->pathModules->filter(fn ($membership) => $membership->position > $position)
+                ->pluck('module_id')->map(fn ($id) => (int) $id)->all();
+            $next = collect($presentations[$path->id]['nodes'])
+                ->first(fn ($node) => in_array((int) $node['module']->id, $laterIds, true)
+                    && ! in_array($node['state'], ['completed', 'unavailable'], true));
+            if ($next) {
+                $next['action_url'] = $this->routeIfAvailable('learner.modules.show', $next['module']);
+            }
+            $steps[] = ['path' => $path, 'next' => $next];
+        }
+
+        $suggestions = $paths->isNotEmpty() ? collect() : Module::query()->learnerVisible()
+            ->forAge($user->learnerProfile->getAge())
+            ->whereKeyNot($module->id)
+            ->whereDoesntHave('enrollments', fn ($query) => $query->where('user_id', $user->id)
+                ->where(fn ($excluded) => $excluded->whereNotNull('completed_at')
+                    ->orWhere('completion_percentage', '>=', 100)
+                    ->orWhereIn('status', [EnrollmentStatus::Pending->value, EnrollmentStatus::Rejected->value])))
+            ->orderBy('order')->orderBy('id')->limit(3)->get();
+
+        return ['paths' => $steps, 'suggestions' => $suggestions];
+    }
+
     /**
      * @return array<string, mixed>
      */

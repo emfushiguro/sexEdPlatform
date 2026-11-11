@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\UserSuspension;
+use App\Services\Moderation\SuspensionService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -10,14 +10,17 @@ use Symfony\Component\HttpFoundation\Response;
 class CheckUserSuspensionStatus
 {
     /**
-     * @param \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response) $next
+     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return $next($request);
         }
+
+        app(SuspensionService::class)->refreshExpiredForUser($user);
+        $user->refresh();
 
         if ($request->routeIs('moderation.suspension-status')
             || $request->routeIs('moderation.appeals.*')
@@ -25,7 +28,7 @@ class CheckUserSuspensionStatus
             return $next($request);
         }
 
-        $activeSuspension = UserSuspension::query()
+        $activeSuspension = $user->userSuspensions()
             ->where('user_id', $user->id)
             ->where('status', 'active')
             ->where(function ($query): void {
@@ -34,7 +37,7 @@ class CheckUserSuspensionStatus
             ->latest('starts_at')
             ->first();
 
-        if (!$activeSuspension) {
+        if (! $activeSuspension) {
             return $next($request);
         }
 

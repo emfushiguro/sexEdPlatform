@@ -44,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'paymongo.webhook' => \App\Http\Middleware\VerifyPayMongoWebhook::class,
             'persona.webhook' => \App\Http\Middleware\VerifyPersonaWebhook::class,
             'direct.instructor.enabled' => \App\Http\Middleware\EnsureDirectInstructorApplicationsEnabled::class,
+            'admin.mfa' => \App\Http\Middleware\EnsureAdminMfaVerified::class,
         ]);
 
         $middleware->appendToGroup('web', \App\Http\Middleware\CheckUserSuspensionStatus::class);

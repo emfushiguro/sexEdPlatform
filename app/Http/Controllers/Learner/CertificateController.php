@@ -11,6 +11,7 @@ use App\Notifications\Learner\CertificateIssuedNotification;
 use App\Services\CertificatePdfService;
 use App\Services\GamificationService;
 use App\Services\LearnerModuleCompletionService;
+use App\Services\LearningPathPresentationService;
 use App\Services\Modules\ModuleAccessService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -111,7 +112,11 @@ class CertificateController extends Controller
 
         $templateImageUrl = app(CertificatePdfService::class)->getTemplatePublicUrl();
 
-        return view('learner.certificates.show', compact('certificate', 'templateImageUrl'));
+        $nextSteps = $certificate->module
+            ? app(LearningPathPresentationService::class)->nextStepsFor($user, $certificate->module, session('learning_path_context.'.$user->id))
+            : ['paths' => [], 'suggestions' => collect()];
+
+        return view('learner.certificates.show', compact('certificate', 'templateImageUrl', 'nextSteps'));
     }
 
     /**

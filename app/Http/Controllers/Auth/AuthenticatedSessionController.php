@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\Auth\AdminMfaService;
 use App\Support\AuthenticatedHomeRouteResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,8 +24,21 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request, AuthenticatedHomeRouteResolver $homeRouteResolver): RedirectResponse
-    {
+    public function store(
+        LoginRequest $request,
+        AuthenticatedHomeRouteResolver $homeRouteResolver,
+        AdminMfaService $mfa,
+    ): RedirectResponse {
+        $challenge = $mfa->beginIfAdmin(
+            $request,
+            (string) $request->input('email'),
+            (string) $request->input('password'),
+        );
+
+        if ($challenge !== null) {
+            return redirect()->route('admin.mfa.show');
+        }
+
         $request->authenticate();
 
         // Prevent admin users from logging in through learner login
@@ -32,9 +46,9 @@ class AuthenticatedSessionController extends Controller
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-            
+
             return back()->withErrors([
-                'email' => 'Admin accounts must use the administrator login portal.'
+                'email' => 'Admin accounts must use the administrator login portal.',
             ]);
         }
 
@@ -58,13 +72,9 @@ class AuthenticatedSessionController extends Controller
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, AdminMfaService $mfa): RedirectResponse
     {
-        Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
-
-        $request->session()->regenerateToken();
+        $mfa->logout($request);
 
         return redirect('/');
     }
