@@ -40,3 +40,9 @@ Schedule::command('subscriptions:process-renewals')
 Schedule::command('model:prune')
     ->dailyAt('02:00')
     ->withoutOverlapping();
+
+if (config('learner_age_policy.schedule_reclassification')) {
+    Schedule::command('learners:reclassify-age-policy --apply')
+        ->dailyAt('00:15')
+        ->withoutOverlapping();
+}
