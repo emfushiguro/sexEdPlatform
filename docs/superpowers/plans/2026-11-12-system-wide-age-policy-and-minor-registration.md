@@ -1943,4 +1943,3 @@ Expected: PASS is the release target. If blocked by pre-existing infrastructure 
 - [ ] **Step 10: Commit only verification-driven task fixes, then produce the handoff**
 
 Do not create an empty verification commit. If verification required a task-owned fix, reuse that task's explicit `git add` list with only the files actually changed and commit with `test: verify learner age policy rollout`; never stage an entire dirty directory. The final handoff must list commits, migrations, new commands, test/browser/mail evidence, unrun gates, staging/production prerequisites, and the fact that no production data transition was performed.
-
