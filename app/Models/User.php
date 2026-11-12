@@ -61,6 +61,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'status',
         'account_type',
         'age_bracket_cached',
+        'age_eligibility_cached',
+        'minor_account_activation_required',
+        'minor_account_activated_at',
+        'minor_privacy_notice_version',
+        'minor_privacy_accepted_at',
         'chat_status',
         'verified',
         'is_parent_registration',
@@ -107,6 +112,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'verified' => 'boolean',
             'birthdate' => 'date',
+            'minor_account_activation_required' => 'boolean',
+            'minor_account_activated_at' => 'datetime',
+            'minor_privacy_accepted_at' => 'datetime',
             'is_parent_registration' => 'boolean',
             'parent_identity_sandbox_manual_review' => 'boolean',
             'parent_identity_resubmission_allowed' => 'boolean',
@@ -929,10 +937,10 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         if ($this->isLearner()) {
-            return match ($this->deriveAgeBracketCache()) {
-                'kids' => self::ACCOUNT_TYPE_LEARNER_CHILD,
-                'teens' => self::ACCOUNT_TYPE_LEARNER_TEEN,
-                default => self::ACCOUNT_TYPE_LEARNER_ADULT,
+            return match (LearnerAgePolicy::classify($this->birthdate)) {
+                LearnerAgePolicy::ELIGIBLE_TEENAGER => self::ACCOUNT_TYPE_LEARNER_TEEN,
+                LearnerAgePolicy::ELIGIBLE_ADULT => self::ACCOUNT_TYPE_LEARNER_ADULT,
+                default => (string) $this->account_type,
             };
         }
 
@@ -941,9 +949,26 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function refreshClassificationCache(): void
     {
+        if (! $this->hasRole('learner')) {
+            $this->forceFill([
+                'age_eligibility_cached' => null,
+                'age_bracket_cached' => null,
+            ])->saveQuietly();
+
+            return;
+        }
+
+        $eligibility = LearnerAgePolicy::classify($this->birthdate);
+        $accountType = match ($eligibility) {
+            LearnerAgePolicy::ELIGIBLE_TEENAGER => self::ACCOUNT_TYPE_LEARNER_TEEN,
+            LearnerAgePolicy::ELIGIBLE_ADULT => self::ACCOUNT_TYPE_LEARNER_ADULT,
+            default => $this->account_type,
+        };
+
         $this->forceFill([
-            'age_bracket_cached' => $this->deriveAgeBracketCache(),
-            'account_type' => $this->deriveAccountType(),
+            'age_eligibility_cached' => $eligibility,
+            'age_bracket_cached' => LearnerAgePolicy::category($this->birthdate),
+            'account_type' => $accountType,
         ])->saveQuietly();
     }
 }

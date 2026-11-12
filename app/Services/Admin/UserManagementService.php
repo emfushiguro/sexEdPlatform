@@ -190,6 +190,7 @@ class UserManagementService
                     'status',
                     'account_type',
                     'age_bracket_cached',
+                    'age_eligibility_cached',
                 ]),
                 meta: ['source' => 'admin.users.store'],
                 request: $request,
@@ -213,7 +214,10 @@ class UserManagementService
     {
         try {
             return DB::transaction(function () use ($user, $payload, $actorId, $request): User {
-            $before = $user->only(['id', 'name', 'email', 'role', 'status', 'account_type', 'age_bracket_cached']);
+            $before = $user->only([
+                'id', 'name', 'email', 'role', 'status', 'account_type',
+                'age_bracket_cached', 'age_eligibility_cached',
+            ]);
             $currentRole = $this->currentAssignedRole($user);
             $targetRole = array_key_exists('role', $payload)
                 ? $this->resolveTargetRole($payload)
@@ -273,6 +277,7 @@ class UserManagementService
                     'status',
                     'account_type',
                     'age_bracket_cached',
+                    'age_eligibility_cached',
                 ]),
                 meta: [
                     'source' => 'admin.users.update',
