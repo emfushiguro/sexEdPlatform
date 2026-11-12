@@ -5,8 +5,10 @@ namespace App\Services\Auth;
 use App\Models\MinorAccountHandoff;
 use App\Models\ParentChildAccount;
 use App\Models\User;
+use App\Notifications\TeenagerPasswordRecoveryRequestedNotification;
 use App\Services\Identity\LearnerIdentityRequirement;
 use App\Support\LearnerAgePolicy;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -115,6 +117,131 @@ final class MinorAccountHandoffService
         });
     }
 
+    public function requestPasswordReset(?User $child): void
+    {
+        if ($child === null) {
+            return;
+        }
+
+        DB::transaction(function () use ($child): void {
+            $lockedChild = User::query()->lockForUpdate()->find($child->id);
+            if ($lockedChild === null) {
+                return;
+            }
+
+            $relationship = ParentChildAccount::query()
+                ->where('child_user_id', $lockedChild->id)
+                ->minorAccessEligible()
+                ->lockForUpdate()
+                ->first();
+            $guardian = $relationship === null
+                ? null
+                : User::query()->lockForUpdate()->find($relationship->parent_user_id);
+
+            if ($guardian === null || ! $this->isPasswordRecoveryEligible($relationship, $lockedChild, $guardian)) {
+                return;
+            }
+
+            MinorAccountHandoff::query()
+                ->where('child_user_id', $lockedChild->id)
+                ->where('purpose', MinorAccountHandoff::PURPOSE_PASSWORD_RESET)
+                ->whereNull('approved_at')
+                ->whereNull('used_at')
+                ->update(['expires_at' => now()]);
+
+            $handoff = MinorAccountHandoff::query()->create([
+                'child_user_id' => $lockedChild->id,
+                'guardian_user_id' => $guardian->id,
+                'parent_child_account_id' => $relationship->id,
+                'purpose' => MinorAccountHandoff::PURPOSE_PASSWORD_RESET,
+                'token_hash' => null,
+                'approved_at' => null,
+                'expires_at' => now()->addMinutes((int) config('learner_age_policy.handoff_minutes')),
+            ]);
+
+            DB::afterCommit(function () use ($guardian, $lockedChild, $handoff): void {
+                $guardian->notify(new TeenagerPasswordRecoveryRequestedNotification(
+                    $lockedChild->fresh(),
+                    $handoff->fresh(),
+                ));
+            });
+        });
+    }
+
+    /** @return array{0: MinorAccountHandoff, 1: string} */
+    public function approvePasswordReset(MinorAccountHandoff $handoff, User $guardian): array
+    {
+        return DB::transaction(function () use ($handoff, $guardian): array {
+            $lockedHandoff = MinorAccountHandoff::query()->lockForUpdate()->find($handoff->id);
+            $lockedGuardian = User::query()->lockForUpdate()->find($guardian->id);
+
+            if ($lockedHandoff === null || $lockedGuardian === null
+                || $lockedHandoff->purpose !== MinorAccountHandoff::PURPOSE_PASSWORD_RESET
+                || $lockedHandoff->approved_at !== null
+                || $lockedHandoff->used_at !== null
+                || $lockedHandoff->expires_at?->isPast()) {
+                throw new InvalidArgumentException('This recovery request is invalid or expired.');
+            }
+
+            $relationship = ParentChildAccount::query()->lockForUpdate()->find($lockedHandoff->parent_child_account_id);
+            $child = User::query()->lockForUpdate()->find($lockedHandoff->child_user_id);
+            if ($relationship === null || $child === null
+                || (int) $relationship->parent_user_id !== (int) $lockedGuardian->id
+                || (int) $relationship->child_user_id !== (int) $child->id
+                || (int) $lockedHandoff->guardian_user_id !== (int) $lockedGuardian->id
+                || ! $this->isPasswordRecoveryEligible($relationship, $child, $lockedGuardian)) {
+                throw new InvalidArgumentException('This recovery request is invalid or expired.');
+            }
+
+            $rawCode = $this->generateCode();
+            $lockedHandoff->forceFill([
+                'token_hash' => $this->digestForStorage($rawCode),
+                'approved_at' => now(),
+                'expires_at' => now()->addMinutes((int) config('learner_age_policy.handoff_minutes')),
+            ])->save();
+
+            return [$lockedHandoff->fresh(['child', 'guardian', 'relationship']), $rawCode];
+        });
+    }
+
+    public function consumePasswordReset(string $code, string $username, string $password): User
+    {
+        return DB::transaction(function () use ($code, $username, $password): User {
+            $handoff = MinorAccountHandoff::query()
+                ->where('purpose', MinorAccountHandoff::PURPOSE_PASSWORD_RESET)
+                ->where('token_hash', $this->digestForStorage($this->normalizeCode($code)))
+                ->lockForUpdate()
+                ->first();
+
+            if ($handoff === null || $handoff->approved_at === null || $handoff->used_at !== null || $handoff->expires_at?->isPast()) {
+                throw new InvalidArgumentException('This recovery code is invalid or expired.');
+            }
+
+            $relationship = ParentChildAccount::query()->lockForUpdate()->find($handoff->parent_child_account_id);
+            $child = User::query()->lockForUpdate()->find($handoff->child_user_id);
+            $guardian = User::query()->lockForUpdate()->find($handoff->guardian_user_id);
+            $profile = $child?->learnerProfile()->first();
+            $submittedUsername = strtolower(trim($username));
+
+            if ($relationship === null || $child === null || $guardian === null || $profile === null
+                || ! hash_equals(strtolower((string) $profile->username), $submittedUsername)
+                || (int) $relationship->parent_user_id !== (int) $guardian->id
+                || (int) $relationship->child_user_id !== (int) $child->id
+                || ! $this->isPasswordRecoveryEligible($relationship, $child, $guardian)) {
+                throw new InvalidArgumentException('This recovery code is invalid or expired.');
+            }
+
+            $child->forceFill([
+                'password' => Hash::make($password),
+                'remember_token' => Str::random(60),
+            ])->save();
+            event(new PasswordReset($child));
+            $handoff->forceFill(['used_at' => now()])->save();
+
+            return $child->fresh();
+        });
+    }
+
     private function assertActivationEligible(ParentChildAccount $relationship, User $child): void
     {
         if (LearnerAgePolicy::classify($child->birthdate) !== LearnerAgePolicy::ELIGIBLE_TEENAGER
@@ -122,6 +249,26 @@ final class MinorAccountHandoffService
             || ! ParentChildAccount::query()->whereKey($relationship->id)->minorAccessEligible()->exists()) {
             throw new InvalidArgumentException('This activation code is invalid or expired.');
         }
+    }
+
+    private function isPasswordRecoveryEligible(
+        ?ParentChildAccount $relationship,
+        User $child,
+        User $guardian,
+    ): bool {
+        return $child->isLearner()
+            && $child->email === null
+            && $child->status === User::STATUS_ACTIVE
+            && LearnerAgePolicy::classify($child->birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER
+            && $child->hasCompletedMinorActivation()
+            && $guardian->status === User::STATUS_ACTIVE
+            && $guardian->hasVerifiedEmail()
+            && $guardian->parent_verification_status === 'approved'
+            && $guardian->hasCompletedGuardianOnboarding()
+            && $relationship !== null
+            && (int) $relationship->parent_user_id === (int) $guardian->id
+            && (int) $relationship->child_user_id === (int) $child->id
+            && ParentChildAccount::query()->whereKey($relationship->id)->minorAccessEligible()->exists();
     }
 
     public function generateCode(): string

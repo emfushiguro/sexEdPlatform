@@ -19,6 +19,7 @@ use App\Http\Controllers\InstructorApplication\DocumentController as InstructorA
 use App\Http\Controllers\InstructorApplication\PersonaIdentityController as InstructorPersonaIdentityController;
 use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
 use App\Http\Controllers\Auth\LearnerEligibilityStatusController;
+use App\Http\Controllers\Auth\MinorPasswordRecoveryController;
 use App\Http\Controllers\Auth\MinorRegistrationRequestController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\ParentApprovalLinkController;
@@ -125,6 +126,11 @@ Route::middleware('guest')->group(function () {
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
         ->middleware('throttle:password-reset-request')
         ->name('password.email');
+
+    Route::get('teenager/password-recovery', [MinorPasswordRecoveryController::class, 'create'])
+        ->name('minor.password.reset');
+    Route::post('teenager/password-recovery', [MinorPasswordRecoveryController::class, 'store'])
+        ->name('minor.password.reset.store');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
@@ -336,5 +342,8 @@ Route::middleware('auth')->group(function () {
 
         Route::post('parent/children/{parentChildAccount}/minor-authorization', [\App\Http\Controllers\GuardianRelationshipLifecycleController::class, 'authorizeMinor'])
             ->name('parent.children.minor-authorization');
+
+        Route::post('parent/children/minor-password-reset/{handoff}/approve', [MinorPasswordRecoveryController::class, 'approve'])
+            ->name('parent.children.minor-password-reset.approve');
     });
 });

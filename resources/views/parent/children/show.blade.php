@@ -109,6 +109,25 @@
         </div>
     @endif
 
+    @php($pendingMinorPasswordRecoveries = $pendingMinorPasswordRecoveries ?? collect())
+    @if($pendingMinorPasswordRecoveries->isNotEmpty())
+        <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <p class="font-semibold">Account recovery requested</p>
+            <p class="mt-1 text-xs">Approve the request to generate a one-time code. The Teenager will choose the new password.</p>
+            <div class="mt-3 space-y-2">
+                @foreach($pendingMinorPasswordRecoveries as $recovery)
+                    <div class="flex flex-col gap-3 rounded-lg border border-blue-100 bg-white/70 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                        <span class="text-xs text-blue-800">Expires {{ $recovery->expires_at?->format('M d, Y H:i T') }}</span>
+                        <form method="POST" action="{{ route('parent.children.minor-password-reset.approve', $recovery) }}">
+                            @csrf
+                            <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-blue-700 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Approve recovery</button>
+                        </form>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{-- Tabs --}}
     <div x-data="{ tab: 'progress' }">
 

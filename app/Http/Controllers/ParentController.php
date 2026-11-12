@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EnrollmentStatus;
 use App\Http\Requests\Parent\RejectEnrollmentRequest;
+use App\Models\MinorAccountHandoff;
 use App\Models\ParentChildAccount;
 use App\Models\ModuleAccessGrant;
 use App\Models\ModuleEnrollment;
@@ -44,6 +45,15 @@ class ParentController extends Controller
 
         $canApproveContent = (bool) ($parentChildLink?->can_approve_content ?? false);
         $canViewQuizAnswers = (bool) ($parentChildLink?->can_view_quiz_answers ?? false);
+        $pendingMinorPasswordRecoveries = MinorAccountHandoff::query()
+            ->where('child_user_id', $child->id)
+            ->where('guardian_user_id', $parent->id)
+            ->where('purpose', MinorAccountHandoff::PURPOSE_PASSWORD_RESET)
+            ->whereNull('approved_at')
+            ->whereNull('used_at')
+            ->where('expires_at', '>', now())
+            ->latest('id')
+            ->get();
 
         return view('parent.children.show', [
             'child'              => $child,
@@ -54,6 +64,7 @@ class ParentController extends Controller
             'canViewQuizAnswers' => $canViewQuizAnswers,
             'canApproveContent'  => $canApproveContent,
             'parentChildLink' => $parentChildLink,
+            'pendingMinorPasswordRecoveries' => $pendingMinorPasswordRecoveries,
         ]);
     }
 

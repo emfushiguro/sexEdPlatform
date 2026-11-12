@@ -136,14 +136,14 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
         RateLimiter::for('password-reset-request', function (Request $request) {
-            $email = is_string($request->input('email')) ? AccountEmail::normalize($request->input('email')) : '';
+            $login = is_string($request->input('login')) ? mb_strtolower(trim($request->input('login'))) : '';
             $limits = [
                 Limit::perMinute(5)->by('password-reset-ip:'.$request->ip()),
                 Limit::perHour(20)->by('password-reset-hour-ip:'.$request->ip()),
             ];
 
-            if ($email !== '') {
-                $limits[] = Limit::perHour(3)->by('password-reset-email:'.AccountEmail::fingerprint($email));
+            if ($login !== '') {
+                $limits[] = Limit::perHour(3)->by('password-reset-login:'.AccountEmail::fingerprint($login));
             }
 
             return $limits;

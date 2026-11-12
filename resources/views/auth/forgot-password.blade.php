@@ -13,7 +13,7 @@
     <div class="mb-6">
         <h2 class="text-2xl font-bold text-purple-900">Password Reset</h2>
         <p class="mt-1 text-sm text-gray-500">
-            Enter the email address linked to your account and we'll send you a reset link.
+            Enter the email address or learner username linked to your account.
         </p>
     </div>
 
@@ -42,12 +42,12 @@
         @csrf
 
         <div class="mb-5">
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-                Email Address <span class="text-red-500">*</span>
+            <label for="login" class="block text-sm font-medium text-gray-700 mb-1">
+                Email or learner username <span class="text-red-500">*</span>
             </label>
-            <input id="email" name="email" type="email" required autofocus
-                   value="{{ old('email') }}"
-                   placeholder="name@example.com"
+            <input id="login" name="login" type="text" required autofocus autocomplete="username"
+                   value="{{ old('login') }}"
+                   placeholder="name@example.com or username"
                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition-all duration-200">
         </div>
 
