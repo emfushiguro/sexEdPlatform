@@ -34,7 +34,7 @@ class ProfileController extends Controller
         $user->fill($request->validated());
         $emailChanged = $user->isDirty('email');
 
-        if ($emailChanged) {
+        if ($emailChanged && $user->email !== null) {
             $user->email_verified_at = null;
         }
 
@@ -50,7 +50,7 @@ class ProfileController extends Controller
             throw $exception;
         }
 
-        if ($emailChanged) {
+        if ($emailChanged && $user->email !== null) {
             try {
                 $user->sendEmailVerificationNotification();
             } catch (\Throwable $exception) {
@@ -61,7 +61,7 @@ class ProfileController extends Controller
             }
         }
 
-        return $emailChanged
+        return $emailChanged && $user->email !== null
             ? Redirect::route('verification.notice')->with('status', 'profile-updated')
             : Redirect::route('profile.edit')->with('status', 'profile-updated');
     }

@@ -8,16 +8,17 @@ use App\Http\Requests\RegisterRequest;
 use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
 use App\Support\AccountEmail;
-use Carbon\Carbon;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
@@ -43,24 +44,22 @@ class RegisteredUserController extends Controller
     {
         $validated = $request->validated();
 
-        $birthdate = Carbon::parse($validated['birthdate']);
-        $age = $birthdate->age;
+        $classification = LearnerAgePolicy::classify($validated['birthdate']);
 
-        if ($age < 13) {
-            session([
-                'pending_child_registration' => $validated,
-                'child_registration_timestamp' => now()->timestamp,
-                'is_parent_registration' => true,
-            ]);
-
-            return redirect()->route('parent.registration.required')
-                ->with('info', 'Children under 13 require a guardian to create their account.');
+        if ($classification === LearnerAgePolicy::ELIGIBLE_TEENAGER) {
+            return redirect()->route('minor.registration.create')
+                ->with('pending_minor_registration', Arr::only($validated, ['first_name', 'last_name', 'birthdate']));
         }
 
-        // Store personal info in session and advance to account info step
-        session(['pending_personal_info' => array_merge($validated, ['age' => $age])]);
+        if ($classification === LearnerAgePolicy::ELIGIBLE_ADULT) {
+            session(['pending_personal_info' => array_merge($validated, [
+                'age' => LearnerAgePolicy::age($validated['birthdate']),
+            ])]);
 
-        return redirect()->route('register.account');
+            return redirect()->route('register.account');
+        }
+
+        return back()->withErrors(['birthdate' => 'Learner registration is available for ages 10 through 100.']);
     }
 
     /**
@@ -86,6 +85,13 @@ class RegisteredUserController extends Controller
             return redirect()->route('register');
         }
 
+        if (LearnerAgePolicy::classify($personal['birthdate'] ?? null) !== LearnerAgePolicy::ELIGIBLE_ADULT) {
+            session()->forget('pending_personal_info');
+
+            return redirect()->route('minor.registration.create')
+                ->with('pending_minor_registration', Arr::only($personal, ['first_name', 'last_name', 'birthdate']));
+        }
+
         $account = $request->validated();
 
         try {
@@ -98,7 +104,7 @@ class RegisteredUserController extends Controller
                     'suffix' => $personal['suffix'] ?? null,
                     'email' => $account['email'],
                     'birthdate' => $personal['birthdate'],
-                    'age' => $personal['age'],
+                    'age' => LearnerAgePolicy::age($personal['birthdate']),
                     'password' => Hash::make($account['password']),
                 ]);
 

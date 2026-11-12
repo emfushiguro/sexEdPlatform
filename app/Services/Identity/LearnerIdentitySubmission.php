@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Notifications\Admin\LearnerIdentitySubmittedNotification as AdminLearnerIdentitySubmittedNotification;
 use App\Notifications\LearnerIdentitySubmittedNotification;
 use App\Services\Persona\PersonaInquiryService;
+use App\Support\LearnerAgePolicy;
 use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -33,12 +34,18 @@ class LearnerIdentitySubmission
                 if (! $case) {
                     throw new DomainException('Learner identity case is not available for submission.');
                 }
-                $pathway = $actor->deriveAgeBracketCache();
+                $classification = LearnerAgePolicy::classify($actor->birthdate);
+                $pathway = match ($classification) {
+                    LearnerAgePolicy::ELIGIBLE_TEENAGER => 'teen',
+                    LearnerAgePolicy::ELIGIBLE_ADULT => 'adult',
+                    default => null,
+                };
+                $contactReady = $classification === LearnerAgePolicy::ELIGIBLE_TEENAGER
+                    ? $actor->hasCompletedMinorActivation() && $actor->qualifyingMinorGuardianRelationship() !== null
+                    : $classification === LearnerAgePolicy::ELIGIBLE_ADULT && $actor->hasVerifiedEmail();
                 if ($case->user_id !== $actor->id || $case->superseded_at !== null
-                    || $case->pathway !== match ($pathway) {
-                        'teens' => 'teen', 'adults' => 'adult', default => null
-                    }
-                    || ! $actor->isLearner() || $actor->isParentRegistration() || ! $actor->hasVerifiedEmail()
+                    || $case->pathway !== $pathway
+                    || ! $actor->isLearner() || $actor->isParentRegistration() || ! $contactReady
                     || ! in_array($case->status, [null, 'rejected'], true)
                     || ($case->status === 'rejected' && ! $case->resubmission_allowed)
                     || $actor->identityVerifications()->whereNull('superseded_at')->whereKeyNot($case->id)->exists()) {

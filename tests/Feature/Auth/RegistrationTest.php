@@ -38,7 +38,7 @@ class RegistrationTest extends TestCase
         $this->assertNotNull(session('pending_personal_info'));
     }
 
-    public function test_under_13_redirects_to_parent_required(): void
+    public function test_ages_ten_through_seventeen_redirect_to_guardian_registration(): void
     {
         $response = $this->post('/register', [
             'first_name' => 'Kiddo',
@@ -46,8 +46,9 @@ class RegistrationTest extends TestCase
             'birthdate' => now()->subYears(10)->format('Y-m-d'),
         ]);
 
-        $response->assertRedirect(route('parent.registration.required'));
-        $this->assertTrue((bool) session('is_parent_registration'));
+        $response->assertRedirect(route('minor.registration.create'));
+        $this->assertSame('Kiddo', session('pending_minor_registration.first_name'));
+        $this->assertFalse(session()->has('is_parent_registration'));
     }
 
     public function test_new_users_can_register_via_two_step_flow(): void
@@ -76,7 +77,7 @@ class RegistrationTest extends TestCase
         $this->assertSame(['created'], $user->identityVerifications()->sole()->audits()->pluck('action')->all());
     }
 
-    public function test_new_thirteen_year_old_gets_one_teen_case(): void
+    public function test_teenager_cannot_complete_independent_account_step(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-09-24 10:00:00'));
         $this->withSession(['pending_personal_info' => [
@@ -88,10 +89,10 @@ class RegistrationTest extends TestCase
             'email' => 'teenlearner@gmail.com',
             'password' => 'Xk#9mP2@qL7nR4wZ',
             'password_confirmation' => 'Xk#9mP2@qL7nR4wZ',
-        ])->assertRedirect(route('verification.notice'));
+        ])->assertSessionHasErrors('birthdate');
 
-        $user = User::where('email', 'teenlearner@gmail.com')->firstOrFail();
-        $this->assertSame('teen', $user->identityVerifications()->sole()->pathway);
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['email' => 'teenlearner@gmail.com']);
     }
 
     #[DataProvider('providerNeutralEmails')]

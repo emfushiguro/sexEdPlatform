@@ -11,14 +11,14 @@
     </x-slot>
 
     <div class="mb-6">
-        <h2 class="text-2xl font-bold text-purple-900">Guardian Required</h2>
-        <p class="mt-2 text-sm text-gray-600">Young learners under 13 years old need a guardian to create their account.</p>
+        <h2 class="text-2xl font-bold text-purple-900">Guardian-assisted registration</h2>
+        <p class="mt-2 text-sm text-gray-600">Teenagers ages 10-17 need a guardian to create their account.</p>
     </div>
 
     <!-- Purple info block -->
     <div class="bg-purple-50 border-l-4 border-purple-500 p-4 mb-6">
         <p class="text-sm text-purple-800">
-            For young learner safety and online privacy compliance, we require guardian consent for users under 13 years old.
+            For Teenager safety and privacy, we require an approved guardian relationship for users ages 10-17.
         </p>
     </div>
 
@@ -54,8 +54,8 @@
                     3
                 </div>
                 <div class="ml-4">
-                    <h4 class="text-sm font-semibold text-gray-900">Create Dependent Account</h4>
-                    <p class="text-sm text-gray-600">Once approved, create a dependent account and upload a supporting document</p>
+                    <h4 class="text-sm font-semibold text-gray-900">Create Teenager Account</h4>
+                    <p class="text-sm text-gray-600">Once approved, create the Teenager account and upload a supporting document</p>
                 </div>
             </div>
 
@@ -66,7 +66,7 @@
                 </div>
                 <div class="ml-4">
                     <h4 class="text-sm font-semibold text-gray-900">Monitor Progress</h4>
-                    <p class="text-sm text-gray-600">After dependent approval, track learning progress and quiz results</p>
+                    <p class="text-sm text-gray-600">After Teenager approval, track learning progress and quiz results</p>
                 </div>
             </div>
         </div>

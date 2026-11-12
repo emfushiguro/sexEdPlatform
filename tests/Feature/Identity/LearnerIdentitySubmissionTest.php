@@ -3,9 +3,11 @@
 namespace Tests\Feature\Identity;
 
 use App\Http\Requests\Auth\SubmitLearnerIdentityRequest;
+use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Services\Identity\LearnerIdentityRequirement;
 use App\Services\Identity\LearnerIdentitySubmission;
+use App\Support\LearnerAgePolicy;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -338,8 +340,40 @@ class LearnerIdentitySubmissionTest extends TestCase
 
     private function case(string $birthdate): array
     {
-        $user = User::factory()->create(['role' => 'learner', 'birthdate' => $birthdate, 'email_verified_at' => now()]);
+        $user = User::factory()->create([
+            'role' => 'learner',
+            'birthdate' => $birthdate,
+            'email_verified_at' => now(),
+            'status' => User::STATUS_ACTIVE,
+        ]);
         $user->assignRole('learner');
+
+        if (LearnerAgePolicy::classify($birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER) {
+            $guardian = User::factory()->create([
+                'status' => User::STATUS_ACTIVE,
+                'is_parent_registration' => true,
+                'parent_verification_status' => 'approved',
+                'guardian_onboarding_status' => 'completed',
+                'email_verified_at' => now(),
+            ]);
+
+            $user->forceFill([
+                'minor_account_activation_required' => false,
+                'minor_account_activated_at' => now(),
+            ])->save();
+
+            ParentChildAccount::create([
+                'parent_user_id' => $guardian->id,
+                'child_user_id' => $user->id,
+                'relationship_type' => 'biological_mother',
+                'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+                'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
+                'relationship_verified_at' => now(),
+                'minor_registration_authorized_at' => now(),
+                'minor_registration_consent_version' => config('learner_age_policy.guardian_consent_version'),
+                'minor_registration_authorized_by_user_id' => $guardian->id,
+            ]);
+        }
 
         return [$user, app(LearnerIdentityRequirement::class)->createForNewLearner($user)];
     }

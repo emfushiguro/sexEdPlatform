@@ -1,4 +1,4 @@
-﻿{{-- Alpine store — shared state between panel and main content --}}
+{{-- Alpine store — shared state between panel and main content --}}
 @php
     $usesGmail = str_ends_with(strtolower((string) auth()->user()?->email), '@gmail.com');
 @endphp
@@ -38,6 +38,13 @@
                     <h2 class="text-4xl font-bold text-white mb-4 leading-tight">One last step!</h2>
                     <p class="text-white/80 text-lg max-w-xs">Personalize your learning experience</p>
                 </div>
+            @elseif($showEmailSetup ?? false)
+                <div class="mb-6">
+                    <img src="{{ asset('/media/Logo.png') }}" alt="Conscious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
+                    <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Conscious Connections</p>
+                </div>
+                <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Add your email</h2>
+                <p class="text-white/80 text-lg max-w-xs">Your adult account needs its own verified email address.</p>
             @else
                 <div class="mb-6">
                     <img src="{{ asset('/media/Logo.png') }}" alt="Conscious Connections" class="h-20 w-auto mx-auto mb-3 drop-shadow-lg">
@@ -288,6 +295,40 @@
             </div>
         </div>
 
+    @elseif($showEmailSetup ?? false)
+        <div class="mx-auto max-w-xl space-y-5">
+            <div>
+                <h2 class="text-2xl font-bold text-purple-900">Add your email address</h2>
+                <p class="mt-1 text-sm text-gray-500">Use an email address you control. We will send a verification link after you save it.</p>
+            </div>
+
+            @if ($errors->any())
+                <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    <ul class="list-inside list-disc">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('profile.update') }}" class="space-y-4">
+                @csrf
+                @method('patch')
+                <input type="hidden" name="name" value="{{ old('name', auth()->user()->name) }}">
+                <div>
+                    <label for="email" class="mb-1 block text-sm font-medium text-gray-700">Your email address</label>
+                    <input id="email" name="email" type="email" required autocomplete="email" value="{{ old('email') }}" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    @error('email')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label for="current_password" class="mb-1 block text-sm font-medium text-gray-700">Current password</label>
+                    <input id="current_password" name="current_password" type="password" required autocomplete="current-password" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    @error('current_password')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                </div>
+                <button type="submit" class="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-purple-800 px-5 py-3 font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">Save and send verification</button>
+            </form>
+        </div>
     @else
         {{-- WAITING STATE: Inbox-style verification guidance --}}
         <div class="space-y-4"

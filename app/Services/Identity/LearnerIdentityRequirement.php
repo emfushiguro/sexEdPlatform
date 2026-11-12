@@ -7,8 +7,6 @@ use App\Models\User;
 use App\Support\LearnerAgePolicy;
 use DomainException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class LearnerIdentityRequirement
 {
@@ -18,94 +16,43 @@ class LearnerIdentityRequirement
             return null;
         }
 
-        // A learner without a case predates this requirement.
-        if (! $user->identityVerifications()->exists()) {
-            return null;
-        }
-
         $pathway = $this->pathwayFor($user);
-        $active = $user->identityVerifications()->whereNull('superseded_at')->first();
 
-        if ($active?->pathway === $pathway) {
-            return $active;
-        }
+        return DB::transaction(function () use ($user, $pathway): LearnerIdentityVerification {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->getKey());
+            $active = $lockedUser->identityVerifications()
+                ->whereNull('superseded_at')
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
 
-        $pathsToDelete = [];
-        $case = DB::transaction(function () use ($user, $pathway, &$pathsToDelete): LearnerIdentityVerification {
-            $user->newQuery()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
-            $active = $user->identityVerifications()->whereNull('superseded_at')->lockForUpdate()->firstOrFail();
-
-            if ($active->pathway === $pathway) {
+            if ($active?->pathway === $pathway) {
                 return $active;
             }
 
-            $pathsToDelete = $active->evidence()->pluck('storage_path')->all();
-            $active->evidence()->delete();
-            $active->forceFill(['superseded_at' => now()])->save();
-            $this->audit($active, 'superseded', $active->status, $active->status);
-
-            $target = $user->identityVerifications()->firstOrCreate(
-                ['pathway' => $pathway],
-                ['submission_round' => 0],
-            );
-
-            if ($target->wasRecentlyCreated) {
-                $this->audit($target, 'created');
-            } elseif ($target->superseded_at !== null) {
-                $pathsToDelete = array_merge($pathsToDelete, $target->evidence()->pluck('storage_path')->all());
-                $target->evidence()->delete();
-                $target->forceFill([
-                    'status' => null,
-                    'document_type' => null,
-                    'government_id_type' => null,
-                    'government_id_type_other' => null,
-                    'submitted_at' => null,
-                    'reviewed_by' => null,
-                    'reviewed_at' => null,
-                    'approved_at' => null,
-                    'rejection_reason' => null,
-                    'superseded_at' => null,
-                ])->save();
-                $this->audit($target, 'reactivated');
+            if ($active !== null) {
+                $active->forceFill(['superseded_at' => now()])->save();
+                $this->audit($active, 'superseded', $active->status, $active->status);
             }
 
-            return $target;
+            $case = $lockedUser->identityVerifications()->create([
+                'pathway' => $pathway,
+                'submission_round' => 0,
+            ]);
+            $this->audit($case, 'created');
+
+            return $case;
         });
-
-        if ($pathsToDelete) {
-            DB::afterCommit(function () use ($pathsToDelete): void {
-                try {
-                    if (! Storage::disk('local')->delete($pathsToDelete)) {
-                        Log::warning('Learner identity evidence deletion failed.', ['paths' => $pathsToDelete]);
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('Learner identity evidence deletion failed.', [
-                        'paths' => $pathsToDelete,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            });
-        }
-
-        return $case;
     }
 
     public function createForNewLearner(User $user): LearnerIdentityVerification
     {
-        $pathway = $this->pathwayFor($user);
+        $case = $this->current($user);
+        if ($case === null) {
+            throw new DomainException('Learner identity verification requires an eligible learner.');
+        }
 
-        return DB::transaction(function () use ($user, $pathway): LearnerIdentityVerification {
-            $case = $user->identityVerifications()->firstOrCreate(
-                ['pathway' => $pathway],
-                ['submission_round' => 0],
-            );
-
-            if ($case->wasRecentlyCreated) {
-                $this->audit($case, 'created');
-            }
-
-            return $case;
-        });
+        return $case;
     }
 
     public function pathwayFor(User $user): string
@@ -113,7 +60,7 @@ class LearnerIdentityRequirement
         return match (LearnerAgePolicy::classify($user->birthdate)) {
             LearnerAgePolicy::ELIGIBLE_TEENAGER => 'teen',
             LearnerAgePolicy::ELIGIBLE_ADULT => 'adult',
-            default => throw new DomainException('Learner identity verification requires support for an ineligible or missing birthdate.'),
+            default => throw new DomainException('Learner is not currently eligible for identity verification.'),
         };
     }
 

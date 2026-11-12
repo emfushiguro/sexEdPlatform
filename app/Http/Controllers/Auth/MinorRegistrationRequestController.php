@@ -36,7 +36,9 @@ final class MinorRegistrationRequestController extends Controller
             $existingTeenager = true;
         }
 
-        return view('auth.minor-registration-request', compact('child', 'existingTeenager'));
+        $pendingMinorRegistration = (array) session('pending_minor_registration', []);
+
+        return view('auth.minor-registration-request', compact('child', 'existingTeenager', 'pendingMinorRegistration'));
     }
 
     public function store(

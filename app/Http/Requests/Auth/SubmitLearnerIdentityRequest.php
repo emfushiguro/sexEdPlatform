@@ -64,7 +64,7 @@ class SubmitLearnerIdentityRequest extends FormRequest
 
     private function currentCase(): ?LearnerIdentityVerification
     {
-        return $this->user()?->identityVerifications()->whereNull('superseded_at')->first();
+        return $this->user()?->identityVerifications()->whereNull('superseded_at')->latest('id')->first();
     }
 
     private function hasValidSlot(?LearnerIdentityVerification $case, string $slot): bool

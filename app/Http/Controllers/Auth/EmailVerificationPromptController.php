@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Services\Identity\LearnerIdentityRequirement;
 use App\Support\AuthenticatedHomeRouteResolver;
+use App\Support\LearnerAgePolicy;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,20 @@ class EmailVerificationPromptController extends Controller
         $user = $request->user();
 
         if ($user->email === null) {
+            if ($user->isLearner() && LearnerAgePolicy::classify($user->birthdate) === LearnerAgePolicy::ELIGIBLE_ADULT) {
+                return view('auth.verify-email', [
+                    'showSuccess' => false,
+                    'showEmailSetup' => true,
+                    'learnerProfile' => null,
+                    'cities' => collect(),
+                    'barangays' => collect(),
+                ]);
+            }
+
+            if ($user->isLearner()) {
+                return redirect()->route('learner.eligibility.status');
+            }
+
             return redirect()->route('profile.edit')
                 ->with('warning', 'Add your own email address before requesting verification.');
         }
@@ -71,6 +86,7 @@ class EmailVerificationPromptController extends Controller
 
         return view('auth.verify-email', [
             'showSuccess' => false,
+            'showEmailSetup' => false,
             'learnerProfile' => null,
             'cities' => collect(),
             'barangays' => collect(),

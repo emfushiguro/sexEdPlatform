@@ -35,17 +35,17 @@
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label for="first_name" class="mb-1 block text-sm font-medium text-gray-700">First name</label>
-                    <input id="first_name" name="first_name" type="text" required value="{{ old('first_name') }}" autocomplete="given-name" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <input id="first_name" name="first_name" type="text" required value="{{ old('first_name', $pendingMinorRegistration['first_name'] ?? '') }}" autocomplete="given-name" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
                 </div>
                 <div>
                     <label for="last_name" class="mb-1 block text-sm font-medium text-gray-700">Last name</label>
-                    <input id="last_name" name="last_name" type="text" required value="{{ old('last_name') }}" autocomplete="family-name" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <input id="last_name" name="last_name" type="text" required value="{{ old('last_name', $pendingMinorRegistration['last_name'] ?? '') }}" autocomplete="family-name" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
                 </div>
             </div>
 
             <div>
                 <label for="birthdate" class="mb-1 block text-sm font-medium text-gray-700">Birthdate</label>
-                <input id="birthdate" name="birthdate" type="date" required value="{{ old('birthdate') }}" max="{{ now()->format('Y-m-d') }}" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
+                <input id="birthdate" name="birthdate" type="date" required value="{{ old('birthdate', $pendingMinorRegistration['birthdate'] ?? '') }}" max="{{ now()->format('Y-m-d') }}" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
                 <p class="mt-1 text-xs text-gray-500">Guardian-assisted registration accepts ages 10 through 17.</p>
             </div>
         @else

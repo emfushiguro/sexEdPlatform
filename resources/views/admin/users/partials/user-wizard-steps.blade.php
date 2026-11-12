@@ -55,6 +55,9 @@
                 @endforeach
                 <option value="others" @selected(old('role', $selectedRole ?? '') === 'others')>Others (Create New Role)</option>
             </select>
+            @if($isCreateMode)
+                <p x-show="selectedRole === 'learner'" x-cloak class="mt-1 text-xs text-amber-700">Teenager accounts ages 10–17 must begin through guardian-assisted registration.</p>
+            @endif
         </div>
         <div>
             <label for="status" class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
