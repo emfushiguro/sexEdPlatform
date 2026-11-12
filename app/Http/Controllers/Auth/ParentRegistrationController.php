@@ -12,6 +12,7 @@ use App\Http\Requests\Auth\UploadParentTempDocumentRequest;
 use App\Models\MinorRegistrationRequest;
 use App\Models\ParentChildAccount;
 use App\Models\User;
+use App\Services\Auth\MinorAccountHandoffService;
 use App\Services\Auth\RegistrationTempUploadService;
 use App\Services\GuardianRelationshipEvidenceService;
 use App\Services\GuardianRelationshipVerificationService;
@@ -273,7 +274,10 @@ class ParentRegistrationController extends Controller
 
         // Clear stale in-progress data from an abandoned session, but keep
         // pending_child_registration — it holds the original child's info for pre-fill
-        session()->forget(['child_step1', 'child_step2', 'child_step3', 'minor_registration_request_id', 'child_created_name']);
+        session()->forget(['child_step1', 'child_step2', 'child_step3', 'child_created_name']);
+        if (! session('pending_child_registration')) {
+            session()->forget(['minor_registration_request_id', 'minor_registration_token']);
+        }
 
         return view('auth.create-child-account', [
             'pendingChild' => session('pending_child_registration', []),
@@ -498,6 +502,7 @@ class ParentRegistrationController extends Controller
         $requiresRelationshipVerification = in_array($relationshipType, GuardianRelationshipTypes::selectableValues(), true);
 
         $parent = Auth::user();
+        $minorHandoffs = app(MinorAccountHandoffService::class);
         $barangay = \Schoolees\Psgc\Models\Barangay::query()
             ->where('code', $step2['barangay_code'])
             ->where('city_code', $step2['city_code'])
@@ -513,6 +518,7 @@ class ParentRegistrationController extends Controller
         try {
             [$child, $verification] = DB::transaction(function () use (
                 $parent,
+                $minorHandoffs,
                 $step1,
                 $step2,
                 $step3,
@@ -529,6 +535,7 @@ class ParentRegistrationController extends Controller
                 }
 
                 $requestId = session('minor_registration_request_id');
+                $requestToken = (string) session('minor_registration_token');
                 $minorRequest = $requestId
                     ? MinorRegistrationRequest::query()->lockForUpdate()->findOrFail($requestId)
                     : null;
@@ -536,14 +543,30 @@ class ParentRegistrationController extends Controller
                     ? User::query()->lockForUpdate()->findOrFail($minorRequest->existing_child_user_id)
                     : null;
 
-                if ($minorRequest !== null && (
-                    $minorRequest->status !== MinorRegistrationRequest::STATUS_PENDING
-                    || $minorRequest->expires_at?->isPast()
-                )) {
-                    throw ValidationException::withMessages(['email' => 'This registration request is no longer available.']);
+                if ($minorRequest !== null) {
+                    if ($minorRequest->status !== MinorRegistrationRequest::STATUS_PENDING
+                        || $minorRequest->expires_at?->isPast()
+                        || $requestToken === ''
+                        || ! hash_equals($minorRequest->token_hash, $minorHandoffs->digestForStorage($requestToken))
+                        || ! is_string($parent->email)
+                        || ! hash_equals($minorRequest->guardian_email_fingerprint, AccountEmail::fingerprint($parent->email))
+                        || ! $parent->hasVerifiedEmail()
+                        || ! $parent->isParentRegistration()
+                        || ! $parent->isParentVerificationApproved()
+                        || ! $parent->hasCompletedGuardianOnboarding()) {
+                        throw ValidationException::withMessages(['email' => 'This registration request is no longer available.']);
+                    }
                 }
 
                 $authorizedAt = now();
+                if ($child !== null && (
+                    LearnerAgePolicy::classify($child->birthdate) !== LearnerAgePolicy::ELIGIBLE_TEENAGER
+                    || Carbon::parse($step1['birthdate'])->toDateString() !== $child->birthdate?->toDateString()
+                )) {
+                    throw ValidationException::withMessages([
+                        'birthdate' => 'The Teenager birthdate must match the existing account.',
+                    ]);
+                }
                 if ($child === null) {
                     $child = User::query()->create([
                         'name' => trim($step1['first_name'].' '.$step1['last_name']),
@@ -634,7 +657,14 @@ class ParentRegistrationController extends Controller
             throw $exception;
         }
 
-        session()->forget(['child_step1', 'child_step2', 'child_step3', 'pending_child_registration']);
+        session()->forget([
+            'child_step1',
+            'child_step2',
+            'child_step3',
+            'pending_child_registration',
+            'minor_registration_request_id',
+            'minor_registration_token',
+        ]);
         session([
             DependentSupportRegistrationController::SESSION_KEY => [
                 'dependent_user_id' => $child->id,

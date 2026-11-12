@@ -80,6 +80,20 @@
     @endif
 
     @if($child->requiresGuardian()
+        && $parentChildLink
+        && ($parentChildLink->minor_registration_consent_version !== config('learner_age_policy.guardian_consent_version')
+            || (int) $parentChildLink->minor_registration_authorized_by_user_id !== (int) auth()->id()))
+        <div class="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900">
+            <p class="font-semibold">Current Teenager authorization required</p>
+            <p class="mt-1 text-xs">Record your current guardian authorization before this relationship can unlock the Teenager's protected access.</p>
+            <form method="POST" action="{{ route('parent.children.minor-authorization', $parentChildLink) }}" class="mt-3">
+                @csrf
+                <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">Authorize this Teenager</button>
+            </form>
+        </div>
+    @endif
+
+    @if($child->requiresGuardian()
         && $child->minor_account_activation_required
         && $parentChildLink?->minor_registration_consent_version === config('learner_age_policy.guardian_consent_version')
         && (int) $parentChildLink?->minor_registration_authorized_by_user_id === (int) auth()->id())

@@ -33,8 +33,8 @@ use App\Models\User;
 use App\Observers\PaymentObserver;
 use App\Policies\AdminCreatorProfilePolicy;
 use App\Policies\DependentSupportProfilePolicy;
-use App\Policies\InstructorProfilePolicy;
 use App\Policies\InstructorIdentityVerificationPolicy;
+use App\Policies\InstructorProfilePolicy;
 use App\Policies\LearningPathPolicy;
 use App\Policies\LessonPolicy;
 use App\Policies\ModulePolicy;
@@ -118,6 +118,16 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return $limits;
+        });
+        RateLimiter::for('minor-registration-request', function (Request $request) {
+            $email = is_string($request->input('guardian_email'))
+                ? AccountEmail::normalize($request->input('guardian_email'))
+                : '';
+
+            return [
+                Limit::perMinute(5)->by('minor-registration-request-ip:'.$request->ip()),
+                Limit::perHour(3)->by('minor-registration-request-email:'.AccountEmail::fingerprint($email)),
+            ];
         });
         RateLimiter::for('verification-resend', function (Request $request) {
             return [

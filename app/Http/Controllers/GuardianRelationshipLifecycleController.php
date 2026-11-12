@@ -4,15 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\DeactivateGuardianRelationshipRequest;
 use App\Models\ParentChildAccount;
+use App\Models\User;
 use App\Services\GuardianRelationshipVerificationService;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class GuardianRelationshipLifecycleController extends Controller
 {
-    public function __construct(private readonly GuardianRelationshipVerificationService $service)
-    {
-    }
+    public function __construct(private readonly GuardianRelationshipVerificationService $service) {}
 
     public function deactivate(
         DeactivateGuardianRelationshipRequest $request,
@@ -40,5 +42,44 @@ class GuardianRelationshipLifecycleController extends Controller
         $this->service->requestReactivation($parentChildAccount, $request->user());
 
         return back()->with('success', 'Relationship reactivation submitted for administrative review.');
+    }
+
+    public function authorizeMinor(Request $request, ParentChildAccount $parentChildAccount): RedirectResponse
+    {
+        DB::transaction(function () use ($request, $parentChildAccount): void {
+            $relationship = ParentChildAccount::query()->lockForUpdate()->findOrFail($parentChildAccount->id);
+            $guardian = User::query()->lockForUpdate()->findOrFail($request->user()->id);
+            $child = User::query()->lockForUpdate()->findOrFail($relationship->child_user_id);
+
+            if ((int) $relationship->parent_user_id !== (int) $guardian->id) {
+                abort(403);
+            }
+
+            if (! $guardian->isParentRegistration()
+                || ! $guardian->hasVerifiedEmail()
+                || ! $guardian->isParentVerificationApproved()
+                || ! $guardian->hasCompletedGuardianOnboarding()) {
+                throw ValidationException::withMessages([
+                    'authorization' => 'Complete Guardian verification and onboarding before authorizing this Teenager.',
+                ]);
+            }
+
+            if ($relationship->relationship_status !== ParentChildAccount::STATUS_ACTIVE
+                || $relationship->relationship_verified_status !== ParentChildAccount::VERIFICATION_VERIFIED
+                || $relationship->relationship_verified_at === null
+                || LearnerAgePolicy::classify($child->birthdate) !== LearnerAgePolicy::ELIGIBLE_TEENAGER) {
+                throw ValidationException::withMessages([
+                    'authorization' => 'Only an active verified relationship for a current Teenager can be authorized.',
+                ]);
+            }
+
+            $relationship->forceFill([
+                'minor_registration_authorized_at' => now(),
+                'minor_registration_consent_version' => config('learner_age_policy.guardian_consent_version'),
+                'minor_registration_authorized_by_user_id' => $guardian->id,
+            ])->save();
+        });
+
+        return back()->with('success', 'Current Teenager guardian authorization recorded.');
     }
 }

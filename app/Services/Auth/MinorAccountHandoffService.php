@@ -41,7 +41,7 @@ final class MinorAccountHandoffService
                 'guardian_user_id' => $lockedRelationship->parent_user_id,
                 'parent_child_account_id' => $lockedRelationship->id,
                 'purpose' => MinorAccountHandoff::PURPOSE_ACTIVATION,
-                'token_hash' => $this->digest($rawCode),
+                'token_hash' => $this->digestForStorage($rawCode),
                 'approved_at' => now(),
                 'expires_at' => now()->addMinutes((int) config('learner_age_policy.handoff_minutes')),
             ]);
@@ -64,7 +64,7 @@ final class MinorAccountHandoffService
         return MinorAccountHandoff::query()
             ->with(['child.learnerProfile', 'guardian', 'relationship'])
             ->where('purpose', $purpose)
-            ->where('token_hash', $this->digest($normalized))
+            ->where('token_hash', $this->digestForStorage($normalized))
             ->whereNotNull('approved_at')
             ->whereNull('used_at')
             ->where('expires_at', '>', now())
@@ -76,7 +76,7 @@ final class MinorAccountHandoffService
         return DB::transaction(function () use ($code, $username, $password): User {
             $handoff = MinorAccountHandoff::query()
                 ->where('purpose', MinorAccountHandoff::PURPOSE_ACTIVATION)
-                ->where('token_hash', $this->digest($this->normalizeCode($code)))
+                ->where('token_hash', $this->digestForStorage($this->normalizeCode($code)))
                 ->lockForUpdate()
                 ->first();
 
@@ -124,7 +124,7 @@ final class MinorAccountHandoffService
         }
     }
 
-    private function generateCode(): string
+    public function generateCode(): string
     {
         return strtoupper(Str::random(16));
     }
@@ -134,7 +134,7 @@ final class MinorAccountHandoffService
         return strtoupper((string) preg_replace('/[^A-Z0-9]/i', '', $code));
     }
 
-    private function digest(string $code): string
+    public function digestForStorage(string $code): string
     {
         return hash_hmac('sha256', $this->normalizeCode($code), (string) config('app.key'));
     }

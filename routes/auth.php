@@ -18,6 +18,7 @@ use App\Http\Controllers\InstructorApplication\ApplicationController as Instruct
 use App\Http\Controllers\InstructorApplication\DocumentController as InstructorApplicationDocumentController;
 use App\Http\Controllers\InstructorApplication\PersonaIdentityController as InstructorPersonaIdentityController;
 use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
+use App\Http\Controllers\Auth\MinorRegistrationRequestController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\ParentApprovalLinkController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
@@ -137,6 +138,15 @@ Route::middleware('throttle:5,1')->group(function (): void {
     Route::post('teenager/activate', [\App\Http\Controllers\Auth\MinorAccountActivationController::class, 'store'])
         ->name('minor.activation.store');
 });
+
+Route::get('teenager/guardian-request', [MinorRegistrationRequestController::class, 'create'])
+    ->name('minor.registration.create');
+Route::post('teenager/guardian-request', [MinorRegistrationRequestController::class, 'store'])
+    ->middleware('throttle:minor-registration-request')
+    ->name('minor.registration.store');
+Route::get('teenager/guardian-request/{token}', [MinorRegistrationRequestController::class, 'accept'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->name('minor.registration.accept');
 
 Route::get('registration/temp-document/{flow}/{step}', [RegistrationTempDocumentController::class, 'show'])
     ->whereIn('flow', ['parent', 'child'])
@@ -319,5 +329,8 @@ Route::middleware('auth')->group(function () {
         Route::post('parent/children/{child}/minor-activation/reissue', [\App\Http\Controllers\Auth\MinorAccountActivationController::class, 'reissue'])
             ->middleware('throttle:5,1')
             ->name('minor.activation.reissue');
+
+        Route::post('parent/children/{parentChildAccount}/minor-authorization', [\App\Http\Controllers\GuardianRelationshipLifecycleController::class, 'authorizeMinor'])
+            ->name('parent.children.minor-authorization');
     });
 });

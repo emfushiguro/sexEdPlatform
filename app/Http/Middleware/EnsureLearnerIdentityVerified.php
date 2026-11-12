@@ -19,7 +19,7 @@ class EnsureLearnerIdentityVerified
         $user = $request->user();
         if (! $user || ! $user->isLearner() || $user->isParentRegistration()
             || $request->routeIs(
-                'verification.*', 'learner.identity.*', 'persona.identity.*', 'logout', 'instructor.logout', 'admin.logout',
+                'verification.*', 'learner.identity.*', 'persona.identity.*', 'minor.registration.*', 'logout', 'instructor.logout', 'admin.logout',
                 'password.*', 'profile.password.update', 'profile.account.delete',
                 'privacy', 'terms', 'moderation.suspension-status', 'moderation.appeals.*', 'instructor-application.*',
             )) {
