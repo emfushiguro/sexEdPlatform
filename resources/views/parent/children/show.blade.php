@@ -79,6 +79,22 @@
         </div>
     @endif
 
+    @if($child->requiresGuardian()
+        && $child->minor_account_activation_required
+        && $parentChildLink?->minor_registration_consent_version === config('learner_age_policy.guardian_consent_version')
+        && (int) $parentChildLink?->minor_registration_authorized_by_user_id === (int) auth()->id())
+        <div class="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="font-semibold">Activation is ready</p>
+                <p class="mt-1 text-xs">Resend a one-time handoff so the Teenager can choose their own password.</p>
+            </div>
+            <form method="POST" action="{{ route('minor.activation.reissue', $child) }}">
+                @csrf
+                <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-700 px-4 py-2.5 text-xs font-semibold text-white hover:bg-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">Resend activation</button>
+            </form>
+        </div>
+    @endif
+
     {{-- Tabs --}}
     <div x-data="{ tab: 'progress' }">
 

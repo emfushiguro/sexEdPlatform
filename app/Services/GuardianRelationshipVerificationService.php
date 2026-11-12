@@ -7,9 +7,12 @@ use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Notifications\Admin\RelationshipVerificationSubmittedNotification;
 use App\Notifications\RelationshipVerificationStatusNotification;
+use App\Notifications\TeenagerActivationReadyNotification;
+use App\Services\Auth\MinorAccountHandoffService;
 use App\Services\Chat\GuardianInvitationConversationService;
 use App\Support\GuardianRelationshipEvidenceRules;
 use App\Support\GuardianRelationshipTypes;
+use App\Support\LearnerAgePolicy;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
@@ -27,6 +30,7 @@ class GuardianRelationshipVerificationService
         private readonly GuardianRelationshipEvidenceService $evidence,
         private readonly GuardianInvitationConversationService $invitationConversations,
         private readonly DependentSupportInformationService $supportInformation,
+        private readonly MinorAccountHandoffService $minorHandoffs,
     ) {}
 
     public function initialStatus(string $relationshipType): string
@@ -207,7 +211,7 @@ class GuardianRelationshipVerificationService
 
         $currentEvidenceRound ??= (int) $relationship->current_evidence_round;
 
-        return $this->decide($relationship, $admin, 'approved', [ParentChildAccount::VERIFICATION_UNDER_REVIEW], function (ParentChildAccount $locked) use ($admin, $currentEvidenceRound): array {
+        $approved = $this->decide($relationship, $admin, 'approved', [ParentChildAccount::VERIFICATION_UNDER_REVIEW], function (ParentChildAccount $locked) use ($admin, $currentEvidenceRound): array {
             abort_unless($currentEvidenceRound === (int) $locked->current_evidence_round, 409, 'A newer evidence round is available. Reload before reviewing.');
             if ($locked->current_evidence_round < 1 || ! $locked->verificationDocuments()
                 ->where('submission_round', $locked->current_evidence_round)
@@ -231,6 +235,20 @@ class GuardianRelationshipVerificationService
                 'relationship_verified_at' => now(),
             ];
         });
+
+        if (LearnerAgePolicy::classify($approved->child?->birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER
+            && (bool) $approved->child?->minor_account_activation_required) {
+            DB::afterCommit(function () use ($approved): void {
+                try {
+                    [$handoff, $code] = $this->minorHandoffs->issueActivation($approved);
+                    $approved->parent?->notify(new TeenagerActivationReadyNotification($approved->child, $handoff, $code));
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
+            });
+        }
+
+        return $approved;
     }
 
     public function reject(

@@ -131,6 +131,13 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 });
 
+Route::middleware('throttle:5,1')->group(function (): void {
+    Route::get('teenager/activate', [\App\Http\Controllers\Auth\MinorAccountActivationController::class, 'show'])
+        ->name('minor.activation.show');
+    Route::post('teenager/activate', [\App\Http\Controllers\Auth\MinorAccountActivationController::class, 'store'])
+        ->name('minor.activation.store');
+});
+
 Route::get('registration/temp-document/{flow}/{step}', [RegistrationTempDocumentController::class, 'show'])
     ->whereIn('flow', ['parent', 'child'])
     ->name('registration.temp-document.preview');
@@ -308,5 +315,9 @@ Route::middleware('auth')->group(function () {
 
         Route::post('parent/children/{child}/verification/resubmit', [ParentRegistrationController::class, 'resubmitChildVerification'])
             ->name('parent.children.verification.resubmit');
+
+        Route::post('parent/children/{child}/minor-activation/reissue', [\App\Http\Controllers\Auth\MinorAccountActivationController::class, 'reissue'])
+            ->middleware('throttle:5,1')
+            ->name('minor.activation.reissue');
     });
 });
