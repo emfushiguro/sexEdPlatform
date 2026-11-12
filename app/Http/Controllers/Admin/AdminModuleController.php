@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Services\Content\ContentAuthoringService;
 use App\Services\ContentGovernanceService;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -14,8 +15,7 @@ class AdminModuleController extends Controller
     public function __construct(
         private readonly ContentGovernanceService $contentGovernanceService,
         private readonly ContentAuthoringService $contentAuthoringService,
-    ) {
-    }
+    ) {}
 
     public function index()
     {
@@ -91,22 +91,22 @@ class AdminModuleController extends Controller
         return $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
-            'age_bracket' => ['nullable', Rule::in(['kids', 'teens', 'adults'])],
+            'age_bracket' => ['nullable', Rule::in(LearnerAgePolicy::activeCategories())],
             'age_brackets' => ['required_without:age_bracket', 'array', 'min:1'],
-            'age_brackets.*' => ['required', Rule::in(['kids', 'teens', 'adults'])],
+            'age_brackets.*' => ['required', Rule::in(LearnerAgePolicy::activeCategories())],
             'enrollment_mode' => 'required|in:auto,manual',
             'is_published' => 'nullable|boolean',
         ]);
     }
 
     /**
-     * @param array<string, mixed> $validated
+     * @param  array<string, mixed>  $validated
      * @return array<int, string>
      */
     private function learnerCategoriesFromValidated(array $validated): array
     {
         return Module::normalizeLearnerCategories(
-            (array) ($validated['age_brackets'] ?? [($validated['age_bracket'] ?? 'teens')])
+            (array) ($validated['age_brackets'] ?? ($validated['age_bracket'] ?? []))
         );
     }
 }

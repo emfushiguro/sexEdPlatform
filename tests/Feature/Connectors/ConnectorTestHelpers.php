@@ -31,7 +31,7 @@ trait ConnectorTestHelpers
             'capacity' => 50,
             'registration_approval_mode' => 'auto_approve',
             'target_participants' => 'learners_and_instructors',
-            'learner_age_categories' => ['kids', 'teen', 'adult'],
+            'learner_age_categories' => ['teens', 'adults'],
             'external_platform' => 'zoom',
             'external_url' => 'https://zoom.example.test/j/123',
         ], $overrides);

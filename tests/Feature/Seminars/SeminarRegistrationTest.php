@@ -97,6 +97,31 @@ class SeminarRegistrationTest extends TestCase
             ->assertDontSee('Adult Only Seminar');
     }
 
+    public function test_legacy_kids_targeting_and_wording_are_hidden_without_retargeting_mixed_content(): void
+    {
+        $connector = $this->connector();
+        $teen = $this->learnerWithAge('teens', now()->subYears(15));
+        $this->seminar($connector, [
+            'title' => 'Kids Only Seminar',
+            'learner_age_categories' => ['kids'],
+        ]);
+        $mixed = $this->seminar($connector, [
+            'title' => 'Teen Wellness Seminar',
+            'learner_age_categories' => ['kids', 'teen'],
+        ]);
+        $this->seminar($connector, [
+            'title' => 'Kid Safety Seminar',
+            'learner_age_categories' => ['kids', 'teen'],
+        ]);
+
+        $this->actingAs($teen)
+            ->get(route('seminars.index'))
+            ->assertOk()
+            ->assertSee($mixed->title)
+            ->assertDontSee('Kids Only Seminar')
+            ->assertDontSee('Kid Safety Seminar');
+    }
+
     public function test_custom_category_is_displayed_to_learners(): void
     {
         $connector = $this->connector();

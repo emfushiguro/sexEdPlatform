@@ -8,12 +8,12 @@ use App\Http\Requests\Instructor\UpdateModuleRequest;
 use App\Models\Module;
 use App\Models\User;
 use App\Services\Content\ContentAccessService;
-use App\Services\Content\ContentOwnershipGuard;
 use App\Services\Content\ContentAuthoringService;
+use App\Services\Content\ContentOwnershipGuard;
 use App\Services\ContentGovernanceService;
 use App\Services\Instructor\InstructorPlanCapabilityService;
-use App\Services\Monetization\CommissionPolicyResolver;
 use App\Services\Modules\ModuleCapacityService;
+use App\Services\Monetization\CommissionPolicyResolver;
 use App\Support\ContentPanelContext;
 use App\Support\InstructorRestrictionGate;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -34,8 +34,7 @@ class ModuleController extends Controller
         private readonly ContentGovernanceService $contentGovernanceService,
         private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService,
         private readonly ModuleCapacityService $moduleCapacity,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -265,7 +264,7 @@ class ModuleController extends Controller
 
     private function resolveEffectiveCommissionPolicyPayload(?User $user): ?array
     {
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
@@ -347,7 +346,7 @@ class ModuleController extends Controller
         if (isset($validated['thumbnail'])) {
             $payload['thumbnail'] = $validated['thumbnail'];
         }
-        
+
         // Duration is auto-calculated, but update it now
         $module->duration_minutes = $module->lessons()->sum('duration');
         $module->save();
@@ -380,7 +379,7 @@ class ModuleController extends Controller
             abort_unless((int) $module->created_by === (int) Auth::id(), 403);
         }
 
-        if (!$module->trashed()) {
+        if (! $module->trashed()) {
             return back()->with('error', 'Only archived modules can be permanently deleted.');
         }
 
@@ -412,6 +411,7 @@ class ModuleController extends Controller
             abort_unless((int) $module->created_by === (int) Auth::id(), 403);
         }
         $module->update(['is_published' => false]);
+
         return back()->with('success', 'Module deactivated successfully.');
     }
 
@@ -424,6 +424,7 @@ class ModuleController extends Controller
             abort_unless((int) $module->created_by === (int) Auth::id(), 403);
         }
         $module->restore();
+
         return back()->with('success', 'Module restored successfully.');
     }
 
@@ -439,7 +440,7 @@ class ModuleController extends Controller
 
     private function ensureAdminCanMutateModule(Module $module): void
     {
-        if (!$this->panelContext()->isAdmin()) {
+        if (! $this->panelContext()->isAdmin()) {
             return;
         }
 
@@ -526,13 +527,13 @@ class ModuleController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $validated
+     * @param  array<string, mixed>  $validated
      * @return array<int, string>
      */
     private function learnerCategoriesFromValidated(array $validated): array
     {
         return Module::normalizeLearnerCategories(
-            (array) ($validated['age_brackets'] ?? [($validated['age_bracket'] ?? 'teens')])
+            (array) ($validated['age_brackets'] ?? ($validated['age_bracket'] ?? []))
         );
     }
 }

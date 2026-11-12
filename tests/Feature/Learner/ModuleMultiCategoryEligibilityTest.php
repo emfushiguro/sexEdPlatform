@@ -10,54 +10,70 @@ use Tests\TestCase;
 
 class ModuleMultiCategoryEligibilityTest extends TestCase
 {
-    public function test_modules_can_be_visible_to_multiple_non_contiguous_learner_categories(): void
+    public function test_legacy_mixed_kids_content_is_only_visible_to_its_active_audience(): void
     {
         $this->withoutMiddleware(EnsureProfileCompleted::class);
 
         $instructor = User::factory()->create(['role' => 'instructor']);
         $instructor->assignRole('instructor');
 
-        $kidsAdults = Module::factory()->create([
+        $legacyMixed = Module::factory()->create([
             'created_by' => $instructor->id,
             'title' => 'Family Boundaries',
             'is_published' => true,
             'current_review_status' => null,
-            'min_age' => 5,
-            'max_age' => 100,
+            'min_age' => 10,
+            'max_age' => 17,
         ]);
-        $kidsAdults->syncLearnerCategories(['kids', 'adults']);
+        $legacyMixed->learnerCategories()->createMany([
+            ['category' => 'kids'],
+            ['category' => 'teens'],
+        ]);
 
         $teenOnly = Module::factory()->create([
             'created_by' => $instructor->id,
             'title' => 'Teen Boundaries',
             'is_published' => true,
             'current_review_status' => null,
-            'min_age' => 13,
+            'min_age' => 10,
             'max_age' => 17,
         ]);
         $teenOnly->syncLearnerCategories(['teens']);
 
-        $kid = $this->learnerBorn(now()->subYears(9)->toDateString());
+        $kidney = Module::factory()->create([
+            'created_by' => $instructor->id,
+            'title' => 'Kidney Health',
+            'is_published' => true,
+            'current_review_status' => null,
+            'min_age' => 10,
+            'max_age' => 17,
+        ]);
+        $kidney->syncLearnerCategories(['teens']);
+
+        $ineligible = $this->learnerBorn(now()->subYears(9)->toDateString());
         $teen = $this->learnerBorn(now()->subYears(15)->toDateString());
         $adult = $this->learnerBorn(now()->subYears(22)->toDateString());
 
-        $this->actingAs($kid)
+        $this->actingAs($ineligible)
             ->get(route('learner.modules.index'))
             ->assertOk()
-            ->assertSee('Family Boundaries', false)
-            ->assertDontSee('Teen Boundaries', false);
+            ->assertDontSee('Family Boundaries', false)
+            ->assertDontSee('Teen Boundaries', false)
+            ->assertDontSee('Kidney Health', false);
 
         $this->actingAs($teen)
             ->get(route('learner.modules.index'))
             ->assertOk()
-            ->assertDontSee('Family Boundaries', false)
-            ->assertSee('Teen Boundaries', false);
+            ->assertSee('Family Boundaries', false)
+            ->assertSee('Teen Boundaries', false)
+            ->assertSee('Kidney Health', false);
 
         $this->actingAs($adult)
             ->get(route('learner.modules.index'))
             ->assertOk()
-            ->assertSee('Family Boundaries', false)
-            ->assertDontSee('Teen Boundaries', false);
+            ->assertDontSee('Family Boundaries', false)
+            ->assertDontSee('Teen Boundaries', false)
+            ->assertDontSee('Kidney Health', false);
     }
 
     private function learnerBorn(string $birthdate): User
@@ -67,7 +83,7 @@ class ModuleMultiCategoryEligibilityTest extends TestCase
 
         LearnerProfile::query()->create([
             'user_id' => $learner->id,
-            'username' => 'eligibility_' . $learner->id,
+            'username' => 'eligibility_'.$learner->id,
             'birthdate' => $birthdate,
             'age_range' => 'adult_18_plus',
             'gender' => 'female',

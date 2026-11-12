@@ -176,6 +176,21 @@ class ConnectorSeminarManagementTest extends TestCase
         $this->assertSame('completed', $seminar->fresh()->status);
     }
 
+    public function test_connector_cannot_create_a_kids_targeted_seminar(): void
+    {
+        $owner = User::factory()->create(['role' => 'learner']);
+        $owner->assignRole('learner');
+        $connector = $this->createVerifiedConnector($owner);
+
+        $this->actingAs($owner)
+            ->post(route('connector.seminars.store', $connector), $this->seminarPayload([
+                'learner_age_categories' => ['kids'],
+            ]))
+            ->assertSessionHasErrors('learner_age_categories');
+
+        $this->assertDatabaseMissing('seminars', ['connector_id' => $connector->id]);
+    }
+
     public function test_connector_submits_draft_for_review(): void
     {
         $owner = User::factory()->create(['role' => 'learner']);

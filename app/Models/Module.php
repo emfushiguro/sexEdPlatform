@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\LearnerAgePolicy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class Module extends Model
 {
@@ -210,61 +212,38 @@ class Module extends Model
     {
         $ageBracket = self::ageBracketForAge($age);
 
-        return $query->where(function ($q) use ($age, $ageBracket) {
-            if ($ageBracket !== null) {
-                $q->whereHas('learnerCategories', function ($categoryQuery) use ($ageBracket) {
-                    $categoryQuery->where('category', $ageBracket);
-                })->orWhere(function ($legacy) use ($age) {
-                    $legacy->whereDoesntHave('learnerCategories')
-                        ->where(function ($legacyAge) use ($age) {
-                            $legacyAge->where(function ($normal) use ($age) {
-                                $normal->where('min_age', '<=', $age)
-                                    ->where('max_age', '>=', $age);
-                            })->orWhere(function ($swapped) use ($age) {
-                                $swapped->where('max_age', '<=', $age)
-                                    ->where('min_age', '>=', $age);
-                            });
-                        });
-                });
+        if ($ageBracket === null) {
+            return $query->whereKey(-1);
+        }
 
-                return;
-            }
-
-            $q->where(function ($normal) use ($age) {
-                $normal->where('min_age', '<=', $age)
-                    ->where('max_age', '>=', $age);
-            })->orWhere(function ($swapped) use ($age) {
-                $swapped->where('max_age', '<=', $age)
-                    ->where('min_age', '>=', $age);
-            });
-        });
+        return $this->scopeForAgeBracket($query, $ageBracket, $age);
     }
 
     /**
      * Scope to filter modules for age bracket
      */
-    public function scopeForAgeBracket($query, string $ageBracket)
+    public function scopeForAgeBracket($query, string $ageBracket, ?int $age = null)
     {
         $ageRanges = self::learnerCategoryAgeRanges();
 
         if (! isset($ageRanges[$ageBracket])) {
-            return $query;
+            return $query->whereKey(-1);
         }
 
         [$minAge, $maxAge] = $ageRanges[$ageBracket];
 
-        return $query->where(function ($q) use ($minAge, $maxAge) {
-            $q->whereHas('learnerCategories', function ($categoryQuery) use ($minAge, $maxAge) {
-                $categoryQuery->whereIn('category', array_keys(array_filter(
-                    self::learnerCategoryAgeRanges(),
-                    fn (array $range) => $range[0] <= $maxAge && $range[1] >= $minAge
-                )));
-            })->orWhere(function ($legacy) use ($minAge, $maxAge) {
+        $query->where(function ($q) use ($ageBracket, $age, $minAge, $maxAge) {
+            $q->whereHas('learnerCategories', function ($categoryQuery) use ($ageBracket) {
+                $categoryQuery->whereIn('category', [$ageBracket, rtrim($ageBracket, 's')]);
+            })->orWhere(function ($legacy) use ($age, $ageBracket, $minAge, $maxAge) {
                 $legacy->whereDoesntHave('learnerCategories')
-                    ->where('min_age', '<=', $maxAge)
-                    ->where('max_age', '>=', $minAge);
+                    ->where('min_age', '<=', $age ?? $maxAge)
+                    ->where('max_age', '>=', $age ?? $minAge)
+                    ->where('max_age', '>=', $ageBracket === LearnerAgePolicy::CATEGORY_TEENAGERS ? 13 : 18);
             });
         });
+
+        return self::withoutLegacyKidsWording($query);
     }
 
     /**
@@ -274,8 +253,11 @@ class Module extends Model
     {
         $ageBracket = self::ageBracketForAge($age);
         $this->loadMissing('learnerCategories');
-        if ($ageBracket !== null && $this->learnerCategories->isNotEmpty()) {
-            return $this->learnerCategories->contains('category', $ageBracket);
+        if ($ageBracket === null || $this->hasLegacyKidsWording()) {
+            return false;
+        }
+        if ($this->learnerCategories->isNotEmpty()) {
+            return $this->isDeliverableToCategory($ageBracket);
         }
 
         if ($this->min_age === null || $this->max_age === null) {
@@ -285,20 +267,22 @@ class Module extends Model
         $minAge = min((int) $this->min_age, (int) $this->max_age);
         $maxAge = max((int) $this->min_age, (int) $this->max_age);
 
-        return $age >= $minAge && $age <= $maxAge;
+        return $age >= $minAge
+            && $age <= $maxAge
+            && $this->max_age >= ($ageBracket === LearnerAgePolicy::CATEGORY_TEENAGERS ? 13 : 18);
     }
 
     public function isEligibleForLearnerCategory(string $category): bool
     {
         $category = self::normalizeLearnerCategory($category) ?? '';
 
-        if ($category === '') {
+        if ($category === '' || $this->hasLegacyKidsOnlyTargeting() || $this->hasLegacyKidsWording()) {
             return false;
         }
 
         if ($this->learnerCategories()->exists()) {
             return $this->learnerCategories()
-                ->where('category', $category)
+                ->whereIn('category', [$category, rtrim($category, 's')])
                 ->exists();
         }
 
@@ -306,7 +290,8 @@ class Module extends Model
 
         return $minAge !== null
             && $this->min_age <= $maxAge
-            && $this->max_age >= $minAge;
+            && $this->max_age >= $minAge
+            && $this->max_age >= ($category === LearnerAgePolicy::CATEGORY_TEENAGERS ? 13 : 18);
     }
 
     /**
@@ -314,10 +299,18 @@ class Module extends Model
      */
     public function syncLearnerCategories(array $categories): void
     {
+        $invalid = collect($categories)
+            ->filter(fn (mixed $category): bool => ! is_string($category)
+                || ! in_array(strtolower(trim($category)), LearnerAgePolicy::activeCategories(), true));
+
+        if ($invalid->isNotEmpty()) {
+            throw new InvalidArgumentException('Choose only the active learner categories: Teenager or Adult.');
+        }
+
         $normalized = self::normalizeLearnerCategories($categories);
 
         if ($normalized === []) {
-            $normalized = ['teens'];
+            throw new InvalidArgumentException('Choose at least one active learner category.');
         }
 
         $this->learnerCategories()->delete();
@@ -345,7 +338,7 @@ class Module extends Model
 
         $normalized = self::normalizeLearnerCategories($categories);
 
-        if ($normalized !== []) {
+        if ($categories !== []) {
             return $normalized;
         }
 
@@ -476,7 +469,7 @@ class Module extends Model
     public static function normalizeLearnerCategories(array $categories): array
     {
         return collect($categories)
-            ->map(fn ($category) => self::normalizeLearnerCategory((string) $category))
+            ->map(fn ($category) => is_string($category) ? self::normalizeLearnerCategory($category) : null)
             ->filter()
             ->unique()
             ->values()
@@ -485,14 +478,7 @@ class Module extends Model
 
     public static function normalizeLearnerCategory(string $category): ?string
     {
-        $normalized = strtolower(trim($category));
-
-        return match ($normalized) {
-            'kid', 'kids', 'child', 'children' => 'kids',
-            'teen', 'teens' => 'teens',
-            'adult', 'adults' => 'adults',
-            default => null,
-        };
+        return LearnerAgePolicy::normalizeActiveCategory($category);
     }
 
     /**
@@ -501,9 +487,8 @@ class Module extends Model
     public static function learnerCategoryAgeRanges(): array
     {
         return [
-            'kids' => [5, 12],
-            'teens' => [13, 17],
-            'adults' => [18, 100],
+            LearnerAgePolicy::CATEGORY_TEENAGERS => [10, 17],
+            LearnerAgePolicy::CATEGORY_ADULTS => [18, 100],
         ];
     }
 
@@ -513,9 +498,8 @@ class Module extends Model
     public static function learnerCategoryLabelsMap(): array
     {
         return [
-            'kids' => 'Kids',
-            'teens' => 'Teens',
-            'adults' => 'Adults',
+            LearnerAgePolicy::CATEGORY_TEENAGERS => 'Teenager',
+            LearnerAgePolicy::CATEGORY_ADULTS => 'Adult',
         ];
     }
 
@@ -530,7 +514,7 @@ class Module extends Model
             ->values();
 
         if ($ranges->isEmpty()) {
-            return [13, 17];
+            throw new InvalidArgumentException('Choose at least one active learner category.');
         }
 
         return [
@@ -549,6 +533,10 @@ class Module extends Model
         $minAge = min($rawMinAge, $rawMaxAge);
         $maxAge = max($rawMinAge, $rawMaxAge);
 
+        if ($maxAge < 13) {
+            return [];
+        }
+
         return collect(self::learnerCategoryAgeRanges())
             ->filter(fn (array $range) => $minAge <= $range[1] && $maxAge >= $range[0])
             ->keys()
@@ -565,6 +553,66 @@ class Module extends Model
         }
 
         return null;
+    }
+
+    /** @return array<int, string> */
+    public function rawLearnerCategoriesForLegacyAudit(): array
+    {
+        return ($this->relationLoaded('learnerCategories')
+            ? $this->learnerCategories
+            : $this->learnerCategories()->get())
+            ->pluck('category')
+            ->map(fn ($category): string => (string) $category)
+            ->values()
+            ->all();
+    }
+
+    public function hasLegacyKidsOnlyTargeting(): bool
+    {
+        $raw = $this->rawLearnerCategoriesForLegacyAudit();
+        $hasKids = collect($raw)->contains(fn (string $category): bool => in_array(strtolower(trim($category)), ['kid', 'kids', 'child', 'children'], true));
+
+        return $hasKids && self::normalizeLearnerCategories($raw) === [];
+    }
+
+    public function hasLegacyKidsWording(): bool
+    {
+        return preg_match('/\b(?:kid|kids)\b/i', trim((string) $this->title.' '.(string) $this->description)) === 1;
+    }
+
+    public function isDeliverableToCategory(string $category): bool
+    {
+        $category = self::normalizeLearnerCategory($category);
+
+        return $category !== null
+            && ! $this->hasLegacyKidsOnlyTargeting()
+            && ! $this->hasLegacyKidsWording()
+            && in_array($category, $this->learnerCategoryKeys(), true);
+    }
+
+    private static function withoutLegacyKidsWording($query)
+    {
+        $connection = $query->getModel()->getConnection();
+        $driver = $connection->getDriverName();
+        $text = $driver === 'pgsql'
+            ? "coalesce(title, '') || ' ' || coalesce(description, '')"
+            : ($driver === 'mysql'
+                ? "concat(coalesce(title, ''), ' ', coalesce(description, ''))"
+                : "coalesce(title, '') || ' ' || coalesce(description, '')");
+
+        if ($driver === 'pgsql') {
+            return $query->whereRaw("{$text} !~* ?", ['(^|[^[:alnum:]_])(kid|kids)([^[:alnum:]_]|$)']);
+        }
+
+        if ($driver === 'mysql') {
+            return $query->whereRaw("{$text} NOT REGEXP ?", ['(^|[^[:alnum:]_])(kid|kids)([^[:alnum:]_]|$)']);
+        }
+
+        $normalized = "lower(replace(replace(replace(replace(replace(replace({$text}, '-', ' '), ',', ' '), '.', ' '), ':', ' '), '!', ' '), '?', ' '))";
+
+        return $query
+            ->whereRaw("instr(' ' || {$normalized} || ' ', ' kid ') = 0")
+            ->whereRaw("instr(' ' || {$normalized} || ' ', ' kids ') = 0");
     }
 
     private function resolvePublicMediaUrl(?string $path, string $defaultDirectory = ''): ?string

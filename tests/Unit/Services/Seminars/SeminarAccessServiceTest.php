@@ -10,7 +10,7 @@ class SeminarAccessServiceTest extends UnitTestCase
 {
     public function test_seminar_config_exposes_expected_values(): void
     {
-        $this->assertSame(['kids', 'teen', 'adult'], array_keys(config('seminars.learner_age_categories')));
+        $this->assertSame(['teens', 'adults'], array_keys(config('seminars.learner_age_categories')));
         $this->assertSame(15, config('seminars.join_window_before_minutes'));
         $this->assertSame(5, config('seminars.attendance.minimum_minutes'));
         $this->assertSame('webinar', SeminarType::Webinar->value);

@@ -3,6 +3,7 @@
 namespace App\Services\Seminars;
 
 use App\Models\Seminar;
+use App\Support\LearnerAgePolicy;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SeminarExportService
@@ -34,7 +35,7 @@ class SeminarExportService
                             $user?->name,
                             $user?->email,
                             $registrant->participant_type,
-                            $user?->age_bracket_cached,
+                            $this->learnerAgeLabel($user),
                             $registrant->status,
                             optional($registrant->registered_at)?->toDateTimeString(),
                             optional($registrant->cancelled_at)?->toDateTimeString(),
@@ -96,6 +97,15 @@ class SeminarExportService
 
             fclose($handle);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function learnerAgeLabel(?\App\Models\User $user): string
+    {
+        return match (LearnerAgePolicy::category($user?->birthdate)) {
+            LearnerAgePolicy::CATEGORY_TEENAGERS => 'Teenager',
+            LearnerAgePolicy::CATEGORY_ADULTS => 'Adult',
+            default => 'Ineligible/Unclassified',
+        };
     }
 
     private function filename(Seminar $seminar, string $type): string

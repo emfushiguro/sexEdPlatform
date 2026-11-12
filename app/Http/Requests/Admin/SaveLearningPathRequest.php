@@ -6,6 +6,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Models\LearningPath;
 use App\Models\Module;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -39,7 +40,7 @@ class SaveLearningPathRequest extends FormRequest
             'thumbnail' => ['nullable', 'image', 'max:2048'],
             'status' => ['required', Rule::in(LearningPath::STATUSES)],
             'categories' => ['required', 'array', 'min:1'],
-            'categories.*' => ['string', 'distinct', Rule::in(['kids', 'teens', 'adults'])],
+            'categories.*' => ['string', 'distinct', Rule::in(LearnerAgePolicy::activeCategories())],
             'module_ids' => ['present', 'array'],
             'module_ids.*' => ['integer', 'distinct'],
         ];

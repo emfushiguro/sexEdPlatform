@@ -8,6 +8,7 @@ use App\Models\Seminar;
 use App\Models\SeminarRegistrant;
 use App\Models\User;
 use App\Notifications\Seminars\SeminarRegistrationConfirmedNotification;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -125,7 +126,23 @@ class SeminarRegistrationService
             return false;
         }
 
-        $allowed = (array) ($seminar->learner_age_categories ?? []);
+        if (preg_match('/\b(?:kid|kids)\b/i', trim((string) $seminar->title.' '.(string) $seminar->description)) === 1) {
+            return false;
+        }
+
+        $rawAllowed = (array) ($seminar->learner_age_categories ?? []);
+        $allowed = collect($rawAllowed)
+            ->map(fn (mixed $category): ?string => is_string($category)
+                ? LearnerAgePolicy::normalizeActiveCategory($category)
+                : null)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($rawAllowed !== [] && $allowed === []) {
+            return false;
+        }
 
         return $allowed === [] || in_array($this->learnerAgeCategoryFor($user), $allowed, true);
     }
@@ -145,14 +162,7 @@ class SeminarRegistrationService
 
     public function learnerAgeCategoryFor(User $user): ?string
     {
-        $bracket = $user->age_bracket_cached ?: $user->learnerProfile?->getAgeBracket();
-
-        return match ($bracket) {
-            'kids' => 'kids',
-            'teens', 'teen' => 'teen',
-            'adults', 'adult' => 'adult',
-            default => null,
-        };
+        return LearnerAgePolicy::category($user->birthdate);
     }
 
     public function registrationError(User $user, Seminar $seminar): ?string

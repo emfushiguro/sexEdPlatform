@@ -74,7 +74,7 @@ class InstructorModuleConfigValidationTest extends TestCase
             ->post(route('instructor.modules.store'), [
                 'title' => 'No cap module',
                 'description' => 'desc',
-                'age_bracket' => 'kids',
+                'age_bracket' => 'teens',
                 'enrollment_mode' => 'manual',
                 'access_type' => 'free',
                 'enrollment_limit' => null,
@@ -87,7 +87,7 @@ class InstructorModuleConfigValidationTest extends TestCase
             ->put(route('instructor.modules.update', $module), [
                 'title' => 'No cap module',
                 'description' => 'desc updated',
-                'age_bracket' => 'kids',
+                'age_bracket' => 'teens',
                 'enrollment_mode' => 'manual',
                 'access_type' => 'free',
                 'enrollment_limit' => $planCap,
@@ -114,7 +114,7 @@ class InstructorModuleConfigValidationTest extends TestCase
             ->post(route('instructor.modules.store'), [
                 'title' => 'Over cap module',
                 'description' => 'desc',
-                'age_bracket' => 'kids',
+                'age_bracket' => 'teens',
                 'enrollment_mode' => 'manual',
                 'access_type' => 'free',
                 'enrollment_limit' => $planCap + 1,
@@ -126,11 +126,28 @@ class InstructorModuleConfigValidationTest extends TestCase
         ]);
     }
 
+    public function test_kids_module_targeting_is_rejected(): void
+    {
+        /** @var User $instructor */
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $instructor->assignRole('instructor');
+
+        $this->actingAs($instructor)
+            ->post(route('instructor.modules.store'), [
+                'title' => 'Legacy audience module',
+                'description' => 'desc',
+                'age_bracket' => 'kids',
+                'enrollment_mode' => 'auto',
+                'access_type' => 'free',
+            ])
+            ->assertSessionHasErrors(['age_bracket']);
+    }
+
     private function createInstructorBaselineWithFreeLearnerCap(int $cap): SubscriptionPlan
     {
         $plan = SubscriptionPlan::query()->create([
             'name' => 'Instructor Free Baseline',
-            'slug' => 'instructor-baseline-' . uniqid(),
+            'slug' => 'instructor-baseline-'.uniqid(),
             'description' => 'Baseline for validation tests',
             'price' => 0,
             'features' => [],
