@@ -25,7 +25,7 @@ class LearnerIdentityAccessTest extends TestCase
     public function test_covered_learner_is_routed_through_submission_review_and_approval(): void
     {
         [$user, $case] = $this->learner();
-        $this->actingAs($user)->get(route('profile.complete'))->assertRedirect(route('learner.identity.create'));
+        $this->actingAs($user)->get(route('profile.complete'))->assertOk();
         $this->get(route('learner.identity.create'))->assertOk()->assertSee('Identity Verification');
         $case->update(['status' => 'pending']);
         $this->get(route('learner.dashboard'))->assertRedirect(route('learner.identity.status'));
@@ -42,7 +42,7 @@ class LearnerIdentityAccessTest extends TestCase
     {
         [$user] = $this->learner(false);
         $this->actingAs($user)->get(route('learner.identity.create'))->assertRedirect(route('verification.notice'));
-        $this->get(route('profile.complete'))->assertRedirect(route('verification.notice'));
+        $this->get(route('profile.complete'))->assertOk();
     }
 
     public function test_pending_learner_cannot_bypass_gate_through_other_web_route_groups(): void
@@ -51,7 +51,7 @@ class LearnerIdentityAccessTest extends TestCase
         $case->update(['status' => 'pending']);
         $this->actingAs($user);
 
-        foreach (['profile.complete', 'learner.dashboard', 'chat.page', 'seminars.index', 'subscription.index'] as $name) {
+        foreach (['learner.dashboard', 'chat.page', 'seminars.index', 'subscription.index'] as $name) {
             $this->get(route($name))->assertRedirect(route('learner.identity.status'));
         }
     }
@@ -110,16 +110,16 @@ class LearnerIdentityAccessTest extends TestCase
         $this->assertSame($child->id, $relationship->child_user_id);
         $this->assertFalse($child->identityVerifications()->exists());
         $this->actingAs($child)->get(route('profile.complete'))->assertOk();
-        $this->get(route('learner.dashboard'))->assertRedirect(route('child.verification.status'));
+        $this->get(route('learner.dashboard'))->assertRedirect(route('learner.eligibility.status'));
     }
 
-    public function test_age_correction_below_thirteen_renders_support_hold_without_loop(): void
+    public function test_age_correction_to_teenager_without_guardian_renders_eligibility_status_without_loop(): void
     {
         [$user] = $this->learner();
         $user->update(['birthdate' => '2016-01-01']);
-        $this->actingAs($user)->get(route('learner.dashboard'))->assertRedirect(route('learner.identity.status'));
-        $this->get(route('learner.identity.status'))->assertOk()->assertSee('support');
-        $this->get(route('learner.identity.create'))->assertRedirect(route('learner.identity.status'));
+        $this->actingAs($user)->get(route('learner.dashboard'))->assertRedirect(route('learner.eligibility.status'));
+        $this->get(route('learner.eligibility.status'))->assertOk()->assertSee('Guardian');
+        $this->get(route('learner.identity.create'))->assertRedirect(route('learner.eligibility.status'));
     }
 
     public function test_missing_birthdate_on_existing_case_renders_support_hold_without_loop(): void
@@ -129,11 +129,11 @@ class LearnerIdentityAccessTest extends TestCase
 
         $this->assertSame($user->id, $case->user_id);
         $this->actingAs($user)->get(route('learner.dashboard'))
-            ->assertRedirect(route('learner.identity.status'));
-        $this->get(route('learner.identity.status'))
-            ->assertOk()->assertSee('guardian support')->assertSee('contact support');
+            ->assertRedirect(route('learner.eligibility.status'));
+        $this->get(route('learner.eligibility.status'))
+            ->assertOk()->assertSee('cannot continue')->assertSee('contact support');
         $this->get(route('learner.identity.create'))
-            ->assertRedirect(route('learner.identity.status'));
+            ->assertRedirect(route('learner.eligibility.status'));
     }
 
     public function test_identity_routes_require_an_owned_case(): void
@@ -326,7 +326,7 @@ class LearnerIdentityAccessTest extends TestCase
     public function test_unlinked_teen_is_governed_by_identity_review_and_linked_teen_keeps_relationship_hold(): void
     {
         [$teen, $case] = $this->learner(birthdate: now()->subYears(17)->toDateString());
-        $this->actingAs($teen)->get(route('profile.complete'))->assertRedirect(route('learner.identity.create'));
+        $this->actingAs($teen)->get(route('profile.complete'))->assertOk();
         $case->update(['status' => 'approved']);
         $this->get(route('profile.complete'))->assertOk();
 
@@ -337,7 +337,7 @@ class LearnerIdentityAccessTest extends TestCase
             'relationship_type' => 'mother', 'relationship_status' => 'pending',
             'verification_status' => 'pending', 'verification_document_path' => 'private/pending.png',
         ]);
-        $this->get(route('learner.dashboard'))->assertRedirect(route('child.verification.status'));
+        $this->get(route('learner.dashboard'))->assertRedirect(route('learner.eligibility.status'));
     }
 
     private function image(string $name): UploadedFile

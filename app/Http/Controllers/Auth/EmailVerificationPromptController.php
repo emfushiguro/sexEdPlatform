@@ -19,9 +19,13 @@ class EmailVerificationPromptController extends Controller
         Request $request,
         LearnerIdentityRequirement $requirement,
         AuthenticatedHomeRouteResolver $homeRouteResolver,
-    ): RedirectResponse|View
-    {
+    ): RedirectResponse|View {
         $user = $request->user();
+
+        if ($user->email === null) {
+            return redirect()->route('profile.edit')
+                ->with('warning', 'Add your own email address before requesting verification.');
+        }
 
         if ($user->hasVerifiedEmail()) {
             if ($user->isInstructorApplicant()) {
@@ -66,10 +70,10 @@ class EmailVerificationPromptController extends Controller
         }
 
         return view('auth.verify-email', [
-            'showSuccess'    => false,
+            'showSuccess' => false,
             'learnerProfile' => null,
-            'cities'         => collect(),
-            'barangays'      => collect(),
+            'cities' => collect(),
+            'barangays' => collect(),
         ]);
     }
 }

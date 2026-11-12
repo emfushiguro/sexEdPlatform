@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\ParentChildAccount;
 use App\Models\PersonaInquiry;
 use Closure;
 use Illuminate\Http\Request;
@@ -40,18 +39,6 @@ class EnsureProfileCompleted
                 if (! $request->routeIs('guardian.onboarding.*')) {
                     return redirect()->route('guardian.onboarding.show');
                 }
-            }
-        }
-
-        if ($user && $user->isLearner()) {
-            $childVerification = ParentChildAccount::query()
-                ->where('child_user_id', $user->id)
-                ->whereNotNull('verification_document_path')
-                ->latest('id')
-                ->first();
-
-            if ($childVerification && in_array($childVerification->verification_status, ['pending', 'rejected'], true)) {
-                return redirect()->route('child.verification.status');
             }
         }
 

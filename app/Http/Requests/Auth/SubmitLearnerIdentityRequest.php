@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\LearnerIdentityVerification;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -12,14 +13,22 @@ class SubmitLearnerIdentityRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
-        if (! $user?->isLearner() || $user->isParentRegistration() || ! $user->hasVerifiedEmail()) {
+        if (! $user?->isLearner() || $user->isParentRegistration()) {
+            return false;
+        }
+
+        $classification = LearnerAgePolicy::classify($user->birthdate);
+        $contactReady = $classification === LearnerAgePolicy::ELIGIBLE_TEENAGER
+            ? $user->hasCompletedMinorActivation() && $user->qualifyingMinorGuardianRelationship() !== null
+            : $classification === LearnerAgePolicy::ELIGIBLE_ADULT && $user->hasVerifiedEmail();
+        if (! $contactReady) {
             return false;
         }
 
         $case = $this->currentCase();
 
         return $case !== null
-            && $case->pathway === ($user->deriveAgeBracketCache() === 'teens' ? 'teen' : 'adult')
+            && $case->pathway === ($classification === LearnerAgePolicy::ELIGIBLE_TEENAGER ? 'teen' : 'adult')
             && in_array($case->status, [null, 'rejected'], true)
             && ($case->status !== 'rejected' || $case->resubmission_allowed);
     }

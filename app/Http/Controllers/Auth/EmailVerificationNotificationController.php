@@ -14,6 +14,11 @@ class EmailVerificationNotificationController extends Controller
      */
     public function store(Request $request, AuthenticatedHomeRouteResolver $homeRouteResolver): RedirectResponse
     {
+        if ($request->user()->email === null) {
+            return redirect()->route('profile.edit')
+                ->with('warning', 'Add your own email address before requesting verification.');
+        }
+
         if ($request->user()->hasVerifiedEmail()) {
             return redirect()->intended(route(
                 $homeRouteResolver->routeName($request->user()),

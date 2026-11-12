@@ -4,6 +4,7 @@ namespace App\Services\Identity;
 
 use App\Models\LearnerIdentityVerification;
 use App\Models\User;
+use App\Support\LearnerAgePolicy;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -109,10 +110,10 @@ class LearnerIdentityRequirement
 
     public function pathwayFor(User $user): string
     {
-        return match ($user->deriveAgeBracketCache()) {
-            'teens' => 'teen',
-            'adults' => 'adult',
-            default => throw new DomainException('Learner identity verification requires support for an under-13 or missing birthdate.'),
+        return match (LearnerAgePolicy::classify($user->birthdate)) {
+            LearnerAgePolicy::ELIGIBLE_TEENAGER => 'teen',
+            LearnerAgePolicy::ELIGIBLE_ADULT => 'adult',
+            default => throw new DomainException('Learner identity verification requires support for an ineligible or missing birthdate.'),
         };
     }
 

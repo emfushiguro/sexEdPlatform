@@ -324,7 +324,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/status', [SubscriptionController::class, 'checkStatus'])->name('status');
     });
 
-    Route::middleware('verified')->group(function () {
+    Route::middleware('learner.contact-ready')->group(function () {
         Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');
         Route::get('/seminars/{seminar}/external', SeminarExternalJoinController::class)->name('seminars.external.join');

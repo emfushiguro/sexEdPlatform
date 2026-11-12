@@ -37,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'profile.completed' => \App\Http\Middleware\EnsureProfileCompleted::class,
+            'learner.contact-ready' => \App\Http\Middleware\EnsureLearnerContactReady::class,
             'guardian.verified' => \App\Http\Middleware\EnsureGuardianVerified::class,
             'chat.access' => \App\Http\Middleware\EnsureChatAccess::class,
             'suspension.guard' => \App\Http\Middleware\CheckUserSuspensionStatus::class,

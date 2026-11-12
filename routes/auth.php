@@ -18,6 +18,7 @@ use App\Http\Controllers\InstructorApplication\ApplicationController as Instruct
 use App\Http\Controllers\InstructorApplication\DocumentController as InstructorApplicationDocumentController;
 use App\Http\Controllers\InstructorApplication\PersonaIdentityController as InstructorPersonaIdentityController;
 use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
+use App\Http\Controllers\Auth\LearnerEligibilityStatusController;
 use App\Http\Controllers\Auth\MinorRegistrationRequestController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\ParentApprovalLinkController;
@@ -167,6 +168,9 @@ Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
     ->name('parent.verification.approval-link');
 
 Route::middleware('auth')->group(function () {
+    Route::get('learner/eligibility-status', LearnerEligibilityStatusController::class)
+        ->name('learner.eligibility.status');
+
     Route::middleware('verified')->group(function () {
         Route::get('instructor-application/{application}/requested-documents', [InstructorApplicationController::class, 'requestedDocuments'])->name('instructor-application.documents.requested');
         Route::post('instructor-application/{application}/requested-documents', [InstructorApplicationController::class, 'replaceDocuments'])->name('instructor-application.documents.replace');
@@ -201,7 +205,7 @@ Route::middleware('auth')->group(function () {
         });
     });
 
-    Route::middleware('verified')->group(function () {
+    Route::middleware('learner.contact-ready')->group(function () {
         Route::get('learner/identity', [LearnerIdentityVerificationController::class, 'create'])->name('learner.identity.create');
         Route::post('learner/identity', [LearnerIdentityVerificationController::class, 'storeDocument'])->name('learner.identity.document.store');
         Route::get('learner/identity/selfie', [LearnerIdentityVerificationController::class, 'selfie'])->name('learner.identity.selfie.create');
