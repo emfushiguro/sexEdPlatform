@@ -69,4 +69,27 @@ class AdminDashboardMetricsTest extends TestCase
             ->assertSee(route('admin.instructor-applications.identities.index'), false)
             ->assertSee(route('admin.content-reviews.index'), false);
     }
+
+    public function test_learner_demographics_use_explicit_age_policy_buckets(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $admin->assignRole('admin');
+
+        User::factory()->createMany([
+            ['role' => 'learner', 'age_eligibility_cached' => 'eligible_teenager', 'age_bracket_cached' => 'teens'],
+            ['role' => 'learner', 'age_eligibility_cached' => 'eligible_adult', 'age_bracket_cached' => 'adults'],
+            ['role' => 'learner', 'age_eligibility_cached' => 'ineligible_underage', 'age_bracket_cached' => null],
+            ['role' => 'learner', 'age_eligibility_cached' => 'unclassified', 'age_bracket_cached' => null],
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('Teenagers (10-17)', false)
+            ->assertSee('Adults (18-100)', false)
+            ->assertSee('Ineligible', false)
+            ->assertSee('Unclassified', false)
+            ->assertDontSee('Kids', false);
+    }
 }

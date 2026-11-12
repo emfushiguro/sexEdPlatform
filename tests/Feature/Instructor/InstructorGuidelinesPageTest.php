@@ -21,7 +21,7 @@ class InstructorGuidelinesPageTest extends TestCase
             'overview',
             'content-principles',
             'learner-category-guidelines',
-            'kids-guidelines',
+            'teenager-foundations-guidelines',
             'teens-guidelines',
             'adults-guidelines',
             'sensitive-topics',
@@ -41,7 +41,9 @@ class InstructorGuidelinesPageTest extends TestCase
             ->assertSeeText('Instructor Guidelines')
             ->assertSeeText('Learn → Practice → Apply → Assess')
             ->assertSeeText('Sexualization of minors')
-            ->assertSeeText('Before You Publish');
+            ->assertSeeText('Before You Publish')
+            ->assertSeeText('Teenager foundations')
+            ->assertDontSeeText('Kids');
     }
 
     public function test_guidelines_page_is_discoverable_from_the_instructor_sidebar(): void

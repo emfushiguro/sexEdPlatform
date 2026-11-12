@@ -43,7 +43,7 @@ class ConnectorModuleAccessManagementUiTest extends TestCase
 
     public function test_roster_includes_unassigned_teens_with_photo_details_and_age_eligibility(): void
     {
-        [$manager, $connector, $module, , $purchase, $payment] = $this->createConnectorModulePaymentState(['min_age' => 13, 'max_age' => 17]);
+        [$manager, $connector, $module, , $purchase, $payment] = $this->createConnectorModulePaymentState(['min_age' => 10, 'max_age' => 17]);
         app(ConnectorModulePurchaseService::class)->completePayment($payment, 'gcash', 'pay_roster');
         $module->syncLearnerCategories(['teens']);
         $teen = $this->createMinorLearner(15);
@@ -53,7 +53,7 @@ class ConnectorModuleAccessManagementUiTest extends TestCase
 
         $this->actingAs($manager)->get(route('connector.modules.library.access', [$connector, $purchase->fresh()->entitlement]))
             ->assertOk()->assertSee($teen->name)->assertSee($adult->name)
-            ->assertSee('avatars/access-teen.png')->assertSee('Learner information')->assertSee('Teens')
+            ->assertSee('avatars/access-teen.png')->assertSee('Learner information')->assertSee('Teenager')
             ->assertSee('Eligible')->assertSee('Module age group does not match')->assertSee('View');
         $this->assertDatabaseCount('connector_module_seat_assignments', 0);
     }
@@ -103,7 +103,7 @@ class ConnectorModuleAccessManagementUiTest extends TestCase
         $module->load('learnerCategories');
         $module->syncLearnerCategories(['teens']);
         $this->assertTrue($module->isAppropriateForAge(15));
-        $this->assertFalse($module->isAppropriateForAge(10));
+        $this->assertTrue($module->isAppropriateForAge(10));
     }
 
     public function test_unknown_age_details_do_not_query_module_categories_per_member(): void

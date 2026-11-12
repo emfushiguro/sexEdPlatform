@@ -25,13 +25,14 @@
                 @php
                     $ageBracket = old('age_bracket');
                     if (!$ageBracket && $module) {
-                        $ageBracket = $module->min_age >= 18 ? 'adults' : ($module->min_age >= 13 ? 'teens' : 'kids');
+                        $ageBracket = $module->learnerCategoryKeys()[0] ?? '';
+                    } elseif (!$ageBracket) {
+                        $ageBracket = 'teens';
                     }
                 @endphp
                 <select name="age_bracket" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
-                    <option value="kids" @selected($ageBracket === 'kids')>Kids</option>
-                    <option value="teens" @selected($ageBracket === 'teens')>Teens</option>
-                    <option value="adults" @selected($ageBracket === 'adults')>Adults</option>
+                    <option value="teens" @selected($ageBracket === 'teens')>Teenager</option>
+                    <option value="adults" @selected($ageBracket === 'adults')>Adult</option>
                 </select>
             </div>
             <div>

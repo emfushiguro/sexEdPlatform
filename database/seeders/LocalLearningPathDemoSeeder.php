@@ -34,12 +34,12 @@ class LocalLearningPathDemoSeeder extends Seeder
             foreach ($titles as $index => $title) {
                 $module = Module::create([
                     'title' => $title, 'description' => 'Local demonstration content for testing the learning journey.',
-                    'min_age' => 5, 'max_age' => 100, 'order' => 9000 + $index,
+                    'min_age' => 10, 'max_age' => 100, 'order' => 9000 + $index,
                     'duration_minutes' => 5, 'is_published' => true, 'is_premium' => false,
                     'access_type' => 'free', 'enrollment_mode' => 'auto', 'content_owner_type' => 'admin',
                     'certificate_pass_score' => 70,
                 ]);
-                $module->syncLearnerCategories(['kids', 'teens', 'adults']);
+                $module->syncLearnerCategories(['teens', 'adults']);
                 $lesson = $module->lessons()->create([
                     'title' => 'A short introduction', 'description' => 'Read and reflect on this example.',
                     'order' => 1, 'duration' => 5, 'is_published' => true,
@@ -63,7 +63,7 @@ class LocalLearningPathDemoSeeder extends Seeder
             $path = LearningPath::create([
                 'title' => $pathTitle, 'description' => 'A short local demonstration journey through healthy connections.', 'status' => LearningPath::STATUS_PUBLISHED,
             ]);
-            foreach (['kids', 'teens', 'adults'] as $category) {
+            foreach (['teens', 'adults'] as $category) {
                 $path->learnerCategories()->create(['category' => $category]);
             }
             foreach (array_slice($modules, 0, 3) as $index => $module) {

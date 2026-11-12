@@ -15,7 +15,6 @@
             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Account Type</span>
             <select x-model="filters.account_type" @change="refresh(true)" class="w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
                 <option value="">All account types</option>
-                <option value="learner-child">Learner Child</option>
                 <option value="learner-teen">Learner Teen</option>
                 <option value="learner-adult">Learner Adult</option>
                 <option value="guardian">Guardian</option>

@@ -59,4 +59,18 @@ class AdminUserWizardFlowTest extends TestCase
             ->assertSee(e($target->name), false)
             ->assertSee('Update User', false);
     }
+
+    public function test_create_page_explains_guardian_assistance_for_teenagers(): void
+    {
+        $this->withoutVite();
+        $admin = $this->createAdminUser();
+
+        $this->actingAs($admin)
+            ->followingRedirects()
+            ->get(route('admin.users.create'))
+            ->assertOk()
+            ->assertSee('Teenager accounts ages 10', false)
+            ->assertSee('guardian-assisted registration', false)
+            ->assertDontSee('Kids', false);
+    }
 }

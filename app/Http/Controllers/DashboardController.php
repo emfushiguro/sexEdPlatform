@@ -4,17 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Enums\PaymentStatus;
 use App\Enums\SubscriptionStatus;
-use App\Models\User;
-use App\Models\Module;
-use App\Models\Counselor;
 use App\Models\Clinic;
-use App\Models\Seminar;
-use App\Models\UserProgress;
-use App\Models\Payment;
+use App\Models\Counselor;
 use App\Models\InstructorApplication;
+use App\Models\Module;
+use App\Models\Payment;
+use App\Models\Seminar;
+use App\Models\User;
+use App\Models\UserProgress;
 use App\Services\PayMongoPaymentLinkService;
 use App\Services\SubscriptionService;
-use Illuminate\Http\Request;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +27,7 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // Route to role-specific dashboard
-        return match($user->role) {
+        return match ($user->role) {
             'admin' => $this->adminDashboard(),
             'instructor' => redirect()->route('instructor.dashboard'),
             'counselor' => $this->counselorDashboard(),
@@ -65,18 +65,18 @@ class DashboardController extends Controller
         $learnerProfile = $user->learnerProfile;
 
         // Get age and age bracket
-        $age = $learnerProfile->getAge();
-        $ageBracket = $learnerProfile->getAgeBracket();
+        $age = LearnerAgePolicy::age($user->birthdate);
+        $ageBracket = LearnerAgePolicy::category($user->birthdate);
 
         // Get enrolled modules (exclude deleted modules)
         $enrolledModules = $user->moduleEnrollments()
-            ->with(['module' => function($query) {
+            ->with(['module' => function ($query) {
                 $query->withCount('lessons');
             }])
             ->latest()
             ->take(6)
             ->get()
-            ->filter(function($enrollment) {
+            ->filter(function ($enrollment) {
                 return $enrollment->module !== null;
             });
 
@@ -89,10 +89,10 @@ class DashboardController extends Controller
                 ->where('module_id', $module->id)
                 ->where('completed', true)
                 ->count();
-            
+
             $progressPercentage = $totalLessons > 0 ? ($completedLessons / $totalLessons) * 100 : 0;
-            
-            $progressData[$module->id] = (object)[
+
+            $progressData[$module->id] = (object) [
                 'progress_percentage' => round($progressPercentage),
                 'completed_lessons' => $completedLessons,
                 'total_lessons' => $totalLessons,
@@ -101,7 +101,7 @@ class DashboardController extends Controller
 
         // Get recommended modules (published, age-appropriate, not enrolled)
         $recommendedModules = Module::where('is_published', true)
-            ->forAge($age)
+            ->forAge($age ?? -1)
             ->whereNotIn('id', $enrolledModules->pluck('module_id'))
             ->withCount('lessons')
             ->orderBy('order')
@@ -125,8 +125,7 @@ class DashboardController extends Controller
         ];
 
         // Route to age-appropriate dashboard view
-        return match($ageBracket) {
-            'kids' => view('dashboards.kids', $data),
+        return match ($ageBracket) {
             'teens' => view('dashboards.teens', $data),
             'adults' => view('dashboards.adults', $data),
             default => view('dashboards.learner', $data), // fallback
@@ -190,7 +189,7 @@ class DashboardController extends Controller
                 ->latest()
                 ->first();
 
-            if (!$pendingSubscription) {
+            if (! $pendingSubscription) {
                 return;
             }
 
@@ -202,6 +201,7 @@ class DashboardController extends Controller
             if ($completedPayment) {
                 app(SubscriptionService::class)->activate($pendingSubscription);
                 session()->flash('success', 'Your subscription is now active.');
+
                 return;
             }
 
@@ -212,7 +212,7 @@ class DashboardController extends Controller
                 ->latest()
                 ->first();
 
-            if (!$pendingPayment) {
+            if (! $pendingPayment) {
                 return;
             }
 
@@ -231,11 +231,11 @@ class DashboardController extends Controller
             if ($this->paymongoResponseIndicatesPaid($response)) {
                 DB::transaction(function () use ($pendingPayment, $pendingSubscription) {
                     $pendingPayment->update([
-                        'status'  => PaymentStatus::Completed,
+                        'status' => PaymentStatus::Completed,
                         'paid_at' => now(),
                         'payment_details' => array_merge($pendingPayment->payment_details ?? [], [
                             'verified_via_dashboard' => true,
-                            'verified_at'            => now()->toDateTimeString(),
+                            'verified_at' => now()->toDateTimeString(),
                         ]),
                     ]);
                     app(SubscriptionService::class)->activate($pendingSubscription);
@@ -256,7 +256,7 @@ class DashboardController extends Controller
         }
 
         $payments = data_get($response, 'data.attributes.payments', []);
-        if (!is_array($payments) || empty($payments)) {
+        if (! is_array($payments) || empty($payments)) {
             return false;
         }
 
