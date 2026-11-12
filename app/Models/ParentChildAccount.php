@@ -66,6 +66,9 @@ class ParentChildAccount extends Model
         'verification_reviewed_at',
         'verification_approved_at',
         'relationship_verified_at',
+        'minor_registration_authorized_at',
+        'minor_registration_consent_version',
+        'minor_registration_authorized_by_user_id',
     ];
 
     protected $casts = [
@@ -83,6 +86,7 @@ class ParentChildAccount extends Model
         'relationship_deactivated_at' => 'datetime',
         'current_evidence_round' => 'integer',
         'relationship_correction_request' => 'array',
+        'minor_registration_authorized_at' => 'datetime',
     ];
 
     /**
@@ -169,6 +173,15 @@ class ParentChildAccount extends Model
                     ->whereNull('verification_document_path')
                     ->orWhere('verification_status', 'approved');
             });
+    }
+
+    public function scopeMinorAccessEligible(Builder $query): Builder
+    {
+        return $query
+            ->accessEligible()
+            ->whereNotNull('minor_registration_authorized_at')
+            ->where('minor_registration_consent_version', config('learner_age_policy.guardian_consent_version'))
+            ->whereColumn('minor_registration_authorized_by_user_id', 'parent_user_id');
     }
 
     public function scopeWithPermission(Builder $query, string $permission): Builder

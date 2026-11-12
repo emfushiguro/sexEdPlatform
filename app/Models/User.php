@@ -170,6 +170,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(LearnerProfile::class);
     }
 
+    public function minorRegistrationRequests(): HasMany
+    {
+        return $this->hasMany(MinorRegistrationRequest::class, 'existing_child_user_id');
+    }
+
+    public function minorAccountHandoffs(): HasMany
+    {
+        return $this->hasMany(MinorAccountHandoff::class, 'child_user_id');
+    }
+
     public function identityVerifications(): HasMany
     {
         return $this->hasMany(LearnerIdentityVerification::class);
@@ -899,6 +909,30 @@ class User extends Authenticatable implements MustVerifyEmail
     public function parentLinks(): HasMany
     {
         return $this->hasMany(ParentChildAccount::class, 'child_user_id');
+    }
+
+    public function guardianRelationships(): HasMany
+    {
+        return $this->hasMany(ParentChildAccount::class, 'child_user_id');
+    }
+
+    public function qualifyingMinorGuardianRelationship(): ?ParentChildAccount
+    {
+        if (! LearnerAgePolicy::requiresGuardian($this->birthdate)) {
+            return null;
+        }
+
+        return $this->guardianRelationships()
+            ->minorAccessEligible()
+            ->orderByDesc('minor_registration_authorized_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    public function hasCompletedMinorActivation(): bool
+    {
+        return ! $this->minor_account_activation_required
+            || $this->minor_account_activated_at !== null;
     }
 
     public function outgoingParentInvitations()
