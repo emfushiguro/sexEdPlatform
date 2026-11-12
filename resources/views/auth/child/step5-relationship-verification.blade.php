@@ -10,8 +10,8 @@
     <x-wizard-stepper flow="dependent" />
 
     <div class="p-5 mb-6 border border-purple-100 rounded-2xl bg-purple-50/60">
-        <p class="text-xs font-semibold tracking-wide text-purple-600 uppercase">Dependent setup</p>
-        <h1 class="mt-1 text-2xl font-bold text-purple-950">Administrative verification</h1>
+        <p class="text-xs font-semibold tracking-wide text-purple-600 uppercase">Teenager setup</p>
+        <h1 class="mt-1 text-2xl font-bold text-purple-950">Guardian relationship review</h1>
         <p class="mt-2 text-sm text-gray-700">{{ $pathwayLabel }}</p>
     </div>
 
@@ -161,10 +161,15 @@
                 <input type="checkbox" name="confirm_submission" value="1" required class="mt-0.5 rounded border-amber-300" @checked(old('confirm_submission'))>
                 <span>I confirm these documents support the requested Guardian–Dependent relationship.</span>
             </label>
+
+            <label class="flex items-start gap-2 p-3 text-xs border rounded-xl border-purple-200 bg-purple-50 text-purple-900 mx-0.5 sm:mx-6">
+                <input type="checkbox" name="guardian_authorization" value="1" required class="mt-0.5 rounded border-purple-300" @checked(old('guardian_authorization'))>
+                <span>I confirm that I am authorized to act as this Teenager's guardian, authorize creation of this account and the required identity review, and have read the Privacy Notice.</span>
+            </label>
         </div>
 
         <div class="flex items-center justify-between gap-4 pt-4 border-t border-gray-200">
-            <a href="{{ route('parent.create-child.validation') }}" class="text-sm text-gray-500 hover:text-gray-700">Back</a>
+            <a href="{{ route('parent.create-child.credentials') }}" class="text-sm text-gray-500 hover:text-gray-700">Back</a>
             <button type="submit" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);" class="inline-flex items-center justify-center px-8 py-3.5 font-semibold text-white rounded-xl shadow-md hover:opacity-90">Submit Request</button>
         </div>
     </form>

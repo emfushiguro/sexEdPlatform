@@ -12,12 +12,12 @@
                 <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Conscious Connections</p>
             </div>
             <h2 class="text-4xl font-bold text-white mb-4 leading-tight">
-                {{ $isApproved ? 'Dependent account activated!' : 'Application submitted!' }}
+                {{ $isApproved ? 'Teenager account activated!' : 'Teenager account submitted!' }}
             </h2>
             <p class="text-white/80 text-lg max-w-xs">
                 {{ $isApproved
-                    ? 'Monitoring access is now active.'
-                    : 'Your dependent account is now pending admin verification.' }}
+                    ? 'The Teenager can continue with the next identity and profile steps.'
+                    : 'The account cannot be used until the Guardianâ€“Dependent relationship is approved.' }}
             </p>
         </div>
     </x-slot>
@@ -39,12 +39,12 @@
             </svg>
         </div>
         <h1 class="text-2xl font-bold text-purple-900">
-            {{ $isApproved ? $childName . "'s account is approved." : $childName . "'s account is under review." }}
+            {{ $isApproved ? $childName . "'s Teenager account is approved." : $childName . "'s Teenager account is under review." }}
         </h1>
         <p class="mt-2 text-sm text-gray-600">
             {{ $isApproved
-                ? 'You can monitor progress and manage content approvals right away.'
-                : 'We will notify you when this dependent account is approved or rejected by the administrator.' }}
+                ? 'The Teenager can continue activation and submit their own identity evidence.'
+                : 'The guardian will receive an activation handoff only after relationship approval. The Teenager will then choose a password and submit their own ID plus selfie; relationship approval is not Teenager identity approval.' }}
         </p>
     </div>
 

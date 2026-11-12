@@ -45,6 +45,7 @@ class StoreChildRelationshipVerificationRequest extends FormRequest
                     'max:1000',
                 ],
                 'confirm_submission' => ['accepted'],
+                'guardian_authorization' => ['accepted'],
             ],
         );
     }
