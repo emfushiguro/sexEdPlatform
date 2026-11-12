@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Notifications\CustomVerifyEmail;
-use App\Support\AccountEmail;
 use App\Services\Connectors\ConnectorAccessService;
-use Carbon\Carbon;
+use App\Support\AccountEmail;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -617,19 +617,20 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function calculateAge(): ?int
     {
-        if (! $this->birthdate) {
-            return null;
-        }
+        return LearnerAgePolicy::age($this->birthdate);
+    }
 
-        return Carbon::parse($this->birthdate)->age;
+    public function requiresGuardian(): bool
+    {
+        return LearnerAgePolicy::requiresGuardian($this->birthdate);
     }
 
     /**
-     * Check if user is under 13 (requires parental consent)
+     * Check if learner requires guardian consent under the active age policy.
      */
     public function requiresParentalConsent(): bool
     {
-        return $this->calculateAge() < 13;
+        return $this->requiresGuardian();
     }
 
     public function isMinorForCommunityFeed(): bool
@@ -904,25 +905,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function deriveAgeBracketCache(): ?string
     {
-        if (! $this->isLearner()) {
-            return null;
-        }
-
-        $age = $this->calculateAge();
-
-        if ($age === null) {
-            return null;
-        }
-
-        if ($age <= 12) {
-            return 'kids';
-        }
-
-        if ($age <= 17) {
-            return 'teens';
-        }
-
-        return 'adults';
+        return $this->hasRole('learner')
+            ? LearnerAgePolicy::category($this->birthdate)
+            : null;
     }
 
     public function deriveAccountType(): string

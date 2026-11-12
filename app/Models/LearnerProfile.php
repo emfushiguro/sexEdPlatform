@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\LearnerAgePolicy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon;
 
 class LearnerProfile extends Model
 {
@@ -70,52 +70,41 @@ class LearnerProfile extends Model
     /**
      * Calculate age from birthdate.
      */
-    public function getAge(): int
+    public function getAge(): ?int
     {
-        return Carbon::parse($this->birthdate)->age;
+        return LearnerAgePolicy::age($this->user?->birthdate ?? $this->birthdate);
     }
 
     /**
-     * Get age bracket: kids, teens, or adults.
+     * Get active age category: teens or adults.
      */
     public function getAgeBracket(): ?string
     {
-        if (!$this->birthdate) {
-            return null;
-        }
-
-        $age = $this->getAge();
-
-        return match (true) {
-            $age >= 5 && $age <= 12 => 'kids',
-            $age >= 13 && $age <= 17 => 'teens',
-            $age >= 18 => 'adults',
-            default => null, // Under 5 not allowed
-        };
+        return LearnerAgePolicy::category($this->user?->birthdate ?? $this->birthdate);
     }
 
     /**
-     * Check if user is a kid (5-12).
+     * Retain the legacy kid predicate for source compatibility.
      */
     public function isKid(): bool
     {
-        return $this->getAgeBracket() === 'kids';
+        return false;
     }
 
     /**
-     * Check if user is a teen (13-17).
+     * Check if user is an eligible teenager (10-17).
      */
     public function isTeen(): bool
     {
-        return $this->getAgeBracket() === 'teens';
+        return $this->getAgeBracket() === LearnerAgePolicy::CATEGORY_TEENAGERS;
     }
 
     /**
-     * Check if user is an adult (18+).
+     * Check if user is an eligible adult (18-100).
      */
     public function isAdult(): bool
     {
-        return $this->getAgeBracket() === 'adults';
+        return $this->getAgeBracket() === LearnerAgePolicy::CATEGORY_ADULTS;
     }
 
     /**
@@ -123,10 +112,10 @@ class LearnerProfile extends Model
      */
     public function isCompleted(): bool
     {
-        return !empty($this->username) 
-            && !empty($this->birthdate) 
-            && !empty($this->city_code)
-            && !empty($this->barangay_code);
+        return ! empty($this->username)
+            && ! empty($this->birthdate)
+            && ! empty($this->city_code)
+            && ! empty($this->barangay_code);
     }
 
     /**
