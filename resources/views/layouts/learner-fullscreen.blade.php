@@ -78,6 +78,19 @@
     @stack('head')
 </head>
 @php
+    $learningFeedback = is_array(session('learning_feedback')) ? session('learning_feedback') : null;
+    $learningFeedbackIsValid = $learningFeedback !== null
+        && is_string($learningFeedback['id'] ?? null)
+        && trim($learningFeedback['id']) !== ''
+        && is_string($learningFeedback['sourceId'] ?? null)
+        && trim($learningFeedback['sourceId']) !== ''
+        && in_array($learningFeedback['type'] ?? null, [
+            'correct', 'incorrect', 'try_again', 'activity_completed',
+            'lesson_completed', 'module_completed', 'informational', 'warning',
+        ], true)
+        && is_string($learningFeedback['message'] ?? null);
+    $learningFeedbackReplacesSuccess = $learningFeedbackIsValid
+        && ($learningFeedback['replacesSuccessToast'] ?? false) === true;
     $learningAudioEvent = in_array(session('learning_audio_event'), ['selection', 'correct', 'incorrect', 'success', 'complete'], true)
         ? session('learning_audio_event')
         : null;
@@ -190,6 +203,8 @@
         @yield('content')
     </div>
 
+    <x-learner.learning-feedback :initial-feedback="$learningFeedback" />
+
     @stack('scripts')
 
     @auth
@@ -215,7 +230,7 @@
                 if (typeof window.toast === 'undefined') {
                     return setTimeout(fireToasts, 80);
                 }
-                @if(session('success'))
+                @if(session('success') && ! $learningFeedbackReplacesSuccess)
                     window.toast.success("{{ addslashes(session('success')) }}");
                 @endif
                 @if(session('error'))

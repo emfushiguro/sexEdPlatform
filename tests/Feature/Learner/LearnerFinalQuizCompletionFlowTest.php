@@ -102,6 +102,7 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
             ->assertOk()
             ->assertSee($module->title, false)
             ->assertSee('Congratulations!', false)
+            ->assertSee('data-learning-feedback-host', false)
             ->assertSee('You have successfully completed this module.', false)
             ->assertSee('Claim Certificate', false)
             ->assertSee('Return to Modules', false);

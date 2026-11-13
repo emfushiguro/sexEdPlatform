@@ -65,10 +65,59 @@ class LessonPageTest extends TestCase
             ->get(route('learner.lessons.show', $lesson))
             ->assertOk()
             ->assertSee($lesson->title)
+            ->assertSee('data-learning-feedback-host', false)
             ->assertSee('data-learning-audio', false)
             ->assertSee('data-learning-audio-toggle', false)
             ->assertSee(":data-learning-audio-state=\"\$store.learningAudio.enabled ? 'on' : 'off'\"", false)
             ->assertSee('data-learning-audio-event="complete"', false);
+    }
+
+    public function test_ordinary_success_toast_remains_without_learning_feedback(): void
+    {
+        ['learner' => $learner, 'lesson' => $lesson] = $this->enrolledLearnerWithLesson();
+
+        $this->actingAs($learner)
+            ->withSession(['success' => 'Ordinary success'])
+            ->get(route('learner.lessons.show', $lesson))
+            ->assertOk()
+            ->assertSee('window.toast.success', false)
+            ->assertSee('Ordinary success', false);
+    }
+
+    public function test_equivalent_success_toast_is_suppressed_by_valid_learning_feedback(): void
+    {
+        ['learner' => $learner, 'lesson' => $lesson] = $this->enrolledLearnerWithLesson();
+
+        $this->actingAs($learner)
+            ->withSession([
+                'success' => 'Lesson completed',
+                'learning_feedback' => [
+                    'id' => 'lesson:'.$lesson->id.':complete',
+                    'sourceId' => 'lesson:'.$lesson->id,
+                    'type' => 'lesson_completed',
+                    'message' => 'Lesson completed',
+                    'replacesSuccessToast' => true,
+                ],
+            ])
+            ->get(route('learner.lessons.show', $lesson))
+            ->assertOk()
+            ->assertSee('data-learning-feedback-host', false)
+            ->assertDontSee('window.toast.success', false);
+    }
+
+    public function test_malformed_learning_feedback_does_not_suppress_ordinary_success_toast(): void
+    {
+        ['learner' => $learner, 'lesson' => $lesson] = $this->enrolledLearnerWithLesson();
+
+        $this->actingAs($learner)
+            ->withSession([
+                'success' => 'Ordinary success',
+                'learning_feedback' => ['replacesSuccessToast' => true],
+            ])
+            ->get(route('learner.lessons.show', $lesson))
+            ->assertOk()
+            ->assertSee('window.toast.success', false)
+            ->assertSee('Ordinary success', false);
     }
 
     public function test_lesson_page_does_not_contain_about_this_lesson_block(): void

@@ -16,6 +16,7 @@ import { createSequencingActivity } from './sequencing-activity';
 import { createLearningPathBuilder } from './learning-path-builder';
 import { createIdentitySelfie } from './identity-selfie';
 import { initializeLearningAudioPage, learningAudio } from './learning-audio';
+import { createLearningFeedbackManager } from './learning-feedback';
 import './toast'; // Toast notification system
 import './admin-community';
 import './sweet-alerts';
@@ -363,4 +364,19 @@ learningAudio.subscribe(({ enabled, volume }) => {
 });
 window.learningAudio = learningAudio;
 initializeLearningAudioPage(learningAudio);
+
+const learningFeedback = createLearningFeedbackManager({
+    audio: learningAudio,
+    origin: window.location.origin,
+    getActiveElement: () => document.activeElement,
+    dispatchAction: (detail) => {
+        const event = new CustomEvent('learning-feedback:action', { detail, cancelable: true });
+        window.dispatchEvent(event);
+        return event.defaultPrevented;
+    },
+    navigate: (url) => window.location.assign(url),
+});
+
+Alpine.store('learningFeedback', learningFeedback);
+window.learningFeedback = Alpine.store('learningFeedback');
 Alpine.start();
