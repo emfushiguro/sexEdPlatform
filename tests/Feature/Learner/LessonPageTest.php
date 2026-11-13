@@ -86,23 +86,26 @@ class LessonPageTest extends TestCase
 
     public function test_equivalent_success_toast_is_suppressed_by_valid_learning_feedback(): void
     {
-        ['learner' => $learner, 'lesson' => $lesson] = $this->enrolledLearnerWithLesson();
+        ['learner' => $learner, 'lesson' => $lesson, 'module' => $module] = $this->enrolledLearnerWithLesson();
 
-        $this->actingAs($learner)
+        foreach ([route('learner.lessons.show', $lesson), route('learner.modules.show', $module)] as $url) {
+            $this->actingAs($learner)
             ->withSession([
-                'success' => 'Lesson completed',
+                'success' => " <i>Lesson</i>\tcompleted\u{FEFF}",
                 'learning_feedback' => [
                     'id' => 'lesson:'.$lesson->id.':complete',
                     'sourceId' => 'lesson:'.$lesson->id,
                     'type' => 'lesson_completed',
-                    'message' => 'Lesson completed',
+                    'message' => ' <b>Lesson</b>   completed ',
+                    'actions' => [['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'Dismiss']],
                     'replacesSuccessToast' => true,
                 ],
             ])
-            ->get(route('learner.lessons.show', $lesson))
+            ->get($url)
             ->assertOk()
             ->assertSee('data-learning-feedback-host', false)
             ->assertDontSee('window.toast.success', false);
+        }
     }
 
     public function test_malformed_learning_feedback_does_not_suppress_ordinary_success_toast(): void
@@ -118,6 +121,91 @@ class LessonPageTest extends TestCase
             ->assertOk()
             ->assertSee('window.toast.success', false)
             ->assertSee('Ordinary success', false);
+    }
+
+    public function test_non_equivalent_learning_feedback_does_not_suppress_success_in_either_layout(): void
+    {
+        ['learner' => $learner, 'lesson' => $lesson, 'module' => $module] = $this->enrolledLearnerWithLesson();
+
+        foreach ([route('learner.lessons.show', $lesson), route('learner.modules.show', $module)] as $url) {
+            $this->actingAs($learner)
+                ->withSession([
+                    'success' => 'Ordinary success',
+                    'learning_feedback' => [
+                        'id' => 'activity:1:complete', 'sourceId' => 'activity:1',
+                        'type' => 'activity_completed', 'message' => 'A different success',
+                        'replacesSuccessToast' => true,
+                    ],
+                ])
+                ->get($url)
+                ->assertOk()
+                ->assertSee('window.toast.success', false);
+        }
+    }
+
+    public function test_only_client_whitespace_is_collapsed_when_comparing_success_in_either_layout(): void
+    {
+        ['learner' => $learner, 'lesson' => $lesson, 'module' => $module] = $this->enrolledLearnerWithLesson();
+
+        foreach ([route('learner.lessons.show', $lesson), route('learner.modules.show', $module)] as $url) {
+            $this->actingAs($learner)
+                ->withSession([
+                    'success' => 'Ordinary success',
+                    'learning_feedback' => [
+                        'id' => 'activity:1:complete', 'sourceId' => 'activity:1',
+                        'type' => 'activity_completed', 'message' => "Ordinary\u{0085}success",
+                        'replacesSuccessToast' => true,
+                    ],
+                ])
+                ->get($url)
+                ->assertOk()
+                ->assertSee('window.toast.success', false);
+        }
+    }
+
+    public function test_equivalent_learning_feedback_requires_explicit_success_replacement_in_either_layout(): void
+    {
+        ['learner' => $learner, 'lesson' => $lesson, 'module' => $module] = $this->enrolledLearnerWithLesson();
+
+        foreach ([false, 'true', 1, null] as $replacesSuccessToast) {
+            foreach ([route('learner.lessons.show', $lesson), route('learner.modules.show', $module)] as $url) {
+                $this->actingAs($learner)
+                    ->withSession([
+                        'success' => 'Ordinary success',
+                        'learning_feedback' => [
+                            'id' => 'activity:1:complete', 'sourceId' => 'activity:1',
+                            'type' => 'activity_completed', 'message' => 'Ordinary success',
+                            'replacesSuccessToast' => $replacesSuccessToast,
+                        ],
+                    ])
+                    ->get($url)
+                    ->assertOk()
+                    ->assertSee('window.toast.success', false);
+            }
+        }
+    }
+
+    public function test_markup_only_identifiers_do_not_suppress_success_in_either_layout(): void
+    {
+        ['learner' => $learner, 'lesson' => $lesson, 'module' => $module] = $this->enrolledLearnerWithLesson();
+
+        foreach (['id', 'sourceId'] as $identifier) {
+            foreach ([route('learner.lessons.show', $lesson), route('learner.modules.show', $module)] as $url) {
+                $this->actingAs($learner)
+                    ->withSession([
+                        'success' => 'Ordinary success',
+                        'learning_feedback' => [
+                            'id' => 'activity:1:complete', 'sourceId' => 'activity:1',
+                            'type' => 'activity_completed', 'message' => 'Ordinary success',
+                            'replacesSuccessToast' => true,
+                            $identifier => ' <b></b> ',
+                        ],
+                    ])
+                    ->get($url)
+                    ->assertOk()
+                    ->assertSee('window.toast.success', false);
+            }
+        }
     }
 
     public function test_lesson_page_does_not_contain_about_this_lesson_block(): void

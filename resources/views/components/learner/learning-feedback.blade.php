@@ -15,7 +15,7 @@
                 if (hovered || $refs.panel.contains(document.activeElement)) $store.learningFeedback.pauseTimer();
             });
         });
-        $watch('[$store.learningFeedback.active?.id, $store.learningFeedback.announcement]', () => {
+        $watch('[$store.learningFeedback.active?.id, $store.learningFeedback.announcement, $store.learningFeedback.announcementRevision]', () => {
             announcement = '';
             $nextTick(() => { announcement = $store.learningFeedback.announcement; });
         });

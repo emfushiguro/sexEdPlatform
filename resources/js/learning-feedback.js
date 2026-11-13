@@ -55,6 +55,10 @@ export function normalizeLearningFeedback(payload, origin) {
         if (actions.length === 2) break;
     }
 
+    if (config.presentation === 'completion_modal' && actions.length === 0) {
+        actions.push({ id: 'dismiss', intent: 'dismiss', label: 'Dismiss' });
+    }
+
     return {
         id, sourceId, type: payload.type,
         title: plainText(payload.title, 120) || config.title,
@@ -123,6 +127,7 @@ export function createLearningFeedbackManager({
         pending: null,
         acting: false,
         announcement: '',
+        announcementRevision: 0,
         get open() { return this.active !== null; },
 
         show(payload) {
@@ -173,6 +178,7 @@ export function createLearningFeedbackManager({
                     });
                     if (handled !== true) {
                         this.announcement = 'Use the activity controls to continue.';
+                        this.announcementRevision++;
                         return false;
                     }
                 }

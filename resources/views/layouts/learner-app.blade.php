@@ -81,18 +81,30 @@
 </head>
 @php
     $learningFeedback = is_array(session('learning_feedback')) ? session('learning_feedback') : null;
+    $feedbackPlainText = static function ($value): string {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $withoutMarkup = preg_replace('/<[^>]*>/u', ' ', $value);
+        $collapsed = preg_replace('/\s+/u', ' ', $withoutMarkup ?? '');
+
+        return trim($collapsed ?? '');
+    };
+    $learningFeedbackMessage = $feedbackPlainText($learningFeedback['message'] ?? null);
+    $successMessage = $feedbackPlainText(session('success'));
     $learningFeedbackIsValid = $learningFeedback !== null
-        && is_string($learningFeedback['id'] ?? null)
-        && trim($learningFeedback['id']) !== ''
-        && is_string($learningFeedback['sourceId'] ?? null)
-        && trim($learningFeedback['sourceId']) !== ''
+        && $feedbackPlainText($learningFeedback['id'] ?? null) !== ''
+        && $feedbackPlainText($learningFeedback['sourceId'] ?? null) !== ''
         && in_array($learningFeedback['type'] ?? null, [
             'correct', 'incorrect', 'try_again', 'activity_completed',
             'lesson_completed', 'module_completed', 'informational', 'warning',
         ], true)
-        && is_string($learningFeedback['message'] ?? null);
+        && $learningFeedbackMessage !== '';
     $learningFeedbackReplacesSuccess = $learningFeedbackIsValid
-        && ($learningFeedback['replacesSuccessToast'] ?? false) === true;
+        && ($learningFeedback['replacesSuccessToast'] ?? false) === true
+        && $successMessage !== ''
+        && $learningFeedbackMessage === $successMessage;
     $learningAudioEvent = in_array(session('learning_audio_event'), ['selection', 'correct', 'incorrect', 'success', 'complete'], true)
         ? session('learning_audio_event')
         : null;

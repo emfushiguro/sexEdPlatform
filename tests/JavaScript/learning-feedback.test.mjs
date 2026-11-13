@@ -31,6 +31,7 @@ const payload = (overrides = {}) => ({
     sourceId: 'checkpoint:17',
     type: 'correct',
     message: 'That answer is correct.',
+    actions: ['lesson_completed', 'module_completed'].includes(overrides.type) ? [action('dismiss')] : [],
     ...overrides,
 });
 
@@ -74,6 +75,18 @@ test('unknown type and missing ids are rejected', () => {
     assert.equal(normalizeLearningFeedback(payload({ type: 'celebration' })), null);
     assert.equal(normalizeLearningFeedback(payload({ id: '' })), null);
     assert.equal(normalizeLearningFeedback(payload({ sourceId: '' })), null);
+});
+
+test('completion feedback with no usable actions gets an explicit Dismiss action', () => {
+    for (const type of ['lesson_completed', 'module_completed']) {
+        for (const actions of [undefined, [], [action('dismiss', { label: '<b></b>' }), action('navigate', { url: 'https://evil.example/' })]]) {
+            const manager = createManager({ origin: 'https://conscious.test' });
+            assert.equal(manager.show(payload({ type, actions })), true);
+            assert.deepEqual(manager.active.actions, [{ id: 'dismiss', intent: 'dismiss', label: 'Dismiss' }]);
+            manager.handleKeydown(key('Escape'));
+            assert.equal(manager.open, false);
+        }
+    }
 });
 
 test('duplicates are rejected and completion supersedes routine feedback', () => {
@@ -366,6 +379,21 @@ test('unhandled Retry and Continue stay open with the exact activity-controls an
         assert.equal(manager.announcement, 'Use the activity controls to continue.');
         assert.equal(manager.open, true);
         assert.equal(manager.acting, false);
+    }
+});
+
+test('every unhandled Retry and Continue attempt changes the observed announcement revision', () => {
+    for (const intent of ['retry', 'continue']) {
+        const manager = createManager({ dispatchAction: () => false });
+        manager.show(payload({ actions: [action(intent)] }));
+        assert.equal(manager.announcementRevision, 0);
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const revision = manager.announcementRevision;
+            assert.equal(manager.act(intent), false);
+            assert.equal(manager.announcement, 'Use the activity controls to continue.');
+            assert.equal(manager.announcementRevision, revision + 1);
+            assert.equal(manager.open, true);
+        }
     }
 });
 
