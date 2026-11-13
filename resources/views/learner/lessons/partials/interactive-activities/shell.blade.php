@@ -2,7 +2,7 @@
 
 @php($activityToken = 'activity:'.($activity['id'] ?? 'unknown'))
 
-<section data-optional-interaction="{{ $activityToken }}" data-preview="{{ $preview ? 'true' : 'false' }}" class="interactive-activity-container relative rounded-2xl border border-purple-100 bg-white p-5 shadow-sm" x-data="interactiveActivity(@js([
+<section data-optional-interaction="{{ $activityToken }}" data-preview="{{ $preview ? 'true' : 'false' }}" class="interactive-activity-container relative rounded-2xl border border-purple-100 bg-white p-5 shadow-sm" @learning-feedback:action.window="handleLearningFeedbackAction($event)" x-data="interactiveActivity(@js([
     'activityId' => $activity['id'] ?? null,
     'revision' => $activity['revision'] ?? 1,
     'initialStatus' => $activity['status'] ?? 'in_progress',
@@ -66,8 +66,8 @@
         </div>
     </div>
 
-    <div x-show="feedback.message" aria-label="Activity feedback" aria-live="polite" role="status" class="mt-4 rounded-xl border px-4 py-3">
-        <span aria-hidden="true" x-text="feedback.icon === 'check' ? '✓' : feedback.icon === 'x' ? '×' : '•'"></span>
+    <div x-show="feedback.message && !hasOpenFeedback()" aria-label="Activity feedback" aria-live="polite" role="status" class="mt-4 rounded-xl border px-4 py-3">
+        <span aria-hidden="true" x-text="['correct', 'activity_completed'].includes(feedback.type) ? '✓' : feedback.type === 'incorrect' ? '×' : '•'"></span>
         <span x-text="feedback.message"></span>
     </div>
     <div x-show="['completed', 'practice_completed'].includes(status) && explanation" x-html="explanation" class="mt-4 prose prose-sm max-w-none text-gray-600"></div>
@@ -78,5 +78,5 @@
         <button type="button" x-show="showContinue()" @click="continueLearning()" class="min-h-11 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">Continue</button>
         <button type="button" x-show="showPracticeAgain()" @click="practice()" :disabled="submitting" class="min-h-11 rounded-xl border border-purple-300 px-4 py-2 text-sm font-semibold text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700 disabled:opacity-50">Practice Again</button>
     </div>
-    <div x-show="error" role="alert" class="mt-3 text-sm text-red-700" x-text="error"></div>
+    <div x-show="error && !hasOpenFeedback()" role="alert" class="mt-3 text-sm text-red-700" x-text="error"></div>
 </section>

@@ -481,6 +481,13 @@ export function createMatchingActivity(config = {}, request = globalThis.fetch?.
             }
         },
 
+        handleLearningFeedbackAction(event) {
+            const detail = event?.detail ?? {};
+            if (detail.sourceId !== `activity:${config.activityId}` || detail.intent !== 'retry' || this.isLocked()) return this;
+            event.preventDefault?.();
+            return this.retryAnswer();
+        },
+
         retryAnswer() {
             if (this.isLocked()) return this;
             this.pairResults = this.pairResults.filter((result) => (result.state ?? (result.is_correct ? 'correct' : 'incorrect')) === 'correct');
