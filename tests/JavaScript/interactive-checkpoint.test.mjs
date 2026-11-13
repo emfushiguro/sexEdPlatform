@@ -225,6 +225,7 @@ test('publishes a silent informational micro for skip and silent warnings for fa
     assert.deepEqual(shown.slice(1), [1, 2].map(sequence => ({
         id: `checkpoint:17:warning:${sequence}`, sourceId: 'checkpoint:17', type: 'warning',
         message: 'Unable to save the checkpoint.',
+        actions: [{ id: 'dismiss', intent: 'dismiss', label: 'Dismiss' }],
     })));
     assert.equal(feedback.active.sound, null);
     feedback.dismiss();
@@ -246,6 +247,129 @@ test('restored correct, completed, skipped and retry do not publish feedback', (
         checkpoint.retry();
     }
     assert.deepEqual(shown, []);
+});
+
+test('failed submit and skip warnings can be dismissed before a matching retry exposes the successful result', async () => {
+    for (const operation of ['submit', 'skip']) {
+        const events = new EventTarget();
+        const dispatchAction = detail => {
+            const event = new CustomEvent('learning-feedback:action', { detail, cancelable: true });
+            events.dispatchEvent(event);
+            return event.defaultPrevented;
+        };
+        const manager = createLearningFeedbackManager({ dispatchAction });
+        let attempts = 0;
+        const checkpoint = createInteractiveCheckpoint({
+            type: 'identification', questionId: 17, submitUrl: '/submit', skipUrl: '/skip', feedback: manager,
+        }, async () => {
+            attempts += 1;
+            return {
+                ok: attempts > 1,
+                json: async () => attempts === 1
+                    ? { message: 'Try saving again.' }
+                    : { status: 'correct', is_correct: true, explanation: 'Freely given.' },
+            };
+        });
+        events.addEventListener('learning-feedback:action', event => checkpoint.handleLearningFeedbackAction(event));
+        checkpoint.answer = 'Consent';
+        await checkpoint[operation]();
+        assert.equal(checkpoint.state, 'error');
+        assert.equal(manager.active.type, 'warning');
+        assert.equal(manager.active.dismissAfter, null);
+
+        assert.equal(manager.act('dismiss'), true);
+        assert.equal(manager.open, false);
+        assert.equal(dispatchAction({ sourceId: 'checkpoint:17', intent: 'retry' }), true);
+        assert.equal(checkpoint.state, 'ready');
+        assert.equal(checkpoint.answer, '');
+        checkpoint.answer = 'Consent';
+        await checkpoint.submit();
+
+        assert.equal(checkpoint.state, 'correct');
+        assert.equal(manager.active.id, 'checkpoint:17:result:1');
+        assert.equal(manager.active.type, 'correct');
+        assert.equal(manager.pending, null);
+        manager.act('dismiss');
+    }
+});
+
+test('unsupported authoritative statuses preserve saved fields and answers without advancing results or navigation', async () => {
+    for (const operation of ['submit', 'skip']) {
+        for (const status of ['unexpected', null, undefined]) {
+            const shown = [];
+            const events = [];
+            const result = { pathway: 'guided', option_id: 4, option_text: 'Listen' };
+            const checkpoint = createInteractiveCheckpoint({
+                type: 'perspective_feedback', questionId: 17, initialStatus: 'completed',
+                initialResult: result, initialFeedback: 'Saved feedback', initialExplanation: 'Saved explanation',
+                feedback: { show: value => shown.push(value) },
+            }, async () => ({
+                ok: true,
+                json: async () => ({ status, is_correct: true, result: { pathway: 'own', perspective_text: 'Invalid' }, feedback: 'Invalid' }),
+            }));
+            const answer = structuredClone(checkpoint.answer);
+            checkpoint.$dispatch = (name, detail) => events.push([name, detail]);
+            await checkpoint[operation]();
+
+            assert.equal(checkpoint.state, 'error');
+            assert.equal(checkpoint.isCorrect, null);
+            assert.deepEqual(checkpoint.answer, answer);
+            assert.deepEqual(checkpoint.result, result);
+            assert.equal(checkpoint.feedback, 'Saved feedback');
+            assert.equal(checkpoint.explanation, 'Saved explanation');
+            assert.equal(checkpoint.resultSequence, 0);
+            assert.deepEqual(events, []);
+            assert.deepEqual(shown.map(value => value.type), ['warning']);
+        }
+    }
+});
+
+test('inline review follows matching open manager cards for fresh, dismissed, restored and managerless completions', async () => {
+    const view = readFileSync(new URL('../../resources/views/learner/lessons/partials/interactive-checkpoint.blade.php', import.meta.url), 'utf8');
+    const reviewExpression = view.match(/<section x-show="([^"]+)" class="mt-5 rounded-xl border border-sky-200/)[1];
+    const compactExpression = view.match(/<div x-show="([^"]+)" class="mt-4 rounded-xl p-4/)[1];
+    const visible = (expression, checkpoint) => Function('checkpoint', `with (checkpoint) { return ${expression}; }`)(checkpoint);
+    const result = { pathway: 'guided', option_id: 4, option_text: '<Saved response>' };
+    const config = {
+        type: 'perspective_feedback', questionId: 17, initialStatus: 'completed',
+        initialResult: result, initialFeedback: '<Saved feedback>', initialExplanation: '<Saved explanation>',
+    };
+    const manager = createLearningFeedbackManager();
+    const checkpoint = createInteractiveCheckpoint({ ...config, feedback: manager }, async () => ({
+        ok: true, json: async () => ({ status: 'completed', result, feedback: config.initialFeedback, explanation: config.initialExplanation }),
+    }));
+    assert.equal(visible(reviewExpression, checkpoint), true);
+    assert.equal(manager.open, false);
+    await checkpoint.submit();
+    assert.equal(manager.active.type, 'activity_completed');
+    assert.equal(visible(reviewExpression, checkpoint), false);
+    assert.equal(visible(compactExpression, checkpoint), false);
+    assert.equal(manager.act('dismiss'), true);
+    assert.equal(visible(reviewExpression, checkpoint), true);
+    assert.equal(checkpoint.feedback, config.initialFeedback);
+    assert.equal(checkpoint.explanation, config.initialExplanation);
+
+    manager.show({ id: 'other', sourceId: 'checkpoint:18', type: 'incorrect' });
+    assert.equal(visible(reviewExpression, checkpoint), true);
+    manager.dismiss();
+    const managerless = createInteractiveCheckpoint(config, async () => ({
+        ok: true, json: async () => ({ status: 'completed', result, feedback: config.initialFeedback, explanation: config.initialExplanation }),
+    }));
+    assert.equal(visible(reviewExpression, managerless), true);
+    await managerless.submit();
+    assert.equal(visible(reviewExpression, managerless), true);
+
+    const correct = createInteractiveCheckpoint({ type: 'identification', questionId: 19, feedback: manager }, async () => ({
+        ok: true, json: async () => ({ status: 'correct', is_correct: true, explanation: 'Review this explanation.' }),
+    }));
+    await correct.submit();
+    assert.equal(visible(compactExpression, correct), false);
+    manager.act('dismiss');
+    assert.equal(visible(compactExpression, correct), true);
+    assert.equal(correct.explanation, 'Review this explanation.');
+    correct.state = 'error';
+    correct.error = 'Try again.';
+    assert.equal(visible(compactExpression, correct), true);
 });
 
 test('accepted responses advance result IDs once across submit, retry and skip', async () => {
@@ -341,8 +465,11 @@ test('checkpoint view wires manager actions and retains compact fallback, stored
     assert.ok(view.includes(': error'));
     assert.ok(view.includes("result?.pathway === 'guided' ? result?.option_text : result?.perspective_text"));
     assert.equal(view.match(/\$store\.learningAudio\.play\('selection'\)/g)?.length, 7);
-    assert.ok(!view.includes('x-text="explanation"'));
-    assert.ok(!view.includes('x-text="feedback"'));
+    assert.ok(view.includes('x-show="result?.pathway === \'guided\' && feedback"'));
+    assert.ok(view.includes('x-text="feedback"'));
+    assert.equal(view.match(/x-text="explanation"/g)?.length, 2);
+    assert.ok(view.includes('x-show="state === \'correct\' && explanation"'));
+    assert.ok(!view.includes('x-html='));
 });
 
 test('request failure retains the answer and exposes an error', async () => {

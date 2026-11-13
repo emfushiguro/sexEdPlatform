@@ -116,9 +116,17 @@
             @endif
         </div>
 
-        <section x-show="state === 'completed'" class="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sky-950" aria-live="polite">
+        <section x-show="state === 'completed' && !hasOpenFeedbackCard()" class="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sky-950" aria-live="polite">
             <p class="font-semibold" x-text="result?.pathway === 'guided' ? 'Your Response' : 'Your Perspective'"></p>
             <p class="mt-2 whitespace-pre-line text-sm" x-text="result?.pathway === 'guided' ? result?.option_text : result?.perspective_text"></p>
+            <div x-show="result?.pathway === 'guided' && feedback" class="mt-4">
+                <p class="font-semibold">Feedback</p>
+                <p class="mt-1 whitespace-pre-line text-sm" x-text="feedback"></p>
+            </div>
+            <div x-show="explanation" class="mt-4">
+                <p class="font-semibold">Why This Matters</p>
+                <p class="mt-1 whitespace-pre-line text-sm" x-text="explanation"></p>
+            </div>
         </section>
     @endif
 
@@ -152,8 +160,11 @@
         @endif
     </div>
 
-    <div x-show="state !== 'ready' && state !== 'submitting'" class="mt-4 rounded-xl p-4" aria-live="polite" :class="state === 'correct' ? 'bg-green-50 text-green-800' : state === 'incorrect' ? 'bg-red-50 text-red-800' : 'bg-gray-100 text-gray-700'">
+    <div x-show="state !== 'ready' && state !== 'submitting' && !hasOpenFeedbackCard()" class="mt-4 rounded-xl p-4" aria-live="polite" :class="state === 'correct' ? 'bg-green-50 text-green-800' : state === 'incorrect' ? 'bg-red-50 text-red-800' : 'bg-gray-100 text-gray-700'">
         <p class="font-semibold" x-text="state === 'correct' ? 'Correct' : state === 'incorrect' ? 'Not quite; try again.' : state === 'skipped' ? 'Skipped for now.' : state === 'completed' ? 'Response saved.' : error"></p>
+        @if(! $isPerspectiveFeedback)
+            <p x-show="state === 'correct' && explanation" class="mt-2 text-sm" x-text="explanation"></p>
+        @endif
     </div>
 
     <div class="mt-5 flex flex-wrap items-center gap-3">

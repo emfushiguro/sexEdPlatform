@@ -10,6 +10,9 @@ export function emptyCheckpointAnswer(type, blankCount = 1) {
 async function readResponse(response) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Unable to save the checkpoint.');
+    if (!['correct', 'incorrect', 'completed', 'skipped'].includes(data?.status)) {
+        throw new Error('Unsupported checkpoint response status.');
+    }
     return data;
 }
 
@@ -45,6 +48,9 @@ export function createInteractiveCheckpoint(config = {}, request = globalThis.fe
         },
         showSkip() { return ['ready', 'incorrect', 'error'].includes(this.state); },
         showContinue() { return ['correct', 'completed', 'skipped'].includes(this.state); },
+        hasOpenFeedbackCard() {
+            return Boolean(feedback?.open && feedback.active?.sourceId === sourceId && feedback.active?.presentation === 'card');
+        },
         retry() {
             this.answer = emptyCheckpointAnswer(config.type, config.blankCount);
             this.state = 'ready';
@@ -126,6 +132,7 @@ export function createInteractiveCheckpoint(config = {}, request = globalThis.fe
                 this.warningSequence += 1;
                 feedback?.show?.({
                     id: `${sourceId}:warning:${this.warningSequence}`, sourceId, type: 'warning', message: this.error,
+                    actions: [{ id: 'dismiss', intent: 'dismiss', label: 'Dismiss' }],
                 });
             }
         },
@@ -151,6 +158,7 @@ export function createInteractiveCheckpoint(config = {}, request = globalThis.fe
                 this.warningSequence += 1;
                 feedback?.show?.({
                     id: `${sourceId}:warning:${this.warningSequence}`, sourceId, type: 'warning', message: this.error,
+                    actions: [{ id: 'dismiss', intent: 'dismiss', label: 'Dismiss' }],
                 });
             }
         },
