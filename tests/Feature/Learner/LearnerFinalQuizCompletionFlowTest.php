@@ -109,7 +109,7 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
                 'started_at' => now()->timestamp,
             ])
             ->assertRedirect(route('learner.modules.completion', $module))
-            ->assertSessionHas('success');
+            ->assertSessionHas('success', 'You completed this module. Review your results and available next steps.');
 
         $this->assertModuleCompletionFeedback($response, $learner, $module);
 

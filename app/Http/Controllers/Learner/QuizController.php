@@ -236,8 +236,10 @@ class QuizController extends Controller
             }
 
             if ($completedFinalQuizModule) {
-                $completionMessage = 'Congratulations! You have successfully completed this module.';
-                if ($moduleCompletionPoints > 0) {
+                $completionMessage = $newlyCompleted
+                    ? 'You completed this module. Review your results and available next steps.'
+                    : 'Congratulations! You have successfully completed this module.';
+                if (! $newlyCompleted && $moduleCompletionPoints > 0) {
                     $completionMessage .= " Module completion bonus: +{$moduleCompletionPoints} points.";
                 }
 
