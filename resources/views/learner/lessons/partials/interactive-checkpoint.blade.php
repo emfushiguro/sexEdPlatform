@@ -170,6 +170,9 @@
     <div class="mt-5 flex flex-wrap items-center gap-3">
         @if($isPerspectiveFeedback)
             <button type="button" x-show="state === 'ready'" :disabled="state === 'submitting'" @click="submit()" class="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);" x-text="answer.pathway === 'own' ? 'Submit Perspective' : 'Submit Response'"></button>
+            <button type="button" x-show="state === 'error'" @click="retry()" class="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold dark:border-gray-700">
+                Retry
+            </button>
         @else
             <button type="button" x-show="state === 'ready'" :disabled="state === 'submitting'" @click="submit()" class="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
                 Check Answer

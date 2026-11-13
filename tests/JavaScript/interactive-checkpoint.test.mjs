@@ -250,7 +250,15 @@ test('restored correct, completed, skipped and retry do not publish feedback', (
 });
 
 test('failed submit and skip warnings can be dismissed before a matching retry exposes the successful result', async () => {
-    for (const operation of ['submit', 'skip']) {
+    for (const [type, operation] of [
+        ['identification', 'submit'], ['identification', 'skip'],
+        ['perspective_feedback', 'submit'], ['perspective_feedback', 'skip'],
+    ]) {
+        const isPerspective = type === 'perspective_feedback';
+        const answer = isPerspective ? { pathway: 'own', option_id: null, perspective_text: 'My perspective' } : 'Consent';
+        const success = isPerspective
+            ? { status: 'completed', is_correct: null, result: answer }
+            : { status: 'correct', is_correct: true, explanation: 'Freely given.' };
         const events = new EventTarget();
         const dispatchAction = detail => {
             const event = new CustomEvent('learning-feedback:action', { detail, cancelable: true });
@@ -260,18 +268,18 @@ test('failed submit and skip warnings can be dismissed before a matching retry e
         const manager = createLearningFeedbackManager({ dispatchAction });
         let attempts = 0;
         const checkpoint = createInteractiveCheckpoint({
-            type: 'identification', questionId: 17, submitUrl: '/submit', skipUrl: '/skip', feedback: manager,
+            type, questionId: 17, submitUrl: '/submit', skipUrl: '/skip', feedback: manager,
         }, async () => {
             attempts += 1;
             return {
                 ok: attempts > 1,
                 json: async () => attempts === 1
                     ? { message: 'Try saving again.' }
-                    : { status: 'correct', is_correct: true, explanation: 'Freely given.' },
+                    : success,
             };
         });
         events.addEventListener('learning-feedback:action', event => checkpoint.handleLearningFeedbackAction(event));
-        checkpoint.answer = 'Consent';
+        checkpoint.answer = structuredClone(answer);
         await checkpoint[operation]();
         assert.equal(checkpoint.state, 'error');
         assert.equal(manager.active.type, 'warning');
@@ -279,15 +287,16 @@ test('failed submit and skip warnings can be dismissed before a matching retry e
 
         assert.equal(manager.act('dismiss'), true);
         assert.equal(manager.open, false);
-        assert.equal(dispatchAction({ sourceId: 'checkpoint:17', intent: 'retry' }), true);
+        if (isPerspective) checkpoint.retry();
+        else assert.equal(dispatchAction({ sourceId: 'checkpoint:17', intent: 'retry' }), true);
         assert.equal(checkpoint.state, 'ready');
-        assert.equal(checkpoint.answer, '');
-        checkpoint.answer = 'Consent';
+        assert.deepEqual(checkpoint.answer, isPerspective ? { pathway: null, option_id: null, perspective_text: '' } : '');
+        checkpoint.answer = structuredClone(answer);
         await checkpoint.submit();
 
-        assert.equal(checkpoint.state, 'correct');
+        assert.equal(checkpoint.state, success.status);
         assert.equal(manager.active.id, 'checkpoint:17:result:1');
-        assert.equal(manager.active.type, 'correct');
+        assert.equal(manager.active.type, isPerspective ? 'activity_completed' : 'correct');
         assert.equal(manager.pending, null);
         manager.act('dismiss');
     }
@@ -455,6 +464,18 @@ test('manager Continue uses existing continuation only for matching resolved che
     }
     assert.equal(prevented, 3);
     assert.deepEqual(events, Array(3).fill(['checkpoint-continued', { questionId: 17, token: 'checkpoint:17' }]));
+});
+
+test('Perspective error exposes a native Retry button wired to the existing retry method', () => {
+    const view = readFileSync(new URL('../../resources/views/learner/lessons/partials/interactive-checkpoint.blade.php', import.meta.url), 'utf8');
+    const perspectiveControls = view.split('<div class="mt-5 flex flex-wrap items-center gap-3">')[1].split('@else')[0];
+    const retryButton = perspectiveControls.match(/<button\b[^>]*@click="retry\(\)"[^>]*>\s*Retry\s*<\/button>/)?.[0];
+    assert.ok(retryButton, 'Perspective controls must include a native Retry button');
+    assert.match(retryButton, /type="button"/);
+    const visibility = retryButton.match(/x-show="([^"]+)"/)[1];
+    for (const state of ['ready', 'submitting', 'incorrect', 'error', 'completed', 'skipped']) {
+        assert.equal(Function('state', `return ${visibility};`)(state), state === 'error');
+    }
 });
 
 test('checkpoint view wires manager actions and retains compact fallback, stored response and selection audio', () => {
