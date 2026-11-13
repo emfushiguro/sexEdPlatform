@@ -437,7 +437,7 @@ class LessonController extends Controller
         }
 
         // Mark this specific lesson as completed
-        UserProgress::create([
+        $progress = UserProgress::create([
             'user_id' => $user->id,
             'module_id' => $module->id,
             'lesson_id' => $lesson->id,
@@ -450,9 +450,9 @@ class LessonController extends Controller
         $lessonPoints = $this->gamificationService->awardConfiguredPoints($user, 'lesson_complete');
         $this->gamificationService->updateStreak($user);
         session()->flash('points_earned', $lessonPoints);
-        session()->flash('learning_audio_event', 'complete');
+        $this->flashLessonCompletionFeedback($lesson, $progress, $lessonPoints);
 
-        return back()->with('success', "Lesson completed! You earned {$lessonPoints} points! 🎉");
+        return back()->with('success', "You completed this lesson and earned {$lessonPoints} points.");
     }
 
     /**
@@ -481,6 +481,11 @@ class LessonController extends Controller
             ->where('completed', true)
             ->exists();
 
+        $wasLessonCompleted = UserProgress::where('user_id', $user->id)
+            ->where('lesson_id', $lesson->id)
+            ->where('completed', true)
+            ->exists();
+
         // Mark topic as completed
         $topic->markCompleted($user->id);
 
@@ -496,9 +501,10 @@ class LessonController extends Controller
             ->where('completed', true)
             ->count();
 
+        $lessonJustCompleted = false;
         if ($completedCount === $allTopics->count()) {
             // Mark lesson as completed
-            UserProgress::updateOrCreate(
+            $progress = UserProgress::updateOrCreate(
                 [
                     'user_id' => $user->id,
                     'lesson_id' => $lesson->id,
@@ -513,21 +519,54 @@ class LessonController extends Controller
             // Award lesson complete bonus using dynamic policy values
             $lessonCompletePoints = $this->gamificationService->awardConfiguredPoints($user, 'lesson_complete');
             session()->flash('points_earned', $lessonCompletePoints);
+            $lessonJustCompleted = ! $wasLessonCompleted;
         }
 
-        if (! $wasAlreadyCompleted) {
+        if ($lessonJustCompleted) {
+            $this->flashLessonCompletionFeedback($lesson, $progress, $lessonCompletePoints);
+        } elseif (! $wasAlreadyCompleted) {
             session()->flash('learning_audio_event', 'complete');
         }
+
+        $successMessage = $lessonJustCompleted
+            ? "You completed this lesson and earned {$lessonCompletePoints} points."
+            : "Topic completed! +{$topicPoints} points ✓";
 
         // Check if we should navigate to next topic
         $nextTopicIndex = request()->input('next_topic_index');
         if ($nextTopicIndex !== null) {
             return redirect()->route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $nextTopicIndex])
-                ->with('success', "Topic completed! +{$topicPoints} points ✓");
+                ->with('success', $successMessage);
         }
 
         return redirect()->route('learner.lessons.show', $lesson)
-            ->with('success', "Topic completed! +{$topicPoints} points ✓");
+            ->with('success', $successMessage);
+    }
+
+    private function flashLessonCompletionFeedback(Lesson $lesson, UserProgress $progress, int $lessonPoints): void
+    {
+        $module = $lesson->module;
+        $nextLesson = $module->lessons()
+            ->where('is_published', true)
+            ->where('order', '>', $lesson->order)
+            ->orderBy('order')
+            ->first();
+        $primaryAction = $nextLesson
+            ? ['id' => 'next', 'intent' => 'navigate', 'label' => 'Next lesson', 'url' => route('learner.lessons.show', $nextLesson)]
+            : ['id' => 'module', 'intent' => 'navigate', 'label' => 'Module overview', 'url' => route('learner.modules.show', $module)];
+
+        session()->flash('learning_feedback', [
+            'id' => "lesson-completed:{$progress->user_id}:{$lesson->id}:{$progress->id}",
+            'sourceId' => "lesson:{$lesson->id}",
+            'type' => 'lesson_completed',
+            'title' => 'Lesson complete',
+            'message' => "You completed this lesson and earned {$lessonPoints} points.",
+            'actions' => [
+                $primaryAction,
+                ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'Review lesson'],
+            ],
+            'replacesSuccessToast' => true,
+        ]);
     }
 
     /**
