@@ -167,7 +167,7 @@ class LearningAudioCompletionTest extends TestCase
 
         $this->actingAs($learner)
             ->post(route('learner.lessons.complete', $lesson))
-            ->assertRedirect()
+            ->assertForbidden()
             ->assertSessionMissing('learning_audio_event')
             ->assertSessionMissing('learning_feedback');
 
@@ -191,7 +191,7 @@ class LearningAudioCompletionTest extends TestCase
 
         $this->actingAs($learner)
             ->post(route('learner.topics.complete', $topic))
-            ->assertRedirect()
+            ->assertForbidden()
             ->assertSessionMissing('learning_audio_event')
             ->assertSessionMissing('learning_feedback');
     }
