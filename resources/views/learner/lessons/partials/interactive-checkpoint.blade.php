@@ -44,6 +44,7 @@
     ]))"
     x-init="if (@js($ownsFooterOnLoad)) $dispatch('checkpoint-active', { questionId: {{ $question->id }}, token: 'checkpoint:{{ $question->id }}', initial: true })"
     @focusin="$dispatch('checkpoint-active', { questionId: {{ $question->id }}, token: 'checkpoint:{{ $question->id }}' })"
+    @learning-feedback:action.window="handleLearningFeedbackAction($event)"
     class="my-6 rounded-2xl border border-purple-200 bg-purple-50/50 dark:border-purple-800 dark:bg-purple-900/10 p-5">
     <p class="text-xs font-bold uppercase tracking-widest text-purple-700 dark:text-purple-300">{{ $isPerspectiveFeedback ? 'Perspective Feedback' : 'Quick Check' }}</p>
     <h3 class="mt-2 text-base font-semibold text-gray-900 dark:text-white">
@@ -118,14 +119,6 @@
         <section x-show="state === 'completed'" class="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sky-950" aria-live="polite">
             <p class="font-semibold" x-text="result?.pathway === 'guided' ? 'Your Response' : 'Your Perspective'"></p>
             <p class="mt-2 whitespace-pre-line text-sm" x-text="result?.pathway === 'guided' ? result?.option_text : result?.perspective_text"></p>
-            <div x-show="result?.pathway === 'guided' && feedback" class="mt-4">
-                <p class="font-semibold">Feedback</p>
-                <p class="mt-1 whitespace-pre-line text-sm" x-text="feedback"></p>
-            </div>
-            <div x-show="explanation" class="mt-4">
-                <p class="font-semibold">Why This Matters</p>
-                <p class="mt-1 whitespace-pre-line text-sm" x-text="explanation"></p>
-            </div>
         </section>
     @endif
 
@@ -159,12 +152,9 @@
         @endif
     </div>
 
-    @if(! $isPerspectiveFeedback)
-        <div x-show="state !== 'ready' && state !== 'submitting'" class="mt-4 rounded-xl p-4" :class="state === 'correct' ? 'bg-green-50 text-green-800' : state === 'incorrect' ? 'bg-red-50 text-red-800' : 'bg-gray-100 text-gray-700'">
-        <p class="font-semibold" x-text="state === 'correct' ? 'Correct' : state === 'incorrect' ? 'Not quite; try again.' : state === 'skipped' ? 'Skipped for now.' : error"></p>
-        <p x-show="state === 'correct' && explanation" class="mt-2 text-sm" x-text="explanation"></p>
-        </div>
-    @endif
+    <div x-show="state !== 'ready' && state !== 'submitting'" class="mt-4 rounded-xl p-4" aria-live="polite" :class="state === 'correct' ? 'bg-green-50 text-green-800' : state === 'incorrect' ? 'bg-red-50 text-red-800' : 'bg-gray-100 text-gray-700'">
+        <p class="font-semibold" x-text="state === 'correct' ? 'Correct' : state === 'incorrect' ? 'Not quite; try again.' : state === 'skipped' ? 'Skipped for now.' : state === 'completed' ? 'Response saved.' : error"></p>
+    </div>
 
     <div class="mt-5 flex flex-wrap items-center gap-3">
         @if($isPerspectiveFeedback)
