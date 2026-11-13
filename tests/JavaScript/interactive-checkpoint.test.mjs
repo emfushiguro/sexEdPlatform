@@ -290,7 +290,7 @@ test('failed submit and skip warnings can be dismissed before a matching retry e
         if (isPerspective) checkpoint.retry();
         else assert.equal(dispatchAction({ sourceId: 'checkpoint:17', intent: 'retry' }), true);
         assert.equal(checkpoint.state, 'ready');
-        assert.deepEqual(checkpoint.answer, isPerspective ? { pathway: null, option_id: null, perspective_text: '' } : '');
+        assert.deepEqual(checkpoint.answer, isPerspective ? { pathway: 'own', option_id: null, perspective_text: '' } : '');
         checkpoint.answer = structuredClone(answer);
         await checkpoint.submit();
 
@@ -506,6 +506,29 @@ test('request failure retains the answer and exposes an error', async () => {
     assert.equal(checkpoint.state, 'error');
     assert.equal(checkpoint.answer, 'Consent');
     assert.equal(checkpoint.error, 'Unable to save the checkpoint.');
+});
+
+test('Perspective retry preserves only a valid pathway while clearing the response and error', () => {
+    for (const pathway of ['guided', 'own', null, undefined, 'invalid']) {
+        const checkpoint = createInteractiveCheckpoint({ type: 'perspective_feedback' });
+        checkpoint.answer = { pathway, option_id: 4, perspective_text: 'My perspective' };
+        checkpoint.state = 'error';
+        checkpoint.error = 'Try saving again.';
+        checkpoint.isCorrect = false;
+        checkpoint.explanation = 'Previous explanation';
+
+        checkpoint.retry();
+
+        assert.deepEqual(checkpoint.answer, {
+            pathway: ['guided', 'own'].includes(pathway) ? pathway : null,
+            option_id: null,
+            perspective_text: '',
+        });
+        assert.equal(checkpoint.state, 'ready');
+        assert.equal(checkpoint.error, '');
+        assert.equal(checkpoint.isCorrect, null);
+        assert.equal(checkpoint.explanation, null);
+    }
 });
 
 test('retry clears the answer and coordinator releases footer ownership', () => {

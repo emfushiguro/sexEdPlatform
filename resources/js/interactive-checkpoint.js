@@ -52,7 +52,9 @@ export function createInteractiveCheckpoint(config = {}, request = globalThis.fe
             return Boolean(feedback?.open && feedback.active?.sourceId === sourceId && feedback.active?.presentation === 'card');
         },
         retry() {
+            const pathway = config.type === 'perspective_feedback' ? this.answer.pathway : null;
             this.answer = emptyCheckpointAnswer(config.type, config.blankCount);
+            if (['guided', 'own'].includes(pathway)) this.answer.pathway = pathway;
             this.state = 'ready';
             this.isCorrect = null;
             this.explanation = null;
