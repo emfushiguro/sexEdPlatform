@@ -205,6 +205,7 @@ export function createLearningFeedbackManager({
             const controls = [...(panel.querySelectorAll?.('a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]') ?? [])]
                 .filter(target => !target.disabled && !target.hidden && !(target.tabIndex < 0)
                     && !target.matches?.(':disabled') && target.getClientRects?.().length !== 0
+                    && !['hidden', 'collapse'].includes(target.ownerDocument?.defaultView?.getComputedStyle?.(target)?.visibility)
                     && !target.closest?.('[hidden], [inert], [aria-hidden="true"]'));
             const current = getActiveElement();
             const index = controls.indexOf(current);

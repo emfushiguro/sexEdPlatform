@@ -561,3 +561,32 @@ test('modal containment skips CSS-hidden, disabled-fieldset, and negative-tabind
     assert.equal(shiftTab.prevented, 1);
     assert.equal(last.focused, 1);
 });
+
+for (const visibility of ['hidden', 'collapse']) {
+    test(`modal Tab wraps past a visibility:${visibility} control after the last visible control`, () => {
+        const first = focusTarget();
+        const last = focusTarget();
+        const hidden = { ...focusTarget(), getClientRects: () => [{ width: 80, height: 40 }] };
+        const ownerDocument = { defaultView: {
+            getComputedStyle: target => ({ visibility: target === hidden ? visibility : 'visible' }),
+        } };
+        const controls = [first, last, hidden];
+        for (const control of controls) control.ownerDocument = ownerDocument;
+        let current = last;
+        const manager = createManager({ getActiveElement: () => current });
+        manager.show(payload({ type: 'lesson_completed' }));
+        manager.opened({ querySelectorAll: () => controls }, focusTarget());
+
+        const tab = key('Tab');
+        manager.handleKeydown(tab);
+        assert.equal(tab.prevented, 1);
+        assert.equal(first.focused, 1);
+
+        current = first;
+        const shiftTab = key('Tab', true);
+        manager.handleKeydown(shiftTab);
+        assert.equal(shiftTab.prevented, 1);
+        assert.equal(last.focused, 1);
+        assert.equal(hidden.focused, 0);
+    });
+}
