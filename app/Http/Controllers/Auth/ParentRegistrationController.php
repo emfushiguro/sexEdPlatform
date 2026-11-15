@@ -306,12 +306,12 @@ class ParentRegistrationController extends Controller
             'birthdate' => [
                 'required',
                 'date',
-                'before_or_equal:today',
+                'before_or_equal:'.now()->subYears(10)->toDateString(),
             ],
             'gender' => ['required', 'in:male,female,prefer_not_to_say'],
             'relationship_type' => ['required', Rule::in(GuardianRelationshipTypes::values())],
             'relationship_custom' => ['nullable', 'required_if:relationship_type,other', 'string', 'max:120'],
-        ]);
+        ], ['birthdate.before_or_equal' => 'Dependents must be at least 10 years old.']);
 
         session(['child_step1' => $validated]);
 
@@ -494,6 +494,10 @@ class ParentRegistrationController extends Controller
 
         if (! $step1 || ! $step2 || ! $step3) {
             return redirect()->route('parent.create-child');
+        }
+
+        if (! in_array(LearnerAgePolicy::classify($step1['birthdate']), [LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::ELIGIBLE_ADULT], true)) {
+            return redirect()->route('parent.create-child')->withErrors(['birthdate' => 'Dependents must be at least 10 years old.']);
         }
 
         $relationshipType = (string) ($step1['relationship_type'] ?? '');

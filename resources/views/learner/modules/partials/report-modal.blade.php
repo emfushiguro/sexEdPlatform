@@ -75,7 +75,7 @@
 
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Additional Details</label>
-                    <textarea name="details" rows="5" class="js-learner-rich-editor w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm">{!! old('details') !!}</textarea>
+                    <textarea name="details" rows="5" class="js-learner-rich-editor w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm">{{ old('details') }}</textarea>
                     @error('details')
                         <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                     @enderror

@@ -179,7 +179,7 @@ class DependentAdultWorkflowTest extends TestCase
 
     public function test_age_classification_does_not_open_teen_content_to_younger_children(): void
     {
-        $this->assertSame(LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::classify('2017-01-01', '2026-01-01'));
+        $this->assertSame(LearnerAgePolicy::INELIGIBLE_UNDERAGE, LearnerAgePolicy::classify('2017-01-01', '2026-01-01'));
         $this->assertNull(LearnerAgePolicy::category('2017-01-01', '2026-01-01'));
         $this->assertSame(LearnerAgePolicy::CATEGORY_TEENAGERS, LearnerAgePolicy::category('2009-01-01', '2026-01-01'));
         $this->assertSame(LearnerAgePolicy::CATEGORY_ADULTS, LearnerAgePolicy::category('1920-01-01', '2026-01-01'));

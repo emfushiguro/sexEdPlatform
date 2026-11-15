@@ -53,8 +53,8 @@
 
             <div>
                 <label for="birthdate" class="mb-1 block text-sm font-medium text-gray-700">Birthdate</label>
-                <input id="birthdate" name="birthdate" type="date" required value="{{ old('birthdate', $pendingMinorRegistration['birthdate'] ?? '') }}" max="{{ now()->format('Y-m-d') }}" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
-                <p class="mt-1 text-xs text-gray-500">Dependents may be any age.</p>
+                <input id="birthdate" name="birthdate" type="date" required value="{{ old('birthdate', $pendingMinorRegistration['birthdate'] ?? '') }}" max="{{ now()->subYears(10)->format('Y-m-d') }}" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
+                <p class="mt-1 text-xs text-gray-500">Dependents must be at least 10 years old. There is no upper age limit.</p>
             </div>
         @else
             <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">

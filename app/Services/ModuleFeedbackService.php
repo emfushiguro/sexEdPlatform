@@ -120,7 +120,7 @@ class ModuleFeedbackService
 
     public function sanitizeHtml(string $html): string
     {
-        return trim((string) strip_tags($html, '<p><br><strong><b><em><i><u><ul><ol><li><a><blockquote>'));
+        return \App\Support\SafeUserHtml::clean($html);
     }
 
     public function sanitizeOptionalHtml(string $html): ?string
