@@ -145,7 +145,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Tell us about your experience with this module</label>
-                            <textarea id="review_content" name="review_content" rows="6" class="js-learner-rich-editor w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm" data-review-content="true">{!! old('review_content', $userFeedback?->review_html) !!}</textarea>
+                            <textarea id="review_content" name="review_content" rows="6" class="js-learner-rich-editor w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm" data-review-content="true">{{ old('review_content', $userFeedback?->review_html) }}</textarea>
                             @error('review_content')
                                 <p class="mt-2 text-xs text-rose-600">{{ $message }}</p>
                             @enderror

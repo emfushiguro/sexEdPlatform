@@ -10,6 +10,9 @@
         <h1 class="text-3xl font-bold text-gray-900">Complete your account setup</h1>
 
         @switch($code)
+            @case('underage')
+                <p class="text-gray-700">Learning accounts are available from age 10. This account cannot access learning content until the age requirement is met. Contact support if the birthdate is incorrect.</p>
+                @break
             @case('guardian_required')
                 <p class="text-gray-700">A Guardian must help complete the required account and relationship steps before you can continue.</p>
                 <a href="{{ route('minor.registration.create') }}" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-purple-800 px-5 py-3 font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-700 focus:ring-offset-2">Ask a Guardian for help</a>

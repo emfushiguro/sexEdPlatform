@@ -11,10 +11,12 @@ use App\Models\LessonTopicProgress;
 use App\Models\QuizAttempt;
 use App\Models\UserProgress;
 use App\Services\GamificationService;
+use App\Services\Learning\CompletionRewardService;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityPresenter;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityProgressService;
 use App\Services\Modules\ModuleAccessService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class LessonController extends Controller
@@ -428,33 +430,35 @@ class LessonController extends Controller
 
         $this->moduleAccessService->assertCanLearn($user, $module);
 
-        // Check if already completed
-        $existingProgress = UserProgress::where('user_id', $user->id)
-            ->where('lesson_id', $lesson->id)
-            ->where('completed', true)
-            ->first();
+        return DB::transaction(function () use ($user, $lesson, $module) {
+            $user->newQuery()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
-        if ($existingProgress) {
-            return back()->with('info', 'You have already completed this lesson.');
-        }
+            // Check if already completed
+            $existingProgress = UserProgress::where('user_id', $user->id)
+                ->where('lesson_id', $lesson->id)
+                ->where('completed', true)
+                ->first();
 
-        // Mark this specific lesson as completed
-        UserProgress::create([
-            'user_id' => $user->id,
-            'module_id' => $module->id,
-            'lesson_id' => $lesson->id,
-            'completed' => true,
-            'progress_percentage' => 100,
-            'completed_at' => now(),
-        ]);
+            if ($existingProgress) {
+                return back()->with('info', 'You have already completed this lesson.');
+            }
 
-        // Award gamification points using dynamic policy values
-        $lessonPoints = $this->gamificationService->awardConfiguredPoints($user, 'lesson_complete');
-        $this->gamificationService->updateStreak($user);
-        session()->flash('points_earned', $lessonPoints);
-        session()->flash('learning_audio_event', 'complete');
+            // Mark this specific lesson as completed
+            UserProgress::updateOrCreate(['user_id' => $user->id, 'lesson_id' => $lesson->id], [
+                'module_id' => $module->id,
+                'completed' => true,
+                'progress_percentage' => 100,
+                'completed_at' => now(),
+            ]);
 
-        return back()->with('success', "Lesson completed! You earned {$lessonPoints} points! 🎉");
+            // Award gamification points using dynamic policy values
+            $lessonPoints = (new CompletionRewardService($this->gamificationService))->award($user, 'lesson_complete', $lesson->id);
+            $this->gamificationService->updateStreak($user);
+            session()->flash('points_earned', $lessonPoints);
+            session()->flash('learning_audio_event', 'complete');
+
+            return back()->with('success', "Lesson completed! You earned {$lessonPoints} points! 🎉");
+        });
     }
 
     /**
@@ -477,59 +481,67 @@ class LessonController extends Controller
             abort(404);
         }
 
-        $wasAlreadyCompleted = LessonTopicProgress::query()
-            ->where('user_id', $user->id)
-            ->where('lesson_topic_id', $topic->id)
-            ->where('completed', true)
-            ->exists();
+        return DB::transaction(function () use ($user, $lesson, $module, $topic) {
+            $user->newQuery()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
-        // Mark topic as completed
-        $topic->markCompleted($user->id);
+            $wasAlreadyCompleted = LessonTopicProgress::query()
+                ->where('user_id', $user->id)
+                ->where('lesson_topic_id', $topic->id)
+                ->where('completed', true)
+                ->exists();
 
-        // Award topic completion points and update streak
-        $topicPoints = $this->gamificationService->awardConfiguredPoints($user, 'topic_complete');
-        $this->gamificationService->updateStreak($user);
-        session()->flash('points_earned', $topicPoints);
+            // Mark topic as completed
+            if (! $wasAlreadyCompleted) {
+                $topic->markCompleted($user->id);
+            }
 
-        // Check if all topics are completed to auto-complete lesson
-        $allTopics = $lesson->topics()->instructional()->ordered()->get();
-        $completedCount = LessonTopicProgress::where('user_id', $user->id)
-            ->whereIn('lesson_topic_id', $allTopics->pluck('id'))
-            ->where('completed', true)
-            ->count();
+            // Award topic completion points and update streak
+            $topicPoints = (new CompletionRewardService($this->gamificationService))->award($user, 'topic_complete', $topic->id);
+            $this->gamificationService->updateStreak($user);
+            session()->flash('points_earned', $topicPoints);
 
-        if ($completedCount === $allTopics->count()) {
-            // Mark lesson as completed
-            UserProgress::updateOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'lesson_id' => $lesson->id,
-                ],
-                [
-                    'module_id' => $module->id,
-                    'completed' => true,
-                    'progress_percentage' => 100,
-                    'completed_at' => now(),
-                ]
-            );
-            // Award lesson complete bonus using dynamic policy values
-            $lessonCompletePoints = $this->gamificationService->awardConfiguredPoints($user, 'lesson_complete');
-            session()->flash('points_earned', $lessonCompletePoints);
-        }
+            // Check if all topics are completed to auto-complete lesson
+            $allTopics = $lesson->topics()->instructional()->ordered()->get();
+            $completedCount = LessonTopicProgress::where('user_id', $user->id)
+                ->whereIn('lesson_topic_id', $allTopics->pluck('id'))
+                ->where('completed', true)
+                ->count();
 
-        if (! $wasAlreadyCompleted) {
-            session()->flash('learning_audio_event', 'complete');
-        }
+            if ($completedCount === $allTopics->count()) {
+                // Mark lesson as completed
+                if (! UserProgress::where('user_id', $user->id)->where('lesson_id', $lesson->id)->where('completed', true)->exists()) {
+                    UserProgress::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'lesson_id' => $lesson->id,
+                        ],
+                        [
+                            'module_id' => $module->id,
+                            'completed' => true,
+                            'progress_percentage' => 100,
+                            'completed_at' => now(),
+                        ]
+                    );
+                }
+                // Award lesson complete bonus using dynamic policy values
+                $lessonCompletePoints = (new CompletionRewardService($this->gamificationService))->award($user, 'lesson_complete', $lesson->id);
+                session()->flash('points_earned', $topicPoints + $lessonCompletePoints);
+            }
 
-        // Check if we should navigate to next topic
-        $nextTopicIndex = request()->input('next_topic_index');
-        if ($nextTopicIndex !== null) {
-            return redirect()->route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $nextTopicIndex])
+            if (! $wasAlreadyCompleted) {
+                session()->flash('learning_audio_event', 'complete');
+            }
+
+            // Check if we should navigate to next topic
+            $nextTopicIndex = request()->input('next_topic_index');
+            if ($nextTopicIndex !== null) {
+                return redirect()->route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $nextTopicIndex])
+                    ->with('success', "Topic completed! +{$topicPoints} points ✓");
+            }
+
+            return redirect()->route('learner.lessons.show', $lesson)
                 ->with('success', "Topic completed! +{$topicPoints} points ✓");
-        }
-
-        return redirect()->route('learner.lessons.show', $lesson)
-            ->with('success', "Topic completed! +{$topicPoints} points ✓");
+        });
     }
 
     /**
@@ -551,15 +563,19 @@ class LessonController extends Controller
             abort(404);
         }
 
-        // Mark this topic incomplete
-        LessonTopicProgress::where('user_id', $user->id)
-            ->where('lesson_topic_id', $topic->id)
-            ->update(['completed' => false, 'completed_at' => null]);
+        DB::transaction(function () use ($user, $topic, $lesson) {
+            $user->newQuery()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            // Mark this topic incomplete
+            LessonTopicProgress::where('user_id', $user->id)
+                ->where('lesson_topic_id', $topic->id)
+                ->update(['completed' => false, 'completed_at' => null]);
 
-        // Revert lesson completion so progress is recalculated on next completion
-        UserProgress::where('user_id', $user->id)
-            ->where('lesson_id', $lesson->id)
-            ->update(['completed' => false, 'completed_at' => null, 'progress_percentage' => 0]);
+            // Revert lesson completion so progress is recalculated on next completion
+            UserProgress::where('user_id', $user->id)
+                ->where('lesson_id', $lesson->id)
+                ->update(['completed' => false, 'completed_at' => null, 'progress_percentage' => 0]);
+
+        });
 
         return redirect()->back()->with('info', 'Topic marked as incomplete.');
     }

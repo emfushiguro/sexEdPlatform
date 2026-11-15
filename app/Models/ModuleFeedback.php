@@ -40,4 +40,20 @@ class ModuleFeedback extends Model
     {
         return $this->belongsTo(User::class, 'learner_id');
     }
+
+    protected function reviewHtml(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn ($value) => \App\Support\SafeUserHtml::clean($value),
+            set: fn ($value) => \App\Support\SafeUserHtml::clean($value),
+        );
+    }
+
+    protected function instructorReplyHtml(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn ($value) => \App\Support\SafeUserHtml::clean($value),
+            set: fn ($value) => \App\Support\SafeUserHtml::clean($value),
+        );
+    }
 }

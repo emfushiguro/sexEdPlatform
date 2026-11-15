@@ -41,7 +41,7 @@ class LearnerAgePolicyTest extends TestCase
     public static function classifications(): array
     {
         return [
-            'age 9' => ['2017-11-13', '2026-11-12', LearnerAgePolicy::ELIGIBLE_TEENAGER, null],
+            'age 9' => ['2017-11-13', '2026-11-12', LearnerAgePolicy::INELIGIBLE_UNDERAGE, null],
             'age 10' => ['2016-11-12', '2026-11-12', LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::CATEGORY_TEENAGERS],
             'age 17' => ['2009-11-12', '2026-11-12', LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::CATEGORY_TEENAGERS],
             'age 18' => ['2008-11-12', '2026-11-12', LearnerAgePolicy::ELIGIBLE_ADULT, LearnerAgePolicy::CATEGORY_ADULTS],
@@ -50,7 +50,7 @@ class LearnerAgePolicyTest extends TestCase
             'future DOB' => ['2026-11-13', '2026-11-12', LearnerAgePolicy::UNCLASSIFIED, null],
             'missing DOB' => [null, '2026-11-12', LearnerAgePolicy::UNCLASSIFIED, null],
             'invalid DOB' => ['not-a-date', '2026-11-12', LearnerAgePolicy::UNCLASSIFIED, null],
-            'leap birthday before anniversary' => ['2016-02-29', '2026-02-28', LearnerAgePolicy::ELIGIBLE_TEENAGER, null],
+            'leap birthday before anniversary' => ['2016-02-29', '2026-02-28', LearnerAgePolicy::INELIGIBLE_UNDERAGE, null],
             'leap birthday after anniversary' => ['2016-02-29', '2026-03-01', LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::CATEGORY_TEENAGERS],
         ];
     }

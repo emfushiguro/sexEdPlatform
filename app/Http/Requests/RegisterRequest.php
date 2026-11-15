@@ -56,7 +56,7 @@ class RegisterRequest extends FormRequest
                 LearnerAgePolicy::ELIGIBLE_TEENAGER,
                 LearnerAgePolicy::ELIGIBLE_ADULT,
             ], true)) {
-                $validator->errors()->add('birthdate', 'Enter a valid birthdate.');
+                $validator->errors()->add('birthdate', 'Learners must be at least 10 years old. Enter a valid birthdate.');
             }
         });
     }

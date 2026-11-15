@@ -61,7 +61,7 @@ class RegisteredUserController extends Controller
             return redirect()->route('register.account');
         }
 
-        return back()->withErrors(['birthdate' => 'Learner registration is available for ages 10 through 100.']);
+        return back()->withErrors(['birthdate' => 'Learner registration is available for ages 10 and above.']);
     }
 
     /**

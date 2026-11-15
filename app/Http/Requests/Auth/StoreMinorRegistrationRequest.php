@@ -26,8 +26,13 @@ class StoreMinorRegistrationRequest extends FormRequest
         return [
             'first_name' => [$authenticated ? 'nullable' : 'required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
             'last_name' => [$authenticated ? 'nullable' : 'required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
-            'birthdate' => [$authenticated ? 'nullable' : 'required', 'date', 'before_or_equal:today'],
+            'birthdate' => [$authenticated ? 'nullable' : 'required', 'date', 'before_or_equal:'.now()->subYears(10)->toDateString()],
             'guardian_email' => ['required', 'string', 'lowercase', 'email:rfc', 'max:255'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['birthdate.before_or_equal' => 'Dependents must be at least 10 years old.'];
     }
 }

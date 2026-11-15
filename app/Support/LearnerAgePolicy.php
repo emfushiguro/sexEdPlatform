@@ -28,6 +28,7 @@ final class LearnerAgePolicy
 
         return match (true) {
             $age === null => self::UNCLASSIFIED,
+            $age < 10 => self::INELIGIBLE_UNDERAGE,
             $age <= 17 => self::ELIGIBLE_TEENAGER,
             default => self::ELIGIBLE_ADULT,
         };

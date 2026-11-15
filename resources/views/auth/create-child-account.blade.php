@@ -138,12 +138,12 @@
                                 <input id="birthdate" name="birthdate" type="date" required
                                        x-model="birthdate"
                                        @change="calculateAge()"
-                                       max="{{ now()->format('Y-m-d') }}"
+                                       max="{{ now()->subYears(10)->format('Y-m-d') }}"
                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
-                                <p class="mt-1 text-xs text-gray-500">Use the dependent's legal birthdate. A dependent may be any age.</p>
-                                <p x-show="age !== null && age < 10" x-cloak class="mt-1 text-xs text-gray-500">Learning content for children under 10 is currently limited.</p>
+                                <p class="mt-1 text-xs text-gray-500">Use the dependent's legal birthdate. Dependents must be at least 10 years old. There is no upper age limit.</p>
+                                <p x-show="age !== null && age < 10" x-cloak class="mt-1 text-xs text-gray-500">Dependent registration is available from age 10.</p>
                                 <div x-show="age !== null" class="mt-2">
-                                    <template x-if="age >= 0">
+                                    <template x-if="age >= 10">
                                         <p class="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">
                                             Age <strong x-text="age"></strong> recorded for this dependent.
                                         </p>
