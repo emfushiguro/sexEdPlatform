@@ -86,7 +86,7 @@
     <div class="certificate-page">
         <div class="field learner-name">{{ $certificate->learner_name }}</div>
         <div class="field module-name">{{ $certificate->module_title }}</div>
-        <div class="field issued-date">Issued {{ $certificate->issued_at->format('F d, Y') }}</div>
+        <div class="field issued-date">Issued {{ $certificate->issued_date->format('F d, Y') }}</div>
         <div class="field certificate-id">{{ $certificate->certificate_number }}</div>
     </div>
 </body>

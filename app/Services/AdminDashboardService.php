@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\ContentReport;
 use App\Models\InstructorApplication;
 use App\Models\InstructorIdentityVerification;
-use App\Models\ContentReport;
 use App\Models\MessageReport;
 use App\Models\Module;
 use App\Models\ModuleReviewRequest;
@@ -12,6 +12,7 @@ use App\Models\ParentChildAccount;
 use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Support\Collection;
 
 class AdminDashboardService
@@ -118,13 +119,13 @@ class AdminDashboardService
                     'accent' => 'sky',
                 ],
                 [
-                    'label' => 'Parent & Child Verifications',
+                    'label' => 'Guardian & Teenager Verifications',
                     'count' => $combinedPendingVerifications,
                     'cta_label' => 'Open Queue',
                     'cta_route' => route('admin.parent-verifications.index', [
                         'status' => 'pending',
                     ]),
-                    'description' => 'Review pending guardian and child verification requests.',
+                    'description' => 'Review pending guardian and Teenager verification requests.',
                     'accent' => 'violet',
                 ],
                 [
@@ -208,71 +209,41 @@ class AdminDashboardService
         $learnerBaseQuery = User::role('learner');
         $totalLearners = max(1, (clone $learnerBaseQuery)->count());
 
-        $kidsMaxBirthdate = now()->subYears(5)->toDateString();
-        $kidsMinBirthdateExclusive = now()->subYears(13)->toDateString();
-        $teensMaxBirthdate = now()->subYears(13)->toDateString();
-        $teensMinBirthdateExclusive = now()->subYears(18)->toDateString();
-        $adultsMaxBirthdate = now()->subYears(18)->toDateString();
-
         $rows = [
             [
-                'label' => 'Kids (5-12)',
+                'label' => 'Minors (under 18)',
                 'count' => (clone $learnerBaseQuery)
-                    ->where(function ($query) use ($kidsMaxBirthdate, $kidsMinBirthdateExclusive): void {
-                        $query->where('age_bracket_cached', 'kids')
-                            ->orWhere(function ($fallback) use ($kidsMaxBirthdate, $kidsMinBirthdateExclusive): void {
-                                $fallback->where(function ($missingCache): void {
-                                    $missingCache->whereNull('age_bracket_cached')
-                                        ->orWhere('age_bracket_cached', '');
-                                })->whereHas('learnerProfile', function ($profileQuery) use ($kidsMaxBirthdate, $kidsMinBirthdateExclusive): void {
-                                    $profileQuery
-                                        ->whereNotNull('birthdate')
-                                        ->whereDate('birthdate', '<=', $kidsMaxBirthdate)
-                                        ->whereDate('birthdate', '>', $kidsMinBirthdateExclusive);
-                                });
-                            });
-                    })
+                    ->where('age_eligibility_cached', LearnerAgePolicy::ELIGIBLE_TEENAGER)
                     ->count(),
                 'accent' => 'sky',
             ],
             [
-                'label' => 'Teens (13-17)',
+                'label' => 'Adults (18-100)',
                 'count' => (clone $learnerBaseQuery)
-                    ->where(function ($query) use ($teensMaxBirthdate, $teensMinBirthdateExclusive): void {
-                        $query->where('age_bracket_cached', 'teens')
-                            ->orWhere(function ($fallback) use ($teensMaxBirthdate, $teensMinBirthdateExclusive): void {
-                                $fallback->where(function ($missingCache): void {
-                                    $missingCache->whereNull('age_bracket_cached')
-                                        ->orWhere('age_bracket_cached', '');
-                                })->whereHas('learnerProfile', function ($profileQuery) use ($teensMaxBirthdate, $teensMinBirthdateExclusive): void {
-                                    $profileQuery
-                                        ->whereNotNull('birthdate')
-                                        ->whereDate('birthdate', '<=', $teensMaxBirthdate)
-                                        ->whereDate('birthdate', '>', $teensMinBirthdateExclusive);
-                                });
-                            });
-                    })
+                    ->where('age_eligibility_cached', LearnerAgePolicy::ELIGIBLE_ADULT)
                     ->count(),
                 'accent' => 'violet',
             ],
             [
-                'label' => 'Adults (18+)',
+                'label' => 'Ineligible',
                 'count' => (clone $learnerBaseQuery)
-                    ->where(function ($query) use ($adultsMaxBirthdate): void {
-                        $query->where('age_bracket_cached', 'adults')
-                            ->orWhere(function ($fallback) use ($adultsMaxBirthdate): void {
-                                $fallback->where(function ($missingCache): void {
-                                    $missingCache->whereNull('age_bracket_cached')
-                                        ->orWhere('age_bracket_cached', '');
-                                })->whereHas('learnerProfile', function ($profileQuery) use ($adultsMaxBirthdate): void {
-                                    $profileQuery
-                                        ->whereNotNull('birthdate')
-                                        ->whereDate('birthdate', '<=', $adultsMaxBirthdate);
-                                });
-                            });
+                    ->whereIn('age_eligibility_cached', [
+                        LearnerAgePolicy::INELIGIBLE_UNDERAGE,
+                        LearnerAgePolicy::INELIGIBLE_OVERAGE,
+                    ])
+                    ->count(),
+                'accent' => 'amber',
+            ],
+            [
+                'label' => 'Unclassified',
+                'count' => (clone $learnerBaseQuery)
+                    ->where(function ($query): void {
+                        $query->whereNull('age_eligibility_cached')
+                            ->orWhere('age_eligibility_cached', LearnerAgePolicy::UNCLASSIFIED)
+                            ->orWhere('age_eligibility_cached', '');
                     })
                     ->count(),
-                'accent' => 'emerald',
+                'accent' => 'slate',
             ],
         ];
 
@@ -368,8 +339,8 @@ class AdminDashboardService
 
                 return [
                     'type' => 'Instructor Application',
-                    'title' => ($application->user?->name ?? 'Learner') . ' application is ' . str_replace('_', ' ', $status),
-                    'meta' => 'Application #' . $application->id,
+                    'title' => ($application->user?->name ?? 'Learner').' application is '.str_replace('_', ' ', $status),
+                    'meta' => 'Application #'.$application->id,
                     'occurred_at' => $application->updated_at,
                     'href' => route('admin.instructor-applications.review', $application),
                     'tone' => $tone,
@@ -388,8 +359,8 @@ class AdminDashboardService
 
                 return [
                     'type' => 'Module Review',
-                    'title' => ($reviewRequest->module_title ?: 'Module') . ' review is ' . str_replace('_', ' ', $status),
-                    'meta' => 'Review #' . $reviewRequest->id,
+                    'title' => ($reviewRequest->module_title ?: 'Module').' review is '.str_replace('_', ' ', $status),
+                    'meta' => 'Review #'.$reviewRequest->id,
                     'occurred_at' => $reviewRequest->updated_at,
                     'href' => route('admin.content-reviews.show', $reviewRequest),
                     'tone' => $tone,
@@ -408,7 +379,7 @@ class AdminDashboardService
 
                 return [
                     'type' => 'Payment',
-                    'title' => 'Payment #' . $payment->id . ' is ' . str_replace('_', ' ', $status),
+                    'title' => 'Payment #'.$payment->id.' is '.str_replace('_', ' ', $status),
                     'meta' => $payment->user?->name ?? 'Unknown user',
                     'occurred_at' => $payment->updated_at,
                     'href' => route('admin.payments.show', $payment),

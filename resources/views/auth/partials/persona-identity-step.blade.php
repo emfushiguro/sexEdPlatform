@@ -7,7 +7,7 @@
     $governmentIdType = $governmentIdType ?? $attempt?->local_government_id_type;
     $governmentTypes = collect(config('persona.government_id_classes', []))
         ->keys()
-        ->filter(fn (string $key): bool => array_key_exists($key, config('guardian_identity.id_types', [])))
+        ->filter(fn (string $key): bool => in_array($key, config('guardian_identity.accepted_id_types', []), true))
         ->all();
 @endphp
 

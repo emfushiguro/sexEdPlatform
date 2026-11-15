@@ -13,10 +13,11 @@
     <div>
         <label for="id_selection" class="block font-semibold text-gray-900">ID type</label>
         <select id="id_selection" name="id_selection" x-model="selection" @change="$dispatch('identity-choice-changed')" required class="mt-2 w-full rounded-xl border-gray-300 p-3 focus:ring-purple-700">
+            @if($canRequestAssistedReview)<option value="assisted_review">I don't have an ID — request assisted review</option>@endif
             <option value="school_id">School ID</option>
             <option value="institution_id">Institution ID</option>
             <optgroup label="Philippine government ID">
-                @foreach(config('persona.government_id_classes', []) as $key => $class)
+                @foreach(array_intersect_key(config('persona.government_id_classes', []), array_flip(config('guardian_identity.accepted_id_types', []))) as $key => $class)
                     <option value="government_id:{{ $key }}">{{ config('guardian_identity.id_types.'.$key.'.label', $key) }}</option>
                 @endforeach
             </optgroup>
@@ -25,7 +26,7 @@
     </div>
     <p x-show="government()" x-cloak class="text-sm text-gray-700">You will capture your government ID and selfie securely through Persona.</p>
     <section x-show="!government()" x-data="identityDocument" @identity-choice-changed.window="cancel()" @pagehide.window="destroy()" class="space-y-4" data-testid="id-camera-capture">
-        <p class="text-sm text-gray-700">Place the front of your ID inside the guide. Make sure your photo and details are readable.</p>
+        <p class="text-sm text-gray-700" x-text="selection === 'assisted_review' ? 'Capture an independent official or school record with your photo, or a signed identity statement from a school, agency, or local authority. Your selfie and approved Guardian relationship will also be reviewed. Do not upload medical records.' : 'Place the front of your ID inside the guide. Make sure your photo and details are readable.'"></p>
         @if($keepId)
             <p class="rounded-xl bg-purple-50 p-3 text-sm text-purple-900">Your ID needs no changes. Continue to update your selfie, or capture a replacement ID below.</p>
         @endif
@@ -34,6 +35,10 @@
         @endif
         <input type="file" name="identity_front" x-ref="selfieInput" accept="image/jpeg,image/png,image/webp" hidden :disabled="government()">
         <button type="button" @click="startCamera()" class="min-h-11 w-full rounded-xl bg-purple-800 px-4 py-3 font-semibold text-white focus:ring-2 focus:ring-purple-700">Open ID camera</button>
+        <label class="block text-sm font-semibold">Document orientation
+            <select x-model="documentOrientation" class="mt-1 w-full rounded-lg border-gray-300"><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select>
+        </label>
+        <p class="text-sm text-gray-600">Rotate your document or device to fit. The guide does not crop your photo; the entire camera frame is saved.</p>
         <div x-show="cameras.length > 1" x-cloak>
             <label class="block text-sm font-semibold" for="id-camera-device">Camera</label>
             <select id="id-camera-device" x-model="selectedCamera" @change="startCamera()" class="mt-1 w-full rounded-lg border-gray-300">
@@ -42,7 +47,7 @@
             </select>
         </div>
         <div x-show="cameraActive" x-cloak class="space-y-3 rounded-xl bg-gray-950 p-3">
-            <div class="relative"><video x-ref="video" autoplay muted playsinline aria-label="Live ID camera preview" class="aspect-[4/3] w-full rounded-lg object-contain"></video><div class="pointer-events-none absolute inset-x-[5%] inset-y-[15%] rounded-lg border-2 border-white" aria-hidden="true"></div></div>
+            <div class="relative"><video x-ref="video" autoplay muted playsinline aria-label="Live ID camera preview" class="max-h-[70vh] w-full rounded-lg object-contain" :style="{ aspectRatio: documentGuideAspect() }"></video><div class="pointer-events-none absolute inset-[8%] rounded-lg border-2 border-white" aria-hidden="true"></div></div>
             <button type="button" @click="capturePhoto()" class="min-h-11 w-full rounded-lg bg-white px-4 py-2 font-semibold text-purple-900">Capture ID</button>
         </div>
         <div x-show="previewUrl" x-cloak class="space-y-3 rounded-xl border border-purple-200 p-3">

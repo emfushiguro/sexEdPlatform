@@ -44,7 +44,7 @@ class ModuleAgeBracketUpdateVisibilityTest extends DatabaseTestCase
 
         $this->assertDatabaseHas('modules', [
             'id' => $module->id,
-            'min_age' => 13,
+            'min_age' => 10,
             'max_age' => 17,
         ]);
 
@@ -57,7 +57,7 @@ class ModuleAgeBracketUpdateVisibilityTest extends DatabaseTestCase
                     'title' => $module->title,
                     'description' => $module->description,
                     'thumbnail' => $module->thumbnail,
-                    'min_age' => 13,
+                    'min_age' => 10,
                     'max_age' => 17,
                     'age_specific_content' => $module->age_specific_content,
                     'order' => $module->order,
@@ -88,7 +88,7 @@ class ModuleAgeBracketUpdateVisibilityTest extends DatabaseTestCase
         ]);
 
         $teenLearner = $this->createLearnerWithBirthdate(now()->subYears(15)->toDateString());
-        $kidLearner = $this->createLearnerWithBirthdate(now()->subYears(10)->toDateString());
+        $youngerTeenLearner = $this->createLearnerWithBirthdate(now()->subYears(10)->toDateString());
 
         ModuleEnrollment::factory()->create([
             'user_id' => $teenLearner->id,
@@ -102,10 +102,10 @@ class ModuleAgeBracketUpdateVisibilityTest extends DatabaseTestCase
             ->assertOk()
             ->assertSee('Body Awareness 101', false);
 
-        $this->actingAs($kidLearner)
+        $this->actingAs($youngerTeenLearner)
             ->get(route('learner.modules.index'))
             ->assertOk()
-            ->assertDontSee('Body Awareness 101', false);
+            ->assertSee('Body Awareness 101', false);
     }
 
     private function createLearnerWithBirthdate(string $birthdate): User
@@ -117,7 +117,7 @@ class ModuleAgeBracketUpdateVisibilityTest extends DatabaseTestCase
 
         LearnerProfile::query()->create([
             'user_id' => $learner->id,
-            'username' => 'learner_' . $learner->id,
+            'username' => 'learner_'.$learner->id,
             'birthdate' => $birthdate,
             'age_range' => 'adult_18_plus',
             'gender' => 'female',

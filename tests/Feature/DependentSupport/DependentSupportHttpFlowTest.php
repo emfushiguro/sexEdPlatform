@@ -206,7 +206,7 @@ class DependentSupportHttpFlowTest extends TestCase
         $this->assertDatabaseHas('dependent_support_profiles', ['dependent_user_id' => $dependent->id]);
     }
 
-    public function test_verified_guardian_without_permission_is_denied(): void
+    public function test_adult_guardian_without_permission_is_denied(): void
     {
         [$guardian, $dependent] = $this->guardianSetup(false);
 
@@ -237,6 +237,14 @@ class DependentSupportHttpFlowTest extends TestCase
         $this->actingAs($guardian)
             ->get(route('parent.children.support-information.edit', $dependent))
             ->assertForbidden();
+    }
+
+    public function test_verified_guardian_automatically_accesses_minor_support_without_stored_permission(): void
+    {
+        [$guardian, $dependent] = $this->guardianSetup(false);
+        $dependent->update(['birthdate' => now()->subYears(15)->toDateString()]);
+        $dependent->learnerProfile->update(['birthdate' => $dependent->birthdate]);
+        $this->actingAs($guardian)->get(route('parent.children.support-information.edit', $dependent))->assertOk();
     }
 
     public function test_unrelated_guardian_cannot_use_route_bound_child(): void
@@ -329,6 +337,7 @@ class DependentSupportHttpFlowTest extends TestCase
         $learner = User::factory()->create([
             'role' => 'learner',
             'status' => User::STATUS_ACTIVE,
+            'birthdate' => now()->subYears(20)->toDateString(),
             ...$attributes,
         ]);
         $learner->assignRole('learner');
@@ -407,6 +416,7 @@ class DependentSupportHttpFlowTest extends TestCase
             'can_view_quiz_answers' => true,
             'can_approve_content' => false,
             'can_manage_support_information' => $permission,
+            'adult_permissions_confirmed_at' => now(),
         ]);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\LearningPath;
 use App\Models\User;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,12 +24,36 @@ class LearningPathAuthoringService
                 ]);
             }
 
+            $rawCategories = (array) ($attributes['categories'] ?? []);
+            $invalidCategories = collect($rawCategories)
+                ->filter(fn (mixed $category): bool => ! is_string($category)
+                    || ! in_array(strtolower(trim($category)), LearnerAgePolicy::activeCategories(), true));
+            if ($invalidCategories->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'categories' => 'Choose only the active learner categories: Teenager or Adult.',
+                ]);
+            }
+
+            $categories = collect($rawCategories)
+                ->map(fn (mixed $category): ?string => is_string($category)
+                    ? LearnerAgePolicy::normalizeActiveCategory($category)
+                    : null)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            if ($categories === []) {
+                throw ValidationException::withMessages([
+                    'categories' => 'Choose at least one active learner category: Teenager or Adult.',
+                ]);
+            }
+
             $path ??= new LearningPath(['created_by' => $actor->id]);
             $path->fill(Arr::only($attributes, ['title', 'description', 'thumbnail', 'status']))->save();
 
             $path->learnerCategories()->delete();
             $path->learnerCategories()->createMany(
-                collect($attributes['categories'])->map(fn (string $category) => ['category' => $category])->all()
+                collect($categories)->map(fn (string $category) => ['category' => $category])->all()
             );
 
             if ($moduleIds === []) {

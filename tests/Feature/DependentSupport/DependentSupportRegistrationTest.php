@@ -194,6 +194,7 @@ class DependentSupportRegistrationTest extends TestCase
         $dependent = User::factory()->create([
             'role' => 'learner',
             'status' => User::STATUS_ACTIVE,
+            'birthdate' => now()->subYears(15)->toDateString(),
         ]);
         $dependent->assignRole('learner');
 

@@ -59,8 +59,8 @@ class UserRelationshipService
                 'relationship_status' => ParentChildAccount::STATUS_PENDING,
                 'relationship_verified_status' => ParentChildAccount::VERIFICATION_PENDING,
                 'relationship_notes' => $payload['relationship_notes'] ?? null,
-                'can_view_progress' => (bool) ($payload['can_view_progress'] ?? true),
-                'can_view_quiz_answers' => (bool) ($payload['can_view_quiz_answers'] ?? true),
+                'can_view_progress' => $child->requiresGuardian() && (bool) ($payload['can_view_progress'] ?? true),
+                'can_view_quiz_answers' => $child->requiresGuardian() && (bool) ($payload['can_view_quiz_answers'] ?? true),
                 'can_approve_content' => false,
                 'can_manage_support_information' => false,
                 'relationship_verified_at' => null,
@@ -207,6 +207,14 @@ class UserRelationshipService
 
             if (! $relationship->isVerifiedActive()) {
                 throw new InvalidArgumentException('Only an active verified relationship can have permissions updated.');
+            }
+
+            if (! $relationship->child?->requiresGuardian()) {
+                foreach (['can_view_progress', 'can_view_quiz_answers', 'can_approve_content'] as $permission) {
+                    if (($permissions[$permission] ?? false) && ! $relationship->{$permission}) {
+                        throw new InvalidArgumentException('Only the adult dependent can grant access to their information.');
+                    }
+                }
             }
 
             $before = $relationship->only([

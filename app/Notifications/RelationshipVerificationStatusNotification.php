@@ -28,7 +28,7 @@ class RelationshipVerificationStatusNotification extends Notification
             'submitted' => 'Relationship evidence for '.$childName.' has been submitted for review.',
             'resubmitted' => 'New relationship evidence for '.$childName.' has been resubmitted for review.',
             'resubmission_required' => 'Additional relationship evidence is required for '.$childName.'.',
-            'approved' => 'The relationship with '.$childName.' has been approved.',
+            'approved' => 'The relationship with '.$childName.' has been approved. Review the next steps on the relationship page.',
             'rejected' => 'The relationship claim for '.$childName.' has been rejected.',
             'claim_closed' => 'The relationship claim for '.$childName.' has been closed.',
             'revoked' => 'Verification of the relationship with '.$childName.' has been revoked.',

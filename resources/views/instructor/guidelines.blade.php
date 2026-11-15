@@ -149,10 +149,10 @@
                     <p class="mt-1 text-sm leading-6 text-gray-600">A topic is not automatically appropriate simply because it appears in an allowed category. Adjust depth, language, examples, visuals, and activities for the learners selected.</p>
                 </div>
 
-                <div class="mt-6 grid gap-4 lg:grid-cols-3">
-                    <section id="kids-guidelines" class="scroll-mt-24 rounded-xl border border-sky-100 bg-sky-50/60 p-5">
+                <div class="mt-6 grid gap-4 lg:grid-cols-2">
+                    <section id="teenager-foundations-guidelines" class="scroll-mt-24 rounded-xl border border-sky-100 bg-sky-50/60 p-5">
                         <div class="flex items-center justify-between gap-3">
-                            <h3 class="text-lg font-semibold text-sky-950">Kids</h3>
+                            <h3 class="text-lg font-semibold text-sky-950">Teenager foundations</h3>
                             <span class="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700">Foundations</span>
                         </div>
                         <p class="mt-3 text-sm leading-6 text-sky-950/75">Keep concepts concrete, clearly scoped, and suitable for younger learners.</p>
@@ -166,7 +166,7 @@
 
                     <section id="teens-guidelines" class="scroll-mt-24 rounded-xl border border-violet-100 bg-violet-50/60 p-5">
                         <div class="flex items-center justify-between gap-3">
-                            <h3 class="text-lg font-semibold text-violet-950">Teens</h3>
+                            <h3 class="text-lg font-semibold text-violet-950">Teenager</h3>
                             <span class="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-700">Development</span>
                         </div>
                         <p class="mt-3 text-sm leading-6 text-violet-950/75">Use clear, age-appropriate education that supports informed decisions and healthy communication.</p>
@@ -194,7 +194,7 @@
                 </div>
 
                 <div class="mt-5 rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-950/80">
-                    <span class="font-semibold text-amber-950">Use judgment:</span> The same subject may require different terminology, depth, examples, visual treatment, and activity design for Kids, Teens, and Adults. When in doubt, reduce unnecessary detail and return to the learning objective.
+                    <span class="font-semibold text-amber-950">Use judgment:</span> The same subject may require different terminology, depth, examples, visual treatment, and activity design for Teenagers and Adults. When in doubt, reduce unnecessary detail and return to the learning objective.
                 </div>
             </section>
 

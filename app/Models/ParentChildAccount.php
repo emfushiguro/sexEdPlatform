@@ -59,6 +59,7 @@ class ParentChildAccount extends Model
         'can_view_quiz_answers',
         'can_approve_content',
         'can_manage_support_information',
+        'adult_permissions_confirmed_at',
         'verification_status',
         'verification_document_path',
         'verification_rejection_reason',
@@ -66,6 +67,9 @@ class ParentChildAccount extends Model
         'verification_reviewed_at',
         'verification_approved_at',
         'relationship_verified_at',
+        'minor_registration_authorized_at',
+        'minor_registration_consent_version',
+        'minor_registration_authorized_by_user_id',
     ];
 
     protected $casts = [
@@ -83,6 +87,8 @@ class ParentChildAccount extends Model
         'relationship_deactivated_at' => 'datetime',
         'current_evidence_round' => 'integer',
         'relationship_correction_request' => 'array',
+        'minor_registration_authorized_at' => 'datetime',
+        'adult_permissions_confirmed_at' => 'datetime',
     ];
 
     /**
@@ -131,6 +137,11 @@ class ParentChildAccount extends Model
         return $this->hasMany(GuardianRelationshipVerificationAudit::class, 'parent_child_account_id');
     }
 
+    public function adultAuthorityRequests(): HasMany
+    {
+        return $this->hasMany(AdultDependentAuthorityRequest::class, 'parent_child_account_id');
+    }
+
     /**
      * Verify the parent-child relationship
      */
@@ -171,6 +182,15 @@ class ParentChildAccount extends Model
             });
     }
 
+    public function scopeMinorAccessEligible(Builder $query): Builder
+    {
+        return $query
+            ->accessEligible()
+            ->whereNotNull('minor_registration_authorized_at')
+            ->where('minor_registration_consent_version', config('learner_age_policy.guardian_consent_version'))
+            ->whereColumn('minor_registration_authorized_by_user_id', 'parent_user_id');
+    }
+
     public function scopeWithPermission(Builder $query, string $permission): Builder
     {
         $allowed = [
@@ -183,7 +203,12 @@ class ParentChildAccount extends Model
             throw new InvalidArgumentException('Unknown guardian relationship permission.');
         }
 
-        return $query->where($permission, true);
+        return $query->where(fn (Builder $access) => $access
+                ->where(fn (Builder $minor) => $minor
+                    ->when($permission !== 'can_manage_support_information', fn (Builder $permissionQuery) => $permissionQuery->where($permission, true))
+                    ->whereHas('child', fn (Builder $child) => $child->whereDate('birthdate', '>', now()->subYears(18)->toDateString())))
+                ->orWhere(fn (Builder $adult) => $adult->where($permission, true)->whereNotNull('adult_permissions_confirmed_at')
+                    ->whereHas('child', fn (Builder $child) => $child->whereDate('birthdate', '<=', now()->subYears(18)->toDateString()))));
     }
 
     public function isVerifiedActive(): bool

@@ -68,7 +68,7 @@
             @endphp
 
             @if($parentUser)
-                <article x-data="{ showDetails: false }" class="relative overflow-hidden transition bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md dark:bg-gray-800 dark:border-gray-700">
+                <article x-data="{ showDetails: false, showPermissions: false }" class="relative overflow-hidden transition bg-white border border-gray-200 shadow-sm rounded-2xl hover:shadow-md dark:bg-gray-800 dark:border-gray-700">
                     @if($canUseChat)
                         <button type="button"
                                 @click="window.dispatchEvent(new CustomEvent('open-global-chat', { detail: { target_user_id: {{ (int) $parentUser->id }}, conversation_type: 'direct', name: @js($fullName) } }))"
@@ -168,20 +168,30 @@
                         </button>
                     </div>
 
-                    <form method="POST" action="{{ route('learner.parent.support-information-access.update', $parentLink) }}" class="mt-4 rounded-xl border border-purple-100 bg-purple-50 p-4">
+                    @if(! auth()->user()->requiresGuardian())
+                    <button type="button" @click="showPermissions = true; $nextTick(() => $refs.permissionClose.focus())" title="Guardian access settings" aria-label="Guardian access settings for {{ $fullName }}" class="absolute right-16 top-4 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m-4-4h8M4 6h16M4 18h16"/></svg>
+                    </button>
+                    <template x-teleport="body"><div x-show="showPermissions" x-cloak @keydown.escape.window="showPermissions = false" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Guardian access settings">
+                    <div @click.outside="showPermissions = false" class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+                    <div class="flex items-center justify-between"><h2 class="text-lg font-bold text-purple-900">Guardian access settings</h2><button x-ref="permissionClose" type="button" @click="showPermissions = false" aria-label="Close settings" class="rounded-lg px-3 py-2 text-xl text-gray-600">&times;</button></div>
+                    <form method="POST" action="{{ route('learner.parent.support-information-access.update', $parentLink) }}" x-on:submit="if (!confirm('Save access preferences for ' + @js($fullName) + '? Enabling Health & Support Information access allows this Guardian to view, edit and remove your optional support information. Disabling it stops their future access; your saved information stays available to you.')) $event.preventDefault()" class="mt-4 space-y-4 rounded-xl border border-purple-100 bg-purple-50 p-4">
                         @csrf
                         @method('PATCH')
-                        <input type="hidden" name="enabled" value="0">
-                        <label class="flex items-start justify-between gap-4">
-                            <span>
-                                <span class="block text-sm font-semibold text-purple-950">Health &amp; Support Information access</span>
-                                <span class="mt-1 block text-xs text-gray-600">Allows this guardian to view, edit, and remove your optional support information.</span>
-                            </span>
-                            <input type="checkbox" name="enabled" value="1" class="mt-1 rounded border-purple-300"
-                                   @checked($parentLink->can_manage_support_information)
-                                   onchange="this.form.submit()">
-                        </label>
-                    </form>
+                        <p class="text-sm font-semibold text-purple-950">Access for {{ $fullName }}</p>
+                        @foreach(['can_view_progress' => 'Learning progress', 'can_view_quiz_answers' => 'Quiz answers', 'can_manage_support_information' => 'View and manage support information'] as $permission => $label)
+                            <input type="hidden" name="permissions[{{ $permission }}]" value="0">
+                            <label class="flex items-center gap-3 text-sm text-gray-800">
+                                <input type="checkbox" name="permissions[{{ $permission }}]" value="1" class="rounded border-purple-300" @checked($parentLink->adult_permissions_confirmed_at && $parentLink->{$permission})>
+                                <span>{{ $label }}</span>
+                            </label>
+                        @endforeach
+                        <p class="text-xs text-gray-600">Quiz answer access requires learning progress access. Your password and private messages are never shared through these settings.</p>
+                        <button type="submit" class="rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white">Save access preferences</button>
+                    </form></div></div></template>
+                    @else
+                    <p class="mx-5 mb-4 rounded-xl border border-purple-100 bg-purple-50 p-4 text-sm text-purple-950">{{ $fullName }} can view, edit and remove your optional Health &amp; Support Information while your Guardian relationship is verified and eligible. This access applies automatically while you are under 18. When you turn 18, you control sharing through your access settings.</p>
+                    @endif
                 </article>
             @endif
         @endforeach

@@ -1,12 +1,12 @@
 <?php
 
-    return [
+return [
     'suggestions' => [
         [
             'key' => 'general.explain.topic',
             'text' => 'Can you explain this topic?',
             'category' => 'understanding',
-            'audience' => ['kids', 'teens', 'adults'],
+            'audience' => ['teens', 'adults'],
             'context' => ['general', 'instructor'],
             'active' => true,
             'display_order' => 10,
@@ -15,7 +15,7 @@
             'key' => 'lesson.explain.topic',
             'text' => 'Can you explain this topic in simpler terms?',
             'category' => 'understanding',
-            'audience' => ['kids', 'teens', 'adults'],
+            'audience' => ['teens', 'adults'],
             'context' => ['lesson', 'general'],
             'active' => true,
             'display_order' => 20,
@@ -24,7 +24,7 @@
             'key' => 'lesson.understand.section',
             'text' => 'Can you help me understand this lesson section?',
             'category' => 'understanding',
-            'audience' => ['kids', 'teens', 'adults'],
+            'audience' => ['teens', 'adults'],
             'context' => ['lesson', 'general'],
             'active' => true,
             'display_order' => 30,
@@ -33,7 +33,7 @@
             'key' => 'module.review.next',
             'text' => 'What should I review next?',
             'category' => 'review',
-            'audience' => ['kids', 'teens', 'adults'],
+            'audience' => ['teens', 'adults'],
             'context' => ['module', 'general', 'instructor'],
             'active' => true,
             'display_order' => 40,

@@ -44,6 +44,22 @@ class EmailVerificationTest extends TestCase
             ->assertDontSee('https://mail.google.com', false);
     }
 
+    public function test_no_email_adult_learner_can_open_their_own_email_setup_prompt(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'learner',
+            'email' => null,
+            'birthdate' => now()->subYears(25)->toDateString(),
+        ]);
+        $user->assignRole('learner');
+
+        $this->actingAs($user)
+            ->get('/verify-email')
+            ->assertOk()
+            ->assertSee('Add your email', false)
+            ->assertSee('Your adult account needs its own verified email address.', false);
+    }
+
     public function test_email_can_be_verified(): void
     {
         $user = User::factory()->unverified()->create();

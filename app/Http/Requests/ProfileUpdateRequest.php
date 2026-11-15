@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\User;
 use App\Support\AccountEmail;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,7 +27,8 @@ class ProfileUpdateRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
-                'required',
+                Rule::requiredIf(fn (): bool => ! $this->learnerMayOmitEmail()),
+                'nullable',
                 'string',
                 'email:rfc',
                 'max:255',
@@ -42,10 +44,26 @@ class ProfileUpdateRequest extends FormRequest
 
     private function emailChanged(): bool
     {
-        if (! $this->user() || ! is_string($this->input('email'))) {
+        if (! $this->user()) {
             return false;
         }
 
-        return AccountEmail::normalize($this->input('email')) !== AccountEmail::normalize((string) $this->user()->email);
+        $submitted = is_string($this->input('email'))
+            ? AccountEmail::normalize($this->input('email'))
+            : null;
+        $current = is_string($this->user()->email)
+            ? AccountEmail::normalize($this->user()->email)
+            : null;
+
+        return $submitted !== $current;
+    }
+
+    private function learnerMayOmitEmail(): bool
+    {
+        $user = $this->user();
+
+        return $user?->isLearner()
+            && (LearnerAgePolicy::classify($user->birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER
+                || $user->hasAcceptedDependentAdultAuthorization());
     }
 }

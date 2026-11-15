@@ -67,7 +67,17 @@
 				</div>
 				<div>
 					<p class="text-xs text-gray-400 mb-0.5">Age Bracket</p>
-					<p class="text-sm font-semibold text-gray-900">{{ ucfirst((string) ($user->age_bracket_cached ?: ($user->deriveAgeBracketCache() ?? 'n/a'))) }}</p>
+                    @php
+                        $ageLabel = match (true) {
+                            $user->account_type === \App\Models\User::ACCOUNT_TYPE_LEARNER_CHILD => 'Legacy learner account - review required',
+                            $user->age_bracket_cached === 'teens' => 'Teenager',
+                            $user->age_bracket_cached === 'adults' => 'Adult',
+                            $user->age_eligibility_cached === \App\Support\LearnerAgePolicy::INELIGIBLE_UNDERAGE => 'Ineligible',
+                            $user->age_eligibility_cached === \App\Support\LearnerAgePolicy::INELIGIBLE_OVERAGE => 'Ineligible',
+                            default => 'Unclassified',
+                        };
+                    @endphp
+					<p class="text-sm font-semibold text-gray-900">{{ $ageLabel }}</p>
 				</div>
 				<div>
 					<p class="text-xs text-gray-400 mb-0.5">Email Verified</p>

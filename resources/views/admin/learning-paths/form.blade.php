@@ -42,7 +42,7 @@
         @pointermove.window="movePointerDrag($event)"
         @pointerup.window="dropPointerDrag($event)"
         @pointercancel.window="cancelDrag()"
-        @submit="syncRows()"
+        @submit="syncRows(); if (!validateCategories($event.currentTarget)) $event.preventDefault()"
     >
         @csrf
         @if($editing) @method('PUT') @endif
@@ -76,7 +76,7 @@
         <fieldset aria-invalid="{{ $categoryError ? 'true' : 'false' }}" @if($categoryError) aria-describedby="categories-error" @endif>
             <legend class="text-sm font-semibold text-gray-800">Learner categories</legend>
             <div class="mt-2 flex flex-wrap gap-4">
-                @foreach(['kids' => 'Kids', 'teens' => 'Teens', 'adults' => 'Adults'] as $key => $label)
+                @foreach(['teens' => 'Teenager', 'adults' => 'Adult'] as $key => $label)
                     <label class="inline-flex min-h-11 items-center gap-2 text-sm text-gray-700">
                         <input type="checkbox" name="categories[]" value="{{ $key }}" @checked(in_array($key, $categories, true)) aria-invalid="{{ $categoryError ? 'true' : 'false' }}" @if($categoryError) aria-describedby="categories-error" @endif @change="syncCategories($root)" class="h-4 w-4 rounded border-gray-300 text-purple-700 focus:ring-purple-600">
                         {{ $label }}

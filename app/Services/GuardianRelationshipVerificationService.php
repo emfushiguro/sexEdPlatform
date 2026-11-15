@@ -7,9 +7,12 @@ use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Notifications\Admin\RelationshipVerificationSubmittedNotification;
 use App\Notifications\RelationshipVerificationStatusNotification;
+use App\Notifications\TeenagerActivationReadyNotification;
+use App\Services\Auth\MinorAccountHandoffService;
 use App\Services\Chat\GuardianInvitationConversationService;
 use App\Support\GuardianRelationshipEvidenceRules;
 use App\Support\GuardianRelationshipTypes;
+use App\Support\LearnerAgePolicy;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
@@ -27,6 +30,7 @@ class GuardianRelationshipVerificationService
         private readonly GuardianRelationshipEvidenceService $evidence,
         private readonly GuardianInvitationConversationService $invitationConversations,
         private readonly DependentSupportInformationService $supportInformation,
+        private readonly MinorAccountHandoffService $minorHandoffs,
     ) {}
 
     public function initialStatus(string $relationshipType): string
@@ -207,7 +211,7 @@ class GuardianRelationshipVerificationService
 
         $currentEvidenceRound ??= (int) $relationship->current_evidence_round;
 
-        return $this->decide($relationship, $admin, 'approved', [ParentChildAccount::VERIFICATION_UNDER_REVIEW], function (ParentChildAccount $locked) use ($admin, $currentEvidenceRound): array {
+        $approved = $this->decide($relationship, $admin, 'approved', [ParentChildAccount::VERIFICATION_UNDER_REVIEW], function (ParentChildAccount $locked) use ($admin, $currentEvidenceRound): array {
             abort_unless($currentEvidenceRound === (int) $locked->current_evidence_round, 409, 'A newer evidence round is available. Reload before reviewing.');
             if ($locked->current_evidence_round < 1 || ! $locked->verificationDocuments()
                 ->where('submission_round', $locked->current_evidence_round)
@@ -218,6 +222,11 @@ class GuardianRelationshipVerificationService
 
             $locked->verificationDocuments()->where('submission_round', $locked->current_evidence_round)
                 ->whereNull('superseded_at')->update(['review_status' => 'accepted']);
+
+            if (! $locked->verificationDocuments()->where('submission_round', $locked->current_evidence_round)
+                ->whereNull('superseded_at')->where('document_type', 'dependent_birth_record')->exists()) {
+                throw new InvalidArgumentException('Request the dependent birth certificate or equivalent civil registry record before approving this relationship.');
+            }
 
             return [
                 'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
@@ -231,6 +240,8 @@ class GuardianRelationshipVerificationService
                 'relationship_verified_at' => now(),
             ];
         });
+
+        return $approved;
     }
 
     public function reject(
@@ -382,6 +393,7 @@ class GuardianRelationshipVerificationService
                 'relationship_deactivated_at' => null,
                 'relationship_verified_at' => null,
                 'can_manage_support_information' => false,
+                'adult_permissions_confirmed_at' => null,
             ]);
             $this->audit($locked, $actor, 'reactivation_requested', ParentChildAccount::VERIFICATION_VERIFIED, ParentChildAccount::VERIFICATION_UNDER_REVIEW, (int) $locked->current_evidence_round);
             $this->notifyAfterCommit($locked->id, 'reactivation_requested', true);

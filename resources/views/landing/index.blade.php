@@ -371,14 +371,12 @@
             </p>
         </div>
 
-        <div class="grid md:grid-cols-3 gap-6">
+        <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             @php
             $brackets = [
-                ['icon' => 'user.png',         'age' => 'Ages 7–12',  'title' => 'Kids',
-                 'bullets' => ['Body basics &amp; personal safety', 'Age-appropriate anatomy', 'Healthy habits &amp; boundaries']],
-                ['icon' => 'energy.png',        'age' => 'Ages 13–17', 'title' => 'Teens',
+                ['icon' => 'energy.png',        'age' => 'Ages 10–17', 'title' => 'Teenagers',
                  'bullets' => ['Puberty &amp; body changes', 'Consent &amp; healthy relationships', 'Mental health &amp; peer pressure']],
-                ['icon' => 'relationship.png',  'age' => 'Ages 18+',   'title' => 'Adults',
+                ['icon' => 'relationship.png',  'age' => 'Ages 18–100', 'title' => 'Adults',
                  'bullets' => ['Reproductive health &amp; family planning', 'STI prevention &amp; sexual wellness', 'Mature relationships &amp; communication']],
             ];
             @endphp

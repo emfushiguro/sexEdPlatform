@@ -5,8 +5,8 @@ namespace Database\Seeders;
 use App\Models\InstructorApplication;
 use App\Models\InstructorProfile;
 use App\Models\LearnerProfile;
-use App\Models\PlanPrice;
 use App\Models\ParentChildAccount;
+use App\Models\PlanPrice;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -186,13 +186,13 @@ class TestUserSeeder extends Seeder
 
         $this->upsertInstructorApplication($pendingInstructor, 'pending');
 
-        $kidLearner = $this->upsertUser(
+        $youngerTeenLearner = $this->upsertUser(
             roleSyncService: $roleSyncService,
-            email: 'kid@test.local',
+            email: 'teen-younger@test.local',
             primaryRole: 'learner',
             attributes: [
-                'name' => 'Kid Learner Test',
-                'first_name' => 'Kid',
+                'name' => 'Younger Teen Learner Test',
+                'first_name' => 'Younger Teen',
                 'last_name' => 'Learner',
                 'birthdate' => $this->birthdateForAge(10),
                 'status' => User::STATUS_ACTIVE,
@@ -201,16 +201,16 @@ class TestUserSeeder extends Seeder
             ],
         );
 
-        $this->upsertLearnerProfile($kidLearner, [
-            'username' => 'seed_kid_learner',
-            'birthdate' => $kidLearner->birthdate,
+        $this->upsertLearnerProfile($youngerTeenLearner, [
+            'username' => 'seed_younger_teen',
+            'birthdate' => $youngerTeenLearner->birthdate,
             'gender' => 'male',
             'province_code' => $location['province_code'],
             'city_code' => $location['city_code'],
             'barangay_code' => $location['barangay_code'],
             'barangay' => $location['barangay_name'],
-            'bio' => 'Kid learner account for age-bracket module visibility checks.',
-            'requires_parental_consent' => true,
+            'bio' => 'Teenager learner account for age-bracket module visibility checks.',
+            'requires_parental_consent' => false,
             'is_parent_account' => false,
         ]);
 
@@ -399,7 +399,7 @@ class TestUserSeeder extends Seeder
             $approvedInstructor,
             $paidInstructor,
             $pendingInstructor,
-            $kidLearner,
+            $youngerTeenLearner,
             $teenLearner,
             $adultLearner,
             $premiumLearner,
@@ -412,12 +412,12 @@ class TestUserSeeder extends Seeder
         if ($this->command) {
             $this->command->newLine();
             $this->command->info('Test user accounts seeded successfully.');
-            $this->command->line('Password for all test users: ' . self::DEFAULT_PASSWORD);
+            $this->command->line('Password for all test users: '.self::DEFAULT_PASSWORD);
             $this->command->line('Admin: admin@test.local');
             $this->command->line('Instructor (approved): instructor@test.local');
             $this->command->line('Instructor (paid active plan): instructor.paid@test.local');
             $this->command->line('Instructor (pending applicant): instructor.pending@test.local');
-            $this->command->line('Learner (kid): kid@test.local');
+            $this->command->line('Learner (younger Teenager): teen-younger@test.local');
             $this->command->line('Learner (teen): teen@test.local');
             $this->command->line('Learner (adult): adult@test.local');
             $this->command->line('Learner (premium active plan): premium.learner@test.local');
@@ -494,8 +494,8 @@ class TestUserSeeder extends Seeder
     }
 
     /**
-     * @param array<string, mixed> $attributes
-     * @param array<int, string> $additionalRoles
+     * @param  array<string, mixed>  $attributes
+     * @param  array<int, string>  $additionalRoles
      */
     private function upsertUser(
         RoleSyncService $roleSyncService,
@@ -537,7 +537,7 @@ class TestUserSeeder extends Seeder
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     private function upsertUserProfile(User $user, array $attributes): UserProfile
     {
@@ -548,7 +548,7 @@ class TestUserSeeder extends Seeder
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     private function upsertLearnerProfile(User $user, array $attributes): LearnerProfile
     {
@@ -559,7 +559,7 @@ class TestUserSeeder extends Seeder
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     private function upsertInstructorProfile(User $user, array $attributes): InstructorProfile
     {
@@ -578,13 +578,13 @@ class TestUserSeeder extends Seeder
             [
                 'status' => $status,
                 'educational_background' => 'college_graduate',
-                'government_id_path' => 'seed/instructor-applications/' . $user->id . '/government-id.pdf',
-                'clearance_path' => 'seed/instructor-applications/' . $user->id . '/clearance.pdf',
-                'cv_resume_path' => 'seed/instructor-applications/' . $user->id . '/cv.pdf',
+                'government_id_path' => 'seed/instructor-applications/'.$user->id.'/government-id.pdf',
+                'clearance_path' => 'seed/instructor-applications/'.$user->id.'/clearance.pdf',
+                'cv_resume_path' => 'seed/instructor-applications/'.$user->id.'/cv.pdf',
                 'bio' => 'Seeded instructor application record for governance QA workflows.',
-                'teaching_credential_path' => 'seed/instructor-applications/' . $user->id . '/teaching-credential.pdf',
-                'sexed_certificate_path' => 'seed/instructor-applications/' . $user->id . '/sexed-certificate.pdf',
-                'professional_license_path' => 'seed/instructor-applications/' . $user->id . '/professional-license.pdf',
+                'teaching_credential_path' => 'seed/instructor-applications/'.$user->id.'/teaching-credential.pdf',
+                'sexed_certificate_path' => 'seed/instructor-applications/'.$user->id.'/sexed-certificate.pdf',
+                'professional_license_path' => 'seed/instructor-applications/'.$user->id.'/professional-license.pdf',
                 'approved_by' => $isApproved ? $approvedBy?->id : null,
                 'approved_at' => $isApproved ? now() : null,
                 'rejection_reason' => null,

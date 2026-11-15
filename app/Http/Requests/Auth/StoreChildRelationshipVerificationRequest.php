@@ -39,7 +39,6 @@ class StoreChildRelationshipVerificationRequest extends FormRequest
             ),
             [
                 'relationship_notes' => [
-                    Rule::requiredIf(GuardianRelationshipTypes::requiresCircumstances($type)),
                     'nullable',
                     'string',
                     'max:1000',
@@ -61,6 +60,9 @@ class StoreChildRelationshipVerificationRequest extends FormRequest
 
             $requiredTypes = GuardianRelationshipTypes::requiredDocumentTypes($type);
             $submittedTypes = collect($documents)->pluck('document_type')->filter()->all();
+            if (! in_array('dependent_birth_record', $submittedTypes, true)) {
+                $validator->errors()->add('documents', 'Upload the dependent’s PSA birth certificate or equivalent civil registry record, as well as the required relationship evidence.');
+            }
 
             if (array_intersect($requiredTypes, $submittedTypes) === []) {
                 $validator->errors()->add(

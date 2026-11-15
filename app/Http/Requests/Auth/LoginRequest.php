@@ -45,35 +45,39 @@ class LoginRequest extends FormRequest
 
         $loginField = $this->input('email');
         $password = $this->input('password');
-        
+
         // Detect if input is email or username
         $credentials = [];
-        
+
         if ($this->inputIsEmail($loginField)) {
             // Input is email format - regular email login
             $credentials = ['email' => AccountEmail::normalize($loginField), 'password' => $password];
         } else {
             // Input is username format - find user by learner_profile username
             $learnerProfile = \App\Models\LearnerProfile::where('username', $loginField)->first();
-            
-            if (!$learnerProfile) {
+
+            if (! $learnerProfile) {
                 RateLimiter::hit($this->throttleKey());
-                
+
                 throw ValidationException::withMessages([
                     'email' => 'These credentials do not match our records.',
                 ]);
             }
-            
+
             // Login with user ID
             $credentials = ['id' => $learnerProfile->user_id, 'password' => $password];
         }
 
         if (! Auth::attempt($credentials, $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+            $this->failAuthentication();
+        }
 
-            throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
-            ]);
+        $user = Auth::user();
+        if ($user?->hasRole('learner')
+            && $user->minor_account_activation_required
+            && $user->minor_account_activated_at === null) {
+            Auth::logout();
+            $this->failAuthentication();
         }
 
         RateLimiter::clear($this->throttleKey());
@@ -119,5 +123,14 @@ class LoginRequest extends FormRequest
     {
         return str_contains($value, '@')
             && Validator::make(['email' => $value], ['email' => 'email:rfc'])->passes();
+    }
+
+    private function failAuthentication(): never
+    {
+        RateLimiter::hit($this->throttleKey());
+
+        throw ValidationException::withMessages([
+            'email' => trans('auth.failed'),
+        ]);
     }
 }

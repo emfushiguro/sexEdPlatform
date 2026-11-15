@@ -72,7 +72,7 @@ class DependentSupportSchemaTest extends TestCase
     public function test_relationship_permission_defaults_false_and_is_queryable(): void
     {
         $guardian = User::factory()->create();
-        $dependent = User::factory()->create();
+        $dependent = User::factory()->create(['birthdate' => now()->subYears(25)->toDateString()]);
         $relationship = ParentChildAccount::query()->create([
             'parent_user_id' => $guardian->id,
             'child_user_id' => $dependent->id,

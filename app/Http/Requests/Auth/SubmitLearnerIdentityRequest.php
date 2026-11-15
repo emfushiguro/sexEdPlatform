@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\LearnerIdentityVerification;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -12,14 +13,23 @@ class SubmitLearnerIdentityRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
-        if (! $user?->isLearner() || $user->isParentRegistration() || ! $user->hasVerifiedEmail()) {
+        if (! $user?->isLearner() || $user->isParentRegistration()) {
+            return false;
+        }
+
+        $classification = LearnerAgePolicy::classify($user->birthdate);
+        $contactReady = $classification === LearnerAgePolicy::ELIGIBLE_TEENAGER
+            ? $user->hasCompletedMinorActivation() && $user->qualifyingMinorGuardianRelationship() !== null
+            : $classification === LearnerAgePolicy::ELIGIBLE_ADULT
+                && ($user->hasVerifiedEmail() || $user->hasAcceptedDependentAdultAuthorization());
+        if (! $contactReady) {
             return false;
         }
 
         $case = $this->currentCase();
 
         return $case !== null
-            && $case->pathway === ($user->deriveAgeBracketCache() === 'teens' ? 'teen' : 'adult')
+            && $case->pathway === ($classification === LearnerAgePolicy::ELIGIBLE_TEENAGER ? 'teen' : 'adult')
             && in_array($case->status, [null, 'rejected'], true)
             && ($case->status !== 'rejected' || $case->resubmission_allowed);
     }
@@ -37,25 +47,28 @@ class SubmitLearnerIdentityRequest extends FormRequest
         $types = $case?->pathway === 'teen'
             ? ['school_id', 'institution_id', 'government_id']
             : ['government_id'];
+        if ($this->user()?->guardianRelationships()->accessEligible()->exists()) {
+            $types[] = 'assisted_review';
+        }
 
         return [
             'submission_round' => [$case?->status === 'rejected' && $case->requested_corrections !== null ? 'required' : 'sometimes', 'integer', Rule::in([$case?->submission_round ?? 0])],
             'document_type' => ['required', Rule::in($types)],
-            'government_id_type' => [$type === 'government_id' ? 'required' : 'prohibited', 'nullable', Rule::in(array_keys($governmentTypes))],
+            'government_id_type' => [$type === 'government_id' ? 'required' : 'prohibited', 'nullable', Rule::in(config('guardian_identity.accepted_id_types', []))],
             'government_id_type_other' => [$subtype === 'other' && $type === 'government_id' ? 'required' : 'prohibited', 'nullable', 'string', 'max:80'],
             'identity_front' => [$documentChanged || $case?->requestsCorrection('identity_front') || ! $this->hasValidSlot($case, 'identity_front') ? 'required' : 'sometimes', ...$image],
             'identity_back' => [$requiresBack
                 ? ($documentChanged || $case?->requestsCorrection('identity_back') || ! $this->hasValidSlot($case, 'identity_back') ? 'required' : 'sometimes')
                 : 'prohibited', ...$image],
-            'selfie' => [($type === 'government_id' && ! $this->hasValidSlot($case, 'selfie'))
-                || ($case?->requestsCorrection('selfie') && ! config('persona.enabled')) ? 'required' : 'sometimes', ...$image],
+            'selfie' => ['prohibited'],
             'confirm_submission' => ['accepted'],
+            'learner_note' => [$case?->status === 'rejected' && $case->resubmission_allowed && $case->requested_corrections !== null ? 'nullable' : 'prohibited', 'string', 'max:2000'],
         ];
     }
 
     private function currentCase(): ?LearnerIdentityVerification
     {
-        return $this->user()?->identityVerifications()->whereNull('superseded_at')->first();
+        return $this->user()?->identityVerifications()->whereNull('superseded_at')->latest('id')->first();
     }
 
     private function hasValidSlot(?LearnerIdentityVerification $case, string $slot): bool

@@ -68,17 +68,15 @@ class ParentVisibilityController extends Controller
         $dependent = $request->user();
         abort_unless($dependent instanceof User, 403);
 
-        $supportInformation->setGuardianAccess(
+        $supportInformation->setGuardianPermissions(
             $parentChildAccount,
             $dependent,
-            $request->enabled(),
+            $request->permissions(),
         );
 
         return redirect()->route('learner.parent.index')->with(
             'success',
-            $request->enabled()
-                ? 'Guardian support-information access enabled.'
-                : 'Guardian support-information access disabled.',
+            'Guardian information access preferences updated.',
         );
     }
 }

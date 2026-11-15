@@ -55,7 +55,7 @@ class PersonaIdentityController extends Controller
     public function replace(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'government_id_type' => ['required', 'string', 'max:40', Rule::in(array_keys((array) config('persona.government_id_classes', [])))],
+            'government_id_type' => ['required', 'string', 'max:40', Rule::in(array_values(array_intersect(array_keys((array) config('persona.government_id_classes', [])), config('guardian_identity.accepted_id_types', []))))],
         ]);
         $result = $this->inquiries->replaceForInstructor($request->user(), $data['government_id_type']);
 

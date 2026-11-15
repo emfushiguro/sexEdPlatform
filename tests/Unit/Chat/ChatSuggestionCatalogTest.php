@@ -8,20 +8,17 @@ use Tests\TestCase;
 
 class ChatSuggestionCatalogTest extends TestCase
 {
-    public function test_kids_receive_only_active_kids_or_shared_prompts(): void
+    public function test_ineligible_learner_receives_no_suggestions_even_with_a_legacy_cache(): void
     {
         $learner = User::factory()->create([
             'role' => 'learner',
             'age_bracket_cached' => 'kids',
+            'birthdate' => now()->subYears(9)->toDateString(),
         ]);
 
         $suggestions = app(ChatSuggestionCatalog::class)->forUser($learner);
 
-        $this->assertNotEmpty($suggestions);
-        $this->assertTrue(collect($suggestions)->every(
-            fn (array $entry): bool => $entry['active'] === true
-                && in_array('kids', $entry['audience'], true)
-        ));
+        $this->assertSame([], $suggestions);
     }
 
     public function test_age_fallback_resolves_adult_audience_when_cache_is_missing(): void

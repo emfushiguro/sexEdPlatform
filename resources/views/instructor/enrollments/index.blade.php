@@ -193,7 +193,11 @@
                                 'name' => (string) ($learner?->full_name ?: $learner?->name ?: 'Learner'),
                                 'email' => (string) ($learner?->email ?: 'N/A'),
                                 'username' => (string) ($profile?->username ?: 'N/A'),
-                                'age_bracket' => (string) ($profile?->age_range ?: 'N/A'),
+                                'age_bracket' => match (\App\Support\LearnerAgePolicy::category($learner?->birthdate)) {
+                                    \App\Support\LearnerAgePolicy::CATEGORY_TEENAGERS => 'Teenager',
+                                    \App\Support\LearnerAgePolicy::CATEGORY_ADULTS => 'Adult',
+                                    default => 'Ineligible/Unclassified',
+                                },
                                 'module' => (string) ($module?->title ?: 'Unknown module'),
                                 'status' => $statusLabel,
                                 'enrolled_at' => optional($enrollment->enrolled_at ?: $enrollment->created_at)->format('M d, Y h:i A'),

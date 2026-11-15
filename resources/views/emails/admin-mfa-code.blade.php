@@ -49,13 +49,7 @@
                     <span class="code-digit">{{ $digit }}</span>
                 @endforeach
             </div>
-            @if(filled($copyUrl ?? null))
-                <a href="{{ $copyUrl }}" class="copy-button">Copy code</a>
-                <p class="copy-note">Open the verification page to copy this code directly, or select the code above manually.</p>
-            @else
-                <span class="copy-button" aria-hidden="true">Copy code</span>
-                <p class="copy-note">Select and copy the code above into the verification page already open in your browser.</p>
-            @endif
+            <p class="copy-note">Select the six-digit code above and copy it into the verification page. For one-click copying, use the Copy code button on that page.</p>
             <p class="expiry">This code expires in <strong>5 minutes</strong>.</p>
 
             <div class="warning">

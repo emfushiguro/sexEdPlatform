@@ -114,6 +114,8 @@ class PersonaInquirySynchronizer
                 default => null,
             };
             if (is_array($resource) && is_array($resource['data'] ?? null)) {
+                $included = array_values(array_filter($included, fn ($item) => ! is_array($item)
+                    || ($item['id'] ?? null) !== $reference['id'] || ($item['type'] ?? null) !== ($reference['type'] ?? null)));
                 $included[] = $resource['data'];
             }
         }

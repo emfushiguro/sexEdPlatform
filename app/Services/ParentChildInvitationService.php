@@ -200,8 +200,8 @@ class ParentChildInvitationService
                     }
 
                     $payload = [
-                        'can_view_progress' => true,
-                        'can_view_quiz_answers' => true,
+                        'can_view_progress' => $lockedChild->requiresGuardian(),
+                        'can_view_quiz_answers' => $lockedChild->requiresGuardian(),
                         'can_approve_content' => false,
                         'can_manage_support_information' => false,
                         'relationship_type' => $relationshipType,

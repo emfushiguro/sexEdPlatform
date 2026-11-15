@@ -126,14 +126,23 @@ class LearningPathAuthoringServiceTest extends TestCase
     {
         [$path, $modules] = $this->pathWithModules(1);
         $attributes = $this->attributes([$modules[0]->id]);
-        $attributes['categories'] = ['kids', 'adults'];
+        $attributes['categories'] = ['teens', 'adults'];
         $attributes['title'] = 'Updated';
 
         $saved = $this->service()->save($path, $attributes, $path->creator);
 
         $this->assertSame('Updated', $saved->title);
-        $this->assertEqualsCanonicalizing(['kids', 'adults'], $saved->learnerCategories->pluck('category')->all());
-        $this->assertDatabaseMissing('learning_path_learner_categories', ['learning_path_id' => $path->id, 'category' => 'teens']);
+        $this->assertEqualsCanonicalizing(['teens', 'adults'], $saved->learnerCategories->pluck('category')->all());
+    }
+
+    public function test_legacy_kids_category_is_rejected_at_the_authoring_service_boundary(): void
+    {
+        [$path, $modules] = $this->pathWithModules(1);
+        $this->expectException(ValidationException::class);
+
+        $this->service()->save($path, array_replace($this->attributes([$modules[0]->id]), [
+            'categories' => ['kids', 'adults'],
+        ]), $path->creator);
     }
 
     public function test_empty_module_list_removes_only_memberships(): void

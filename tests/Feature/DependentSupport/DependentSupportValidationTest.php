@@ -141,7 +141,7 @@ class DependentSupportValidationTest extends TestCase
 
     public function test_guardian_access_request_normalizes_boolean_and_rejects_missing_value(): void
     {
-        $dependent = User::factory()->create();
+        $dependent = User::factory()->create(['birthdate' => now()->subYears(25)->toDateString()]);
         $this->actingAs($dependent)
             ->post('/support-access-test', ['enabled' => '1'])
             ->assertOk()

@@ -19,12 +19,12 @@ class LearnerProfileFactory extends Factory
             'user_id' => User::factory(),
             'username' => fake()->unique()->userName(),
             'username_changed_at' => null,
-            'birthdate' => fake()->dateTimeBetween('-25 years', '-5 years'),
+            'birthdate' => fake()->dateTimeBetween('-100 years', '-10 years'),
             'gender' => fake()->randomElement(['male', 'female']),
             'city_code' => null,
             'barangay' => null,
             'barangay_code' => null,
-            'school' => fake()->company() . ' School',
+            'school' => fake()->company().' School',
             'bio' => fake()->sentence(),
             'avatar_path' => null,
             'about' => fake()->paragraph(),
@@ -33,19 +33,11 @@ class LearnerProfileFactory extends Factory
         ];
     }
 
-    public function kid(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'birthdate' => fake()->dateTimeBetween('-12 years', '-5 years'),
-            'requires_parental_consent' => true,
-        ]);
-    }
-
     public function teen(): static
     {
         return $this->state(fn (array $attributes) => [
-            'birthdate' => fake()->dateTimeBetween('-17 years', '-13 years'),
-            'requires_parental_consent' => true,
+            'birthdate' => fake()->dateTimeBetween('-17 years', '-10 years'),
+            'requires_parental_consent' => false,
         ]);
     }
 

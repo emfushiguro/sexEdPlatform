@@ -2,6 +2,34 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createIdentitySelfie } from '../../resources/js/identity-selfie.js';
 
+test('orientation guides preserve the entire portrait and landscape camera frame', async () => {
+    for (const [width, height] of [[1920, 1080], [1080, 1920]]) {
+        let drawn;
+        const canvas = { getContext: () => ({ drawImage: (...args) => { drawn = args; } }), toBlob: (done) => done(new Blob(['photo'])) };
+        const { component, video } = fixture({ subject: 'ID', createCanvas: () => canvas });
+        video.videoWidth = width;
+        video.videoHeight = height;
+        component.documentOrientation = 'portrait';
+        assert.equal(component.documentGuideAspect(), '3 / 4');
+        component.documentOrientation = 'landscape';
+        assert.equal(component.documentGuideAspect(), '4 / 3');
+        await component.startCamera();
+        await component.capturePhoto();
+        assert.deepEqual(drawn, [video, 0, 0, width, height]);
+        assert.equal(canvas.width, width);
+        assert.equal(canvas.height, height);
+    }
+});
+
+test('an uploaded photo can always be replaced using the camera', async () => {
+    const { component } = fixture();
+    component.uploadSelected({ target: { files: [new File(['photo'], 'upload.jpg')] } });
+    assert.equal(component.photoReady, true);
+    await component.retakePhoto();
+    assert.equal(component.cameraActive, true);
+    assert.equal(component.photoReady, false);
+});
+
 function fixture(overrides = {}) {
     const stopped = [];
     const revoked = [];
@@ -178,7 +206,7 @@ test('rejected old video play cannot stop or overwrite a newer camera', async ()
     await oldStart;
     assert.equal(component.cameraActive, true);
     assert.equal(component.cameraError, '');
-    assert.equal(component.status, 'Camera ready. Capture your selfie.');
+    assert.equal(component.status, 'Camera ready. Capture your ID.');
     assert.equal(video.srcObject, streams[1]);
     assert.deepEqual(stopped, [1]);
 });

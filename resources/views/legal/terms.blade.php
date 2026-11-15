@@ -26,15 +26,9 @@
                         </div>
                         <h1 class="text-2xl font-bold text-white">Terms of Service</h1>
                     </div>
-                    <p class="text-purple-200 text-sm">Last Updated: {{ now()->format('F d, Y') }}</p>
+                    <p class="text-purple-200 text-sm">Last Updated: November 14, 2026</p>
                 </div>
-                <button onclick="history.back()"
-                    class="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-200">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                    </svg>
-                    Back
-                </button>
+                <x-legal-back-link class="bg-white/15 text-white hover:bg-white/25" />
             </div>
         </div>
     </header>
@@ -42,7 +36,7 @@
     <!-- Content -->
     <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-10 space-y-8">
-                
+
                 <!-- Introduction -->
                 <section>
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">1. Introduction</h2>
@@ -56,24 +50,9 @@
                 <section>
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">2. Age Requirements & Guardian Consent</h2>
                     <div class="space-y-3 text-gray-700">
-                        <p class="leading-relaxed">
-                            <strong>For Users Under 13 Years Old:</strong> In compliance with the Children's Online Privacy Protection Act (COPPA), 
-                            children under the age of 13 cannot create an account without guardian consent. A guardian or legal guardian must:
-                        </p>
-                        <ul class="list-disc list-inside pl-4 space-y-2">
-                            <li>Register as a guardian user (must be 18 years or older)</li>
-                            <li>Verify their email address</li>
-                            <li>Create a child account on behalf of the minor</li>
-                            <li>Maintain oversight of the child's account and activities</li>
-                        </ul>
-                        <p class="leading-relaxed">
-                            <strong>For Users 13 Years and Older:</strong> Users aged 13-17 may create their own accounts but must provide 
-                            a valid email address and complete email verification before accessing the platform.
-                        </p>
-                        <p class="leading-relaxed">
-                            <strong>For Adult Users (18+):</strong> Adult users may create accounts, enroll in courses, and optionally 
-                            create and manage accounts for their children.
-                        </p>
+                        <p class="leading-relaxed"><strong>For Users Under 18:</strong> A minor may ask a Guardian for help. The Guardian verifies their email and identity, submits relationship evidence, and authorizes registration after approval. The dependent chooses their own password and completes a separate identity review.</p>
+
+                        <p class="leading-relaxed"><strong>For Adult Users (18+):</strong> Adults may register independently or use a supported dependent account. An adult may consent personally, or a representative may submit evidence of authority for separate review. A dependent may be older than their Guardian. Learning content for users under 10 is currently limited.</p>
                     </div>
                 </section>
 
@@ -84,15 +63,15 @@
                         <p class="leading-relaxed"><strong>Account Creation:</strong></p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
                             <li>You must provide accurate, complete information during registration</li>
-                            <li>You must provide a valid email address and complete email verification</li>
+                            <li>Guardians and independent adult learners use a verified email; a dependent's personal email is optional</li>
                             <li>You are responsible for maintaining the confidentiality of your account credentials</li>
-                            <li>Guardian accounts are verified through email confirmation</li>
+                            <li>Guardian identity, the Guardian-Dependent relationship, and learner identity are reviewed separately</li>
                         </ul>
                         <p class="leading-relaxed mt-4"><strong>Account Security:</strong></p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
                             <li>Never share your password with anyone</li>
                             <li>Notify us immediately if you suspect unauthorized access to your account</li>
-                            <li>Guardians are responsible for securing their child accounts</li>
+                            <li>Dependents choose their own passwords; Guardians should not request them</li>
                         </ul>
                     </div>
                 </section>
@@ -117,14 +96,14 @@
                 <section>
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">5. Guardian Rights & Responsibilities</h2>
                     <div class="space-y-3 text-gray-700">
-                        <p class="leading-relaxed">Guardians who create accounts for children under 13 have the right to:</p>
+                        <p class="leading-relaxed">An approved Guardian may access information only where the relationship and applicable permissions allow it:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
-                            <li>View their child's learning progress and module completion status</li>
-                            <li>Review quiz attempts, answers, and scores</li>
-                            <li>Approve or restrict access to specific content (when implemented)</li>
-                            <li>Request deletion of their child's account and all associated data</li>
+                            <li>View learning progress and quiz answers when those permissions are enabled</li>
+                            <li>Review module requests when the relationship permits it</li>
+                            <li>Contact support about information or deletion requests</li>
+                            <li>Respect the dependent's privacy and their right to ask for help</li>
                         </ul>
-                        <p class="leading-relaxed mt-4">Guardians are responsible for:</p>
+                        <p class="leading-relaxed mt-4">Adult dependents control optional Guardian access. Passwords and private messages are not shared through these permissions. Guardians are responsible for:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
                             <li>Monitoring their child's platform usage and activities</li>
                             <li>Discussing age-appropriate content with their child</li>
@@ -157,7 +136,7 @@
                         <p class="leading-relaxed">
                             Your privacy is important to us. Please review our 
                             <a href="{{ route('privacy') }}" class="underline hover:opacity-75 transition-opacity" style="color: #730DB1;">Privacy Policy</a> 
-                            to understand how we collect, use, and protect your personal information, especially for users under 13.
+                            to understand how we collect, use, and protect your personal information, including minors and dependents.
                         </p>
                     </div>
                 </section>
@@ -214,7 +193,7 @@
                             You may request account deletion at any time by contacting support.
                         </p>
                         <p class="leading-relaxed">
-                            Guardians may request immediate deletion of child accounts, and we will comply within 30 days.
+                            Authorized representatives may contact support about account deletion requests.
                         </p>
                     </div>
                 </section>
@@ -255,8 +234,8 @@
 
         <!-- Footer Links -->
         <div class="mt-8 text-center space-x-4 pb-10 text-sm">
-            <button onclick="history.back()" class="font-medium hover:opacity-75 transition-opacity" style="color: #730DB1;">? Go Back</button>
-            <span class="text-gray-400">•</span>
+            <x-legal-back-link style="color: #730DB1;" />
+            <span class="text-gray-400">â€¢</span>
             <a href="{{ route('privacy') }}" class="font-medium hover:opacity-75 transition-opacity" style="color: #730DB1;">Privacy Policy</a>
         </div>
     </main>

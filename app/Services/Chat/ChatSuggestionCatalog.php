@@ -3,11 +3,10 @@
 namespace App\Services\Chat;
 
 use App\Models\User;
+use App\Support\LearnerAgePolicy;
 
 class ChatSuggestionCatalog
 {
-    private const AUDIENCES = ['kids', 'teens', 'adults'];
-
     public function forUser(User $user): array
     {
         if (! $user->isLearner()) {
@@ -15,6 +14,9 @@ class ChatSuggestionCatalog
         }
 
         $audience = $this->resolveAudience($user);
+        if ($audience === null) {
+            return [];
+        }
 
         return collect(config('chat_suggestions.suggestions', []))
             ->filter(function (array $suggestion) use ($audience): bool {
@@ -28,7 +30,7 @@ class ChatSuggestionCatalog
                     return in_array($audience, $allowedAudiences, true);
                 }
 
-                return count(array_intersect(self::AUDIENCES, $allowedAudiences)) === count(self::AUDIENCES);
+                return false;
             })
             ->map(fn (array $suggestion): array => $this->normalize($suggestion))
             ->sortBy(fn (array $suggestion): string => sprintf(
@@ -84,23 +86,7 @@ class ChatSuggestionCatalog
 
     private function resolveAudience(User $user): ?string
     {
-        $cached = strtolower(trim((string) $user->age_bracket_cached));
-
-        if (in_array($cached, self::AUDIENCES, true)) {
-            return $cached;
-        }
-
-        $age = $user->calculateAge();
-
-        if ($age === null) {
-            return null;
-        }
-
-        return match (true) {
-            $age <= 12 => 'kids',
-            $age <= 17 => 'teens',
-            default => 'adults',
-        };
+        return LearnerAgePolicy::category($user->birthdate);
     }
 
     private function normalize(array $suggestion): array

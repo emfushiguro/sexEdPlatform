@@ -21,6 +21,7 @@ class NotificationDeepLinkResolver
             'parent_verification_request_submitted' => ['parent_user_id', 'admin.parent-verifications.parents.show'],
             'child_verification_request_submitted' => ['parent_child_account_id', 'admin.parent-verifications.index'],
             'guardian_relationship_verification_submitted' => ['parent_child_account_id', 'admin.parent-verifications.relationships.show'],
+            'adult_authority_review_requested' => ['parent_child_account_id', 'admin.parent-verifications.relationships.show'],
             'instructor_identity_submitted' => ['instructor_identity_verification_id', 'admin.instructor-applications.identities.show'],
             'instructor_application_submitted' => ['application_id', 'admin.instructor-applications.review'],
             default => null,
@@ -34,7 +35,14 @@ class NotificationDeepLinkResolver
             }
 
             [$key, $route] = $adminTarget;
-            $id = filter_var($payload[$key] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $rawId = $payload[$key] ?? null;
+            if ($type === 'adult_authority_review_requested' && $rawId === null) {
+                $path = parse_url((string) ($payload['action_url'] ?? ''), PHP_URL_PATH);
+                if (is_string($path) && preg_match('~/relationships/(\d+)/?$~', $path, $matches)) {
+                    $rawId = $matches[1];
+                }
+            }
+            $id = filter_var($rawId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             if ($id === false) {
                 return $fallbackUrl;
             }
@@ -75,6 +83,17 @@ class NotificationDeepLinkResolver
         }
 
         if ($recipient?->isParentRegistration()) {
+            if ($type === 'adult_authority_review_status') {
+                $id = filter_var($payload['parent_child_account_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                if ($id === false) {
+                    $path = parse_url((string) ($payload['action_url'] ?? ''), PHP_URL_PATH);
+                    $id = is_string($path) && preg_match('~/relationship-verifications/(\d+)/?$~', $path, $matches) ? (int) $matches[1] : false;
+                }
+                if ($id !== false && \App\Models\ParentChildAccount::query()->whereKey($id)->where('parent_user_id', $recipient->id)->exists()) {
+                    return route('parent.relationship-verifications.show', $id, false);
+                }
+                return $fallbackUrl;
+            }
             if (in_array($type, ['parent_verification_submitted', 'parent_verification_rejected'], true)) {
                 return route('guardian.verification.status', [], false);
             }

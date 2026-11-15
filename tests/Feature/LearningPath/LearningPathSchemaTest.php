@@ -232,11 +232,20 @@ class LearningPathSchemaTest extends TestCase
 
     public function test_published_and_category_scopes_filter_paths(): void
     {
-        $matching = LearningPath::factory()->published()->forCategories(['kids'])->create();
-        LearningPath::factory()->published()->forCategories(['teens'])->create();
+        $kidsOnly = LearningPath::factory()->published()->forCategories(['kids'])->create();
+        $teenOnly = LearningPath::factory()->published()->forCategories(['teens'])->create();
+        $mixed = LearningPath::factory()->published()->create();
+        $mixed->learnerCategories()->createMany([
+            ['category' => 'kids'],
+            ['category' => 'teens'],
+        ]);
         LearningPath::factory()->forCategories(['kids'])->create();
 
-        $this->assertSame([$matching->id], LearningPath::published()->forLearnerCategory('kids')->pluck('id')->all());
-        $this->assertSame(['kids'], $matching->learnerCategories->pluck('category')->all());
+        $this->assertSame([], LearningPath::published()->forLearnerCategory('kids')->pluck('id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$teenOnly->id, $mixed->id],
+            LearningPath::published()->forLearnerCategory('teens')->pluck('id')->all(),
+        );
+        $this->assertSame(['kids'], $kidsOnly->learnerCategories->pluck('category')->all());
     }
 }

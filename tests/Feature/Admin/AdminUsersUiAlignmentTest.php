@@ -67,6 +67,21 @@ class AdminUsersUiAlignmentTest extends TestCase
             ->assertDontSee('Apply', false);
     }
 
+    public function test_users_index_exposes_only_active_age_filters(): void
+    {
+        $this->withoutVite();
+        $admin = $this->createAdminUser();
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.index'))
+            ->assertOk()
+            ->assertSee('Teenager', false)
+            ->assertSee('Adult', false)
+            ->assertSee('Ineligible', false)
+            ->assertSee('Unclassified', false)
+            ->assertDontSee('Kids', false);
+    }
+
     public function test_user_profile_exposes_modal_based_role_and_status_actions(): void
     {
         $this->withoutVite();

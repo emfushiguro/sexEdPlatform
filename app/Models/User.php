@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Notifications\CustomVerifyEmail;
-use App\Support\AccountEmail;
 use App\Services\Connectors\ConnectorAccessService;
-use Carbon\Carbon;
+use App\Support\AccountEmail;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -61,6 +61,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'status',
         'account_type',
         'age_bracket_cached',
+        'age_eligibility_cached',
+        'minor_account_activation_required',
+        'minor_account_activated_at',
+        'minor_privacy_notice_version',
+        'minor_privacy_accepted_at',
         'chat_status',
         'verified',
         'is_parent_registration',
@@ -107,6 +112,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'verified' => 'boolean',
             'birthdate' => 'date',
+            'minor_account_activation_required' => 'boolean',
+            'minor_account_activated_at' => 'datetime',
+            'minor_privacy_accepted_at' => 'datetime',
             'is_parent_registration' => 'boolean',
             'parent_identity_sandbox_manual_review' => 'boolean',
             'parent_identity_resubmission_allowed' => 'boolean',
@@ -160,6 +168,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function learnerProfile()
     {
         return $this->hasOne(LearnerProfile::class);
+    }
+
+    public function minorRegistrationRequests(): HasMany
+    {
+        return $this->hasMany(MinorRegistrationRequest::class, 'existing_child_user_id');
+    }
+
+    public function minorAccountHandoffs(): HasMany
+    {
+        return $this->hasMany(MinorAccountHandoff::class, 'child_user_id');
     }
 
     public function identityVerifications(): HasMany
@@ -617,19 +635,20 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function calculateAge(): ?int
     {
-        if (! $this->birthdate) {
-            return null;
-        }
+        return LearnerAgePolicy::age($this->birthdate);
+    }
 
-        return Carbon::parse($this->birthdate)->age;
+    public function requiresGuardian(): bool
+    {
+        return LearnerAgePolicy::requiresGuardian($this->birthdate);
     }
 
     /**
-     * Check if user is under 13 (requires parental consent)
+     * Check if learner requires guardian consent under the active age policy.
      */
     public function requiresParentalConsent(): bool
     {
-        return $this->calculateAge() < 13;
+        return $this->requiresGuardian();
     }
 
     public function isMinorForCommunityFeed(): bool
@@ -892,6 +911,39 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ParentChildAccount::class, 'child_user_id');
     }
 
+    public function guardianRelationships(): HasMany
+    {
+        return $this->hasMany(ParentChildAccount::class, 'child_user_id');
+    }
+
+    public function qualifyingMinorGuardianRelationship(): ?ParentChildAccount
+    {
+        if (! LearnerAgePolicy::requiresGuardian($this->birthdate)) {
+            return null;
+        }
+
+        return $this->guardianRelationships()
+            ->minorAccessEligible()
+            ->orderByDesc('minor_registration_authorized_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    public function hasCompletedMinorActivation(): bool
+    {
+        return ! $this->minor_account_activation_required
+            || $this->minor_account_activated_at !== null;
+    }
+
+    public function hasAcceptedDependentAdultAuthorization(): bool
+    {
+        return $this->isLearner()
+            && LearnerAgePolicy::classify($this->birthdate) === LearnerAgePolicy::ELIGIBLE_ADULT
+            && ! $this->minor_account_activation_required
+            && \Illuminate\Support\Facades\DB::table('dependent_adult_authorization_records')
+                ->where('dependent_user_id', $this->id)->exists();
+    }
+
     public function outgoingParentInvitations()
     {
         return $this->hasMany(ParentChildInvitation::class, 'inviter_parent_user_id');
@@ -904,25 +956,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function deriveAgeBracketCache(): ?string
     {
-        if (! $this->isLearner()) {
-            return null;
-        }
-
-        $age = $this->calculateAge();
-
-        if ($age === null) {
-            return null;
-        }
-
-        if ($age <= 12) {
-            return 'kids';
-        }
-
-        if ($age <= 17) {
-            return 'teens';
-        }
-
-        return 'adults';
+        return $this->hasRole('learner')
+            ? LearnerAgePolicy::category($this->birthdate)
+            : null;
     }
 
     public function deriveAccountType(): string
@@ -944,10 +980,10 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         if ($this->isLearner()) {
-            return match ($this->deriveAgeBracketCache()) {
-                'kids' => self::ACCOUNT_TYPE_LEARNER_CHILD,
-                'teens' => self::ACCOUNT_TYPE_LEARNER_TEEN,
-                default => self::ACCOUNT_TYPE_LEARNER_ADULT,
+            return match (LearnerAgePolicy::classify($this->birthdate)) {
+                LearnerAgePolicy::ELIGIBLE_TEENAGER => self::ACCOUNT_TYPE_LEARNER_TEEN,
+                LearnerAgePolicy::ELIGIBLE_ADULT => self::ACCOUNT_TYPE_LEARNER_ADULT,
+                default => (string) $this->account_type,
             };
         }
 
@@ -956,9 +992,26 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function refreshClassificationCache(): void
     {
+        if (! $this->hasRole('learner')) {
+            $this->forceFill([
+                'age_eligibility_cached' => null,
+                'age_bracket_cached' => null,
+            ])->saveQuietly();
+
+            return;
+        }
+
+        $eligibility = LearnerAgePolicy::classify($this->birthdate);
+        $accountType = match ($eligibility) {
+            LearnerAgePolicy::ELIGIBLE_TEENAGER => self::ACCOUNT_TYPE_LEARNER_TEEN,
+            LearnerAgePolicy::ELIGIBLE_ADULT => self::ACCOUNT_TYPE_LEARNER_ADULT,
+            default => $this->account_type,
+        };
+
         $this->forceFill([
-            'age_bracket_cached' => $this->deriveAgeBracketCache(),
-            'account_type' => $this->deriveAccountType(),
+            'age_eligibility_cached' => $eligibility,
+            'age_bracket_cached' => LearnerAgePolicy::category($this->birthdate),
+            'account_type' => $accountType,
         ])->saveQuietly();
     }
 }

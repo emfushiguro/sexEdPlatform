@@ -34,7 +34,7 @@ class GuardianRelationshipCorrectionsTest extends TestCase
         $current = $service->submit($relationship->fresh(), $guardian, [$this->document('new-support.pdf', 'other_supporting_document', $support->id)], null, currentEvidenceRound: 1);
         $audits = $current->verificationAudits()->count();
         $this->actingAs($admin)->postJson(route('admin.parent-verifications.relationships.approve', $current), [])->assertUnprocessable();
-        $this->postJson(route('admin.parent-verifications.relationships.approve', $current), ['current_evidence_round' => 1])->assertConflict();
+        $this->postJson(route('admin.parent-verifications.relationships.approve', $current), ['current_evidence_round' => 1, 'dependent_identity_confirmed' => '1', 'guardian_identity_confirmed' => '1', 'relationship_evidence_confirmed' => '1'])->assertConflict();
         $this->assertSame('under_review', $current->fresh()->relationship_verified_status);
         $this->assertSame($audits, $current->verificationAudits()->count());
         try {
@@ -43,7 +43,7 @@ class GuardianRelationshipCorrectionsTest extends TestCase
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
             $this->assertSame(409, $exception->getStatusCode());
         }
-        $this->postJson(route('admin.parent-verifications.relationships.approve', $current), ['current_evidence_round' => 2])->assertOk();
+        $this->postJson(route('admin.parent-verifications.relationships.approve', $current), ['current_evidence_round' => 2, 'dependent_identity_confirmed' => '1', 'guardian_identity_confirmed' => '1', 'relationship_evidence_confirmed' => '1'])->assertOk();
         $this->assertSame('verified', $current->fresh()->relationship_verified_status);
     }
 

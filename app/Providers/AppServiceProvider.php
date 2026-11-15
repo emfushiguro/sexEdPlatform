@@ -33,8 +33,8 @@ use App\Models\User;
 use App\Observers\PaymentObserver;
 use App\Policies\AdminCreatorProfilePolicy;
 use App\Policies\DependentSupportProfilePolicy;
-use App\Policies\InstructorProfilePolicy;
 use App\Policies\InstructorIdentityVerificationPolicy;
+use App\Policies\InstructorProfilePolicy;
 use App\Policies\LearningPathPolicy;
 use App\Policies\LessonPolicy;
 use App\Policies\ModulePolicy;
@@ -67,6 +67,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Event::listen(\Illuminate\Auth\Events\Login::class, [\App\Services\GuardianLearningActivityService::class, 'recordLogin']);
+
         Gate::before(function (?User $user, string $ability, array $arguments = []) {
             $subject = $arguments[0] ?? null;
 
@@ -119,6 +121,16 @@ class AppServiceProvider extends ServiceProvider
 
             return $limits;
         });
+        RateLimiter::for('minor-registration-request', function (Request $request) {
+            $email = is_string($request->input('guardian_email'))
+                ? AccountEmail::normalize($request->input('guardian_email'))
+                : '';
+
+            return [
+                Limit::perMinute(5)->by('minor-registration-request-ip:'.$request->ip()),
+                Limit::perHour(3)->by('minor-registration-request-email:'.AccountEmail::fingerprint($email)),
+            ];
+        });
         RateLimiter::for('verification-resend', function (Request $request) {
             return [
                 Limit::perMinutes(15, 3)->by('verification-resend-user:'.($request->user()?->id ?? 'guest')),
@@ -126,14 +138,14 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
         RateLimiter::for('password-reset-request', function (Request $request) {
-            $email = is_string($request->input('email')) ? AccountEmail::normalize($request->input('email')) : '';
+            $login = is_string($request->input('login')) ? mb_strtolower(trim($request->input('login'))) : '';
             $limits = [
                 Limit::perMinute(5)->by('password-reset-ip:'.$request->ip()),
                 Limit::perHour(20)->by('password-reset-hour-ip:'.$request->ip()),
             ];
 
-            if ($email !== '') {
-                $limits[] = Limit::perHour(3)->by('password-reset-email:'.AccountEmail::fingerprint($email));
+            if ($login !== '') {
+                $limits[] = Limit::perHour(3)->by('password-reset-login:'.AccountEmail::fingerprint($login));
             }
 
             return $limits;

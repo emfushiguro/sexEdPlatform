@@ -145,8 +145,8 @@ Alpine.plugin(collapse);
 Alpine.plugin(persist);
 Alpine.data('instructorSearch', createInstructorSearch);
 Alpine.data('questionAuthoring', createQuestionAuthoring);
-Alpine.data('identitySelfie', createIdentitySelfie);
 Alpine.data('identityDocument', () => createIdentitySelfie({ subject: 'ID', cameraOnly: true, facingMode: 'environment' }));
+Alpine.data('identityDocumentUpload', () => createIdentitySelfie({ subject: 'ID', facingMode: 'environment' }));
 
 // Theme store — dark / light mode, persisted in localStorage
 Alpine.store('theme', {

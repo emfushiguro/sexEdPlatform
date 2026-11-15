@@ -24,9 +24,9 @@
             <h1 class="mt-2 text-2xl font-bold text-gray-900">Guardian Identity Review</h1>
             <p class="mt-1 text-sm text-gray-500">Review identity documents before unlocking Guardian features.</p>
         </div>
-        <a href="{{ route('admin.parent-verifications.index', ['type' => 'parents']) }}"
+        <a href="{{ request()->integer('from_relationship') > 0 ? route('admin.parent-verifications.relationships.show', request()->integer('from_relationship')) : route('admin.parent-verifications.index', ['type' => 'parents']) }}"
            class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            Back
+            {{ request()->integer('from_relationship') > 0 ? 'Back to relationship verification' : 'Back' }}
         </a>
     </div>
 
@@ -52,6 +52,7 @@
         <section class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm lg:col-span-2">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Government ID</h2>
             <p class="mt-3 text-sm font-semibold text-gray-900">{{ $idTypeLabel }}</p>
+            @include('admin.parent-verifications.partials.id-reference', ['idType' => $guardian->parent_id_type, 'idLabel' => $idTypeLabel])
             @if($guardian->parent_identity_evidence_source === 'persona')
                 <p class="mt-3 text-sm text-gray-700">The government ID and selfie were submitted through Persona. Review the Persona images below; no local copy is stored.</p>
             @else

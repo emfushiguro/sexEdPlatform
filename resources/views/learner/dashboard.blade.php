@@ -40,13 +40,12 @@
                     <p class="mt-1 text-sm text-purple-200">Continue your learning journey today.</p>
                     {{-- Learner type badge --}}
                     @php
-                        $ageBracket = $learnerProfile->getAgeBracket();
+                        $ageBracket = \App\Support\LearnerAgePolicy::category(Auth::user()->birthdate);
                         $isParentUser = (bool) ($learnerProfile->is_parent_account ?? false);
                         $typeBadge = match(true) {
                             $isParentUser              => ['label' => 'Guardian Account',  'class' => 'bg-amber-400/20 text-amber-200 border-amber-400/30'],
-                            $ageBracket === 'kids'     => ['label' => 'Young Learner',   'class' => 'bg-green-400/20 text-green-200 border-green-400/30'],
-                            $ageBracket === 'teens'    => ['label' => 'Teen Learner',    'class' => 'bg-blue-400/20 text-blue-100 border-blue-400/30'],
-                            $ageBracket === 'adults'   => ['label' => 'Adult Learner',   'class' => 'bg-white/10 text-purple-100 border-white/20'],
+                            $ageBracket === 'teens'    => ['label' => 'Teenager Learner', 'class' => 'bg-blue-400/20 text-blue-100 border-blue-400/30'],
+                            $ageBracket === 'adults'   => ['label' => 'Adult Learner',    'class' => 'bg-white/10 text-purple-100 border-white/20'],
                             default                    => null,
                         };
                     @endphp
