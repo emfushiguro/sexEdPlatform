@@ -21,7 +21,7 @@ final class LearnerEligibilityStatusController extends Controller
 
         $code = match (LearnerAgePolicy::classify($user->birthdate)) {
             LearnerAgePolicy::ELIGIBLE_TEENAGER => $this->teenagerCode($user),
-            LearnerAgePolicy::ELIGIBLE_ADULT => $user->hasVerifiedEmail()
+            LearnerAgePolicy::ELIGIBLE_ADULT => ($user->hasVerifiedEmail() || $user->hasAcceptedDependentAdultAuthorization())
                 ? 'profile_required'
                 : 'adult_email_required',
             LearnerAgePolicy::INELIGIBLE_UNDERAGE => 'underage',

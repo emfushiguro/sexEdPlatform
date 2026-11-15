@@ -521,6 +521,11 @@ Route::middleware('auth')->group(function () {
             ->name('children.support-information.destroy');
         Route::get('/relationship-verifications/{parentChildAccount}', [GuardianRelationshipVerificationController::class, 'show'])
             ->name('relationship-verifications.show');
+        Route::post('/relationship-verifications/{parentChildAccount}/adult-authority', [\App\Http\Controllers\AdultDependentAuthorityController::class, 'store'])
+            ->middleware('throttle:5,1')
+            ->name('relationship-verifications.adult-authority.store');
+        Route::post('/relationship-verifications/{parentChildAccount}/adult-authority/{authority}/withdraw', [\App\Http\Controllers\AdultDependentAuthorityController::class, 'withdraw'])
+            ->name('relationship-verifications.adult-authority.withdraw');
         Route::post('/relationship-verifications/{parentChildAccount}', [GuardianRelationshipVerificationController::class, 'store'])
             ->name('relationship-verifications.store');
         Route::post('/relationship-verifications/{parentChildAccount}/draft', [GuardianRelationshipVerificationController::class, 'storeDraft'])

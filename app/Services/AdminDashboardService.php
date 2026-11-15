@@ -211,7 +211,7 @@ class AdminDashboardService
 
         $rows = [
             [
-                'label' => 'Teenagers (10-17)',
+                'label' => 'Minors (under 18)',
                 'count' => (clone $learnerBaseQuery)
                     ->where('age_eligibility_cached', LearnerAgePolicy::ELIGIBLE_TEENAGER)
                     ->count(),

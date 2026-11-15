@@ -115,7 +115,7 @@ class AdminParentChildVerificationModerationWorkflowTest extends TestCase
             ->assertDontSee('PRIVATE-ADMIN-ISOLATION-MARKER', false);
 
         $this->actingAs($admin)
-            ->postJson(route('admin.parent-verifications.relationships.approve', $relationship), ['current_evidence_round' => $relationship->current_evidence_round])
+            ->postJson(route('admin.parent-verifications.relationships.approve', $relationship), ['current_evidence_round' => $relationship->current_evidence_round, 'dependent_identity_confirmed' => '1', 'guardian_identity_confirmed' => '1', 'relationship_evidence_confirmed' => '1'])
             ->assertOk()
             ->assertJson([
                 'status' => 'approved',

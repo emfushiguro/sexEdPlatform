@@ -26,10 +26,10 @@ class LearnerIdentitySubmission
     public function submit(User $actor, LearnerIdentityVerification $case, array $data, array $files): LearnerIdentityVerification
     {
         $newPaths = [];
-        $oldPaths = [];
 
         try {
-            $submitted = DB::transaction(function () use ($actor, $case, $data, $files, &$newPaths, &$oldPaths): LearnerIdentityVerification {
+            $submitted = DB::transaction(function () use ($actor, $case, $data, $files, &$newPaths): LearnerIdentityVerification {
+                User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
                 $case = LearnerIdentityVerification::query()->whereKey($case->getKey())->lockForUpdate()->first();
                 if (! $case) {
                     throw new DomainException('Learner identity case is not available for submission.');
@@ -42,7 +42,8 @@ class LearnerIdentitySubmission
                 };
                 $contactReady = $classification === LearnerAgePolicy::ELIGIBLE_TEENAGER
                     ? $actor->hasCompletedMinorActivation() && $actor->qualifyingMinorGuardianRelationship() !== null
-                    : $classification === LearnerAgePolicy::ELIGIBLE_ADULT && $actor->hasVerifiedEmail();
+                    : $classification === LearnerAgePolicy::ELIGIBLE_ADULT
+                        && ($actor->hasVerifiedEmail() || $actor->hasAcceptedDependentAdultAuthorization());
                 if ($case->user_id !== $actor->id || $case->superseded_at !== null
                     || $case->pathway !== $pathway
                     || ! $actor->isLearner() || $actor->isParentRegistration() || ! $contactReady
@@ -53,7 +54,7 @@ class LearnerIdentitySubmission
                 }
 
                 foreach ($files as $slot => $file) {
-                    if (! in_array($slot, ['identity_front', 'identity_back', 'selfie'], true)) {
+                    if (! in_array($slot, ['identity_front', 'identity_back'], true)) {
                         throw new InvalidArgumentException('Unsupported evidence slot.');
                     }
                 }
@@ -64,10 +65,20 @@ class LearnerIdentitySubmission
                 $previousStatus = $case->status;
                 $type = $data['document_type'];
                 $subtype = $type === 'government_id' ? $data['government_id_type'] : null;
-                $personaAttempt = $this->personaInquiries->isRequired()
-                    ? $this->personaInquiries->assertLearnerMaySubmit($actor, $case, $type, $subtype) : null;
+                $personaAttempt = $this->personaInquiries->assertLearnerMaySubmit($actor, $case, $type, $subtype);
                 $requiresBack = $type === 'government_id'
                     && (bool) data_get(config('guardian_identity.id_types', []), $subtype.'.requires_back', false);
+
+                // Preserve pre-existing rounds before replacing their current evidence pointers.
+                if ($case->submission_round > 0 && $case->evidence()->exists()) {
+                    $case->audits()->create([
+                        'actor_id' => $actor->id, 'action' => 'evidence_preserved',
+                        'from_status' => $case->status, 'to_status' => $case->status,
+                        'submission_round' => $case->submission_round,
+                        'correction_request' => ['evidence' => $case->evidence()->get()->toArray()],
+                        'created_at' => now(),
+                    ]);
+                }
 
                 foreach ($files as $slot => $file) {
                     if (! $file instanceof UploadedFile || ! $file->isValid()) {
@@ -84,10 +95,6 @@ class LearnerIdentitySubmission
                     if (! $path || ! Storage::disk('local')->exists($path)) {
                         throw new RuntimeException('Identity evidence could not be stored.');
                     }
-                    $old = $case->evidence()->where('slot', $slot)->first();
-                    if ($old) {
-                        $oldPaths[] = $old->storage_path;
-                    }
                     $case->evidence()->updateOrCreate(['slot' => $slot], [
                         'storage_path' => $path,
                         'mime_type' => $image['mime'],
@@ -99,7 +106,6 @@ class LearnerIdentitySubmission
                 }
 
                 if (! $requiresBack && $back = $case->evidence()->where('slot', 'identity_back')->first()) {
-                    $oldPaths[] = $back->storage_path;
                     $back->delete();
                 }
 
@@ -108,7 +114,7 @@ class LearnerIdentitySubmission
                     'requested_corrections' => null, 'correction_note' => null,
                     'document_type' => $type,
                     'sandbox_manual_review' => false,
-                    'evidence_source' => $this->personaInquiries->isRequired() && in_array($type, ['school_id', 'institution_id'], true)
+                    'evidence_source' => in_array($type, ['school_id', 'institution_id', 'assisted_review'], true)
                         ? 'persona_selfie' : 'local',
                     'government_id_type' => $subtype,
                     'government_id_type_other' => $subtype === 'other' ? $data['government_id_type_other'] : null,
@@ -126,24 +132,13 @@ class LearnerIdentitySubmission
                     'from_status' => $previousStatus,
                     'to_status' => 'pending',
                     'submission_round' => $case->submission_round,
+                    'correction_request' => [
+                        'learner_note' => $data['learner_note'] ?? null,
+                        'evidence' => $case->evidence()->get()->toArray(),
+                        'persona_selfie_attempt_id' => $personaAttempt->id,
+                    ],
                     'created_at' => now(),
                 ]);
-
-                if ($oldPaths) {
-                    $pathsToDelete = $oldPaths;
-                    DB::afterCommit(function () use ($pathsToDelete): void {
-                        try {
-                            if (! Storage::disk('local')->delete($pathsToDelete)) {
-                                Log::warning('Learner identity evidence deletion failed.', ['paths' => $pathsToDelete]);
-                            }
-                        } catch (Throwable $e) {
-                            Log::warning('Learner identity evidence deletion failed.', [
-                                'paths' => $pathsToDelete,
-                                'error' => $e->getMessage(),
-                            ]);
-                        }
-                    });
-                }
 
                 DB::afterCommit(function () use ($actor, $case): void {
                     try {

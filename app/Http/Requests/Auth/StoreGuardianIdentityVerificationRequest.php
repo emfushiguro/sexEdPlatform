@@ -23,7 +23,7 @@ class StoreGuardianIdentityVerificationRequest extends FormRequest
 
     public function rules(): array
     {
-        $idTypes = array_keys(config('guardian_identity.id_types', []));
+        $idTypes = config('guardian_identity.accepted_id_types', []);
         $selectedType = (string) $this->input('government_id_type');
         $requiresBack = (bool) data_get(config('guardian_identity.id_types', []), $selectedType.'.requires_back', false);
 

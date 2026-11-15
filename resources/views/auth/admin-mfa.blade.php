@@ -24,12 +24,26 @@
                     return;
                 }
                 try {
+                    if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable')
                     await navigator.clipboard.writeText(this.copyCode)
-                    this.copyStatus = 'Copied. Paste the code into the fields below.'
-                    this.inputs()[0]?.focus()
                 } catch {
-                    this.copyStatus = 'Clipboard access was blocked. Select the code in the email and paste it here.'
+                    const field = document.createElement('textarea')
+                    field.value = this.copyCode
+                    field.setAttribute('readonly', '')
+                    field.style.position = 'fixed'
+                    field.style.opacity = '0'
+                    document.body.appendChild(field)
+                    field.select()
+                    let copied = false
+                    try { copied = document.execCommand('copy') } catch {}
+                    field.remove()
+                    if (!copied) {
+                        this.copyStatus = 'Clipboard access was blocked. Select the code in the email and paste it here.'
+                        return
+                    }
                 }
+                this.copyStatus = 'Copied. Paste the code into the fields below.'
+                this.inputs()[0]?.focus()
             },
             remaining(target) { return Math.max(0, Math.ceil((target - this.now) / 1000)) },
             clock(target) { const value = this.remaining(target); return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}` },

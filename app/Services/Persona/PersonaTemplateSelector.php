@@ -62,7 +62,10 @@ class PersonaTemplateSelector
             $this->invalid('This identity case cannot start a new Persona attempt.');
         }
 
-        if ($pathway === 'teen' && in_array($documentType, ['school_id', 'institution_id'], true)) {
+        if ($documentType === 'assisted_review' && ! $user->guardianRelationships()->accessEligible()->exists()) {
+            $this->invalid('Assisted review requires a verified Guardian and approved relationship.');
+        }
+        if ($documentType === 'assisted_review' || ($pathway === 'teen' && in_array($documentType, ['school_id', 'institution_id'], true))) {
             if ($governmentIdType !== null) {
                 $this->invalid('A school or institution identity does not use a government ID choice.');
             }
@@ -124,7 +127,8 @@ class PersonaTemplateSelector
         }
 
         $mappedClasses = (array) config('persona.government_id_classes', []);
-        if (! array_key_exists($governmentIdType, $mappedClasses)
+        if (! in_array($governmentIdType, config('guardian_identity.accepted_id_types', []), true)
+            || ! array_key_exists($governmentIdType, $mappedClasses)
             || ! array_key_exists($governmentIdType, (array) config('guardian_identity.id_types', []))) {
             $this->invalid('That government ID cannot be verified in Persona Sandbox.');
         }
@@ -151,7 +155,7 @@ class PersonaTemplateSelector
     private function assertAvailable(): void
     {
         if (! config('persona.enabled', false) || config('persona.environment', 'sandbox') !== 'sandbox') {
-            $this->invalid('Persona verification is not available.');
+            $this->invalid('Camera verification is unavailable. Please contact support or try again when Persona is available. Selfie uploads are not accepted.');
         }
     }
 

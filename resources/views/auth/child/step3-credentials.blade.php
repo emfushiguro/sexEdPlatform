@@ -3,15 +3,15 @@
         <div class="flex h-full flex-col items-center justify-center p-12 text-center">
             <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="mx-auto mb-3 h-20 w-auto">
             <h2 class="mb-4 text-4xl font-bold leading-tight text-white">Suggest sign-in details</h2>
-            <p class="max-w-xs text-lg text-white/80">The Teenager will choose a password after the guardian relationship is approved.</p>
+            <p class="max-w-xs text-lg text-white/80">The dependent will choose their own password after the Guardian relationship is approved.</p>
         </div>
     </x-slot>
 
     <x-wizard-stepper flow="dependent" />
 
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-purple-900">Teenager sign-in details</h1>
-        <p class="mt-1 text-sm text-gray-600">You may propose a username and add the Teenager's genuine personal email. Do not enter a password here.</p>
+        <h1 class="text-2xl font-bold text-purple-900">Dependent sign-in details</h1>
+        <p class="mt-1 text-sm text-gray-600">You may propose a username and add the dependent's personal email. They will choose their own password.</p>
     </div>
 
     @if ($errors->any())
@@ -35,10 +35,10 @@
         </div>
 
         <div class="mb-6">
-            <label for="email" class="mb-1 block text-sm font-medium text-gray-700">Teenager's personal email <span class="font-normal text-gray-400">(optional)</span></label>
+            <label for="email" class="mb-1 block text-sm font-medium text-gray-700">Dependent's personal email <span class="font-normal text-gray-400">(optional)</span></label>
             <input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="email"
                    class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500">
-            <p class="mt-1 text-xs text-gray-500">Leave blank if the Teenager does not have a genuine personal mailbox.</p>
+            <p class="mt-1 text-xs text-gray-500">Leave blank if the dependent does not have a personal mailbox.</p>
         </div>
 
         <div class="flex items-center justify-between border-t border-gray-200 pt-4">

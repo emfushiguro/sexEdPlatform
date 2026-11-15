@@ -5,7 +5,7 @@
                 <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-20 w-auto mx-auto mb-3">
                 <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Conscious Connections</p>
             </div>
-            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Set up a Teenager account</h2>
+            <h2 class="text-4xl font-bold text-white mb-4 leading-tight">Set up a Dependent account</h2>
             <p class="text-white/80 text-lg max-w-xs">Create a restricted account that becomes available after relationship approval.</p>
         </div>
     </x-slot>
@@ -13,8 +13,8 @@
     <x-wizard-stepper flow="dependent" />
 
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-purple-900">Teenager information</h1>
-        <p class="mt-1 text-sm text-gray-600">Tell us about the Teenager who needs a guardian-assisted account.</p>
+        <h1 class="text-2xl font-bold text-purple-900">Dependent information</h1>
+        <p class="mt-1 text-sm text-gray-600">Tell us about the dependent who needs support with their account.</p>
     </div>
 
 
@@ -140,7 +140,8 @@
                                        @change="calculateAge()"
                                        max="{{ now()->format('Y-m-d') }}"
                                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-purple-primary focus:border-transparent transition">
-                                <p class="mt-1 text-xs text-gray-500">Use the Teenager's legal birthdate. Guardian-assisted registration accepts ages 10 through 17.</p>
+                                <p class="mt-1 text-xs text-gray-500">Use the dependent's legal birthdate. A dependent may be any age.</p>
+                                <p x-show="age !== null && age < 10" x-cloak class="mt-1 text-xs text-gray-500">Learning content for children under 10 is currently limited.</p>
                                 <div x-show="age !== null" class="mt-2">
                                     <template x-if="age >= 0">
                                         <p class="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">

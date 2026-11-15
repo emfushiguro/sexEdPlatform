@@ -10,20 +10,30 @@ class LearnerAgeRegistrationPolicyTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_teenager_details_are_prefilled_and_survive_a_refresh(): void
+    {
+        $details = $this->personalInfo(15);
+
+        $this->post('/register', $details)->assertRedirect(route('minor.registration.create'));
+
+        foreach (range(1, 2) as $_) {
+            $this->get(route('minor.registration.create'))
+                ->assertOk()
+                ->assertSee('value="'.$details['first_name'].'"', false)
+                ->assertSee('value="'.$details['last_name'].'"', false)
+                ->assertSee('value="'.$details['birthdate'].'"', false);
+        }
+    }
+
     public function test_registration_branches_only_on_the_live_date_of_birth_policy(): void
     {
-        foreach ([9, 101] as $age) {
-            $this->post('/register', $this->personalInfo($age))
-                ->assertSessionHasErrors('birthdate');
-        }
-
-        foreach ([10, 17] as $age) {
+        foreach ([9, 10, 17] as $age) {
             $this->post('/register', $this->personalInfo($age))
                 ->assertRedirect(route('minor.registration.create'))
                 ->assertSessionHas('pending_minor_registration');
         }
 
-        foreach ([18, 100] as $age) {
+        foreach ([18, 100, 101] as $age) {
             $this->post('/register', $this->personalInfo($age))
                 ->assertRedirect(route('register.account'))
                 ->assertSessionHas('pending_personal_info');

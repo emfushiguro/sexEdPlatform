@@ -288,7 +288,8 @@ class PersonaPolicyTest extends TestCase
             $included[] = [
                 'id' => 'selfie_123',
                 'type' => 'verification/selfie',
-                'attributes' => ['status' => $selfieStatus],
+                'attributes' => ['status' => $selfieStatus, 'capture-method' => 'photo',
+                    'checks' => [['name' => 'selfie_liveness_detection', 'status' => $selfieStatus]]],
             ];
         }
 

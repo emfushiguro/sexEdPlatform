@@ -30,7 +30,9 @@
             Review the submitted evidence and account details before making the final decision. Persona images stay with Persona and are displayed securely here when requested.
         </p>
         @endunless
-        @if($personaAttempts->first()?->flow_type === \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL)
+        @if($personaAttempts->first()?->local_document_type === 'assisted_review')
+            <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Persona supplied the camera selfie only. Independently verify the supporting identity record and issuer; Persona did not authenticate that record or match it to the selfie.</p>
+        @elseif($personaAttempts->first()?->flow_type === \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL)
             <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                 Persona did not authenticate the school/institution ID or perform an automated ID-to-selfie match. Compare the local ID portrait with the Persona selfie yourself.
             </p>
@@ -82,6 +84,17 @@
                     @endunless
                     @if($attempt->isCurrent() && $attempt->is_sandbox && in_array($attempt->verification_outcome, [\App\Models\PersonaInquiry::OUTCOME_ELIGIBLE, \App\Models\PersonaInquiry::OUTCOME_SANDBOX_REVIEW], true))
                         <div @class(['mt-4', 'space-y-6' => $compactPersonaSummary, 'grid gap-4 md:grid-cols-3' => ! $compactPersonaSummary])>
+                            @if($attempt->flow_type !== \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL && $attempt->government_id_verification_id)
+                                <div @class(['space-y-3' => $compactPersonaSummary, 'contents' => ! $compactPersonaSummary])>
+                                    @if($compactPersonaSummary)
+                                        <h4 class="text-base font-semibold text-gray-900">ID document</h4>
+                                    @endif
+                                    <div @class(['grid gap-4 md:grid-cols-2' => $compactPersonaSummary, 'contents' => ! $compactPersonaSummary])>
+                                        @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'government-id-front', 'label' => 'Persona ID front'])
+                                        @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'government-id-back', 'label' => 'Persona ID back'])
+                                    </div>
+                                </div>
+                            @endif
                             <div @class(['space-y-3' => $compactPersonaSummary, 'contents' => ! $compactPersonaSummary])>
                                 @if($compactPersonaSummary)
                                     <h4 class="text-base font-semibold text-gray-900">Selfie photos</h4>
@@ -96,17 +109,6 @@
                                     @endif
                                 </div>
                             </div>
-                            @if($attempt->flow_type !== \App\Models\PersonaInquiry::FLOW_TEEN_SCHOOL && $attempt->government_id_verification_id)
-                                <div @class(['space-y-3 border-t border-gray-200 pt-6' => $compactPersonaSummary, 'contents' => ! $compactPersonaSummary])>
-                                    @if($compactPersonaSummary)
-                                        <h4 class="text-base font-semibold text-gray-900">ID document</h4>
-                                    @endif
-                                    <div @class(['grid gap-4 md:grid-cols-2' => $compactPersonaSummary, 'contents' => ! $compactPersonaSummary])>
-                                        @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'government-id-front', 'label' => 'Persona ID front'])
-                                        @include('admin.parent-verifications.partials.persona-image', ['attempt' => $attempt, 'artifact' => 'government-id-back', 'label' => 'Persona ID back'])
-                                    </div>
-                                </div>
-                            @endif
                         </div>
                     @endif
                 </article>

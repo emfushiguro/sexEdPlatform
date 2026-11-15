@@ -103,10 +103,11 @@ class DependentSupportVerificationIsolationTest extends TestCase
             'can_view_quiz_answers' => true,
             'can_approve_content' => false,
         ]);
+        foreach (['care_arrangement', 'dependent_birth_record'] as $documentType) {
         GuardianRelationshipVerificationDocument::query()->create([
             'parent_child_account_id' => $relationship->id,
             'uploaded_by_user_id' => $guardian->id,
-            'document_type' => 'care_arrangement',
+            'document_type' => $documentType,
             'submission_round' => 1,
             'document_side' => 'not_applicable',
             'display_order' => 0,
@@ -115,9 +116,10 @@ class DependentSupportVerificationIsolationTest extends TestCase
             'original_name' => 'evidence.pdf',
             'mime_type' => 'application/pdf',
             'size_bytes' => 100,
-            'content_sha256' => hash('sha256', 'isolation-evidence-'.$relationship->id),
+            'content_sha256' => hash('sha256', 'isolation-evidence-'.$relationship->id.'-'.$documentType),
             'submitted_at' => now(),
         ]);
+        }
 
         if ($withSupport) {
             DependentSupportProfile::query()->create([

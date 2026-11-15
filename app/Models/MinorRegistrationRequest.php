@@ -27,7 +27,7 @@ class MinorRegistrationRequest extends Model
 
     protected $casts = [
         'guardian_email' => 'encrypted',
-        'minor_payload' => 'encrypted',
+        'minor_payload' => 'encrypted:array',
         'expires_at' => 'datetime',
         'accepted_at' => 'datetime',
     ];

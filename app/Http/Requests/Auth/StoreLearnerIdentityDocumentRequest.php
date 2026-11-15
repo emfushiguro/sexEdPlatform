@@ -24,10 +24,12 @@ class StoreLearnerIdentityDocumentRequest extends SubmitLearnerIdentityRequest
         $rules = parent::rules();
         unset($rules['selfie'], $rules['confirm_submission']);
 
-        $choices = array_map(fn (string $type) => 'government_id:'.$type, array_keys(config('guardian_identity.id_types', [])));
+        $choices = array_map(fn (string $type) => 'government_id:'.$type, config('guardian_identity.accepted_id_types', []));
         $case = $this->user()?->identityVerifications()->whereNull('superseded_at')->first();
         if ($case?->pathway === 'teen') {
-            array_unshift($choices, 'school_id', 'institution_id');
+            array_unshift($choices, 'assisted_review', 'school_id', 'institution_id');
+        } else {
+            array_unshift($choices, 'assisted_review');
         }
         $rules['id_selection'] = ['required', Rule::in($choices)];
 

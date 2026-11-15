@@ -78,7 +78,7 @@ class DependentSupportAuthorizationTest extends TestCase
     /** @return array{0: User, 1: User, 2: ParentChildAccount, 3: DependentSupportProfile} */
     private function scenario(): array
     {
-        $dependent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $dependent = User::factory()->create(['status' => User::STATUS_ACTIVE, 'birthdate' => now()->subYears(25)->toDateString()]);
         $guardian = User::factory()->create([
             'account_type' => User::ACCOUNT_TYPE_PARENT,
             'parent_verification_status' => 'approved',
@@ -91,6 +91,7 @@ class DependentSupportAuthorizationTest extends TestCase
             'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
             'relationship_verified_at' => now(),
             'can_manage_support_information' => false,
+            'adult_permissions_confirmed_at' => now(),
         ]);
         $profile = DependentSupportProfile::query()->create([
             'dependent_user_id' => $dependent->id,

@@ -57,6 +57,7 @@
             Send Reset Link
         </button>
 
+        <div class="mt-4 text-center"><a href="{{ route('password.recovery-code.create') }}" class="font-semibold text-purple-700 underline">Use an adult dependent recovery code</a></div>
         <div class="mt-6 text-center">
             <a href="{{ route('login') }}"
                class="text-sm text-gray-500 hover:text-brand-purple-primary transition-colors">

@@ -12,11 +12,11 @@
                 <p class="text-white/90 font-semibold tracking-wide text-sm uppercase">Conscious Connections</p>
             </div>
             <h2 class="text-4xl font-bold text-white mb-4 leading-tight">
-                {{ $isApproved ? 'Teenager account activated!' : 'Teenager account submitted!' }}
+                {{ $isApproved ? 'Dependent account ready!' : 'Dependent account submitted!' }}
             </h2>
             <p class="text-white/80 text-lg max-w-xs">
                 {{ $isApproved
-                    ? 'The Teenager can continue with the next identity and profile steps.'
+                    ? 'The dependent can continue with the next identity and profile steps.'
                     : 'The account cannot be used until the Guardianâ€“Dependent relationship is approved.' }}
             </p>
         </div>
@@ -27,7 +27,7 @@
     @if ($supportInformationResult === 'saved')
         <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">Support information was saved securely. You can update it later.</div>
     @elseif ($supportInformationResult === 'skipped')
-        <div class="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">Support information was skipped. You can add it later if needed.</div>
+        <div class="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">Support information was skipped. It can be added later when permitted.</div>
     @endif
 
     {{-- Success header --}}
@@ -39,12 +39,12 @@
             </svg>
         </div>
         <h1 class="text-2xl font-bold text-purple-900">
-            {{ $isApproved ? $childName . "'s Teenager account is approved." : $childName . "'s Teenager account is under review." }}
+            {{ $isApproved ? $childName . "'s dependent account is approved." : $childName . "'s dependent account is under review." }}
         </h1>
         <p class="mt-2 text-sm text-gray-600">
             {{ $isApproved
-                ? 'The Teenager can continue activation and submit their own identity evidence.'
-                : 'The guardian will receive an activation handoff only after relationship approval. The Teenager will then choose a password and submit their own ID plus selfie; relationship approval is not Teenager identity approval.' }}
+                ? 'The dependent can continue activation and submit their own identity evidence.'
+                : 'After relationship approval, the dependent chooses a password and submits identity evidence for a separate review. Adult dependents consent personally during activation.' }}
         </p>
     </div>
 
@@ -59,7 +59,7 @@
             </div>
             <div>
                 <p class="text-sm font-semibold text-purple-900">View Learning Progress</p>
-                <p class="text-xs text-purple-700 mt-0.5">Track module completions, lesson views, and overall progress in real time.</p>
+                <p class="text-xs text-purple-700 mt-0.5">See learning progress when access has been granted.</p>
             </div>
         </div>
 
@@ -72,7 +72,7 @@
             </div>
             <div>
                 <p class="text-sm font-semibold text-purple-900">View Quiz Answers</p>
-                <p class="text-xs text-purple-700 mt-0.5">See quiz attempts, selected answers, and scores to identify learning gaps.</p>
+                <p class="text-xs text-purple-700 mt-0.5">See quiz attempts and answers when access has been granted.</p>
             </div>
         </div>
 
@@ -85,7 +85,7 @@
             </div>
             <div>
                 <p class="text-sm font-semibold text-purple-900">Content Approval</p>
-                <p class="text-xs text-purple-700 mt-0.5">Review and approve modules before your dependent can access them.</p>
+                <p class="text-xs text-purple-700 mt-0.5">Review module requests when the relationship permits it.</p>
             </div>
         </div>
     </div>

@@ -16,6 +16,8 @@ use App\Notifications\Learner\ParentEnrollmentRejectedNotification;
 use App\Notifications\Parent\ChildEnrollmentApprovedNotification;
 use App\Notifications\Parent\ChildEnrollmentRejectedNotification;
 use App\Services\ParentChildService;
+use App\Services\GuardianLearningActivityService;
+use App\Models\Certificate;
 use App\Services\Modules\ModuleAccessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -28,7 +30,7 @@ class ParentController extends Controller
         private ModuleAccessService $moduleAccessService,
     ) {}
 
-    public function show(User $child)
+    public function show(User $child, GuardianLearningActivityService $learningActivity)
     {
         $this->authorize('view', $child);
 
@@ -43,8 +45,8 @@ class ParentController extends Controller
             ->where('child_user_id', $child->id)
             ->first();
 
-        $canApproveContent = (bool) ($parentChildLink?->can_approve_content ?? false);
-        $canViewQuizAnswers = (bool) ($parentChildLink?->can_view_quiz_answers ?? false);
+        $canApproveContent = $parentChildLink !== null && ParentChildAccount::query()->accessEligible()->withPermission('can_approve_content')->whereKey($parentChildLink->id)->exists();
+        $canViewQuizAnswers = $parentChildLink !== null && ParentChildAccount::query()->accessEligible()->withPermission('can_view_quiz_answers')->whereKey($parentChildLink->id)->exists();
         $pendingMinorPasswordRecoveries = MinorAccountHandoff::query()
             ->where('child_user_id', $child->id)
             ->where('guardian_user_id', $parent->id)
@@ -59,7 +61,8 @@ class ParentController extends Controller
             'child'              => $child,
             'progress'           => $this->service->getProgress($child),
             'quizResults'        => $canViewQuizAnswers ? $this->service->getQuizResults($child) : collect(),
-            'achievements'       => $this->service->getAchievements($child),
+            'certificates'       => Certificate::query()->where('user_id', $child->id)->with('module')->latest('issued_at')->get(),
+            'learningActivity'   => $learningActivity->forChild($child, $canViewQuizAnswers),
             'pendingEnrollments' => $canApproveContent ? $this->service->getPendingEnrollments($child) : collect(),
             'canViewQuizAnswers' => $canViewQuizAnswers,
             'canApproveContent'  => $canApproveContent,

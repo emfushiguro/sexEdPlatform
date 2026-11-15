@@ -27,6 +27,10 @@ class GuardianOnboardingController extends Controller
         }
 
         if ($guardian->hasCompletedGuardianOnboarding()) {
+            if ($token = session('minor_registration_token')) {
+                return redirect()->route('minor.registration.accept', $token);
+            }
+
             return redirect()->route('learner.dashboard');
         }
 
@@ -122,6 +126,11 @@ class GuardianOnboardingController extends Controller
                 'guardian_onboarding_completed_at' => now(),
             ])->save();
         });
+
+        if ($token = session('minor_registration_token')) {
+            return redirect()->route('minor.registration.accept', $token)
+                ->with('success', 'Your Guardian account is ready. Confirm the invitation to continue.');
+        }
 
         $redirectRoute = $validated['next_action'] === 'dependent'
             ? 'parent.create-child'

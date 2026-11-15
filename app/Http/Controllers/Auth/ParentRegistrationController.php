@@ -272,6 +272,10 @@ class ParentRegistrationController extends Controller
             return $redirect;
         }
 
+        if (! session('pending_child_registration') && ($token = session('minor_registration_token'))) {
+            return redirect()->route('minor.registration.accept', $token);
+        }
+
         // Clear stale in-progress data from an abandoned session, but keep
         // pending_child_registration — it holds the original child's info for pre-fill
         session()->forget(['child_step1', 'child_step2', 'child_step3', 'child_created_name']);
@@ -308,12 +312,6 @@ class ParentRegistrationController extends Controller
             'relationship_type' => ['required', Rule::in(GuardianRelationshipTypes::values())],
             'relationship_custom' => ['nullable', 'required_if:relationship_type,other', 'string', 'max:120'],
         ]);
-
-        if (LearnerAgePolicy::classify($validated['birthdate']) !== LearnerAgePolicy::ELIGIBLE_TEENAGER) {
-            return back()
-                ->withErrors(['birthdate' => 'Guardian-assisted learner registration is for Teenagers ages 10 through 17.'])
-                ->withInput();
-        }
 
         session(['child_step1' => $validated]);
 
@@ -528,12 +526,6 @@ class ParentRegistrationController extends Controller
                 $requiresRelationshipVerification,
                 &$relationshipEvidencePaths,
             ): array {
-                if (LearnerAgePolicy::classify($step1['birthdate']) !== LearnerAgePolicy::ELIGIBLE_TEENAGER) {
-                    throw ValidationException::withMessages([
-                        'birthdate' => 'Guardian-assisted learner registration is for Teenagers ages 10 through 17.',
-                    ]);
-                }
-
                 $requestId = session('minor_registration_request_id');
                 $requestToken = (string) session('minor_registration_token');
                 $minorRequest = $requestId
@@ -549,7 +541,7 @@ class ParentRegistrationController extends Controller
                         || $requestToken === ''
                         || ! hash_equals($minorRequest->token_hash, $minorHandoffs->digestForStorage($requestToken))
                         || ! is_string($parent->email)
-                        || ! hash_equals($minorRequest->guardian_email_fingerprint, AccountEmail::fingerprint($parent->email))
+                        || $minorRequest->accepted_by_user_id !== $parent->id
                         || ! $parent->hasVerifiedEmail()
                         || ! $parent->isParentRegistration()
                         || ! $parent->isParentVerificationApproved()
@@ -558,13 +550,9 @@ class ParentRegistrationController extends Controller
                     }
                 }
 
-                $authorizedAt = now();
-                if ($child !== null && (
-                    LearnerAgePolicy::classify($child->birthdate) !== LearnerAgePolicy::ELIGIBLE_TEENAGER
-                    || Carbon::parse($step1['birthdate'])->toDateString() !== $child->birthdate?->toDateString()
-                )) {
+                if ($child !== null && Carbon::parse($step1['birthdate'])->toDateString() !== $child->birthdate?->toDateString()) {
                     throw ValidationException::withMessages([
-                        'birthdate' => 'The Teenager birthdate must match the existing account.',
+                        'birthdate' => 'The dependent birthdate must match the existing account.',
                     ]);
                 }
                 if ($child === null) {
@@ -592,7 +580,7 @@ class ParentRegistrationController extends Controller
                         'barangay_code' => $step2['barangay_code'],
                         'barangay' => $barangay->name,
                         'province_code' => '402100000',
-                        'requires_parental_consent' => true,
+                        'requires_parental_consent' => $child->requiresGuardian(),
                     ]);
                 }
 
@@ -609,10 +597,10 @@ class ParentRegistrationController extends Controller
                 $verification = ParentChildAccount::query()->create([
                     'parent_user_id' => $parent->id,
                     'child_user_id' => $child->id,
-                    'can_view_progress' => true,
-                    'can_view_quiz_answers' => true,
+                    'can_view_progress' => LearnerAgePolicy::classify($step1['birthdate']) === LearnerAgePolicy::ELIGIBLE_TEENAGER,
+                    'can_view_quiz_answers' => LearnerAgePolicy::classify($step1['birthdate']) === LearnerAgePolicy::ELIGIBLE_TEENAGER,
                     'can_approve_content' => false,
-                    'can_manage_support_information' => true,
+                    'can_manage_support_information' => LearnerAgePolicy::classify($step1['birthdate']) === LearnerAgePolicy::ELIGIBLE_TEENAGER,
                     'relationship_type' => $relationshipType,
                     'relationship_custom' => $relationshipType === GuardianRelationshipTypes::OTHER
                         ? ($step1['relationship_custom'] ?? null)
@@ -626,9 +614,6 @@ class ParentRegistrationController extends Controller
                     'verification_status' => VerificationStatus::Pending->value,
                     'verification_document_path' => null,
                     'relationship_verified_at' => null,
-                    'minor_registration_authorized_at' => $authorizedAt,
-                    'minor_registration_consent_version' => config('learner_age_policy.guardian_consent_version'),
-                    'minor_registration_authorized_by_user_id' => $parent->id,
                 ]);
 
                 if ($requiresRelationshipVerification) {
@@ -645,7 +630,7 @@ class ParentRegistrationController extends Controller
                     $minorRequest->forceFill([
                         'status' => MinorRegistrationRequest::STATUS_COMPLETED,
                         'accepted_by_user_id' => $parent->id,
-                        'accepted_at' => now(),
+                        'accepted_at' => $minorRequest->accepted_at ?? now(),
                     ])->save();
                 }
 

@@ -55,6 +55,6 @@ class PasswordResetLinkController extends Controller
 
         return back()
             ->withInput($request->only('login'))
-            ->with('status', 'If an account exists for that email address, a password reset link has been sent.');
+            ->with('status', 'If an eligible account exists, recovery instructions will be sent to the appropriate email address or guardian.');
     }
 }

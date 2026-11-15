@@ -38,6 +38,11 @@ class Certificate extends Model
 
     // Accessors
 
+    public function getIssuedDateAttribute()
+    {
+        return $this->issued_at?->copy()->timezone(config('app.display_timezone'));
+    }
+
     public function getLearnerNameAttribute(): ?string
     {
         return $this->learner_name_snapshot ?: $this->user?->name;

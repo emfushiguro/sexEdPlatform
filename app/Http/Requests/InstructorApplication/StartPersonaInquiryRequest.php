@@ -18,7 +18,7 @@ class StartPersonaInquiryRequest extends FormRequest
         return [
             'government_id_type' => [
                 'required', 'string', 'max:40',
-                Rule::in(array_keys((array) config('persona.government_id_classes', []))),
+                Rule::in(array_values(array_intersect(array_keys((array) config('persona.government_id_classes', [])), config('guardian_identity.accepted_id_types', [])))),
             ],
         ];
     }

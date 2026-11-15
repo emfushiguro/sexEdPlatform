@@ -13,7 +13,7 @@
         @csrf
     </form>
 
-    @php($emailRequired = !($user->isLearner() && \App\Support\LearnerAgePolicy::classify($user->birthdate) === \App\Support\LearnerAgePolicy::ELIGIBLE_TEENAGER))
+    @php($emailRequired = !($user->isLearner() && (\App\Support\LearnerAgePolicy::classify($user->birthdate) === \App\Support\LearnerAgePolicy::ELIGIBLE_TEENAGER || $user->hasAcceptedDependentAdultAuthorization())))
 
     <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
         @csrf

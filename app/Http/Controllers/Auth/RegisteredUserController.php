@@ -47,11 +47,13 @@ class RegisteredUserController extends Controller
         $classification = LearnerAgePolicy::classify($validated['birthdate']);
 
         if ($classification === LearnerAgePolicy::ELIGIBLE_TEENAGER) {
-            return redirect()->route('minor.registration.create')
-                ->with('pending_minor_registration', Arr::only($validated, ['first_name', 'last_name', 'birthdate']));
+            session(['pending_minor_registration' => Arr::only($validated, ['first_name', 'last_name', 'birthdate'])]);
+
+            return redirect()->route('minor.registration.create');
         }
 
         if ($classification === LearnerAgePolicy::ELIGIBLE_ADULT) {
+            session()->forget('pending_minor_registration');
             session(['pending_personal_info' => array_merge($validated, [
                 'age' => LearnerAgePolicy::age($validated['birthdate']),
             ])]);
@@ -88,8 +90,9 @@ class RegisteredUserController extends Controller
         if (LearnerAgePolicy::classify($personal['birthdate'] ?? null) !== LearnerAgePolicy::ELIGIBLE_ADULT) {
             session()->forget('pending_personal_info');
 
-            return redirect()->route('minor.registration.create')
-                ->with('pending_minor_registration', Arr::only($personal, ['first_name', 'last_name', 'birthdate']));
+            session(['pending_minor_registration' => Arr::only($personal, ['first_name', 'last_name', 'birthdate'])]);
+
+            return redirect()->route('minor.registration.create');
         }
 
         $account = $request->validated();

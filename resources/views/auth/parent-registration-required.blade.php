@@ -12,13 +12,13 @@
 
     <div class="mb-6">
         <h2 class="text-2xl font-bold text-purple-900">Guardian-assisted registration</h2>
-        <p class="mt-2 text-sm text-gray-600">Teenagers ages 10-17 need a guardian to create their account.</p>
+        <p class="mt-2 text-sm text-gray-600">Learners under 18 need a Guardian to create their account.</p>
     </div>
 
     <!-- Purple info block -->
     <div class="bg-purple-50 border-l-4 border-purple-500 p-4 mb-6">
         <p class="text-sm text-purple-800">
-            For Teenager safety and privacy, we require an approved guardian relationship for users ages 10-17.
+            For minor safety and privacy, an approved Guardian relationship is required for users under 18.
         </p>
     </div>
 

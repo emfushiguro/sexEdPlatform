@@ -15,6 +15,37 @@ class TeenagerStartedRegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_invitation_review_explains_next_steps_without_accepting_the_request(): void
+    {
+        $guardian = $this->guardian('guardian@example.test');
+        $invitation = $this->createRequestFor($guardian, app(MinorAccountHandoffService::class)->generateCode());
+
+        $this->get(route('minor.registration.review', $invitation['code']))
+            ->assertOk()
+            ->assertSee('What happens next?')
+            ->assertSee(route('minor.registration.accept', $invitation['code']));
+
+        $this->assertNull(session('minor_registration_request_id'));
+        $this->assertSame(MinorRegistrationRequest::STATUS_PENDING, $invitation['request']->fresh()->status);
+    }
+
+    public function test_invalid_invitation_review_does_not_reveal_request_details(): void
+    {
+        $this->get(route('minor.registration.review', 'invalidtoken'))
+            ->assertRedirect(route('minor.registration.create'))
+            ->assertSessionHasErrors('guardian_email');
+    }
+
+    public function test_request_confirmation_explains_next_steps(): void
+    {
+        $this->withSession(['success' => 'If that guardian email can receive mail, an invitation is on its way.'])
+            ->get(route('minor.registration.create'))
+            ->assertOk()
+            ->assertSee('Your request is on its way')
+            ->assertSee('check their inbox and spam folder')
+            ->assertDontSee('Send guardian invitation');
+    }
+
     public function test_guest_request_stores_only_encrypted_minimum_data_and_does_not_create_an_account(): void
     {
         $userCount = User::query()->count();
@@ -39,7 +70,7 @@ class TeenagerStartedRegistrationTest extends TestCase
         $this->assertSame('Private', $request->fresh()->minor_payload['first_name']);
     }
 
-    public function test_non_teenager_request_is_rejected_and_public_response_does_not_depend_on_account_existence(): void
+    public function test_dependent_requests_are_not_age_limited_and_public_response_does_not_depend_on_account_existence(): void
     {
         $underage = $this->post(route('minor.registration.store'), [
             'first_name' => 'Young',
@@ -48,8 +79,8 @@ class TeenagerStartedRegistrationTest extends TestCase
             'guardian_email' => 'guardian-one@example.test',
         ]);
 
-        $underage->assertSessionHasErrors('birthdate');
-        $this->assertDatabaseCount('minor_registration_requests', 0);
+        $underage->assertRedirect(route('minor.registration.create'));
+        $this->assertDatabaseCount('minor_registration_requests', 1);
 
         $known = $this->post(route('minor.registration.store'), [
             'first_name' => 'Eligible',
@@ -91,14 +122,17 @@ class TeenagerStartedRegistrationTest extends TestCase
 
         $response = $this->actingAs($guardian)->get(route('minor.registration.accept', $token));
 
-        $response->assertRedirect(route('parent.create-child'));
+        $response->assertOk()->assertSee('Claim this invitation');
+        $this->actingAs($guardian)->post(route('minor.registration.claim', $token), ['confirm_claim' => '1'])
+            ->assertRedirect(route('minor.registration.accept', $token));
+        $this->actingAs($guardian)->get(route('minor.registration.accept', $token))->assertRedirect(route('parent.create-child'));
         $this->assertSame($registrationRequest->id, session('minor_registration_request_id'));
         $this->assertSame('Requested', session('pending_child_registration.first_name'));
         $this->assertSame(MinorRegistrationRequest::STATUS_PENDING, $registrationRequest->fresh()->status);
         $this->assertDatabaseCount('users', 1);
     }
 
-    public function test_forwarded_request_is_not_available_to_a_different_guardian_email(): void
+    public function test_verified_guardian_can_claim_using_another_email_and_another_guardian_cannot_reclaim(): void
     {
         $guardian = $this->guardian('guardian@example.test');
         $otherGuardian = $this->guardian('other@example.test');
@@ -106,9 +140,14 @@ class TeenagerStartedRegistrationTest extends TestCase
 
         $response = $this->actingAs($otherGuardian)->get(route('minor.registration.accept', $token['code']));
 
-        $response->assertRedirect(route('minor.registration.create'));
-        $response->assertSessionHasErrors('guardian_email');
-        $this->assertNull(session('pending_child_registration'));
+        $response->assertOk()->assertSee('Claim this invitation');
+        $this->assertNull($token['request']->fresh()->accepted_by_user_id);
+        $this->actingAs($otherGuardian)->post(route('minor.registration.claim', $token['code']), ['confirm_claim' => '1'])
+            ->assertRedirect(route('minor.registration.accept', $token['code']));
+        $this->assertSame($otherGuardian->id, $token['request']->fresh()->accepted_by_user_id);
+        $this->actingAs($guardian)->post(route('minor.registration.claim', $token['code']), ['confirm_claim' => '1'])
+            ->assertSessionHasErrors('guardian_email');
+        $this->assertSame($otherGuardian->id, $token['request']->fresh()->accepted_by_user_id);
         $this->assertSame(MinorRegistrationRequest::STATUS_PENDING, $token['request']->fresh()->status);
     }
 
@@ -156,7 +195,13 @@ class TeenagerStartedRegistrationTest extends TestCase
         ]);
 
         $this->actingAs($guardian)
-            ->post(route('parent.children.minor-authorization', $relationship))
+            ->post(route('parent.children.minor-authorization', $relationship), [])
+            ->assertSessionHasErrors('authorization');
+
+        $this->assertNull($relationship->fresh()->minor_registration_authorized_at);
+
+        $this->actingAs($guardian)
+            ->post(route('parent.children.minor-authorization', $relationship), ['authorization' => '1'])
             ->assertRedirect();
 
         $authorized = $relationship->fresh();

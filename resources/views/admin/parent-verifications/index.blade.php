@@ -321,7 +321,7 @@
         <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
             <article class="min-h-[116px] rounded-[28px] border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100/70 p-5 shadow-theme-xs">
                 <div class="flex items-start justify-between gap-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700" x-text="activeType === 'parents' ? 'Guardian Applications' : (activeType === 'relationships' ? 'Relationship Verifications' : (activeType === 'learners' ? 'Learner Identity Verifications' : 'Dependent Applications'))">Guardian Applications</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700" x-text="activeType === 'parents' ? 'Guardian Applications' : (activeType === 'relationships' ? 'Relationship Verifications' : (activeType === 'learners' ? 'Learner Identity Verifications' : 'Legacy dependent documents'))">Guardian Applications</p>
                     <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-700 to-brand-900 text-white shadow-lg shadow-brand-200">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </span>
@@ -368,7 +368,7 @@
                         <label class="block">
                             <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Account Type</span>
                             <select x-model="activeType" @change="setType($event.target.value)" class="w-full px-4 py-3 text-sm text-gray-900 transition bg-white border border-brand-100 shadow-sm outline-none rounded-2xl focus:border-gray-300 focus:ring-2 focus:ring-gray-100">
-                                <option value="children">Dependent Verifications</option>
+                                <option value="children">Legacy dependent documents</option>
                                 <option value="parents">Guardian Verifications</option>
                                 <option value="relationships">Relationship Verifications</option>
                                 <option value="learners">Learner Identity Verifications</option>
@@ -729,6 +729,7 @@
                 </table>
             </div>
 
+<p x-show="activeType === 'children'" x-cloak class="px-4 py-3 text-sm text-gray-600">Historical dependent documents are kept here. Review new identity cases in Learner Identity Verifications.</p>
             <div class="overflow-x-auto" x-show="activeType === 'children'" x-cloak>
                 <table class="w-full table-fixed divide-y divide-gray-200">
                     <thead class="bg-brand-50/45">

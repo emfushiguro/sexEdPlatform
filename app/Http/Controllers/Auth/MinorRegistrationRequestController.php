@@ -28,7 +28,7 @@ final class MinorRegistrationRequestController extends Controller
 
         if ($request->user() !== null) {
             if (! $request->user()->isLearner()
-                || LearnerAgePolicy::classify($request->user()->birthdate) !== LearnerAgePolicy::ELIGIBLE_TEENAGER) {
+                || ! in_array(LearnerAgePolicy::classify($request->user()->birthdate), [LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::ELIGIBLE_ADULT], true)) {
                 return redirect()->route('learner.dashboard');
             }
 
@@ -50,11 +50,11 @@ final class MinorRegistrationRequestController extends Controller
 
         if ($existingTeenager !== null) {
             if (! $existingTeenager->isLearner()
-                || LearnerAgePolicy::classify($existingTeenager->birthdate) !== LearnerAgePolicy::ELIGIBLE_TEENAGER) {
-                throw ValidationException::withMessages(['guardian_email' => 'Only an eligible Teenager can start this handoff.']);
+                || ! in_array(LearnerAgePolicy::classify($existingTeenager->birthdate), [LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::ELIGIBLE_ADULT], true)) {
+                throw ValidationException::withMessages(['guardian_email' => 'This account cannot start a Guardian handoff.']);
             }
-        } elseif (LearnerAgePolicy::classify($validated['birthdate'] ?? null) !== LearnerAgePolicy::ELIGIBLE_TEENAGER) {
-            throw ValidationException::withMessages(['birthdate' => 'Guardian-assisted registration is for Teenagers ages 10 through 17.']);
+        } elseif (! in_array(LearnerAgePolicy::classify($validated['birthdate'] ?? null), [LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::ELIGIBLE_ADULT], true)) {
+            throw ValidationException::withMessages(['birthdate' => 'Enter a valid birthdate to continue.']);
         }
 
         $guardianEmail = AccountEmail::normalize((string) $validated['guardian_email']);
@@ -93,8 +93,22 @@ final class MinorRegistrationRequestController extends Controller
             }
         });
 
+        $request->session()->forget('pending_minor_registration');
+
         return redirect()->route('minor.registration.create')
             ->with('success', 'If that guardian email can receive mail, an invitation is on its way.');
+    }
+
+    public function review(string $token, MinorAccountHandoffService $handoffs): View|RedirectResponse
+    {
+        $registrationRequest = $this->findPending($token, $handoffs);
+
+        if ($registrationRequest === null) {
+            return redirect()->route('minor.registration.create')
+                ->withErrors(['guardian_email' => 'This invitation is invalid or expired. Ask the dependent to send a new request.']);
+        }
+
+        return view('auth.guardian-invitation-review', ['token' => $token]);
     }
 
     public function accept(
@@ -104,6 +118,8 @@ final class MinorRegistrationRequestController extends Controller
     ): View|RedirectResponse {
         $registrationRequest = $this->findPending($token, $handoffs);
         if ($registrationRequest === null) {
+            $this->clearInvitationSession($token);
+
             return redirect()->route('minor.registration.create')
                 ->withErrors(['guardian_email' => 'This invitation is invalid or expired.']);
         }
@@ -114,12 +130,19 @@ final class MinorRegistrationRequestController extends Controller
         ]);
 
         if (! $request->user()) {
+            if ($request->query('action') === 'register') {
+                session(['url.intended' => route('minor.registration.accept', ['token' => $token])]);
+                return redirect()->route('parent.register');
+            }
+
             return redirect()->guest(route('login'));
         }
 
         $guardian = $request->user();
-        if (! is_string($guardian->email)
-            || ! hash_equals($registrationRequest->guardian_email_fingerprint, AccountEmail::fingerprint($guardian->email))) {
+        if ($registrationRequest->accepted_by_user_id !== null
+            && $registrationRequest->accepted_by_user_id !== $guardian->id) {
+            $this->clearInvitationSession($token);
+
             return redirect()->route('minor.registration.create')
                 ->withErrors(['guardian_email' => 'This invitation is not available for this account.']);
         }
@@ -130,7 +153,7 @@ final class MinorRegistrationRequestController extends Controller
 
         if (! $guardian->isParentRegistration()) {
             return redirect()->route('parent.register')
-                ->with('info', 'Register or sign in with the guardian account that owns this email.');
+                ->with('info', 'Register or sign in with a guardian account using an email you control.');
         }
 
         if (! $guardian->isParentVerificationApproved()) {
@@ -141,6 +164,10 @@ final class MinorRegistrationRequestController extends Controller
             return redirect()->route('guardian.onboarding.show');
         }
 
+        if ($registrationRequest->accepted_by_user_id === null) {
+            return view('auth.guardian-invitation-claim', compact('token', 'guardian'));
+        }
+
         $pendingChild = $registrationRequest->existing_child_user_id
             ? $this->existingChildPrefill($registrationRequest->existingChild)
             : ($registrationRequest->minor_payload ?? []);
@@ -148,6 +175,39 @@ final class MinorRegistrationRequestController extends Controller
         session(['pending_child_registration' => $pendingChild]);
 
         return redirect()->route('parent.create-child');
+    }
+
+    public function claim(Request $request, string $token, MinorAccountHandoffService $handoffs): RedirectResponse
+    {
+        $request->validate(['confirm_claim' => ['accepted']]);
+        $guardian = $request->user();
+        abort_unless($guardian && $guardian->status === User::STATUS_ACTIVE
+            && $guardian->hasVerifiedEmail() && $guardian->isParentRegistration()
+            && $guardian->isParentVerificationApproved() && $guardian->hasCompletedGuardianOnboarding(), 403);
+
+        DB::transaction(function () use ($token, $handoffs, $guardian): void {
+            $invitation = MinorRegistrationRequest::query()
+                ->where('token_hash', $handoffs->digestForStorage($token))->lockForUpdate()->first();
+            if (! $invitation || $invitation->status !== MinorRegistrationRequest::STATUS_PENDING
+                || ! $invitation->expires_at || $invitation->expires_at->lte(now())
+                || ($invitation->accepted_by_user_id !== null && $invitation->accepted_by_user_id !== $guardian->id)) {
+                $this->clearInvitationSession($token);
+
+                throw ValidationException::withMessages(['guardian_email' => 'This invitation is invalid, expired, or already claimed.']);
+            }
+            if ($invitation->accepted_by_user_id === null) {
+                $invitation->update(['accepted_by_user_id' => $guardian->id, 'accepted_at' => now()]);
+            }
+        });
+
+        return redirect()->route('minor.registration.accept', $token);
+    }
+
+    private function clearInvitationSession(string $token): void
+    {
+        if (session('minor_registration_token') === $token) {
+            session()->forget(['minor_registration_request_id', 'minor_registration_token', 'pending_child_registration']);
+        }
     }
 
     private function findPending(string $token, MinorAccountHandoffService $handoffs): ?MinorRegistrationRequest
@@ -162,7 +222,7 @@ final class MinorRegistrationRequestController extends Controller
 
     private function existingChildPrefill(?User $child): array
     {
-        if ($child === null || LearnerAgePolicy::classify($child->birthdate) !== LearnerAgePolicy::ELIGIBLE_TEENAGER) {
+        if ($child === null || ! in_array(LearnerAgePolicy::classify($child->birthdate), [LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::ELIGIBLE_ADULT], true)) {
             throw ValidationException::withMessages(['guardian_email' => 'This invitation is invalid or expired.']);
         }
 

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Auth;
 
 use App\Models\MinorAccountHandoff;
 use App\Services\Auth\MinorAccountHandoffService;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -22,6 +23,12 @@ class ActivateMinorAccountRequest extends FormRequest
             MinorAccountHandoff::PURPOSE_ACTIVATION,
         );
         $profileId = $handoff?->child?->learnerProfile?->id;
+        $adultDependent = $handoff && LearnerAgePolicy::classify($handoff->child?->birthdate) === LearnerAgePolicy::ELIGIBLE_ADULT;
+        $consentMethod = (string) $this->input('consent_method', 'self');
+        $methods = ['self'];
+        if ($adultDependent && $handoff->relationship && app(MinorAccountHandoffService::class)->approvedAdultAuthority($handoff->relationship)) {
+            $methods[] = 'representative';
+        }
 
         return [
             'code' => ['required', 'string', 'max:32'],
@@ -38,7 +45,9 @@ class ActivateMinorAccountRequest extends FormRequest
                 'confirmed',
                 Password::min(8)->mixedCase()->numbers()->symbols()->uncompromised(),
             ],
-            'privacy_notice' => ['accepted'],
+            'privacy_notice' => $adultDependent && $consentMethod === 'representative' ? ['sometimes', 'accepted'] : ['accepted'],
+            'adult_consent' => [$adultDependent && $consentMethod === 'self' ? 'accepted' : 'prohibited'],
+            'consent_method' => $adultDependent ? ['required', Rule::in($methods)] : ['prohibited'],
         ];
     }
 }

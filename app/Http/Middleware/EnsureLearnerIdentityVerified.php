@@ -24,7 +24,7 @@ class EnsureLearnerIdentityVerified
 
         $identityRoute = $request->routeIs('learner.identity.*', 'persona.identity.*');
         $safeRoute = $request->routeIs(
-            'verification.*', 'minor.registration.*', 'minor.activation.*', 'learner.eligibility.status',
+            'verification.*', 'minor.registration.*', 'minor.activation.*', 'dependent.adult-consent.*', 'learner.eligibility.status',
             'logout', 'instructor.logout', 'admin.logout', 'password.*',
             'profile.edit', 'profile.update', 'profile.complete', 'profile.store', 'profile.learner.*',
             'profile.password.update', 'profile.account.delete', 'privacy', 'terms', 'help.*', 'feedback.*',
@@ -46,8 +46,10 @@ class EnsureLearnerIdentityVerified
             return $this->deny($request, 'learner.eligibility.status');
         }
 
-        if ($classification === LearnerAgePolicy::ELIGIBLE_ADULT && ! $user->hasVerifiedEmail()) {
-            return $this->deny($request, 'verification.notice');
+        if ($classification === LearnerAgePolicy::ELIGIBLE_ADULT
+            && ! $user->hasVerifiedEmail() && ! $user->hasAcceptedDependentAdultAuthorization()) {
+            return $this->deny($request, $user->minor_account_activated_at !== null
+                ? 'dependent.adult-consent.show' : 'verification.notice');
         }
 
         if ($identityRoute) {

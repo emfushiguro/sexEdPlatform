@@ -46,6 +46,9 @@ class GuardianRelationshipLifecycleController extends Controller
 
     public function authorizeMinor(Request $request, ParentChildAccount $parentChildAccount): RedirectResponse
     {
+        abort_unless((int) $parentChildAccount->parent_user_id === (int) $request->user()->id, 403);
+        $request->validate(['authorization' => ['accepted']]);
+
         DB::transaction(function () use ($request, $parentChildAccount): void {
             $relationship = ParentChildAccount::query()->lockForUpdate()->findOrFail($parentChildAccount->id);
             $guardian = User::query()->lockForUpdate()->findOrFail($request->user()->id);
@@ -60,7 +63,7 @@ class GuardianRelationshipLifecycleController extends Controller
                 || ! $guardian->isParentVerificationApproved()
                 || ! $guardian->hasCompletedGuardianOnboarding()) {
                 throw ValidationException::withMessages([
-                    'authorization' => 'Complete Guardian verification and onboarding before authorizing this Teenager.',
+                    'authorization' => 'Complete Guardian verification and onboarding before authorizing this dependent.',
                 ]);
             }
 
@@ -69,7 +72,7 @@ class GuardianRelationshipLifecycleController extends Controller
                 || $relationship->relationship_verified_at === null
                 || LearnerAgePolicy::classify($child->birthdate) !== LearnerAgePolicy::ELIGIBLE_TEENAGER) {
                 throw ValidationException::withMessages([
-                    'authorization' => 'Only an active verified relationship for a current Teenager can be authorized.',
+                    'authorization' => 'Only an active verified relationship for a minor can be authorized here.',
                 ]);
             }
 
@@ -78,8 +81,19 @@ class GuardianRelationshipLifecycleController extends Controller
                 'minor_registration_consent_version' => config('learner_age_policy.guardian_consent_version'),
                 'minor_registration_authorized_by_user_id' => $guardian->id,
             ])->save();
+
+            DB::table('minor_authorization_records')->insert([
+                'parent_child_account_id' => $relationship->id,
+                'guardian_user_id' => $guardian->id,
+                'consent_version' => config('learner_age_policy.guardian_consent_version'),
+                'privacy_notice_hash' => hash_file('sha256', resource_path('views/legal/privacy.blade.php')),
+                'terms_hash' => hash_file('sha256', resource_path('views/legal/terms.blade.php')),
+                'accepted_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         });
 
-        return back()->with('success', 'Current Teenager guardian authorization recorded.');
+        return back()->with('success', 'Guardian authorization for this dependent was recorded.');
     }
 }

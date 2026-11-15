@@ -23,12 +23,18 @@ class EnsureLearnerContactReady
                 : $this->deny($request, 'verification.notice');
         }
 
+        if (LearnerAgePolicy::classify($user->birthdate) === LearnerAgePolicy::ELIGIBLE_ADULT
+            && ! $user->hasVerifiedEmail() && ! $user->hasAcceptedDependentAdultAuthorization()
+            && $user->minor_account_activated_at !== null) {
+            return $this->deny($request, 'dependent.adult-consent.show');
+        }
+
         return match (LearnerAgePolicy::classify($user->birthdate)) {
             LearnerAgePolicy::ELIGIBLE_TEENAGER => $user->hasCompletedMinorActivation()
                 && $user->qualifyingMinorGuardianRelationship() !== null
                 ? $next($request)
                 : $this->deny($request, 'learner.eligibility.status'),
-            LearnerAgePolicy::ELIGIBLE_ADULT => $user->hasVerifiedEmail()
+            LearnerAgePolicy::ELIGIBLE_ADULT => ($user->hasVerifiedEmail() || $user->hasAcceptedDependentAdultAuthorization())
                 ? $next($request)
                 : $this->deny($request, 'verification.notice'),
             default => $this->deny($request, 'learner.eligibility.status'),

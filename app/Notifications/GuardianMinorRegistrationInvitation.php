@@ -25,10 +25,10 @@ final class GuardianMinorRegistrationInvitation extends Notification
         $name = trim((string) (($payload['first_name'] ?? '').' '.($payload['last_name'] ?? '')));
 
         return (new MailMessage)
-            ->subject('A Teenager requested guardian help')
+            ->subject('A dependent requested Guardian help')
             ->view('emails.guardian-minor-registration-invitation', [
-                'name' => $name !== '' ? $name : 'the Teenager',
-                'acceptUrl' => URL::route('minor.registration.accept', ['token' => $this->token]),
+                'name' => $name !== '' ? $name : 'the dependent',
+                'acceptUrl' => URL::route('minor.registration.review', ['token' => $this->token]),
                 'expiresAt' => $this->registrationRequest->expires_at,
             ]);
     }

@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Services\Persona\PersonaInquiryService;
+use DomainException;
+
 class SubmitLearnerIdentitySelfieRequest extends SubmitLearnerIdentityRequest
 {
     public function rules(): array
@@ -9,20 +12,20 @@ class SubmitLearnerIdentitySelfieRequest extends SubmitLearnerIdentityRequest
         $rules = parent::rules();
         $draft = session('learner_identity_document_draft', []);
         $case = $this->user()?->identityVerifications()->whereNull('superseded_at')->first();
-        if (config('persona.enabled') && $case?->pathway === 'teen'
-            && in_array($draft['document_type'] ?? null, ['school_id', 'institution_id'], true)) {
-            $attempt = app(\App\Services\Persona\PersonaInquiryService::class)->currentAttempt($this->user());
-            $rules['selfie'] = ['prohibited'];
-            $rules['confirm_submission'][] = function ($attribute, $value, $fail) use ($attempt, $draft): void {
-                if (! $attempt?->isPolicyEligible() || $attempt->local_document_type !== $draft['document_type']) {
-                    $fail('Complete selfie verification before submitting for review.');
-                }
-            };
-        }
-        if (($draft['document_type'] ?? null) === 'government_id' && isset($rules['selfie'])) {
-            $rules['selfie'][0] = 'required';
-        }
+        $rules['confirm_submission'][] = function ($attribute, $value, $fail) use ($case, $draft): void {
+            if (! $case || empty($draft['document_type'])) {
+                $fail('Save your identity evidence before camera verification.');
+                return;
+            }
+            try {
+                app(PersonaInquiryService::class)->assertLearnerMaySubmit(
+                    $this->user(), $case, $draft['document_type'], $draft['government_id_type'] ?? null,
+                );
+            } catch (DomainException $exception) {
+                $fail($exception->getMessage());
+            }
+        };
 
-        return array_intersect_key($rules, array_flip(['selfie', 'confirm_submission', 'submission_round']));
+        return array_intersect_key($rules, array_flip(['selfie', 'confirm_submission', 'submission_round', 'learner_note']));
     }
 }

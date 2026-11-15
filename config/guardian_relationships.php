@@ -14,6 +14,7 @@ return [
     ],
 
     'document_types' => [
+        'dependent_birth_record' => 'Dependent PSA Birth Certificate or Equivalent Civil Registry Record',
         'civil_registry_record' => 'Civil Registry or Parentage Record',
         'adoption_order' => 'Adoption-Related Order or Record',
         'court_order' => 'Court Order',
@@ -29,7 +30,7 @@ return [
         'biological_parent' => [
             'label' => 'Biological Parent Evidence Review',
             'document_types' => ['civil_registry_record', 'court_order', 'agency_document', 'other_official_document', 'other_supporting_document'],
-            'required_any_of' => ['civil_registry_record', 'court_order', 'agency_document'],
+            'required_any_of' => ['dependent_birth_record', 'civil_registry_record', 'court_order', 'agency_document'],
             'requires_circumstances' => false,
         ],
         'adoptive_parent' => [

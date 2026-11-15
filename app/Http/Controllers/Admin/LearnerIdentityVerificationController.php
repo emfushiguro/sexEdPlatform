@@ -30,14 +30,27 @@ class LearnerIdentityVerificationController extends Controller
                 'personaInquiries' => fn ($query) => $query->orderByDesc('attempt_number'),
             ]),
             'reviewer' => $case->reviewed_by ? User::find($case->reviewed_by) : null,
+            'verifiedRelationships' => $case->document_type === 'assisted_review'
+                ? $case->learner->guardianRelationships()->accessEligible()->with('parent')->get() : collect(),
+            'guardianRelationships' => $case->learner->guardianRelationships()->with('parent')->get(),
         ]);
     }
 
-    public function evidence(LearnerIdentityVerification $case, string $slot): BinaryFileResponse
+    public function evidence(Request $request, LearnerIdentityVerification $case, string $slot): BinaryFileResponse
     {
         abort_if($case->superseded_at !== null, 404);
         abort_unless(in_array($slot, ['identity_front', 'identity_back', 'selfie'], true), 404);
-        $evidence = $case->evidence()->where('slot', $slot)->firstOrFail();
+        $data = $request->validate(['round' => ['sometimes', 'integer', 'min:1']]);
+        if (isset($data['round']) && (int) $data['round'] !== (int) $case->submission_round) {
+            $snapshot = $case->audits()->where('submission_round', $data['round'])
+                ->whereIn('action', ['submitted', 'resubmitted', 'evidence_preserved'])->latest('id')->get()
+                ->map(fn ($audit) => collect($audit->correction_request['evidence'] ?? [])->firstWhere('slot', $slot))
+                ->first(fn ($evidence) => $evidence !== null);
+            abort_unless($snapshot, 404);
+            $evidence = (object) $snapshot;
+        } else {
+            $evidence = $case->evidence()->where('slot', $slot)->firstOrFail();
+        }
         abort_unless(in_array($evidence->mime_type, ['image/jpeg', 'image/png', 'image/webp'], true), 404);
         abort_unless(Storage::disk('local')->exists($evidence->storage_path), 404);
 
@@ -61,6 +74,13 @@ class LearnerIdentityVerificationController extends Controller
             'submission_round' => ['required', 'integer', 'min:1'],
             'confirm_government_issued' => $case->pathway === 'adult' && $case->government_id_type === 'other'
                 ? ['accepted'] : ['sometimes', 'accepted'],
+            'assisted_evidence_reviewed' => $case->document_type === 'assisted_review'
+                ? ['accepted'] : ['prohibited'],
+            'assisted_review_basis' => $case->document_type === 'assisted_review'
+                ? ['required', 'in:independent_photo_record,trusted_verifier_attestation'] : ['prohibited'],
+            'assisted_issuer_verified' => $case->document_type === 'assisted_review' ? ['accepted'] : ['prohibited'],
+            'assisted_issuer_verification' => $case->document_type === 'assisted_review'
+                ? ['required', 'string', 'min:20', 'max:2000'] : ['prohibited'],
             'persona_portrait_compared' => $case->sandbox_manual_review || ((config('persona.enabled', false) || $case->usesPersonaSelfie())
                 && $case->pathway === 'teen'
                 && in_array($case->document_type, ['school_id', 'institution_id'], true))
@@ -77,6 +97,10 @@ class LearnerIdentityVerificationController extends Controller
             $request->boolean('persona_portrait_compared'),
             $request->boolean('sandbox_philippine_id_confirmed'),
             $request->boolean('sandbox_id_type_confirmed'),
+            $request->boolean('assisted_evidence_reviewed'),
+            $request->input('assisted_review_basis'),
+            $request->boolean('assisted_issuer_verified'),
+            $request->input('assisted_issuer_verification'),
         );
 
         return redirect()->route('admin.parent-verifications.learners.show', $case)

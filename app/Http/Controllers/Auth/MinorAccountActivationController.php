@@ -22,6 +22,9 @@ final class MinorAccountActivationController extends Controller
     public function show(Request $request, MinorAccountHandoffService $handoffs): View
     {
         $code = (string) $request->query('code');
+        if ($code === '') {
+            return view('auth.teenager-activation-code');
+        }
         $handoff = $handoffs->findUsable($code, MinorAccountHandoff::PURPOSE_ACTIVATION);
         if ($handoff === null) {
             throw ValidationException::withMessages(['code' => 'This activation code is invalid or expired.']);
@@ -29,8 +32,11 @@ final class MinorAccountActivationController extends Controller
 
         return view('auth.teenager-activation', [
             'code' => $code,
+            'expiresAt' => $handoff->expires_at,
             'child' => $handoff->child,
             'profile' => $handoff->child?->learnerProfile,
+            'adultAuthority' => $handoff->child && ! $handoff->child->requiresGuardian() && $handoff->relationship
+                ? $handoffs->approvedAdultAuthority($handoff->relationship) : null,
         ]);
     }
 
@@ -41,6 +47,8 @@ final class MinorAccountActivationController extends Controller
                 (string) $request->validated('code'),
                 (string) $request->validated('username'),
                 (string) $request->validated('password'),
+                (bool) $request->validated('adult_consent', false),
+                (string) $request->validated('consent_method', 'self'),
             );
         } catch (Throwable) {
             throw ValidationException::withMessages(['code' => 'This activation code is invalid or expired.']);
@@ -53,7 +61,7 @@ final class MinorAccountActivationController extends Controller
             event(new Registered($child));
         }
 
-        return redirect()->route('learner.identity.create');
+        return redirect()->route($child->requiresGuardian() ? 'learner.identity.create' : 'password.recovery-codes.settings');
     }
 
     public function reissue(Request $request, User $child, MinorAccountHandoffService $handoffs): View
@@ -67,10 +75,14 @@ final class MinorAccountActivationController extends Controller
         try {
             [$handoff, $code] = $handoffs->issueActivation($relationship);
         } catch (Throwable) {
-            throw ValidationException::withMessages(['activation' => 'Activation is not currently available for this Teenager.']);
+            throw ValidationException::withMessages(['activation' => 'Activation is not currently available for this dependent.']);
         }
 
-        $guardian->notify(new TeenagerActivationReadyNotification($child->fresh(), $handoff, $code));
+        try {
+            $guardian->notify(new TeenagerActivationReadyNotification($child->fresh(), $handoff, $code));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
 
         return view('guardian.teenager-activation-code', compact('child', 'handoff', 'code'));
     }

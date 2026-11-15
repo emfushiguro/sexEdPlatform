@@ -86,10 +86,7 @@
         <div class="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900">
             <p class="font-semibold">Current Teenager authorization required</p>
             <p class="mt-1 text-xs">Record your current guardian authorization before this relationship can unlock the Teenager's protected access.</p>
-            <form method="POST" action="{{ route('parent.children.minor-authorization', $parentChildLink) }}" class="mt-3">
-                @csrf
-                <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">Authorize this Teenager</button>
-            </form>
+            <a href="{{ route('parent.relationship-verifications.show', $parentChildLink) }}" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-semibold text-white">Review authorization</a>
         </div>
     @endif
 
@@ -101,6 +98,7 @@
             <div>
                 <p class="font-semibold">Activation is ready</p>
                 <p class="mt-1 text-xs">Resend a one-time handoff so the Teenager can choose their own password.</p>
+                <a href="{{ route('parent.relationship-verifications.show', $parentChildLink) }}" class="mt-1 inline-block underline">Review relationship and authorization</a>
             </div>
             <form method="POST" action="{{ route('minor.activation.reissue', $child) }}">
                 @csrf
@@ -109,7 +107,9 @@
         </div>
     @endif
 
-    @php($pendingMinorPasswordRecoveries = $pendingMinorPasswordRecoveries ?? collect())
+    @php
+        $pendingMinorPasswordRecoveries = $pendingMinorPasswordRecoveries ?? collect();
+    @endphp
     @if($pendingMinorPasswordRecoveries->isNotEmpty())
         <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
             <p class="font-semibold">Account recovery requested</p>
@@ -148,12 +148,13 @@
                 Quiz Results
             </button>
             <button
-                @click="tab = 'achievements'"
-                :style="tab === 'achievements' ? 'border-color: #A30EB2; color: #A30EB2;' : ''"
+                @click="tab = 'certificates'"
+                :style="tab === 'certificates' ? 'border-color: #A30EB2; color: #A30EB2;' : ''"
                 class="px-4 py-2.5 text-sm whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors"
-                :class="tab === 'achievements' ? 'font-semibold' : ''">
-                Achievements
+                :class="tab === 'certificates' ? 'font-semibold' : ''">
+                Certificates
             </button>
+            <button type="button" @click="tab = 'activity'" :style="tab === 'activity' ? 'border-color: #A30EB2; color: #A30EB2;' : ''" :class="tab === 'activity' ? 'font-semibold' : ''" class="px-4 py-2.5 text-sm whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">Activity</button>
             @if($canApproveContent)
                 <button
                     @click="tab = 'approval'"
@@ -325,51 +326,31 @@
         </div>
 
         {{-- ── Achievements Tab ── --}}
-        <div x-show="tab === 'achievements'" x-cloak class="pt-6 space-y-6">
-            @php
-                $gamification = $achievements['gamification'];
-                $rewardLogs   = $achievements['rewardLogs'];
-            @endphp
+        <div x-show="tab === 'certificates'" x-cloak class="pt-6 space-y-3">
+            @forelse($certificates as $certificate)
+                <article class="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                    <h3 class="font-semibold text-gray-900 dark:text-white">{{ $certificate->module_title ?: 'Completed module' }}</h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ $certificate->certificate_number }}</p>
+                    <p class="mt-1 text-xs text-gray-500">Issued {{ $certificate->issued_date?->format('M d, Y') }}</p>
+                </article>
+            @empty
+                <p class="py-8 text-center text-sm text-gray-500">No certificates issued yet.</p>
+            @endforelse
+        </div>
 
-            {{-- Gamification summary --}}
-            <div class="grid grid-cols-3 gap-4">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 text-center">
-                    <p class="text-3xl font-bold" style="color: #A30EB2;">{{ $gamification?->level ?? 1 }}</p>
-                    <p class="text-xs text-gray-400 mt-1">Level</p>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 text-center">
-                    <p class="text-3xl font-bold" style="color: #730DB1;">{{ $gamification?->score ?? 0 }}</p>
-                    <p class="text-xs text-gray-400 mt-1">XP</p>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 text-center">
-                    <p class="text-3xl font-bold" style="color: #3B0CB1;">{{ $gamification?->streak_count ?? 0 }}</p>
-                    <p class="text-xs text-gray-400 mt-1">Day Streak</p>
-                </div>
-            </div>
-
-            {{-- Reward log --}}
-            @if($rewardLogs->isEmpty())
-                <div class="text-center py-8 text-gray-400">
-                    <p class="text-sm">No rewards earned yet.</p>
-                </div>
-            @else
-                <div class="space-y-3">
-                    @foreach($rewardLogs as $log)
-                        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 px-5 py-4 flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
-                                 style="background: linear-gradient(135deg, #f3e8ff, #ede9fe);">
-                                {{ $log->achievement?->icon ?? '🏆' }}
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                                    {{ $log->achievement?->title ?? 'Achievement' }}
-                                </p>
-                                <p class="text-xs text-gray-400">{{ $log->earned_at?->format('M d, Y') }}</p>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
+        <div x-show="tab === 'activity'" x-cloak class="pt-6">
+            <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">Up to 25 recorded sign-ins, lesson page views, learning completions and shared quiz completions. Saved access dates show the latest access to a learning item. Private messages and health information are excluded.</p>
+            <ol class="space-y-3">
+                @forelse($learningActivity as $event)
+                    <li class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $event['label'] }}</p>
+                        @if($event['title'])<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ $event['title'] }}</p>@endif
+                        <time class="mt-1 block text-xs text-gray-500" datetime="{{ $event['at']->toIso8601String() }}">{{ $event['at']->format('M d, Y g:i A') }}</time>
+                    </li>
+                @empty
+                    <li class="py-8 text-center text-sm text-gray-500">No learning activity has been recorded.</li>
+                @endforelse
+            </ol>
         </div>
 
         {{-- ── Content Approval Tab (only if can_approve_content) ── --}}

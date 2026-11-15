@@ -32,9 +32,9 @@ class ParentChildVerificationController extends Controller
 
     public function index(Request $request): View
     {
-        $type = $request->string('type')->toString() ?: 'children';
+        $type = $request->string('type')->toString() ?: 'learners';
         if (! in_array($type, ['parents', 'children', 'relationships', 'learners'], true)) {
-            $type = 'children';
+            $type = 'learners';
         }
 
         $status = $request->string('status')->toString() ?: VerificationStatus::Pending->value;
@@ -291,6 +291,7 @@ class ParentChildVerificationController extends Controller
                     ->orderByDesc('submission_round')
                     ->orderBy('display_order'),
                 'verificationAudits.actor',
+                'adultAuthorityRequests' => fn ($query) => $query->latest('id'),
             ]),
             'rejectionReasons' => GuardianRelationshipTypes::rejectionReasons(),
         ]);
@@ -302,7 +303,12 @@ class ParentChildVerificationController extends Controller
             return $this->respondError($request, 'Only relationship submissions under review can be approved.', 409);
         }
 
-        $request->validate(['current_evidence_round' => ['required', 'integer', 'min:1']]);
+        $request->validate([
+            'current_evidence_round' => ['required', 'integer', 'min:1'],
+            'dependent_identity_confirmed' => ['accepted'],
+            'guardian_identity_confirmed' => ['accepted'],
+            'relationship_evidence_confirmed' => ['accepted'],
+        ]);
         $this->relationshipVerificationService->approve($parentChildAccount, $request->user(), $request->integer('current_evidence_round'));
 
         return $this->respondSuccess(

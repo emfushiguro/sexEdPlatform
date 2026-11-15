@@ -201,7 +201,7 @@
             </div>
             <h3 class="mb-2 text-xl font-semibold text-gray-900">No dependents added yet</h3>
             <p class="max-w-sm mx-auto mb-6 text-sm text-gray-500">
-                Create a learning account for your dependent. You'll be able to monitor their progress and quiz results.
+                Create a learning account for your dependent. Access to their progress and quiz results depends on the permissions granted.
             </p>
             <a href="{{ route('parent.create-child') }}"
                style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
@@ -229,6 +229,7 @@
                         && $relationshipVerificationStatus === \App\Models\ParentChildAccount::VERIFICATION_VERIFIED
                         && $child->pivot->relationship_verified_at;
                     $isApprovedChild = $verificationStatus === 'approved' || (bool) $relationshipIsApproved;
+                    $canViewProgress = auth()->user()->can('view', $child);
                     $relationshipVerificationLabel = \App\Support\GuardianRelationshipTypes::statusLabel($relationshipVerificationStatus);
                     $relationshipVerificationNeedsAction = in_array($relationshipVerificationStatus, ['pending', 'rejected', 'resubmission_required'], true);
                     $relationshipVerificationClass = match ($relationshipVerificationStatus) {
@@ -282,27 +283,19 @@
                                 <span class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700">
                                     {{ $relationshipLabel }}
                                 </span>
-                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
-                                    {{ ucfirst($relationshipStatus) }}
-                                </span>
-                                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ $relationshipVerificationClass }}">
+                                @if($isApprovedChild) <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ $relationshipVerificationClass }}">
                                     {{ $relationshipVerificationLabel }}
-                                </span>
+                                </span> @endif
                             </div>
                         </div>
 
                         {{-- Consent + verification badges --}}
                         <div class="flex flex-col items-end gap-1">
-                            @if(!$child->learnerProfile?->requires_parental_consent)
-                                <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Teen</span>
+                            @if($child->birthdate)
+                                <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">{{ $child->requiresGuardian() ? 'Minor dependent' : 'Adult dependent' }}</span>
                             @endif
 
-                            @if(!$isApprovedChild)
-                                <span class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full {{ $verificationStatus === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700' }}">
-                                    {{ ucfirst($verificationStatus) }}
-                                </span>
-                            @endif
-                        </div>
+                    </div>
                     </div>
 
                     @if(!$isApprovedChild)
@@ -314,18 +307,13 @@
                                         Reason: {{ trim((string) preg_replace('/\s+/u', ' ', str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string) $child->pivot->verification_rejection_reason), ENT_QUOTES | ENT_HTML5, 'UTF-8')))) }}
                                     @endif
                                 @else
-                                    Pending verification.
+                                    {{ $relationshipVerificationStatus === 'under_review' ? 'Relationship review in progress.' : 'Pending verification: relationship and dependent details are being checked.' }}
                                 @endif
                             </p>
                         </div>
                     @endif
 
-                    @if(
-                        $child->pivot?->relationship_status === \App\Models\ParentChildAccount::STATUS_ACTIVE
-                        && $child->pivot?->relationship_verified_status === \App\Models\ParentChildAccount::VERIFICATION_VERIFIED
-                        && $child->pivot?->relationship_verified_at
-                        && $child->pivot?->can_manage_support_information
-                    )
+                    @if(auth()->user()->can('create', [\App\Models\DependentSupportProfile::class, $child]))
                         <div class="px-5 py-3 border-t border-gray-100">
                             <a href="{{ route('parent.children.support-information.edit', $child) }}"
                                class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
@@ -334,6 +322,7 @@
                         </div>
                     @endif
 
+                    @if($canViewProgress)
                     {{-- Stats row --}}
                     <div class="grid grid-cols-3 py-3 text-center border-t border-gray-100 divide-x divide-gray-100 bg-gray-50/50">
                         <div class="px-2">
@@ -345,8 +334,8 @@
                             <p class="text-xs text-gray-500">Quizzes</p>
                         </div>
                         <div class="px-2">
-                            <p class="text-lg font-bold text-purple-700">{{ $child->achievements()->count() }}</p>
-                            <p class="text-xs text-gray-500">Achievements</p>
+                            <p class="text-lg font-bold text-purple-700">{{ \App\Models\Certificate::where('user_id', $child->id)->count() }}</p>
+                            <p class="text-xs text-gray-500">Certificates</p>
                         </div>
                     </div>
 
@@ -382,17 +371,19 @@
                             </div>
                         </div>
                     @endif
+                    @endif
 
                     {{-- Actions --}}
                     <div class="flex items-center justify-between px-5 py-4 border-t border-gray-100">
                         @if($isApprovedChild)
                             <div class="flex items-center gap-2">
-                                @if($relationshipVerificationNeedsAction)
+                                @if($relationshipVerificationNeedsAction || $relationshipIsApproved)
                                     <a href="{{ route('parent.relationship-verifications.show', $child->pivot->id) }}"
                                        class="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-900">
-                                        Review Verification
+                                        {{ $relationshipVerificationNeedsAction ? 'Review Verification' : 'View relationship' }}
                                     </a>
                                 @endif
+                                @if($canViewProgress)
                                 <a href="{{ route('parent.children.show', $child->id) }}"
                                    class="inline-flex items-center gap-1.5 text-sm font-medium text-purple-700 hover:text-purple-900">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -401,12 +392,18 @@
                                     </svg>
                                     View Dependent Dashboard
                                 </a>
+                                @endif
                             </div>
 
+                            @if($canViewProgress)
                             <span class="text-sm text-gray-400">
                                 {{ $child->quizAttempts()->count() > 0 ? 'Quiz activity available' : 'No quiz data yet' }}
                             </span>
+                            @endif
                         @else
+                            @if($relationshipVerificationStatus !== 'not_required')
+                                <a href="{{ route('parent.relationship-verifications.show', $child->pivot->id) }}" class="text-sm font-medium text-purple-700 underline">View relationship status</a>
+                            @endif
                             @if($verificationStatus === 'rejected')
                                 <form method="POST"
                                       action="{{ route('parent.children.verification.resubmit', $child) }}"
@@ -431,8 +428,6 @@
                                         </button>
                                     </div>
                                 </form>
-                            @else
-                                <span class="text-sm text-gray-500">Pending verification</span>
                             @endif
                         @endif
                     </div>

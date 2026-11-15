@@ -63,6 +63,7 @@ class ProfileUpdateRequest extends FormRequest
         $user = $this->user();
 
         return $user?->isLearner()
-            && LearnerAgePolicy::classify($user->birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER;
+            && (LearnerAgePolicy::classify($user->birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER
+                || $user->hasAcceptedDependentAdultAuthorization());
     }
 }

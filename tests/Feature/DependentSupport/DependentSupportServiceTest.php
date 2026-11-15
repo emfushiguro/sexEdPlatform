@@ -180,7 +180,7 @@ class DependentSupportServiceTest extends TestCase
 
     public function test_guardian_access_is_independent_and_lifecycle_reset_is_scoped(): void
     {
-        $dependent = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $dependent = User::factory()->create(['status' => User::STATUS_ACTIVE, 'birthdate' => now()->subYears(25)->toDateString()]);
         $guardianA = User::factory()->create([
             'status' => User::STATUS_ACTIVE,
             'parent_verification_status' => 'approved',

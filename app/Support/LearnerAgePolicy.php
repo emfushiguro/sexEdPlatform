@@ -28,10 +28,8 @@ final class LearnerAgePolicy
 
         return match (true) {
             $age === null => self::UNCLASSIFIED,
-            $age < 10 => self::INELIGIBLE_UNDERAGE,
             $age <= 17 => self::ELIGIBLE_TEENAGER,
-            $age <= 100 => self::ELIGIBLE_ADULT,
-            default => self::INELIGIBLE_OVERAGE,
+            default => self::ELIGIBLE_ADULT,
         };
     }
 
@@ -61,6 +59,10 @@ final class LearnerAgePolicy
 
     public static function category(DateTimeInterface|string|null $birthdate, DateTimeInterface|string|null $asOf = null): ?string
     {
+        if (($age = self::age($birthdate, $asOf)) === null || $age < 10) {
+            return null;
+        }
+
         return match (self::classify($birthdate, $asOf)) {
             self::ELIGIBLE_TEENAGER => self::CATEGORY_TEENAGERS,
             self::ELIGIBLE_ADULT => self::CATEGORY_ADULTS,

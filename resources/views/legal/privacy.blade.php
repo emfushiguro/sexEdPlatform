@@ -26,15 +26,9 @@
                         </div>
                         <h1 class="text-2xl font-bold text-white">Privacy Policy</h1>
                     </div>
-                    <p class="text-purple-200 text-sm">Last Updated: {{ now()->format('F d, Y') }}</p>
+                    <p class="text-purple-200 text-sm">Last Updated: November 14, 2026</p>
                 </div>
-                <button onclick="history.back()"
-                    class="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-200">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                    </svg>
-                    Back
-                </button>
+                <x-legal-back-link class="bg-white/15 text-white hover:bg-white/25" />
             </div>
         </div>
     </header>
@@ -48,19 +42,16 @@
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">1. Introduction</h2>
                     <p class="text-gray-700 leading-relaxed">
                         {{ config('app.name') }} is committed to protecting your privacy and the privacy of children who use our platform. 
-                        This Privacy Policy explains how we collect, use, store, and protect personal information, with special attention 
-                        to compliance with the Children's Online Privacy Protection Act (COPPA) for users under 13 years of age.
+                        This Privacy Policy explains how we collect, use, store, and protect personal information, including information about minors and supported dependents.
                     </p>
                 </section>
 
                 <!-- COPPA Compliance -->
                 <section>
                     <div class="rounded-xl p-6 mb-6 border-l-4" style="background:#fdf4ff; border-color:#730DB1;">
-                        <h3 class="text-lg font-semibold mb-2" style="color:#730DB1;">COPPA Compliance Statement</h3>
+                        <h3 class="text-lg font-semibold mb-2" style="color:#730DB1;">Privacy for dependents</h3>
                         <p class="text-gray-700 leading-relaxed">
-                            We comply with the Children's Online Privacy Protection Act (COPPA). We do not knowingly collect personal 
-                            information from children under 13 without verifiable guardian consent. Guardians have full control over
-                            their child's account and can review, modify, or delete their child's information at any time.
+                            Minors need an approved Guardian relationship and authorization to register. Adult dependents may consent personally or through a separately reviewed representative. A Guardian's access is limited by the relationship and permissions; passwords and private messages are not shared through those permissions.
                         </p>
                     </div>
                 </section>
@@ -76,8 +67,8 @@
                             <ul class="list-disc list-inside pl-4 space-y-2 text-gray-700">
                                 <li><strong>Personal Information:</strong> First name, middle initial (optional), last name, suffix (optional)</li>
                                 <li><strong>Birthdate:</strong> To calculate age and determine appropriate content access</li>
-                                <li><strong>Email Address:</strong> Used for account access and verification</li>
-                                <li><strong>Password:</strong> Stored securely using industry-standard encryption</li>
+                                <li><strong>Email Address:</strong> Used for account access and verification when provided; a dependent's personal email is optional</li>
+                                <li><strong>Password:</strong> Stored as a password hash</li>
                                 <li><strong>Location:</strong> Region, province, city, barangay (for Philippine users)</li>
                                 <li><strong>Username:</strong> Created during profile completion</li>
                             </ul>
@@ -85,16 +76,17 @@
 
                         <!-- For Child Users -->
                         <div>
-                            <h3 class="text-lg font-medium mb-3" style="color:#A30EB2;">Additional Information for Users Under 13</h3>
+                            <h3 class="text-lg font-medium mb-3" style="color:#A30EB2;">Additional Information for Dependents</h3>
                             <ul class="list-disc list-inside pl-4 space-y-2 text-gray-700">
                                 <li><strong>Guardian Information:</strong> Guardian's name, email, and verified relationship</li>
-                                <li><strong>Guardian Consent:</strong> Timestamp of when guardian created the child account</li>
-                                <li><strong>Monitoring Permissions:</strong> Guardian's viewing and approval settings</li>
+                                <li><strong>Authorization:</strong> Who authorized registration, the notice versions accepted, and the time of authorization; representative authority evidence is reviewed separately</li>
+                                <li><strong>Verification:</strong> Identity documents or alternative evidence, a selfie, relationship evidence, and review decisions</li>
+                                <li><strong>Permissions:</strong> Guardian viewing and support-information settings</li>
+                                <li><strong>Optional Support Information:</strong> Support details supplied for the dependent's use, with access controlled by permissions</li>
                             </ul>
                             <div class="rounded-xl p-4 mt-3 bg-amber-50 border border-amber-200">
                                 <p class="text-sm text-yellow-800">
-                                    <strong>Note:</strong> Children under 13 cannot create accounts independently. A guardian or legal
-                                    guardian must register, verify their email, and create a child account on their behalf.
+                                    <strong>Note:</strong> Users under 18 require Guardian authorization. Adult dependents control optional Guardian access. Identity and relationship reviews are separate.
                                 </p>
                             </div>
                         </div>
@@ -105,7 +97,7 @@
                             <ul class="list-disc list-inside pl-4 space-y-2 text-gray-700">
                                 <li><strong>Learning Progress:</strong> Module enrollments, lesson completion, quiz attempts</li>
                                 <li><strong>Quiz Responses:</strong> Answers, scores, and timestamps</li>
-                                <li><strong>Achievements:</strong> Earned badges, certificates, and rewards</li>
+                                <li><strong>Achievements:</strong> Earned certificates</li>
                                 <li><strong>Activity Logs:</strong> Login times, content views, and interactions</li>
                             </ul>
                         </div>
@@ -119,9 +111,9 @@
                         <p class="leading-relaxed">We use collected information for the following purposes:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
                             <li><strong>Account Management:</strong> Create and maintain user accounts, authenticate users</li>
-                            <li><strong>Age-Appropriate Content:</strong> Display content suitable for the user's age bracket (5-12, 13-17, 18+)</li>
+                            <li><strong>Age-Appropriate Content:</strong> Use date of birth to determine the available learning category; content for users under 10 is currently limited</li>
                             <li><strong>Educational Services:</strong> Track progress, generate certificates, manage quizzes</li>
-                            <li><strong>Guardian Monitoring:</strong> Enable guardians to view their child's learning activities</li>
+                            <li><strong>Guardian Support:</strong> Share permitted information with an approved Guardian according to the relationship and access settings</li>
                             <li><strong>Communication:</strong> Send email verification, important notifications, and updates</li>
                             <li><strong>Platform Improvement:</strong> Analyze usage patterns to improve educational content</li>
                         </ul>
@@ -136,27 +128,23 @@
 
                 <!-- Guardian Rights (COPPA) -->
                 <section>
-                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">4. Guardian Rights & Choices (For Children Under 13)</h2>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">4. Guardian Access & Privacy Choices</h2>
                     <div class="space-y-3 text-gray-700">
-                        <p class="leading-relaxed">As a legal guardian, you have the right to:</p>
+                        <p class="leading-relaxed">A verified, eligible Guardian automatically has access to view, edit and remove a minor dependent's optional Health &amp; Support Information. Adult dependents control this sharing through their access settings. Learning access follows the relationship permissions. The platform may allow a Guardian to:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
-                            <li><strong>Review:</strong> Access all personal information collected from your child</li>
-                            <li><strong>Modify:</strong> Update or correct your child's information at any time</li>
-                            <li><strong>Delete:</strong> Request permanent deletion of your child's account and all associated data</li>
+                            <li><strong>Review:</strong> View permitted learning and support information</li>
+                            <li><strong>Requests:</strong> Contact support about access, correction, or deletion requests</li>
                             <li><strong>Monitor:</strong> View your child's:
                                 <ul class="list-circle list-inside pl-8 mt-2 space-y-1">
                                     <li>Learning progress and module completion status</li>
                                     <li>Quiz attempts, answers, and scores</li>
-                                    <li>Earned achievements and certificates</li>
-                                    <li>Activity logs and login history</li>
+                                    <li>Earned certificates</li>
                                 </ul>
                             </li>
-                            <li><strong>Control:</strong> Set permissions for content access (when implemented)</li>
-                            <li><strong>Refuse Further Collection:</strong> Stop data collection by deleting the child's account</li>
+                            <li><strong>Content:</strong> Review content requests when the relationship permits it</li>
                         </ul>
                         <p class="leading-relaxed mt-4">
-                            To exercise these rights, log in to your guardian account and visit the "My Children" dashboard, or
-                            contact us at support@example.com.
+                            Adult dependents can grant or revoke optional Guardian access in account settings. Guardians do not receive the dependent's password or private messages through these permissions. For privacy requests, use the platform's help page.
                         </p>
                     </div>
                 </section>
@@ -167,9 +155,9 @@
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">We DO NOT sell or rent personal information. We may share information only in these limited cases:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
-                            <li><strong>With Guardians:</strong> Guardians can view their child's learning data and activity</li>
+                            <li><strong>With Guardians:</strong> Approved Guardians can view information permitted by the relationship and its settings</li>
                             <li><strong>With Instructors:</strong> Instructors can view learner progress for courses they manage</li>
-                            <li><strong>Service Providers:</strong> Email delivery (Gmail SMTP), hosting services - only as necessary to operate the platform</li>
+                            <li><strong>Service Providers:</strong> Email delivery, hosting, and identity verification providers when needed to operate the platform</li>
                             <li><strong>Legal Requirements:</strong> If required by law, court order, or government request</li>
                             <li><strong>Safety:</strong> To protect the safety of users or prevent harmful activity</li>
                         </ul>
@@ -205,18 +193,17 @@
                 <section>
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">7. Data Retention</h2>
                     <div class="space-y-3 text-gray-700">
-                        <p class="leading-relaxed">We retain personal information for as long as necessary to provide our services:</p>
+                        <p class="leading-relaxed">We retain account, verification, authorization, and review records according to the applicable retention and deletion requirements. Contact support through the platform for information about a particular record.</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
-                            <li><strong>Active Accounts:</strong> Data is retained while the account is active</li>
-                            <li><strong>Inactive Accounts:</strong> Accounts inactive for 2+ years may be deleted after notification</li>
-                            <li><strong>Deletion Requests:</strong> When you delete an account, personal information is removed within 30 days</li>
-                            <li><strong>Legal Requirements:</strong> Some data may be retained longer if required by law</li>
+                            <li><strong>Active Accounts:</strong> Data is retained while needed to operate the account</li>
+                            <li><strong>Deletion Requests:</strong> A user or authorized representative may contact support about a request</li>
+                            <li><strong>Legal Requirements:</strong> Some records may need to be retained longer</li>
                         </ul>
                         <p class="leading-relaxed mt-4">
-                            Guardians can request immediate deletion of child accounts at any time.
+                            Guardians may contact support about deletion requests for dependents they are authorized to represent.
                         </p>
                         <p class="leading-relaxed mt-4">
-                            For learner identity verification, we collect an ID and selfie to check that the account belongs to the learner. Only authorized reviewers can access these images for manual review. Identity evidence follows the personal-information retention and deletion rules above, including any legal requirements.
+                            For learner identity verification, we collect an ID or alternative evidence and a selfie. Authorized reviewers may also review relationship and representative-authority evidence. These records follow the applicable retention and deletion requirements, including legal requirements.
                         </p>
                     </div>
                 </section>
@@ -227,7 +214,7 @@
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">We send emails for:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
-                            <li><strong>Account Verification:</strong> Required to verify email ownership (13+ users and guardians)</li>
+                            <li><strong>Account Verification:</strong> Used to verify email ownership when an email is provided</li>
                             <li><strong>Important Notifications:</strong> Security alerts, policy changes, account issues</li>
                             <li><strong>Educational Updates:</strong> Course completion notifications, achievement unlocks</li>
                         </ul>
@@ -252,7 +239,7 @@
                             <li><strong>Remember Me:</strong> If you choose to stay logged in (optional)</li>
                         </ul>
                         <p class="leading-relaxed mt-4">
-                            We do NOT use third-party tracking cookies, analytics, or advertising cookies.
+                            Embedded services or analytics may use additional cookies. Their use depends on the services enabled for the platform.
                         </p>
                     </div>
                 </section>
@@ -270,7 +257,7 @@
                             <li><strong>Withdraw Consent:</strong> Delete your account if you no longer want to use the platform</li>
                         </ul>
                         <p class="leading-relaxed mt-4">
-                            Contact us at support@example.com to exercise these rights.
+                            Use the <a class="underline" href="{{ route('help.index') }}">help page</a> to contact us about these rights.
                         </p>
                     </div>
                 </section>
@@ -292,8 +279,7 @@
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">12. International Users</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
-                            This platform is designed for users in the Philippines. By using the platform, you consent to the transfer 
-                            and storage of your information in accordance with Philippine data protection laws and COPPA (if applicable).
+                            This platform is designed for users in the Philippines. Information may be processed by the service providers described in this notice.
                         </p>
                     </div>
                 </section>
@@ -303,8 +289,7 @@
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">13. Changes to This Privacy Policy</h2>
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">
-                            We may update this Privacy Policy from time to time. Significant changes will be communicated via email. 
-                            For changes affecting children's privacy, we will obtain new guardian consent if required by law.
+                            We may update this Privacy Policy. We may provide notice through the platform or by email where available, and request renewed consent where required.
                         </p>
                         <p class="leading-relaxed">
                             The "Last Updated" date at the top of this page indicates when the policy was last revised.
@@ -322,12 +307,10 @@
                         </p>
                         <div class="rounded-xl p-4 mt-3 border" style="border-color: #730DB1; background: #fdf4ff;">
                             <p class="font-semibold" style="color: #730DB1;">{{ config('app.name') }} Support</p>
-                            <p class="text-gray-600 text-sm mt-1">Email: support@example.com</p>
-                            <p class="text-gray-600 text-sm mt-1">Response Time: Within 48 hours</p>
+                            <p class="text-gray-600 text-sm mt-1"><a class="underline" href="{{ route('help.index') }}">Open the help page</a></p>
                         </div>
                         <p class="leading-relaxed mt-4 text-sm">
-                            <strong>For Guardians:</strong> To exercise your COPPA rights regarding your child's information,
-                            include "COPPA Request" in your email subject line for priority handling.
+                            Guardians and authorized representatives can use the help page for questions about a dependent's information.
                         </p>
                     </div>
                 </section>
@@ -347,7 +330,7 @@
 
         <!-- Footer Links -->
         <div class="mt-8 text-center space-x-4 pb-10 text-sm">
-            <button onclick="history.back()" class="font-medium hover:opacity-75 transition-opacity" style="color: #730DB1;">← Go Back</button>
+            <x-legal-back-link style="color: #730DB1;" />
             <span class="text-gray-400">•</span>
             <a href="{{ route('terms') }}" class="font-medium hover:opacity-75 transition-opacity" style="color: #730DB1;">Terms of Service</a>
         </div>

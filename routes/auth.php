@@ -10,15 +10,10 @@ use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\GuardianIdentityVerificationController;
 use App\Http\Controllers\Auth\GuardianOnboardingController;
-use App\Http\Controllers\Auth\InstructorAuthController;
 use App\Http\Controllers\Auth\InstructorApplicantRegistrationController;
-use App\Http\Controllers\InstructorApplication\PersonalInformationController;
-use App\Http\Controllers\InstructorApplication\DashboardController;
-use App\Http\Controllers\InstructorApplication\ApplicationController as InstructorApplicationController;
-use App\Http\Controllers\InstructorApplication\DocumentController as InstructorApplicationDocumentController;
-use App\Http\Controllers\InstructorApplication\PersonaIdentityController as InstructorPersonaIdentityController;
-use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
+use App\Http\Controllers\Auth\InstructorAuthController;
 use App\Http\Controllers\Auth\LearnerEligibilityStatusController;
+use App\Http\Controllers\Auth\LearnerIdentityVerificationController;
 use App\Http\Controllers\Auth\MinorPasswordRecoveryController;
 use App\Http\Controllers\Auth\MinorRegistrationRequestController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -30,10 +25,22 @@ use App\Http\Controllers\Auth\PersonaIdentityController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\RegistrationTempDocumentController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\InstructorApplication\ApplicationController as InstructorApplicationController;
+use App\Http\Controllers\InstructorApplication\DashboardController;
+use App\Http\Controllers\InstructorApplication\DocumentController as InstructorApplicationDocumentController;
+use App\Http\Controllers\InstructorApplication\PersonaIdentityController as InstructorPersonaIdentityController;
+use App\Http\Controllers\InstructorApplication\PersonalInformationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware('auth')->group(function () {
+    Route::get('account/recovery-codes', [\App\Http\Controllers\Auth\AdultRecoveryCodeController::class, 'settings'])->name('password.recovery-codes.settings');
+    Route::post('account/recovery-codes', [\App\Http\Controllers\Auth\AdultRecoveryCodeController::class, 'generate'])->middleware('throttle:5,1')->name('password.recovery-codes.generate');
+});
+
 Route::middleware('guest')->group(function () {
+    Route::get('forgot-password/recovery-code', [\App\Http\Controllers\Auth\AdultRecoveryCodeController::class, 'create'])->name('password.recovery-code.create');
+    Route::post('forgot-password/recovery-code', [\App\Http\Controllers\Auth\AdultRecoveryCodeController::class, 'reset'])->middleware('throttle:5,1')->name('password.recovery-code.reset');
     Route::middleware('direct.instructor.enabled')->group(function () {
         Route::get('instructor/apply', [InstructorApplicantRegistrationController::class, 'createPersonal'])
             ->name('instructor-application.register.personal');
@@ -151,9 +158,17 @@ Route::get('teenager/guardian-request', [MinorRegistrationRequestController::cla
 Route::post('teenager/guardian-request', [MinorRegistrationRequestController::class, 'store'])
     ->middleware('throttle:minor-registration-request')
     ->name('minor.registration.store');
+Route::get('teenager/guardian-invitation/{token}', [MinorRegistrationRequestController::class, 'review'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:5,1')
+    ->name('minor.registration.review');
 Route::get('teenager/guardian-request/{token}', [MinorRegistrationRequestController::class, 'accept'])
     ->where('token', '[A-Za-z0-9]+')
     ->name('minor.registration.accept');
+Route::post('teenager/guardian-request/{token}/claim', [MinorRegistrationRequestController::class, 'claim'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware(['auth', 'verified', 'throttle:5,1'])
+    ->name('minor.registration.claim');
 
 Route::get('registration/temp-document/{flow}/{step}', [RegistrationTempDocumentController::class, 'show'])
     ->whereIn('flow', ['parent', 'child'])
@@ -174,6 +189,11 @@ Route::get('parent/approval/{id}/{hash}', ParentApprovalLinkController::class)
     ->name('parent.verification.approval-link');
 
 Route::middleware('auth')->group(function () {
+    Route::get('dependent/adult-consent', [\App\Http\Controllers\Auth\AdultDependentConsentController::class, 'show'])
+        ->name('dependent.adult-consent.show');
+    Route::post('dependent/adult-consent', [\App\Http\Controllers\Auth\AdultDependentConsentController::class, 'store'])
+        ->name('dependent.adult-consent.store');
+
     Route::get('learner/eligibility-status', LearnerEligibilityStatusController::class)
         ->name('learner.eligibility.status');
 
@@ -207,7 +227,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/submit', [InstructorApplicationController::class, 'submit'])->name('submit');
             Route::get('/submitted', [InstructorApplicationController::class, 'submitted'])->name('submitted');
             Route::delete('/withdraw', [InstructorApplicationController::class, 'withdraw'])->name('withdraw');
-        Route::get('/{application}/documents/{slot}', [InstructorApplicationDocumentController::class, 'show'])->name('documents.show');
+            Route::get('/{application}/documents/{slot}', [InstructorApplicationDocumentController::class, 'show'])->name('documents.show');
         });
     });
 

@@ -83,7 +83,7 @@ class TeenagerAccessGateTest extends TestCase
             ->assertRedirect(route('learner.eligibility.status'));
         $this->get(route('learner.eligibility.status'))
             ->assertOk()
-            ->assertSee('cannot continue')
+            ->assertSee('A Guardian must help')
             ->assertDontSee($underage->birthdate->toDateString());
     }
 

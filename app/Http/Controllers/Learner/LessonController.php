@@ -383,6 +383,8 @@ class LessonController extends Controller
             }
         }
 
+        app(\App\Services\GuardianLearningActivityService::class)->recordLessonView($user, $lesson);
+
         return view('learner.lessons.show', compact(
             'lesson',
             'module',

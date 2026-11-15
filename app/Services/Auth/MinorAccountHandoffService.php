@@ -3,6 +3,7 @@
 namespace App\Services\Auth;
 
 use App\Models\MinorAccountHandoff;
+use App\Models\AdultDependentAuthorityRequest;
 use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Notifications\TeenagerPasswordRecoveryRequestedNotification;
@@ -11,6 +12,7 @@ use App\Support\LearnerAgePolicy;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -73,9 +75,9 @@ final class MinorAccountHandoffService
             ->first();
     }
 
-    public function consumeActivation(string $code, string $username, string $password): User
+    public function consumeActivation(string $code, string $username, string $password, bool $adultConsent = false, string $consentMethod = 'self'): User
     {
-        return DB::transaction(function () use ($code, $username, $password): User {
+        return DB::transaction(function () use ($code, $username, $password, $adultConsent, $consentMethod): User {
             $handoff = MinorAccountHandoff::query()
                 ->where('purpose', MinorAccountHandoff::PURPOSE_ACTIVATION)
                 ->where('token_hash', $this->digestForStorage($this->normalizeCode($code)))
@@ -101,12 +103,40 @@ final class MinorAccountHandoffService
                 throw new InvalidArgumentException('This activation code is invalid or expired.');
             }
 
+            $isMinor = LearnerAgePolicy::classify($child->birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER;
+            $authority = null;
+            if (! $isMinor) {
+                if ($consentMethod === 'representative') {
+                    $authority = $this->approvedAdultAuthority($relationship);
+                    if ($authority === null) {
+                        throw new InvalidArgumentException('Representative authority has not been approved.');
+                    }
+                } elseif ($consentMethod !== 'self' || ! $adultConsent) {
+                    throw new InvalidArgumentException('The dependent must personally accept the adult account notice.');
+                }
+            }
+            if (! $isMinor && ! DB::table('dependent_adult_authorization_records')->where('dependent_user_id', $child->id)->exists()) {
+                DB::table('dependent_adult_authorization_records')->insert([
+                    'dependent_user_id' => $child->id,
+                    'parent_child_account_id' => $relationship->id,
+                    'authorization_method' => $authority ? 'representative' : 'self',
+                    'authorized_by_user_id' => $authority?->guardian_user_id ?? $child->id,
+                    'authority_request_id' => $authority?->id,
+                    'policy_version' => config('learner_age_policy.adult_dependent_consent_version', 'v1'),
+                    'privacy_notice_hash' => $authority?->privacy_notice_hash ?? hash_file('sha256', resource_path('views/legal/privacy.blade.php')),
+                    'terms_hash' => $authority?->terms_hash ?? hash_file('sha256', resource_path('views/legal/terms.blade.php')),
+                    'accepted_at' => $authority?->authorized_at ?? now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             $child->forceFill([
                 'password' => Hash::make($password),
                 'minor_account_activation_required' => false,
                 'minor_account_activated_at' => now(),
-                'minor_privacy_notice_version' => config('learner_age_policy.guardian_consent_version'),
-                'minor_privacy_accepted_at' => now(),
+                'minor_privacy_notice_version' => $isMinor ? config('learner_age_policy.guardian_consent_version') : null,
+                'minor_privacy_accepted_at' => $isMinor ? now() : null,
             ])->save();
             $profile->forceFill(['username' => $username])->save();
             $this->identityRequirement->createForNewLearner($child->fresh());
@@ -244,11 +274,48 @@ final class MinorAccountHandoffService
 
     private function assertActivationEligible(ParentChildAccount $relationship, User $child): void
     {
-        if (LearnerAgePolicy::classify($child->birthdate) !== LearnerAgePolicy::ELIGIBLE_TEENAGER
+        $isMinor = LearnerAgePolicy::classify($child->birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER;
+        if (! in_array(LearnerAgePolicy::classify($child->birthdate), [LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::ELIGIBLE_ADULT], true)
             || ! $child->minor_account_activation_required
-            || ! ParentChildAccount::query()->whereKey($relationship->id)->minorAccessEligible()->exists()) {
+            || $relationship->relationship_verified_at === null
+            || ($isMinor && ($relationship->minor_registration_authorized_at === null
+                || $relationship->minor_registration_authorized_at->lt($relationship->relationship_verified_at)
+                || ! DB::table('minor_authorization_records')
+                ->where('parent_child_account_id', $relationship->id)
+                ->where('guardian_user_id', $relationship->parent_user_id)
+                ->where('consent_version', config('learner_age_policy.guardian_consent_version'))
+                ->where('accepted_at', '>=', $relationship->relationship_verified_at)
+                ->exists()))
+            || ! ParentChildAccount::query()->whereKey($relationship->id)->accessEligible()->exists()) {
             throw new InvalidArgumentException('This activation code is invalid or expired.');
         }
+    }
+
+    public function approvedAdultAuthority(ParentChildAccount $relationship): ?AdultDependentAuthorityRequest
+    {
+        if ($relationship->relationship_verified_at === null
+            || ! ParentChildAccount::query()->accessEligible()->whereKey($relationship->id)->exists()) {
+            return null;
+        }
+        $authority = $relationship->adultAuthorityRequests()->where('status', 'approved')
+            ->where('guardian_user_id', $relationship->parent_user_id)
+            ->whereNotNull('reviewed_by')->whereNotNull('reviewed_at')
+            ->where('authorized_at', '>=', $relationship->relationship_verified_at)
+            ->where('policy_version', config('learner_age_policy.adult_dependent_consent_version'))
+            ->latest('id')->first();
+        if (! $authority || ! Storage::disk('local')->exists($authority->document_path)) {
+            return null;
+        }
+        $documentHash = hash_file('sha256', Storage::disk('local')->path($authority->document_path));
+        $privacyHash = hash_file('sha256', resource_path('views/legal/privacy.blade.php'));
+        $termsHash = hash_file('sha256', resource_path('views/legal/terms.blade.php'));
+
+        return $relationship->child !== null
+            && hash_equals($authority->dependent_identity_hash, AdultDependentAuthorityRequest::identityHash($relationship->child))
+            && is_string($documentHash) && is_string($privacyHash) && is_string($termsHash)
+            && hash_equals($authority->document_hash, $documentHash)
+            && hash_equals($authority->privacy_notice_hash, $privacyHash)
+            && hash_equals($authority->terms_hash, $termsHash) ? $authority : null;
     }
 
     private function isPasswordRecoveryEligible(
@@ -257,7 +324,6 @@ final class MinorAccountHandoffService
         User $guardian,
     ): bool {
         return $child->isLearner()
-            && $child->email === null
             && $child->status === User::STATUS_ACTIVE
             && LearnerAgePolicy::classify($child->birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER
             && $child->hasCompletedMinorActivation()

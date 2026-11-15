@@ -935,6 +935,15 @@ class User extends Authenticatable implements MustVerifyEmail
             || $this->minor_account_activated_at !== null;
     }
 
+    public function hasAcceptedDependentAdultAuthorization(): bool
+    {
+        return $this->isLearner()
+            && LearnerAgePolicy::classify($this->birthdate) === LearnerAgePolicy::ELIGIBLE_ADULT
+            && ! $this->minor_account_activation_required
+            && \Illuminate\Support\Facades\DB::table('dependent_adult_authorization_records')
+                ->where('dependent_user_id', $this->id)->exists();
+    }
+
     public function outgoingParentInvitations()
     {
         return $this->hasMany(ParentChildInvitation::class, 'inviter_parent_user_id');

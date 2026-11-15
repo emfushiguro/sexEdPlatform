@@ -124,6 +124,17 @@ class TeenagerAccountActivationTest extends TestCase
             'minor_registration_authorized_by_user_id' => $guardian->id,
         ]);
 
+        \Illuminate\Support\Facades\DB::table('minor_authorization_records')->insert([
+            'parent_child_account_id' => $relationship->id,
+            'guardian_user_id' => $guardian->id,
+            'consent_version' => config('learner_age_policy.guardian_consent_version'),
+            'privacy_notice_hash' => str_repeat('a', 64),
+            'terms_hash' => str_repeat('b', 64),
+            'accepted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         return [$guardian, $child, $relationship];
     }
 }

@@ -12,6 +12,7 @@
         'school_id' => 'School ID',
         'institution_id' => 'Institution ID',
         'government_id' => data_get(config('guardian_identity.id_types', []), $case->government_id_type.'.label', 'Government ID'),
+        'assisted_review' => 'Alternative evidence — assisted review',
         default => 'Not submitted',
     };
     $guidance = $case->pathway === 'adult'
@@ -20,7 +21,7 @@
     $correctionItems = $case->evidence_source === 'persona'
         ? ['persona_identity' => 'ID and selfie']
         : array_filter([
-            'identity_front' => 'ID front',
+            'identity_front' => $case->document_type === 'assisted_review' ? 'Alternative evidence' : 'ID front',
             'identity_back' => $images->has('identity_back') ? 'ID back' : null,
             'selfie' => 'Selfie',
         ]);
@@ -50,20 +51,42 @@
         @if($case->rejection_reason)<p class="p-4 mt-5 text-sm rounded-xl bg-rose-50 text-rose-800"><strong>Rejection reason:</strong> {{ $case->rejection_reason }}</p>@endif
     </section>
 
-    @include('admin.parent-verifications.partials.persona-summary', [
-        'compactPersonaSummary' => true,
-        'personaAttempts' => $case->personaInquiries,
-        'sandboxManualReview' => $case->sandbox_manual_review,
-    ])
+    @if($guardianRelationships->isNotEmpty())
+        <section class="rounded-2xl border border-purple-200 bg-purple-50 p-5 text-sm text-purple-950">
+            <h2 class="font-semibold">Guardian and relationship evidence</h2>
+            <p class="mt-2">Review the linked Guardian and current relationship evidence alongside this dependent's identity evidence.</p>
+            @foreach($guardianRelationships as $relationship)
+                <div class="mt-3 rounded-xl border border-purple-100 bg-white p-3">
+                    <p class="font-semibold">{{ $relationship->parent?->full_name ?? 'Guardian unavailable' }}</p>
+                    <p>Guardian identity: {{ $relationship->parent?->parent_verification_status ?? 'Not verified' }} · Relationship: {{ $relationship->relationship_verified_status }} · Status: {{ $relationship->relationship_status }}</p>
+                    <a class="mt-2 inline-block font-semibold underline" href="{{ route('admin.parent-verifications.relationships.show', $relationship) }}">Open relationship and birth-record evidence</a>
+                </div>
+            @endforeach
+        </section>
+    @endif
+
+    <section class="space-y-5 rounded-2xl border border-gray-200 bg-white p-5">
+    <h2 class="text-lg font-semibold text-gray-900">ID document</h2>
+
+    @if($case->document_type === 'assisted_review')
+        <section class="p-5 text-sm text-amber-900 border border-amber-200 rounded-2xl bg-amber-50">
+            <h2 class="font-semibold">Assisted identity review</h2>
+            <p class="mt-2">Compare the independent photo record or verified identity statement and selfie with the current approved birth and relationship evidence. Verify its issuer using an independently obtained official channel and record the result. If independent evidence or verification is unavailable, request changes; do not approve based on a selfie or relationship alone.</p>
+            @foreach($verifiedRelationships as $relationship)
+                <a class="block mt-2 font-semibold underline" href="{{ route('admin.parent-verifications.relationships.show', $relationship) }}">Review {{ $relationship->parent?->name }}'s relationship evidence</a>
+            @endforeach
+        </section>
+    @endif
 
     @if($case->evidence_source === 'persona')
     @else
     <h2 class="text-lg font-semibold text-gray-900">Submitted to Conscious Connections</h2>
     <section class="grid gap-6 lg:grid-cols-3">
-        @foreach(['identity_front' => 'ID front', 'identity_back' => 'ID back', 'selfie' => 'Selfie'] as $slot => $label)
+        @foreach(['identity_front' => $case->document_type === 'assisted_review' ? 'Alternative evidence' : 'ID front', 'identity_back' => 'ID back'] as $slot => $label)
             @if($images->has($slot) && ($slot !== 'selfie' || ! $case->usesPersonaSelfie()))
                 <div class="p-4 bg-white border border-gray-200 shadow-sm rounded-2xl">
                     <h2 class="mb-3 font-semibold text-gray-900">{{ $label }}</h2>
+                    @if($slot !== 'selfie')<p class="mb-2 text-sm text-gray-600">Submitted ID: {{ $documentLabel }}@if($case->government_id_type === 'other') — {{ $case->government_id_type_other }}@endif</p>@endif
                     <a href="{{ route('admin.parent-verifications.learners.evidence', [$case, $slot]) }}" target="_blank" rel="noopener" aria-label="Open {{ $label }} full size">
                         <img src="{{ route('admin.parent-verifications.learners.evidence', [$case, $slot]) }}" alt="{{ $label }} evidence" class="object-contain w-full bg-gray-100 max-h-96 rounded-xl">
                     </a>
@@ -73,6 +96,24 @@
         @endforeach
     </section>
     @endif
+    </section>
+
+    @include('admin.parent-verifications.partials.persona-summary', [
+        'compactPersonaSummary' => true,
+        'personaAttempts' => $case->personaInquiries,
+        'sandboxManualReview' => $case->sandbox_manual_review,
+    ])
+
+    @if($images->has('selfie') && ! $case->usesPersonaSelfie() && $case->evidence_source !== 'persona')
+        <section class="rounded-2xl border border-gray-200 bg-white p-5">
+            <h2 class="mb-3 text-lg font-semibold text-gray-900">Selfie</h2>
+            <a href="{{ route('admin.parent-verifications.learners.evidence', [$case, 'selfie']) }}" target="_blank" rel="noopener" aria-label="Open selfie full size">
+                <img src="{{ route('admin.parent-verifications.learners.evidence', [$case, 'selfie']) }}" alt="Selfie evidence" class="max-h-96 w-full rounded-xl bg-gray-100 object-contain">
+            </a>
+        </section>
+    @endif
+
+    <section x-data="{}" class="rounded-2xl border border-gray-200 bg-white p-5">
 
         @if($case->status === 'pending' && $case->superseded_at === null)
             <div class="flex flex-wrap gap-3 pt-6 mt-6 border-t border-gray-100">
@@ -88,7 +129,7 @@
             </div>
 
             <dialog x-ref="approveDialog" role="dialog" aria-modal="true" data-testid="approve-identity-dialog" @click.self="$refs.approveDialog.close()"
-                    @if($errors->hasAny(['confirm_government_issued', 'sandbox_philippine_id_confirmed', 'sandbox_id_type_confirmed', 'persona_portrait_compared'])) x-init="$nextTick(() => $refs.approveDialog.showModal())" @endif
+                    @if($errors->hasAny(['confirm_government_issued', 'sandbox_philippine_id_confirmed', 'sandbox_id_type_confirmed', 'persona_portrait_compared', 'assisted_evidence_reviewed', 'assisted_review_basis', 'assisted_issuer_verified', 'assisted_issuer_verification'])) x-init="$nextTick(() => $refs.approveDialog.showModal())" @endif
                     aria-labelledby="approve-identity-title" aria-describedby="approve-identity-description"
                     class="m-auto max-h-[90vh] w-[min(92vw,34rem)] overflow-y-auto rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
                 <div class="p-6 sm:p-7">
@@ -106,6 +147,26 @@
                         <form method="POST" action="{{ route('admin.parent-verifications.learners.approve', $case) }}" class="mt-6 space-y-5">
                             @csrf
                             <input type="hidden" name="submission_round" value="{{ $case->submission_round }}">
+                            @if($case->document_type === 'assisted_review')
+                                <label class="block text-sm font-semibold text-gray-800" for="assisted_review_basis">How was identity independently corroborated?</label>
+                                <select id="assisted_review_basis" name="assisted_review_basis" required class="w-full rounded-xl border border-gray-300 p-3 text-sm">
+                                    <option value="">Select the review basis</option>
+                                    <option value="independent_photo_record" @selected(old('assisted_review_basis') === 'independent_photo_record')>Compared a photo on an independent official or school record</option>
+                                    <option value="trusted_verifier_attestation" @selected(old('assisted_review_basis') === 'trusted_verifier_attestation')>Checked a signed attestation from an independent school, agency, or local authority</option>
+                                </select>
+                                @error('assisted_review_basis')<p class="text-sm text-rose-700">{{ $message }}</p>@enderror
+                                <label class="flex items-start gap-3 p-4 text-sm text-gray-700 border border-amber-200 rounded-xl bg-amber-50">
+                                    <input type="checkbox" name="assisted_evidence_reviewed" value="1" required @checked(old('assisted_evidence_reviewed')) class="mt-0.5 h-5 w-5 rounded border-gray-300 text-emerald-700">
+                                    <span>I reviewed the alternative supporting evidence and selfie. I did not treat a selfie or Guardian relationship alone as proof of identity.</span>
+                                </label>
+                                @error('assisted_evidence_reviewed')<p class="text-sm text-rose-700">{{ $message }}</p>@enderror
+                                <label class="block text-sm font-semibold text-gray-800" for="assisted_issuer_verification">Independent issuer verification</label>
+                                <p id="issuer-verification-help" class="text-sm text-gray-600">Record the issuing school, agency or authority; the official contact channel you obtained independently; how and when you checked; and what the issuer confirmed about this person's identity and record. Contact details supplied only by the applicant are insufficient.</p>
+                                <textarea id="assisted_issuer_verification" name="assisted_issuer_verification" required minlength="20" maxlength="2000" rows="4" aria-describedby="issuer-verification-help" class="w-full rounded-xl border-gray-300 p-3">{{ old('assisted_issuer_verification') }}</textarea>
+                                @error('assisted_issuer_verification')<p class="text-sm text-rose-700">{{ $message }}</p>@enderror
+                                <label class="flex items-start gap-3 text-sm text-gray-700"><input type="checkbox" name="assisted_issuer_verified" value="1" required @checked(old('assisted_issuer_verified')) class="mt-1 rounded border-gray-300 text-emerald-700"><span>I independently verified the issuer and corroborated the learner's identity. I compared the current selfie with the independent photo or verified identity statement.</span></label>
+                                @error('assisted_issuer_verified')<p class="text-sm text-rose-700">{{ $message }}</p>@enderror
+                            @endif
                             @if($case->pathway === 'adult' && $case->government_id_type === 'other')
                             <label class="flex items-start gap-3 p-4 text-sm text-gray-700 border border-gray-200 rounded-xl">
                                 <input type="checkbox" name="confirm_government_issued" value="1" required @checked(old('confirm_government_issued'))
@@ -219,7 +280,15 @@
                         default => $audit->reason ?? '—',
                     };
                 @endphp
-                <tr class="border-b border-gray-100"><td class="py-2">{{ $audit->created_at?->format('M d, Y h:i A') }}</td><td class="capitalize">{{ $audit->action }}</td><td>{{ $audit->actor?->full_name ?? 'System' }}</td><td>{{ $audit->from_status ?? '—' }} → {{ $audit->to_status ?? '—' }}</td><td>{{ $auditReason }}</td></tr>
+                <tr class="border-b border-gray-100 align-top"><td class="py-2">{{ $audit->created_at?->format('M d, Y h:i A') }}<span class="block text-xs text-gray-500">Round {{ $audit->submission_round }}</span></td><td class="capitalize">{{ str_replace('_', ' ', $audit->action) }}</td><td>{{ $audit->actor?->full_name ?? 'System' }}</td><td>{{ $audit->from_status ?? '—' }} → {{ $audit->to_status ?? '—' }}</td><td class="space-y-2 py-2">
+                    <p>{{ $auditReason }}</p>
+                    @if(data_get($audit->correction_request, 'learner_note'))<p class="whitespace-pre-wrap"><strong>Learner note:</strong> {{ $audit->correction_request['learner_note'] }}</p>@endif
+                    @if(data_get($audit->correction_request, 'note'))<p class="whitespace-pre-wrap"><strong>Reviewer message:</strong> {{ $audit->correction_request['note'] }}</p>@endif
+                    @if(data_get($audit->correction_request, 'assisted_review.issuer_verification'))<p class="whitespace-pre-wrap"><strong>Issuer verification:</strong> {{ data_get($audit->correction_request, 'assisted_review.issuer_verification') }}</p>@endif
+                    @foreach(($audit->correction_request['evidence'] ?? []) as $snapshot)
+                        <a class="mr-3 inline-block font-semibold text-purple-800 underline" target="_blank" rel="noopener" href="{{ route('admin.parent-verifications.learners.evidence', [$case, $snapshot['slot'], 'round' => $audit->submission_round]) }}">{{ str_replace('_', ' ', $snapshot['slot']) }} (round {{ $audit->submission_round }})</a>
+                    @endforeach
+                </td></tr>
             @endforeach</tbody>
         </table></div>
     </section>

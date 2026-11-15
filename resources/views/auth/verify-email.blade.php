@@ -1,6 +1,6 @@
 {{-- Alpine store — shared state between panel and main content --}}
 @php
-    $usesGmail = str_ends_with(strtolower((string) auth()->user()?->email), '@gmail.com');
+    $usesGmail = str_ends_with(strtolower((string) auth()->user()?->email), '@gmail.com') || auth()->user()?->isParentRegistration();
 @endphp
 @if($showSuccess)
 <script>
@@ -391,12 +391,12 @@
 
                 <div class="px-4 py-4">
                     <article class="rounded-xl border border-sky-100 bg-sky-50/70 px-4 py-3">
-                        <p class="mt-3 text-sm text-gray-600">Open the email and click the verification link to activate your account.</p>
+                        <p class="text-sm text-gray-600">Check your inbox and spam folder, then open the verification link.</p>
                     </article>
 
                     <div class="mt-4 grid grid-cols-1 gap-3 {{ $usesGmail ? 'sm:grid-cols-2' : '' }}">
                         @if($usesGmail)
-                            <a href="https://mail.google.com"
+                            <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
                                class="inline-flex w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
                                 Open Gmail
                             </a>

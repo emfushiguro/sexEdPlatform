@@ -223,6 +223,11 @@ class GuardianRelationshipVerificationService
             $locked->verificationDocuments()->where('submission_round', $locked->current_evidence_round)
                 ->whereNull('superseded_at')->update(['review_status' => 'accepted']);
 
+            if (! $locked->verificationDocuments()->where('submission_round', $locked->current_evidence_round)
+                ->whereNull('superseded_at')->where('document_type', 'dependent_birth_record')->exists()) {
+                throw new InvalidArgumentException('Request the dependent birth certificate or equivalent civil registry record before approving this relationship.');
+            }
+
             return [
                 'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
                 'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
@@ -235,18 +240,6 @@ class GuardianRelationshipVerificationService
                 'relationship_verified_at' => now(),
             ];
         });
-
-        if (LearnerAgePolicy::classify($approved->child?->birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER
-            && (bool) $approved->child?->minor_account_activation_required) {
-            DB::afterCommit(function () use ($approved): void {
-                try {
-                    [$handoff, $code] = $this->minorHandoffs->issueActivation($approved);
-                    $approved->parent?->notify(new TeenagerActivationReadyNotification($approved->child, $handoff, $code));
-                } catch (Throwable $exception) {
-                    report($exception);
-                }
-            });
-        }
 
         return $approved;
     }
@@ -400,6 +393,7 @@ class GuardianRelationshipVerificationService
                 'relationship_deactivated_at' => null,
                 'relationship_verified_at' => null,
                 'can_manage_support_information' => false,
+                'adult_permissions_confirmed_at' => null,
             ]);
             $this->audit($locked, $actor, 'reactivation_requested', ParentChildAccount::VERIFICATION_VERIFIED, ParentChildAccount::VERIFICATION_UNDER_REVIEW, (int) $locked->current_evidence_round);
             $this->notifyAfterCommit($locked->id, 'reactivation_requested', true);

@@ -46,10 +46,10 @@
                 <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-8 w-auto drop-shadow">
                 <div>
                     <h2 class="text-base font-bold text-white leading-tight">Terms of Service</h2>
-                    <p class="text-white/70 text-xs">Last updated {{ now()->format('F d, Y') }}</p>
+                    <p class="text-white/70 text-xs">Last updated November 14, 2026</p>
                 </div>
             </div>
-            <button @click="open = false"
+            <button type="button" @click="open = false"
                     class="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -68,9 +68,9 @@
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">2. Age Requirements & Guardian Consent</h3>
                 <div class="space-y-2">
-                    <p><strong>Under 13:</strong> Children cannot create accounts without guardian consent. A guardian or legal guardian must register, verify their email, and create a child account on the child's behalf.</p>
-                    <p><strong>Ages 13–17:</strong> May create their own accounts but must complete email verification before accessing the platform.</p>
-                    <p><strong>Adults (18+):</strong> May create accounts, enroll in modules, and optionally manage accounts for their children.</p>
+                    <p><strong>Under 18:</strong> A minor may ask a Guardian for help. The Guardian completes identity and relationship review and authorizes registration. The dependent chooses their own password and completes identity review.</p>
+                    <p><strong>Adults (18+):</strong> May register independently or use a supported dependent account. An adult may consent personally or through a separately reviewed representative. A dependent may be any age.</p>
+                    <p>Learning content for users under 10 is currently limited.</p>
                 </div>
             </section>
 
@@ -78,10 +78,10 @@
                 <h3 class="text-base font-semibold text-purple-900 mb-2">3. User Accounts</h3>
                 <ul class="list-disc list-inside pl-2 space-y-1">
                     <li>You must provide accurate, complete information during registration.</li>
-                    <li>A valid email address is required for email verification.</li>
+                    <li>Guardians and independent adult learners use a verified email. A dependent's personal email is optional.</li>
                     <li>You are responsible for maintaining the confidentiality of your credentials.</li>
                     <li>Never share your password with anyone.</li>
-                    <li>Guardians are responsible for securing their child accounts.</li>
+                    <li>Dependents choose their own passwords; Guardians should not request them.</li>
                 </ul>
             </section>
 
@@ -98,8 +98,8 @@
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">5. Guardian Rights & Responsibilities</h3>
-                <p class="mb-2">Guardians who create accounts for children under 13 have the right to view their child's progress, review quiz attempts, and request deletion of the child's account.</p>
-                <p>Guardians are responsible for monitoring their child's platform usage and ensuring their child understands safe online behavior.</p>
+                <p class="mb-2">A verified, eligible Guardian automatically manages a minor dependent's optional Health &amp; Support Information. Adult dependents control optional Guardian access. Learning access follows the relationship permissions.</p>
+                <p>Passwords and private messages are not shared through these permissions. Contact support about access, correction, or deletion requests.</p>
             </section>
 
             <section>
@@ -119,7 +119,7 @@
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">9. Termination</h3>
-                <p>We reserve the right to suspend or terminate accounts that violate these Terms. You may request account deletion at any time. Guardians may request immediate deletion of child accounts and we will comply within 30 days.</p>
+                <p>We reserve the right to suspend or terminate accounts that violate these Terms. Users and authorized representatives may contact support about account deletion requests.</p>
             </section>
 
             <section>
@@ -137,7 +137,7 @@
         {{-- Footer --}}
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0 flex items-center justify-between">
             <p class="text-xs text-gray-500">By using the platform, you accept these terms.</p>
-            <button @click="open = false"
+            <button type="button" @click="open = false"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                     class="inline-flex items-center justify-center px-6 py-2.5 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 transition-all duration-200">
                 Close
@@ -185,10 +185,10 @@
                 <img src="{{ asset('/media/Logo.png') }}" alt="Logo" class="h-8 w-auto drop-shadow">
                 <div>
                     <h2 class="text-base font-bold text-white leading-tight">Privacy Policy</h2>
-                    <p class="text-white/70 text-xs">Last updated {{ now()->format('F d, Y') }}</p>
+                    <p class="text-white/70 text-xs">Last updated November 14, 2026</p>
                 </div>
             </div>
-            <button @click="open = false"
+            <button type="button" @click="open = false"
                     class="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -200,22 +200,22 @@
         <div class="flex-1 overflow-y-auto px-6 py-6 space-y-5 text-sm text-gray-700 leading-relaxed">
 
             <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                <p class="text-sm text-purple-900 font-medium">COPPA Compliance Statement</p>
-                <p class="text-xs text-purple-700 mt-1">We comply with the Children's Online Privacy Protection Act (COPPA). We do not knowingly collect personal information from children under 13 without verifiable guardian consent. Guardians have full control over their child's account and can review, modify, or delete their child's information at any time.</p>
+                <p class="text-sm text-purple-900 font-medium">Privacy for dependents</p>
+                <p class="text-xs text-purple-700 mt-1">Minors need an approved Guardian relationship and authorization. Adults can consent personally or through a separately reviewed representative. Guardian access depends on the relationship and permissions.</p>
             </div>
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">1. Information We Collect</h3>
                 <p class="mb-2"><strong>For all users:</strong></p>
                 <ul class="list-disc list-inside pl-2 space-y-1 mb-3">
-                    <li>Full name, birthdate, email address, password (encrypted)</li>
+                    <li>Full name, birthdate, optional dependent email, and password hash</li>
                     <li>Location: region, province, city, barangay (Philippines)</li>
                     <li>Username and optional profile bio</li>
                 </ul>
-                <p class="mb-2"><strong>For children under 13 (collected via guardian):</strong></p>
+                <p class="mb-2"><strong>For dependents:</strong></p>
                 <ul class="list-disc list-inside pl-2 space-y-1">
                     <li>Guardian's name, email, and verified relationship</li>
-                    <li>Timestamp of when guardian created the child account</li>
+                    <li>Authorization records and permissions; identity, selfie, relationship and representative-authority evidence when applicable</li>
                 </ul>
             </section>
 
@@ -232,12 +232,11 @@
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">3. Data Protection for Children</h3>
-                <p class="mb-2">Children's accounts are created and managed by guardians. We:</p>
+                <p class="mb-2">Guardians and dependents have separate accounts. We:</p>
                 <ul class="list-disc list-inside pl-2 space-y-1">
-                    <li>Do not display children's personal information publicly</li>
-                    <li>Do not allow children to share personal information in public forums</li>
-                    <li>Allow guardians to review and delete their child's data at any time</li>
-                    <li>Do not sell or share children's data with third parties</li>
+                    <li>Use access controls for dependent information</li>
+                    <li>Allow verified, eligible Guardians to manage minor Health &amp; Support Information automatically; adults control optional sharing</li>
+                    <li>Use service providers, including identity verification providers, when needed to operate the platform</li>
                 </ul>
             </section>
 
@@ -258,12 +257,12 @@
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">6. Cookies & Session Data</h3>
-                <p>We use session cookies for authentication and to maintain your login state. No third-party tracking cookies are used on this platform.</p>
+                <p>We use session cookies for authentication. Enabled analytics or embedded services may use additional cookies.</p>
             </section>
 
             <section>
                 <h3 class="text-base font-semibold text-purple-900 mb-2">7. Changes to This Policy</h3>
-                <p>We may update this Privacy Policy as needed. We will notify registered users via email of significant changes. Continued use of the platform constitutes acceptance of the updated policy.</p>
+                <p>We may update this Privacy Policy and provide notice through the platform or email where available. We request renewed consent where required.</p>
             </section>
 
             <section>
@@ -276,7 +275,7 @@
         {{-- Footer --}}
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0 flex items-center justify-between">
             <p class="text-xs text-gray-500">Your privacy is important to us.</p>
-            <button @click="open = false"
+            <button type="button" @click="open = false"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                     class="inline-flex items-center justify-center px-6 py-2.5 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 transition-all duration-200">
                 Close
@@ -331,7 +330,7 @@
                     <p class="text-white/70 text-xs">Frequently asked questions</p>
                 </div>
             </div>
-            <button @click="open = false"
+            <button type="button" @click="open = false"
                     class="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -360,12 +359,12 @@
                      'a' => 'You can register with any valid email address, including temporary or disposable addresses. After registration, complete email verification. Keep access to the inbox because temporary inboxes may expire and prevent future password recovery.'],
                     ['q' => 'How do I verify my email?',
                      'a' => 'After creating your account, we send a verification link to your email address. Open the email and click the link. If you don\'t see it, check your Spam or Promotions folder, then use the "Resend Verification Email" button on the verification page.'],
-                    ['q' => 'What if my child is under 13?',
-                     'a' => 'Children under 13 cannot register independently. A guardian (18+) must register first, verify their email, then create a child account under their guardian account. This complies with COPPA (Children\'s Online Privacy Protection Act).'],
+                    ['q' => 'How do minors register?',
+                     'a' => 'A minor asks a Guardian for help. The Guardian completes identity and relationship review, then authorizes registration. The dependent chooses a password and submits identity evidence.'],
                     ['q' => 'How do I reset my password?',
                      'a' => 'On the login page, click "Forgot Password?" and enter your registered email address. We\'ll send you a password reset link. The link expires in 60 minutes — if it expires, you can request a new one.'],
                     ['q' => 'What age groups does this platform serve?',
-                     'a' => 'The platform serves learners aged 5 and up. Content is filtered by age bracket to ensure age-appropriate material. Children (5–12) require a guardian account. Teens (13–17) and adults (18+) can register independently.'],
+                     'a' => 'Dependents may be any age. Learners under 18 require Guardian authorization; adults may register independently or receive support. Learning content for users under 10 is currently limited.'],
                     ['q' => 'Can I go back and edit my registration information?',
                      'a' => 'During registration, you can navigate back to previous steps and your information will be saved automatically. After completing registration, you can update most profile details from your profile settings page.'],
                     ['q' => 'How do I change my username?',
@@ -377,7 +376,7 @@
 
             @foreach($faqs as $i => $faq)
                 <div class="border border-gray-200 rounded-xl overflow-hidden">
-                    <button @click="activeQ = activeQ === {{ $i }} ? null : {{ $i }}"
+                    <button type="button" @click="activeQ = activeQ === {{ $i }} ? null : {{ $i }}"
                             class="w-full flex items-center justify-between px-4 py-3.5 text-left text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors">
                         <span>{{ $faq['q'] }}</span>
                         <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200"
@@ -398,7 +397,7 @@
 
         {{-- Footer --}}
         <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end">
-            <button @click="open = false"
+            <button type="button" @click="open = false"
                     style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                     class="inline-flex items-center justify-center px-6 py-2.5 text-sm font-semibold text-white rounded-xl shadow-md hover:opacity-90 transition-all duration-200">
                 Got it, thanks!

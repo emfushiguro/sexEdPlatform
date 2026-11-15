@@ -12,6 +12,12 @@
         default => 'bg-amber-100 text-amber-700',
     };
     $canSubmit = $requiresVerification && in_array($status, ['pending', 'resubmission_required'], true);
+    $hasCurrentAuthorization = $relationship->relationship_verified_at && \Illuminate\Support\Facades\DB::table('minor_authorization_records')
+        ->where('parent_child_account_id', $relationship->id)
+        ->where('guardian_user_id', $relationship->parent_user_id)
+        ->where('consent_version', config('learner_age_policy.guardian_consent_version'))
+        ->where('accepted_at', '>=', $relationship->relationship_verified_at)
+        ->exists();
     $submittedRounds = $relationship->verificationDocuments->groupBy('submission_round');
     $correctionRequest = $status === 'resubmission_required' ? $relationship->relationship_correction_request : null;
     $correctionRows = $correctionRequest ? $relationship->verificationDocuments
@@ -38,6 +44,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h1 class="text-2xl font-bold">Relationship Verification</h1>
+                <p class="mt-2 text-sm text-white/80">Include the dependent's PSA birth certificate or equivalent civil registry record alongside the evidence required for your relationship.</p>
                 <p class="mt-1 text-sm text-white/80">{{ $relationship->child?->name ?? 'Dependent' }} · {{ $relationship->relationshipLabel() }}</p>
             </div>
             <span class="inline-flex items-center px-3 py-1 text-xs font-semibold text-white rounded-full bg-white/20">
@@ -46,8 +53,80 @@
         </div>
     </div>
 
+    <x-guardian-relationship-guidance :relationship-type="$relationship->relationship_type" />
+
     @if(session('success'))
         <div class="px-4 py-3 text-sm text-green-800 border border-green-200 rounded-xl bg-green-50">{{ session('success') }}</div>
+    @endif
+
+    @if($relationship->isVerifiedActive() && $relationship->child?->minor_account_activation_required)
+        @if($relationship->child->requiresGuardian() && ! $hasCurrentAuthorization)
+            <section class="p-6 bg-white border border-purple-200 rounded-2xl">
+                <h2 class="text-lg font-bold text-purple-900">Authorize your dependent's registration</h2>
+                <p class="mt-2 text-sm text-gray-700">Your relationship has been approved. Please review what happens next before deciding whether to continue.</p>
+                <ul class="mt-3 space-y-2 text-sm text-gray-700 list-disc pl-5">
+                    <li>A restricted learner account becomes available for your dependent to activate with their own password.</li>
+                    <li>Your dependent submits their ID and selfie for a separate identity review.</li>
+                    <li>The platform processes verification and learning records as described in the privacy notice.</li>
+                    <li>Guardian access depends on the permissions granted to this relationship. Your dependent's password and private messages are not shared with you.</li>
+                </ul>
+                <p class="mt-3 text-sm"><a class="text-purple-800 underline" href="{{ route('privacy') }}" target="_blank" rel="noopener">Privacy notice</a> · <a class="text-purple-800 underline" href="{{ route('terms') }}" target="_blank" rel="noopener">Terms of service</a></p>
+                <form method="POST" action="{{ route('parent.children.minor-authorization', $relationship) }}" class="mt-4 space-y-4">
+                    @csrf
+                    <label class="flex gap-2 text-sm text-gray-800"><input type="checkbox" name="authorization" value="1" required><span>I have reviewed these details and authorize this dependent's registration and identity verification.</span></label>
+                    @error('authorization')<p class="text-sm text-red-700">{{ $message }}</p>@enderror
+                    <button class="rounded-xl bg-purple-700 px-5 py-3 text-sm font-semibold text-white" type="submit">Authorize registration</button>
+                </form>
+            </section>
+        @elseif(! $relationship->child->requiresGuardian())
+            <section class="p-6 bg-white border border-purple-200 rounded-2xl">
+                <h2 class="text-lg font-bold text-purple-900">The adult dependent activates their own account</h2>
+                <p class="mt-2 text-sm text-gray-700">Share the short-lived activation code with the dependent. They choose their own password and may consent personally. If a representative will authorize registration, submit authority evidence below for a separate review first. Learning and support access stays private unless the dependent chooses to share it.</p>
+                <form id="activation-code" method="POST" action="{{ route('minor.activation.reissue', $relationship->child) }}" class="mt-4">@csrf<button class="rounded-xl bg-purple-700 px-5 py-3 text-sm font-semibold text-white" type="submit">Create activation code</button></form>
+            </section>
+            @php
+                $authority = app(\App\Services\Auth\MinorAccountHandoffService::class)->approvedAdultAuthority($relationship)
+                    ?? $relationship->adultAuthorityRequests->first(fn ($item) => $item->status === 'pending'
+                        && $item->authorized_at >= $relationship->relationship_verified_at
+                        && $item->dependent_identity_hash === \App\Models\AdultDependentAuthorityRequest::identityHash($relationship->child)
+                        && $item->policy_version === config('learner_age_policy.adult_dependent_consent_version')
+                        && $item->privacy_notice_hash === hash_file('sha256', resource_path('views/legal/privacy.blade.php'))
+                        && $item->terms_hash === hash_file('sha256', resource_path('views/legal/terms.blade.php')));
+            @endphp
+            <section class="p-6 bg-white border border-gray-200 rounded-2xl">
+                <h2 class="text-lg font-bold text-purple-900">Request review of representative authority</h2>
+                <p class="mt-2 text-sm text-gray-700">If you have specific legal authority to authorize this adult's account and identity processing, submit evidence for a separate review. A disability or approved relationship does not establish that authority. The dependent still chooses their own password and controls optional information sharing.</p>
+                @if($authority && in_array($authority->status, ['pending', 'approved'], true))
+                    <p class="mt-3 text-sm font-semibold text-purple-900">Authority review: {{ ucfirst($authority->status) }}.</p>
+                    @if($authority->status === 'pending')
+                    <form method="POST" action="{{ route('parent.relationship-verifications.adult-authority.withdraw', [$relationship, $authority]) }}" class="mt-3">
+                        @csrf<button type="submit" class="text-sm font-semibold text-rose-700 underline">Withdraw this authority request</button>
+                    </form>
+                    @else
+                    <p class="mt-3 text-sm text-gray-700">Authority approved. Continue to create a short-lived activation code and share it with the dependent. They choose their own password, then complete their separate identity review.</p>
+                    <form method="POST" action="{{ route('minor.activation.reissue', $relationship->child) }}" class="mt-4">@csrf<button type="submit" class="inline-flex rounded-xl bg-purple-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-purple-800">Continue to activation</button></form>
+                    @endif
+                @else
+                    @if($relationship->adultAuthorityRequests->isNotEmpty())<p class="mt-3 text-sm text-amber-800">No current authority approval is available. You may submit current evidence for review.</p>@endif
+                    <form method="POST" action="{{ route('parent.relationship-verifications.adult-authority.store', $relationship) }}" enctype="multipart/form-data" class="mt-4 space-y-4">
+                        @csrf
+                        <label class="block text-sm font-semibold text-gray-800" for="authority_document">Evidence of authority</label>
+                        <input id="authority_document" name="authority_document" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required class="block w-full rounded-xl border border-dashed border-purple-300 bg-purple-50 p-4 text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-700 file:px-4 file:py-2 file:font-semibold file:text-white">
+                        <p class="text-xs text-gray-600">PDF, JPEG, PNG or WebP, up to 5 MB. Submit the document granting this specific authority; do not include medical details unless they are part of that document.</p>
+                        @error('authority_document')<p class="text-sm text-red-700">{{ $message }}</p>@enderror
+                        <label class="flex items-start gap-2 text-sm text-gray-800"><input type="checkbox" name="authority_consent" value="1" required class="mt-1"><span>I have authority to authorize account creation and the collection and processing of identity, selfie, and learning records for this dependent. I have read the <a class="underline" href="{{ route('privacy') }}">Privacy Notice</a> and <a class="underline" href="{{ route('terms') }}">Terms</a>.</span></label>
+                        @error('authority_consent')<p class="text-sm text-red-700">{{ $message }}</p>@enderror
+                        <button class="rounded-xl border border-purple-700 px-5 py-3 text-sm font-semibold text-purple-800" type="submit">Submit authority for review</button>
+                    </form>
+                @endif
+            </section>
+        @elseif($relationship->child->minor_account_activation_required)
+            <section class="p-6 bg-purple-50 border border-purple-200 rounded-2xl">
+                <h2 class="text-lg font-bold text-purple-900">Ready for activation</h2>
+                <p class="mt-2 text-sm text-purple-900">Generate a short-lived code, then hand the device or code to your dependent. They choose their own password.</p>
+                <form method="POST" action="{{ route('minor.activation.reissue', $relationship->child) }}" class="mt-4">@csrf<button class="rounded-xl bg-purple-700 px-5 py-3 text-sm font-semibold text-white" type="submit">Get activation code</button></form>
+            </section>
+        @endif
     @endif
 
     @if($errors->any())
@@ -252,7 +331,7 @@
                     @endunless
 
                     <div>
-                        <label for="relationship_notes" class="block mb-1 text-sm font-medium text-gray-700">Context {{ $requiresCircumstances ? '(required)' : '(optional)' }}</label>
+                        <label for="relationship_notes" class="block mb-1 text-sm font-medium text-gray-700">Context (optional)</label>
                         <textarea id="relationship_notes" name="relationship_notes" rows="4" maxlength="1000" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50" placeholder="Share any context that helps the reviewer understand the relationship.">{{ old('relationship_notes', $relationship->relationship_notes) }}</textarea>
                         @error('relationship_notes')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                     </div>

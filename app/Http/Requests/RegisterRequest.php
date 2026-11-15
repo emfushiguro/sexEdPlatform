@@ -43,7 +43,6 @@ class RegisterRequest extends FormRequest
                 'required',
                 'date',
                 'before:today',
-                'after_or_equal:'.now()->subYears(100)->format('Y-m-d'),
             ],
         ];
     }
@@ -57,7 +56,7 @@ class RegisterRequest extends FormRequest
                 LearnerAgePolicy::ELIGIBLE_TEENAGER,
                 LearnerAgePolicy::ELIGIBLE_ADULT,
             ], true)) {
-                $validator->errors()->add('birthdate', 'Learner registration is available for ages 10 through 100.');
+                $validator->errors()->add('birthdate', 'Enter a valid birthdate.');
             }
         });
     }
@@ -74,7 +73,6 @@ class RegisterRequest extends FormRequest
             'suffix.in' => 'Please select a valid suffix.',
             'birthdate.required' => 'Birth date is required.',
             'birthdate.before' => 'Birth date must be before today.',
-            'birthdate.after_or_equal' => 'Invalid birth date. Must be within the last 100 years.',
         ];
     }
 }

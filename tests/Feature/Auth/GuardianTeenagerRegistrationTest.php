@@ -63,9 +63,9 @@ class GuardianTeenagerRegistrationTest extends TestCase
         $relationship = ParentChildAccount::query()->where('child_user_id', $child->id)->firstOrFail();
         $this->assertSame(ParentChildAccount::STATUS_PENDING, $relationship->relationship_status);
         $this->assertSame(ParentChildAccount::VERIFICATION_UNDER_REVIEW, $relationship->relationship_verified_status);
-        $this->assertSame(config('learner_age_policy.guardian_consent_version'), $relationship->minor_registration_consent_version);
-        $this->assertSame($parent->id, $relationship->minor_registration_authorized_by_user_id);
-        $this->assertNotNull($relationship->minor_registration_authorized_at);
+        $this->assertNull($relationship->minor_registration_consent_version);
+        $this->assertNull($relationship->minor_registration_authorized_by_user_id);
+        $this->assertNull($relationship->minor_registration_authorized_at);
         $this->assertNull($relationship->verification_document_path);
         $this->assertSame(1, $relationship->verificationDocuments()->count());
     }
@@ -84,7 +84,7 @@ class GuardianTeenagerRegistrationTest extends TestCase
         $this->assertStringNotContainsString('+', (string) $child->email);
     }
 
-    public function test_guardian_authorization_is_required_and_old_validation_post_is_gone(): void
+    public function test_evidence_confirmation_is_required_and_old_validation_post_is_gone(): void
     {
         $parent = $this->approvedGuardian();
         $session = $this->childWizardSession();
@@ -99,9 +99,8 @@ class GuardianTeenagerRegistrationTest extends TestCase
                     'pairing_key' => null,
                     'file' => UploadedFile::fake()->create('evidence.pdf', 10, 'application/pdf'),
                 ]],
-                'confirm_submission' => '1',
             ])
-            ->assertSessionHasErrors('guardian_authorization');
+            ->assertSessionHasErrors('confirm_submission');
 
         $this->actingAs($parent)
             ->withSession($session)

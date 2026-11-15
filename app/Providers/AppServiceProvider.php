@@ -67,6 +67,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Event::listen(\Illuminate\Auth\Events\Login::class, [\App\Services\GuardianLearningActivityService::class, 'recordLogin']);
+
         Gate::before(function (?User $user, string $ability, array $arguments = []) {
             $subject = $arguments[0] ?? null;
 

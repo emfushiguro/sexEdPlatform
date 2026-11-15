@@ -21,9 +21,13 @@ class DependentSupportRegistrationController extends Controller
         private readonly DependentSupportInformationService $supportInformation,
     ) {}
 
-    public function show(Request $request): Response
+    public function show(Request $request): Response|RedirectResponse
     {
         [$relationship, $dependent] = $this->context($request);
+
+        if (! $dependent->requiresGuardian()) {
+            return $this->finish($request, false);
+        }
 
         return response()
             ->view('auth.child.step6-support-information', compact('relationship', 'dependent'))

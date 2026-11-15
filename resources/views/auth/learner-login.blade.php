@@ -106,18 +106,12 @@
 
         <!-- Register Links -->
         <div class="mt-6 text-center">
-            <p class="text-sm text-gray-600">
-                Don't have an account yet? 
-                <a href="{{ route('register') }}" class="font-semibold text-brand-purple-primary hover:text-brand-purple-light transition-colors">
-                    Create a Learner Account
-                </a>
-            </p>
-            <p class="mt-2 text-sm text-gray-600">
-                Need a guardian account?
-                <a href="{{ route('parent.register') }}" class="font-semibold text-brand-purple-primary hover:text-brand-purple-light transition-colors">
-                    Create a Guardian Account
-                </a>
-            </p>
+            <p class="text-sm text-gray-600">New to Conscious Connections?</p>
+            <div class="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm font-semibold">
+                <a href="{{ route('register') }}" class="text-brand-purple-primary hover:underline">Create a learner account</a>
+                <a href="{{ route('parent.register') }}" class="text-brand-purple-primary hover:underline">Create a guardian account</a>
+            </div>
+            <a href="{{ route('minor.activation.show') }}" class="mt-4 inline-block text-sm font-semibold text-brand-purple-primary underline">Activate a dependent account</a>
         </div>
 
         <!-- Footer Links -->

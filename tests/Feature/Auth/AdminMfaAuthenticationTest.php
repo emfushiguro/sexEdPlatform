@@ -102,6 +102,7 @@ class AdminMfaAuthenticationTest extends TestCase
         $this->get(route('admin.mfa.show', ['copy' => 1]))
             ->assertOk()
             ->assertSee('copyVerificationCode', false)
+            ->assertSee("document.execCommand('copy')", false)
             ->assertSee($code, false);
     }
 

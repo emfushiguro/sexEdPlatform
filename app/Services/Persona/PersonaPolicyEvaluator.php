@@ -90,6 +90,26 @@ class PersonaPolicyEvaluator
             return $status === '' ? PersonaInquiry::OUTCOME_INCONCLUSIVE : PersonaInquiry::OUTCOME_NOT_READY;
         }
 
+        // Only server-fetched metadata is trusted; photo/video alone does not prove camera provenance.
+        $captureMethod = strtolower((string) ($selfie['attributes']['capture-method'] ?? ''));
+        if (in_array($captureMethod, ['upload', 'file', 'file_upload', 'file-upload'], true)) {
+            return PersonaInquiry::OUTCOME_INELIGIBLE;
+        }
+        $liveness = null;
+        foreach (($selfie['attributes']['checks'] ?? []) as $check) {
+            if (($check['name'] ?? null) === 'selfie_liveness_detection'
+                && ($check['status'] ?? null) !== 'passed') {
+                return PersonaInquiry::OUTCOME_INELIGIBLE;
+            }
+            if (($check['name'] ?? null) === 'selfie_liveness_detection') {
+                $liveness = $check['status'] ?? null;
+            }
+        }
+        if (in_array($attempt->flow_type, [PersonaInquiry::FLOW_TEEN_SCHOOL, PersonaInquiry::FLOW_TEEN_GOVERNMENT, PersonaInquiry::FLOW_ADULT_GOVERNMENT], true)
+            && $liveness !== 'passed') {
+            return PersonaInquiry::OUTCOME_INCONCLUSIVE;
+        }
+
         if ($attempt->flow_type === PersonaInquiry::FLOW_TEEN_SCHOOL) {
             return $this->resourceOutcome($selfie) === 'passed'
                 ? PersonaInquiry::OUTCOME_ELIGIBLE
