@@ -10,10 +10,29 @@ use Illuminate\Support\Facades\Storage;
 
 class IdentityReferenceController extends Controller
 {
+    public function index(Request $request)
+    {
+        $ids = array_map(fn ($item) => $item['label'], config('guardian_identity.id_types', []));
+        $accepted = array_intersect_key($ids, array_flip(config('guardian_identity.accepted_id_types', [])));
+        $records = config('guardian_relationships.document_types', []);
+        $groups = [
+            'Accepted IDs' => $accepted,
+            'PSA and civil registry records' => array_intersect_key($records, array_flip(['dependent_birth_record', 'civil_registry_record'])),
+            'Guardian relationship documents' => array_diff_key($records, array_flip(['dependent_birth_record', 'civil_registry_record'])),
+            'School, institution and other ID references' => array_diff_key($ids, $accepted) + ['school_id' => 'School ID', 'institution_id' => 'Institution ID', 'assisted_review' => 'Assisted review evidence'],
+        ];
+        $category = $request->query('category');
+        abort_unless($category === null || (is_string($category) && array_key_exists($category, $groups)), 404);
+        $counts = DB::table('identity_reference_examples')->selectRaw('id_type, COUNT(*) as total')->groupBy('id_type')->pluck('total', 'id_type');
+
+        return response()->view('admin.parent-verifications.reference-library', compact('groups', 'counts', 'category'))->header('Cache-Control', 'private, no-store');
+    }
+
     private function label(string $type): string
     {
         $labels = array_map(fn ($item) => $item['label'], config('guardian_identity.id_types', []));
         $labels += ['school_id' => 'School ID', 'institution_id' => 'Institution ID', 'assisted_review' => 'Assisted review evidence', 'dependent_birth_record' => 'Birth and civil registry records'];
+        $labels += config('guardian_relationships.document_types', []);
         abort_unless(isset($labels[$type]), 404);
         return $labels[$type];
     }

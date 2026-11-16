@@ -684,6 +684,19 @@
                         </h2>
                         <ul class="flex flex-col gap-1">
                             <li>
+                                <a href="{{ route('admin.identity-references.index') }}" title="Reference Library"
+                                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap {{ request()->routeIs('admin.identity-references.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"
+                                   @if(request()->routeIs('admin.identity-references.*')) style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);" aria-current="page" @endif
+                                   :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'xl:justify-center' : ''">
+                                    <span class="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 {{ request()->routeIs('admin.identity-references.*') ? 'text-white' : 'text-gray-500 group-hover:text-purple-600' }}">
+                                        <svg aria-hidden="true" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6v14M8 4v16M12 6v14M16 5l4 14M3 20h18"/>
+                                        </svg>
+                                    </span>
+                                    <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-cloak class="truncate">Reference Library</span>
+                                </a>
+                            </li>
+                            <li>
                                 <a href="{{ route('admin.monetization.commission-settings.index') }}"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden whitespace-nowrap
                                     {{ request()->routeIs('admin.monetization.commission-settings.*') ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700' }}"

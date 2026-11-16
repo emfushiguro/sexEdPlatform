@@ -22,6 +22,7 @@ Route::prefix('admin')->name('admin.')->middleware([
     'role:admin',
     'admin.mfa',
 ])->group(function () {
+    Route::get('/identity-references', [Admin\IdentityReferenceController::class, 'index'])->name('identity-references.index');
     Route::get('/identity-references/{type}', [Admin\IdentityReferenceController::class, 'show'])->name('identity-references.show');
     Route::post('/identity-references/{type}', [Admin\IdentityReferenceController::class, 'store'])->name('identity-references.store');
     Route::put('/identity-references/{type}/{example}', [Admin\IdentityReferenceController::class, 'update'])->whereNumber('example')->name('identity-references.update');

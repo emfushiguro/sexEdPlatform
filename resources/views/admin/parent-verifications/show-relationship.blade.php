@@ -199,7 +199,7 @@
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">Guardian identity documents</h2>
-                <p class="mt-1 text-sm text-gray-500">Compare the guardian’s ID with the relationship evidence below.</p>
+                <p class="mt-1 text-sm text-gray-500">Compare the guardianâ€™s ID with the relationship evidence below.</p>
             </div>
             @if($relationship->parent)
                 <a href="{{ route('admin.parent-verifications.parents.show', ['user' => $relationship->parent, 'from_relationship' => $relationship->id]) }}" class="inline-flex min-h-11 items-center rounded-lg border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500">View guardian information</a>
@@ -262,6 +262,7 @@
                 <h2 class="text-lg font-semibold text-gray-900">Submitted Documents</h2>
             </div>
             <span class="text-sm font-semibold text-gray-500">{{ $relationship->verificationDocuments->count() }} submitted</span>
+            <a href="{{ route('admin.identity-references.index') }}" target="_blank" rel="noopener" class="text-sm font-semibold text-purple-800 underline">Guardian document references<span class="sr-only"> (opens in a new tab)</span></a>
             <a href="{{ route('admin.identity-references.show', 'dependent_birth_record') }}" target="_blank" rel="noopener" class="rounded-lg border border-purple-200 px-3 py-2 text-sm font-semibold text-purple-800 hover:bg-purple-50">Birth record references<span class="sr-only"> (opens in a new tab)</span></a>
         </div>
 
@@ -391,8 +392,8 @@
             </div>
             @unless($canApprove || $canReject)
                 <p class="mt-2 text-sm text-gray-500 sm:text-right" role="status">{{ match ($status) {
-                    'pending' => 'Awaiting the guardian’s document submission before review.',
-                    'resubmission_required' => 'Awaiting the guardian’s updated documents before another review.',
+                    'pending' => 'Awaiting the guardianâ€™s document submission before review.',
+                    'resubmission_required' => 'Awaiting the guardianâ€™s updated documents before another review.',
                     'verified' => 'This relationship has already been approved.',
                     'rejected' => 'This relationship has received a final rejection.',
                     'revoked' => 'This relationship verification has been revoked.',

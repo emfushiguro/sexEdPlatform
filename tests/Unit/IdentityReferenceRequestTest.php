@@ -8,6 +8,14 @@ use Illuminate\Support\Facades\Validator;
 
 class IdentityReferenceRequestTest extends TestCase
 {
+    public function test_guardian_document_types_can_open_the_reference_editor(): void
+    {
+        $controller = new \App\Http\Controllers\Admin\IdentityReferenceController();
+        $label = new \ReflectionMethod($controller, 'label');
+        foreach (config('guardian_relationships.document_types') as $type => $name) {
+            $this->assertNotEmpty($label->invoke($controller, $type));
+        }
+    }
     public function test_official_source_and_safe_images_are_required_for_new_examples(): void
     {
         $request = new SaveIdentityReferenceRequest();
@@ -65,7 +73,7 @@ class IdentityReferenceRequestTest extends TestCase
     }
     public function test_reference_routes_require_admin_mfa_and_reference_link_opens_in_new_tab(): void
     {
-        foreach (['show','store','update','image'] as $action) {
+        foreach (['index','show','store','update','image'] as $action) {
             $route = app('router')->getRoutes()->getByName('admin.identity-references.'.$action);
             $this->assertNotNull($route);
             $this->assertContains('role:admin', $route->gatherMiddleware());
