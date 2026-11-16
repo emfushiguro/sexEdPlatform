@@ -65,7 +65,6 @@
 
 <div class="space-y-5">
 
-    @include('learner.learning-paths.next-steps', ['nextSteps' => $nextSteps ?? ['paths' => [], 'suggestions' => collect()]])
 
     @if($isModuleDeactivated)
     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
@@ -130,6 +129,7 @@
         x-data="{
             expandedLesson: null,
             reviewModalOpen: @js($errors->has('rating') || $errors->has('review_content')),
+            reviewChoice: @js($errors->any() ? old('feedback_type', 'module') : ''),
             reportModalOpen: @js($errors->has('target_type') || $errors->has('target_id') || $errors->has('reason_code') || $errors->has('details')),
             reportTarget: @js($initialReportTarget)
         }"
@@ -404,6 +404,7 @@
                 </div>
             @endif
 
+            @include('learner.learning-paths.next-steps', ['nextSteps' => $nextSteps ?? ['paths' => [], 'suggestions' => collect()]])
         </div>{{-- end left col --}}
 
         {{--  RIGHT: enrollment sidebar (1/3)  --}}

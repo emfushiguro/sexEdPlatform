@@ -107,7 +107,7 @@
         ? session('learning_audio_event')
         : null;
 @endphp
-<body class="font-sans antialiased bg-gray-50 dark:bg-gray-900" data-learning-audio @if($learningAudioEvent) data-learning-audio-event="{{ $learningAudioEvent }}" @endif x-data>
+<body class="font-sans antialiased bg-gray-50 dark:bg-gray-900" data-learning-audio @if($learningAudioEvent) data-learning-audio-event="{{ $learningAudioEvent }}" @endif x-data="lessonFullscreen" @fullscreenchange.window="sync()">
 
     {{-- ═══════════════════════════════════════════════════════════
          FULLSCREEN TOP BAR
@@ -119,11 +119,12 @@
             ->canAccessFeature(auth()->user(), \App\Support\SubscriptionFeatureKeys::UNLIMITED_QUIZ_SHIELDS);
     @endphp
 
-    <div class="flex-shrink-0 h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 gap-3">
+    <div x-show="!focused" class="flex-shrink-0 h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 gap-3">
 
         {{-- Left: close button + breadcrumb --}}
         <div class="flex items-center gap-3 min-w-0 flex-1">
             <a href="@yield('back-url', route('learner.modules.index'))"
+               @click="leave()"
                class="flex-shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                title="Exit lesson">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -147,6 +148,9 @@
 
         {{-- Right: gamification chips --}}
         <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <button type="button" @click="toggle()" aria-label="Enter full screen" title="Enter full screen" class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-purple-500 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+            </button>
             {{-- Streak --}}
             <div class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/40">
                 <svg class="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
@@ -207,6 +211,18 @@
             </button>
         </div>
     </div>
+
+    <div x-show="focused" x-cloak class="flex flex-shrink-0 items-center gap-2 border-b border-purple-100 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
+        <button type="button" @click="$dispatch('lesson-sidebar-toggle')" class="min-h-11 rounded-lg border border-gray-200 px-3 text-sm font-semibold text-purple-700 focus-visible:ring-2 focus-visible:ring-purple-500 dark:border-gray-700 dark:text-purple-300">Curriculum</button>
+        <div class="min-w-0 flex-1 max-w-xs">@yield('progress-bar')</div>
+        <button x-show="!nativeActive" type="button" @click="enter()" aria-label="Enter full screen" title="Enter full screen" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-purple-700 focus-visible:ring-2 focus-visible:ring-purple-500 dark:border-gray-700 dark:text-purple-300">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+        </button>
+        <button type="button" @click="toggle()" aria-label="Exit full screen" title="Exit full screen" class="ml-auto inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-700 focus-visible:ring-2 focus-visible:ring-purple-500 dark:border-gray-700 dark:text-gray-200">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9h5V4M15 4v5h5M20 15h-5v5M9 20v-5H4"/></svg>
+        </button>
+    </div>
+    <p x-show="message" x-text="message" role="status" x-cloak class="bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"></p>
 
     {{-- ═══════════════════════════════════════════════════════════
          BODY (below fixed top bar)

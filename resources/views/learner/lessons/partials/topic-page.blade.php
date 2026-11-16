@@ -757,19 +757,19 @@
     </div>
 
     <!-- Topic Actions -->
-    <div class="border-t border-gray-200 p-6 bg-gray-50">
+    <div class="border-t border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-900">
         <div class="flex items-center justify-between gap-4">
             <!-- Completion Status -->
             <div class="flex items-center gap-3">
                 @if(in_array($currentTopic->id, $completedTopicIds))
-                    <div class="flex items-center gap-2 text-green-600">
+                    <div class="flex items-center gap-2 text-green-600 dark:text-green-400">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                         </svg>
                         <span class="font-medium">Completed</span>
                     </div>
                 @else
-                    <div class="flex items-center gap-2 text-gray-500">
+                    <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
