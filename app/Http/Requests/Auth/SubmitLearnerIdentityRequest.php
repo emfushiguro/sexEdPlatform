@@ -62,7 +62,7 @@ class SubmitLearnerIdentityRequest extends FormRequest
                 : 'prohibited', ...$image],
             'selfie' => ['prohibited'],
             'confirm_submission' => ['accepted'],
-            'learner_note' => [$case?->status === 'rejected' && $case->resubmission_allowed && $case->requested_corrections !== null ? 'nullable' : 'prohibited', 'string', 'max:2000'],
+            'learner_note' => [$case?->status === 'rejected' && $case->resubmission_allowed && $case->requested_corrections !== null ? 'nullable' : 'prohibited', 'nullable', 'string', 'max:2000'],
         ];
     }
 

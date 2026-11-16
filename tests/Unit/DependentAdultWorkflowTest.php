@@ -504,7 +504,7 @@ class DependentAdultWorkflowTest extends TestCase
 
         try {
             $submitted = (new LearnerIdentitySubmission($persona))->submit($actor, $case, [
-                'document_type' => 'assisted_review', 'confirm_submission' => '1', 'submission_round' => 0,
+                'document_type' => 'assisted_review', 'confirm_submission' => '1', 'submission_round' => 0, 'learner_note' => null,
             ], [
                 'identity_front' => new UploadedFile($source, 'record.png', 'image/png', null, true),
             ]);
