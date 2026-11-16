@@ -351,7 +351,7 @@
             </div>
 
             @if($isEnrolled || $hasHistoricalAccess)
-                <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
+                <div id="certificate" class="scroll-mt-24 bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
                     <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">

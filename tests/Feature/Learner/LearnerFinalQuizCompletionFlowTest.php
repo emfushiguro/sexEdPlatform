@@ -494,6 +494,10 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
 
         $this->assertNotNull($enrollment->completed_at);
         $response->assertSessionHas('learning_feedback', function (array $feedback) use ($learner, $module, $enrollment): bool {
+            if (isset($feedback['explanation'])) {
+                if (! str_starts_with($feedback['explanation'], 'Quiz score: ')) return false;
+                unset($feedback['explanation']);
+            }
             return $feedback === [
                 'id' => "module-completed:{$learner->id}:{$module->id}:{$enrollment->id}",
                 'sourceId' => "module:{$module->id}",
@@ -501,8 +505,8 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
                 'title' => 'Module complete',
                 'message' => 'You completed this module. Review your results and available next steps.',
                 'actions' => [
-                    ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'View completion details'],
-                    ['id' => 'module', 'intent' => 'navigate', 'label' => 'Review module', 'url' => route('learner.modules.show', $module)],
+                    ['id' => 'certificate', 'intent' => 'navigate', 'label' => 'Claim certificate', 'url' => route('learner.modules.show', $module).'#certificate'],
+                    ['id' => 'module', 'intent' => 'navigate', 'label' => 'Module overview', 'url' => route('learner.modules.show', $module)],
                 ],
                 'replacesSuccessToast' => true,
             ];
