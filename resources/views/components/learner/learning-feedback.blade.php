@@ -81,6 +81,7 @@
                     <span x-show="$store.learningFeedback.active?.type === 'incorrect'"><span aria-hidden="true">✕</span> Incorrect</span>
                     <span x-show="$store.learningFeedback.active?.type === 'try_again'"><span aria-hidden="true">↻</span> Try again</span>
                     <span x-show="$store.learningFeedback.active?.type === 'activity_completed'"><span aria-hidden="true">✓</span> Activity complete</span>
+                    <span x-show="$store.learningFeedback.active?.type === 'topic_completed'"><span aria-hidden="true">✓</span> Topic complete</span>
                     <span x-show="$store.learningFeedback.active?.type === 'lesson_completed'"><span aria-hidden="true">✓</span> Lesson complete</span>
                     <span x-show="$store.learningFeedback.active?.type === 'module_completed'"><span aria-hidden="true">✓</span> Module complete</span>
                     <span x-show="$store.learningFeedback.active?.type === 'informational'"><span aria-hidden="true">ⓘ</span> Information</span>
@@ -122,7 +123,7 @@
     </div>
 </div>
 
-@if($bootstrapFeedback !== null && in_array($bootstrapFeedback['type'] ?? null, ['lesson_completed', 'module_completed'], true))
+@if($bootstrapFeedback !== null && in_array($bootstrapFeedback['type'] ?? null, ['topic_completed', 'lesson_completed', 'module_completed'], true))
     <noscript>
         <section class="m-4 rounded-lg border-2 border-brand-700 bg-white p-4 text-gray-900 dark:border-brand-300 dark:bg-gray-900 dark:text-gray-100">
             <h2>{{ is_string($bootstrapFeedback['title'] ?? null) ? $bootstrapFeedback['title'] : 'Learning complete' }}</h2>

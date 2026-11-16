@@ -25,10 +25,11 @@ class FeedbackProgressRefinementTest extends TestCase
                 $t->id();
                 $t->timestamps();
                 $t->softDeletes();
-                foreach (['user_id', 'module_id', 'lesson_id', 'lesson_topic_id', 'quiz_id', 'final_quiz_id', 'attempt_limit', 'checkpoint_block_uuid', 'interactive_activity_id', 'revision', 'activity_revision'] as $column) $t->integer($column)->nullable();
+                foreach (['user_id', 'module_id', 'lesson_id', 'lesson_topic_id', 'quiz_id', 'final_quiz_id', 'attempt_limit', 'checkpoint_block_uuid', 'interactive_activity_id', 'revision', 'activity_revision', 'order'] as $column) $t->integer($column)->nullable();
                 foreach (['type', 'status', 'placement'] as $column) $t->string($column)->nullable();
                 foreach (['completed', 'passed', 'is_published', 'is_active'] as $column) $t->boolean($column)->default(false);
                 $t->integer('completion_percentage')->default(0);
+                $t->integer('progress_percentage')->default(0);
                 $t->timestamp('completed_at')->nullable();
             });
         }
@@ -48,6 +49,160 @@ class FeedbackProgressRefinementTest extends TestCase
     public function test_optional_interactions_do_not_block_certificates(): void
     {
         $this->assertNull(app(LearnerModuleCompletionService::class)->completionBlockerReason(User::find(1), Module::find(1)));
+    }
+
+    public function test_next_lesson_is_blocked_until_the_previous_lesson_quiz_is_resolved(): void
+    {
+        DB::table('lessons')->where('id', 1)->update(['order' => 1]);
+        DB::table('lessons')->insert(['id' => 2, 'module_id' => 1, 'order' => 2, 'is_published' => true]);
+        DB::table('quizzes')->insert(['id' => 1, 'lesson_id' => 1, 'module_id' => 1, 'is_active' => true, 'attempt_limit' => 2]);
+        $service = app(LearnerModuleCompletionService::class);
+        $this->assertFalse($service->lessonReadyToAdvance(User::find(1), \App\Models\Lesson::find(1)));
+        $this->assertSame(1, $service->firstIncompleteLessonBefore(User::find(1), \App\Models\Lesson::find(2))->id);
+        DB::table('quiz_attempts')->insert(['user_id' => 1, 'quiz_id' => 1, 'passed' => false, 'completed_at' => now()]);
+        $this->assertFalse($service->lessonReadyToAdvance(User::find(1), \App\Models\Lesson::find(1)));
+        DB::table('quiz_attempts')->insert(['user_id' => 1, 'quiz_id' => 1, 'passed' => true, 'completed_at' => now()]);
+        $this->assertTrue($service->lessonReadyToAdvance(User::find(1), \App\Models\Lesson::find(1)));
+        $this->assertNull($service->firstIncompleteLessonBefore(User::find(1), \App\Models\Lesson::find(2)));
+    }
+
+    public function test_lesson_completion_action_prioritizes_the_required_quiz(): void
+    {
+        DB::table('lessons')->where('id', 1)->update(['order' => 1]);
+        DB::table('lessons')->insert(['id' => 2, 'module_id' => 1, 'order' => 2, 'is_published' => true]);
+        DB::table('quizzes')->insert(['id' => 1, 'lesson_id' => 1, 'module_id' => 1, 'is_active' => true]);
+        $action = app(LearnerModuleCompletionService::class)->lessonForwardAction(User::find(1), \App\Models\Lesson::find(1));
+        $this->assertSame('Take lesson quiz', $action['label']);
+        $this->assertSame(route('learner.lessons.show', ['lesson' => 1, 'quiz' => 1]), $action['url']);
+    }
+
+    public function test_direct_next_lesson_get_and_completion_posts_redirect_to_the_pending_quiz(): void
+    {
+        DB::table('lessons')->where('id', 1)->update(['order' => 1]);
+        DB::table('lessons')->insert(['id' => 2, 'module_id' => 1, 'order' => 2, 'is_published' => true]);
+        DB::table('lesson_topics')->insert(['id' => 4, 'lesson_id' => 2, 'type' => 'text']);
+        DB::table('quizzes')->insert(['id' => 1, 'lesson_id' => 1, 'module_id' => 1, 'is_active' => true]);
+        $controller = $this->completionController();
+        $expected = route('learner.lessons.show', ['lesson' => 1, 'quiz' => 1]);
+        $this->assertSame($expected, $controller->show(\App\Models\Lesson::find(2))->getTargetUrl());
+        $this->assertSame($expected, $controller->complete(\App\Models\Lesson::find(2))->getTargetUrl());
+        $this->assertSame($expected, $controller->completeTopic(\App\Models\LessonTopic::find(4))->getTargetUrl());
+        $this->assertSame(0, DB::table('user_progress')->where('lesson_id', 2)->count());
+    }
+
+    public function test_inline_quiz_does_not_open_before_required_topics_are_complete(): void
+    {
+        DB::table('quizzes')->insert(['id' => 1, 'lesson_id' => 1, 'module_id' => 1, 'is_active' => true]);
+        DB::table('lesson_topic_progress')->update(['completed' => false]);
+        request()->query->set('quiz', 1);
+        $response = $this->completionController()->show(\App\Models\Lesson::find(1));
+        $this->assertSame(route('learner.lessons.show', 1), $response->getTargetUrl());
+        $this->assertSame('Complete the lesson topics before taking this quiz.', session('error'));
+    }
+
+    public function test_direct_quiz_start_and_submission_enforce_topics_and_previous_quizzes(): void
+    {
+        DB::table('lessons')->where('id', 1)->update(['order' => 1]);
+        DB::table('lessons')->insert(['id' => 2, 'module_id' => 1, 'order' => 2, 'is_published' => true]);
+        DB::table('quizzes')->insert([
+            ['id' => 1, 'lesson_id' => 1, 'module_id' => 1, 'is_active' => true],
+            ['id' => 2, 'lesson_id' => 2, 'module_id' => 1, 'is_active' => true],
+        ]);
+        DB::table('lesson_topic_progress')->update(['completed' => false]);
+        \Illuminate\Support\Facades\Auth::setUser(User::find(1));
+        $access = \Mockery::mock(\App\Services\Modules\ModuleAccessService::class);
+        $access->shouldReceive('assertCanLearn')->andReturnNull();
+        $controller = new \App\Http\Controllers\Learner\QuizController(
+            \Mockery::mock(\App\Services\GamificationService::class),
+            \Mockery::mock(\App\Services\SubscriptionService::class),
+            app(LearnerModuleCompletionService::class),
+            \Mockery::mock(\App\Services\Learning\QuestionEvaluator::class), $access);
+        foreach ([1, 2] as $quizId) {
+            foreach (['start', 'submit'] as $method) {
+                try {
+                    $quiz = Quiz::find($quizId);
+                    $method === 'start' ? $controller->start($quiz) : $controller->submit(new \Illuminate\Http\Request, $quiz);
+                    $this->fail('A locked quiz must not open or accept a submission.');
+                } catch (\Symfony\Component\HttpKernel\Exception\HttpException $error) {
+                    $this->assertSame(403, $error->getStatusCode());
+                }
+            }
+        }
+        $this->assertSame(0, DB::table('quiz_attempts')->count());
+    }
+
+    public function test_topic_completion_uses_the_centered_manager_with_actual_points(): void
+    {
+        DB::table('lesson_topics')->insert(['id' => 4, 'lesson_id' => 1, 'type' => 'text', 'order' => 2]);
+        DB::table('lesson_topic_progress')->update(['completed' => false]);
+        DB::table('user_progress')->update(['completed' => false]);
+        $this->completionController()->completeTopic(\App\Models\LessonTopic::find(1));
+        $this->assertSame('topic_completed', session('learning_feedback.type'));
+        $this->assertSame(10, session('learning_feedback.pointsAwarded'));
+        $this->assertTrue(session('learning_feedback.replacesPointsToast'));
+        $this->assertSame(session('success'), session('learning_feedback.message'));
+        $this->assertNull(session('learning_audio_event'));
+    }
+
+    public function test_finishing_topics_points_to_quiz_instead_of_the_next_lesson(): void
+    {
+        DB::table('lessons')->where('id', 1)->update(['order' => 1]);
+        DB::table('lessons')->insert(['id' => 2, 'module_id' => 1, 'order' => 2, 'is_published' => true]);
+        DB::table('quizzes')->insert(['id' => 1, 'lesson_id' => 1, 'module_id' => 1, 'is_active' => true]);
+        DB::table('lesson_topic_progress')->update(['completed' => false]);
+        DB::table('user_progress')->update(['completed' => false]);
+        $this->completionController()->completeTopic(\App\Models\LessonTopic::find(1));
+        $this->assertSame('Lesson topics complete', session('learning_feedback.title'));
+        $this->assertSame('Take lesson quiz', session('learning_feedback.actions.0.label'));
+        $this->assertSame(route('learner.lessons.show', ['lesson' => 1, 'quiz' => 1]), session('learning_feedback.actions.0.url'));
+        $this->assertSame(25, session('learning_feedback.pointsAwarded'));
+        $this->assertSame(session('points_earned'), session('learning_feedback.pointsAwarded'));
+    }
+
+    public function test_topic_manager_replaces_the_old_points_toast_in_the_lesson_layout(): void
+    {
+        \Illuminate\Support\Facades\Auth::setUser(User::find(1)->setRelation('gamification', null)->setRelation('roles', collect()));
+        $entitlements = \Mockery::mock(\App\Services\EntitlementService::class);
+        $entitlements->shouldReceive('canAccessFeature')->andReturn(true);
+        $this->app->instance(\App\Services\EntitlementService::class, $entitlements);
+        Schema::create('user_daily_shields', function (Blueprint $t) {
+            $t->id(); $t->integer('user_id'); $t->date('date'); $t->integer('shields_remaining'); $t->timestamps();
+        });
+        DB::table('user_daily_shields')->insert(['user_id' => 1, 'date' => today()->toDateString(), 'shields_remaining' => 3]);
+        $gamification = \Mockery::mock(\App\Services\GamificationService::class);
+        $gamification->shouldReceive('shieldRefillCost')->andReturn(25);
+        $gamification->shouldReceive('shieldFullRefillTarget')->andReturn(3);
+        $this->app->instance(\App\Services\GamificationService::class, $gamification);
+        $suggestions = \Mockery::mock(\App\Services\Chat\ChatSuggestionCatalog::class);
+        $suggestions->shouldReceive('forUser')->andReturn([]);
+        $this->app->instance(\App\Services\Chat\ChatSuggestionCatalog::class, $suggestions);
+        $feedback = ['id' => 'topic:1', 'sourceId' => 'topic:1', 'type' => 'topic_completed',
+            'message' => 'You completed this topic and earned 25 points.', 'pointsAwarded' => 25,
+            'replacesSuccessToast' => true, 'replacesPointsToast' => true];
+        session()->put(['learning_feedback' => $feedback, 'points_earned' => 25, 'success' => $feedback['message']]);
+        \Illuminate\Support\Facades\View::share('errors', new \Illuminate\Support\ViewErrorBag);
+        $html = \Illuminate\Support\Facades\Blade::render("@extends('layouts.learner-fullscreen') @section('content') Test @endsection");
+        $this->assertStringContainsString('topic_completed', $html);
+        $this->assertStringNotContainsString('window.toast.pointsEarned(25)', $html);
+        $this->assertStringNotContainsString('window.toast.success(', $html);
+    }
+
+    private function completionController(): \App\Http\Controllers\Learner\LessonController
+    {
+        \Illuminate\Support\Facades\Auth::setUser(User::find(1));
+        Schema::create('learning_completion_rewards', function (Blueprint $t) {
+            $t->id(); $t->integer('user_id'); $t->integer('subject_id'); $t->string('reason'); $t->timestamps();
+            $t->unique(['user_id', 'subject_id', 'reason']);
+        });
+        $points = \Mockery::mock(\App\Services\GamificationService::class);
+        $points->shouldReceive('awardConfiguredPoints')->with(\Mockery::type(User::class), 'topic_complete')->andReturn(10);
+        $points->shouldReceive('awardConfiguredPoints')->with(\Mockery::type(User::class), 'lesson_complete')->andReturn(15);
+        $points->shouldReceive('updateStreak')->andReturn(0);
+        $access = \Mockery::mock(\App\Services\Modules\ModuleAccessService::class);
+        $access->shouldReceive('assertCanLearn')->andReturnNull();
+        return new \App\Http\Controllers\Learner\LessonController($points,
+            \Mockery::mock(\App\Services\Learning\InteractiveActivities\InteractiveActivityProgressService::class),
+            \Mockery::mock(\App\Services\Learning\InteractiveActivities\InteractiveActivityPresenter::class), $access);
     }
 
     public function test_module_completion_is_recorded_and_rewarded_once_when_optional_items_are_unattempted(): void

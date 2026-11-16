@@ -62,6 +62,11 @@ class CompletionRewardTest extends TestCase
 
     public function test_controller_retries_and_incomplete_cycles_do_not_repeat_rewards(): void
     {
+        Schema::create('quizzes', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('lesson_id');
+            $t->boolean('is_active');
+        });
         Schema::create('lessons', function (Blueprint $t) {
             $t->id();
             $t->unsignedBigInteger('module_id');
@@ -113,7 +118,7 @@ class CompletionRewardTest extends TestCase
             Mockery::mock(\App\Services\Learning\InteractiveActivities\InteractiveActivityPresenter::class), $access);
         $controller->completeTopic($topic);
         $this->assertSame(25, session('points_earned'));
-        $this->assertTrue(session('topic_points_feedback'));
+        $this->assertTrue(session('learning_feedback.replacesPointsToast'));
         $controller->completeTopic($topic);
         $this->assertSame(0, session('points_earned'));
         $controller->uncompleteTopic($topic);

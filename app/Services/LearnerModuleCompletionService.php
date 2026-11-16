@@ -7,6 +7,7 @@ use App\Models\InteractiveActivity;
 use App\Models\InteractiveActivityProgress;
 use App\Models\InteractiveCheckpointProgress;
 use App\Models\LessonTopicProgress;
+use App\Models\Lesson;
 use App\Models\Module;
 use App\Models\QuizAttempt;
 use App\Models\User;
@@ -16,6 +17,44 @@ use Illuminate\Support\Facades\DB;
 
 class LearnerModuleCompletionService
 {
+    public function lessonTopicsComplete(User $user, Lesson $lesson): bool
+    {
+        $topics = $lesson->topics()->instructional()->get();
+        return $topics->pluck('id')->diff($this->completedTopicIds($user, $topics))->isEmpty();
+    }
+
+    public function lessonForwardAction(User $user, Lesson $lesson): array
+    {
+        $quiz = $lesson->quiz()->where('is_active', true)->first();
+        if ($quiz && ! $this->quizProgress($user, collect([$quiz]))[$quiz->id]['resolved']) {
+            return ['id' => 'quiz', 'intent' => 'navigate', 'label' => 'Take lesson quiz',
+                'url' => route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1])];
+        }
+        $next = $lesson->module->lessons()->where('is_published', true)->where('order', '>', $lesson->order)->orderBy('order')->first();
+        return $next
+            ? ['id' => 'next', 'intent' => 'navigate', 'label' => 'Next lesson', 'url' => route('learner.lessons.show', $next)]
+            : ['id' => 'module', 'intent' => 'navigate', 'label' => 'Module overview', 'url' => route('learner.modules.show', $lesson->module)];
+    }
+
+    public function lessonReadyToAdvance(User $user, Lesson $lesson): bool
+    {
+        if (! UserProgress::where('user_id', $user->id)->where('lesson_id', $lesson->id)->where('completed', true)->exists()
+            || ! $this->lessonTopicsComplete($user, $lesson)) {
+            return false;
+        }
+        $quiz = $lesson->quiz()->where('is_active', true)->first();
+        return ! $quiz || $this->quizProgress($user, collect([$quiz]))[$quiz->id]['resolved'];
+    }
+
+    public function firstIncompleteLessonBefore(User $user, Lesson $lesson): ?Lesson
+    {
+        foreach ($lesson->module->lessons()->where('is_published', true)->orderBy('order')->orderBy('id')->get() as $previous) {
+            if ($previous->id === $lesson->id) break;
+            if (! $this->lessonReadyToAdvance($user, $previous)) return $previous;
+        }
+        return null;
+    }
+
     /** Null means no new transition; zero is a newly completed module with no reward. */
     public function recordCompletion(User $user, Module $module): ?int
     {

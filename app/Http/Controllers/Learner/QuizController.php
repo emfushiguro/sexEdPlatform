@@ -427,6 +427,13 @@ class QuizController extends Controller
 
         $this->moduleAccessService->assertCanLearn($user, $module);
 
+        if ($quiz->lesson) {
+            abort_if($this->completionService->firstIncompleteLessonBefore($user, $quiz->lesson) !== null, 403,
+                'Complete the previous lesson and its required quiz first.');
+            abort_unless($this->completionService->lessonTopicsComplete($user, $quiz->lesson), 403,
+                'Complete the lesson topics before taking this quiz.');
+        }
+
         return $module;
     }
 

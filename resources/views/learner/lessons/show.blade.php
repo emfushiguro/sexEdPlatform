@@ -37,7 +37,7 @@
     ═══════════════════════════════════════════ --}}
     @php
         $_totalLessons = $allLessons->count();
-        $_doneLessons  = count($completedLessonIds);
+        $_doneLessons  = count($readyLessonIds);
         $_modPct       = $_totalLessons > 0 ? round($_doneLessons / $_totalLessons * 100) : 0;
 
         // Pre-compute locked lessons for sequential access enforcement
@@ -47,7 +47,7 @@
             if ($__si > 0 && !$__prevDone) {
                 $sidebarLockedIds[] = $__sl->id;
             }
-            $__prevDone = in_array($__sl->id, $completedLessonIds);
+            $__prevDone = $__prevDone && in_array($__sl->id, $readyLessonIds);
         }
     @endphp
 
@@ -102,7 +102,7 @@
         <div class="flex-1 overflow-y-auto">
             @foreach($allLessons as $__l)
                 @php
-                    $__lIsCompleted = in_array($__l->id, $completedLessonIds);
+                    $__lIsCompleted = in_array($__l->id, $readyLessonIds);
                     $__lIsCurrent   = $__l->id === $lesson->id;
                     $__lIsLocked    = in_array($__l->id, $sidebarLockedIds);
                     $__lTopics      = $__l->topics;

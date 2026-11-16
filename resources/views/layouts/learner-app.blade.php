@@ -98,13 +98,17 @@
         && $feedbackPlainText($learningFeedback['sourceId'] ?? null) !== ''
         && in_array($learningFeedback['type'] ?? null, [
             'correct', 'incorrect', 'try_again', 'activity_completed',
-            'lesson_completed', 'module_completed', 'informational', 'warning',
+            'topic_completed', 'lesson_completed', 'module_completed', 'informational', 'warning',
         ], true)
         && $learningFeedbackMessage !== '';
     $learningFeedbackReplacesSuccess = $learningFeedbackIsValid
         && ($learningFeedback['replacesSuccessToast'] ?? false) === true
         && $successMessage !== ''
         && $learningFeedbackMessage === $successMessage;
+    $learningFeedbackReplacesPoints = $learningFeedbackIsValid
+        && ($learningFeedback['replacesPointsToast'] ?? false) === true
+        && is_int($learningFeedback['pointsAwarded'] ?? null)
+        && $learningFeedback['pointsAwarded'] === session('points_earned');
     $learningAudioEvent = in_array(session('learning_audio_event'), ['selection', 'correct', 'incorrect', 'success', 'complete'], true)
         ? session('learning_audio_event')
         : null;
@@ -190,7 +194,7 @@
                 if (typeof window.toast === 'undefined') {
                     return setTimeout(fireToasts, 80);
                 }
-                @if(session('success') && ! $learningFeedbackReplacesSuccess && ! (session('topic_points_feedback') === true && session('points_earned') > 0))
+                @if(session('success') && ! $learningFeedbackReplacesSuccess)
                     window.toast.success("{{ addslashes(session('success')) }}");
                 @endif
                 @if(session('error'))
@@ -211,7 +215,7 @@
                 @if(session('shield_refilled'))
                     window.toast.shieldRefilled("{{ addslashes(session('shield_refilled')['message']) }}");
                 @endif
-                @if(session('points_earned'))
+                @if(session('points_earned') && ! $learningFeedbackReplacesPoints)
                     window.toast.pointsEarned({{ (int) session('points_earned') }});
                 @endif
                 @if(session('streak_milestone'))

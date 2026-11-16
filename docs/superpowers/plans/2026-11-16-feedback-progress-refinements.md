@@ -32,3 +32,11 @@
 - Browser display-only QA: centered and within bounds at 320x568, 390x844, 768x1024, 1440x900, and 844x390; action height >=44px. Long feedback scrolls internally and its button remains reachable. Module heading receives focus; Shift+Tab wraps to the final action. Certificate action dispatches a CSRF-protected POST (intercepted for QA, no certificate issued).
 - Review found and verified a fix for stale completion timestamps bypassing undone required progress. No remaining source findings in the bounded review.
 - Full existing MySQL feature suite and real-device/screen-reader/audio checks remain unrun. Certificate notification delivery was not exercised.
+
+## Follow-up: topic popup and required lesson quizzes
+
+- Replaced the retained topic points Toast with a `topic_completed` centered completion dialog. Display actual awarded points and suppress equivalent success/points Toasts; keep ordinary notifications unchanged.
+- Finishing lesson topics with an unresolved active quiz now says "Lesson topics complete" and offers "Take lesson quiz". Only quiz-resolved lessons offer advancement.
+- Shared progression checks protect lesson GETs, lesson/topic completion POSTs, quiz start, and quiz submission. Inline quizzes redirect before rendering when required topics are incomplete. Sidebar completion/locking uses topics plus resolved quizzes, including cumulative locks for later lessons.
+- Kept existing quiz pass/attempt-limit eligibility rules. Skipped optional interactions never substitute for formal quiz attempts.
+- Focused PHP regressions cover direct GET/POST bypasses, inline quiz preflight, topic popup payload/awards, and the rendered lesson layout's duplicate-Toast suppression. Browser QA confirmed a centered topic dialog with the 25-point example at mobile width. No development learner progress was changed for verification.

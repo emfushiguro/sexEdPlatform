@@ -32,8 +32,8 @@ class LearningAudioCompletionTest extends TestCase
         $this->actingAs($learner)
             ->post(route('learner.topics.complete', $topic))
             ->assertRedirect()
-            ->assertSessionHas('learning_audio_event', 'complete')
-            ->assertSessionMissing('learning_feedback');
+            ->assertSessionMissing('learning_audio_event')
+            ->assertSessionHas('learning_feedback.type', 'topic_completed');
     }
 
     public function test_repeated_topic_completion_does_not_flash_complete(): void
@@ -42,7 +42,7 @@ class LearningAudioCompletionTest extends TestCase
 
         $this->actingAs($learner)
             ->post(route('learner.topics.complete', $topic))
-            ->assertSessionHas('learning_audio_event', 'complete');
+            ->assertSessionHas('learning_feedback.type', 'topic_completed');
 
         $this->flushSession();
 
@@ -230,6 +230,8 @@ class LearningAudioCompletionTest extends TestCase
                     ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'Review lesson'],
                 ],
                 'replacesSuccessToast' => true,
+                'replacesPointsToast' => true,
+                'pointsAwarded' => session('points_earned'),
             ];
         })->assertSessionMissing('learning_audio_event');
     }
