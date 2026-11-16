@@ -37,7 +37,7 @@ use App\Http\Controllers\PlatformFeedbackController;
 use App\Http\Controllers\PlatformFeedbackMessageController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'learner.contact-ready'])->group(function () {
     Route::get('/connectors', [HomeController::class, 'index'])->name('connectors.index');
     Route::get('/connectors/invitations', [InvitationInboxController::class, 'index'])->name('connectors.invitations.index');
     Route::get('/connectors/register', [RegistrationController::class, 'create'])->name('connectors.register');
@@ -50,7 +50,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connector/{connector}/verification/documents/{document}', VerificationDocumentController::class)
         ->name('connector.verification.documents.show');
     Route::post('/connector/{connector}/withdraw', [RegistrationController::class, 'withdraw'])->name('connector.withdraw');
+});
 
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/connector/{connector}/help', [HelpCenterController::class, 'index'])->name('connector.help.index');
     Route::get('/connector/{connector}/help/{helpArticle:slug}/sections/{section}/image', [HelpArticleImageController::class, 'connectorShow'])
         ->withoutScopedBindings()

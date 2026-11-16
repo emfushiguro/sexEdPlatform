@@ -20,6 +20,28 @@ class ModuleFeedbackFlowTest extends DatabaseTestCase
 {
     use RefreshDatabase;
 
+    public function test_learner_can_review_the_admin_creator_of_a_completed_module(): void
+    {
+        $this->withoutMiddleware(EnsureProfileCompleted::class);
+        [$learner, $module, $lesson] = $this->createLearnerAndModule();
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $admin->assignRole('admin');
+        $module->update(['created_by' => $admin->id, 'content_owner_type' => 'admin']);
+        UserProgress::query()->create([
+            'user_id' => $learner->id, 'module_id' => $module->id, 'lesson_id' => $lesson->id,
+            'completed' => true, 'progress_percentage' => 100, 'completed_at' => now(),
+        ]);
+
+        $this->actingAs($learner)->get(route('learner.modules.show', $module))
+            ->assertOk()->assertSee('Review the instructor')->assertDontSee('Instructor feedback is unavailable for this module.');
+        $this->post(route('learner.modules.feedback.store', $module), [
+            'feedback_type' => 'instructor', 'rating' => 5, 'review_content' => 'Helpful teaching.',
+        ])->assertSessionHas('success');
+        $this->assertDatabaseHas('instructor_feedback', [
+            'learner_id' => $learner->id, 'instructor_id' => $admin->id, 'source_module_id' => $module->id, 'rating' => 5,
+        ]);
+    }
+
     public function test_learner_cannot_submit_feedback_before_full_completion(): void
     {
         $this->withoutMiddleware(EnsureProfileCompleted::class);
@@ -173,6 +195,22 @@ class ModuleFeedbackFlowTest extends DatabaseTestCase
             'learner_id' => $learner->id,
             'rating' => 4,
         ]);
+
+        $this->actingAs($learner)
+            ->post(route('learner.modules.feedback.store', $module), [
+                'feedback_type' => 'instructor',
+                'rating' => 5,
+                'review_content' => 'Updated instructor feedback.',
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('instructor_feedback', [
+            'learner_id' => $learner->id,
+            'source_module_id' => $module->id,
+            'rating' => 5,
+            'review_html' => 'Updated instructor feedback.',
+        ]);
+        $this->assertSame(1, \App\Models\InstructorFeedback::query()->where('learner_id', $learner->id)->count());
     }
 
     /**

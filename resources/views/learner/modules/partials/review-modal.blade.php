@@ -1,13 +1,14 @@
 <div
     x-show="reviewModalOpen"
     x-transition.opacity
+    @keydown.escape.window="reviewModalOpen = false"
     style="display: none;"
     class="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/60 px-4"
 >
-    <div @click.away="reviewModalOpen = false" class="w-full max-w-2xl rounded-2xl bg-white shadow-xl dark:bg-gray-800">
+    <div @click.away="reviewModalOpen = false" x-effect="if (reviewModalOpen) $nextTick(() => $refs.reviewHeading.focus())" role="dialog" aria-modal="true" aria-labelledby="review-dialog-title" class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl dark:bg-gray-800">
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ $userFeedback ? 'Update Review' : 'Write Review' }}</h3>
-            <button type="button" @click="reviewModalOpen = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <h3 id="review-dialog-title" x-ref="reviewHeading" tabindex="-1" class="text-base font-semibold text-gray-900 dark:text-white">Give Feedback</h3>
+            <button type="button" aria-label="Close feedback" @click="reviewModalOpen = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -16,7 +17,16 @@
 
         @if($canSubmitReview)
             <div class="grid gap-5 px-5 py-5">
-            <form method="POST" action="{{ route('learner.modules.feedback.store', $module) }}" class="space-y-4" data-review-form="true" x-data="{ selectedRating: {{ (int) old('rating', $userFeedback?->rating ?? 0) }} }">
+            <div x-show="!reviewChoice" class="grid gap-3 sm:grid-cols-2">
+                <button type="button" @click="reviewChoice = 'module'" class="rounded-2xl border border-purple-200 bg-purple-50 p-5 text-left hover:border-purple-500 focus-visible:ring-2 focus-visible:ring-purple-500 dark:border-purple-800 dark:bg-purple-950/30"><span class="block font-bold text-purple-900 dark:text-purple-100">Review this module</span><span class="mt-2 block text-sm text-gray-600 dark:text-gray-300">Rate the lessons, content, and learning experience.</span><span class="mt-3 block text-xs font-semibold text-purple-700 dark:text-purple-300">{{ $userFeedback ? 'Submitted · Edit review' : 'Write a review' }}</span></button>
+                @if($creator && $creator->id !== auth()->id())
+                    <button type="button" @click="reviewChoice = 'instructor'" class="rounded-2xl border border-purple-200 bg-purple-50 p-5 text-left hover:border-purple-500 focus-visible:ring-2 focus-visible:ring-purple-500 dark:border-purple-800 dark:bg-purple-950/30"><span class="block font-bold text-purple-900 dark:text-purple-100">Review the instructor</span><span class="mt-2 block text-sm text-gray-600 dark:text-gray-300">Rate teaching, explanations, and communication.</span><span class="mt-3 block text-xs font-semibold text-purple-700 dark:text-purple-300">{{ $userInstructorFeedback ? 'Submitted · Edit review' : 'Write a review' }}</span></button>
+                @else
+                    <div class="rounded-2xl border border-gray-200 p-5 text-sm text-gray-500 dark:border-gray-700">Instructor feedback is unavailable for this module.</div>
+                @endif
+            </div>
+            <button x-show="reviewChoice" type="button" @click="reviewChoice = ''" class="w-fit text-sm font-semibold text-purple-700 hover:underline dark:text-purple-300">← Back to feedback choices</button>
+            <form x-show="reviewChoice === 'module'" method="POST" action="{{ route('learner.modules.feedback.store', $module) }}" class="space-y-4" data-review-form="true" x-data="{ selectedRating: {{ (int) old('rating', $userFeedback?->rating ?? 0) }} }">
                 @csrf
                 <input type="hidden" name="feedback_type" value="module">
                 <div>
@@ -67,12 +77,12 @@
                         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition"
                         style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
                     >
-                        {{ $userFeedback ? 'Module Feedback Submitted' : 'Submit Module Feedback' }}
+                        {{ $userFeedback ? 'Update Module Feedback' : 'Submit Module Feedback' }}
                     </button>
                 </div>
             </form>
 
-            <form method="POST" action="{{ route('learner.modules.feedback.store', $module) }}" class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-700" x-data="{ selectedRating: {{ (int) old('rating', $userInstructorFeedback?->rating ?? 0) }} }">
+            <form x-show="reviewChoice === 'instructor'" method="POST" action="{{ route('learner.modules.feedback.store', $module) }}" class="space-y-4" x-data="{ selectedRating: {{ (int) old('rating', $userInstructorFeedback?->rating ?? 0) }} }">
                 @csrf
                 <input type="hidden" name="feedback_type" value="instructor">
                 <div>
@@ -97,8 +107,8 @@
                     <textarea name="review_content" rows="4" class="w-full rounded-xl border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm">{{ old('review_content', $userInstructorFeedback?->review_html) }}</textarea>
                 </div>
                 <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="submit" @disabled($userInstructorFeedback) class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition disabled:cursor-not-allowed disabled:opacity-50" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
-                        {{ $userInstructorFeedback ? 'Instructor Feedback Submitted' : 'Submit Instructor Feedback' }}
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
+                        {{ $userInstructorFeedback ? 'Update Instructor Feedback' : 'Submit Instructor Feedback' }}
                     </button>
                 </div>
             </form>

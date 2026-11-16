@@ -374,7 +374,7 @@ class ModuleController extends Controller
             && $allLessonQuizzesCompleted
             && !$finalQuizCompleted;
 
-        $nextSteps = $certificateEligible
+        $nextSteps = ($certificateEligible || $moduleCertificate)
             ? app(\App\Services\LearningPathPresentationService::class)->nextStepsFor($user, $module, session('learning_path_context.'.$user->id))
             : ['paths' => [], 'suggestions' => collect()];
 
