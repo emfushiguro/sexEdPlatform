@@ -190,7 +190,7 @@
                 if (typeof window.toast === 'undefined') {
                     return setTimeout(fireToasts, 80);
                 }
-                @if(session('success') && ! $learningFeedbackReplacesSuccess)
+                @if(session('success') && ! $learningFeedbackReplacesSuccess && ! (session('topic_points_feedback') === true && session('points_earned') > 0))
                     window.toast.success("{{ addslashes(session('success')) }}");
                 @endif
                 @if(session('error'))

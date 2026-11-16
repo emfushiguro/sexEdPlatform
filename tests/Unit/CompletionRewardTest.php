@@ -62,6 +62,13 @@ class CompletionRewardTest extends TestCase
 
     public function test_controller_retries_and_incomplete_cycles_do_not_repeat_rewards(): void
     {
+        Schema::create('lessons', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('module_id');
+            $t->boolean('is_published');
+            $t->integer('order');
+            $t->softDeletes();
+        });
         Schema::create('lesson_topics', function (Blueprint $t) {
             $t->id();
             $t->unsignedBigInteger('lesson_id');
@@ -92,7 +99,7 @@ class CompletionRewardTest extends TestCase
         $user = User::findOrFail(1);
         \Illuminate\Support\Facades\Auth::setUser($user);
         $module = (new \App\Models\Module)->forceFill(['id' => 1]);
-        $lesson = (new \App\Models\Lesson)->forceFill(['id' => 1, 'module_id' => 1, 'is_published' => true]);
+        $lesson = (new \App\Models\Lesson)->forceFill(['id' => 1, 'module_id' => 1, 'is_published' => true, 'order' => 1]);
         $lesson->setRelation('module', $module);
         $topic = \App\Models\LessonTopic::findOrFail(2)->setRelation('lesson', $lesson);
         $points = Mockery::mock(GamificationService::class);
@@ -106,6 +113,7 @@ class CompletionRewardTest extends TestCase
             Mockery::mock(\App\Services\Learning\InteractiveActivities\InteractiveActivityPresenter::class), $access);
         $controller->completeTopic($topic);
         $this->assertSame(25, session('points_earned'));
+        $this->assertTrue(session('topic_points_feedback'));
         $controller->completeTopic($topic);
         $this->assertSame(0, session('points_earned'));
         $controller->uncompleteTopic($topic);

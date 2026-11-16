@@ -8,9 +8,9 @@ use App\Models\InteractiveCheckpointProgress;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\LessonTopicProgress;
-use App\Models\QuizAttempt;
 use App\Models\UserProgress;
 use App\Services\GamificationService;
+use App\Services\LearnerModuleCompletionService;
 use App\Services\Learning\CompletionRewardService;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityPresenter;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityProgressService;
@@ -97,88 +97,11 @@ class LessonController extends Controller
 
         $allLessonsCompleted = $allLessons->count() > 0 && count($completedLessonIds) === $allLessons->count();
 
-        $topicIds = $allLessons
-            ->flatMap(fn ($moduleLesson) => $moduleLesson->topics
-                ->filter(fn (LessonTopic $topic) => ! $topic->isOptionalInteraction())
-                ->pluck('id'))
-            ->unique();
-        $completedModuleTopicIds = LessonTopicProgress::where('user_id', $user->id)
-            ->whereIn('lesson_topic_id', $topicIds)
-            ->where('completed', true)
-            ->pluck('lesson_topic_id')
-            ->unique();
-        $allTopicsCompleted = $topicIds->isEmpty() || $completedModuleTopicIds->count() === $topicIds->count();
-
-        $lessonQuizIds = $allLessons
-            ->pluck('quiz')
-            ->filter()
-            ->pluck('id')
-            ->unique();
-        $lessonQuizById = $allLessons
-            ->pluck('quiz')
-            ->filter()
-            ->keyBy('id');
-        $allLessonQuizzesCompleted = $lessonQuizIds->isEmpty() || $lessonQuizIds->every(function ($quizId) use ($user, $lessonQuizById) {
-            $attemptCount = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $quizId)
-                ->count();
-
-            if ($attemptCount === 0) {
-                return false;
-            }
-
-            $hasPassed = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $quizId)
-                ->where('passed', true)
-                ->exists();
-
-            if ($hasPassed) {
-                return true;
-            }
-
-            $attemptLimit = $lessonQuizById->get($quizId)?->attempt_limit;
-
-            return $attemptLimit !== null && $attemptCount >= (int) $attemptLimit;
-        });
-
-        $finalQuizCompleted = true;
-        if ($module->final_quiz_id) {
-            $finalAttemptCount = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $module->final_quiz_id)
-                ->count();
-
-            if ($finalAttemptCount === 0) {
-                $finalQuizCompleted = false;
-            }
-
-            $hasPassedFinalQuiz = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $module->final_quiz_id)
-                ->where('passed', true)
-                ->exists();
-
-            $finalQuizAttemptLimit = $module->quizzes()
-                ->where('id', $module->final_quiz_id)
-                ->value('attempt_limit');
-
-            $finalQuizCompleted = $hasPassedFinalQuiz
-                || ($finalQuizAttemptLimit !== null && $finalAttemptCount >= (int) $finalQuizAttemptLimit);
-        }
-
-        $certificateEligible = $allLessonsCompleted
-            && $allTopicsCompleted
-            && $allLessonQuizzesCompleted
-            && $finalQuizCompleted;
-
         // Get all completed topic IDs across the entire module (for sidebar display)
-        $allModuleTopicIds = $allLessons->flatMap(fn ($l) => $l->topics->pluck('id'));
-        $allCompletedTopicIds = [];
-        if ($allModuleTopicIds->isNotEmpty()) {
-            $allCompletedTopicIds = LessonTopicProgress::where('user_id', $user->id)
-                ->whereIn('lesson_topic_id', $allModuleTopicIds)
-                ->where('completed', true)
-                ->pluck('lesson_topic_id')
-                ->toArray();
-        }
+        $completionService = app(LearnerModuleCompletionService::class);
+        $allCompletedTopicIds = $completionService->completedTopicIds($user, $allLessons->flatMap->topics)->all();
+        $lessonQuizProgress = $completionService->quizProgress($user, $allLessons->pluck('quiz')->filter());
+        $certificateEligible = $completionService->isFullyCompleted($user, $module);
 
         // Get lesson quiz if exists — eager-load questions.options for the quiz wizard
         $lessonQuiz = $lesson->quiz()->where('is_active', true)->with('questions.options')->first();
@@ -188,6 +111,8 @@ class LessonController extends Controller
         if ($lessonQuiz) {
             $quizAttempt = $user->quizAttempts()
                 ->where('quiz_id', $lessonQuiz->id)
+                ->whereNotNull('completed_at')
+                ->orderByDesc('passed')
                 ->orderByDesc('score')
                 ->first();
             $quizAttempts = $user->quizAttempts()
@@ -402,6 +327,7 @@ class LessonController extends Controller
             'lessonQuiz',
             'quizAttempt',
             'quizAttempts',
+            'lessonQuizProgress',
             'questionTypeCounts',
             'lessonTopics',
             'checkpointProgress',
@@ -504,6 +430,9 @@ class LessonController extends Controller
             $topicPoints = (new CompletionRewardService($this->gamificationService))->award($user, 'topic_complete', $topic->id);
             $this->gamificationService->updateStreak($user);
             session()->flash('points_earned', $topicPoints);
+            if (! $wasAlreadyCompleted && $topicPoints > 0) {
+                session()->flash('topic_points_feedback', true);
+            }
 
             // Check if all topics are completed to auto-complete lesson
             $allTopics = $lesson->topics()->instructional()->ordered()->get();

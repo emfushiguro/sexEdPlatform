@@ -501,8 +501,8 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
                 'title' => 'Module complete',
                 'message' => 'You completed this module. Review your results and available next steps.',
                 'actions' => [
-                    ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'View completion details'],
-                    ['id' => 'module', 'intent' => 'navigate', 'label' => 'Review module', 'url' => route('learner.modules.show', $module)],
+                    ['id' => 'certificate', 'intent' => 'continue', 'label' => 'Claim certificate'],
+                    ['id' => 'module', 'intent' => 'navigate', 'label' => 'Module overview', 'url' => route('learner.modules.show', $module)],
                 ],
                 'replacesSuccessToast' => true,
             ];

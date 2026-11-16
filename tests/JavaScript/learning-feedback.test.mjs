@@ -151,7 +151,7 @@ test('all configuration values and nested allowlists are fixed', () => {
         ['try_again', 'Keep going', 'You can adjust your response and try again.', 'try-again', ['card'], null, 30, null],
         ['activity_completed', 'Activity complete', 'You completed this learning activity.', 'activity-completed', ['card'], 'success', 80, null],
         ['lesson_completed', 'Lesson complete', 'You completed this lesson.', 'lesson-completed', ['completion_modal'], 'complete', 100, null],
-        ['module_completed', 'Module complete', 'You completed this module.', 'lesson-completed', ['completion_modal'], 'success', 100, null],
+        ['module_completed', 'Module complete', 'You completed this module.', 'correct-answer', ['completion_modal'], 'success', 100, null],
         ['informational', 'Good to know', 'Here is some information for this activity.', 'informational', ['micro', 'card'], null, 20, 3000],
         ['warning', 'Let us pause here', 'Review this message before continuing.', 'warning', ['card'], null, 60, null],
     ];
@@ -508,6 +508,18 @@ test('completion replacement retains the original external focus target', () => 
     manager.dismiss();
     assert.equal(before.focused, 1);
     assert.equal(heading.focused, 1);
+});
+
+test('module completion can dismiss with Escape while offering certificate and overview actions', () => {
+    const manager = createManager();
+    manager.show(payload({ type: 'module_completed', actions: [
+        action('continue', { id: 'certificate', label: 'Claim certificate' }),
+        action('navigate', { id: 'module', url: '/learn/modules/9' }),
+    ] }));
+    let prevented = false;
+    manager.handleKeydown({ key: 'Escape', preventDefault() { prevented = true; } });
+    assert.equal(prevented, true);
+    assert.equal(manager.open, false);
 });
 
 test('Tab and Shift+Tab wrap completion controls and contain focus entering from outside', () => {

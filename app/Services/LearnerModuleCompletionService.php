@@ -12,9 +12,64 @@ use App\Models\QuizAttempt;
 use App\Models\User;
 use App\Models\UserProgress;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class LearnerModuleCompletionService
 {
+    /** Null means no new transition; zero is a newly completed module with no reward. */
+    public function recordCompletion(User $user, Module $module): ?int
+    {
+        return DB::transaction(function () use ($user, $module) {
+            $enrollment = $user->moduleEnrollments()->where('module_id', $module->id)
+                ->where('status', EnrollmentStatus::Approved)->lockForUpdate()->first();
+            if (! $enrollment || $enrollment->completed_at !== null || ! $this->isFullyCompleted($user, $module)) {
+                return null;
+            }
+            $enrollment->update(['completed_at' => now(), 'completion_percentage' => 100]);
+            return app(GamificationService::class)->awardConfiguredPoints($user, 'module_completed');
+        });
+    }
+
+    public function moduleFeedback(User $user, Module $module): array
+    {
+        $certificate = $user->certificates()->where('module_id', $module->id)->first();
+        $eligible = $this->isFullyCompleted($user, $module);
+        $enrollmentId = $user->moduleEnrollments()->where('module_id', $module->id)->value('id');
+        $primary = $certificate
+            ? ['id' => 'certificate', 'intent' => 'navigate', 'label' => 'View certificate', 'url' => route('learner.certificates.show', $certificate)]
+            : ($eligible
+                ? ['id' => 'certificate', 'intent' => 'continue', 'label' => 'Claim certificate']
+                : ['id' => 'requirements', 'intent' => 'navigate', 'label' => 'Complete remaining requirements', 'url' => route('learner.modules.show', $module)]);
+
+        return [
+            'id' => "module-completed:{$user->id}:{$module->id}:{$enrollmentId}",
+            'sourceId' => "module:{$module->id}",
+            'type' => 'module_completed',
+            'title' => 'Module complete',
+            'message' => 'You completed this module. Review your results and available next steps.',
+            'actions' => [$primary, ['id' => 'module', 'intent' => 'navigate', 'label' => 'Module overview', 'url' => route('learner.modules.show', $module)]],
+            'replacesSuccessToast' => true,
+        ];
+    }
+
+    /** Completed submissions are recorded separately from progression eligibility. */
+    public function quizProgress(User $user, Collection $quizzes): Collection
+    {
+        $attempts = QuizAttempt::query()->where('user_id', $user->id)
+            ->whereIn('quiz_id', $quizzes->pluck('id'))->whereNotNull('completed_at')
+            ->get(['quiz_id', 'passed'])->groupBy('quiz_id');
+
+        return $quizzes->mapWithKeys(function ($quiz) use ($attempts) {
+            $submitted = $attempts->get($quiz->id, collect());
+            $passed = $submitted->contains(fn ($attempt) => $attempt->passed);
+            return [$quiz->id => [
+                'attempted' => $submitted->isNotEmpty(),
+                'passed' => $passed,
+                'resolved' => $passed || ($quiz->attempt_limit !== null && $submitted->count() >= (int) $quiz->attempt_limit),
+            ]];
+        });
+    }
+
     /**
      * @return array{eligible: bool, reason: string|null}
      */
@@ -119,10 +174,6 @@ class LearnerModuleCompletionService
             return 'You must be enrolled in this module.';
         }
 
-        if ($enrollment->completed_at !== null || (int) $enrollment->completion_percentage >= 100) {
-            return null;
-        }
-
         $lessons = $module->lessons()
             ->where('is_published', true)
             ->with([
@@ -147,7 +198,8 @@ class LearnerModuleCompletionService
             return 'Complete all lessons before submitting feedback.';
         }
 
-        $topics = $lessons->flatMap(fn ($lesson) => $lesson->topics);
+        $topics = $lessons->flatMap(fn ($lesson) => $lesson->topics)
+            ->reject(fn ($topic) => $topic->isOptionalInteraction());
         $topicIds = $topics->pluck('id')->unique();
         if ($topicIds->isNotEmpty()) {
             $completedTopicIds = $this->completedTopicIds($user, $topics);
@@ -157,62 +209,22 @@ class LearnerModuleCompletionService
             }
         }
 
-        $lessonQuizIds = $lessons
-            ->pluck('quiz')
-            ->filter()
-            ->pluck('id')
-            ->unique();
-
-        if ($lessonQuizIds->isNotEmpty()) {
-            $lessonQuizById = $lessons
-                ->pluck('quiz')
-                ->filter()
-                ->keyBy('id');
-
-            $allLessonQuizzesCompleted = $lessonQuizIds->every(function ($quizId) use ($user, $lessonQuizById, $requirePassingLessonQuizzes) {
-                $attemptCount = QuizAttempt::query()
-                    ->where('user_id', $user->id)
-                    ->where('quiz_id', $quizId)
-                    ->whereNotNull('completed_at')
-                    ->count();
-
-                if ($attemptCount === 0) {
-                    return false;
-                }
-
-                if (! $requirePassingLessonQuizzes) {
-                    return true;
-                }
-
-                $hasPassed = QuizAttempt::query()
-                    ->where('user_id', $user->id)
-                    ->where('quiz_id', $quizId)
-                    ->where('passed', true)
-                    ->exists();
-
-                if ($hasPassed) {
-                    return true;
-                }
-
-                $attemptLimit = $lessonQuizById->get($quizId)?->attempt_limit;
-
-                return $attemptLimit !== null && $attemptCount >= (int) $attemptLimit;
-            });
-
-            if (! $allLessonQuizzesCompleted) {
-                return 'Complete all lesson quizzes before submitting feedback.';
-            }
+        $quizProgress = $this->quizProgress($user, $lessons->pluck('quiz')->filter());
+        if ($quizProgress->contains(fn ($state) => ! $state[$requirePassingLessonQuizzes ? 'resolved' : 'attempted'])) {
+            return 'Complete all lesson quizzes before submitting feedback.';
         }
 
         if ($module->final_quiz_id) {
             $finalAttemptCount = QuizAttempt::query()
                 ->where('user_id', $user->id)
                 ->where('quiz_id', $module->final_quiz_id)
+                ->whereNotNull('completed_at')
                 ->count();
 
             $hasPassedFinalQuiz = QuizAttempt::query()
                 ->where('user_id', $user->id)
                 ->where('quiz_id', $module->final_quiz_id)
+                ->whereNotNull('completed_at')
                 ->where('passed', true)
                 ->exists();
 
