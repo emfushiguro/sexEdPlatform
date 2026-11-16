@@ -1,6 +1,6 @@
 @props(['activity', 'preview' => false])
 
-<div class="interactive-sequencing-container relative mt-6" x-data="sequencingActivity(@js([
+<div class="interactive-sequencing-container relative mt-6" @learning-feedback:action.window="handleLearningFeedbackAction($event)" x-data="sequencingActivity(@js([
     'activityId' => $activity['id'] ?? null,
     'revision' => $activity['revision'] ?? 1,
     'checkUrl' => $activity['check_sequence_url'] ?? null,

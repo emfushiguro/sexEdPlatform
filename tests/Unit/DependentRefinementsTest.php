@@ -37,4 +37,3 @@ class DependentRefinementsTest extends TestCase
         $this->assertSame('/fallback', $resolver->resolve(['type' => 'adult_authority_review_requested', 'action_url' => 'http://old-host/other/42'], '/fallback', $admin));
     }
 }
-

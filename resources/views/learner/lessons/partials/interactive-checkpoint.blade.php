@@ -44,6 +44,7 @@
     ]))"
     x-init="if (@js($ownsFooterOnLoad)) $dispatch('checkpoint-active', { questionId: {{ $question->id }}, token: 'checkpoint:{{ $question->id }}', initial: true })"
     @focusin="$dispatch('checkpoint-active', { questionId: {{ $question->id }}, token: 'checkpoint:{{ $question->id }}' })"
+    @learning-feedback:action.window="handleLearningFeedbackAction($event)"
     class="my-6 rounded-2xl border border-purple-200 bg-purple-50/50 dark:border-purple-800 dark:bg-purple-900/10 p-5">
     <p class="text-xs font-bold uppercase tracking-widest text-purple-700 dark:text-purple-300">{{ $isPerspectiveFeedback ? 'Perspective Feedback' : 'Quick Check' }}</p>
     <h3 class="mt-2 text-base font-semibold text-gray-900 dark:text-white">
@@ -115,7 +116,7 @@
             @endif
         </div>
 
-        <section x-show="state === 'completed'" class="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sky-950" aria-live="polite">
+        <section x-show="state === 'completed' && !hasOpenFeedbackCard()" class="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sky-950" aria-live="polite">
             <p class="font-semibold" x-text="result?.pathway === 'guided' ? 'Your Response' : 'Your Perspective'"></p>
             <p class="mt-2 whitespace-pre-line text-sm" x-text="result?.pathway === 'guided' ? result?.option_text : result?.perspective_text"></p>
             <div x-show="result?.pathway === 'guided' && feedback" class="mt-4">
@@ -159,16 +160,19 @@
         @endif
     </div>
 
-    @if(! $isPerspectiveFeedback)
-        <div x-show="state !== 'ready' && state !== 'submitting'" class="mt-4 rounded-xl p-4" :class="state === 'correct' ? 'bg-green-50 text-green-800' : state === 'incorrect' ? 'bg-red-50 text-red-800' : 'bg-gray-100 text-gray-700'">
-        <p class="font-semibold" x-text="state === 'correct' ? 'Correct' : state === 'incorrect' ? 'Not quite; try again.' : state === 'skipped' ? 'Skipped for now.' : error"></p>
-        <p x-show="state === 'correct' && explanation" class="mt-2 text-sm" x-text="explanation"></p>
-        </div>
-    @endif
+    <div x-show="state !== 'ready' && state !== 'submitting' && !hasOpenFeedbackCard()" class="mt-4 rounded-xl p-4" aria-live="polite" :class="state === 'correct' ? 'bg-green-50 text-green-800' : state === 'incorrect' ? 'bg-red-50 text-red-800' : 'bg-gray-100 text-gray-700'">
+        <p class="font-semibold" x-text="state === 'correct' ? 'Correct' : state === 'incorrect' ? 'Not quite; try again.' : state === 'skipped' ? 'Skipped for now.' : state === 'completed' ? 'Response saved.' : error"></p>
+        @if(! $isPerspectiveFeedback)
+            <p x-show="state === 'correct' && explanation" class="mt-2 text-sm" x-text="explanation"></p>
+        @endif
+    </div>
 
     <div class="mt-5 flex flex-wrap items-center gap-3">
         @if($isPerspectiveFeedback)
             <button type="button" x-show="state === 'ready'" :disabled="state === 'submitting'" @click="submit()" class="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);" x-text="answer.pathway === 'own' ? 'Submit Perspective' : 'Submit Response'"></button>
+            <button type="button" x-show="state === 'error'" @click="retry()" class="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold dark:border-gray-700">
+                Retry
+            </button>
         @else
             <button type="button" x-show="state === 'ready'" :disabled="state === 'submitting'" @click="submit()" class="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style="background: linear-gradient(135deg, #A30EB2, #3B0CB1);">
                 Check Answer

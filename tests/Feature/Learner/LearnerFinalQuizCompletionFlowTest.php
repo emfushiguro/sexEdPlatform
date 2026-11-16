@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Http\Middleware\EnsureProfileCompleted;
 use App\Services\Gamification\GamificationPolicyResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class LearnerFinalQuizCompletionFlowTest extends TestCase
@@ -45,6 +46,19 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
             'is_published' => true,
             'min_age' => 18,
             'max_age' => 30,
+        ]);
+
+        $lesson = Lesson::factory()->create([
+            'module_id' => $module->id,
+            'is_published' => true,
+        ]);
+        UserProgress::query()->create([
+            'user_id' => $learner->id,
+            'module_id' => $module->id,
+            'lesson_id' => $lesson->id,
+            'completed' => true,
+            'progress_percentage' => 100,
+            'completed_at' => now(),
         ]);
 
         $finalQuiz = Quiz::factory()->create([
@@ -87,7 +101,7 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
             'enrolled_at' => now(),
         ]);
 
-        $this->actingAs($learner)
+        $response = $this->actingAs($learner)
             ->post(route('quizzes.submit', $finalQuiz), [
                 'answers' => [
                     $question->id => $correctOption->id,
@@ -95,16 +109,39 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
                 'started_at' => now()->timestamp,
             ])
             ->assertRedirect(route('learner.modules.completion', $module))
-            ->assertSessionHas('learning_audio_event', 'success');
+            ->assertSessionHas('success', 'You completed this module. Review your results and available next steps.');
+
+        $this->assertModuleCompletionFeedback($response, $learner, $module);
 
         $this->actingAs($learner)
             ->get(route('learner.modules.completion', $module))
             ->assertOk()
             ->assertSee($module->title, false)
             ->assertSee('Congratulations!', false)
+            ->assertSee('data-learning-feedback-host', false)
+            ->assertSee('module_completed', false)
+            ->assertSee("module-completed:{$learner->id}:{$module->id}:", false)
+            ->assertDontSee('data-learning-audio-event="success"', false)
             ->assertSee('You have successfully completed this module.', false)
             ->assertSee('Claim Certificate', false)
             ->assertSee('Return to Modules', false);
+
+        $this->actingAs($learner)
+            ->get(route('learner.modules.completion', $module))
+            ->assertOk()
+            ->assertDontSee("module-completed:{$learner->id}:{$module->id}:", false)
+            ->assertSessionMissing('learning_feedback')
+            ->assertSessionMissing('learning_audio_event');
+
+        $this->actingAs($learner)
+            ->post(route('quizzes.submit', $finalQuiz), [
+                'answers' => [$question->id => $correctOption->id],
+                'started_at' => now()->timestamp,
+            ])
+            ->assertRedirect(route('learner.modules.completion', $module))
+            ->assertSessionMissing('learning_feedback')
+            ->assertSessionHas('learning_audio_event', 'success')
+            ->assertSessionHas('module_completion_points_earned', 0);
     }
 
     public function test_completed_lessons_expose_the_final_quiz_action_before_certificate_claiming(): void
@@ -203,14 +240,22 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        $this->actingAs($learner)
+        $response = $this->actingAs($learner)
             ->get(route('learner.modules.completion', $module))
             ->assertOk()
-            ->assertSee('data-learning-audio-event="success"', false);
+            ->assertSee('data-learning-feedback-host', false)
+            ->assertSee('module_completed', false)
+            ->assertSee("module-completed:{$learner->id}:{$module->id}:", false)
+            ->assertDontSee('data-learning-audio-event="success"', false);
+
+        $this->assertModuleCompletionFeedback($response, $learner, $module);
 
         $this->actingAs($learner)
             ->get(route('learner.modules.completion', $module))
             ->assertOk()
+            ->assertDontSee("module-completed:{$learner->id}:{$module->id}:", false)
+            ->assertSessionMissing('learning_feedback')
+            ->assertSessionMissing('learning_audio_event')
             ->assertDontSee('data-learning-audio-event="success"', false);
     }
 
@@ -248,6 +293,8 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
         $this->actingAs($learner)
             ->get(route('learner.modules.completion', $module))
             ->assertRedirect(route('learner.modules.show', $module))
+            ->assertSessionMissing('learning_feedback')
+            ->assertSessionMissing('learning_audio_event')
             ->assertSessionHas('error');
     }
 
@@ -308,6 +355,7 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
 
         $response
             ->assertRedirect(route('quizzes.result', $attempt))
+            ->assertSessionMissing('learning_feedback')
             ->assertSessionHas('learning_audio_event', 'success');
 
         $this->assertDatabaseHas('quiz_attempts', [
@@ -435,5 +483,29 @@ class LearnerFinalQuizCompletionFlowTest extends TestCase
         $learner->refresh();
         $this->assertSame(70, (int) $learner->gamification->score);
         $this->assertSame(70, (int) $learner->gamification->total_points);
+    }
+
+    private function assertModuleCompletionFeedback(TestResponse $response, User $learner, Module $module): void
+    {
+        $enrollment = ModuleEnrollment::query()
+            ->where('user_id', $learner->id)
+            ->where('module_id', $module->id)
+            ->firstOrFail();
+
+        $this->assertNotNull($enrollment->completed_at);
+        $response->assertSessionHas('learning_feedback', function (array $feedback) use ($learner, $module, $enrollment): bool {
+            return $feedback === [
+                'id' => "module-completed:{$learner->id}:{$module->id}:{$enrollment->id}",
+                'sourceId' => "module:{$module->id}",
+                'type' => 'module_completed',
+                'title' => 'Module complete',
+                'message' => 'You completed this module. Review your results and available next steps.',
+                'actions' => [
+                    ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'View completion details'],
+                    ['id' => 'module', 'intent' => 'navigate', 'label' => 'Review module', 'url' => route('learner.modules.show', $module)],
+                ],
+                'replacesSuccessToast' => true,
+            ];
+        })->assertSessionMissing('learning_audio_event');
     }
 }

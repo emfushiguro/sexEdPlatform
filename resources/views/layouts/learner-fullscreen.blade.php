@@ -78,6 +78,31 @@
     @stack('head')
 </head>
 @php
+    $learningFeedback = is_array(session('learning_feedback')) ? session('learning_feedback') : null;
+    $feedbackPlainText = static function ($value): string {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $withoutMarkup = preg_replace('/<[^>]*>/u', ' ', $value);
+        $collapsed = preg_replace('/\s+/u', ' ', $withoutMarkup ?? '');
+
+        return trim($collapsed ?? '');
+    };
+    $learningFeedbackMessage = $feedbackPlainText($learningFeedback['message'] ?? null);
+    $successMessage = $feedbackPlainText(session('success'));
+    $learningFeedbackIsValid = $learningFeedback !== null
+        && $feedbackPlainText($learningFeedback['id'] ?? null) !== ''
+        && $feedbackPlainText($learningFeedback['sourceId'] ?? null) !== ''
+        && in_array($learningFeedback['type'] ?? null, [
+            'correct', 'incorrect', 'try_again', 'activity_completed',
+            'lesson_completed', 'module_completed', 'informational', 'warning',
+        ], true)
+        && $learningFeedbackMessage !== '';
+    $learningFeedbackReplacesSuccess = $learningFeedbackIsValid
+        && ($learningFeedback['replacesSuccessToast'] ?? false) === true
+        && $successMessage !== ''
+        && $learningFeedbackMessage === $successMessage;
     $learningAudioEvent = in_array(session('learning_audio_event'), ['selection', 'correct', 'incorrect', 'success', 'complete'], true)
         ? session('learning_audio_event')
         : null;
@@ -190,6 +215,8 @@
         @yield('content')
     </div>
 
+    <x-learner.learning-feedback :initial-feedback="$learningFeedback" />
+
     @stack('scripts')
 
     @auth
@@ -215,7 +242,7 @@
                 if (typeof window.toast === 'undefined') {
                     return setTimeout(fireToasts, 80);
                 }
-                @if(session('success'))
+                @if(session('success') && ! $learningFeedbackReplacesSuccess)
                     window.toast.success("{{ addslashes(session('success')) }}");
                 @endif
                 @if(session('error'))

@@ -163,7 +163,7 @@ test('correct preview sequencing result completes shared feedback', async () => 
     assert.equal(result.data.is_complete, true);
     assert.equal(child.previewToken, 'token-2');
     parent.handleActivityResult(result);
-    assert.deepEqual(parent.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
+    assert.deepEqual(parent.feedback, { type: 'activity_completed', message: 'You completed this learning activity.' });
 });
 
 test('failed sequencing request dispatches a scoped error', async () => {
@@ -439,4 +439,30 @@ test('sequencing exposes Alpine destroy cleanup', () => {
 
     assert.equal(activity.destroy(), activity);
     assert.equal(activity.autoScrollFrame, null);
+});
+
+test('sequencing manager Retry is scoped, preserves order and prevents default once', () => {
+    const events = [];
+    const activity = createSequencingActivity({ activityId: 41, initialOrder: ['two', 'one'] });
+    activity.$dispatch = (name, detail) => events.push([name, detail]);
+    activity.positionResults = [{ item_id: 'two', position: 1, is_correct: false }];
+    let prevented = 0;
+    const event = (sourceId, intent = 'retry') => ({ detail: { sourceId, intent }, preventDefault() { prevented++; } });
+    activity.handleLearningFeedbackAction(event('activity:42'));
+    activity.handleLearningFeedbackAction(event('activity:41', 'continue'));
+    for (const status of ['completed', 'practice_completed']) {
+        activity.status = status;
+        activity.handleLearningFeedbackAction(event('activity:41'));
+    }
+    activity.status = 'in_progress';
+    activity.submitting = true;
+    activity.handleLearningFeedbackAction(event('activity:41'));
+    assert.equal(prevented, 0);
+    assert.equal(activity.positionResults.length, 1);
+    activity.submitting = false;
+    assert.equal(activity.handleLearningFeedbackAction(event('activity:41')), activity);
+    assert.equal(prevented, 1);
+    assert.deepEqual(activity.order, ['two', 'one']);
+    assert.deepEqual(activity.positionResults, []);
+    assert.deepEqual(events, [['interactive-activity-retry', { activityId: 41, type: 'sequencing' }]]);
 });

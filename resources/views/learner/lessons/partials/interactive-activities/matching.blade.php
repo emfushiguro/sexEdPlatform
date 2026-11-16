@@ -1,6 +1,6 @@
 @props(['activity', 'preview' => false])
 
-<div class="interactive-match-container relative mt-6" x-data="matchingActivity(@js([
+<div class="interactive-match-container relative mt-6" @learning-feedback:action.window="handleLearningFeedbackAction($event)" x-data="matchingActivity(@js([
     'activityId' => $activity['id'] ?? null,
     'revision' => $activity['revision'] ?? 1,
     'matchUrl' => $activity['match_url'] ?? null,

@@ -74,5 +74,3 @@ class GuardianLearningActivityTest extends TestCase
         $this->assertStringNotContainsString('score', json_encode($events));
     }
 }
-
-

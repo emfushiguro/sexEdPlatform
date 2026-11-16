@@ -62,6 +62,13 @@ export function createSequencingActivity(config = {}, request = globalThis.fetch
             return this.positionResults.some((result) => !result.is_correct);
         },
 
+        handleLearningFeedbackAction(event) {
+            const detail = event?.detail ?? {};
+            if (detail.sourceId !== `activity:${config.activityId}` || detail.intent !== 'retry' || this.isLocked()) return this;
+            event.preventDefault?.();
+            return this.retryAnswer();
+        },
+
         retryAnswer() {
             if (this.isLocked()) return this;
             this.positionResults = [];

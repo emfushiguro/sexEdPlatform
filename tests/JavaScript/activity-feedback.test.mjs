@@ -4,18 +4,22 @@ import { emptyActivityFeedback, feedbackForEvaluation, feedbackForLifecycle } fr
 
 test('matching feedback distinguishes progress, incorrect, and completion', () => {
     assert.deepEqual(feedbackForEvaluation('matching', { is_correct: true, is_complete: false }, { completed: 2, total: 4 }), {
-        kind: 'correct', message: 'Correct match. 2 of 4 pairs complete.', icon: 'check',
+        type: 'correct', message: 'Correct match. 2 of 4 pairs complete.',
     });
     assert.equal(feedbackForEvaluation('matching', { is_correct: false }).message,
-        'Incorrect match. Review the highlighted connections and try again.');
-    assert.equal(feedbackForEvaluation('matching', { is_correct: true, is_complete: true }).message,
-        'Correct. Activity complete.');
+        'Review the highlighted connections and try again.');
+    assert.equal(feedbackForEvaluation('matching', { is_correct: false }).type, 'incorrect');
+    assert.deepEqual(feedbackForEvaluation('matching', { is_correct: true, is_complete: true }), {
+        type: 'activity_completed', message: 'You completed this learning activity.',
+    });
 });
 
 test('sequencing and lifecycle feedback use the shared language', () => {
     assert.equal(feedbackForEvaluation('sequencing', { is_correct: false }).message,
-        'Incorrect sequence. Reorder the items and try again.');
-    assert.equal(feedbackForLifecycle('skipped').message,
-        'Activity skipped. You can resume when ready.');
+        'Review the highlighted positions and try again.');
+    assert.deepEqual(feedbackForLifecycle('skipped'), {
+        type: 'informational', presentation: 'micro', message: 'Activity skipped. You can resume when ready.',
+    });
+    assert.equal(feedbackForLifecycle('practice_completed').type, 'activity_completed');
     assert.deepEqual(emptyActivityFeedback(), { kind: 'idle', message: '', icon: null });
 });

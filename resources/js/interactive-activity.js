@@ -7,7 +7,8 @@ async function readResponse(response) {
 }
 
 export function createInteractiveActivity(config = {}, request = globalThis.fetch?.bind(globalThis)) {
-    const audio = config.audio ?? globalThis.learningAudio;
+    const feedback = config.feedback ?? globalThis.Alpine?.store?.('learningFeedback');
+    const sourceId = `activity:${config.activityId}`;
     const activity = {
         activityId: config.activityId,
         status: config.initialStatus || 'in_progress',
@@ -16,6 +17,9 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
         explanation: config.initialExplanation ?? null,
         error: '',
         feedback: emptyActivityFeedback(),
+        feedbackId: null,
+        resultSequence: 0,
+        warningSequence: 0,
         submitting: false,
         practiceMode: false,
         helpOpen: false,
@@ -40,7 +44,57 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
         },
 
         clearFeedback() {
+            this.dismissFeedback();
             this.feedback = emptyActivityFeedback();
+            this.feedbackId = null;
+            return this;
+        },
+
+        dismissFeedback(type = null) {
+            const matches = item => item?.sourceId === sourceId && (type === null || item.type === type);
+            if (matches(feedback?.pending)) feedback.pending = null;
+            // The manager dismisses after action dispatch; do not dismiss a promoted card twice.
+            if (!feedback?.acting && matches(feedback?.active)) feedback.dismiss?.();
+            return this;
+        },
+
+        hasOpenFeedback() {
+            return Boolean(feedback?.open && this.feedbackId && feedback.active?.id === this.feedbackId
+                && feedback.active?.sourceId === sourceId);
+        },
+
+        showFeedback(payload) {
+            this.dismissFeedback();
+            this.feedback = payload;
+            const warning = payload.type === 'warning';
+            const sequence = warning ? ++this.warningSequence : ++this.resultSequence;
+            const id = `${sourceId}:${warning ? 'warning' : 'result'}:${sequence}`;
+            const actions = [];
+            if (payload.type === 'activity_completed') {
+                if (this.showContinue()) actions.push({ id: 'continue', intent: 'continue', label: 'Continue' });
+                if (this.showPracticeAgain()) actions.push({ id: 'retry', intent: 'retry', label: 'Practice Again' });
+            } else if (payload.type === 'incorrect') {
+                actions.push({ id: 'retry', intent: 'retry', label: 'Retry' }, { id: 'dismiss', intent: 'dismiss', label: 'Dismiss' });
+            } else if (warning) {
+                actions.push({ id: 'dismiss', intent: 'dismiss', label: 'Dismiss' });
+            }
+            const explanation = typeof this.explanation === 'string'
+                ? this.explanation.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+                : '';
+            this.feedbackId = feedback?.show?.({ ...payload, id, sourceId, explanation, actions }) === true ? id : null;
+            return this;
+        },
+
+        handleLearningFeedbackAction(event) {
+            const detail = event?.detail ?? {};
+            if (detail.sourceId !== sourceId) return this;
+            if (detail.intent === 'continue' && this.showContinue()) {
+                event.preventDefault?.();
+                this.continueLearning();
+            } else if (detail.intent === 'retry' && ['completed', 'practice_completed'].includes(this.status)) {
+                event.preventDefault?.();
+                void this.practice();
+            }
             return this;
         },
 
@@ -93,30 +147,23 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
             this.status = detail.data?.status ?? this.status;
             this.explanation = detail.data?.explanation ?? null;
             if (detail.data?.preview_token !== undefined) this.previewToken = detail.data.preview_token;
-            this.feedback = feedbackForEvaluation(detail.type, detail.data, detail.meta);
-            const soundKey = detail.data?.is_complete === true
-                ? 'success'
-                : detail.data?.is_correct === true
-                    ? 'correct'
-                    : detail.data?.is_correct === false
-                        ? 'incorrect'
-                        : null;
-
-            if (soundKey) audio?.play?.(soundKey);
-            return this;
+            return this.showFeedback(feedbackForEvaluation(detail.type, detail.data, detail.meta));
         },
 
         handleActivityError(detail = {}) {
             if (detail.activityId !== config.activityId) return this;
             this.error = detail.message || 'Unable to save the activity.';
-            this.feedback = { kind: 'error', message: this.error, icon: 'warning' };
-            return this;
+            return this.showFeedback({ type: 'warning', message: this.error });
         },
 
         handleActivityRecovered(detail = {}) {
             if (detail.activityId !== config.activityId) return this;
             this.error = '';
-            if (this.feedback.kind === 'error') this.clearFeedback();
+            this.dismissFeedback('warning');
+            if (this.feedback.type === 'warning') {
+                this.feedback = emptyActivityFeedback();
+                this.feedbackId = null;
+            }
             return this;
         },
 
@@ -161,8 +208,7 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
                 });
                 return this.applyResponse(await readResponse(response));
             } catch (error) {
-                this.error = error.message || 'Unable to save the activity.';
-                this.feedback = { kind: 'error', message: this.error, icon: 'warning' };
+                this.handleActivityError({ activityId: config.activityId, message: error.message });
                 return null;
             } finally {
                 this.submitting = false;
@@ -172,12 +218,12 @@ export function createInteractiveActivity(config = {}, request = globalThis.fetc
         async skip() {
             if (config.preview) {
                 this.status = 'skipped';
-                this.feedback = feedbackForLifecycle(this.status);
+                this.showFeedback(feedbackForLifecycle(this.status));
                 this.$dispatch?.('interactive-activity-state', { activityId: this.activityId, status: this.status, data: { status: this.status } });
                 return { status: this.status };
             }
             const data = await this.send(config.skipUrl, 'POST', { revision: this.revision });
-            if (data) this.feedback = feedbackForLifecycle(this.status);
+            if (data) this.showFeedback(feedbackForLifecycle(this.status));
             return data;
         },
 

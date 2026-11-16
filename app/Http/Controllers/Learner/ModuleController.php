@@ -1027,7 +1027,18 @@ class ModuleController extends Controller
         }
 
         if ($newlyCompleted) {
-            session()->now('learning_audio_event', 'success');
+            session()->now('learning_feedback', [
+                'id' => "module-completed:{$user->id}:{$module->id}:{$enrollment->id}",
+                'sourceId' => "module:{$module->id}",
+                'type' => 'module_completed',
+                'title' => 'Module complete',
+                'message' => 'You completed this module. Review your results and available next steps.',
+                'actions' => [
+                    ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'View completion details'],
+                    ['id' => 'module', 'intent' => 'navigate', 'label' => 'Review module', 'url' => route('learner.modules.show', $module)],
+                ],
+                'replacesSuccessToast' => true,
+            ]);
         }
 
         $module->loadMissing('publishedRevision');

@@ -207,15 +207,39 @@ class QuizController extends Controller
             DB::commit();
 
             $moduleCompletionPoints = 0;
+            $newlyCompleted = false;
             if ($completedFinalQuizModule && $this->completionService->isFullyCompleted($user, $completedFinalQuizModule)) {
+                $enrollment = $user->moduleEnrollments()
+                    ->where('module_id', $completedFinalQuizModule->id)
+                    ->where('status', EnrollmentStatus::Approved->value)
+                    ->first();
+                $newlyCompleted = $enrollment && $enrollment->completed_at === null;
+
                 $moduleCompletionPoints = $this->completeModuleAndAwardCompletionPoints($user, $completedFinalQuizModule);
             }
 
-            session()->flash('learning_audio_event', 'success');
+            if ($newlyCompleted) {
+                session()->flash('learning_feedback', [
+                    'id' => "module-completed:{$user->id}:{$completedFinalQuizModule->id}:{$enrollment->id}",
+                    'sourceId' => "module:{$completedFinalQuizModule->id}",
+                    'type' => 'module_completed',
+                    'title' => 'Module complete',
+                    'message' => 'You completed this module. Review your results and available next steps.',
+                    'actions' => [
+                        ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'View completion details'],
+                        ['id' => 'module', 'intent' => 'navigate', 'label' => 'Review module', 'url' => route('learner.modules.show', $completedFinalQuizModule)],
+                    ],
+                    'replacesSuccessToast' => true,
+                ]);
+            } else {
+                session()->flash('learning_audio_event', 'success');
+            }
 
             if ($completedFinalQuizModule) {
-                $completionMessage = 'Congratulations! You have successfully completed this module.';
-                if ($moduleCompletionPoints > 0) {
+                $completionMessage = $newlyCompleted
+                    ? 'You completed this module. Review your results and available next steps.'
+                    : 'Congratulations! You have successfully completed this module.';
+                if (! $newlyCompleted && $moduleCompletionPoints > 0) {
                     $completionMessage .= " Module completion bonus: +{$moduleCompletionPoints} points.";
                 }
 

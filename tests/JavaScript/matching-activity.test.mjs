@@ -349,7 +349,7 @@ test('Preview matching posts to the evaluator and rotates its token', async () =
     assert.equal(result.data.is_complete, true);
     assert.equal(child.previewToken, 'token-2');
     parent.handleActivityResult(result);
-    assert.deepEqual(parent.feedback, { kind: 'completed', message: 'Correct. Activity complete.', icon: 'check' });
+    assert.deepEqual(parent.feedback, { type: 'activity_completed', message: 'You completed this learning activity.' });
 });
 
 test('matching keeps connections local until Check answer and validates each pair independently', async () => {
@@ -543,4 +543,34 @@ test('matching exposes Alpine destroy cleanup', () => {
     assert.equal(activity.destroy(), activity);
     assert.equal(activity.connectorContainer, null);
     assert.equal(activity.connectorRefreshHandler, null);
+});
+
+test('matching manager Retry is scoped, clears only markers and prevents default once', () => {
+    const events = [];
+    const activity = createMatchingActivity({ activityId: 41 });
+    activity.scheduleConnectorRefresh = () => activity;
+    activity.$dispatch = (name, detail) => events.push([name, detail]);
+    activity.matchedPairs = [{ left_id: 'one', right_id: 'two' }, { left_id: 'three', right_id: 'four' }];
+    activity.pairResults = activity.matchedPairs.map((pair, index) => ({ ...pair, is_correct: index === 0 }));
+    const connections = structuredClone(activity.matchedPairs);
+    let prevented = 0;
+    const event = (sourceId, intent = 'retry') => ({ detail: { sourceId, intent }, preventDefault() { prevented++; } });
+    activity.handleLearningFeedbackAction(event('activity:42'));
+    activity.handleLearningFeedbackAction(event('activity:41', 'continue'));
+    for (const status of ['completed', 'practice_completed']) {
+        activity.status = status;
+        activity.handleLearningFeedbackAction(event('activity:41'));
+    }
+    activity.status = 'in_progress';
+    activity.submitting = true;
+    activity.handleLearningFeedbackAction(event('activity:41'));
+    assert.equal(prevented, 0);
+    assert.equal(activity.pairResults.length, 2);
+    activity.submitting = false;
+    assert.equal(activity.handleLearningFeedbackAction(event('activity:41')), activity);
+    assert.equal(prevented, 1);
+    assert.deepEqual(activity.matchedPairs, connections);
+    assert.equal(activity.hasIncorrectResults(), false);
+    assert.equal(activity.pairResults.length, 1);
+    assert.deepEqual(events, [['interactive-activity-retry', { activityId: 41, type: 'matching' }]]);
 });
