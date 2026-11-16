@@ -62,10 +62,14 @@
             @forelse($recentInstructorReviews as $review)
                 @php
                     $reviewerName = $review->learner?->full_name ?: ($review->learner?->name ?? 'Learner');
+                    $reviewerAvatarPath = $review->learner?->learnerProfile?->avatar_path;
                 @endphp
                 <div class="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2">
                     <div class="flex items-center justify-between gap-2">
-                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{{ $reviewerName }}</p>
+                        <div class="flex min-w-0 items-center gap-2">
+                            @if($reviewerAvatarPath)<img src="{{ asset('storage/' . ltrim($reviewerAvatarPath, '/')) }}" alt="" class="h-7 w-7 rounded-full object-cover">@else<span class="flex h-7 w-7 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-700">{{ mb_strtoupper(mb_substr($reviewerName, 0, 1)) }}</span>@endif
+                            <p class="truncate text-xs font-semibold text-gray-700 dark:text-gray-200">{{ $reviewerName }}</p>
+                        </div>
                         <x-reviews.heart-rating :rating="$review->rating" size-class="h-3.5 w-3.5" text-class="text-xs font-semibold text-gray-600 dark:text-gray-300" />
                     </div>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{{ strip_tags((string) $review->review_html) ?: 'No written feedback.' }}</p>
@@ -79,7 +83,7 @@
     @if($canSubmitReview)
         <button
             type="button"
-            @click="reviewModalOpen = true"
+            @click="reviewChoice = ''; reviewModalOpen = true"
             class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition"
             style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);"
         >

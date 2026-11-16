@@ -25,12 +25,16 @@
 
 @section('content')
 <div class="flex h-full min-h-0 overflow-hidden"
-     x-data="{ ...checkpointCoordinator(), sidebarOpen: JSON.parse(localStorage.getItem('lessonSidebarOpen') ?? 'true'), focusNextOptional(token) { const items = [...$el.querySelectorAll('[data-optional-interaction]')]; const current = items.findIndex((item) => item.dataset.optionalInteraction === token); this.release(token); const next = items[current + 1]?.querySelector('button, input, select, textarea, a'); next?.focus(); } }"
+     x-data="{ ...checkpointCoordinator(), sidebarOpen: JSON.parse(localStorage.getItem('lessonSidebarOpen') ?? 'true'), sidebarBeforeFocus: null, enterFocus() { if (this.sidebarBeforeFocus === null) this.sidebarBeforeFocus = this.sidebarOpen; this.sidebarOpen = false; }, exitFocus() { if (this.sidebarBeforeFocus !== null) this.sidebarOpen = this.sidebarBeforeFocus; this.sidebarBeforeFocus = null; }, focusNextOptional(token) { const items = [...$el.querySelectorAll('[data-optional-interaction]')]; const current = items.findIndex((item) => item.dataset.optionalInteraction === token); this.release(token); const next = items[current + 1]?.querySelector('button, input, select, textarea, a'); next?.focus(); } }"
+     x-init="if (focused) enterFocus()"
+     @lesson-focus-enter.window="enterFocus()"
+     @lesson-focus-exit.window="exitFocus()"
+     @lesson-sidebar-toggle.window="sidebarOpen = !sidebarOpen"
      @checkpoint-active.window="activate($event.detail.token || ('checkpoint:' + $event.detail.questionId))"
      @checkpoint-continued.window="focusNextOptional($event.detail.token || ('checkpoint:' + $event.detail.questionId))"
      @optional-interaction-active.window="activate($event.detail.token)"
      @interactive-activity-continued.window="focusNextOptional('activity:' + $event.detail.activityId)"
-     x-effect="localStorage.setItem('lessonSidebarOpen', JSON.stringify(sidebarOpen))">
+     x-effect="if (!focused) localStorage.setItem('lessonSidebarOpen', JSON.stringify(sidebarOpen))">
 
     {{-- ═══════════════════════════════════════════
          LEFT SIDEBAR — Module Curriculum Overview
@@ -51,7 +55,7 @@
         }
     @endphp
 
-    <aside :class="sidebarOpen ? 'w-[280px] min-w-[280px] border-r border-gray-200 dark:border-gray-800' : 'w-0 min-w-0'"
+    <aside :inert="!sidebarOpen" :aria-hidden="(!sidebarOpen).toString()" :class="sidebarOpen ? 'w-[280px] min-w-[280px] border-r border-gray-200 dark:border-gray-800' : 'w-0 min-w-0'"
            class="flex-shrink-0 h-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden transition-all duration-300 ease-in-out"
            x-data="{
                q: '',
@@ -340,6 +344,7 @@
         {{-- Footer: Back to Module --}}
         <div class="flex-shrink-0 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
             <a href="{{ route('learner.modules.show', $module) }}"
+               @click="leave()"
                class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
@@ -358,7 +363,7 @@
             <button type="button"
                     @click="sidebarOpen = !sidebarOpen"
                     class="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                    :title="sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'">
+                    :title="sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'" :aria-label="sidebarOpen ? 'Collapse curriculum' : 'Open curriculum'" :aria-expanded="sidebarOpen.toString()">
                 {{-- Chevron-double-left when open, double-right when closed --}}
                 <svg x-show="sidebarOpen" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
@@ -379,7 +384,7 @@
                         conversation_type: 'lesson_chat',
                         lesson_id: {{ $lesson->id }}
                     })"
-                    class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800 hover:bg-blue-100"
+                    class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200 dark:hover:bg-blue-900"
                 >
                     Ask Instructor About This Lesson
                 </button>

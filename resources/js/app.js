@@ -17,6 +17,7 @@ import { createLearningPathBuilder } from './learning-path-builder';
 import { createIdentitySelfie } from './identity-selfie';
 import { initializeLearningAudioPage, learningAudio } from './learning-audio';
 import { createLearningFeedbackManager } from './learning-feedback';
+import { createLessonFullscreen } from './lesson-fullscreen';
 import './toast'; // Toast notification system
 import './admin-community';
 import './sweet-alerts';
@@ -26,6 +27,12 @@ import './seminar-livestream';
 import './seminar-schedule';
 import './instructor-application';
 import './onboarding-guide-modal';
+
+Alpine.data('lessonFullscreen', () => createLessonFullscreen({
+    document,
+    storage: sessionStorage,
+    dispatch: (name) => window.dispatchEvent(new CustomEvent(name)),
+}));
 
 const emptyInstructorSearchResults = () => ({
     modules: [],

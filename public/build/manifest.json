@@ -1,33 +1,4 @@
 {
-  "../../node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs": {
-    "file": "assets/pdf-B75MOh95.js",
-    "name": "pdf",
-    "src": "../../node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs",
-    "isDynamicEntry": true
-  },
-  "../../node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs": {
-    "file": "assets/pdf.worker-B1D2UnXD.mjs",
-    "src": "../../node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs"
-  },
-  "../../node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs?url": {
-    "file": "assets/pdf.worker-BKOSSBnB.js",
-    "name": "pdf.worker",
-    "src": "../../node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
-    "isDynamicEntry": true,
-    "assets": [
-      "assets/pdf.worker-B1D2UnXD.mjs"
-    ]
-  },
-  "../../node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.css": {
-    "file": "assets/plyr-DrglphuB.css",
-    "src": "../../node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.css"
-  },
-  "../../node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.mjs": {
-    "file": "assets/plyr-C41Bdcew.js",
-    "name": "plyr",
-    "src": "../../node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.mjs",
-    "isDynamicEntry": true
-  },
   "_agora-Lx6xI2T2.js": {
     "file": "assets/agora-Lx6xI2T2.js",
     "name": "agora",
@@ -41,8 +12,41 @@
       "_agora-Lx6xI2T2.js"
     ]
   },
+  "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs": {
+    "file": "assets/pdf-B75MOh95.js",
+    "name": "pdf",
+    "src": "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs",
+    "isDynamicEntry": true
+  },
+  "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs": {
+    "file": "assets/pdf.worker-B1D2UnXD.mjs",
+    "src": "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs"
+  },
+  "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs?url": {
+    "file": "assets/pdf.worker-BKOSSBnB.js",
+    "name": "pdf.worker",
+    "src": "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
+    "isDynamicEntry": true,
+    "assets": [
+      "assets/pdf.worker-B1D2UnXD.mjs"
+    ]
+  },
+  "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.css": {
+    "file": "assets/plyr-DrglphuB.css",
+    "src": "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.css"
+  },
+  "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.mjs": {
+    "file": "assets/plyr-C41Bdcew.js",
+    "name": "plyr",
+    "src": "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.mjs",
+    "isDynamicEntry": true
+  },
   "resources/css/app.css": {
+<<<<<<< HEAD
+    "file": "assets/app-BHIQs7K9.css",
+=======
     "file": "assets/app-DhghHoLD.css",
+>>>>>>> c402c2a3d87ae4cde8fe271b5dc741c32150419e
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -51,7 +55,11 @@
     ]
   },
   "resources/js/app.js": {
+<<<<<<< HEAD
+    "file": "assets/app-BfagZmwo.js",
+=======
     "file": "assets/app-CumaQvGA.js",
+>>>>>>> c402c2a3d87ae4cde8fe271b5dc741c32150419e
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -61,9 +69,9 @@
     "dynamicImports": [
       "_howler-DosbB3nB.js",
       "_agora-Lx6xI2T2.js",
-      "../../node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs",
-      "../../node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
-      "../../node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.mjs"
+      "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.mjs",
+      "node_modules/.pnpm/pdfjs-dist@5.7.284/node_modules/pdfjs-dist/build/pdf.worker.mjs?url",
+      "node_modules/.pnpm/plyr@3.8.5/node_modules/plyr/dist/plyr.mjs"
     ]
   }
 }

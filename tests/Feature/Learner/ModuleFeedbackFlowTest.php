@@ -173,6 +173,22 @@ class ModuleFeedbackFlowTest extends DatabaseTestCase
             'learner_id' => $learner->id,
             'rating' => 4,
         ]);
+
+        $this->actingAs($learner)
+            ->post(route('learner.modules.feedback.store', $module), [
+                'feedback_type' => 'instructor',
+                'rating' => 5,
+                'review_content' => 'Updated instructor feedback.',
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('instructor_feedback', [
+            'learner_id' => $learner->id,
+            'source_module_id' => $module->id,
+            'rating' => 5,
+            'review_html' => 'Updated instructor feedback.',
+        ]);
+        $this->assertSame(1, \App\Models\InstructorFeedback::query()->where('learner_id', $learner->id)->count());
     }
 
     /**

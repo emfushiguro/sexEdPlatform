@@ -77,23 +77,18 @@ class ModuleFeedbackService
         $sanitizedReview = $this->sanitizeOptionalHtml($reviewHtml);
 
         return DB::transaction(function () use ($learner, $module, $instructor, $rating, $sanitizedReview) {
-            $exists = InstructorFeedback::query()
-                ->where('instructor_id', $instructor->id)
-                ->where('learner_id', $learner->id)
-                ->exists();
-
-            if ($exists) {
-                throw new RuntimeException('You have already submitted instructor feedback for this instructor.');
-            }
-
-            return InstructorFeedback::query()->create([
+            $feedback = InstructorFeedback::query()->firstOrNew([
                 'instructor_id' => $instructor->id,
                 'learner_id' => $learner->id,
-                'source_module_id' => $module->id,
+            ]);
+            $feedback->fill([
+                'source_module_id' => $feedback->source_module_id ?? $module->id,
                 'rating' => $rating,
                 'review_html' => $sanitizedReview,
-                'submitted_at' => now(),
+                'submitted_at' => $feedback->submitted_at ?? now(),
             ]);
+            $feedback->save();
+            return $feedback;
         });
     }
 
