@@ -13,13 +13,14 @@ use Illuminate\View\View;
 
 class ModerationAppealController extends Controller
 {
-    public function __construct(private readonly SuspensionAppealService $suspensionAppealService)
-    {
-    }
+    public function __construct(private readonly SuspensionAppealService $suspensionAppealService) {}
 
     public function index(Request $request): View
     {
-        $status = (string) $request->string('status');
+        $status = $request->query->has('status') ? (string) $request->query('status') : 'pending_review';
+        if ($status === 'all') {
+            $status = '';
+        }
         $search = trim((string) $request->string('search'));
 
         $appeals = SuspensionAppeal::query()
@@ -31,16 +32,17 @@ class ModerationAppealController extends Controller
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($nested) use ($search): void {
-                    $nested->where('appeal_reason', 'like', '%' . $search . '%')
+                    $nested->where('appeal_reason', 'like', '%'.$search.'%')
                         ->orWhereHas('user', function ($userQuery) use ($search): void {
-                            $userQuery->where('name', 'like', '%' . $search . '%')
-                                ->orWhere('email', 'like', '%' . $search . '%');
+                            $userQuery->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('email', 'like', '%'.$search.'%');
                         });
                 });
             })
             ->latest('id')
             ->paginate(15)
-            ->withQueryString();
+            ->withQueryString()
+            ->appends(['status' => $status === '' ? 'all' : $status]);
 
         return view('admin.moderation.appeals.index', [
             'appeals' => $appeals,
@@ -91,7 +93,7 @@ class ModerationAppealController extends Controller
         $validated = $request->validated();
 
         $parentMessage = null;
-        if (!empty($validated['parent_message_id'])) {
+        if (! empty($validated['parent_message_id'])) {
             $parentMessage = $appeal->threadMessages()
                 ->whereKey((int) $validated['parent_message_id'])
                 ->first();

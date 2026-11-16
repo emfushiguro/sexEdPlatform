@@ -23,13 +23,32 @@
 @endphp
 
 @section('content')
-    <div class="space-y-8">
+    @include('admin.moderation.partials.workspace-styles')
+    <div class="moderation-workspace space-y-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-brand-700">Moderation workspace</p>
+                <h2 class="mt-1 text-2xl font-bold text-gray-900">Suspensions &amp; appeals</h2>
+                <p class="mt-2 text-sm text-gray-600">Review reports, manage suspension windows and follow up on user appeals.</p>
+            </div>
+            <a href="{{ route('admin.moderation-appeals.index') }}" data-testid="appeals-queue" class="inline-flex min-h-11 shrink-0 items-center justify-center gap-3 rounded-xl bg-brand-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
+                Appeals <span class="rounded-full bg-white px-2 py-0.5 text-xs text-brand-700">{{ number_format((int) $stats['appeals_pending']) }} pending</span>
+            </a>
+        </div>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             @foreach($cards as $card)
+                @if($card['label'] === 'Appeals Pending')
+                <a href="{{ route('admin.moderation-appeals.index', ['status' => 'pending_review']) }}" data-testid="pending-appeals" class="rounded-2xl border border-brand-200 bg-brand-50 p-5 text-brand-800 transition hover:bg-brand-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-700">
+                    <p class="text-xs font-semibold uppercase tracking-wide">{{ $card['label'] }}</p>
+                    <p class="mt-2 text-3xl font-bold">{{ number_format($card['value']) }}</p>
+                    <p class="mt-2 text-xs font-semibold">Review pending appeals &rarr;</p>
+                </a>
+                @else
                 <div class="rounded-[28px] border border-brand-100 bg-gradient-to-br from-white via-brand-50/50 to-brand-100/40 p-5 shadow-theme-xs min-h-[116px]">
                     <p class="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">{{ $card['label'] }}</p>
                     <p class="mt-2 text-4xl leading-none font-bold text-gray-900">{{ number_format($card['value']) }}</p>
                 </div>
+                @endif
             @endforeach
         </div>
 
@@ -235,6 +254,10 @@
                                 $severityValue = is_object($severityRaw) ? $severityRaw->value : (string) ($severityRaw ?? 'unknown');
                                 $triggerValue = (string) ($suspension->enforcementAction?->trigger_type ?? 'manual');
                                 $rowNumber = ($suspensions->firstItem() ?? 1) + $index;
+                                $rowAppeal = $suspension->appeals->sort(fn ($a, $b) =>
+                                    [$b->status === 'pending_review', $b->submitted_at?->getTimestamp() ?? 0, $b->id]
+                                    <=> [$a->status === 'pending_review', $a->submitted_at?->getTimestamp() ?? 0, $a->id]
+                                )->first();
                             @endphp
                             <tr class="transition hover:bg-brand-50/55">
                                 <td class="px-6 py-4 text-sm font-semibold text-gray-500">{{ $rowNumber }}</td>
@@ -250,13 +273,16 @@
                                         {{ ucfirst((string) $suspension->status) }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-600">{{ str_replace('_', ' ', (string) $suspension->appeal_status) }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">@include('admin.moderation.partials.appeal-status', ['appealStatusValue' => $rowAppeal?->status ?? 'none'])</td>
                                 <td class="px-6 py-4 text-sm text-gray-600">
                                     {{ optional($suspension->starts_at)?->format('M d, Y') ?? '-' }}
                                     -
                                     {{ optional($suspension->ends_at)?->format('M d, Y') ?? 'Permanent' }}
                                 </td>
                                 <td class="px-6 py-4 text-right">
+                                    @if($rowAppeal)
+                                        <a href="{{ route('admin.moderation-appeals.show', $rowAppeal) }}" data-testid="suspension-appeal" class="mb-2 inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100">{{ $rowAppeal->status === 'pending_review' ? 'Review appeal' : 'View appeal' }}</a>
+                                    @endif
                                     <a href="{{ route('admin.moderation-suspensions.show', $suspension) }}"
                                        class="inline-flex items-center justify-center w-10 h-10 transition border rounded-2xl border-brand-200 bg-white hover:bg-brand-50"
                                        title="View suspension">

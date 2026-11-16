@@ -11,9 +11,7 @@ class EnforcementIssuedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(public readonly EnforcementAction $enforcementAction)
-    {
-    }
+    public function __construct(public readonly EnforcementAction $enforcementAction) {}
 
     public function via(object $notifiable): array
     {
@@ -28,14 +26,14 @@ class EnforcementIssuedNotification extends Notification
         return (new MailMessage)
             ->subject('Moderation Enforcement Issued')
             ->line('A moderation enforcement action has been issued on your account.')
-            ->line('Action: ' . str_replace('_', ' ', $actionType))
-            ->line('Severity: ' . ucfirst($severity))
+            ->line('Action: '.str_replace('_', ' ', $actionType))
+            ->line('Severity: '.ucfirst($severity))
             ->line('Please review your account status for details.');
     }
 
     public function toArray(object $notifiable): array
     {
-        return [
+        $payload = [
             'type' => 'moderation_enforcement_issued',
             'enforcement_action_id' => $this->enforcementAction->id,
             'user_id' => $this->enforcementAction->user_id,
@@ -47,6 +45,8 @@ class EnforcementIssuedNotification extends Notification
             'ends_at' => optional($this->enforcementAction->ends_at)?->toDateTimeString(),
             'notes' => $this->enforcementAction->notes,
         ];
+
+        return [...$payload, ...app(\App\Support\NotificationPayloadNormalizer::class)->normalize($payload)];
     }
 
     private function normalizeEnumValue(mixed $value): string

@@ -32,11 +32,76 @@ class SuspensionService
 
             $this->syncUserStatus($user);
 
-            if ($user) {
-                $user->notify(new SuspensionIssuedNotification($suspension));
-            }
+            DB::afterCommit(function () use ($user, $admin, $suspension): void {
+                $user?->notify(new SuspensionIssuedNotification($suspension));
+                $admin?->notify(new \App\Notifications\Moderation\AdminSuspensionRecordedNotification($suspension));
+            });
 
             return $suspension;
+        });
+    }
+
+    public function changeDuration(UserSuspension $suspension, User $admin, int $durationAmount, string $durationUnit, string $reason): UserSuspension
+    {
+        abort_unless($admin->isAdmin(), 403);
+        validator(['duration_amount' => $durationAmount, 'duration_unit' => $durationUnit, 'reason' => $reason], [
+            'duration_amount' => ['integer', 'min:1', 'max:'.($durationUnit === 'hours' ? 8760 : 365)],
+            'duration_unit' => ['in:hours,days'], 'reason' => ['required', 'string', 'min:10', 'max:2000'],
+        ])->validate();
+
+        return DB::transaction(function () use ($suspension, $admin, $durationAmount, $durationUnit, $reason): UserSuspension {
+            $case = \App\Models\ModerationCase::whereKey($suspension->moderation_case_id)->lockForUpdate()->first();
+            $locked = UserSuspension::whereKey($suspension->id)->lockForUpdate()->firstOrFail();
+            $action = EnforcementAction::whereKey($locked->enforcement_action_id)->lockForUpdate()->first();
+            $valid = $case && $case->case_source === \App\Enums\ModerationCaseSource::ChatReport
+                && $case->content_type === 'message_report' && $locked->status === 'active'
+                && $locked->ends_at?->isFuture() && $locked->starts_at && $action
+                && $action->action_type === EnforcementActionType::TemporarySuspension
+                && $action->status === 'executed' && $action->ends_at
+                && $action->starts_at && $action->starts_at->equalTo($locked->starts_at)
+                && (int) $action->user_id === (int) $locked->user_id
+                && (int) $action->moderation_case_id === (int) $case->id
+                && (int) $locked->moderation_case_id === (int) $case->id;
+            if (! $valid) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['duration_amount' => 'Only an active temporary chat-report suspension with a matching enforcement record can be changed.']);
+            }
+            $end = $locked->starts_at->copy()->add($durationUnit, $durationAmount);
+            if (! $end->isFuture()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['duration_amount' => 'The total duration must produce an end time in the future.']);
+            }
+            if ($locked->ends_at->equalTo($end) && $action->ends_at->equalTo($end)) {
+                return $locked;
+            }
+
+            $before = ['starts_at' => $locked->starts_at->toDateTimeString(), 'ends_at' => $locked->ends_at->toDateTimeString()];
+            $metadata = $case->metadata ?? [];
+            $selection = $metadata['chat_temporary_suspension'] ?? [];
+            $originalSeconds = $locked->starts_at->diffInSeconds($locked->ends_at);
+            $selection['initial'] ??= ['amount' => $originalSeconds > 0 && fmod($originalSeconds, 3600) === 0.0 ? (int) ($originalSeconds / 3600) : null, 'unit' => 'hours'];
+            $selection['current'] = ['amount' => $durationAmount, 'unit' => $durationUnit];
+            $selection['user_suspension_id'] = $locked->id;
+            $selection['enforcement_action_id'] = $action->id;
+            $metadata['chat_temporary_suspension'] = $selection;
+            // Older MySQL schemas auto-update their first TIMESTAMP unless it is explicitly assigned.
+            DB::table($locked->getTable())->where('id', $locked->id)->update([
+                'starts_at' => $locked->starts_at, 'ends_at' => $end, 'updated_at' => now(),
+            ]);
+            DB::table($action->getTable())->where('id', $action->id)->update([
+                'starts_at' => $action->starts_at, 'ends_at' => $end, 'updated_at' => now(),
+            ]);
+            $locked->refresh();
+            $case->update(['metadata' => $metadata]);
+            app(\App\Services\AdminActivityLogService::class)->logModelMutation(
+                action: 'moderation.suspension.duration_changed', entity: $locked,
+                before: $before, after: ['starts_at' => $before['starts_at'], 'ends_at' => $end->toDateTimeString()],
+                meta: ['reason' => trim($reason), 'moderation_case_id' => $case->id, 'enforcement_action_id' => $action->id], adminUserId: $admin->id,
+            );
+            DB::afterCommit(function () use ($locked, $admin): void {
+                $locked->user?->notify(new \App\Notifications\Moderation\SuspensionDurationChangedNotification($locked));
+                $admin->notify(new \App\Notifications\Moderation\AdminSuspensionRecordedNotification($locked, 'duration_changed'));
+            });
+
+            return $locked->fresh();
         });
     }
 

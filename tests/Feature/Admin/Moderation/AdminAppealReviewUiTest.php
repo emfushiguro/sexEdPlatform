@@ -44,7 +44,7 @@ class AdminAppealReviewUiTest extends DatabaseTestCase
         $this->actingAs($admin)
             ->get(route('admin.moderation-appeals.show', $appeal))
             ->assertOk()
-            ->assertSee('clarification requested', false)
+            ->assertSeeText('Awaiting clarification')
             ->assertSee('Please clarify the timeline and provide additional context.', false);
     }
 

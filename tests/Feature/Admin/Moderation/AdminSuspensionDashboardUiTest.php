@@ -2,13 +2,14 @@
 
 namespace Tests\Feature\Admin\Moderation;
 
-use App\Enums\EnforcementActionType;
 use App\Enums\ContentReportAction;
 use App\Enums\ContentReportStatus;
 use App\Enums\ContentReportTargetType;
+use App\Enums\EnforcementActionType;
 use App\Enums\MessageReportAction;
 use App\Enums\MessageReportReason;
 use App\Enums\ViolationSeverity;
+use App\Models\AppealThreadMessage;
 use App\Models\ContentReport;
 use App\Models\Conversation;
 use App\Models\EnforcementAction;
@@ -16,6 +17,7 @@ use App\Models\Message;
 use App\Models\MessageReport;
 use App\Models\ModerationCase;
 use App\Models\Module;
+use App\Models\SuspensionAppeal;
 use App\Models\User;
 use App\Models\UserSuspension;
 use App\Services\Moderation\SourceAdapters\ChatReportModerationAdapter;
@@ -27,6 +29,60 @@ use Tests\DatabaseTestCase;
 class AdminSuspensionDashboardUiTest extends DatabaseTestCase
 {
     use RefreshDatabase;
+
+    public function test_suspension_details_renders_with_no_appeals(): void
+    {
+        $admin = $this->createUserWithRole('admin');
+        $user = $this->createSuspensionRecord('learner', ViolationSeverity::Major, 'manual', 'active', 'none', 'Details User');
+        $this->actingAs($admin)->get(route('admin.moderation-suspensions.show', $user->userSuspensions()->first()))
+            ->assertOk()->assertSeeText('Details User')->assertSeeText('No appeals have been submitted');
+    }
+
+    public function test_suspension_details_renders_with_an_empty_appeal(): void
+    {
+        $this->assertAppealDetails(false);
+    }
+
+    public function test_suspension_details_renders_with_thread_messages(): void
+    {
+        $this->assertAppealDetails(true);
+    }
+
+    private function assertAppealDetails(bool $withMessage): void
+    {
+        $admin = $this->createUserWithRole('admin');
+        $user = $this->createSuspensionRecord('learner', ViolationSeverity::Major, 'manual', 'active', 'appeal_pending', 'Appealing User');
+        $suspension = $user->userSuspensions()->first();
+        $appeal = SuspensionAppeal::create(['user_suspension_id' => $suspension->id, 'user_id' => $user->id,
+            'status' => 'pending_review', 'appeal_reason' => 'Please review the complete context.', 'submitted_at' => now()]);
+        if ($withMessage) {
+            AppealThreadMessage::create(['suspension_appeal_id' => $appeal->id, 'sender_user_id' => $admin->id,
+                'sender_role' => 'admin', 'message_body' => 'Please clarify the timeline.']);
+        }
+        $this->actingAs($admin)->get(route('admin.moderation-suspensions.show', $suspension))
+            ->assertOk()->assertSeeText('Please review the complete context.')->assertSeeText('pending review');
+        $payload = app(\App\Services\Admin\ModerationSuspensionDashboardService::class)->buildShowPayload($suspension->fresh());
+        $this->assertCount($withMessage ? 1 : 0, $payload['appeals']->first()->threadMessages);
+        if ($withMessage) {
+            $this->assertSame('Please clarify the timeline.', $payload['appeals']->first()->threadMessages->first()->message_body);
+        }
+    }
+
+    public function test_suspension_details_handles_soft_deleted_reported_user(): void
+    {
+        $admin = $this->createUserWithRole('admin');
+        $user = $this->createSuspensionRecord('learner', ViolationSeverity::Major, 'manual', 'active', 'none', 'Deleted User');
+        $suspension = $user->userSuspensions()->first();
+        $user->delete();
+        $this->actingAs($admin)->get(route('admin.moderation-suspensions.show', $suspension))->assertOk()->assertSeeText('Unknown user');
+    }
+
+    public function test_non_admin_cannot_open_suspension_details(): void
+    {
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLearnerIdentityVerified::class);
+        $user = $this->createSuspensionRecord('learner', ViolationSeverity::Major, 'manual', 'revoked', 'none', 'Learner');
+        $this->actingAs($user)->get(route('admin.moderation-suspensions.show', $user->userSuspensions()->first()))->assertForbidden();
+    }
 
     public function test_dashboard_renders_stat_cards_and_table_rows(): void
     {
@@ -97,7 +153,7 @@ class AdminSuspensionDashboardUiTest extends DatabaseTestCase
                 triggerType: 'manual',
                 suspensionStatus: 'active',
                 appealStatus: 'none',
-                name: 'Paged Learner ' . $i,
+                name: 'Paged Learner '.$i,
             );
         }
 
@@ -306,7 +362,7 @@ class AdminSuspensionDashboardUiTest extends DatabaseTestCase
     private function createUserWithRole(string $role, ?string $name = null): User
     {
         $user = User::factory()->create([
-            'name' => $name ?? ucfirst($role) . ' User',
+            'name' => $name ?? ucfirst($role).' User',
             'role' => $role,
             'status' => 'active',
         ]);

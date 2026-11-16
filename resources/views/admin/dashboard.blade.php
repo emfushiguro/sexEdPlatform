@@ -106,6 +106,13 @@
                     <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Frequently used administration tools.</p>
                 </div>
                 <div class="px-6 py-6 space-y-3">
+                    <a href="{{ route('admin.moderation-suspensions.index') }}" data-testid="manage-suspension" class="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 font-semibold text-brand-700 transition hover:bg-brand-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
+                        <span class="flex items-center gap-3">
+                            <svg class="h-5 w-5 shrink-0" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Zm-3 9 2 2 4-4" /></svg>
+                            <span class="text-sm">Manage Suspension</span>
+                        </span>
+                        <span aria-hidden="true">&rarr;</span>
+                    </a>
                     <a href="{{ route('admin.users.index') }}" class="flex items-center justify-between px-4 py-3 transition border group rounded-xl border-slate-200 bg-slate-50/50 hover:border-brand-300 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-brand-500/50 dark:hover:bg-brand-500/10">
                         <div class="flex items-center gap-3">
                             <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">

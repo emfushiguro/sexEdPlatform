@@ -11,9 +11,7 @@ class AppealSubmittedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(public readonly SuspensionAppeal $appeal)
-    {
-    }
+    public function __construct(public readonly SuspensionAppeal $appeal) {}
 
     public function via(object $notifiable): array
     {
@@ -25,14 +23,14 @@ class AppealSubmittedNotification extends Notification
         return (new MailMessage)
             ->subject('New Suspension Appeal Submitted')
             ->line('A learner submitted a new suspension appeal for moderation review.')
-            ->line('Appeal ID: ' . $this->appeal->id)
-            ->line('Current status: ' . str_replace('_', ' ', (string) $this->appeal->status))
+            ->line('Appeal ID: '.$this->appeal->id)
+            ->line('Current status: '.str_replace('_', ' ', (string) $this->appeal->status))
             ->action('Review Appeal', route('admin.moderation-appeals.show', $this->appeal));
     }
 
     public function toArray(object $notifiable): array
     {
-        return [
+        $payload = [
             'type' => 'moderation_appeal_submitted',
             'appeal_id' => $this->appeal->id,
             'appeal_status' => (string) $this->appeal->status,
@@ -40,5 +38,7 @@ class AppealSubmittedNotification extends Notification
             'user_id' => $this->appeal->user_id,
             'submitted_at' => optional($this->appeal->submitted_at)?->toDateTimeString(),
         ];
+
+        return [...$payload, ...app(\App\Support\NotificationPayloadNormalizer::class)->normalize($payload)];
     }
 }
