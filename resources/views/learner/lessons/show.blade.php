@@ -37,7 +37,7 @@
     ═══════════════════════════════════════════ --}}
     @php
         $_totalLessons = $allLessons->count();
-        $_doneLessons  = count($completedLessonIds);
+        $_doneLessons  = count($readyLessonIds);
         $_modPct       = $_totalLessons > 0 ? round($_doneLessons / $_totalLessons * 100) : 0;
 
         // Pre-compute locked lessons for sequential access enforcement
@@ -47,7 +47,7 @@
             if ($__si > 0 && !$__prevDone) {
                 $sidebarLockedIds[] = $__sl->id;
             }
-            $__prevDone = in_array($__sl->id, $completedLessonIds);
+            $__prevDone = $__prevDone && in_array($__sl->id, $readyLessonIds);
         }
     @endphp
 
@@ -102,7 +102,7 @@
         <div class="flex-1 overflow-y-auto">
             @foreach($allLessons as $__l)
                 @php
-                    $__lIsCompleted = in_array($__l->id, $completedLessonIds);
+                    $__lIsCompleted = in_array($__l->id, $readyLessonIds);
                     $__lIsCurrent   = $__l->id === $lesson->id;
                     $__lIsLocked    = in_array($__l->id, $sidebarLockedIds);
                     $__lTopics      = $__l->topics;
@@ -111,7 +111,8 @@
                     $__lDoneCount   = $__lRequiredTopics->filter(fn($t) => in_array($t->id, $allCompletedTopicIds))->count();
                     $__lQuiz        = $__l->quiz;
                     $__lTotalItems  = $__lTopicCount + ($__lQuiz ? 1 : 0);
-                    $__lDoneItems   = $__lDoneCount + (($__lIsCurrent && ($quizAttempt?->passed ?? false)) ? 1 : 0);
+                    $__lQuizState   = $__lQuiz ? ($lessonQuizProgress[$__lQuiz->id] ?? []) : [];
+                    $__lDoneItems   = $__lDoneCount + (($__lQuizState['resolved'] ?? false) ? 1 : 0);
                     // Build searchable content string: lesson + all topic titles + quiz title
                     $__sc = strtolower(
                         $__l->title . ' ' .
@@ -181,8 +182,7 @@
                         @foreach($__lTopics as $__tIdx => $__t)
                             @php
                                 $__tIsLast  = $loop->last && !$__lQuiz;
-                        $__tDone    = in_array($__t->id, $allCompletedTopicIds)
-                            || ($__lIsCurrent && in_array($__t->id, $resolvedActivityTopicIds ?? []));
+                                $__tDone = in_array($__t->id, $allCompletedTopicIds);
                                 $__tCurrent = $__lIsCurrent && $currentTopicIndex === $__tIdx && !request()->has('quiz');
                                 $__tLocked  = $__lIsCurrent && in_array($__t->id, $lockedTopicIds);
                                 $__tLabel   = match($__t->type) {
@@ -254,7 +254,7 @@
                         @if($__lQuiz)
                             @php
                                 $__qActive  = $__lIsCurrent && request()->has('quiz');
-                                $__qDone    = $__lIsCurrent && ($quizAttempt?->passed ?? false);
+                                $__qDone    = $__lQuizState['resolved'] ?? false;
                                 $__qLocked  = $__lDoneCount < $__lTopicCount;
                                 $__qUrl     = route('learner.lessons.show', ['lesson' => $__l->id, 'quiz' => 1]);
                             @endphp
@@ -290,6 +290,13 @@
                                             </p>
                                             <p class="text-xs mt-0.5 {{ $__qActive ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500' }}">
                                                 {{ $__lQuiz->questions->count() }} questions · QUIZ
+                                                @if($__lQuizState['passed'] ?? false)
+                                                    · Passed
+                                                @elseif($__lQuizState['resolved'] ?? false)
+                                                    · Attempts completed
+                                                @elseif($__lQuizState['attempted'] ?? false)
+                                                    · Attempt recorded — retry available
+                                                @endif
                                             </p>
                                         </a>
                                     @endif

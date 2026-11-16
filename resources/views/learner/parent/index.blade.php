@@ -189,8 +189,6 @@
                         <p class="text-xs text-gray-600">Quiz answer access requires learning progress access. Your password and private messages are never shared through these settings.</p>
                         <button type="submit" class="rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white">Save access preferences</button>
                     </form></div></div></template>
-                    @else
-                    <p class="mx-5 mb-4 rounded-xl border border-purple-100 bg-purple-50 p-4 text-sm text-purple-950">{{ $fullName }} can view, edit and remove your optional Health &amp; Support Information while your Guardian relationship is verified and eligible. This access applies automatically while you are under 18. When you turn 18, you control sharing through your access settings.</p>
                     @endif
                 </article>
             @endif

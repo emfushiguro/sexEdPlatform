@@ -3,8 +3,9 @@ export const FEEDBACK_CONFIG = Object.freeze({
     incorrect: Object.freeze({ title: 'Not quite yet', message: 'Review your response and try again when you are ready.', illustration: '/assets/illustrations/learning-feedback/incorrect-answer.svg', presentations: Object.freeze(['card']), presentation: 'card', sound: 'incorrect', priority: 50, dismissAfter: null }),
     try_again: Object.freeze({ title: 'Keep going', message: 'You can adjust your response and try again.', illustration: '/assets/illustrations/learning-feedback/try-again.svg', presentations: Object.freeze(['card']), presentation: 'card', sound: null, priority: 30, dismissAfter: null }),
     activity_completed: Object.freeze({ title: 'Activity complete', message: 'You completed this learning activity.', illustration: '/assets/illustrations/learning-feedback/activity-completed.svg', presentations: Object.freeze(['card']), presentation: 'card', sound: 'success', priority: 80, dismissAfter: null }),
+    topic_completed: Object.freeze({ title: 'Topic complete', message: 'You completed this topic.', illustration: '/assets/illustrations/learning-feedback/activity-completed.svg', presentations: Object.freeze(['completion_modal']), presentation: 'completion_modal', sound: 'complete', priority: 100, dismissAfter: null }),
     lesson_completed: Object.freeze({ title: 'Lesson complete', message: 'You completed this lesson.', illustration: '/assets/illustrations/learning-feedback/lesson-completed.svg', presentations: Object.freeze(['completion_modal']), presentation: 'completion_modal', sound: 'complete', priority: 100, dismissAfter: null }),
-    module_completed: Object.freeze({ title: 'Module complete', message: 'You completed this module.', illustration: '/assets/illustrations/learning-feedback/lesson-completed.svg', presentations: Object.freeze(['completion_modal']), presentation: 'completion_modal', sound: 'success', priority: 100, dismissAfter: null }),
+    module_completed: Object.freeze({ title: 'Module complete', message: 'You completed this module.', illustration: '/assets/illustrations/learning-feedback/correct-answer.svg', presentations: Object.freeze(['completion_modal']), presentation: 'completion_modal', sound: 'success', priority: 100, dismissAfter: null }),
     informational: Object.freeze({ title: 'Good to know', message: 'Here is some information for this activity.', illustration: '/assets/illustrations/learning-feedback/informational.svg', presentations: Object.freeze(['micro', 'card']), presentation: 'micro', sound: null, priority: 20, dismissAfter: 3000 }),
     warning: Object.freeze({ title: 'Let us pause here', message: 'Review this message before continuing.', illustration: '/assets/illustrations/learning-feedback/warning.svg', presentations: Object.freeze(['card']), presentation: 'card', sound: null, priority: 60, dismissAfter: null }),
 });
@@ -201,7 +202,7 @@ export function createLearningFeedbackManager({
         handleKeydown(event) {
             if (!this.open || this.acting) return;
             if (event?.key === 'Escape') {
-                if (this.active.actions.some(action => action.intent === 'dismiss')) {
+                if (this.active.type === 'module_completed' || this.active.actions.some(action => action.intent === 'dismiss')) {
                     event.preventDefault?.();
                     this.dismiss();
                 }

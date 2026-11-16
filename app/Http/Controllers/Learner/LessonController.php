@@ -8,9 +8,9 @@ use App\Models\InteractiveCheckpointProgress;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\LessonTopicProgress;
-use App\Models\QuizAttempt;
 use App\Models\UserProgress;
 use App\Services\GamificationService;
+use App\Services\LearnerModuleCompletionService;
 use App\Services\Learning\CompletionRewardService;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityPresenter;
 use App\Services\Learning\InteractiveActivities\InteractiveActivityProgressService;
@@ -18,6 +18,7 @@ use App\Services\Modules\ModuleAccessService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\RedirectResponse;
 
 class LessonController extends Controller
 {
@@ -43,6 +44,13 @@ class LessonController extends Controller
 
         $this->moduleAccessService->assertCanLearn($user, $module);
         $isEnrolled = true;
+        if ($redirect = $this->prerequisiteRedirect($lesson)) return $redirect;
+
+        if (request()->has('quiz') && $lesson->quiz()->where('is_active', true)->exists()
+            && ! app(LearnerModuleCompletionService::class)->lessonTopicsComplete($user, $lesson)) {
+            return redirect()->route('learner.lessons.show', $lesson)
+                ->with('error', 'Complete the lesson topics before taking this quiz.');
+        }
 
         // Get all lessons for navigation (with topics + quiz eager-loaded for sidebar)
         $allLessons = $module->lessons()
@@ -58,21 +66,6 @@ class LessonController extends Controller
         // Security: Check sequential access - must complete previous lessons first
         $currentIndex = $allLessons->search(fn ($l) => $l->id === $lesson->id);
 
-        if ($currentIndex > 0) {
-            // Check if all previous lessons are completed
-            for ($i = 0; $i < $currentIndex; $i++) {
-                $previousLesson = $allLessons[$i];
-                $isCompleted = UserProgress::where('user_id', $user->id)
-                    ->where('lesson_id', $previousLesson->id)
-                    ->where('completed', true)
-                    ->exists();
-
-                if (! $isCompleted) {
-                    return redirect()->route('learner.lessons.show', $previousLesson)
-                        ->with('error', 'Please complete the previous lessons first.');
-                }
-            }
-        }
 
         // Check if current lesson is completed
         $isLessonCompleted = UserProgress::where('user_id', $user->id)
@@ -97,88 +90,14 @@ class LessonController extends Controller
 
         $allLessonsCompleted = $allLessons->count() > 0 && count($completedLessonIds) === $allLessons->count();
 
-        $topicIds = $allLessons
-            ->flatMap(fn ($moduleLesson) => $moduleLesson->topics
-                ->filter(fn (LessonTopic $topic) => ! $topic->isOptionalInteraction())
-                ->pluck('id'))
-            ->unique();
-        $completedModuleTopicIds = LessonTopicProgress::where('user_id', $user->id)
-            ->whereIn('lesson_topic_id', $topicIds)
-            ->where('completed', true)
-            ->pluck('lesson_topic_id')
-            ->unique();
-        $allTopicsCompleted = $topicIds->isEmpty() || $completedModuleTopicIds->count() === $topicIds->count();
-
-        $lessonQuizIds = $allLessons
-            ->pluck('quiz')
-            ->filter()
-            ->pluck('id')
-            ->unique();
-        $lessonQuizById = $allLessons
-            ->pluck('quiz')
-            ->filter()
-            ->keyBy('id');
-        $allLessonQuizzesCompleted = $lessonQuizIds->isEmpty() || $lessonQuizIds->every(function ($quizId) use ($user, $lessonQuizById) {
-            $attemptCount = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $quizId)
-                ->count();
-
-            if ($attemptCount === 0) {
-                return false;
-            }
-
-            $hasPassed = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $quizId)
-                ->where('passed', true)
-                ->exists();
-
-            if ($hasPassed) {
-                return true;
-            }
-
-            $attemptLimit = $lessonQuizById->get($quizId)?->attempt_limit;
-
-            return $attemptLimit !== null && $attemptCount >= (int) $attemptLimit;
-        });
-
-        $finalQuizCompleted = true;
-        if ($module->final_quiz_id) {
-            $finalAttemptCount = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $module->final_quiz_id)
-                ->count();
-
-            if ($finalAttemptCount === 0) {
-                $finalQuizCompleted = false;
-            }
-
-            $hasPassedFinalQuiz = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $module->final_quiz_id)
-                ->where('passed', true)
-                ->exists();
-
-            $finalQuizAttemptLimit = $module->quizzes()
-                ->where('id', $module->final_quiz_id)
-                ->value('attempt_limit');
-
-            $finalQuizCompleted = $hasPassedFinalQuiz
-                || ($finalQuizAttemptLimit !== null && $finalAttemptCount >= (int) $finalQuizAttemptLimit);
-        }
-
-        $certificateEligible = $allLessonsCompleted
-            && $allTopicsCompleted
-            && $allLessonQuizzesCompleted
-            && $finalQuizCompleted;
-
         // Get all completed topic IDs across the entire module (for sidebar display)
-        $allModuleTopicIds = $allLessons->flatMap(fn ($l) => $l->topics->pluck('id'));
-        $allCompletedTopicIds = [];
-        if ($allModuleTopicIds->isNotEmpty()) {
-            $allCompletedTopicIds = LessonTopicProgress::where('user_id', $user->id)
-                ->whereIn('lesson_topic_id', $allModuleTopicIds)
-                ->where('completed', true)
-                ->pluck('lesson_topic_id')
-                ->toArray();
-        }
+        $completionService = app(LearnerModuleCompletionService::class);
+        $allCompletedTopicIds = $completionService->completedTopicIds($user, $allLessons->flatMap->topics)->all();
+        $lessonQuizProgress = $completionService->quizProgress($user, $allLessons->pluck('quiz')->filter());
+        $readyLessonIds = $allLessons->filter(fn ($item) => in_array($item->id, $completedLessonIds)
+            && $item->topics->reject(fn ($topic) => $topic->isOptionalInteraction())->pluck('id')->diff($allCompletedTopicIds)->isEmpty()
+            && (! $item->quiz || ($lessonQuizProgress[$item->quiz->id]['resolved'] ?? false)))->modelKeys();
+        $certificateEligible = $completionService->isFullyCompleted($user, $module);
 
         // Get lesson quiz if exists — eager-load questions.options for the quiz wizard
         $lessonQuiz = $lesson->quiz()->where('is_active', true)->with('questions.options')->first();
@@ -188,6 +107,8 @@ class LessonController extends Controller
         if ($lessonQuiz) {
             $quizAttempt = $user->quizAttempts()
                 ->where('quiz_id', $lessonQuiz->id)
+                ->whereNotNull('completed_at')
+                ->orderByDesc('passed')
                 ->orderByDesc('score')
                 ->first();
             $quizAttempts = $user->quizAttempts()
@@ -402,6 +323,8 @@ class LessonController extends Controller
             'lessonQuiz',
             'quizAttempt',
             'quizAttempts',
+            'lessonQuizProgress',
+            'readyLessonIds',
             'questionTypeCounts',
             'lessonTopics',
             'checkpointProgress',
@@ -430,6 +353,8 @@ class LessonController extends Controller
 
         $this->moduleAccessService->assertCanLearn($user, $module);
 
+        if ($redirect = $this->prerequisiteRedirect($lesson)) return $redirect;
+
         return DB::transaction(function () use ($user, $lesson, $module) {
             $user->newQuery()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
@@ -455,10 +380,9 @@ class LessonController extends Controller
             $lessonPoints = (new CompletionRewardService($this->gamificationService))->award($user, 'lesson_complete', $lesson->id);
             $this->gamificationService->updateStreak($user);
             session()->flash('points_earned', $lessonPoints);
-            session()->flash('learning_audio_event', 'complete');
             $this->flashLessonCompletionFeedback($lesson, $progress, $lessonPoints);
 
-            return back()->with('success', "You completed this lesson and earned {$lessonPoints} points.");
+            return back()->with('success', session('learning_feedback.message'));
         });
     }
 
@@ -481,6 +405,8 @@ class LessonController extends Controller
         if ($topic->isOptionalInteraction()) {
             abort(404);
         }
+
+        if ($redirect = $this->prerequisiteRedirect($lesson)) return $redirect;
 
         return DB::transaction(function () use ($user, $lesson, $module, $topic) {
             $user->newQuery()->whereKey($user->id)->lockForUpdate()->firstOrFail();
@@ -536,14 +462,13 @@ class LessonController extends Controller
             }
 
             if ($lessonJustCompleted) {
-                $this->flashLessonCompletionFeedback($lesson, $progress, $lessonCompletePoints);
+                $this->flashLessonCompletionFeedback($lesson, $progress, $topicPoints + $lessonCompletePoints);
             } elseif (! $wasAlreadyCompleted) {
-                session()->flash('learning_audio_event', 'complete');
+                $this->flashTopicCompletionFeedback($topic, $topicPoints);
             }
 
-            $successMessage = $lessonJustCompleted
-                ? "You completed this lesson and earned {$lessonCompletePoints} points."
-                : "Topic completed! +{$topicPoints} points ✓";
+            $successMessage = (! $wasAlreadyCompleted || $lessonJustCompleted)
+                ? session('learning_feedback.message') : 'This topic is already completed.';
 
             // Check if we should navigate to next topic
             $nextTopicIndex = request()->input('next_topic_index');
@@ -557,29 +482,56 @@ class LessonController extends Controller
         });
     }
 
+    private function prerequisiteRedirect(Lesson $lesson): ?RedirectResponse
+    {
+        $previous = app(LearnerModuleCompletionService::class)->firstIncompleteLessonBefore(Auth::user(), $lesson);
+        if (! $previous) return null;
+        $parameters = ['lesson' => $previous->id];
+        if (UserProgress::where('user_id', Auth::id())->where('lesson_id', $previous->id)->where('completed', true)->exists()
+            && $previous->quiz()->where('is_active', true)->exists()) {
+            $parameters['quiz'] = 1;
+        }
+        return redirect()->route('learner.lessons.show', $parameters)
+            ->with('error', 'Complete the previous lesson and its required quiz before continuing.');
+    }
+
     private function flashLessonCompletionFeedback(Lesson $lesson, UserProgress $progress, int $lessonPoints): void
     {
-        $module = $lesson->module;
-        $nextLesson = $module->lessons()
-            ->where('is_published', true)
-            ->where('order', '>', $lesson->order)
-            ->orderBy('order')
-            ->first();
-        $primaryAction = $nextLesson
-            ? ['id' => 'next', 'intent' => 'navigate', 'label' => 'Next lesson', 'url' => route('learner.lessons.show', $nextLesson)]
-            : ['id' => 'module', 'intent' => 'navigate', 'label' => 'Module overview', 'url' => route('learner.modules.show', $module)];
+        $primaryAction = app(LearnerModuleCompletionService::class)->lessonForwardAction(Auth::user(), $lesson);
+        $quizRequired = $primaryAction['id'] === 'quiz';
 
         session()->flash('learning_feedback', [
             'id' => "lesson-completed:{$progress->user_id}:{$lesson->id}:{$progress->id}",
             'sourceId' => "lesson:{$lesson->id}",
-            'type' => 'lesson_completed',
-            'title' => 'Lesson complete',
-            'message' => "You completed this lesson and earned {$lessonPoints} points.",
+            'type' => $quizRequired ? 'topic_completed' : 'lesson_completed',
+            'title' => $quizRequired ? 'Lesson topics complete' : 'Lesson complete',
+            'message' => $quizRequired
+                ? "You completed the lesson topics and earned {$lessonPoints} points. Complete the lesson quiz before continuing."
+                : "You completed this lesson and earned {$lessonPoints} points.",
             'actions' => [
                 $primaryAction,
                 ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'Review lesson'],
             ],
             'replacesSuccessToast' => true,
+            'replacesPointsToast' => true,
+            'pointsAwarded' => $lessonPoints,
+        ]);
+    }
+
+    private function flashTopicCompletionFeedback(LessonTopic $topic, int $points): void
+    {
+        $lesson = $topic->lesson;
+        $topics = $lesson->topics()->ordered()->get();
+        $index = $topics->search(fn ($item) => $item->id === $topic->id);
+        $action = isset($topics[$index + 1])
+            ? ['id' => 'next-topic', 'intent' => 'navigate', 'label' => 'Continue', 'url' => route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $index + 1])]
+            : app(LearnerModuleCompletionService::class)->lessonForwardAction(Auth::user(), $lesson);
+        session()->flash('learning_feedback', [
+            'id' => "topic-completed:".Auth::id().":{$topic->id}",
+            'sourceId' => "topic:{$topic->id}", 'type' => 'topic_completed', 'title' => 'Topic complete',
+            'message' => "You completed this topic and earned {$points} points.",
+            'actions' => [$action, ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'Review topic']],
+            'replacesSuccessToast' => true, 'replacesPointsToast' => true, 'pointsAwarded' => $points,
         ]);
     }
 
