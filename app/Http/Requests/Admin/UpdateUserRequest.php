@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Support\AccountEmail;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -74,6 +75,14 @@ class UpdateUserRequest extends FormRequest
                 $validator->errors()->add('role', 'Only Admin, Instructor, Learner, or Others are allowed.');
             } elseif (! $this->validateRoleExists($role)) {
                 $validator->errors()->add('role', 'Selected role is not available.');
+            }
+
+            if ($role === 'learner' && $this->filled('birthdate')
+                && ! in_array(LearnerAgePolicy::classify($this->input('birthdate')), [
+                    LearnerAgePolicy::ELIGIBLE_TEENAGER,
+                    LearnerAgePolicy::ELIGIBLE_ADULT,
+                ], true)) {
+                $validator->errors()->add('birthdate', 'Learner birthdates must be ages 10 through 100.');
             }
 
             if ($this->boolean('apply_permission_overrides') && ! (bool) $this->user()?->can('manage permissions')) {

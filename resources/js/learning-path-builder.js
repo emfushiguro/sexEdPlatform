@@ -8,13 +8,16 @@ import {
 const asId = (value) => Number(value);
 
 const isIndex = (value) => Number.isInteger(value) && value >= 0;
+const activeCategories = ['teens', 'adults'];
+const normalizeCategories = (categories) => (Array.isArray(categories) ? categories : [])
+    .filter((category, index, values) => activeCategories.includes(category) && values.indexOf(category) === index);
 
 export function createLearningPathBuilder(config = {}) {
     const modules = (Array.isArray(config.modules) ? config.modules : [])
         .map((module) => ({
             ...module,
             id: asId(module.id),
-            categories: Array.isArray(module.categories) ? [...module.categories] : [],
+            categories: normalizeCategories(module.categories),
         }))
         .filter((module) => Number.isInteger(module.id));
     const selectedIds = (Array.isArray(config.selectedIds) ? config.selectedIds : [])
@@ -24,7 +27,7 @@ export function createLearningPathBuilder(config = {}) {
     const builder = {
         modules,
         moduleIds: [...selectedIds],
-        categories: Array.isArray(config.categories) ? [...config.categories] : [],
+        categories: normalizeCategories(config.categories),
         query: '',
         candidateOrder: [...selectedIds],
         reorder: createReorderSession(),
@@ -88,7 +91,7 @@ export function createLearningPathBuilder(config = {}) {
         },
 
         setCategories(categories) {
-            this.categories = Array.isArray(categories) ? [...categories] : [];
+            this.categories = normalizeCategories(categories);
             return this;
         },
 
@@ -96,6 +99,14 @@ export function createLearningPathBuilder(config = {}) {
             const values = root?.querySelectorAll?.('input[name="categories[]"]:checked') ?? [];
             this.setCategories(Array.from(values).map((input) => input.value));
             return this;
+        },
+
+        validateCategories(form = null) {
+            const valid = this.categories.length > 0;
+            const field = form?.querySelector?.('input[name="categories[]"]');
+            field?.setCustomValidity(valid ? '' : 'Choose at least one active learner category.');
+
+            return valid;
         },
 
         indexFor(id, order = this.candidateOrder) {

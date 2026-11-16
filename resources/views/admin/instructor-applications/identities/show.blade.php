@@ -22,6 +22,9 @@
 <div class="mx-auto max-w-7xl space-y-6 px-4 py-8">
     <a href="{{ route('admin.instructor-applications.identities.index', ['status' => $case?->status ?? 'all']) }}" class="text-sm font-semibold text-brand-700 hover:underline">Back to Instructor Applications</a>
 
+    @if($case && $canReviewIdentities)
+        @include('admin.parent-verifications.partials.id-reference', ['idType' => $attempt?->local_government_id_type, 'idLabel' => $idLabel])
+    @endif
     @if(session('success'))<p class="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800" role="status">{{ session('success') }}</p>@endif
     @if(session('error'))<p class="rounded-xl bg-rose-50 p-4 text-sm text-rose-800" role="alert">{{ session('error') }}</p>@endif
     @if($errors->any())<div class="rounded-xl bg-rose-50 p-4 text-sm text-rose-800" role="alert">{{ $errors->first() }}</div>@endif

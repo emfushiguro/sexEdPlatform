@@ -122,6 +122,7 @@ class GuardianIdentityVerificationController extends Controller
     private function idTypes(): array
     {
         return collect(config('guardian_identity.id_types', []))
+            ->only(config('guardian_identity.accepted_id_types', []))
             ->mapWithKeys(fn (array $meta, string $value): array => [$value => (string) ($meta['label'] ?? $value)])
             ->all();
     }

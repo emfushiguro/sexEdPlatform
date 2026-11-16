@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Support\AccountEmail;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreUserRequest extends FormRequest
@@ -64,6 +65,12 @@ class StoreUserRequest extends FormRequest
                 $validator->errors()->add('role', 'Only Admin, Instructor, Learner, or Others are allowed.');
             } elseif (! $this->validateRoleExists($role)) {
                 $validator->errors()->add('role', 'Selected role is not available.');
+            }
+
+            if ($role === 'learner'
+                && (string) $this->input('status') === 'active'
+                && LearnerAgePolicy::classify($this->input('birthdate')) === LearnerAgePolicy::ELIGIBLE_TEENAGER) {
+                $validator->errors()->add('birthdate', 'Active Teenager accounts must use guardian-assisted registration.');
             }
 
             if (! $this->boolean('apply_permission_overrides')) {

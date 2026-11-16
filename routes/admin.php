@@ -22,6 +22,10 @@ Route::prefix('admin')->name('admin.')->middleware([
     'role:admin',
     'admin.mfa',
 ])->group(function () {
+    Route::get('/identity-references/{type}', [Admin\IdentityReferenceController::class, 'show'])->name('identity-references.show');
+    Route::post('/identity-references/{type}', [Admin\IdentityReferenceController::class, 'store'])->name('identity-references.store');
+    Route::put('/identity-references/{type}/{example}', [Admin\IdentityReferenceController::class, 'update'])->whereNumber('example')->name('identity-references.update');
+    Route::get('/identity-references/{type}/{example}/image', [Admin\IdentityReferenceController::class, 'image'])->whereNumber('example')->name('identity-references.image');
     // Dashboard
     Route::get('/dashboard', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
@@ -462,6 +466,10 @@ Route::prefix('admin')->name('admin.')->middleware([
             ->name('relationships.revoke');
         Route::get('/relationships/{parentChildAccount}/documents/{document}', [Admin\ParentChildVerificationController::class, 'relationshipDocument'])
             ->name('relationships.documents.show');
+        Route::get('/relationships/{parentChildAccount}/adult-authority/{authority}/document', [Admin\AdultDependentAuthorityReviewController::class, 'document'])
+            ->name('relationships.adult-authority.document');
+        Route::post('/relationships/{parentChildAccount}/adult-authority/{authority}', [Admin\AdultDependentAuthorityReviewController::class, 'decide'])
+            ->name('relationships.adult-authority.decide');
     });
 
     Route::post('/subscribers/{subscription}/archive', [Admin\SubscriberAdminController::class, 'archive'])

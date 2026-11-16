@@ -42,7 +42,11 @@ class PersonaReviewSubmission
         }
 
         $user = User::query()->whereKey($attempt->user_id)->lockForUpdate()->firstOrFail();
-        if (! $user->hasVerifiedEmail()) {
+        $contactReady = ! $user->isParentRegistration()
+            && \App\Support\LearnerAgePolicy::classify($user->birthdate) === \App\Support\LearnerAgePolicy::ELIGIBLE_TEENAGER
+            ? $user->hasCompletedMinorActivation() && $user->qualifyingMinorGuardianRelationship() !== null
+            : ($user->hasVerifiedEmail() || $user->hasAcceptedDependentAdultAuthorization());
+        if (! $contactReady) {
             return;
         }
 

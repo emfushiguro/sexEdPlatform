@@ -60,11 +60,6 @@ class AuthenticatedSessionController extends Controller
         // Role-based redirect after login
         $user = Auth::user();
 
-        if (! $user->hasVerifiedEmail() && $user->parentChildLink()
-            ->whereNotNull('verification_document_path')->where('verification_document_path', '!=', '')->exists()) {
-            $user->markEmailAsVerified();
-        }
-
         return redirect()->intended(route($homeRouteResolver->routeName($user)))
             ->with('success', "Welcome back, {$userName}!");
     }

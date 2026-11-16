@@ -304,7 +304,8 @@ class AdminLearningPathManagementTest extends TestCase
     public function test_publishing_accepts_only_modules_matching_any_path_category(): void
     {
         $this->actingAs($this->user('admin'));
-        $kidsOnly = $this->module(['kids']);
+        $kidsOnly = Module::factory()->create();
+        $kidsOnly->learnerCategories()->create(['category' => 'kids']);
         $this->post(route('admin.learning-paths.store'), $this->payload([
             'status' => 'published', 'categories' => ['teens', 'adults'], 'module_ids' => [$kidsOnly->id],
         ]))->assertInvalid(['module_ids']);

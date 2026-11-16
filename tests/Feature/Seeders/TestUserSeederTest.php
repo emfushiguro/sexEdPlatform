@@ -19,7 +19,7 @@ class TestUserSeederTest extends TestCase
         $approvedInstructor = User::query()->where('email', 'instructor@test.local')->first();
         $paidInstructor = User::query()->where('email', 'instructor.paid@test.local')->first();
         $pendingInstructor = User::query()->where('email', 'instructor.pending@test.local')->first();
-        $kidLearner = User::query()->where('email', 'kid@test.local')->first();
+        $youngerTeenLearner = User::query()->where('email', 'teen-younger@test.local')->first();
         $teenLearner = User::query()->where('email', 'teen@test.local')->first();
         $adultLearner = User::query()->where('email', 'adult@test.local')->first();
         $premiumLearner = User::query()->where('email', 'premium.learner@test.local')->first();
@@ -30,7 +30,7 @@ class TestUserSeederTest extends TestCase
         $this->assertNotNull($approvedInstructor);
         $this->assertNotNull($paidInstructor);
         $this->assertNotNull($pendingInstructor);
-        $this->assertNotNull($kidLearner);
+        $this->assertNotNull($youngerTeenLearner);
         $this->assertNotNull($teenLearner);
         $this->assertNotNull($adultLearner);
         $this->assertNotNull($premiumLearner);
@@ -53,10 +53,10 @@ class TestUserSeederTest extends TestCase
         $this->assertFalse($pendingInstructor->hasRole('instructor'));
         $this->assertSame('pending', $pendingInstructor->instructorApplication?->status);
 
-        $this->assertTrue($kidLearner->hasRole('learner'));
-        $this->assertTrue($kidLearner->hasCompletedProfile());
-        $this->assertSame('kids', $kidLearner->age_bracket_cached);
-        $this->assertSame(User::ACCOUNT_TYPE_LEARNER_CHILD, $kidLearner->account_type);
+        $this->assertTrue($youngerTeenLearner->hasRole('learner'));
+        $this->assertTrue($youngerTeenLearner->hasCompletedProfile());
+        $this->assertSame('teens', $youngerTeenLearner->age_bracket_cached);
+        $this->assertSame(User::ACCOUNT_TYPE_LEARNER_TEEN, $youngerTeenLearner->account_type);
 
         $this->assertTrue($teenLearner->hasRole('learner'));
         $this->assertTrue($teenLearner->hasCompletedProfile());
@@ -84,7 +84,7 @@ class TestUserSeederTest extends TestCase
 
         $this->assertTrue($linkedChild->hasRole('learner'));
         $this->assertTrue($linkedChild->hasCompletedProfile());
-        $this->assertSame('kids', $linkedChild->age_bracket_cached);
+        $this->assertSame('teens', $linkedChild->age_bracket_cached);
 
         $parentChildLink = ParentChildAccount::query()
             ->where('parent_user_id', $parent->id)
@@ -126,7 +126,7 @@ class TestUserSeederTest extends TestCase
             'instructor@test.local',
             'instructor.paid@test.local',
             'instructor.pending@test.local',
-            'kid@test.local',
+            'teen-younger@test.local',
             'teen@test.local',
             'adult@test.local',
             'premium.learner@test.local',

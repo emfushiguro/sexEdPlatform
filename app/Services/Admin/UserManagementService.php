@@ -4,9 +4,10 @@ namespace App\Services\Admin;
 
 use App\Models\RoleTransition;
 use App\Models\User;
-use App\Support\Permissions\PermissionOverrideDelta;
-use App\Support\AccountEmail;
 use App\Services\AdminActivityLogService;
+use App\Support\AccountEmail;
+use App\Support\LearnerAgePolicy;
+use App\Support\Permissions\PermissionOverrideDelta;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -22,8 +23,7 @@ class UserManagementService
     public function __construct(
         private readonly AdminActivityLogService $activityLogService,
         private readonly RoleSyncService $roleSyncService,
-    ) {
-    }
+    ) {}
 
     public function paginateForAdmin(array $filters, int $perPage = 15): LengthAwarePaginator
     {
@@ -91,7 +91,21 @@ class UserManagementService
         }
 
         if (! empty($filters['age_bracket'])) {
-            $query->where('age_bracket_cached', (string) $filters['age_bracket']);
+            $ageBracket = (string) $filters['age_bracket'];
+            if (in_array($ageBracket, LearnerAgePolicy::activeCategories(), true)) {
+                $query->where('age_bracket_cached', $ageBracket);
+            } elseif ($ageBracket === 'ineligible') {
+                $query->whereIn('age_eligibility_cached', [
+                    LearnerAgePolicy::INELIGIBLE_UNDERAGE,
+                    LearnerAgePolicy::INELIGIBLE_OVERAGE,
+                ]);
+            } elseif ($ageBracket === 'unclassified') {
+                $query->where(function ($nested): void {
+                    $nested->whereNull('age_eligibility_cached')
+                        ->orWhere('age_eligibility_cached', LearnerAgePolicy::UNCLASSIFIED)
+                        ->orWhere('age_eligibility_cached', '');
+                });
+            }
         }
 
         if (! empty($filters['learner_scope']) && (string) $filters['learner_scope'] !== 'all') {
@@ -156,47 +170,56 @@ class UserManagementService
     {
         try {
             return DB::transaction(function () use ($payload, $actorId, $request): User {
-            $targetRole = $this->resolveTargetRole($payload);
-            $directPermissions = $this->resolveDirectPermissions($payload, $targetRole);
+                $targetRole = $this->resolveTargetRole($payload);
+                $directPermissions = $this->resolveDirectPermissions($payload, $targetRole);
 
-            $user = User::query()->create([
-                'name' => trim((string) $payload['name']),
-                'email' => trim((string) $payload['email']),
-                'password' => Hash::make((string) $payload['password']),
-                'role' => $this->roleSyncService->toLegacyColumnValue($targetRole),
-                'status' => (string) $payload['status'],
-                'birthdate' => $payload['birthdate'] ?? null,
-                'verified' => true,
-                'email_verified_at' => null,
-            ]);
+                if ($targetRole === 'learner'
+                    && (string) ($payload['status'] ?? '') === User::STATUS_ACTIVE
+                    && LearnerAgePolicy::classify($payload['birthdate'] ?? null) === LearnerAgePolicy::ELIGIBLE_TEENAGER) {
+                    throw ValidationException::withMessages([
+                        'birthdate' => 'Active Teenager accounts must use guardian-assisted registration.',
+                    ]);
+                }
 
-            $this->roleSyncService->assignPrimaryRole($user, $targetRole);
+                $user = User::query()->create([
+                    'name' => trim((string) $payload['name']),
+                    'email' => trim((string) $payload['email']),
+                    'password' => Hash::make((string) $payload['password']),
+                    'role' => $this->roleSyncService->toLegacyColumnValue($targetRole),
+                    'status' => (string) $payload['status'],
+                    'birthdate' => $payload['birthdate'] ?? null,
+                    'verified' => true,
+                    'email_verified_at' => null,
+                ]);
 
-            if ($directPermissions !== null) {
-                $user->syncPermissions($directPermissions);
-            }
+                $this->roleSyncService->assignPrimaryRole($user, $targetRole);
 
-            $user->refreshClassificationCache();
+                if ($directPermissions !== null) {
+                    $user->syncPermissions($directPermissions);
+                }
 
-            $this->activityLogService->logModelMutation(
-                action: 'users.create',
-                entity: $user,
-                before: null,
-                after: $user->fresh()->only([
-                    'id',
-                    'name',
-                    'email',
-                    'role',
-                    'status',
-                    'account_type',
-                    'age_bracket_cached',
-                ]),
-                meta: ['source' => 'admin.users.store'],
-                request: $request,
-                adminUserId: $actorId,
-            );
+                $user->refreshClassificationCache();
 
-            return $user->fresh(['roles']);
+                $this->activityLogService->logModelMutation(
+                    action: 'users.create',
+                    entity: $user,
+                    before: null,
+                    after: $user->fresh()->only([
+                        'id',
+                        'name',
+                        'email',
+                        'role',
+                        'status',
+                        'account_type',
+                        'age_bracket_cached',
+                        'age_eligibility_cached',
+                    ]),
+                    meta: ['source' => 'admin.users.store'],
+                    request: $request,
+                    adminUserId: $actorId,
+                );
+
+                return $user->fresh(['roles']);
             });
         } catch (QueryException $exception) {
             if (AccountEmail::isUsersEmailUniqueViolation($exception)) {
@@ -213,76 +236,99 @@ class UserManagementService
     {
         try {
             return DB::transaction(function () use ($user, $payload, $actorId, $request): User {
-            $before = $user->only(['id', 'name', 'email', 'role', 'status', 'account_type', 'age_bracket_cached']);
-            $currentRole = $this->currentAssignedRole($user);
-            $targetRole = array_key_exists('role', $payload)
-                ? $this->resolveTargetRole($payload)
-                : $currentRole;
-            $roleChanged = $targetRole !== $currentRole;
+                $before = $user->only([
+                    'id', 'name', 'email', 'role', 'status', 'account_type',
+                    'age_bracket_cached', 'age_eligibility_cached',
+                ]);
+                $currentRole = $this->currentAssignedRole($user);
+                $targetRole = array_key_exists('role', $payload)
+                    ? $this->resolveTargetRole($payload)
+                    : $currentRole;
+                $roleChanged = $targetRole !== $currentRole;
+                $birthdate = $payload['birthdate'] ?? $user->birthdate;
 
-            if ($roleChanged) {
-                $reason = isset($payload['role_change_reason'])
-                    ? trim((string) $payload['role_change_reason'])
-                    : null;
-                $customNotes = isset($payload['role_change_custom_notes'])
-                    ? trim((string) $payload['role_change_custom_notes'])
-                    : null;
+                if ($targetRole === 'learner'
+                    && $currentRole !== 'learner'
+                    && (string) ($payload['status'] ?? $user->status) === User::STATUS_ACTIVE
+                    && LearnerAgePolicy::classify($birthdate) === LearnerAgePolicy::ELIGIBLE_TEENAGER) {
+                    throw ValidationException::withMessages([
+                        'birthdate' => 'Teenager accounts must use guardian-assisted registration.',
+                    ]);
+                }
 
-                $this->applyRoleChange(
-                    user: $user,
-                    targetRole: $targetRole,
-                    reason: $reason !== '' ? $reason : null,
-                    customNotes: $customNotes !== '' ? $customNotes : null,
-                    actorId: $actorId,
+                if ($roleChanged) {
+                    $reason = isset($payload['role_change_reason'])
+                        ? trim((string) $payload['role_change_reason'])
+                        : null;
+                    $customNotes = isset($payload['role_change_custom_notes'])
+                        ? trim((string) $payload['role_change_custom_notes'])
+                        : null;
+
+                    $this->applyRoleChange(
+                        user: $user,
+                        targetRole: $targetRole,
+                        reason: $reason !== '' ? $reason : null,
+                        customNotes: $customNotes !== '' ? $customNotes : null,
+                        actorId: $actorId,
+                    );
+                }
+
+                $user->fill([
+                    'name' => trim((string) $payload['name']),
+                    'email' => trim((string) $payload['email']),
+                    'status' => (string) $payload['status'],
+                    'birthdate' => $birthdate,
+                ]);
+
+                $birthdateChanged = $user->isDirty('birthdate');
+
+                if ($user->isDirty('email')) {
+                    $user->email_verified_at = null;
+                }
+
+                if (! empty($payload['password'])) {
+                    $user->password = Hash::make((string) $payload['password']);
+                }
+
+                $user->save();
+
+                if ($birthdateChanged && $user->isLearner()) {
+                    $profile = $user->learnerProfile()->first();
+                    if ($profile !== null) {
+                        $profile->forceFill(['birthdate' => $user->birthdate])->save();
+                    }
+                }
+
+                $directPermissions = $this->resolveDirectPermissions($payload, $targetRole);
+                if ($directPermissions !== null) {
+                    $user->syncPermissions($directPermissions);
+                }
+
+                $user->refreshClassificationCache();
+
+                $this->activityLogService->logModelMutation(
+                    action: 'users.update',
+                    entity: $user,
+                    before: $before,
+                    after: $user->fresh()->only([
+                        'id',
+                        'name',
+                        'email',
+                        'role',
+                        'status',
+                        'account_type',
+                        'age_bracket_cached',
+                        'age_eligibility_cached',
+                    ]),
+                    meta: [
+                        'source' => 'admin.users.update',
+                        'role_changed' => $roleChanged,
+                    ],
+                    request: $request,
+                    adminUserId: $actorId,
                 );
-            }
 
-            $user->fill([
-                'name' => trim((string) $payload['name']),
-                'email' => trim((string) $payload['email']),
-                'status' => (string) $payload['status'],
-                'birthdate' => $payload['birthdate'] ?? $user->birthdate,
-            ]);
-
-            if ($user->isDirty('email')) {
-                $user->email_verified_at = null;
-            }
-
-            if (! empty($payload['password'])) {
-                $user->password = Hash::make((string) $payload['password']);
-            }
-
-            $user->save();
-
-            $directPermissions = $this->resolveDirectPermissions($payload, $targetRole);
-            if ($directPermissions !== null) {
-                $user->syncPermissions($directPermissions);
-            }
-
-            $user->refreshClassificationCache();
-
-            $this->activityLogService->logModelMutation(
-                action: 'users.update',
-                entity: $user,
-                before: $before,
-                after: $user->fresh()->only([
-                    'id',
-                    'name',
-                    'email',
-                    'role',
-                    'status',
-                    'account_type',
-                    'age_bracket_cached',
-                ]),
-                meta: [
-                    'source' => 'admin.users.update',
-                    'role_changed' => $roleChanged,
-                ],
-                request: $request,
-                adminUserId: $actorId,
-            );
-
-            return $user->fresh(['roles']);
+                return $user->fresh(['roles']);
             });
         } catch (QueryException $exception) {
             if (AccountEmail::isUsersEmailUniqueViolation($exception)) {
@@ -348,8 +394,7 @@ class UserManagementService
         ?Request $request = null,
         ?string $newRoleName = null,
         array $newRolePermissions = [],
-    ): User
-    {
+    ): User {
         $before = $user->only(['id', 'role', 'status']);
 
         $newRole = trim(strtolower($newRole));
@@ -508,7 +553,10 @@ class UserManagementService
                 $query->whereNull('account_type')
                     ->orWhere(function ($nested): void {
                         $nested->where('role', 'learner')
-                            ->whereNull('age_bracket_cached');
+                            ->where(function ($cache): void {
+                                $cache->whereNull('age_bracket_cached')
+                                    ->orWhereNull('age_eligibility_cached');
+                            });
                     });
             })
             ->limit(200)

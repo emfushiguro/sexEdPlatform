@@ -8,8 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CommunityReport extends Model
 {
-    private const ALLOWED_DETAILS_TAGS = '<p><br><strong><b><em><i><ul><ol><li><a>';
-
     protected $fillable = [
         'community_post_id',
         'community_comment_id',
@@ -60,7 +58,7 @@ class CommunityReport extends Model
 
     public function getDetailsHtmlAttribute(): string
     {
-        $details = trim(strip_tags((string) $this->details, self::ALLOWED_DETAILS_TAGS));
+        $details = \App\Support\SafeUserHtml::clean((string) $this->details);
 
         return $details !== '' ? $details : 'No details provided.';
     }

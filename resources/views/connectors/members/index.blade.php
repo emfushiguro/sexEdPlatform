@@ -93,7 +93,11 @@
             'initial' => strtoupper(mb_substr($user?->name ?? 'U', 0, 1)),
             'platform_role' => $user?->role ?? 'No platform role',
             'age' => $age ? (string) $age : 'Not provided',
-            'age_category' => $user?->age_bracket_cached ?? 'Not provided',
+            'age_category' => match (\App\Support\LearnerAgePolicy::category($user?->birthdate)) {
+                \App\Support\LearnerAgePolicy::CATEGORY_TEENAGERS => 'Teenager',
+                \App\Support\LearnerAgePolicy::CATEGORY_ADULTS => 'Adult',
+                default => 'Ineligible/Unclassified',
+            },
             'status' => $membershipRequest->status,
             'requested_at' => $membershipRequest->created_at?->diffForHumans() ?? 'Unknown',
             'requested_at_full' => $membershipRequest->created_at?->format('M d, Y g:i A') ?? 'Unknown',

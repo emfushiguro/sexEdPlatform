@@ -66,7 +66,7 @@
             @endif
             @if ($user->isInstructorApplicant() && in_array($case->status, ['awaiting_verification', 'verification_in_progress', 'action_required', 'rejected'], true))
                 @php
-                    $governmentIdTypes = collect(config('persona.government_id_classes', []))
+                    $governmentIdTypes = collect(config('persona.government_id_classes', []))->only(config('guardian_identity.accepted_id_types', []))
                         ->mapWithKeys(fn ($personaClass, $value) => [
                             $value => data_get(config('guardian_identity.id_types', []), $value.'.label', str($value)->headline()),
                         ])

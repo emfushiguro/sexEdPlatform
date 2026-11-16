@@ -42,7 +42,11 @@
                 'status' => $registrant->status,
                 'participant_type' => $registrant->participant_type ?? 'participant',
                 'age' => $isLearner ? ($user?->calculateAge() ?? 'Unknown') : null,
-                'age_category' => $isLearner ? ($user?->age_bracket_cached ?? $user?->learnerProfile?->getAgeBracket() ?? 'Unknown') : null,
+                'age_category' => $isLearner ? match (\App\Support\LearnerAgePolicy::category($user?->birthdate)) {
+                    \App\Support\LearnerAgePolicy::CATEGORY_TEENAGERS => 'Teenager',
+                    \App\Support\LearnerAgePolicy::CATEGORY_ADULTS => 'Adult',
+                    default => 'Ineligible/Unclassified',
+                } : null,
                 'learner_type' => $isLearner ? ($user?->account_type ?? 'Learner') : null,
                 'eligibility_summary' => $isLearner ? 'Matches selected learner age categories.' : null,
                 'affiliation' => $user?->instructorProfile?->professional_background ?? 'No organization listed',

@@ -13,8 +13,8 @@
     <x-wizard-stepper flow="dependent" />
 
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-purple-900">Child's Location</h1>
-        <p class="mt-1 text-sm text-gray-600">Select the city and barangay where your child lives.</p>
+        <h1 class="text-2xl font-bold text-purple-900">Dependent's location</h1>
+        <p class="mt-1 text-sm text-gray-600">Select the city and barangay where the dependent lives.</p>
     </div>
 
     @if ($errors->any())

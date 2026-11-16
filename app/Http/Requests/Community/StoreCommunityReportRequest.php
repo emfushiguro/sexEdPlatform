@@ -7,8 +7,6 @@ use Illuminate\Validation\Rule;
 
 class StoreCommunityReportRequest extends FormRequest
 {
-    private const ALLOWED_DETAILS_TAGS = '<p><br><strong><b><em><i><ul><ol><li><a>';
-
     public function authorize(): bool
     {
         return true;
@@ -20,7 +18,7 @@ class StoreCommunityReportRequest extends FormRequest
 
         if (is_string($details)) {
             $this->merge([
-                'details' => trim(strip_tags($details, self::ALLOWED_DETAILS_TAGS)),
+                'details' => \App\Support\SafeUserHtml::clean($details),
             ]);
         }
     }

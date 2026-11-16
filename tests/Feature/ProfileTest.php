@@ -88,6 +88,36 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
+    public function test_teenager_can_clear_email_only_with_current_password_without_guardian_substitution(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create([
+            'role' => 'learner',
+            'birthdate' => now()->subYears(15)->toDateString(),
+            'email' => 'teenager@example.com',
+        ]);
+        $user->assignRole('learner');
+
+        $this->actingAs($user)
+            ->from('/profile')
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => null,
+            ])
+            ->assertSessionHasErrors('current_password');
+
+        $this->actingAs($user)
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => null,
+                'current_password' => 'password',
+            ])
+            ->assertRedirect('/profile');
+
+        $this->assertNull($user->fresh()->email);
+        Notification::assertNothingSent();
+    }
+
     public function test_user_can_delete_their_account(): void
     {
         $user = User::factory()->create();

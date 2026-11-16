@@ -36,12 +36,14 @@ class LearnerIdentityVerificationController extends Controller
         if ($case->status === 'pending' || ($case->status === 'rejected' && ! $case->resubmission_allowed)) {
             return redirect()->route('learner.identity.status');
         }
-        $personaRequired = $this->personaInquiries->isRequired();
-        $personaAttempt = $personaRequired ? $this->personaInquiries->currentAttempt($request->user()) : null;
+        $canRequestAssistedReview = $request->user()->guardianRelationships()->accessEligible()->exists();
+        $assistedReview = $canRequestAssistedReview && $request->boolean('assisted_review');
+        $personaRequired = ! $assistedReview;
+        $personaAttempt = $this->personaInquiries->currentAttempt($request->user());
         $draft = $drafts->current($request->user(), $case);
 
         return view('auth.learner-identity-verification', compact(
-            'case', 'draft', 'personaAttempt', 'personaRequired',
+            'case', 'draft', 'personaAttempt', 'personaRequired', 'canRequestAssistedReview',
         ));
     }
 
@@ -50,7 +52,7 @@ class LearnerIdentityVerificationController extends Controller
         $case = $this->requirement->current($request->user());
         abort_if($case === null, 403);
 
-        if ($this->personaInquiries->isRequired()) {
+        if ($request->input('document_type') !== 'assisted_review') {
             if ($request->input('document_type') === 'government_id') {
                 return redirect()->route('learner.identity.status')
                     ->withErrors(['persona' => 'Submit your government ID and selfie once through Persona.']);
@@ -80,12 +82,12 @@ class LearnerIdentityVerificationController extends Controller
         if ($case->status === 'pending' || ($case->status === 'rejected' && ! $case->resubmission_allowed)) {
             return redirect()->route('learner.identity.status');
         }
-        $personaRequired = $this->personaInquiries->isRequired();
-        $personaAttempt = $personaRequired ? $this->personaInquiries->currentAttempt($request->user()) : null;
         $draft = $drafts->current($request->user(), $case);
         if (! $draft) {
             return redirect()->route('learner.identity.create');
         }
+        $personaRequired = true;
+        $personaAttempt = $personaRequired ? $this->personaInquiries->currentAttempt($request->user()) : null;
 
         return view('auth.learner-identity-selfie', compact('case', 'draft', 'personaAttempt', 'personaRequired'));
     }
@@ -100,15 +102,13 @@ class LearnerIdentityVerificationController extends Controller
         }
 
         $files = $drafts->files($request->user(), $case);
-        if ($selfie = $request->file('selfie')) {
-            $files['selfie'] = $selfie;
-        }
         $submission->submit($request->user(), $case, [
             'document_type' => $draft['document_type'],
             'government_id_type' => $draft['government_id_type'],
             'government_id_type_other' => $draft['government_id_type_other'],
             'confirm_submission' => $request->input('confirm_submission'),
             'submission_round' => $draft['submission_round'],
+            'learner_note' => $request->input('learner_note'),
         ], $files);
         if (DB::transactionLevel() > 0) {
             DB::afterCommit(fn () => $drafts->clear());

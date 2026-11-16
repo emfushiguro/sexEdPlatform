@@ -4,6 +4,7 @@ namespace App\Services\Seminars;
 
 use App\Enums\SeminarParticipantType;
 use App\Models\Seminar;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -26,7 +27,7 @@ class SeminarPublicationValidator
             'registration_approval_mode' => ['required', Rule::in(['auto_approve', 'manual'])],
             'target_participants' => ['required', Rule::in(array_column(SeminarParticipantType::cases(), 'value'))],
             'learner_age_categories' => ['array'],
-            'learner_age_categories.*' => [Rule::in(array_keys(config('seminars.learner_age_categories')))],
+            'learner_age_categories.*' => ['distinct', Rule::in(LearnerAgePolicy::activeCategories())],
             'location' => ['exclude_unless:event_format,in_person', 'required', 'string', 'max:255'],
             'venue_address' => ['exclude_unless:event_format,in_person', 'required', 'string', 'max:255'],
             'venue_room' => ['exclude_unless:event_format,in_person', 'nullable', 'string', 'max:255'],
@@ -91,6 +92,14 @@ class SeminarPublicationValidator
     public function assertReady(Seminar $seminar): void
     {
         $data = $seminar->makeVisible('external_url')->toArray();
+        $data['learner_age_categories'] = collect($data['learner_age_categories'] ?? [])
+            ->map(fn (mixed $category): ?string => is_string($category)
+                ? LearnerAgePolicy::normalizeActiveCategory($category)
+                : null)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
         $validator = Validator::make($data, self::rules());
         $validator->after(fn ($validator) => self::addContextErrors($validator, $seminar->isNativeDelivery()));
         abort_if($validator->fails(), 422, 'Complete the event details before review or publication.');

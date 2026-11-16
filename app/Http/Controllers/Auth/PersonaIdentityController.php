@@ -49,7 +49,7 @@ class PersonaIdentityController extends Controller
     public function replace(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'document_type' => ['sometimes', 'required', 'string', 'in:school_id,institution_id,government_id'],
+            'document_type' => ['sometimes', 'required', 'string', 'in:school_id,institution_id,government_id,assisted_review'],
             'government_id_type' => ['nullable', 'string', 'max:40', 'required_if:document_type,government_id'],
         ]);
         $result = $this->inquiries->replace(

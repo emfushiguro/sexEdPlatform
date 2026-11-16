@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\VerificationStatus;
 use App\Models\PersonaInquiry;
 use App\Services\Identity\LearnerIdentityRequirement;
+use App\Support\LearnerAgePolicy;
 use Closure;
 use DomainException;
 use Illuminate\Http\Request;
@@ -17,28 +18,72 @@ class EnsureLearnerIdentityVerified
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (! $user || ! $user->isLearner() || $user->isParentRegistration()
-            || $request->routeIs(
-                'verification.*', 'learner.identity.*', 'persona.identity.*', 'logout', 'instructor.logout', 'admin.logout',
-                'password.*', 'profile.password.update', 'profile.account.delete',
-                'privacy', 'terms', 'moderation.suspension-status', 'moderation.appeals.*', 'instructor-application.*',
-            )) {
-            return $next($request);
-        }
-        if (! $user->hasVerifiedEmail()) {
-            return redirect()->route('verification.notice');
-        }
-        try {
-            $case = $this->requirement->current($user);
-        } catch (DomainException) {
-            return redirect()->route('learner.identity.status');
-        }
-        if ($case === null || ($case->status === VerificationStatus::Approved->value
-            && (! $case->sandbox_manual_review || PersonaInquiry::localManualReviewEnabled()))) {
+        if (! $user || ! $user->isLearner() || $user->isParentRegistration()) {
             return $next($request);
         }
 
-        return redirect()->route($case->status === null
+        $identityRoute = $request->routeIs('learner.identity.*', 'persona.identity.*');
+        $safeRoute = $request->routeIs(
+            'verification.*', 'minor.registration.*', 'minor.activation.*', 'dependent.adult-consent.*', 'learner.eligibility.status',
+            'logout', 'instructor.logout', 'admin.logout', 'password.*',
+            'profile.edit', 'profile.update', 'profile.complete', 'profile.store', 'profile.learner.*',
+            'profile.password.update', 'profile.account.delete', 'privacy', 'terms', 'help.*', 'feedback.*',
+            'moderation.suspension-status', 'moderation.appeals.*', 'child.verification.*',
+            'instructor-application.*',
+        );
+
+        if (! $identityRoute && $safeRoute) {
+            return $next($request);
+        }
+
+        $classification = LearnerAgePolicy::classify($user->birthdate);
+        if (! in_array($classification, [LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::ELIGIBLE_ADULT], true)) {
+            return $this->deny($request, 'learner.eligibility.status');
+        }
+
+        if ($classification === LearnerAgePolicy::ELIGIBLE_TEENAGER
+            && (! $user->hasCompletedMinorActivation() || $user->qualifyingMinorGuardianRelationship() === null)) {
+            return $this->deny($request, 'learner.eligibility.status');
+        }
+
+        if ($classification === LearnerAgePolicy::ELIGIBLE_ADULT
+            && ! $user->hasVerifiedEmail() && ! $user->hasAcceptedDependentAdultAuthorization()) {
+            return $this->deny($request, $user->minor_account_activated_at !== null
+                ? 'dependent.adult-consent.show' : 'verification.notice');
+        }
+
+        if ($identityRoute) {
+            return $next($request);
+        }
+
+        try {
+            $case = $this->requirement->current($user);
+        } catch (DomainException) {
+            return $this->deny($request, 'learner.identity.status');
+        }
+
+        if ($case === null) {
+            return $this->deny($request, 'learner.identity.create');
+        }
+
+        if ($case->status === VerificationStatus::Approved->value
+            && (! $case->sandbox_manual_review || PersonaInquiry::localManualReviewEnabled())) {
+            return $next($request);
+        }
+
+        return $this->deny($request, $case->status === null
             ? 'learner.identity.create' : 'learner.identity.status');
+    }
+
+    private function deny(Request $request, string $route): Response
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'code' => 'completion_required',
+                'message' => 'Complete the required account steps before continuing.',
+            ], 403);
+        }
+
+        return redirect()->route($route);
     }
 }

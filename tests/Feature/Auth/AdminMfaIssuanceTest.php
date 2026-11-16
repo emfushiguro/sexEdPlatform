@@ -286,8 +286,8 @@ class AdminMfaIssuanceTest extends TestCase
         $this->assertStringContainsString('#730DB1', $html);
         $this->assertStringContainsString('#3B0CB1', $html);
         $this->assertStringContainsString('Never share this code', $html);
-        $this->assertStringContainsString('Copy code', $html);
-        $this->assertStringContainsString('href="'.$copyUrl.'"', $html);
+        $this->assertStringContainsString('Copy code button on that page', $html);
+        $this->assertStringNotContainsString('href="'.$copyUrl.'"', $html);
         $this->assertSame(6, substr_count($html, 'class="code-digit"'));
         $this->assertStringNotContainsString('<script', strtolower($html));
         $this->assertStringNotContainsString('123456', parse_url($copyUrl, PHP_URL_QUERY) ?: '');

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Instructor;
 
 use App\Services\Instructor\InstructorPlanCapabilityService;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,9 +22,9 @@ class StoreModuleRequest extends FormRequest
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'thumbnail' => 'nullable|image|max:2048',
-            'age_bracket' => ['nullable', Rule::in(['kids', 'teens', 'adults'])],
+            'age_bracket' => ['nullable', Rule::in(LearnerAgePolicy::activeCategories())],
             'age_brackets' => ['required_without:age_bracket', 'array', 'min:1'],
-            'age_brackets.*' => ['required', Rule::in(['kids', 'teens', 'adults'])],
+            'age_brackets.*' => ['required', Rule::in(LearnerAgePolicy::activeCategories())],
             'enrollment_mode' => 'required|in:auto,manual',
             'action' => 'nullable|in:publish,draft,archive',
             'order' => 'nullable|integer|min:0',
@@ -32,7 +33,7 @@ class StoreModuleRequest extends FormRequest
             'price_amount' => 'nullable|numeric|min:0.01|required_if:access_type,paid',
             'price_currency' => 'nullable|in:PHP',
             'enrollment_limit' => $enrollmentLimitCap !== null
-                ? 'nullable|integer|min:1|max:' . $enrollmentLimitCap
+                ? 'nullable|integer|min:1|max:'.$enrollmentLimitCap
                 : 'nullable|integer|min:1',
         ];
     }
@@ -40,7 +41,7 @@ class StoreModuleRequest extends FormRequest
     private function resolveEnrollmentLimitCap(): ?int
     {
         $user = $this->user();
-        if (!$user || !$user->hasRole('instructor')) {
+        if (! $user || ! $user->hasRole('instructor')) {
             return null;
         }
 

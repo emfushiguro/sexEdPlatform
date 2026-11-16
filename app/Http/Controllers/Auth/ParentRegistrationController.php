@@ -9,9 +9,10 @@ use App\Http\Requests\Auth\ResubmitChildVerificationRequest;
 use App\Http\Requests\Auth\StoreChildRelationshipVerificationRequest;
 use App\Http\Requests\Auth\UploadChildTempDocumentRequest;
 use App\Http\Requests\Auth\UploadParentTempDocumentRequest;
+use App\Models\MinorRegistrationRequest;
 use App\Models\ParentChildAccount;
 use App\Models\User;
-use App\Notifications\Admin\ChildVerificationRequestSubmittedNotification;
+use App\Services\Auth\MinorAccountHandoffService;
 use App\Services\Auth\RegistrationTempUploadService;
 use App\Services\GuardianRelationshipEvidenceService;
 use App\Services\GuardianRelationshipVerificationService;
@@ -19,18 +20,19 @@ use App\Services\ParentChildInvitationService;
 use App\Services\ParentChildVerificationService;
 use App\Support\AccountEmail;
 use App\Support\GuardianRelationshipTypes;
+use App\Support\LearnerAgePolicy;
 use Carbon\Carbon;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Notifications\Notification;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -270,9 +272,16 @@ class ParentRegistrationController extends Controller
             return $redirect;
         }
 
+        if (! session('pending_child_registration') && ($token = session('minor_registration_token'))) {
+            return redirect()->route('minor.registration.accept', $token);
+        }
+
         // Clear stale in-progress data from an abandoned session, but keep
         // pending_child_registration — it holds the original child's info for pre-fill
-        session()->forget(['child_step1', 'child_step2', 'child_created_name']);
+        session()->forget(['child_step1', 'child_step2', 'child_step3', 'child_created_name']);
+        if (! session('pending_child_registration')) {
+            session()->forget(['minor_registration_request_id', 'minor_registration_token']);
+        }
 
         return view('auth.create-child-account', [
             'pendingChild' => session('pending_child_registration', []),
@@ -297,15 +306,14 @@ class ParentRegistrationController extends Controller
             'birthdate' => [
                 'required',
                 'date',
-                'before_or_equal:today',
+                'before_or_equal:'.now()->subYears(10)->toDateString(),
             ],
             'gender' => ['required', 'in:male,female,prefer_not_to_say'],
             'relationship_type' => ['required', Rule::in(GuardianRelationshipTypes::values())],
             'relationship_custom' => ['nullable', 'required_if:relationship_type,other', 'string', 'max:120'],
-        ]);
+        ], ['birthdate.before_or_equal' => 'Dependents must be at least 10 years old.']);
 
-        $birthdate = Carbon::parse($validated['birthdate']);
-        session(['child_step1' => array_merge($validated, ['age' => $birthdate->age])]);
+        session(['child_step1' => $validated]);
 
         return redirect()->route('parent.create-child.location');
     }
@@ -386,20 +394,7 @@ class ParentRegistrationController extends Controller
             return redirect()->route('parent.create-child');
         }
 
-        $step1 = session('child_step1');
-        $parentEmail = (string) Auth::user()?->email;
-        $suggestedEmail = null;
-        if (preg_match('/^(.+)@gmail\.com$/i', $parentEmail, $matches)) {
-            $childFirstName = strtolower(preg_replace('/[^a-z0-9]/', '', $step1['first_name'] ?? ''));
-            if ($childFirstName) {
-                $suggestedEmail = $matches[1].'+'.$childFirstName.'@gmail.com';
-            }
-        }
-
-        return view('auth.child.step3-credentials', [
-            'step1' => $step1,
-            'suggestedEmail' => $suggestedEmail,
-        ]);
+        return view('auth.child.step3-credentials', ['step1' => session('child_step1')]);
     }
 
     /**
@@ -419,81 +414,30 @@ class ParentRegistrationController extends Controller
         }
 
         $validated = $request->validate([
-            'username' => ['required', 'string', 'min:3', 'max:30', 'unique:learner_profiles,username', 'regex:/^[a-z0-9_-]+$/'],
-            'password' => [
-                'required',
-                'confirmed',
-                Password::min(8)
-                    ->mixedCase()
-                    ->numbers()
-                    ->symbols()
-                    ->uncompromised(),
-            ],
+            'username' => ['nullable', 'string', 'min:3', 'max:30', 'unique:learner_profiles,username', 'regex:/^[a-z0-9_-]+$/'],
+            'email' => ['nullable', 'string', 'lowercase', 'email:rfc', 'max:255', 'unique:users,email'],
         ]);
 
         session(['child_step3' => [
-            'username' => $validated['username'],
-            'password' => $validated['password'],
+            'username' => $validated['username'] ?? null,
+            'email' => $validated['email'] ?? null,
         ]]);
 
-        return redirect()->route('parent.create-child.validation');
+        return redirect()->route('parent.create-child.relationship-verification');
     }
 
     public function childValidationForm(): View|RedirectResponse
     {
-        if ($redirect = $this->ensureApprovedParent()) {
-            return $redirect;
-        }
-
         if (! session('child_step1') || ! session('child_step2') || ! session('child_step3')) {
             return redirect()->route('parent.create-child');
         }
 
-        $tempUpload = app(RegistrationTempUploadService::class)->get('child', 'verification_document');
-        if (is_array($tempUpload) && ! empty($tempUpload['path'])) {
-            $tempUpload['preview_url'] = route('registration.temp-document.preview', ['child', 'verification_document']);
-        }
-
-        return view('auth.child.step4-validation', [
-            'tempChildVerificationUpload' => $tempUpload,
-            'hasChildVerificationUpload' => ! empty($tempUpload['path']),
-        ]);
+        return redirect()->route('parent.create-child.relationship-verification');
     }
 
-    public function storeChildValidation(Request $request): RedirectResponse
+    public function storeChildValidation(Request $request): Response
     {
-        if ($redirect = $this->ensureApprovedParent()) {
-            return $redirect;
-        }
-
-        $step1 = session('child_step1');
-        if (! $step1 || ! session('child_step2') || ! session('child_step3')) {
-            return redirect()->route('parent.create-child');
-        }
-
-        $tempUploadService = app(RegistrationTempUploadService::class);
-
-        if ($request->hasFile('verification_document')) {
-            $request->validate([
-                'verification_document' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            ]);
-            $tempUploadService->store('child', 'verification_document', $request->file('verification_document'));
-        }
-
-        $tempUpload = $tempUploadService->get('child', 'verification_document');
-        if (! is_array($tempUpload) || empty($tempUpload['path'])) {
-            return back()
-                ->withErrors(['verification_document' => 'Please upload a PSA birth certificate before continuing.'])
-                ->withInput();
-        }
-
-        $relationshipType = (string) ($step1['relationship_type'] ?? '');
-        if (! in_array($relationshipType, GuardianRelationshipTypes::selectableValues(), true)) {
-            return redirect()->route('parent.create-child')
-                ->withErrors(['relationship_type' => 'Select a supported guardian relationship.']);
-        }
-
-        return redirect()->route('parent.create-child.relationship-verification');
+        return response('This validation step is no longer available. Please restart the Teenager registration.', 410);
     }
 
     public function childRelationshipVerificationForm(): View|RedirectResponse
@@ -534,7 +478,7 @@ class ParentRegistrationController extends Controller
 
         abort_unless(in_array((string) ($step1['relationship_type'] ?? ''), GuardianRelationshipTypes::selectableValues(), true), 404);
 
-        return $this->createChildAccountFromSession($request, app(RegistrationTempUploadService::class), [
+        return $this->createChildAccountFromSession($request, [
             'documents' => $request->validated('documents'),
             'relationship_notes' => $request->validated('relationship_notes'),
         ]);
@@ -542,7 +486,6 @@ class ParentRegistrationController extends Controller
 
     private function createChildAccountFromSession(
         Request $request,
-        RegistrationTempUploadService $tempUploadService,
         ?array $relationshipVerificationPayload = null,
     ): RedirectResponse {
         $step1 = session('child_step1');
@@ -553,17 +496,15 @@ class ParentRegistrationController extends Controller
             return redirect()->route('parent.create-child');
         }
 
+        if (! in_array(LearnerAgePolicy::classify($step1['birthdate']), [LearnerAgePolicy::ELIGIBLE_TEENAGER, LearnerAgePolicy::ELIGIBLE_ADULT], true)) {
+            return redirect()->route('parent.create-child')->withErrors(['birthdate' => 'Dependents must be at least 10 years old.']);
+        }
+
         $relationshipType = (string) ($step1['relationship_type'] ?? '');
         $requiresRelationshipVerification = in_array($relationshipType, GuardianRelationshipTypes::selectableValues(), true);
 
         $parent = Auth::user();
-        $parentEmail = $parent->email;
-        $childEmail = $step3['username'].'@child.sexed-platform.local';
-
-        if (preg_match('/^(.+)@gmail\.com$/i', $parentEmail, $matches)) {
-            $childEmail = $matches[1].'+'.$step3['username'].'@gmail.com';
-        }
-
+        $minorHandoffs = app(MinorAccountHandoffService::class);
         $barangay = \Schoolees\Psgc\Models\Barangay::query()
             ->where('code', $step2['barangay_code'])
             ->where('city_code', $step2['city_code'])
@@ -574,69 +515,96 @@ class ParentRegistrationController extends Controller
                 ->withErrors(['barangay_code' => 'Selected barangay does not belong to the selected city.'])
                 ->withInput();
         }
-        $verificationDocumentPath = $tempUploadService->finalize(
-            'child',
-            'verification_document',
-            'child-verifications/'.$parent->id,
-            'verification-document'
-        );
-
-        if ($verificationDocumentPath === null) {
-            return back()
-                ->withErrors(['verification_document' => 'The uploaded verification document could not be processed. Please upload again.'])
-                ->withInput($request->except(['password', 'password_confirmation']));
-        }
-
         $relationshipEvidencePaths = [];
 
         try {
             [$child, $verification] = DB::transaction(function () use (
                 $parent,
+                $minorHandoffs,
                 $step1,
                 $step2,
                 $step3,
-                $childEmail,
                 $barangay,
-                $verificationDocumentPath,
                 $relationshipVerificationPayload,
                 $relationshipType,
                 $requiresRelationshipVerification,
                 &$relationshipEvidencePaths,
             ): array {
-                $child = User::query()->create([
-                    'name' => trim($step1['first_name'].' '.$step1['last_name']),
-                    'first_name' => $step1['first_name'],
-                    'middle_initial' => $step1['middle_initial'] ?? null,
-                    'last_name' => $step1['last_name'],
-                    'suffix' => $step1['suffix'] ?? null,
-                    'email' => $childEmail,
-                    'birthdate' => $step1['birthdate'],
-                    'age' => $step1['age'],
-                    'password' => Hash::make($step3['password']),
-                ]);
-                $child->markEmailAsVerified();
+                $requestId = session('minor_registration_request_id');
+                $requestToken = (string) session('minor_registration_token');
+                $minorRequest = $requestId
+                    ? MinorRegistrationRequest::query()->lockForUpdate()->findOrFail($requestId)
+                    : null;
+                $child = $minorRequest?->existing_child_user_id
+                    ? User::query()->lockForUpdate()->findOrFail($minorRequest->existing_child_user_id)
+                    : null;
 
-                Role::findOrCreate('learner', 'web');
-                $child->assignRole('learner');
+                if ($minorRequest !== null) {
+                    if ($minorRequest->status !== MinorRegistrationRequest::STATUS_PENDING
+                        || $minorRequest->expires_at?->isPast()
+                        || $requestToken === ''
+                        || ! hash_equals($minorRequest->token_hash, $minorHandoffs->digestForStorage($requestToken))
+                        || ! is_string($parent->email)
+                        || $minorRequest->accepted_by_user_id !== $parent->id
+                        || ! $parent->hasVerifiedEmail()
+                        || ! $parent->isParentRegistration()
+                        || ! $parent->isParentVerificationApproved()
+                        || ! $parent->hasCompletedGuardianOnboarding()) {
+                        throw ValidationException::withMessages(['email' => 'This registration request is no longer available.']);
+                    }
+                }
 
-                $child->learnerProfile()->create([
-                    'username' => $step3['username'],
-                    'birthdate' => $child->birthdate,
-                    'gender' => $step1['gender'],
-                    'city_code' => $step2['city_code'],
-                    'barangay_code' => $step2['barangay_code'],
-                    'barangay' => $barangay->name,
-                    'province_code' => '402100000',
-                    'requires_parental_consent' => true,
-                ]);
+                if ($child !== null && Carbon::parse($step1['birthdate'])->toDateString() !== $child->birthdate?->toDateString()) {
+                    throw ValidationException::withMessages([
+                        'birthdate' => 'The dependent birthdate must match the existing account.',
+                    ]);
+                }
+                if ($child === null) {
+                    $child = User::query()->create([
+                        'name' => trim($step1['first_name'].' '.$step1['last_name']),
+                        'first_name' => $step1['first_name'],
+                        'middle_initial' => $step1['middle_initial'] ?? null,
+                        'last_name' => $step1['last_name'],
+                        'suffix' => $step1['suffix'] ?? null,
+                        'email' => $step3['email'] ?? null,
+                        'birthdate' => $step1['birthdate'],
+                        'status' => User::STATUS_ACTIVE,
+                        'password' => Hash::make(Str::random(64)),
+                        'minor_account_activation_required' => true,
+                    ]);
+
+                    Role::findOrCreate('learner', 'web');
+                    $child->assignRole('learner');
+
+                    $child->learnerProfile()->create([
+                        'username' => $step3['username'] ?? null,
+                        'birthdate' => $child->birthdate,
+                        'gender' => $step1['gender'],
+                        'city_code' => $step2['city_code'],
+                        'barangay_code' => $step2['barangay_code'],
+                        'barangay' => $barangay->name,
+                        'province_code' => '402100000',
+                        'requires_parental_consent' => $child->requiresGuardian(),
+                    ]);
+                }
+
+                $child->refreshClassificationCache();
+
+                if (ParentChildAccount::query()
+                    ->where('parent_user_id', $parent->id)
+                    ->where('child_user_id', $child->id)
+                    ->whereIn('relationship_status', [ParentChildAccount::STATUS_PENDING, ParentChildAccount::STATUS_ACTIVE])
+                    ->exists()) {
+                    throw ValidationException::withMessages(['relationship_type' => 'This guardian relationship is already being processed.']);
+                }
 
                 $verification = ParentChildAccount::query()->create([
                     'parent_user_id' => $parent->id,
                     'child_user_id' => $child->id,
-                    'can_view_progress' => true,
-                    'can_view_quiz_answers' => true,
+                    'can_view_progress' => LearnerAgePolicy::classify($step1['birthdate']) === LearnerAgePolicy::ELIGIBLE_TEENAGER,
+                    'can_view_quiz_answers' => LearnerAgePolicy::classify($step1['birthdate']) === LearnerAgePolicy::ELIGIBLE_TEENAGER,
                     'can_approve_content' => false,
-                    'can_manage_support_information' => true,
+                    'can_manage_support_information' => LearnerAgePolicy::classify($step1['birthdate']) === LearnerAgePolicy::ELIGIBLE_TEENAGER,
                     'relationship_type' => $relationshipType,
                     'relationship_custom' => $relationshipType === GuardianRelationshipTypes::OTHER
                         ? ($step1['relationship_custom'] ?? null)
@@ -648,7 +616,7 @@ class ParentRegistrationController extends Controller
                     'relationship_notes' => $relationshipVerificationPayload['relationship_notes'] ?? null,
                     'is_legacy_relationship' => false,
                     'verification_status' => VerificationStatus::Pending->value,
-                    'verification_document_path' => $verificationDocumentPath,
+                    'verification_document_path' => null,
                     'relationship_verified_at' => null,
                 ]);
 
@@ -662,18 +630,30 @@ class ParentRegistrationController extends Controller
                     );
                 }
 
+                if ($minorRequest !== null) {
+                    $minorRequest->forceFill([
+                        'status' => MinorRegistrationRequest::STATUS_COMPLETED,
+                        'accepted_by_user_id' => $parent->id,
+                        'accepted_at' => $minorRequest->accepted_at ?? now(),
+                    ])->save();
+                }
+
                 return [$child, $verification->fresh()];
             });
         } catch (Throwable $exception) {
-            Storage::disk('local')->delete($verificationDocumentPath);
             app(GuardianRelationshipEvidenceService::class)->deleteStoredPaths($relationshipEvidencePaths);
 
             throw $exception;
         }
 
-        $this->notifyAdminsSafely(new ChildVerificationRequestSubmittedNotification($parent, $child, $verification));
-
-        session()->forget(['child_step1', 'child_step2', 'child_step3', 'pending_child_registration']);
+        session()->forget([
+            'child_step1',
+            'child_step2',
+            'child_step3',
+            'pending_child_registration',
+            'minor_registration_request_id',
+            'minor_registration_token',
+        ]);
         session([
             DependentSupportRegistrationController::SESSION_KEY => [
                 'dependent_user_id' => $child->id,
@@ -865,21 +845,6 @@ class ParentRegistrationController extends Controller
 
         return redirect()->route('parent.children.index')
             ->with('success', 'Child verification resubmitted successfully. We will review the updated document.');
-    }
-
-    private function notifyAdminsSafely(Notification $notification): void
-    {
-        try {
-            User::query()
-                ->role('admin')
-                ->get()
-                ->each(fn (User $admin) => $admin->notify($notification));
-        } catch (\Throwable $exception) {
-            Log::warning('Failed to send admin guardian-child verification submission notification.', [
-                'notification' => $notification::class,
-                'message' => $exception->getMessage(),
-            ]);
-        }
     }
 
     private function ensureApprovedParent(): ?RedirectResponse

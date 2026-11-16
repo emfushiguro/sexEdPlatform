@@ -162,6 +162,7 @@ class DependentSupportNotificationTest extends TestCase
             'can_view_quiz_answers' => true,
             'can_approve_content' => false,
             'can_manage_support_information' => $permission,
+            'adult_permissions_confirmed_at' => now(),
         ]);
 
         return [$guardian, $dependent, $relationship];
@@ -182,6 +183,7 @@ class DependentSupportNotificationTest extends TestCase
     {
         return User::factory()->create([
             'name' => 'Dependent Receiver',
+            'birthdate' => now()->subYears(25)->toDateString(),
             'role' => 'learner',
             'status' => User::STATUS_ACTIVE,
         ]);

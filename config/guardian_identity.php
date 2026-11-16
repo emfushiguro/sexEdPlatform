@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'accepted_id_types' => ['philhealth', 'national_id', 'umid', 'nbi_clearance', 'postal_id', 'drivers_license', 'tin_card'],
     'id_types' => [
         'national_id' => ['label' => 'National ID (PhilSys)', 'requires_back' => true],
         'passport' => ['label' => 'Passport', 'requires_back' => true],

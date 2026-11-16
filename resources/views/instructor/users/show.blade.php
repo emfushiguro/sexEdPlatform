@@ -231,7 +231,7 @@
                             <div class="rounded-xl border border-gray-100 dark:border-gray-700 p-3.5">
                                 <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $certificate->module?->title ?? ($certificate->module_title ?? 'Module Certificate') }}</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ $certificate->certificate_number }}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Issued {{ optional($certificate->issued_at)->format('M d, Y') ?: 'N/A' }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Issued {{ optional($certificate->issued_date)->format('M d, Y') ?: 'N/A' }}</p>
                             </div>
                         @endforeach
                     </div>

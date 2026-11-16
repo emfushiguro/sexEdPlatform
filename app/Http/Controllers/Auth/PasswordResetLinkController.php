@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\Auth\MinorAccountHandoffService;
 use App\Support\AccountEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
 use Illuminate\View\View;
 
 class PasswordResetLinkController extends Controller
@@ -25,29 +28,33 @@ class PasswordResetLinkController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, MinorAccountHandoffService $minorHandoffs): RedirectResponse
     {
-        if (is_string($request->input('email'))) {
-            $request->merge(['email' => AccountEmail::normalize($request->input('email'))]);
-        }
+        $login = strtolower(trim((string) $request->input('login')));
+        $request->merge(['login' => $login]);
 
         $request->validate([
-            'email' => ['required', 'email:rfc'],
+            'login' => ['required', 'string', 'max:255'],
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        try {
-            Password::sendResetLink($request->only('email'));
-        } catch (\Throwable $exception) {
-            Log::warning('Password reset email dispatch failed.', [
-                'exception' => $exception::class,
-            ]);
+        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            try {
+                Password::sendResetLink(['email' => AccountEmail::normalize($login)]);
+            } catch (\Throwable $exception) {
+                Log::warning('Password reset email dispatch failed.', [
+                    'exception' => $exception::class,
+                ]);
+            }
+        } else {
+            $teenager = User::query()
+                ->whereHas('learnerProfile', fn (Builder $query) => $query->whereRaw('LOWER(username) = ?', [$login]))
+                ->first();
+
+            $minorHandoffs->requestPasswordReset($teenager);
         }
 
         return back()
-            ->withInput($request->only('email'))
-            ->with('status', 'If an account exists for that email address, a password reset link has been sent.');
+            ->withInput($request->only('login'))
+            ->with('status', 'If an eligible account exists, recovery instructions will be sent to the appropriate email address or guardian.');
     }
 }

@@ -20,7 +20,7 @@ class IndexUserRequest extends FormRequest
             'role' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'string', Rule::in(['active', 'inactive', 'suspended', 'archived'])],
             'account_type' => ['nullable', 'string', 'max:100'],
-            'age_bracket' => ['nullable', 'string', Rule::in(['kids', 'teens', 'adults'])],
+            'age_bracket' => ['nullable', 'string', Rule::in(['teens', 'adults', 'ineligible', 'unclassified'])],
             'learner_scope' => ['nullable', 'string', Rule::in(['all', 'platform', 'instructor'])],
             'created_from' => ['nullable', 'date'],
             'created_to' => ['nullable', 'date', 'after_or_equal:created_from'],

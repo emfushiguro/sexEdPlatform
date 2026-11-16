@@ -28,15 +28,15 @@ test('adds modules matching any selected category and filters candidates without
         categories: ['teens', 'kids'],
     });
 
-    assert.deepEqual(builder.eligibleModules.map((module) => module.id), [22, 33]);
+    assert.deepEqual(builder.eligibleModules.map((module) => module.id), [22]);
     builder.add(22);
     builder.add(22);
     builder.add(33);
 
-    assert.deepEqual(builder.moduleIds, [11, 22, 33]);
+    assert.deepEqual(builder.moduleIds, [11, 22]);
     assert.deepEqual(builder.eligibleModules, []);
     builder.remove(11);
-    assert.deepEqual(builder.moduleIds, [22, 33]);
+    assert.deepEqual(builder.moduleIds, [22]);
 });
 
 test('category changes expose selected modules that no longer match', () => {
@@ -136,4 +136,14 @@ test('list mutations cancel an active drag before changing the order', () => {
     assert.deepEqual(builder.moduleIds, [22, 11, 33]);
     builder.dropPointerDrag();
     assert.deepEqual(builder.moduleIds, [22, 11, 33]);
+});
+
+test('legacy Kids categories are omitted and an empty active audience is invalid', () => {
+    const builder = createLearningPathBuilder({ categories: ['kids', 'teen'] });
+
+    assert.deepEqual(builder.categories, []);
+    assert.equal(builder.validateCategories(), false);
+    builder.setCategories(['kids', 'teens', 'adults']);
+    assert.deepEqual(builder.categories, ['teens', 'adults']);
+    assert.equal(builder.validateCategories(), true);
 });

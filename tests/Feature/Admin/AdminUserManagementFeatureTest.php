@@ -53,7 +53,7 @@ class AdminUserManagementFeatureTest extends TestCase
                 'password_confirmation' => 'Password123!',
                 'role' => 'learner',
                 'status' => 'active',
-                'birthdate' => now()->subYears(11)->format('Y-m-d'),
+                'birthdate' => now()->subYears(20)->format('Y-m-d'),
             ]);
 
         $storeResponse->assertRedirect(route('admin.users.index'));

@@ -10,9 +10,8 @@ return [
     ],
 
     'learner_age_categories' => [
-        'kids' => 'Kids',
-        'teen' => 'Teen',
-        'adult' => 'Adult',
+        'teens' => 'Teenager',
+        'adults' => 'Adult',
     ],
 
     'join_window_before_minutes' => 15,

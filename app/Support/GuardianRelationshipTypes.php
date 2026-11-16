@@ -5,6 +5,7 @@ namespace App\Support;
 final class GuardianRelationshipTypes
 {
     public const OTHER = 'other';
+
     public const LEGACY_PARENT = 'parent';
 
     public static function options(): array
@@ -81,7 +82,7 @@ final class GuardianRelationshipTypes
     public static function acceptedDocumentTypes(?string $type): array
     {
         $pathway = self::pathway($type);
-        $keys = (array) config("guardian_relationships.pathways.{$pathway}.document_types", []);
+        $keys = array_merge((array) config("guardian_relationships.pathways.{$pathway}.document_types", []), ['dependent_birth_record']);
         $labels = (array) config('guardian_relationships.document_types', []);
 
         return array_values(array_filter($keys, static fn (string $key): bool => array_key_exists($key, $labels)));

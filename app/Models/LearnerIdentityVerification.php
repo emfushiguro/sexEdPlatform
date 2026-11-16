@@ -61,7 +61,8 @@ class LearnerIdentityVerification extends Model
 
     public function usesPersonaSelfie(): bool
     {
-        if ($this->pathway !== 'teen' || ! in_array($this->document_type, ['school_id', 'institution_id'], true)) {
+        if ($this->document_type !== 'assisted_review'
+            && ($this->pathway !== 'teen' || ! in_array($this->document_type, ['school_id', 'institution_id'], true))) {
             return false;
         }
 
@@ -80,8 +81,9 @@ class LearnerIdentityVerification extends Model
 
     public function canReusePersonaSelfie(): bool
     {
-        return $this->pathway === 'teen' && $this->evidence_source === 'persona_selfie'
-            && in_array($this->document_type, ['school_id', 'institution_id'], true)
+        return $this->evidence_source === 'persona_selfie'
+            && ($this->document_type === 'assisted_review'
+                || ($this->pathway === 'teen' && in_array($this->document_type, ['school_id', 'institution_id'], true)))
             && $this->persona_evidence_attempt_id !== null
             && (in_array($this->status, ['pending', 'approved'], true)
                 || ($this->status === 'rejected' && $this->resubmission_allowed

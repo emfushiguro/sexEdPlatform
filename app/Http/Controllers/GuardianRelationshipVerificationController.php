@@ -32,6 +32,7 @@ class GuardianRelationshipVerificationController extends Controller
                     ->orderByDesc('submission_round')
                     ->orderBy('display_order'),
                 'verificationAudits.actor',
+                'adultAuthorityRequests' => fn ($query) => $query->latest('id'),
             ]),
             'documentTypes' => GuardianRelationshipTypes::documentTypeOptions($parentChildAccount->relationship_type),
             'pathwayLabel' => GuardianRelationshipTypes::pathwayLabel($parentChildAccount->relationship_type),

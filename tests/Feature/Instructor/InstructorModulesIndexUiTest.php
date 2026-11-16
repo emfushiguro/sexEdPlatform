@@ -31,6 +31,7 @@ class InstructorModulesIndexUiTest extends TestCase
         $html = $response->getContent();
         $this->assertSame(1, substr_count($html, 'id="modules-local-search"'));
         $this->assertStringContainsString('module-meta-status-inline', $html);
+        $this->assertStringNotContainsString('Kids', $html);
     }
 
     public function test_modules_index_counts_legacy_lesson_quizzes_for_owned_module(): void

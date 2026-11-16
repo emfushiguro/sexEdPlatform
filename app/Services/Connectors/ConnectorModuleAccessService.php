@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Notifications\Connectors\ConnectorModuleAccessNotification;
 use App\Services\AdminActivityLogService;
 use App\Services\Modules\ModuleAccessService;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -166,7 +167,7 @@ class ConnectorModuleAccessService
             $hasConnector = in_array((int) $entitlement->connector_id, $sources['connector_ids'], true);
             $hasOtherConnector = count(array_diff($sources['connector_ids'], [(int) $entitlement->connector_id])) > 0;
             $age = $user->calculateAge();
-            $ageCategory = $age === null ? null : Module::ageBracketForAge($age);
+            $ageCategory = LearnerAgePolicy::category($user->birthdate);
             $ageLabel = $ageCategory ? Module::learnerCategoryLabelsMap()[$ageCategory] : 'Age unavailable';
             $eligibilityReason = match (true) {
                 $membership?->status !== 'active' => 'Membership is not active',
@@ -175,7 +176,7 @@ class ConnectorModuleAccessService
                 ! $eligible => 'Module age group does not match',
                 ! $entitlement->isUsable() => 'Organizational license is unavailable',
                 $entitlement->connector->status !== 'verified' => 'Connector is not verified',
-                $age === null => 'Age is not recorded; existing eligibility rules apply',
+                $ageCategory === null => 'Age is unavailable for active targeting',
                 default => 'Learner matches the module age group',
             };
             $canRevoke = $assignment && $assignment->status !== ConnectorModuleSeatAssignment::STATUS_REVOKED;
@@ -604,16 +605,14 @@ class ConnectorModuleAccessService
             return false;
         }
 
-        $age = $user->calculateAge();
+        $category = LearnerAgePolicy::category($user->birthdate);
 
-        return $age === null || $entitlement->module->isAppropriateForAge($age);
+        return $category !== null && $entitlement->module->isDeliverableToCategory($category);
     }
 
     private function requiresGuardian(User $user): bool
     {
-        $age = $user->calculateAge();
-
-        return $age !== null && $age < 13;
+        return LearnerAgePolicy::requiresGuardian($user->birthdate);
     }
 
     private function saveAssignment(

@@ -8,6 +8,7 @@ use App\Models\ParentChildAccount;
 use App\Models\User;
 use App\Notifications\DependentSupportInformationChangedNotification;
 use App\Notifications\GuardianSupportAccessChangedNotification;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -111,6 +112,10 @@ class DependentSupportInformationService
                 throw new AuthorizationException('The dependent setup link is no longer available.');
             }
 
+            if (! $locked->child?->requiresGuardian()) {
+                throw new AuthorizationException('An adult dependent controls their own support information.');
+            }
+
             if (DependentSupportProfile::query()->where('dependent_user_id', $locked->child_user_id)->exists()) {
                 throw ValidationException::withMessages([
                     'support_information' => 'Support information already exists. Use the dependent settings after verification.',
@@ -184,7 +189,24 @@ class DependentSupportInformationService
         User $dependent,
         bool $enabled,
     ): ParentChildAccount {
-        return DB::transaction(function () use ($relationship, $dependent, $enabled): ParentChildAccount {
+        return $this->setGuardianPermissions($relationship, $dependent, ['can_manage_support_information' => $enabled]);
+    }
+
+    public function setGuardianPermissions(
+        ParentChildAccount $relationship,
+        User $dependent,
+        array $permissions,
+    ): ParentChildAccount {
+        $allowed = ['can_view_progress', 'can_view_quiz_answers', 'can_manage_support_information'];
+        if (array_diff(array_keys($permissions), $allowed) || count(array_filter($permissions, 'is_bool')) !== count($permissions)) {
+            throw new AuthorizationException('Invalid guardian permissions.');
+        }
+
+        if (LearnerAgePolicy::classify($dependent->birthdate) !== LearnerAgePolicy::ELIGIBLE_ADULT) {
+            throw new AuthorizationException('Verified eligible guardians automatically manage support information for minors. Only an adult dependent can change sharing preferences.');
+        }
+
+        return DB::transaction(function () use ($relationship, $dependent, $permissions): ParentChildAccount {
             $locked = ParentChildAccount::query()
                 ->accessEligible()
                 ->whereKey($relationship->id)
@@ -196,21 +218,37 @@ class DependentSupportInformationService
                 throw new AuthorizationException('You cannot change this guardian relationship.');
             }
 
-            if ((bool) $locked->can_manage_support_information === $enabled) {
+            if (($permissions['can_view_quiz_answers'] ?? false)
+                && ! ($permissions['can_view_progress'] ?? (bool) $locked->can_view_progress)) {
+                throw ValidationException::withMessages(['permissions' => 'Share learning progress to allow access to quiz answers.']);
+            }
+
+            $changed = collect($permissions)->filter(fn (bool $enabled, string $permission): bool =>
+                (bool) $locked->{$permission} !== $enabled
+            );
+            $confirmAdultPermissions = ! $dependent->requiresGuardian()
+                && count($permissions) === 3 && $locked->adult_permissions_confirmed_at === null;
+            if ($changed->isEmpty() && ! $confirmAdultPermissions) {
                 return $locked;
             }
 
-            $locked->update(['can_manage_support_information' => $enabled]);
-            $this->audit(
-                $dependent->id,
-                $dependent->id,
-                $locked->id,
-                $enabled
-                    ? DependentSupportInformationAudit::ACTION_PERMISSION_GRANTED
-                    : DependentSupportInformationAudit::ACTION_PERMISSION_REVOKED,
-                null,
-            );
-            $this->notifyGuardianAccessAfterCommit($locked->parent_user_id, $dependent->id, $enabled);
+            $locked->update($changed->all() + ($confirmAdultPermissions ? [
+                'adult_permissions_confirmed_at' => now(),
+                'can_approve_content' => false,
+            ] : []));
+            $audited = $confirmAdultPermissions ? collect($permissions) : $changed;
+            foreach ($audited as $permission => $enabled) {
+                $this->audit(
+                    $dependent->id,
+                    $dependent->id,
+                    $locked->id,
+                    $enabled ? DependentSupportInformationAudit::ACTION_PERMISSION_GRANTED : DependentSupportInformationAudit::ACTION_PERMISSION_REVOKED,
+                    [$permission],
+                );
+                if ($permission === 'can_manage_support_information' && $changed->has($permission)) {
+                    $this->notifyGuardianAccessAfterCommit($locked->parent_user_id, $dependent->id, $enabled);
+                }
+            }
 
             return $locked->fresh();
         });

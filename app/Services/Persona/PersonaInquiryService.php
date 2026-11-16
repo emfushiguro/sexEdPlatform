@@ -42,7 +42,7 @@ class PersonaInquiryService
                 }
             }
             $attempt = $this->findAttempt($lockedUser, $case, $targetRound, true);
-            if ($attempt && $case?->pathway === 'teen'
+            if ($attempt && $case
                 && ($attempt->flow_type === PersonaInquiry::FLOW_TEEN_SCHOOL
                     || $selection['flow_type'] === PersonaInquiry::FLOW_TEEN_SCHOOL)
                 && $attempt->local_document_type !== $documentType
@@ -311,6 +311,9 @@ class PersonaInquiryService
         string $documentType,
         ?string $governmentIdType,
     ): PersonaInquiry {
+        if (! $this->isRequired() || blank(config('persona.templates.selfie'))) {
+            throw new DomainException('Camera verification is unavailable. Contact support or try again when Persona is available; selfie uploads are not accepted.');
+        }
         if (! $learner->isLearner() || $learner->isParentRegistration()
             || (int) $case->user_id !== (int) $learner->id
             || $case->superseded_at !== null
@@ -320,14 +323,20 @@ class PersonaInquiryService
 
         $targetRound = (int) $case->submission_round + 1;
         $attempt = $this->findAttempt($learner, $case, $targetRound, true);
+        if ($attempt) {
+            $attempt = $this->verifiedLearnerCapture($attempt);
+        }
         if (config('persona.environment', 'sandbox') !== 'sandbox'
-            || ! $attempt || ! $attempt->isPolicyEligible()
+            || ! $attempt || ! $attempt->is_sandbox || ! $attempt->isPolicyEligible()
+            || ! $attempt->selfie_verification_id
+            || ! in_array($attempt->persona_status, ['completed', 'approved'], true)
             || $attempt->local_document_type !== $documentType
             || $attempt->local_government_id_type !== $governmentIdType) {
             throw new DomainException('Persona verification is required before local identity submission.');
         }
 
         $expectedFlow = match ([$case->pathway, $documentType]) {
+            ['teen', 'assisted_review'], ['adult', 'assisted_review'] => PersonaInquiry::FLOW_TEEN_SCHOOL,
             ['teen', 'school_id'], ['teen', 'institution_id'] => PersonaInquiry::FLOW_TEEN_SCHOOL,
             ['teen', 'government_id'] => PersonaInquiry::FLOW_TEEN_GOVERNMENT,
             ['adult', 'government_id'] => PersonaInquiry::FLOW_ADULT_GOVERNMENT,
@@ -366,8 +375,8 @@ class PersonaInquiryService
         if ($case->sandbox_manual_review && ! PersonaInquiry::localManualReviewEnabled()) {
             throw new DomainException('Local Sandbox manual review is disabled.');
         }
-        if (! $this->isRequired() && $case->evidence_source !== 'persona' && ! $case->usesPersonaSelfie()) {
-            return null;
+        if (! $this->isRequired()) {
+            throw new DomainException('Camera verification is unavailable. Contact support before approving this identity.');
         }
 
         $attempt = PersonaInquiry::query()
@@ -381,11 +390,11 @@ class PersonaInquiryService
             ->lockForUpdate()
             ->first();
 
-        if (! $attempt && $case->evidence_source !== 'persona' && ! $case->usesPersonaSelfie() && $this->isGrandfathered($case->submitted_at)) {
-            return null;
+        if ($attempt) {
+            $attempt = $this->verifiedLearnerCapture($attempt);
         }
-
         $expectedFlow = match ([$case->pathway, $case->document_type]) {
+            ['teen', 'assisted_review'], ['adult', 'assisted_review'] => PersonaInquiry::FLOW_TEEN_SCHOOL,
             ['teen', 'school_id'], ['teen', 'institution_id'] => PersonaInquiry::FLOW_TEEN_SCHOOL,
             ['teen', 'government_id'] => PersonaInquiry::FLOW_TEEN_GOVERNMENT,
             ['adult', 'government_id'] => PersonaInquiry::FLOW_ADULT_GOVERNMENT,
@@ -408,6 +417,15 @@ class PersonaInquiryService
         }
 
         return $attempt;
+    }
+
+    private function verifiedLearnerCapture(PersonaInquiry $attempt): PersonaInquiry
+    {
+        try {
+            return $this->synchronizer->sync($attempt);
+        } catch (Throwable $exception) {
+            throw new DomainException('Persona camera verification could not be checked. Please try again or contact support; selfie uploads are not accepted.', previous: $exception);
+        }
     }
 
     public function assertGuardianMayApprove(User $guardian): ?PersonaInquiry
@@ -588,7 +606,9 @@ class PersonaInquiryService
             ], true);
 
         return $attempt->isCurrent()
-            && ($instructorResubmissionAllowed
+            && (($attempt->flow_type === PersonaInquiry::FLOW_TEEN_SCHOOL
+                    && in_array($attempt->learnerVerification?->status, [null, 'rejected'], true))
+                || $instructorResubmissionAllowed
                 || $attempt->expired_at !== null
                 || in_array($attempt->persona_status, ['failed', 'expired'], true)
                 || (in_array($attempt->persona_status, ['completed', 'approved', 'declined', 'needs-review'], true)

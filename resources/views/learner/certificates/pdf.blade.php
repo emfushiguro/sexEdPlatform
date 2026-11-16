@@ -110,7 +110,7 @@
             </div>
             <div class="meta-right">
                 <div class="label">Issued</div>
-                <div class="value">{{ $certificate->issued_at->format('F d, Y') }}</div>
+                <div class="value">{{ $certificate->issued_date->format('F d, Y') }}</div>
             </div>
         </div>
     </div>

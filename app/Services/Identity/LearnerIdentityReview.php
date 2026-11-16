@@ -29,8 +29,13 @@ class LearnerIdentityReview
         bool $personaPortraitCompared = false,
         bool $sandboxPhilippineIdConfirmed = false,
         bool $sandboxIdTypeConfirmed = false,
+        bool $assistedEvidenceReviewed = false,
+        ?string $assistedReviewBasis = null,
+        bool $assistedIssuerVerified = false,
+        ?string $assistedIssuerVerification = null,
     ): void {
-        $this->decide($reviewer, $case, VerificationStatus::Approved, null, $submissionRound, $personaPortraitCompared, $sandboxPhilippineIdConfirmed, $sandboxIdTypeConfirmed);
+        $this->decide($reviewer, $case, VerificationStatus::Approved, null, $submissionRound, $personaPortraitCompared, $sandboxPhilippineIdConfirmed, $sandboxIdTypeConfirmed, $assistedEvidenceReviewed, $assistedReviewBasis,
+            assistedIssuerVerified: $assistedIssuerVerified, assistedIssuerVerification: $assistedIssuerVerification);
     }
 
     public function reject(User $reviewer, LearnerIdentityVerification $case, LearnerIdentityRejectionReason $reason, int $submissionRound,
@@ -49,15 +54,23 @@ class LearnerIdentityReview
         bool $personaPortraitCompared = false,
         bool $sandboxPhilippineIdConfirmed = false,
         bool $sandboxIdTypeConfirmed = false,
+        bool $assistedEvidenceReviewed = false,
+        ?string $assistedReviewBasis = null,
         ?array $corrections = null,
         ?string $note = null,
         bool $allowResubmission = true,
+        bool $assistedIssuerVerified = false,
+        ?string $assistedIssuerVerification = null,
     ): void {
         abort_unless($reviewer->hasRole('admin'), 403);
 
-        DB::transaction(function () use ($reviewer, $case, $decision, $reason, $submissionRound, $personaPortraitCompared, $sandboxPhilippineIdConfirmed, $sandboxIdTypeConfirmed, $corrections, $note, $allowResubmission): void {
+        DB::transaction(function () use ($reviewer, $case, $decision, $reason, $submissionRound, $personaPortraitCompared, $sandboxPhilippineIdConfirmed, $sandboxIdTypeConfirmed, $assistedEvidenceReviewed, $assistedReviewBasis, $corrections, $note, $allowResubmission, $assistedIssuerVerified, $assistedIssuerVerification): void {
+            User::query()->whereKey($case->user_id)->lockForUpdate()->firstOrFail();
             $locked = LearnerIdentityVerification::query()->lockForUpdate()->findOrFail($case->id);
             $learner = $locked->learner;
+            abort_if((int) $reviewer->id === (int) $learner->id
+                || $learner->guardianRelationships()->where('parent_user_id', $reviewer->id)->exists(),
+                403, 'A learner or their Guardian cannot review this identity case.');
             abort_if((int) $locked->submission_round !== $submissionRound,
                 409, 'A newer evidence round has been submitted. Reload this case before reviewing.');
             try {
@@ -70,7 +83,9 @@ class LearnerIdentityReview
                 || $locked->pathway !== $currentPathway
                 || $learner->identityVerifications()->whereNull('superseded_at')->whereKeyNot($locked->id)->exists(),
                 409, 'Only a current pending case can be reviewed.');
-            abort_unless($this->requiredEvidenceExists($locked), 422, 'Required private evidence is missing.');
+            if ($decision === VerificationStatus::Approved) {
+                abort_unless($this->requiredEvidenceExists($locked), 422, 'Required private evidence is missing.');
+            }
             if ($decision === VerificationStatus::Rejected) {
                 $available = $locked->evidence_source === 'persona' ? ['persona_identity'] : ['identity_front', 'selfie'];
                 if ($locked->evidence()->where('slot', 'identity_back')->exists()) {
@@ -90,13 +105,18 @@ class LearnerIdentityReview
             }
 
             if ($decision === VerificationStatus::Approved) {
+                abort_if($locked->document_type === 'assisted_review' && (! $assistedEvidenceReviewed
+                    || ! in_array($assistedReviewBasis, ['independent_photo_record', 'trusted_verifier_attestation'], true)
+                    || ! $assistedIssuerVerified || mb_strlen(trim($assistedIssuerVerification ?? '')) < 20
+                    || mb_strlen($assistedIssuerVerification ?? '') > 2000),
+                    422, 'Confirm independent issuer verification and record the official channel, method, date and outcome before approval.');
                 abort_if($locked->sandbox_manual_review
                     && (! $sandboxPhilippineIdConfirmed || ! $sandboxIdTypeConfirmed || ! $personaPortraitCompared),
                     422, 'Confirm Philippine issuance, selected ID type and ID/selfie portrait comparison before approving this local Sandbox application.');
                 try {
                     $this->personaInquiries->assertLearnerMayApprove($learner, $locked);
                 } catch (DomainException) {
-                    abort(422, 'Persona verification is required before learner approval.');
+                    abort(422, 'Persona camera verification is required before learner approval.');
                 }
 
                 if ((config('persona.enabled', false) || $locked->usesPersonaSelfie())
@@ -120,8 +140,12 @@ class LearnerIdentityReview
                 'from_status' => VerificationStatus::Pending->value,
                 'to_status' => $decision->value,
                 'submission_round' => $locked->submission_round,
-                'reason' => $reason?->label() ?? ($locked->sandbox_manual_review ? PersonaInquiry::SANDBOX_APPROVAL_REASON : null),
-                'correction_request' => $reason ? ['items' => $corrections ?? [], 'note' => $note, 'allow_resubmission' => $allowResubmission] : null,
+                'reason' => $reason?->label() ?? ($assistedEvidenceReviewed ? 'Alternative evidence: '.$assistedReviewBasis : ($locked->sandbox_manual_review ? PersonaInquiry::SANDBOX_APPROVAL_REASON : null)),
+                'correction_request' => $reason ? ['items' => $corrections ?? [], 'note' => $note, 'allow_resubmission' => $allowResubmission]
+                    : ($locked->document_type === 'assisted_review' ? [
+                        'assisted_review' => ['basis' => $assistedReviewBasis, 'issuer_verified' => $assistedIssuerVerified,
+                            'issuer_verification' => trim($assistedIssuerVerification ?? '')],
+                    ] : null),
                 'created_at' => now(),
             ]);
             DB::afterCommit(function () use ($learner, $locked, $decision, $reason): void {
@@ -142,6 +166,18 @@ class LearnerIdentityReview
 
     private function requiredEvidenceExists(LearnerIdentityVerification $case): bool
     {
+        if ($case->document_type === 'assisted_review') {
+            $relationships = $case->learner->guardianRelationships()->accessEligible()->get();
+            $hasBirthRecord = $relationships->contains(fn ($relationship): bool => $relationship->verificationDocuments()
+                ->where('document_type', 'dependent_birth_record')
+                ->where('submission_round', $relationship->current_evidence_round)
+                ->whereNull('superseded_at')->where('disk', 'local')->get()
+                ->contains(fn ($document): bool => filled($document->path) && Storage::disk('local')->exists($document->path)));
+            if (! $hasBirthRecord) {
+                return false;
+            }
+        }
+
         if ($case->evidence_source === 'persona') {
             return $case->personaInquiries()->where('user_id', $case->user_id)
                 ->where('target_submission_round', $case->submission_round)
@@ -149,7 +185,7 @@ class LearnerIdentityReview
                 ->whereNotNull('government_id_verification_id')->whereNotNull('selfie_verification_id')->exists();
         }
         $documentTypes = $case->pathway === 'teen'
-            ? ['school_id', 'institution_id', 'government_id'] : ['government_id'];
+            ? ['school_id', 'institution_id', 'government_id', 'assisted_review'] : ['government_id', 'assisted_review'];
         if (! in_array($case->document_type, $documentTypes, true)
             || ($case->document_type === 'government_id'
                 && ! array_key_exists((string) $case->government_id_type, config('guardian_identity.id_types', [])))) {

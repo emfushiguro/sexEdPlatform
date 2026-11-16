@@ -110,7 +110,7 @@ class DependentSupportPermissionTest extends TestCase
             ->count());
     }
 
-    public function test_deactivation_reactivation_and_approval_do_not_restore_access(): void
+    public function test_minor_support_access_returns_only_after_verified_reactivation(): void
     {
         Storage::fake('local');
         Notification::fake();
@@ -129,6 +129,7 @@ class DependentSupportPermissionTest extends TestCase
 
         $deactivated = $verification->deactivate($approved, $guardian, 'No longer needed.');
         $this->assertFalse($deactivated->fresh()->can_manage_support_information);
+        $this->assertFalse(ParentChildAccount::accessEligible()->withPermission('can_manage_support_information')->whereKey($relationship->id)->exists());
 
         $reactivating = $verification->requestReactivation($deactivated, $dependent);
         $this->assertFalse($reactivating->fresh()->can_manage_support_information);
@@ -136,6 +137,7 @@ class DependentSupportPermissionTest extends TestCase
         $approved = $verification->approve($reactivating, $admin);
 
         $this->assertFalse($approved->fresh()->can_manage_support_information);
+        $this->assertTrue(ParentChildAccount::accessEligible()->withPermission('can_manage_support_information')->whereKey($relationship->id)->exists());
     }
 
     public function test_approval_preserves_access_preconfigured_during_new_dependent_registration(): void
@@ -173,12 +175,13 @@ class DependentSupportPermissionTest extends TestCase
         $this->assertFalse($restored->fresh()->can_manage_support_information);
     }
 
-    public function test_dependent_can_grant_and_revoke_one_guardian_without_changing_another(): void
+    public function test_adult_can_grant_and_revoke_one_guardian_without_changing_another(): void
     {
         [, $guardianA, $dependent] = $this->actors();
+        $dependent->update(['birthdate' => now()->subYears(25)->toDateString()]);
         $guardianB = $this->guardian();
-        $relationshipA = $this->relationship($guardianA, $dependent, ['can_manage_support_information' => false]);
-        $relationshipB = $this->relationship($guardianB, $dependent, ['can_manage_support_information' => false]);
+        $relationshipA = $this->relationship($guardianA, $dependent, ['can_manage_support_information' => false, 'adult_permissions_confirmed_at' => now()]);
+        $relationshipB = $this->relationship($guardianB, $dependent, ['can_manage_support_information' => false, 'adult_permissions_confirmed_at' => now()]);
 
         $this->actingAs($dependent)
             ->patch(route('learner.parent.support-information-access.update', $relationshipA), ['enabled' => '1'])
@@ -198,6 +201,7 @@ class DependentSupportPermissionTest extends TestCase
     public function test_permission_endpoint_requires_exact_relationship_owner_and_valid_boolean(): void
     {
         [, $guardian, $dependent] = $this->actors();
+        $dependent->update(['birthdate' => now()->subYears(25)->toDateString()]);
         $otherDependent = $this->dependent();
         $relationship = $this->relationship($guardian, $dependent, ['can_manage_support_information' => false]);
 
@@ -210,6 +214,16 @@ class DependentSupportPermissionTest extends TestCase
             ->assertSessionHasErrors('enabled');
     }
 
+    public function test_minor_cannot_disable_automatic_guardian_access(): void
+    {
+        [, $guardian, $dependent] = $this->actors();
+        $relationship = $this->relationship($guardian, $dependent, ['can_manage_support_information' => false]);
+        foreach (['0', '1'] as $enabled) {
+            $this->actingAs($dependent)->patch(route('learner.parent.support-information-access.update', $relationship), ['enabled' => $enabled])->assertForbidden();
+        }
+        $this->assertTrue(ParentChildAccount::accessEligible()->withPermission('can_manage_support_information')->whereKey($relationship->id)->exists());
+    }
+
     public function test_guardian_list_explains_permission_without_content_or_presence_state(): void
     {
         [, $guardian, $dependent] = $this->actors();
@@ -219,8 +233,10 @@ class DependentSupportPermissionTest extends TestCase
         $this->actingAs($dependent)
             ->get(route('learner.parent.index'))
             ->assertOk()
-            ->assertSee('Health &amp; Support Information access', false)
-            ->assertSee('view, edit, and remove', false)
+            ->assertSee('Health &amp; Support Information', false)
+            ->assertSee('view, edit and remove', false)
+            ->assertSee('automatically while you are under 18', false)
+            ->assertDontSee('name="enabled"', false)
             ->assertDontSee($marker, false)
             ->assertDontSee('information available', false);
 
@@ -254,6 +270,7 @@ class DependentSupportPermissionTest extends TestCase
         $dependent = User::factory()->create([
             'role' => 'learner',
             'status' => User::STATUS_ACTIVE,
+            'birthdate' => now()->subYears(15)->toDateString(),
         ]);
         $dependent->assignRole('learner');
         $dependent->learnerProfile()->create([
@@ -291,7 +308,7 @@ class DependentSupportPermissionTest extends TestCase
     private function document(): array
     {
         return [
-            'document_type' => 'civil_registry_record',
+            'document_type' => 'dependent_birth_record',
             'document_side' => 'not_applicable',
             'pairing_key' => null,
             'file' => UploadedFile::fake()->create('record.pdf', 100, 'application/pdf'),

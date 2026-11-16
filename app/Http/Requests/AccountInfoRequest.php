@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Support\AccountEmail;
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -44,11 +45,21 @@ class AccountInfoRequest extends FormRequest
         ];
     }
 
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $birthdate = session('pending_personal_info.birthdate');
+            if (LearnerAgePolicy::classify($birthdate) !== LearnerAgePolicy::ELIGIBLE_ADULT) {
+                $validator->errors()->add('birthdate', 'Teenager accounts must use guardian-assisted registration.');
+            }
+        });
+    }
+
     public function messages(): array
     {
         return [
-            'email.unique'    => 'This email address is already registered.',
-            'email.email'     => 'Please enter a valid email address.',
+            'email.unique' => 'This email address is already registered.',
+            'email.email' => 'Please enter a valid email address.',
         ];
     }
 }

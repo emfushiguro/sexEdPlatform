@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\LearnerAgePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RegisterRequest extends FormRequest
@@ -42,9 +43,22 @@ class RegisterRequest extends FormRequest
                 'required',
                 'date',
                 'before:today',
-                'after:' . now()->subYears(100)->format('Y-m-d'),
             ],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $classification = LearnerAgePolicy::classify($this->input('birthdate'));
+
+            if (! in_array($classification, [
+                LearnerAgePolicy::ELIGIBLE_TEENAGER,
+                LearnerAgePolicy::ELIGIBLE_ADULT,
+            ], true)) {
+                $validator->errors()->add('birthdate', 'Learners must be at least 10 years old. Enter a valid birthdate.');
+            }
+        });
     }
 
     /**
@@ -59,7 +73,6 @@ class RegisterRequest extends FormRequest
             'suffix.in' => 'Please select a valid suffix.',
             'birthdate.required' => 'Birth date is required.',
             'birthdate.before' => 'Birth date must be before today.',
-            'birthdate.after' => 'Invalid birth date. Must be within the last 100 years.',
         ];
     }
 }

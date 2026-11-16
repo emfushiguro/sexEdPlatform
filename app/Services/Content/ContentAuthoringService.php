@@ -5,13 +5,12 @@ namespace App\Services\Content;
 use App\Models\Module;
 use App\Models\User;
 use App\Services\Instructor\InstructorPlanCapabilityService;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 class ContentAuthoringService
 {
-    public function __construct(private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService)
-    {
-    }
+    public function __construct(private readonly InstructorPlanCapabilityService $instructorPlanCapabilityService) {}
 
     /**
      * Build normalized module payload from form data.
@@ -53,9 +52,24 @@ class ContentAuthoringService
      */
     private function normalizeCommonPayload(array $validated, ?Module $existing = null): array
     {
+        $rawCategories = (array) ($validated['age_brackets'] ?? ($validated['age_bracket'] ?? []));
+        $invalidCategories = collect($rawCategories)
+            ->filter(fn (mixed $category): bool => ! is_string($category)
+                || ! in_array(strtolower(trim($category)), \App\Support\LearnerAgePolicy::activeCategories(), true));
+        if ($invalidCategories->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'age_brackets' => 'Choose only the active learner categories: Teenager or Adult.',
+            ]);
+        }
+
         $learnerCategories = Module::normalizeLearnerCategories(
-            (array) ($validated['age_brackets'] ?? [($validated['age_bracket'] ?? 'teens')])
+            $rawCategories
         );
+        if ($learnerCategories === []) {
+            throw ValidationException::withMessages([
+                'age_brackets' => 'Choose at least one active learner category: Teenager or Adult.',
+            ]);
+        }
         [$minAge, $maxAge] = Module::ageRangeForLearnerCategories($learnerCategories);
 
         $accessType = (string) ($validated['access_type'] ?? ($existing?->access_type ?? 'free'));
@@ -90,13 +104,13 @@ class ContentAuthoringService
     private function enforceInstructorPlanConstraints(array $payload, int $authorId, ?Module $existing = null): array
     {
         $instructor = User::query()->find($authorId);
-        if (!$instructor) {
+        if (! $instructor) {
             return $payload;
         }
 
-        $isCreateFlow = !$existing || !$existing->exists;
+        $isCreateFlow = ! $existing || ! $existing->exists;
 
-        if ($isCreateFlow && !$this->instructorPlanCapabilityService->canCreateModule($instructor)) {
+        if ($isCreateFlow && ! $this->instructorPlanCapabilityService->canCreateModule($instructor)) {
             throw new InvalidArgumentException($this->instructorPlanCapabilityService->reachedModuleLimitMessage($instructor));
         }
 
@@ -104,7 +118,7 @@ class ContentAuthoringService
 
         if (
             $accessType === 'paid'
-            && !$this->instructorPlanCapabilityService->canPublishPaidModules($instructor)
+            && ! $this->instructorPlanCapabilityService->canPublishPaidModules($instructor)
             && $this->instructorPlanCapabilityService->isStrictRolloutMode()
         ) {
             throw new InvalidArgumentException(
@@ -114,7 +128,7 @@ class ContentAuthoringService
 
         if (
             $accessType === 'paid'
-            && !$this->instructorPlanCapabilityService->canReceivePaidEnrollments($instructor)
+            && ! $this->instructorPlanCapabilityService->canReceivePaidEnrollments($instructor)
             && $this->instructorPlanCapabilityService->isStrictRolloutMode()
         ) {
             throw new InvalidArgumentException(
@@ -133,5 +147,4 @@ class ContentAuthoringService
 
         return $payload;
     }
-
 }

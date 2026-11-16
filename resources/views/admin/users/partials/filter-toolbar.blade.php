@@ -34,15 +34,15 @@
 
             <select name="account_type" class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                 <option value="">All Account Types</option>
-                @foreach(['learner-child','learner-teen','learner-adult','parent','instructor','admin'] as $type)
+                @foreach(['learner-teen','learner-adult','parent','instructor','admin'] as $type)
                     <option value="{{ $type }}" @selected(($filters['account_type'] ?? '') === $type)>{{ ucfirst(str_replace('-', ' ', $type)) }}</option>
                 @endforeach
             </select>
 
             <select name="age_bracket" class="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
                 <option value="">All Age Brackets</option>
-                @foreach(['kids','teens','adults'] as $bracket)
-                    <option value="{{ $bracket }}" @selected(($filters['age_bracket'] ?? '') === $bracket)>{{ ucfirst($bracket) }}</option>
+                @foreach(['teens' => 'Teenager', 'adults' => 'Adult', 'ineligible' => 'Ineligible', 'unclassified' => 'Unclassified'] as $bracket => $label)
+                    <option value="{{ $bracket }}" @selected(($filters['age_bracket'] ?? '') === $bracket)>{{ $label }}</option>
                 @endforeach
             </select>
 

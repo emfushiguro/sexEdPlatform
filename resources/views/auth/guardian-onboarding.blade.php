@@ -251,7 +251,7 @@
                     <div class="grid gap-4 mt-5 sm:grid-cols-2">
                         <label class="p-5 transition border cursor-pointer rounded-2xl" :class="nextAction === 'dependent' ? 'border-purple-600 bg-purple-50' : 'border-gray-200 bg-white'">
                             <input type="radio" class="sr-only" value="dependent" x-model="nextAction">
-                            <span class="font-semibold text-gray-950">Create a Dependent</span>
+                            <span class="font-semibold text-gray-950">Add a Dependent</span>
                         </label>
                         <label class="p-5 transition border cursor-pointer rounded-2xl" :class="nextAction === 'dashboard' ? 'border-purple-600 bg-purple-50' : 'border-gray-200 bg-white'">
                             <input type="radio" class="sr-only" value="dashboard" x-model="nextAction">

@@ -91,7 +91,7 @@
 
                                 <div class="absolute text-slate-500 certificate-overlay-meta"
                                       style="left: 19.16%; top: 83.95%; width: 21.89%; font-size: clamp(8px, 1.25cqi, 16px);">
-                                    Issued {{ $certificate->issued_at->format('F d, Y') }}
+                                    Issued {{ $certificate->issued_date->format('F d, Y') }}
                                 </div>
 
                                   <div class="absolute text-center text-slate-500 certificate-overlay-meta"

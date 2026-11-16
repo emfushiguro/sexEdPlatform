@@ -67,4 +67,12 @@ class ContentReport extends Model
                 ContentReportStatus::UnderReview->value,
             ]);
     }
+
+    protected function detailsHtml(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn ($value) => \App\Support\SafeUserHtml::clean($value),
+            set: fn ($value) => \App\Support\SafeUserHtml::clean($value),
+        );
+    }
 }
