@@ -215,7 +215,11 @@ class QuizController extends Controller
             }
 
             if ($newlyCompleted) {
-                session()->flash('learning_feedback', $this->completionService->moduleFeedback($user, $completedFinalQuizModule));
+                $feedback = $this->completionService->moduleFeedback($user, $completedFinalQuizModule);
+                $feedback['explanation'] = "Quiz score: {$score}%. Quiz points earned: {$points}.";
+                session()->flash('learning_feedback', $feedback);
+            } elseif ($passed) {
+                session()->flash('learning_feedback', $this->completionService->passedQuizFeedback($attempt, $points, $message));
             } else {
                 session()->flash('learning_audio_event', 'success');
             }
@@ -223,7 +227,7 @@ class QuizController extends Controller
             if ($completedFinalQuizModule) {
                 $completionMessage = $newlyCompleted
                     ? 'You completed this module. Review your results and available next steps.'
-                    : 'Congratulations! You have successfully completed this module.';
+                    : $message;
                 if (! $newlyCompleted && $moduleCompletionPoints > 0) {
                     $completionMessage .= " Module completion bonus: +{$moduleCompletionPoints} points.";
                 }
@@ -329,7 +333,7 @@ class QuizController extends Controller
                 ->orderBy('order')
                 ->first();
 
-            $showCompletionModal = $attempt->passed && !$nextLesson;
+            $showCompletionModal = false;
             $certificateClaimable = $showCompletionModal
                 && $this->completionService->isFullyCompleted($user, $lessonModule);
         }

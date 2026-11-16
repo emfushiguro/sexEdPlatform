@@ -2,16 +2,11 @@
 
 @php
     $bootstrapFeedback = is_array($initialFeedback) ? $initialFeedback : null;
-    $certificateModuleId = null;
-    if (($bootstrapFeedback['type'] ?? null) === 'module_completed'
-        && preg_match('/^module:([1-9][0-9]*)$/', $bootstrapFeedback['sourceId'] ?? '', $moduleMatch)) {
-        $certificateModuleId = (int) $moduleMatch[1];
-    }
 @endphp
 
 <div
     data-learning-feedback-host
-    x-data="{ announcement: '', hovered: false, imageFailed: false, certificateSubmitting: false }"
+    x-data="{ announcement: '', hovered: false, imageFailed: false }"
     x-init="
         $watch('$store.learningFeedback.active', () => {
             imageFailed = false;
@@ -30,15 +25,7 @@
     "
     @learning-feedback:show.window="$store.learningFeedback.show($event.detail)"
     @keydown.window="$store.learningFeedback.handleKeydown($event)"
-    @if($certificateModuleId)
-        @learning-feedback:action.window="if ($event.detail.intent === 'continue' && $event.detail.sourceId === 'module:{{ $certificateModuleId }}' && $event.detail.feedbackId === {{ Illuminate\Support\Js::from($bootstrapFeedback['id']) }}) { $event.preventDefault(); if (!certificateSubmitting) { certificateSubmitting = true; $refs.certificateForm.requestSubmit(); } }"
-    @endif
 >
-    @if($certificateModuleId)
-        <form x-ref="certificateForm" method="POST" action="{{ route('learner.certificates.check', $certificateModuleId) }}" hidden>
-            @csrf
-        </form>
-    @endif
     <p class="sr-only" :aria-live="['incorrect', 'warning'].includes($store.learningFeedback.active?.type) ? 'assertive' : 'polite'" aria-atomic="true" x-text="announcement"></p>
 
     <div

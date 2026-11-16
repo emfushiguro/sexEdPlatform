@@ -51,6 +51,26 @@ class FeedbackProgressRefinementTest extends TestCase
         $this->assertNull(app(LearnerModuleCompletionService::class)->completionBlockerReason(User::find(1), Module::find(1)));
     }
 
+    public function test_passed_quiz_feedback_shows_saved_score_and_actual_points(): void
+    {
+        $attempt = (new \App\Models\QuizAttempt)->forceFill(['id' => 42, 'quiz_id' => 7, 'score' => 92]);
+        $feedback = app(LearnerModuleCompletionService::class)->passedQuizFeedback($attempt, 25, 'You passed and earned 25 points.');
+        $this->assertSame('correct', $feedback['type']);
+        $this->assertSame('Score: 92%.', $feedback['explanation']);
+        $this->assertSame(25, $feedback['pointsAwarded']);
+        $this->assertTrue($feedback['replacesPointsToast']);
+    }
+
+    public function test_mfa_email_links_to_the_session_bound_copy_page_without_exposing_the_code_in_the_link(): void
+    {
+        $copyUrl = 'https://example.test/secure-panel-access/verify/copy/challenge';
+        $html = (new \App\Notifications\AdminLoginCodeNotification('123456', $copyUrl))->toMail(User::find(1))->render();
+        $this->assertStringContainsString('href="'.$copyUrl.'"', $html);
+        $this->assertStringContainsString('Open verification page to copy code', $html);
+        $this->assertStringNotContainsString('123456', $copyUrl);
+        $this->assertStringNotContainsString('<script', strtolower($html));
+    }
+
     public function test_next_lesson_is_blocked_until_the_previous_lesson_quiz_is_resolved(): void
     {
         DB::table('lessons')->where('id', 1)->update(['order' => 1]);
@@ -216,15 +236,13 @@ class FeedbackProgressRefinementTest extends TestCase
         $this->assertNotNull(DB::table('module_enrollments')->value('completed_at'));
     }
 
-    public function test_module_feedback_claims_through_a_protected_form_and_views_existing_certificates(): void
+    public function test_module_feedback_links_to_the_certificate_claim_section_and_views_existing_certificates(): void
     {
         $service = app(LearnerModuleCompletionService::class);
         $feedback = $service->moduleFeedback(User::find(1), Module::find(1));
         $this->assertSame('Claim certificate', $feedback['actions'][0]['label']);
-        $html = \Illuminate\Support\Facades\Blade::render('<x-learner.learning-feedback :initial-feedback="$feedback" />', compact('feedback'));
-        $this->assertStringContainsString('method="POST"', $html);
-        $this->assertStringContainsString(route('learner.certificates.check', 1), $html);
-        $this->assertStringContainsString('name="_token"', $html);
+        $this->assertSame('navigate', $feedback['actions'][0]['intent']);
+        $this->assertSame(route('learner.modules.show', 1).'#certificate', $feedback['actions'][0]['url']);
         DB::table('certificates')->insert(['id' => 1, 'user_id' => 1, 'module_id' => 1]);
         $feedback = $service->moduleFeedback(User::find(1), Module::find(1));
         $this->assertSame('View certificate', $feedback['actions'][0]['label']);

@@ -17,6 +17,17 @@ use Illuminate\Support\Facades\DB;
 
 class LearnerModuleCompletionService
 {
+    public function passedQuizFeedback(QuizAttempt $attempt, int $points, string $message): array
+    {
+        return [
+            'id' => "quiz-passed:{$attempt->id}", 'sourceId' => "quiz:{$attempt->quiz_id}",
+            'type' => 'correct', 'title' => 'Quiz passed',
+            'message' => $message, 'explanation' => "Score: {$attempt->score}%.",
+            'actions' => [['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'View results']],
+            'replacesSuccessToast' => true, 'replacesPointsToast' => true, 'pointsAwarded' => $points,
+        ];
+    }
+
     public function lessonTopicsComplete(User $user, Lesson $lesson): bool
     {
         $topics = $lesson->topics()->instructional()->get();
@@ -77,7 +88,7 @@ class LearnerModuleCompletionService
         $primary = $certificate
             ? ['id' => 'certificate', 'intent' => 'navigate', 'label' => 'View certificate', 'url' => route('learner.certificates.show', $certificate)]
             : ($eligible
-                ? ['id' => 'certificate', 'intent' => 'continue', 'label' => 'Claim certificate']
+                ? ['id' => 'certificate', 'intent' => 'navigate', 'label' => 'Claim certificate', 'url' => route('learner.modules.show', $module).'#certificate']
                 : ['id' => 'requirements', 'intent' => 'navigate', 'label' => 'Complete remaining requirements', 'url' => route('learner.modules.show', $module)]);
 
         return [
