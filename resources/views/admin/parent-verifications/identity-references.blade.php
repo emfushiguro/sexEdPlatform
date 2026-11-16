@@ -3,7 +3,7 @@
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6 p-4 sm:p-8" x-data="{ editor: @js($errors->any() ? (string) old('reference_editor', 'new') : null) }">
     <header class="flex items-start justify-between gap-4">
-        <div><a href="{{ route('admin.parent-verifications.index') }}" class="text-sm font-semibold text-purple-700 underline">Back to verification</a><h1 class="mt-3 text-2xl font-bold text-gray-900">{{ $label }} reference examples</h1><p class="mt-2 max-w-3xl text-sm text-gray-600">Use public specimens for guidance. A visual match does not establish authenticity. Check the official source before deciding.</p></div>
+        <div><a href="{{ route('admin.identity-references.index') }}" class="text-sm font-semibold text-purple-700 underline">Back to Reference Library</a><h1 class="mt-3 text-2xl font-bold text-gray-900">{{ $label }} reference examples</h1><p class="mt-2 max-w-3xl text-sm text-gray-600">Use public specimens for guidance. A visual match does not establish authenticity. Check the official source before deciding.</p></div>
         <button type="button" @click="editor = 'new'" aria-label="Add reference example" title="Add reference example" class="mt-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-800 text-white hover:bg-purple-900"><svg aria-hidden="true" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg></button>
     </header>
     @include('admin.parent-verifications.partials.id-reference', ['idType' => $type, 'idLabel' => $label, 'showLibraryLink' => false])
