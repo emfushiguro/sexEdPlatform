@@ -1,14 +1,19 @@
-@extends('layouts.app')
+@extends('layouts.moderation')
 
-@section('title', 'Submit Suspension Appeal | Conscious Connections')
+@section('title', 'Suspension Appeal | Conscious Connections')
 
 @section('content')
-<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white py-10 px-4 sm:px-6 lg:px-8">
+@php
+    $hasAppeal = $suspension->appeals->isNotEmpty();
+    $needsClarification = $suspension->appeals->sortByDesc('id')->first()?->status === 'clarification_requested';
+    $showAppealForm = ! $hasAppeal || ($needsClarification && request()->boolean('clarify'));
+@endphp
+<div>
     <div class="mx-auto max-w-4xl space-y-6">
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h1 class="text-2xl font-bold text-gray-900">Submit Suspension Appeal</h1>
+            <h1 class="text-2xl font-bold text-gray-900">{{ $showAppealForm ? 'Submit Suspension Appeal' : 'Suspension Appeal' }}</h1>
             <p class="mt-2 text-sm text-gray-600">
-                Provide a clear explanation for moderator review. Appeals are processed in order and may request clarification.
+                {{ $showAppealForm ? 'Provide a clear explanation for moderator review. Appeals are processed in order and may request clarification.' : 'Your appeal has been submitted. View its status and history below.' }}
             </p>
 
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
@@ -34,11 +39,12 @@
         </div>
 
         @if($errors->any())
-            <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <div role="alert" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 {{ $errors->first() }}
             </div>
         @endif
 
+        @if($showAppealForm)
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <form method="POST" action="{{ route('moderation.appeals.store', $suspension) }}" class="space-y-4">
                 @csrf
@@ -60,15 +66,23 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3">
-                    <button type="submit" class="inline-flex items-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black">
+                    <button type="submit" class="inline-flex min-h-11 items-center rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
                         Submit Appeal
                     </button>
-                    <a href="{{ route('moderation.suspension-status') }}" class="inline-flex items-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                    <a href="{{ route('moderation.suspension-status') }}" class="inline-flex min-h-11 items-center rounded-xl border border-purple-300 bg-white px-4 py-2 text-sm font-semibold text-purple-800 hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
                         Back to Suspension Status
                     </a>
                 </div>
             </form>
         </div>
+        @else
+            <div class="flex flex-wrap gap-3">
+                <a href="{{ route('moderation.suspension-status') }}" class="inline-flex min-h-11 items-center rounded-xl border border-purple-300 bg-white px-4 py-2 text-sm font-semibold text-purple-800 hover:bg-purple-50">Back to Suspension Status</a>
+                @if($needsClarification)
+                    <a href="{{ route('moderation.appeals.create', [$suspension, 'clarify' => 1]) }}" class="inline-flex min-h-11 items-center rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">Provide clarification</a>
+                @endif
+            </div>
+        @endif
 
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 class="text-lg font-bold text-gray-900">Appeal History</h2>

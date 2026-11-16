@@ -103,6 +103,7 @@ Route::prefix('admin')->name('admin.')->middleware([
         Route::get('/reports/{moderationCase}', [Admin\ModerationSuspensionController::class, 'showReport'])->name('reports.show');
         Route::put('/reports/{moderationCase}', [Admin\ModerationSuspensionController::class, 'updateReport'])->name('reports.update');
         Route::get('/{userSuspension}', [Admin\ModerationSuspensionController::class, 'show'])->name('show');
+        Route::patch('/{userSuspension}/duration', [Admin\ModerationSuspensionController::class, 'changeDuration'])->name('duration.update');
     });
 
     Route::prefix('moderation-appeals')->name('moderation-appeals.')->group(function () {

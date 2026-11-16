@@ -2,8 +2,8 @@
 
 namespace App\Support;
 
-use App\Models\InstructorIdentityVerification;
 use App\Models\InstructorApplication;
+use App\Models\InstructorIdentityVerification;
 use App\Models\User;
 
 class NotificationDeepLinkResolver
@@ -15,6 +15,12 @@ class NotificationDeepLinkResolver
     public function resolve(array $payload, string $fallbackUrl, ?User $recipient = null): string
     {
         $type = (string) ($payload['type'] ?? '');
+
+        if (in_array($type, ['moderation_enforcement_issued', 'moderation_suspension_issued',
+            'moderation_suspension_duration_changed', 'moderation_appeal_submitted', 'moderation_appeal_decision',
+            'moderation_admin_suspension_recorded'], true)) {
+            return $this->resolveModeration($payload, $fallbackUrl, $recipient);
+        }
 
         $adminTarget = match ($type) {
             'learner_identity_submitted' => ['verification_id', 'admin.parent-verifications.learners.show'],
@@ -92,6 +98,7 @@ class NotificationDeepLinkResolver
                 if ($id !== false && \App\Models\ParentChildAccount::query()->whereKey($id)->where('parent_user_id', $recipient->id)->exists()) {
                     return route('parent.relationship-verifications.show', $id, false);
                 }
+
                 return $fallbackUrl;
             }
             if (in_array($type, ['parent_verification_submitted', 'parent_verification_rejected'], true)) {
@@ -162,5 +169,41 @@ class NotificationDeepLinkResolver
         }
 
         return strcasecmp($targetHost, $appHost) === 0;
+    }
+
+    private function resolveModeration(array $payload, string $fallback, ?User $recipient): string
+    {
+        if (! $recipient) {
+            return $fallback;
+        }
+        $type = $payload['type'];
+        if ($type === 'moderation_appeal_submitted') {
+            $id = filter_var($payload['appeal_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+            return $recipient->isAdmin() && $id && \App\Models\SuspensionAppeal::whereKey($id)->exists()
+                ? route('admin.moderation-appeals.show', $id, false) : $fallback;
+        }
+        if ($type === 'moderation_admin_suspension_recorded') {
+            $id = filter_var($payload['user_suspension_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+            return $recipient->isAdmin() && $id && \App\Models\UserSuspension::whereKey($id)->exists()
+                ? route('admin.moderation-suspensions.show', $id, false) : $fallback;
+        }
+        if ((int) ($payload['user_id'] ?? 0) !== (int) $recipient->id) {
+            return $fallback;
+        }
+        $id = filter_var($payload['user_suspension_id'] ?? $payload['suspension_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if (in_array($type, ['moderation_suspension_issued', 'moderation_suspension_duration_changed', 'moderation_appeal_decision'], true)) {
+            return $id && \App\Models\UserSuspension::whereKey($id)->where('user_id', $recipient->id)->exists()
+                ? ($type === 'moderation_appeal_decision' ? route('moderation.appeals.create', $id, false) : route('moderation.suspension-status', [], false)) : $fallback;
+        }
+        if ($type === 'moderation_enforcement_issued') {
+            $id = filter_var($payload['enforcement_action_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+            return $id && \App\Models\EnforcementAction::whereKey($id)->where('user_id', $recipient->id)->exists()
+                ? route('moderation.suspension-status', [], false) : $fallback;
+        }
+
+        return $fallback;
     }
 }

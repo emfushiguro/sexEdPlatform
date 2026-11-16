@@ -125,7 +125,7 @@
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</span>
                         <select name="status" class="w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm">
                             @foreach($messageStatuses as $statusOption)
-                                <option value="{{ $statusOption }}" @selected((string) $sourceReport->status === $statusOption)>{{ str_replace('_', ' ', ucfirst($statusOption)) }}</option>
+                                <option value="{{ $statusOption }}" @selected(old('status', (string) $sourceReport->status) === $statusOption)>{{ str_replace('_', ' ', ucfirst($statusOption)) }}</option>
                             @endforeach
                         </select>
                     </label>
@@ -133,29 +133,47 @@
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Action</span>
                         <select name="action_taken" class="w-full rounded-2xl border border-brand-100 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm">
                             @foreach($messageActions as $action)
-                                <option value="{{ $action->value }}" @selected((string) $sourceReport->action_taken === $action->value)>{{ $action->label() }}</option>
+                                <option value="{{ $action->value }}" @selected(old('action_taken', (string) $sourceReport->action_taken) === $action->value)>{{ $action->label() }}</option>
                             @endforeach
                         </select>
                         <span class="mt-1 block text-xs text-gray-500">Chat restriction blocks sending until this report's action is changed. Restrictions from other reports still apply.</span>
                     </label>
                     <fieldset class="rounded-xl border border-gray-200 p-4 md:col-span-2">
                         <legend class="px-1 text-sm font-semibold text-gray-800">Temporary suspension duration</legend>
-                        <p class="mb-3 text-xs text-gray-500">Starts immediately. Used only when Temporary Suspension is selected. Maximum: 8,760 hours or 365 days.</p>
+                        @php
+                            $issuedDuration = $temporarySuspensionDuration['issued'] && $sourceReport->action_taken === 'temporary_suspension';
+                        @endphp
+                        @if($issuedDuration)
+                            <p class="mb-3 text-sm text-gray-600">Issued window: {{ $temporarySuspensionDuration['starts_at']?->format('M d, Y g:i A T') }} – {{ $temporarySuspensionDuration['ends_at']?->format('M d, Y g:i A T') ?? 'Permanent' }}. Saving this report does not change the issued duration.</p>
+                            @if($temporarySuspensionDuration['can_change'])
+                                <a href="{{ route('admin.moderation-suspensions.show', $temporarySuspensionDuration['suspension_id']) }}#change-duration" class="mb-3 inline-block font-semibold text-purple-700 underline">Change duration</a>
+                            @endif
+                        @else
+                            <p class="mb-3 text-xs text-gray-500">Starts immediately. Used only when Temporary Suspension is selected. Maximum: 8,760 hours or 365 days.</p>
+                        @endif
+                        @if(!$issuedDuration || $temporarySuspensionDuration['amount'] !== null)
                         <div class="grid gap-3 sm:grid-cols-[minmax(0,12rem)_12rem]">
                             <label class="block">
                                 <span class="mb-1 block text-xs font-medium text-gray-600">Duration</span>
-                                <input type="number" name="duration_amount" min="1" value="{{ old('duration_amount', 3) }}" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm">
+                                <input type="number" @if(!$issuedDuration) name="duration_amount" @endif min="1" value="{{ $issuedDuration ? $temporarySuspensionDuration['amount'] : old('duration_amount', $temporarySuspensionDuration['amount']) }}" @readonly($issuedDuration) class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm">
                                 @error('duration_amount')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                             </label>
                             <label class="block">
                                 <span class="mb-1 block text-xs font-medium text-gray-600">Unit</span>
-                                <select name="duration_unit" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm">
-                                    <option value="hours" @selected(old('duration_unit') === 'hours')>Hours</option>
-                                    <option value="days" @selected(old('duration_unit', 'days') === 'days')>Days</option>
+                                @php
+                                    $selectedDurationUnit = $issuedDuration ? $temporarySuspensionDuration['unit'] : old('duration_unit', $temporarySuspensionDuration['unit']);
+                                @endphp
+                                <select @if(!$issuedDuration) name="duration_unit" @endif @disabled($issuedDuration) class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm">
+                                    <option value="hours" @selected($selectedDurationUnit === 'hours')>Hours</option>
+                                    <option value="days" @selected($selectedDurationUnit === 'days')>Days</option>
                                 </select>
                                 @error('duration_unit')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                             </label>
                         </div>
+                        @endif
+                        @if($issuedDuration && $temporarySuspensionDuration['amount'] === null)
+                            @error('duration_amount')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                        @endif
                     </fieldset>
                     <label class="block md:col-span-2">
                         <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Moderation Notes</span>

@@ -2,9 +2,9 @@
 
 namespace App\Services\Moderation;
 
+use App\Enums\EnforcementActionType;
 use App\Models\AppealThreadMessage;
 use App\Models\ParentChildAccount;
-use App\Enums\EnforcementActionType;
 use App\Models\SuspensionAppeal;
 use App\Models\User;
 use App\Models\UserSuspension;
@@ -17,11 +17,10 @@ class SuspensionAppealService
 {
     public function __construct(
         private readonly SuspensionService $suspensionService,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed>|null $evidencePayload
+     * @param  array<string, mixed>|null  $evidencePayload
      */
     public function submitAppeal(
         UserSuspension $suspension,
@@ -41,10 +40,10 @@ class SuspensionAppealService
                 'submitted_at' => now(),
             ]);
 
-            $suspension->forceFill([
+            $this->saveSuspensionAppealState($suspension, [
                 'appeal_status' => 'appeal_pending',
                 'appeal_submitted_at' => now(),
-            ])->save();
+            ]);
 
             $appeal->loadMissing('user:id,name,email');
 
@@ -63,7 +62,7 @@ class SuspensionAppealService
         string $action,
         string $decisionNotes,
     ): SuspensionAppeal {
-        if (!in_array($action, ['approve', 'reject', 'clarification_requested'], true)) {
+        if (! in_array($action, ['approve', 'reject', 'clarification_requested'], true)) {
             throw new InvalidArgumentException('Unsupported appeal review action.');
         }
 
@@ -74,24 +73,28 @@ class SuspensionAppealService
                 'clarification_requested' => 'clarification_requested',
             };
 
-            $appeal->forceFill([
+            // Older MySQL schemas auto-update this first TIMESTAMP unless it is explicitly preserved.
+            DB::table($appeal->getTable())->where('id', $appeal->id)->update([
                 'status' => $status,
+                'submitted_at' => $appeal->submitted_at,
                 'reviewed_at' => now(),
                 'reviewed_by_admin_id' => $admin->id,
                 'review_decision_notes' => $decisionNotes,
                 'clarification_requested_at' => $action === 'clarification_requested' ? now() : null,
-            ])->save();
+                'updated_at' => now(),
+            ]);
+            $appeal->refresh();
 
             /** @var UserSuspension|null $suspension */
             $suspension = $appeal->suspension;
             if ($suspension) {
                 if ($action === 'approve' && $suspension->status === 'active') {
-                    $this->suspensionService->revoke($suspension, $admin, 'Appeal approved: ' . $decisionNotes);
+                    $this->suspensionService->revoke($suspension, $admin, 'Appeal approved: '.$decisionNotes);
                 }
 
-                $suspension->forceFill([
+                $this->saveSuspensionAppealState($suspension, [
                     'appeal_status' => $action === 'clarification_requested' ? 'clarification_requested' : 'resolved',
-                ])->save();
+                ]);
             }
 
             $appeal->loadMissing('user:id,name,email');
@@ -124,13 +127,22 @@ class SuspensionAppealService
         ]);
     }
 
+    private function saveSuspensionAppealState(UserSuspension $suspension, array $attributes): void
+    {
+        // Preserve the original start on MySQL schemas with an automatic first TIMESTAMP.
+        DB::table($suspension->getTable())->where('id', $suspension->id)->update([
+            ...$attributes, 'starts_at' => $suspension->starts_at, 'updated_at' => now(),
+        ]);
+        $suspension->refresh();
+    }
+
     private function guardSubmissionEligibility(UserSuspension $suspension, User $user): void
     {
         if ((int) $suspension->user_id !== (int) $user->id) {
             throw new InvalidArgumentException('Users can only appeal their own suspension.');
         }
 
-        if (!$suspension->starts_at || $suspension->starts_at->lt(now()->subDays(14))) {
+        if (! $suspension->starts_at || $suspension->starts_at->lt(now()->subDays(14))) {
             throw new InvalidArgumentException('Appeals must be submitted within 14 days of suspension start.');
         }
 

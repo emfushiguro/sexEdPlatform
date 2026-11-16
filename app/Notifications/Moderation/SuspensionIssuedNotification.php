@@ -32,7 +32,7 @@ class SuspensionIssuedNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        return [
+        $payload = [
             'type' => 'moderation_suspension_issued',
             'user_suspension_id' => $this->suspension->id,
             'user_id' => $this->suspension->user_id,
@@ -43,5 +43,7 @@ class SuspensionIssuedNotification extends Notification
             'starts_at' => optional($this->suspension->starts_at)?->toDateTimeString(),
             'ends_at' => optional($this->suspension->ends_at)?->toDateTimeString(),
         ];
+
+        return [...$payload, ...app(\App\Support\NotificationPayloadNormalizer::class)->normalize($payload)];
     }
 }

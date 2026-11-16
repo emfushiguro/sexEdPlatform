@@ -9,6 +9,7 @@ use App\Enums\MessageReportAction;
 use App\Enums\ModerationCaseSource;
 use App\Enums\ViolationSeverity;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ChangeSuspensionDurationRequest;
 use App\Http\Requests\Admin\FilterModerationSuspensionsRequest;
 use App\Models\ContentReport;
 use App\Models\MessageReport;
@@ -22,7 +23,9 @@ use App\Services\Moderation\SourceAdapters\ChatReportModerationAdapter;
 use App\Services\Moderation\SuspensionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ModerationSuspensionController extends Controller
@@ -82,7 +85,10 @@ class ModerationSuspensionController extends Controller
         $this->guardReportCase($moderationCase);
 
         if ($this->caseSourceValue($moderationCase) === ModerationCaseSource::ChatReport->value) {
-            $this->updateMessageReport($request, $moderationCase);
+            DB::transaction(function () use ($request, $moderationCase): void {
+                $lockedCase = ModerationCase::whereKey($moderationCase->id)->lockForUpdate()->firstOrFail();
+                $this->updateMessageReport($request, $lockedCase);
+            });
         } else {
             $this->updateLearnerReport($request, $moderationCase);
         }
@@ -94,29 +100,32 @@ class ModerationSuspensionController extends Controller
 
     private function updateMessageReport(Request $request, ModerationCase $moderationCase): void
     {
+        $messageReport = MessageReport::with('message.sender')->whereKey($moderationCase->content_id)->lockForUpdate()->firstOrFail();
+        $previousAction = (string) ($messageReport->action_taken ?? '');
+        $existingSuspension = UserSuspension::where('moderation_case_id', $moderationCase->id)->latest('id')->first();
+        $alreadyIssued = $previousAction === MessageReportAction::TemporarySuspension->value && $existingSuspension;
+        $newTemporary = $request->input('action_taken') === MessageReportAction::TemporarySuspension->value && ! $alreadyIssued;
         $validated = $request->validate([
             'status' => ['required', Rule::in(['open', 'under_review', 'resolved', 'dismissed'])],
             'action_taken' => ['required', Rule::in(MessageReportAction::values())],
-            'duration_amount' => ['required_if:action_taken,'.MessageReportAction::TemporarySuspension->value, 'integer', 'min:1'],
-            'duration_unit' => ['required_if:action_taken,'.MessageReportAction::TemporarySuspension->value, Rule::in(['hours', 'days'])],
+            'duration_amount' => ['nullable', Rule::requiredIf($newTemporary), 'integer', 'min:1', 'required_with:duration_unit'],
+            'duration_unit' => ['nullable', Rule::requiredIf($newTemporary), 'required_with:duration_amount', Rule::in(['hours', 'days'])],
             'moderation_notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        if (($validated['action_taken'] ?? null) === MessageReportAction::TemporarySuspension->value) {
+        if (($validated['action_taken'] ?? null) === MessageReportAction::TemporarySuspension->value && isset($validated['duration_amount'])) {
             $maximum = $validated['duration_unit'] === 'hours' ? 8760 : 365;
             validator($validated, [
                 'duration_amount' => ['integer', 'max:'.$maximum],
             ])->validate();
         }
 
-        /** @var MessageReport|null $messageReport */
-        $messageReport = MessageReport::query()
-            ->with('message.sender')
-            ->find($moderationCase->content_id);
-
-        abort_unless($messageReport, 404);
-
-        $previousAction = (string) ($messageReport->action_taken ?? '');
+        if ($alreadyIssued && $request->input('action_taken') === MessageReportAction::TemporarySuspension->value && isset($validated['duration_amount'])) {
+            $proposedEnd = $existingSuspension->starts_at?->copy()->add($validated['duration_unit'], (int) $validated['duration_amount']);
+            if (! $proposedEnd || ! $existingSuspension->ends_at?->equalTo($proposedEnd)) {
+                throw ValidationException::withMessages(['duration_amount' => 'Use Change duration to update an issued suspension.']);
+            }
+        }
 
         $messageReport->forceFill([
             'status' => $validated['status'],
@@ -129,7 +138,7 @@ class ModerationSuspensionController extends Controller
         $messageReport = $messageReport->fresh(['message.sender']);
         $this->chatReportModerationAdapter->syncReport($messageReport);
 
-        if ($previousAction !== $validated['action_taken']) {
+        if ($previousAction !== $validated['action_taken'] || $newTemporary) {
             $this->issueEnforcementForMessageAction(
                 $messageReport,
                 $request->user(),
@@ -210,8 +219,23 @@ class ModerationSuspensionController extends Controller
         );
 
         if ($enforcementType === EnforcementActionType::TemporarySuspension) {
-            $this->suspensionService->createFromEnforcementAction($enforcementAction, $admin);
+            $suspension = $this->suspensionService->createFromEnforcementAction($enforcementAction, $admin);
+            $metadata = $moderationCase->fresh()->metadata ?? [];
+            $metadata['chat_temporary_suspension'] = [
+                'initial' => ['amount' => (int) $durationAmount, 'unit' => $durationUnit],
+                'current' => ['amount' => (int) $durationAmount, 'unit' => $durationUnit],
+                'user_suspension_id' => $suspension->id, 'enforcement_action_id' => $enforcementAction->id,
+            ];
+            $moderationCase->update(['metadata' => $metadata]);
         }
+    }
+
+    public function changeDuration(ChangeSuspensionDurationRequest $request, UserSuspension $userSuspension): RedirectResponse
+    {
+        $data = $request->validated();
+        $this->suspensionService->changeDuration($userSuspension, $request->user(), (int) $data['duration_amount'], $data['duration_unit'], $data['reason']);
+
+        return redirect()->route('admin.moderation-suspensions.show', $userSuspension)->with('success', 'Suspension duration updated.');
     }
 
     private function markCaseReviewed(ModerationCase $moderationCase, ?User $admin, string $notes): void

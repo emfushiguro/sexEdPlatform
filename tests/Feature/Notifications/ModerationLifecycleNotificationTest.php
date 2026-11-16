@@ -55,6 +55,7 @@ class ModerationLifecycleNotificationTest extends DatabaseTestCase
         Notification::fake();
 
         $admin = $this->createUserWithRole('admin');
+        $otherAdmin = $this->createUserWithRole('admin');
         $learner = $this->createUserWithRole('learner');
 
         $action = EnforcementAction::query()->create([
@@ -70,6 +71,19 @@ class ModerationLifecycleNotificationTest extends DatabaseTestCase
         ]);
 
         $suspension = app(SuspensionService::class)->createFromEnforcementAction($action, $admin);
+
+        Notification::assertSentTo($admin, \App\Notifications\Moderation\AdminSuspensionRecordedNotification::class, function ($notification, array $channels) use ($admin, $learner, $suspension): bool {
+            $payload = $notification->toArray($admin);
+            $this->assertSame(['database'], $channels);
+            $this->assertStringContainsString('Suspension #'.$suspension->id, $payload['message']);
+            $this->assertStringContainsString('Temporary suspension', $payload['message']);
+            $this->assertStringContainsString($learner->name, $payload['message']);
+            $this->assertStringContainsString($suspension->starts_at->timezone(config('app.timezone'))->format('M d, Y h:i A T'), $payload['message']);
+            $this->assertStringContainsString($suspension->ends_at->timezone(config('app.timezone'))->format('M d, Y h:i A T'), $payload['message']);
+
+            return true;
+        });
+        Notification::assertNotSentTo($otherAdmin, \App\Notifications\Moderation\AdminSuspensionRecordedNotification::class);
 
         Notification::assertSentTo($learner, SuspensionIssuedNotification::class, function (SuspensionIssuedNotification $notification, array $channels) use ($learner, $suspension): bool {
             $payload = $notification->toArray($learner);

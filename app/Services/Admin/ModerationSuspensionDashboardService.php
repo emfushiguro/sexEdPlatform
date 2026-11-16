@@ -12,8 +12,8 @@ use App\Models\Module;
 use App\Models\SuspensionAppeal;
 use App\Models\User;
 use App\Models\UserSuspension;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 class ModerationSuspensionDashboardService
 {
@@ -52,12 +52,12 @@ class ModerationSuspensionDashboardService
             ->when($appealStatus !== '', fn ($builder) => $builder->where('appeal_status', $appealStatus))
             ->when($search !== '', function ($builder) use ($search): void {
                 $builder->where(function ($nested) use ($search): void {
-                    $nested->where('id', 'like', '%' . $search . '%')
+                    $nested->where('id', 'like', '%'.$search.'%')
                         ->orWhereHas('user', function ($userQuery) use ($search): void {
-                            $userQuery->where('name', 'like', '%' . $search . '%')
-                                ->orWhere('email', 'like', '%' . $search . '%');
+                            $userQuery->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('email', 'like', '%'.$search.'%');
                         })
-                        ->orWhereHas('moderationCase', fn ($caseQuery) => $caseQuery->where('case_reference_code', 'like', '%' . $search . '%'));
+                        ->orWhereHas('moderationCase', fn ($caseQuery) => $caseQuery->where('case_reference_code', 'like', '%'.$search.'%'));
                 });
             });
 
@@ -80,15 +80,15 @@ class ModerationSuspensionDashboardService
             ])
             ->when($search !== '', function ($builder) use ($search): void {
                 $builder->where(function ($nested) use ($search): void {
-                    $nested->where('case_reference_code', 'like', '%' . $search . '%')
-                        ->orWhere('content_type', 'like', '%' . $search . '%')
+                    $nested->where('case_reference_code', 'like', '%'.$search.'%')
+                        ->orWhere('content_type', 'like', '%'.$search.'%')
                         ->orWhereHas('reporter', function ($reporterQuery) use ($search): void {
-                            $reporterQuery->where('name', 'like', '%' . $search . '%')
-                                ->orWhere('email', 'like', '%' . $search . '%');
+                            $reporterQuery->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('email', 'like', '%'.$search.'%');
                         })
                         ->orWhereHas('reportedUser', function ($reportedQuery) use ($search): void {
-                            $reportedQuery->where('name', 'like', '%' . $search . '%')
-                                ->orWhere('email', 'like', '%' . $search . '%');
+                            $reportedQuery->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('email', 'like', '%'.$search.'%');
                         });
                 });
             })
@@ -102,7 +102,7 @@ class ModerationSuspensionDashboardService
             'stats' => [
                 'total' => UserSuspension::query()->count(),
                 'active' => UserSuspension::query()->where('status', 'active')->count(),
-                'appeals_pending' => UserSuspension::query()->where('appeal_status', 'appeal_pending')->count(),
+                'appeals_pending' => SuspensionAppeal::query()->where('status', 'pending_review')->count(),
                 'permanent' => UserSuspension::query()->where('status', 'active')->whereNull('ends_at')->count(),
                 'report_queue' => ModerationCase::query()
                     ->whereIn('case_source', [
@@ -125,7 +125,7 @@ class ModerationSuspensionDashboardService
         $suspension->loadMissing([
             'user:id,name,email,role',
             'enforcementAction:id,user_id,moderation_case_id,severity_level,trigger_type,action_type,starts_at,ends_at,notes',
-            'moderationCase:id,case_reference_code,status,decision,notes',
+            'moderationCase:id,case_reference_code,status,decision,notes,metadata,case_source,content_type',
             'createdByAdmin:id,name',
             'revokedByAdmin:id,name',
         ]);
@@ -134,7 +134,7 @@ class ModerationSuspensionDashboardService
             ->where('user_suspension_id', $suspension->id)
             ->with([
                 'reviewedByAdmin:id,name',
-                'threadMessages:id,suspension_appeal_id,sender_id,sender_role,message,created_at',
+                'threadMessages:id,suspension_appeal_id,sender_user_id,sender_role,message_body,created_at',
             ])
             ->latest('id')
             ->get();
@@ -142,6 +142,7 @@ class ModerationSuspensionDashboardService
         return [
             'suspension' => $suspension,
             'appeals' => $appeals,
+            'temporarySuspensionDuration' => $this->temporaryDuration($suspension->moderationCase, $suspension),
         ];
     }
 
@@ -178,7 +179,7 @@ class ModerationSuspensionDashboardService
                     ->with(['sender:id,name,email,role', 'sender.learnerProfile:id,user_id,avatar_path', 'sender.instructorProfile:id,user_id,profile_photo_path', 'sender.adminCreatorProfile:id,user_id,avatar_path'])
                     ->oldest('id')
                     ->get()
-                : new Collection();
+                : new Collection;
 
             return [
                 'case' => $moderationCase,
@@ -186,6 +187,7 @@ class ModerationSuspensionDashboardService
                 'sourceReport' => $sourceReport,
                 'conversationMessages' => $conversationMessages,
                 'targetModel' => null,
+                'temporarySuspensionDuration' => $this->temporaryDuration($moderationCase),
             ];
         }
 
@@ -204,7 +206,7 @@ class ModerationSuspensionDashboardService
             'case' => $moderationCase,
             'sourceType' => 'learner',
             'sourceReport' => $sourceReport,
-            'conversationMessages' => new Collection(),
+            'conversationMessages' => new Collection,
             'targetModel' => $targetModel,
         ];
     }
@@ -263,5 +265,37 @@ class ModerationSuspensionDashboardService
         return $case->case_source instanceof ModerationCaseSource
             ? $case->case_source->value
             : (string) $case->case_source;
+    }
+
+    private function temporaryDuration(?ModerationCase $case, ?UserSuspension $suspension = null): array
+    {
+        $empty = ['amount' => 3, 'unit' => 'days', 'suspension_id' => null, 'issued' => false, 'can_change' => false, 'starts_at' => null, 'ends_at' => null];
+        if (! $case || $this->caseSourceValue($case) !== ModerationCaseSource::ChatReport->value) {
+            return $empty;
+        }
+        $suspension ??= UserSuspension::with('enforcementAction')->where('moderation_case_id', $case->id)->latest('id')->first();
+        if (! $suspension) {
+            return $empty;
+        }
+        $action = $suspension->enforcementAction;
+        $seconds = $suspension->starts_at && $suspension->ends_at ? $suspension->starts_at->diffInSeconds($suspension->ends_at) : 0;
+        $selection = data_get($case->metadata, 'chat_temporary_suspension.current', []);
+        $amount = $selection['amount'] ?? null;
+        $unit = $selection['unit'] ?? null;
+        $validSelection = is_int($amount) && $amount > 0 && in_array($unit, ['hours', 'days'], true)
+            && $suspension->starts_at && $suspension->ends_at
+            && $suspension->starts_at->copy()->add($unit, $amount)->equalTo($suspension->ends_at);
+        if (! $validSelection) {
+            $amount = $seconds > 0 && fmod($seconds, 3600) === 0.0 ? (int) ($seconds / 3600) : null;
+            $unit = $amount ? 'hours' : null;
+        }
+
+        return ['amount' => $amount, 'unit' => $unit, 'suspension_id' => $suspension->id, 'issued' => true,
+            'can_change' => $suspension->status === 'active' && $suspension->ends_at?->isFuture()
+                && $action?->action_type === \App\Enums\EnforcementActionType::TemporarySuspension
+                && $action->starts_at && $suspension->starts_at && $action->starts_at->equalTo($suspension->starts_at)
+                && (int) $action->user_id === (int) $suspension->user_id
+                && (int) $action->moderation_case_id === (int) $case->id,
+            'starts_at' => $suspension->starts_at, 'ends_at' => $suspension->ends_at];
     }
 }

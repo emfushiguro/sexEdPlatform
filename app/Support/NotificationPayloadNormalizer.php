@@ -6,6 +6,11 @@ class NotificationPayloadNormalizer
 {
     public function normalize(array $data): array
     {
+        foreach ($this->moderationDefaults($data) as $key => $value) {
+            if (! is_string($data[$key] ?? null) || trim($data[$key]) === '') {
+                $data[$key] = $value;
+            }
+        }
         $senderName = $this->resolveSenderName($data);
 
         return [
@@ -21,6 +26,46 @@ class NotificationPayloadNormalizer
             'action_url' => $this->resolveActionUrl($data),
             'severity' => $this->resolveSeverity($data),
         ];
+    }
+
+    private function moderationDefaults(array $data): array
+    {
+        $type = $data['type'] ?? '';
+        if (! in_array($type, ['moderation_enforcement_issued', 'moderation_suspension_issued',
+            'moderation_suspension_duration_changed', 'moderation_appeal_submitted', 'moderation_appeal_decision',
+            'moderation_admin_suspension_recorded'], true)) {
+            return [];
+        }
+        $statusUrl = route('moderation.suspension-status', [], false);
+        $id = filter_var($data['appeal_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $suspensionId = filter_var($data['user_suspension_id'] ?? $data['suspension_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $window = '';
+        try {
+            if (! empty($data['ends_at'])) {
+                $end = \Illuminate\Support\Carbon::parse($data['ends_at'])->timezone(config('app.timezone'))->format('M d, Y h:i A T');
+                $window = ' Access is expected to resume after '.$end.'.';
+            } elseif (array_key_exists('ends_at', $data) && $data['ends_at'] === null && ($data['action_type'] ?? '') === 'permanent_suspension') {
+                $window = ' This suspension has no scheduled end time.';
+            }
+        } catch (\Throwable) {
+            // Legacy malformed timestamps must not break the notification list.
+        }
+        $defaults = match ($type) {
+            'moderation_enforcement_issued' => ['Moderation action recorded', 'A moderation action has been applied to your account.'.$window, $statusUrl],
+            'moderation_suspension_issued' => ['Account suspension notice', 'Your account access is suspended.'.$window.' Review your suspension status and appeal guidance.', $statusUrl],
+            'moderation_suspension_duration_changed' => ['Suspension duration updated', 'Your suspension end time has changed.'.$window, $statusUrl],
+            'moderation_appeal_submitted' => ['New suspension appeal', 'A user submitted a suspension appeal for administrator review.', $id ? route('admin.moderation-appeals.show', $id, false) : route('admin.moderation-appeals.index', [], false)],
+            'moderation_appeal_decision' => ['Suspension appeal updated', match ($data['appeal_status'] ?? '') {
+                'approved' => 'Your suspension appeal was approved.',
+                'rejected' => 'Your suspension appeal was rejected.',
+                'clarification_requested' => 'Your suspension appeal requires clarification.',
+                default => 'Your suspension appeal has been updated.',
+            }, $suspensionId ? route('moderation.appeals.create', $suspensionId, false) : $statusUrl],
+            'moderation_admin_suspension_recorded' => ['Suspension '.(($data['event'] ?? '') === 'duration_changed' ? 'duration updated' : 'recorded'), 'The account suspension was '.(($data['event'] ?? '') === 'duration_changed' ? 'updated' : 'recorded').'.'.$window, $suspensionId ? route('admin.moderation-suspensions.show', $suspensionId, false) : route('admin.moderation-suspensions.index', [], false)],
+            default => null,
+        };
+
+        return $defaults ? ['title' => $defaults[0], 'message' => $defaults[1], 'action_url' => $defaults[2], 'severity' => 'info'] : [];
     }
 
     public function resolveActionUrl(array $data): ?string

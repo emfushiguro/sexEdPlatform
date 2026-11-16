@@ -43,7 +43,7 @@ class EnforcementActionService
             'notes' => $notes,
         ]);
 
-        $user->notify(new EnforcementIssuedNotification($action));
+        \Illuminate\Support\Facades\DB::afterCommit(fn () => $user->notify(new EnforcementIssuedNotification($action)));
 
         return $action;
     }
