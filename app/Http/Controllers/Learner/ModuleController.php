@@ -325,39 +325,18 @@ class ModuleController extends Controller
         $moduleCertificate = $user->certificates()->where('module_id', $module->id)->first();
 
         $topics = $hasActiveAccess ? $lessons->flatMap(fn ($lesson) => $lesson->topics) : collect();
-        $topicIds = $topics->pluck('id')->unique();
+        $topicIds = $topics->reject(fn ($topic) => $topic->isOptionalInteraction())->pluck('id')->unique();
         $completedTopicIds = $this->completionService->completedTopicIds($user, $topics)->all();
-        $allTopicsCompleted = $topicIds->isEmpty() || count($completedTopicIds) === $topicIds->count();
+        $allTopicsCompleted = $topicIds->diff($completedTopicIds)->isEmpty();
 
-        $lessonQuizIds = collect($lessonQuizzes)->pluck('id')->unique();
-        $lessonQuizById = collect($lessonQuizzes)->keyBy('id');
-        $allLessonQuizzesCompleted = $lessonQuizIds->isEmpty() || $lessonQuizIds->every(function ($quizId) use ($user, $lessonQuizById) {
-            $attemptCount = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $quizId)
-                ->count();
-
-            if ($attemptCount === 0) {
-                return false;
-            }
-
-            $hasPassed = QuizAttempt::where('user_id', $user->id)
-                ->where('quiz_id', $quizId)
-                ->where('passed', true)
-                ->exists();
-
-            if ($hasPassed) {
-                return true;
-            }
-
-            $attemptLimit = $lessonQuizById->get($quizId)?->attempt_limit;
-
-            return $attemptLimit !== null && $attemptCount >= (int) $attemptLimit;
-        });
+        $allLessonQuizzesCompleted = $this->completionService->quizProgress($user, collect($lessonQuizzes))
+            ->every(fn ($state) => $state['resolved']);
 
         $finalQuizCompleted = true;
         if ($module->final_quiz_id) {
             $finalAttemptCount = QuizAttempt::where('user_id', $user->id)
                 ->where('quiz_id', $module->final_quiz_id)
+                ->whereNotNull('completed_at')
                 ->count();
 
             if ($finalAttemptCount === 0) {
@@ -366,6 +345,7 @@ class ModuleController extends Controller
 
             $hasPassedFinalQuiz = QuizAttempt::where('user_id', $user->id)
                 ->where('quiz_id', $module->final_quiz_id)
+                ->whereNotNull('completed_at')
                 ->where('passed', true)
                 ->exists();
 
@@ -376,12 +356,15 @@ class ModuleController extends Controller
                 || ($finalQuizAttemptLimit !== null && $finalAttemptCount >= (int) $finalQuizAttemptLimit);
         }
 
-        $certificateEligible = $hasActiveAccess
-            && $totalLessons > 0
-            && count($completedLessonIds) === $totalLessons
-            && $allTopicsCompleted
-            && $allLessonQuizzesCompleted
-            && $finalQuizCompleted;
+        $certificateEligible = $hasActiveAccess && $this->completionService->isFullyCompleted($user, $module);
+
+        if ($certificateEligible) {
+            $moduleCompletionPoints = $this->completionService->recordCompletion($user, $module);
+            if ($moduleCompletionPoints !== null) {
+                session()->now('learning_feedback', $this->completionService->moduleFeedback($user, $module));
+                if ($moduleCompletionPoints > 0) session()->flash('points_earned', $moduleCompletionPoints);
+            }
+        }
 
         $finalQuizAvailable = $hasActiveAccess
             && $finalQuiz
@@ -1010,35 +993,18 @@ class ModuleController extends Controller
                 ->with('error', 'Pass the final quiz first to unlock module completion.');
         }
 
-        $newlyCompleted = false;
-
-        if ($enrollment->completed_at === null && $this->completionService->isFullyCompleted($user, $module)) {
-            $enrollment->update([
-                'completed_at' => now(),
-                'completion_percentage' => 100,
-            ]);
-
-            $moduleCompletionPoints = $this->gamificationService->awardConfiguredPoints($user, 'module_completed');
-            if ($moduleCompletionPoints > 0) {
-                session()->flash('points_earned', $moduleCompletionPoints);
-            }
-
-            $newlyCompleted = true;
+        $eligibilityError = $this->completionService->completionBlockerReason($user, $module);
+        if ($eligibilityError !== null) {
+            return redirect()->route('learner.modules.show', $module)->with('error', $eligibilityError);
         }
 
+        $moduleCompletionPoints = $this->completionService->recordCompletion($user, $module);
+        $newlyCompleted = $moduleCompletionPoints !== null;
+        $enrollment->refresh();
+        if ($moduleCompletionPoints > 0) session()->flash('points_earned', $moduleCompletionPoints);
+
         if ($newlyCompleted) {
-            session()->now('learning_feedback', [
-                'id' => "module-completed:{$user->id}:{$module->id}:{$enrollment->id}",
-                'sourceId' => "module:{$module->id}",
-                'type' => 'module_completed',
-                'title' => 'Module complete',
-                'message' => 'You completed this module. Review your results and available next steps.',
-                'actions' => [
-                    ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'View completion details'],
-                    ['id' => 'module', 'intent' => 'navigate', 'label' => 'Review module', 'url' => route('learner.modules.show', $module)],
-                ],
-                'replacesSuccessToast' => true,
-            ]);
+            session()->now('learning_feedback', $this->completionService->moduleFeedback($user, $module));
         }
 
         $module->loadMissing('publishedRevision');

@@ -209,28 +209,17 @@ class QuizController extends Controller
             $moduleCompletionPoints = 0;
             $newlyCompleted = false;
             if ($completedFinalQuizModule && $this->completionService->isFullyCompleted($user, $completedFinalQuizModule)) {
-                $enrollment = $user->moduleEnrollments()
-                    ->where('module_id', $completedFinalQuizModule->id)
-                    ->where('status', EnrollmentStatus::Approved->value)
-                    ->first();
-                $newlyCompleted = $enrollment && $enrollment->completed_at === null;
-
-                $moduleCompletionPoints = $this->completeModuleAndAwardCompletionPoints($user, $completedFinalQuizModule);
+                $awardedPoints = $this->completionService->recordCompletion($user, $completedFinalQuizModule);
+                $newlyCompleted = $awardedPoints !== null;
+                $moduleCompletionPoints = $awardedPoints ?? 0;
             }
 
             if ($newlyCompleted) {
-                session()->flash('learning_feedback', [
-                    'id' => "module-completed:{$user->id}:{$completedFinalQuizModule->id}:{$enrollment->id}",
-                    'sourceId' => "module:{$completedFinalQuizModule->id}",
-                    'type' => 'module_completed',
-                    'title' => 'Module complete',
-                    'message' => 'You completed this module. Review your results and available next steps.',
-                    'actions' => [
-                        ['id' => 'dismiss', 'intent' => 'dismiss', 'label' => 'View completion details'],
-                        ['id' => 'module', 'intent' => 'navigate', 'label' => 'Review module', 'url' => route('learner.modules.show', $completedFinalQuizModule)],
-                    ],
-                    'replacesSuccessToast' => true,
-                ]);
+                $feedback = $this->completionService->moduleFeedback($user, $completedFinalQuizModule);
+                $feedback['explanation'] = "Quiz score: {$score}%. Quiz points earned: {$points}.";
+                session()->flash('learning_feedback', $feedback);
+            } elseif ($passed) {
+                session()->flash('learning_feedback', $this->completionService->passedQuizFeedback($attempt, $points, $message));
             } else {
                 session()->flash('learning_audio_event', 'success');
             }
@@ -238,7 +227,7 @@ class QuizController extends Controller
             if ($completedFinalQuizModule) {
                 $completionMessage = $newlyCompleted
                     ? 'You completed this module. Review your results and available next steps.'
-                    : 'Congratulations! You have successfully completed this module.';
+                    : $message;
                 if (! $newlyCompleted && $moduleCompletionPoints > 0) {
                     $completionMessage .= " Module completion bonus: +{$moduleCompletionPoints} points.";
                 }
@@ -344,7 +333,7 @@ class QuizController extends Controller
                 ->orderBy('order')
                 ->first();
 
-            $showCompletionModal = $attempt->passed && !$nextLesson;
+            $showCompletionModal = false;
             $certificateClaimable = $showCompletionModal
                 && $this->completionService->isFullyCompleted($user, $lessonModule);
         }
@@ -431,25 +420,6 @@ class QuizController extends Controller
         }
     }
 
-    private function completeModuleAndAwardCompletionPoints(User $user, Module $module): int
-    {
-        $enrollment = $user->moduleEnrollments()
-            ->where('module_id', $module->id)
-            ->where('status', EnrollmentStatus::Approved->value)
-            ->first();
-
-        if (!$enrollment || $enrollment->completed_at !== null) {
-            return 0;
-        }
-
-        $enrollment->update([
-            'completed_at' => now(),
-            'completion_percentage' => 100,
-        ]);
-
-        return $this->gamificationService->awardConfiguredPoints($user, 'module_completed');
-    }
-
     private function authorizeQuizAccess(Quiz $quiz, User $user): Module
     {
         $quiz->loadMissing(['module', 'lesson.module']);
@@ -460,6 +430,13 @@ class QuizController extends Controller
         }
 
         $this->moduleAccessService->assertCanLearn($user, $module);
+
+        if ($quiz->lesson) {
+            abort_if($this->completionService->firstIncompleteLessonBefore($user, $quiz->lesson) !== null, 403,
+                'Complete the previous lesson and its required quiz first.');
+            abort_unless($this->completionService->lessonTopicsComplete($user, $quiz->lesson), 403,
+                'Complete the lesson topics before taking this quiz.');
+        }
 
         return $module;
     }

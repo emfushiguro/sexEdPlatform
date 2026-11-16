@@ -8,7 +8,7 @@
 @elseif($__topicComplete)
     @if(!$__isLastTopic)
         <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'topic' => $currentTopicIndex + 1]) }}" class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">Continue</a>
-    @elseif($lessonQuiz)
+    @elseif($lessonQuiz && ! ($lessonQuizProgress[$lessonQuiz->id]['resolved'] ?? false))
         <a href="{{ route('learner.lessons.show', ['lesson' => $lesson->id, 'quiz' => 1]) }}" class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">Take Lesson Quiz</a>
     @elseif($nextLesson)
         <a href="{{ route('learner.lessons.show', $nextLesson) }}" class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">Next Lesson</a>
