@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\GuardianSubscriptionGiftService;
 
 class PaymentController extends Controller
 {
@@ -39,8 +40,9 @@ class PaymentController extends Controller
      */
     public function create(Subscription $subscription)
     {
+        $giftPayment = $this->checkoutGiftPayment($subscription);
         // Verify subscription belongs to authenticated user
-        if ($subscription->user_id !== Auth::id()) {
+        if (! $giftPayment && $subscription->user_id !== Auth::id()) {
             abort(403);
         }
 
@@ -67,9 +69,10 @@ class PaymentController extends Controller
         $subscription->load('plan');
 
         // Get amount from subscription
-        $amount = round((float) $subscription->getAmount(), 2);
+        $amount = $giftPayment ? data_get($giftPayment->payment_details, 'gift.amount_minor') / 100
+            : round((float) $subscription->getAmount(), 2);
 
-        $pendingPayment = $subscription->payments()
+        $pendingPayment = $giftPayment ?? $subscription->payments()
             ->where('status', PaymentStatus::Pending)
             ->latest('id')
             ->first();
@@ -86,12 +89,13 @@ class PaymentController extends Controller
 
         return view($isInstructorContext ? 'instructor.payments.checkout-summary' : 'payments.checkout-summary', [
             'scope' => 'subscription',
+            'giftPayment' => $giftPayment,
             'subscription' => $subscription,
             'amount' => (float) $amount,
             'paymongoMode' => $paymongoMode,
             'paymentMethod' => $preferredPaymentMethod,
-            'submitUrl' => route($checkoutProceedRoute, $subscription),
-            'backUrl' => route($isInstructorContext ? 'instructor.subscriptions.index' : 'subscription.index'),
+            'submitUrl' => route($checkoutProceedRoute, ['subscription' => $subscription->id] + ($giftPayment ? ['gift_payment' => $giftPayment->id] : [])),
+            'backUrl' => $giftPayment ? route('parent.children.index') : route($isInstructorContext ? 'instructor.subscriptions.index' : 'subscription.index'),
         ]);
     }
 
@@ -100,8 +104,9 @@ class PaymentController extends Controller
      */
     public function process(ProcessPaymentRequest $request, Subscription $subscription)
     {
+        $giftPayment = $this->checkoutGiftPayment($subscription);
         // Verify subscription belongs to authenticated user
-        if ($subscription->user_id !== Auth::id()) {
+        if (! $giftPayment && $subscription->user_id !== Auth::id()) {
             abort(403);
         }
 
@@ -115,16 +120,31 @@ class PaymentController extends Controller
         $successRoute = $isInstructorContext ? 'instructor.payments.paymongo.success' : 'payment.paymongo.success';
         $failedRoute = $isInstructorContext ? 'instructor.payments.paymongo.failed' : 'payment.paymongo.failed';
 
+        if ($giftPayment) {
+            $reservation = app(GuardianSubscriptionGiftService::class)->reserveCheckout($giftPayment, Auth::user());
+            if (! $reservation['reserved']) {
+                return redirect()->route('payment.pending', $giftPayment)
+                    ->with('paymongo_checkout_url', $reservation['checkout_url'] ?? null)
+                    ->with('info', 'This gift purchase is awaiting payment confirmation.');
+            }
+            $giftPayment->refresh();
+        }
+
         DB::beginTransaction();
 
         try {
+            if (! $giftPayment) {
+                $beneficiary = User::query()->lockForUpdate()->findOrFail($subscription->user_id);
+                $this->subscriptionService->assertNoUnresolvedGift($beneficiary);
+            }
             $billingName = (string) ($request->input('billing_name') ?: (Auth::user()?->name ?? ''));
             $billingEmail = (string) ($request->input('billing_email') ?: (Auth::user()?->email ?? ''));
             $billingPhone = (string) ($request->input('billing_phone') ?: '');
-            $checkoutAmount = round((float) $subscription->getAmount(), 2);
+            $checkoutAmount = $giftPayment ? data_get($giftPayment->payment_details, 'gift.amount_minor') / 100
+                : round((float) $subscription->getAmount(), 2);
 
             // Get the pending payment for this subscription
-            $payment = Payment::where('subscription_id', $subscription->id)
+            $payment = $giftPayment ?? Payment::where('subscription_id', $subscription->id)
                 ->where('status', PaymentStatus::Pending->value)
                 ->orderByDesc('id')
                 ->first();
@@ -179,14 +199,15 @@ class PaymentController extends Controller
             try {
                 $paymongoService = app(PayMongoPaymentLinkService::class);
                 
-                $planName = $subscription->plan_id
+                $planName = $giftPayment ? data_get($giftPayment->payment_details, 'gift.plan_name') : ($subscription->plan_id
                     ? (\App\Models\SubscriptionPlan::find($subscription->plan_id)?->name ?? 'Premium Subscription')
-                    : ucfirst($subscription->plan) . ' Subscription';
+                    : ucfirst($subscription->plan).' Subscription');
+                $callbackParameters = ['subscription' => $subscription->id] + ($giftPayment ? ['gift_payment' => $giftPayment->id] : []);
                 
                 $response = $paymongoService->createCheckoutSession(
                     amount: $checkoutAmount,
                     description: $planName,
-                    remarks: "Subscription for " . Auth::user()->name,
+                    remarks: 'Subscription for '.($giftPayment ? data_get($giftPayment->payment_details, 'gift.beneficiary_name') : Auth::user()->name),
                     metadata: [
                         'payment_scope' => 'subscription',
                         'role_context' => $isInstructorContext ? 'instructor' : 'learner',
@@ -197,8 +218,8 @@ class PaymentController extends Controller
                         'billing_name' => $billingName,
                         'billing_email' => $billingEmail,
                     ],
-                    successUrl: route($successRoute, ['subscription' => $subscription->id]),
-                    cancelUrl: route($failedRoute, ['subscription' => $subscription->id]),
+                    successUrl: route($successRoute, $callbackParameters),
+                    cancelUrl: route($failedRoute, $callbackParameters),
                     preferredPaymentMethod: $selectedMethod,
                     lineItemName: $planName,
                 );
@@ -219,6 +240,12 @@ class PaymentController extends Controller
                     ]),
                 ]);
 
+                if ($giftPayment) {
+                    $details = (array) $payment->payment_details;
+                    $details['gift']['checkout_state'] = 'ready';
+                    $payment->update(['payment_details' => $details]);
+                }
+
                 DB::commit();
 
                 // Redirect to pending page — it will auto-forward to PayMongo.
@@ -233,6 +260,16 @@ class PaymentController extends Controller
                     'subscription_id' => $subscription->id,
                 ]);
                 
+                if ($giftPayment) {
+                    $details = (array) $payment->fresh()->payment_details;
+                    $details['gift']['checkout_state'] = 'unknown';
+                    $payment->update(['payment_details' => $details]);
+                    DB::commit();
+
+                    return redirect()->route('payment.pending', $payment)
+                        ->with('warning', 'Checkout confirmation is delayed. Please contact support before attempting another payment.');
+                }
+
                 // If PayMongo fails, redirect to pending page with simulation option
                 DB::commit();
 
@@ -240,6 +277,9 @@ class PaymentController extends Controller
                     ->with('warning', 'Payment gateway is being configured. Use the simulation button for testing.');
             }
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Payment processing error', ['error' => $e->getMessage()]);
@@ -256,6 +296,19 @@ class PaymentController extends Controller
      */
     public function pending(Payment $payment)
     {
+        if (GuardianSubscriptionGiftService::isGift($payment)) {
+            app(GuardianSubscriptionGiftService::class)->authorizePayment($payment, Auth::user(), management: false);
+            if ($this->verifyAndActivateIfPaid($payment)) {
+                return redirect()->route('parent.children.index')
+                    ->with('success', 'Payment confirmed. Your dependent\'s subscription is now active.');
+            }
+
+            return view('payments.pending', [
+                'payment' => $payment, 'paymentContext' => 'gift',
+                'redirectUrl' => route('parent.children.index'),
+                'statusUrl' => route('payment.status', $payment), 'historyUrl' => route('payment.history'),
+            ]);
+        }
         $isInstructorContext = $this->isInstructorPaymentContext($payment);
         $isModulePayment = $payment->isModuleCommercePurchase();
 
@@ -314,6 +367,13 @@ class PaymentController extends Controller
      */
     public function checkStatus(Payment $payment)
     {
+        if (GuardianSubscriptionGiftService::isGift($payment)) {
+            app(GuardianSubscriptionGiftService::class)->authorizePayment($payment, Auth::user(), management: false);
+            $this->verifyAndActivateIfPaid($payment);
+            $payment->refresh();
+
+            return response()->json(['status' => $payment->status->value, 'redirect' => route('parent.children.index')]);
+        }
         $isModulePayment = $payment->isModuleCommercePurchase();
 
         if ($isModulePayment) {
@@ -364,6 +424,9 @@ class PaymentController extends Controller
     private function verifyAndActivateIfPaid(Payment $payment): bool
     {
         try {
+            if (GuardianSubscriptionGiftService::isGift($payment)) {
+                return app(GuardianSubscriptionGiftService::class)->verifyAndCompletePendingPayment($payment);
+            }
             $sessionId = (string) data_get($payment->payment_details, 'paymongo_checkout_session_id', '');
             $linkId = (string) data_get($payment->payment_details, 'paymongo_link_id', '');
 
@@ -422,6 +485,7 @@ class PaymentController extends Controller
                 'payment_id' => $payment->id,
                 'error'      => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -432,6 +496,7 @@ class PaymentController extends Controller
      */
     public function simulateSuccess(Payment $payment)
     {
+        abort_if(GuardianSubscriptionGiftService::isGift($payment), 403, 'Gifts require verified PayMongo confirmation.');
         $allowedEnvs = (array) config('billing.payment.simulation_enabled_envs', ['local', 'testing', 'staging']);
         $currentEnv = (string) config('app.env', app()->environment());
 
@@ -473,7 +538,18 @@ class PaymentController extends Controller
         $isInstructorContext = request()->routeIs('instructor.payments.history');
 
         $pendingPaymentsQuery = $user->payments()
-            ->where('status', PaymentStatus::Pending->value)
+            ->where(function ($query) {
+                $query->where('status', PaymentStatus::Pending->value)
+                    ->orWhere(function ($query) {
+                        $query->where('status', PaymentStatus::Completed->value)
+                            ->whereNotNull('payment_details->gift->applied_at')
+                            ->where(function ($query) {
+                                foreach (['receipt', 'welcome', 'purchaser', 'admins'] as $followUp) {
+                                    $query->orWhereNull('payment_details->gift->follow_ups->'.$followUp);
+                                }
+                            });
+                    });
+            })
             ->latest('id')
             ->limit(20);
 
@@ -488,7 +564,7 @@ class PaymentController extends Controller
             });
         }
 
-        // Reconcile stale pending records before rendering history table.
+        // Reconcile pending payments and retry unfinished gift follow-ups before rendering history.
         $pendingPayments = $pendingPaymentsQuery->get();
 
         foreach ($pendingPayments as $pendingPayment) {
@@ -536,6 +612,15 @@ class PaymentController extends Controller
     {
         $isInstructorContext = request()->routeIs('instructor.payments.receipt');
 
+        if (GuardianSubscriptionGiftService::isGift($payment)) {
+            app(GuardianSubscriptionGiftService::class)->authorizePayment($payment, Auth::user(), management: false);
+            abort_if($isInstructorContext, 403);
+            abort_unless($payment->status === PaymentStatus::Completed
+                && data_get($payment->payment_details, 'gift.applied_at'), 404);
+
+            return view('payments.receipt', $this->paymentReceiptService->resolveViewData($payment));
+        }
+
         if ($payment->isModuleCommercePurchase()) {
             if ($payment->user_id !== Auth::id()) {
                 abort(403);
@@ -568,6 +653,16 @@ class PaymentController extends Controller
      */
     public function paymongoSuccess(Request $request, $subscriptionId)
     {
+        if ($request->integer('gift_payment') > 0) {
+            $subscription = Subscription::findOrFail($subscriptionId);
+            $payment = $this->checkoutGiftPayment($subscription, management: false);
+            if ($this->verifyAndActivateIfPaid($payment)) {
+                return redirect()->route('parent.children.index')
+                    ->with('success', 'Payment confirmed. Your dependent\'s subscription is now active.');
+            }
+
+            return redirect()->route('payment.pending', $payment);
+        }
         try {
             $subscription = Subscription::findOrFail($subscriptionId);
             $isInstructorContext = $this->resolveSubscriptionRouteContext($subscription) === 'instructor';
@@ -645,6 +740,13 @@ class PaymentController extends Controller
      */
     public function paymongoFailed(Request $request, $subscriptionId)
     {
+        if ($request->integer('gift_payment') > 0) {
+            $subscription = Subscription::findOrFail($subscriptionId);
+            $payment = $this->checkoutGiftPayment($subscription, management: false);
+
+            return redirect()->route('payment.pending', $payment)
+                ->with('info', 'Your gift payment has not been confirmed.');
+        }
         try {
             $subscription = Subscription::findOrFail($subscriptionId);
             $isInstructorContext = $this->resolveSubscriptionRouteContext($subscription) === 'instructor';
@@ -721,6 +823,9 @@ class PaymentController extends Controller
                     ->latest('id')
                     ->first();
 
+                if ($completedPayment && GuardianSubscriptionGiftService::isGift($completedPayment)) {
+                    return redirect()->route('payment.pending', $completedPayment);
+                }
                 if ($completedPayment?->subscription) {
                     $this->subscriptionService->activate($completedPayment->subscription);
 
@@ -874,6 +979,9 @@ class PaymentController extends Controller
 
     private function resolvePaymentRedirectUrl(Payment $payment): string
     {
+        if (GuardianSubscriptionGiftService::isGift($payment)) {
+            return route('parent.children.index');
+        }
         if ($payment->isModuleCommercePurchase()) {
             $moduleId = (int) data_get($payment->payment_details, 'module_id');
             if ($moduleId > 0) {
@@ -895,6 +1003,20 @@ class PaymentController extends Controller
         }
 
         return route('subscription.index');
+    }
+
+    private function checkoutGiftPayment(Subscription $subscription, bool $management = true): ?Payment
+    {
+        $paymentId = request()->integer('gift_payment');
+        if ($paymentId > 0) {
+            $payment = $subscription->payments()->findOrFail($paymentId);
+            app(GuardianSubscriptionGiftService::class)->authorizePayment($payment, Auth::user(), management: $management);
+
+            return $payment;
+        }
+        abort_if($subscription->payments()->whereNotNull('payment_details->gift')->exists(), 403);
+
+        return null;
     }
 
     private function resolveSubscriptionRouteContext(Subscription $subscription): string

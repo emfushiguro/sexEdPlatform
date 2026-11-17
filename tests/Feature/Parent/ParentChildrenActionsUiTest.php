@@ -30,7 +30,7 @@ class ParentChildrenActionsUiTest extends TestCase
             ->assertDontSee('>Approved<', false);
 
         $approvedUrl = route('parent.children.show', $approvedChild->id);
-        $this->assertSame(1, substr_count($response->getContent(), $approvedUrl));
+        $this->assertSame(1, substr_count($response->getContent(), 'href="'.$approvedUrl.'"'));
     }
 
     public function test_my_children_page_shows_support_action_only_for_exact_verified_permission_relationship(): void
@@ -46,12 +46,15 @@ class ParentChildrenActionsUiTest extends TestCase
         ]);
 
         $deniedChild = $this->createChildForParent($parent, 'approved', 'Denied Child', 'Learner');
+        $deniedChild->update(['birthdate' => now()->subYears(24)->toDateString()]);
+        $deniedChild->learnerProfile->update(['birthdate' => $deniedChild->birthdate]);
         $denied = ParentChildAccount::query()->where('child_user_id', $deniedChild->id)->firstOrFail();
         $denied->update([
             'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
             'relationship_verified_status' => ParentChildAccount::VERIFICATION_VERIFIED,
             'relationship_verified_at' => now(),
             'can_manage_support_information' => false,
+            'adult_permissions_confirmed_at' => now(),
         ]);
 
         $response = $this->actingAs($parent)->get(route('parent.children.index'));
@@ -141,6 +144,9 @@ class ParentChildrenActionsUiTest extends TestCase
             'can_view_quiz_answers' => true,
             'can_approve_content' => true,
             'verification_status' => $status,
+            'relationship_status' => ParentChildAccount::STATUS_ACTIVE,
+            'relationship_verified_status' => $status === 'approved' ? ParentChildAccount::VERIFICATION_VERIFIED : ParentChildAccount::VERIFICATION_PENDING,
+            'relationship_verified_at' => $status === 'approved' ? now() : null,
             'verification_document_path' => 'child-verifications/temp/child-'.$child->id.'.pdf',
             'verification_rejection_reason' => $rejectionReason,
         ]);

@@ -16,6 +16,9 @@ class SubscriptionDunningService
 {
     public function handleFailedPayment(Payment $payment): void
     {
+        if (GuardianSubscriptionGiftService::isGift($payment)) {
+            return;
+        }
         $subscription = $payment->subscription;
         $user = $subscription->user;
 
@@ -27,8 +30,8 @@ class SubscriptionDunningService
             'payment_details' => array_merge($payment->payment_details ?? [], [
                 'retry_count' => $retryCount,
                 'last_retry_at' => now(),
-                'failure_reason' => 'Payment failed during processing'
-            ])
+                'failure_reason' => 'Payment failed during processing',
+            ]),
         ]);
 
         // Define retry schedule (days)
@@ -41,7 +44,7 @@ class SubscriptionDunningService
             Log::info('Scheduling payment retry', [
                 'payment_id' => $payment->id,
                 'retry_count' => $retryCount,
-                'next_retry_in_days' => $nextRetryDays
+                'next_retry_in_days' => $nextRetryDays,
             ]);
 
             // Send failed payment notification only once per retry count.
@@ -96,6 +99,12 @@ class SubscriptionDunningService
                 continue;
             }
 
+            if (app(SubscriptionService::class)->hasGiftPayments($subscription)) {
+                app(SubscriptionService::class)->reconcileLifecycleState($subscription);
+
+                continue;
+            }
+
             if ($subscription->auto_renew) {
                 $subscription->update([
                     'status' => SubscriptionStatus::GracePeriod,
@@ -132,13 +141,13 @@ class SubscriptionDunningService
         $subscription->update([
             'status' => SubscriptionStatus::Cancelled,
             'cancelled_at' => now(),
-            'cancellation_reason' => $reason
+            'cancellation_reason' => $reason,
         ]);
 
         Log::info('Subscription cancelled due to payment failure', [
             'subscription_id' => $subscription->id,
             'user_id' => $subscription->user_id,
-            'reason' => $reason
+            'reason' => $reason,
         ]);
     }
 
@@ -146,7 +155,8 @@ class SubscriptionDunningService
     {
         // Find payments ready for retry
         $paymentsToRetry = Payment::where('status', PaymentStatus::Failed)
-            ->whereJsonContains('payment_details->retry_count', '<=', 3)
+            ->whereNull('payment_details->gift')
+            ->where('payment_details->retry_count', '<=', 3)
             ->where('created_at', '>', now()->subDays(21)) // Don't retry older than 21 days
             ->with(['subscription.user'])
             ->get();
@@ -177,7 +187,7 @@ class SubscriptionDunningService
         
         Log::info('Retrying payment', [
             'payment_id' => $payment->id,
-            'subscription_id' => $payment->subscription_id
+            'subscription_id' => $payment->subscription_id,
         ]);
 
         $baseMethod = (string) ($payment->method ?? '');
@@ -200,8 +210,8 @@ class SubscriptionDunningService
             'payment_details' => [
                 'original_payment_id' => $payment->id,
                 'retry_attempt' => true,
-                'created_via' => 'dunning_retry'
-            ]
+                'created_via' => 'dunning_retry',
+            ],
         ]);
 
         // TODO: Integrate with PayMongo to create new payment intent

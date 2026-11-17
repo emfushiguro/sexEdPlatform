@@ -12,6 +12,7 @@ use App\Notifications\Admin\NewSubscriptionPurchaseNotification;
 use App\Notifications\Learner\SubscriptionResultNotification;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Log;
+use App\Services\GuardianSubscriptionGiftService;
 
 class PaymentObserver
 {
@@ -28,6 +29,9 @@ class PaymentObserver
 
     public function updated(Payment $payment): void
     {
+        if (GuardianSubscriptionGiftService::isGift($payment)) {
+            return; // Signed gift fulfillment commits payment + access together and dispatches after commit.
+        }
         if ($payment->isDirty('status') && $payment->status === PaymentStatus::Completed) {
             $payment->loadMissing(['user', 'subscription.user']);
 

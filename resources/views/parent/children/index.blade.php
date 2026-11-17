@@ -6,13 +6,13 @@
 <div class="max-w-5xl mx-auto space-y-6">
 
     {{-- Gradient banner header --}}
-    <div class="flex items-center justify-between p-6 text-white rounded-2xl"
+    <div class="flex flex-col gap-4 p-6 text-white rounded-2xl lg:flex-row lg:items-center lg:justify-between"
          style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
         <div>
             <h1 class="text-2xl font-bold">My Dependents</h1>
             <p class="mt-1 text-sm text-white/80">Manage dependent applications and monitor approved accounts.</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('parent.invitations.history') }}"
                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white transition border bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-sm border-white/20">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,9 +374,9 @@
                     @endif
 
                     {{-- Actions --}}
-                    <div class="flex items-center justify-between px-5 py-4 border-t border-gray-100">
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-t border-gray-100">
                         @if($isApprovedChild)
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-2">
                                 @if($relationshipVerificationNeedsAction || $relationshipIsApproved)
                                     <a href="{{ route('parent.relationship-verifications.show', $child->pivot->id) }}"
                                        class="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-900">
@@ -400,6 +400,12 @@
                                 {{ $child->quizAttempts()->count() > 0 ? 'Quiz activity available' : 'No quiz data yet' }}
                             </span>
                             @endif
+                            @can('giftSubscription', $child)
+                                <a href="{{ route('parent.children.subscription-gift.create', $child) }}"
+                                   class="inline-flex items-center justify-center rounded-lg bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800">
+                                    Gift Subscription
+                                </a>
+                            @endcan
                         @else
                             @if($relationshipVerificationStatus !== 'not_required')
                                 <a href="{{ route('parent.relationship-verifications.show', $child->pivot->id) }}" class="text-sm font-medium text-purple-700 underline">View relationship status</a>

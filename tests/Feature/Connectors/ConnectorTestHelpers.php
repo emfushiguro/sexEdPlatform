@@ -165,7 +165,11 @@ trait ConnectorTestHelpers
         array $purchaseOverrides = [],
         array $paymentOverrides = [],
     ): array {
-        $manager = User::factory()->create();
+        $manager = User::factory()->create(['birthdate' => '2000-01-01']);
+        $manager->identityVerifications()->create([
+            'pathway' => 'adult', 'status' => 'approved', 'submission_round' => 1,
+            'submitted_at' => now(), 'reviewed_at' => now(), 'approved_at' => now(),
+        ]);
         $connector = $this->createVerifiedConnector($manager);
         $module = Module::factory()->create(array_merge([
             'content_owner_type' => 'admin',
