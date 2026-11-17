@@ -289,7 +289,7 @@
                                                 @if($recent->completed_at)
                                                     <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded">Completed</span>
                                                 @else
-                                                    <span class="text-xs bg-brand-100 text-brand-800 px-2 py-1 rounded">{{ $recent->completion_percentage }}% Progress</span>
+                                                    <span class="text-xs bg-brand-100 text-brand-800 px-2 py-1 rounded">Not completed</span>
                                                 @endif
                                             </div>
                                         </div>
@@ -300,6 +300,53 @@
                             @endif
                         </div>
                     </div>
+
+                    <section class="overflow-hidden rounded-lg bg-white shadow-sm" aria-labelledby="learning-progress-heading">
+                        <div class="border-b border-gray-100 p-6">
+                            <h3 id="learning-progress-heading" class="text-lg font-semibold text-gray-900">Module learning progress</h3>
+                            <p class="mt-1 text-sm text-gray-500">Published lessons and required topics for this module.</p>
+                        </div>
+                        <div class="space-y-3 p-6">
+                            @forelse($enrollment->module->lessons as $lesson)
+                                @php
+                                    $requiredTopics = $lesson->topics->reject(fn ($topic) => $topic->isOptionalInteraction());
+                                    $completedTopics = $requiredTopics->whereIn('id', $completedTopicIds)->count();
+                                    $lessonDone = $completedLessonIds->contains($lesson->id);
+                                @endphp
+                                <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 p-4">
+                                    <div class="min-w-0"><p class="font-semibold text-gray-900">{{ $lesson->title }}</p><p class="mt-1 text-xs text-gray-500">{{ $completedTopics }} of {{ $requiredTopics->count() }} required topics completed</p></div>
+                                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $lessonDone ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600' }}">{{ $lessonDone ? 'Completed' : 'Not completed' }}</span>
+                                </div>
+                            @empty
+                                <p class="text-sm text-gray-500">No published lessons are available.</p>
+                            @endforelse
+                        </div>
+                    </section>
+
+                    <section class="overflow-hidden rounded-lg bg-white shadow-sm" aria-labelledby="quiz-results-heading">
+                        <div class="border-b border-gray-100 p-6">
+                            <h3 id="quiz-results-heading" class="text-lg font-semibold text-gray-900">Quiz results</h3>
+                            <p class="mt-1 text-sm text-gray-500">Completed attempts for this learner and module.</p>
+                        </div>
+                        <div class="space-y-4 p-6">
+                            @forelse($moduleQuizzes as $quiz)
+                                @php $attempts = $quizAttempts->get($quiz->id, collect()); @endphp
+                                <div class="rounded-xl border border-gray-200 p-4">
+                                    <div class="flex flex-wrap items-center justify-between gap-2"><h4 class="font-semibold text-gray-900">{{ $quiz->title }}</h4><span class="text-xs font-semibold text-purple-700">{{ (int) $quiz->id === (int) $enrollment->module->final_quiz_id ? 'Final quiz' : ($quiz->lesson ? 'Lesson quiz · '.$quiz->lesson->title : 'Module quiz') }}{{ !$quiz->is_active ? ' · Inactive' : '' }}</span></div>
+                                    @forelse($attempts as $attempt)
+                                        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-sm">
+                                            <span class="text-gray-600">Attempt {{ $loop->iteration }} · {{ $attempt->completed_at?->timezone(config('app.display_timezone'))->format('M d, Y g:i A') }}</span>
+                                            <span class="font-semibold {{ $attempt->passed ? 'text-emerald-700' : 'text-rose-700' }}">{{ $attempt->score }}% · {{ $attempt->passed ? 'Passed' : 'Not passed' }}</span>
+                                        </div>
+                                    @empty
+                                        <p class="mt-2 text-sm text-gray-500">No completed attempts.</p>
+                                    @endforelse
+                                </div>
+                            @empty
+                                <p class="text-sm text-gray-500">No quizzes are available for this module.</p>
+                            @endforelse
+                        </div>
+                    </section>
                 </div>
 
                 <!-- Sidebar - Stats & Actions -->
@@ -319,7 +366,7 @@
                                     <p class="text-2xl font-bold text-emerald-600">{{ $completedModules }}</p>
                                 </div>
                                 <div>
-                                    <label class="text-sm text-gray-500">Completion Rate</label>
+                                    <label class="text-sm text-gray-500">Completion rate across approved enrollments</label>
                                     <div class="flex items-center gap-2">
                                         <div class="flex-1 bg-gray-200 rounded-full h-2">
                                             <div class="bg-emerald-600 h-2 rounded-full" style="width: {{ $completionRate }}%"></div>
@@ -328,7 +375,7 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-sm text-gray-500">Current Module Progress</label>
+                                    <label class="text-sm text-gray-500">Published lesson progress</label>
                                     <div class="mt-1 flex items-center gap-2">
                                         <div class="flex-1 bg-gray-200 rounded-full h-2">
                                             <div class="bg-brand-600 h-2 rounded-full" style="width: {{ $moduleProgressPercent }}%"></div>
@@ -336,6 +383,10 @@
                                         <span class="text-sm font-semibold">{{ $moduleProgressPercent }}%</span>
                                     </div>
                                     <p class="mt-1 text-xs text-gray-500">{{ $completedLessonCount }} of {{ $moduleLessonCount }} lessons completed</p>
+                                    <p class="mt-2 text-xs text-gray-600"><strong>Module completion:</strong> {{ $enrollment->completed_at ? 'Recorded as completed' : ($completionBlocker ? 'Not completed' : 'Requirements met; completion not yet recorded') }}.</p>
+                                    @if(!$enrollment->completed_at && $completionBlocker)
+                                        <p class="mt-1 text-xs text-gray-500">{{ str_replace('before submitting feedback', 'to complete the module', $completionBlocker) }}</p>
+                                    @endif
                                 </div>
                             </div>
                         </div>

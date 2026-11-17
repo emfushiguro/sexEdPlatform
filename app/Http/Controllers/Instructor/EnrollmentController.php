@@ -8,12 +8,15 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Module;
 use App\Models\ModuleAccessGrant;
 use App\Models\ModuleEnrollment;
+use App\Models\Quiz;
+use App\Models\QuizAttempt;
 use App\Models\UserProgress;
 use App\Notifications\Learner\EnrollmentApprovedNotification;
 use App\Notifications\Learner\EnrollmentRejectedNotification;
 use App\Services\Content\ContentOwnershipGuard;
 use App\Services\Modules\ModuleAccessService;
 use App\Services\Modules\ModuleCapacityService;
+use App\Services\LearnerModuleCompletionService;
 use App\Support\ContentPanelContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -151,7 +154,7 @@ class EnrollmentController extends Controller
             'user.learnerProfile.barangay',
             'user.accessibleGuardianLinks.parent',
             'user.moduleEnrollments.module',
-            'module.lessons:id,module_id',
+            'module.lessons' => fn ($query) => $query->where('is_published', true)->with('topics')->orderBy('order'),
         ]);
 
         // Calculate learner statistics
@@ -175,17 +178,28 @@ class EnrollmentController extends Controller
             ->get();
 
         $moduleLessonCount = (int) ($enrollment->module?->lessons?->count() ?? 0);
-        $completedLessonCount = UserProgress::query()
+        $completedLessonIds = UserProgress::query()
             ->where('user_id', $enrollment->user_id)
             ->where('module_id', $enrollment->module_id)
-            ->whereNotNull('lesson_id')
+            ->whereIn('lesson_id', $enrollment->module->lessons->modelKeys())
             ->where('completed', true)
-            ->distinct('lesson_id')
-            ->count('lesson_id');
+            ->pluck('lesson_id')->unique();
+        $completedLessonCount = $completedLessonIds->count();
+
+        $completion = app(LearnerModuleCompletionService::class);
+        $topics = $enrollment->module->lessons->flatMap->topics->reject(fn ($topic) => $topic->isOptionalInteraction());
+        $completedTopicIds = $completion->completedTopicIds($enrollment->user, $topics);
+        $completionBlocker = $completion->completionBlockerReason($enrollment->user, $enrollment->module);
+        $moduleQuizzes = Quiz::query()->where('module_id', $enrollment->module_id)
+            ->with('lesson:id,module_id,title')->orderBy('id')->get();
+        $quizAttempts = QuizAttempt::query()->where('user_id', $enrollment->user_id)
+            ->whereIn('quiz_id', $moduleQuizzes->modelKeys())->whereNotNull('completed_at')
+            ->orderBy('completed_at')->orderBy('id')->get(['id', 'quiz_id', 'score', 'passed', 'completed_at'])
+            ->groupBy('quiz_id');
 
         $moduleProgressPercent = $moduleLessonCount > 0
             ? min(100, (int) round(($completedLessonCount / $moduleLessonCount) * 100))
-            : (int) ($enrollment->completion_percentage ?? 0);
+            : 0;
 
         $parentConnections = $enrollment->user->accessibleGuardianLinks
             ->filter(fn ($link) => $link->parent !== null)
@@ -213,6 +227,11 @@ class EnrollmentController extends Controller
             'moduleLessonCount',
             'completedLessonCount',
             'moduleProgressPercent',
+            'completedLessonIds',
+            'completedTopicIds',
+            'completionBlocker',
+            'moduleQuizzes',
+            'quizAttempts',
             'parentConnections'
         ));
     }
