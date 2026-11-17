@@ -6,7 +6,9 @@ use App\Models\Connector;
 use App\Models\LearnerProfile;
 use App\Models\Seminar;
 use App\Models\User;
+use App\Notifications\Connectors\SeminarRegistrationReceivedNotification;
 use App\Notifications\Seminars\SeminarRegistrationConfirmedNotification;
+use App\Services\Seminars\SeminarRegistrationService;
 use Illuminate\Support\Facades\Notification;
 use Tests\Feature\Connectors\ConnectorTestHelpers;
 use Tests\TestCase;
@@ -188,6 +190,59 @@ class SeminarRegistrationTest extends TestCase
             'user_id' => $learner->id,
             'status' => 'cancelled',
         ]);
+    }
+
+    public function test_connector_receives_notification_when_user_registers_for_webinar(): void
+    {
+        Notification::fake();
+
+        $connector = $this->connector();
+        $owner = $connector->primaryRepresentative()->firstOrFail();
+        $learner = $this->learnerWithAge('adults', now()->subYears(21));
+        $learner->update(['birthdate' => now()->subYears(21)]);
+        $webinar = $this->seminar($connector, ['type' => 'webinar', 'learner_age_categories' => ['adult']]);
+
+        $registrant = app(SeminarRegistrationService::class)->register($learner, $webinar);
+
+        $this->assertSame('registered', $registrant->status);
+
+        Notification::assertSentTo($owner, SeminarRegistrationReceivedNotification::class, function ($notification, $channels) use ($owner, $learner, $webinar): bool {
+            $payload = $notification->toDatabase($owner);
+
+            return $channels === ['database']
+                && $payload['registration_status'] === 'registered'
+                && $payload['registrant_id'] === $learner->id
+                && $payload['seminar_id'] === $webinar->id
+                && $payload['action_url'] === route('connector.seminars.registrants.index', [$webinar->connector, $webinar]);
+        });
+    }
+
+    public function test_connector_receives_pending_notification_for_manual_webinar_registration(): void
+    {
+        Notification::fake();
+
+        $connector = $this->connector();
+        $owner = $connector->primaryRepresentative()->firstOrFail();
+        $learner = $this->learnerWithAge('adults', now()->subYears(21));
+        $learner->update(['birthdate' => now()->subYears(21)]);
+        $webinar = $this->seminar($connector, [
+            'type' => 'webinar',
+            'registration_approval_mode' => 'manual',
+            'learner_age_categories' => ['adult'],
+        ]);
+
+        $registrant = app(SeminarRegistrationService::class)->register($learner, $webinar);
+
+        $this->assertSame('pending', $registrant->status);
+
+        Notification::assertSentTo($owner, SeminarRegistrationReceivedNotification::class, function ($notification, $channels) use ($owner): bool {
+            $payload = $notification->toDatabase($owner);
+
+            return $channels === ['database']
+                && $payload['registration_status'] === 'pending'
+                && str_contains($payload['message'], 'awaiting your approval');
+        });
+        Notification::assertNotSentTo($learner, SeminarRegistrationConfirmedNotification::class);
     }
 
     public function test_duplicate_registration_is_blocked(): void

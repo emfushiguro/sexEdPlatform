@@ -7,6 +7,7 @@ use App\Enums\SeminarStatus;
 use App\Models\Seminar;
 use App\Models\SeminarRegistrant;
 use App\Models\User;
+use App\Notifications\Connectors\SeminarRegistrationReceivedNotification;
 use App\Notifications\Seminars\SeminarRegistrationConfirmedNotification;
 use App\Support\LearnerAgePolicy;
 use Illuminate\Support\Collection;
@@ -68,9 +69,15 @@ class SeminarRegistrationService
             ]);
         });
 
+        $seminar->loadMissing('connector.primaryRepresentative');
+
         if ($registrant->status === 'registered') {
-            $user->notify(new SeminarRegistrationConfirmedNotification($seminar->loadMissing('connector')));
+            $user->notify(new SeminarRegistrationConfirmedNotification($seminar));
         }
+
+        $seminar->connector?->primaryRepresentative?->notify(
+            new SeminarRegistrationReceivedNotification($seminar, $user, $registrant->status),
+        );
 
         return $registrant;
     }

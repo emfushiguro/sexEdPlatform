@@ -177,6 +177,17 @@
 {{-- HERO HEADER --}}
 <header class="lp-header lp-brand-gradient-bg">
 
+    <div aria-hidden="true" class="lp-spore-field">
+        <span class="lp-spore"></span>
+        <span class="lp-spore"></span>
+        <span class="lp-spore"></span>
+        <span class="lp-spore"></span>
+        <span class="lp-spore"></span>
+        <span class="lp-spore"></span>
+        <span class="lp-spore"></span>
+        <span class="lp-spore"></span>
+    </div>
+
     {{-- Heading --}}
     <div class="lp-head">
         <h1 class="lp-hero-title"> 
@@ -806,6 +817,60 @@
     text-align: center;
     overflow: hidden;
     color: #fff;
+}
+
+.lp-spore-field {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.lp-spore {
+    position: absolute;
+    bottom: 18%;
+    left: 8%;
+    width: 9px;
+    height: 9px;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgba(255, 220, 255, 0.98) 0 24%, rgba(230, 137, 255, 0.72) 42%, transparent 74%);
+    box-shadow: 0 0 16px rgba(242, 174, 255, 0.78);
+    opacity: 0;
+    animation: lp-spore-drift 7s ease-in-out infinite;
+}
+
+.lp-spore:nth-child(2) { left: 19%; bottom: 25%; width: 6px; height: 6px; animation-delay: -2.8s; animation-duration: 8.5s; }
+.lp-spore:nth-child(3) { left: 31%; bottom: 16%; width: 12px; height: 12px; animation-delay: -5.1s; animation-duration: 9.5s; }
+.lp-spore:nth-child(4) { left: 46%; bottom: 23%; width: 7px; height: 7px; animation-delay: -1.4s; animation-duration: 7.8s; }
+.lp-spore:nth-child(5) { left: 61%; bottom: 17%; width: 10px; height: 10px; animation-delay: -4.3s; animation-duration: 8.8s; }
+.lp-spore:nth-child(6) { left: 73%; bottom: 28%; width: 5px; height: 5px; animation-delay: -6.2s; animation-duration: 10s; }
+.lp-spore:nth-child(7) { left: 84%; bottom: 19%; width: 8px; height: 8px; animation-delay: -3.6s; animation-duration: 7.4s; }
+.lp-spore:nth-child(8) { left: 92%; bottom: 31%; width: 6px; height: 6px; animation-delay: -7s; animation-duration: 9.2s; }
+
+@keyframes lp-spore-drift {
+    0%, 100% {
+        transform: translate3d(0, 18px, 0) scale(0.72);
+        opacity: 0;
+    }
+    18% {
+        opacity: 0.72;
+    }
+    52% {
+        transform: translate3d(16px, -24px, 0) scale(1);
+        opacity: 0.95;
+    }
+    82% {
+        opacity: 0.38;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-spore {
+        animation: none;
+        transform: none;
+        opacity: 0.28;
+    }
 }
 
 /* Heading block */

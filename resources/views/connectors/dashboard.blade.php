@@ -25,7 +25,7 @@
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Connector Workspace</p>
                 <h2 class="mt-1 text-2xl font-bold text-gray-900">{{ $connector->name }}</h2>
-                <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{{ $connector->description ?: 'Manage members, roles, subscriptions, and upcoming connector features from one workspace.' }}</p>
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{{ $connector->description ?: 'Manage members, roles, and educational events from one workspace.' }}</p>
             </div>
             <a href="{{ route('learner.dashboard') }}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-100">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12 12 4l9 8M5.5 10.5v8h13v-8"/></svg>

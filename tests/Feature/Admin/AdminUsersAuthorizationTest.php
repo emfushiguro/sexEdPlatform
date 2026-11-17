@@ -59,6 +59,38 @@ class AdminUsersAuthorizationTest extends TestCase
             ->assertRedirect();
     }
 
+    public function test_admin_can_create_an_admin_user_via_super_admin_gate(): void
+    {
+        Permission::findOrCreate('view users', 'web');
+        Permission::findOrCreate('create users', 'web');
+
+        $adminRole = Role::findOrCreate('admin', 'web');
+        $adminRole->syncPermissions(['view users']);
+
+        /** @var User $admin */
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.store'), [
+                'name' => 'Created Admin User',
+                'email' => 'created-admin@example.test',
+                'password' => 'Password123!',
+                'password_confirmation' => 'Password123!',
+                'role' => 'admin',
+                'status' => 'active',
+            ])
+            ->assertRedirect();
+
+        $created = User::query()->where('email', 'created-admin@example.test')->firstOrFail();
+
+        $this->assertTrue($created->hasRole('admin'));
+        $this->assertSame('admin', $created->role);
+    }
+
     public function test_admin_can_manage_relationships_via_super_admin_gate_even_without_explicit_permission(): void
     {
         Permission::findOrCreate('view users', 'web');
