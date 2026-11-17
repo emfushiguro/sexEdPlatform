@@ -12,6 +12,28 @@ class InstructorEnrollmentsRefinementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_enrollment_details_show_scoped_lesson_and_quiz_progress(): void
+    {
+        $instructor = User::factory()->create();
+        $instructor->assignRole('instructor');
+        $learner = User::factory()->create();
+        $module = Module::factory()->create(['created_by' => $instructor->id]);
+        $enrollment = ModuleEnrollment::factory()->create(['module_id' => $module->id, 'user_id' => $learner->id, 'status' => 'approved', 'completion_percentage' => 0]);
+        $lesson = \App\Models\Lesson::factory()->create(['module_id' => $module->id, 'is_published' => true, 'title' => 'Published lesson']);
+        \App\Models\Lesson::factory()->create(['module_id' => $module->id, 'is_published' => false, 'title' => 'Unpublished lesson']);
+        \App\Models\UserProgress::query()->create(['user_id' => $learner->id, 'module_id' => $module->id, 'lesson_id' => $lesson->id, 'completed' => true, 'progress_percentage' => 100]);
+        $quiz = \App\Models\Quiz::factory()->create(['module_id' => $module->id, 'lesson_id' => $lesson->id, 'title' => 'Lesson check', 'is_active' => true]);
+        \App\Models\QuizAttempt::query()->create(['user_id' => $learner->id, 'quiz_id' => $quiz->id, 'score' => 60, 'passed' => false, 'started_at' => now()->subMinutes(2), 'completed_at' => now()]);
+        \App\Models\QuizAttempt::query()->create(['user_id' => $learner->id, 'quiz_id' => $quiz->id, 'score' => 90, 'passed' => true, 'started_at' => now(), 'completed_at' => now()]);
+        $other = User::factory()->create();
+        \App\Models\QuizAttempt::query()->create(['user_id' => $other->id, 'quiz_id' => $quiz->id, 'score' => 13, 'passed' => false, 'started_at' => now(), 'completed_at' => now()]);
+
+        $this->actingAs($instructor)->get(route('instructor.enrollments.show', $enrollment))
+            ->assertOk()->assertSee('Published lesson')->assertDontSee('Unpublished lesson')
+            ->assertSee('1 of 1 lessons completed')->assertSee('Lesson check')->assertSee('60%')->assertSee('90%')
+            ->assertDontSee('13%')->assertDontSee('0% Progress');
+    }
+
     public function test_enrollments_page_has_modern_layout_markers()
     {
         /** @var User $instructor */
