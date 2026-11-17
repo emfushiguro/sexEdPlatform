@@ -45,7 +45,11 @@ class ConnectorModulePaymentStatusTest extends TestCase
             ->where('connector_module_purchase_id', $purchase->id)
             ->count());
 
-        $otherUser = \App\Models\User::factory()->create();
+        $otherUser = \App\Models\User::factory()->create(['birthdate' => '2000-01-01']);
+        $otherUser->identityVerifications()->create([
+            'pathway' => 'adult', 'status' => 'approved', 'submission_round' => 1,
+            'submitted_at' => now(), 'reviewed_at' => now(), 'approved_at' => now(),
+        ]);
         $this->actingAs($otherUser)
             ->get(route('payment.status', $payment))
             ->assertForbidden();

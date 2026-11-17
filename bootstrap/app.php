@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: ['webhook/paymongo']);
         $middleware->alias([
             'premium' => \App\Http\Middleware\CheckPremiumStatus::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,

@@ -18,6 +18,17 @@
         @endif
     @endforeach
 
+    @if($giftManaged ?? false)
+        <div class="mb-6 rounded-2xl border border-purple-200 bg-purple-50 p-5 text-purple-900" role="status">
+            <h2 class="text-xl font-bold">Managed by your guardian</h2>
+            <p class="mt-2 text-sm">Your subscription benefits and expiry appear below. Ask your guardian to renew through My Dependents.</p>
+            <p class="mt-1 text-sm">Gift subscription payments are final and non-refundable. Your guardian's billing information remains private.</p>
+            @if(!($subscriptionSummary['has_subscription'] ?? false))
+                <p class="mt-2 text-sm">{{ $subscription?->status?->value === 'pending' ? 'Payment confirmation is pending.' : 'No active paid access remains.' }}</p>
+            @endif
+        </div>
+    @endif
+
     @if(($subscriptionSummary['has_subscription'] ?? false) && !empty($subscriptionSummary['status']))
         @php
             $summaryStatus = (string) $subscriptionSummary['status'];
@@ -48,7 +59,7 @@
             </div>
             @if(in_array($summaryStatus, ['active', 'grace_period', 'scheduled_cancel']) && $subscription)
                 <div class="flex flex-col gap-1 p-4 border md:text-right md:gap-0 bg-white/10 rounded-xl border-white/20 backdrop-blur-sm">
-                    <span class="text-sm text-purple-100">Next Billing Statement</span>
+                    <span class="text-sm text-purple-100">{{ ($giftManaged ?? false) ? 'Paid access expires' : 'Next Billing Statement' }}</span>
                     @if($subscriptionEndsAt)
                         <span class="font-semibold text-white font-heading">
                             {{ $subscriptionEndsAt->format('F d, Y') }}
@@ -63,13 +74,15 @@
 
 <div class="relative z-10 flex flex-wrap items-center justify-between gap-4 mb-8">        
         <div>
-            <h1 class="text-3xl font-extrabold tracking-tight text-transparent sm:text-4xl bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500">Choose your subscription</h1>
-            <p class="mt-2 text-sm text-gray-500">All active admin plans are shown below. Ineligible plans remain visible with explanation.</p>
+            <h1 class="text-3xl font-extrabold tracking-tight text-transparent sm:text-4xl bg-clip-text bg-gradient-to-r from-purple-700 to-pink-500">{{ ($giftManaged ?? false) ? 'Subscription plans and benefits' : 'Choose your subscription' }}</h1>
+            <p class="mt-2 text-sm text-gray-500">{{ ($giftManaged ?? false) ? 'Explore the benefits included in each plan. Your guardian manages purchases and renewals.' : 'All active admin plans are shown below. Ineligible plans remain visible with explanation.' }}</p>
         </div>
+        @unless($giftManaged ?? false)
         <a href="{{ route('payment.history') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-purple-700 to-pink-500 hover:shadow-lg hover:shadow-purple-300/40 hover:-translate-y-0.5 transition-all duration-300">
             <i class="text-xs fi fi-rr-time-past"></i>
             Payment history
         </a>
+        @endunless
     </div>
 
     @if(!empty($renewalNotice))
@@ -141,10 +154,12 @@
                     <div class="mt-6 space-y-2 lg:min-h-[100px]">
                             @foreach($plan['prices'] as $price)
                                 <button type="button"
-                                    class="w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm transition-all duration-300 transform"
+                                    class="w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm transition-all duration-300 transform {{ ($giftManaged ?? false) ? 'border-gray-200 text-gray-700' : '' }}"
+                                    @unless($giftManaged ?? false)
                                     :class="selectedPlanId === {{ $plan['id'] }} && selectedPriceId === {{ $price['id'] }} ? 'border-purple-400 bg-purple-50 text-purple-900 shadow-inner scale-[1.02] ring-1 ring-purple-100' : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-200 text-gray-700'"
-                                    @if(!$plan['is_eligible']) disabled @endif
                                     @click="setSelection({{ $plan['id'] }}, {{ $price['id'] }})"
+                                    @endunless
+                                    @if(!$plan['is_eligible']) disabled @endif
                                 >
                                     <span class="font-medium">{{ $price['label'] }}</span>
                                     <span class="font-bold tracking-tight">PHP {{ $price['amount_display'] }}</span>
@@ -214,48 +229,11 @@
             </button>
 
             <div x-show="showComparison" x-collapse class="border-t border-gray-100">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 font-semibold text-left text-gray-600">Feature</th>
-                                @foreach($planCards as $plan)
-                                    <th class="px-4 py-3 font-semibold text-center text-gray-600">
-                                        <span>{{ $plan['name'] }}</span>
-                                        @if(!empty($plan['is_baseline']))
-                                            <span class="block mt-1 text-[10px] font-bold uppercase tracking-wider text-purple-600">Baseline</span>
-                                        @elseif($plan['is_current'])
-                                            <span class="block mt-1 text-[10px] font-bold uppercase tracking-wider text-purple-600">Current</span>
-                                        @endif
-                                    </th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($comparisonFeatures as $feature)
-                                <tr class="border-t border-gray-100">
-                                    <td class="px-4 py-3 text-gray-700">{{ $feature['label'] }}</td>
-                                    @foreach($planCards as $plan)
-                                        <td class="px-4 py-3 text-center">
-                                            @if(in_array($feature['key'], $plan['feature_keys'], true))
-                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700" aria-label="Included">
-                                                    <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                        <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.2 7.2a1 1 0 01-1.414 0l-3-3a1 1 0 011.414-1.414l2.293 2.293 6.493-6.493a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                                    </svg>
-                                                </span>
-                                            @else
-                                                <span class="inline-flex items-center justify-center w-6 h-6 font-bold text-gray-400 bg-gray-100 rounded-full">-</span>
-                                            @endif
-                                        </td>
-                                    @endforeach
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                @include('subscriptions.partials.plan-comparison-table')
             </div>
         </div>
 
+        @unless($giftManaged ?? false)
         <div x-show="selectedPlan && selectedPlan.is_eligible && !showSummary" x-cloak class="lg:hidden fixed left-0 right-0 bottom-0 z-40 border-t border-purple-100 bg-white/90 backdrop-blur-lg px-5 py-4 shadow-[0_-10px_30px_rgba(200,100,250,0.1)] transition-all duration-300">
             <div class="flex items-center justify-between gap-4">
                 <div>
@@ -315,6 +293,7 @@
                 </div>
             </div>
         </div>
+        @endunless
     @endif
 </div>
 @endsection

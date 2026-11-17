@@ -324,6 +324,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/status', [SubscriptionController::class, 'checkStatus'])->name('status');
     });
 
+    Route::middleware('verified')->group(function () {
+        Route::get('/parent/children/{child}/subscription-gift', [\App\Http\Controllers\Parent\SubscriptionGiftController::class, 'create'])
+            ->name('parent.children.subscription-gift.create');
+        Route::post('/parent/children/{child}/subscription-gift', [\App\Http\Controllers\Parent\SubscriptionGiftController::class, 'store'])
+            ->middleware('throttle:10,1')->name('parent.children.subscription-gift.store');
+    });
+
     Route::middleware('learner.contact-ready')->group(function () {
         Route::get('/seminars', [SeminarBrowseController::class, 'index'])->name('seminars.index');
         Route::get('/seminars/{seminar}', [SeminarBrowseController::class, 'show'])->name('seminars.show');

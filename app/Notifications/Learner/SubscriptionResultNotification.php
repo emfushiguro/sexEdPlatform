@@ -15,8 +15,7 @@ class SubscriptionResultNotification extends Notification
         private readonly string $status,
         private readonly ?Subscription $subscription = null,
         private readonly ?Payment $payment = null,
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -26,6 +25,17 @@ class SubscriptionResultNotification extends Notification
     public function toDatabase(object $notifiable): array
     {
         $isSuccess = in_array($this->status, ['completed', 'success', 'active'], true);
+        if ($this->payment && \App\Services\GuardianSubscriptionGiftService::isGift($this->payment)) {
+            return [
+                'type' => 'subscription_result', 'status' => $this->status,
+                'title' => $isSuccess ? 'Gift Subscription Payment Successful' : 'Gift Subscription Payment Update',
+                'message' => 'Gift subscription for '.data_get($this->payment->payment_details, 'gift.beneficiary_name').'. '
+                    .($isSuccess ? 'Payment is confirmed and dependent access is available.' : 'Payment has not been confirmed.'),
+                'payment_id' => $this->payment->id, 'subscription_id' => $this->subscription?->id,
+                'action_url' => $isSuccess ? route('payment.receipt', $this->payment) : route('payment.history'),
+                'severity' => $isSuccess ? 'success' : 'info',
+            ];
+        }
 
         return [
             'type' => 'subscription_result',
