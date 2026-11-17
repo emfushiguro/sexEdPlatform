@@ -146,16 +146,18 @@ class InstructorIdentityVerificationAdminTest extends TestCase
         $this->assertFalse($case->fresh()->isAccessEligible());
     }
 
-    public function test_mismatched_approval_does_not_show_or_require_a_rationale(): void
+    public function test_second_round_mismatched_approval_does_not_show_or_require_a_rationale(): void
     {
         $applicant = $this->applicant();
         $case = $this->pendingCase($applicant);
         $case->update([
+            'submission_round' => 2,
             'comparison_summary' => [
                 'normalization_version' => 'v1',
                 'fields' => ['first_name' => ['outcome' => 'mismatch']],
             ],
         ]);
+        $case->personaInquiries()->update(['target_submission_round' => 2]);
         $reviewer = $this->reviewer();
         $payload = [
             'submission_round' => $case->submission_round,
@@ -166,7 +168,8 @@ class InstructorIdentityVerificationAdminTest extends TestCase
 
         $this->actingAs($reviewer)
             ->post(route('admin.instructor-applications.identities.approve', $case), $payload)
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $this->assertSame(InstructorIdentityVerification::STATUS_APPROVED, $case->fresh()->status);
 
