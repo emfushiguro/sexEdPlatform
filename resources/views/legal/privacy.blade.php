@@ -26,7 +26,7 @@
                         </div>
                         <h1 class="text-2xl font-bold text-white">Privacy Policy</h1>
                     </div>
-                    <p class="text-purple-200 text-sm">Last Updated: November 14, 2026</p>
+                    <p class="text-purple-200 text-sm">Last Updated: November 17, 2026</p>
                 </div>
                 <x-legal-back-link class="bg-white/15 text-white hover:bg-white/25" />
             </div>
@@ -54,6 +54,11 @@
                             Minors need an approved Guardian relationship and authorization to register. Adult dependents may consent personally or through a separately reviewed representative. A Guardian's access is limited by the relationship and permissions; passwords and private messages are not shared through those permissions.
                         </p>
                     </div>
+                </section>
+
+                <section class="rounded-xl border border-purple-200 bg-purple-50 p-5 text-gray-700">
+                    <h2 class="text-lg font-semibold" style="color: #730DB1;">For younger learners</h2>
+                    <p class="mt-2 leading-relaxed">We use information about you to help you sign in, learn, and keep the platform safer. Your instructor and administrators can see your progress and quiz answers. An approved Guardian may see information when their permissions allow it. Your password and private messages are not shared through Guardian permissions. Ask a trusted adult or contact support if you have questions about your information.</p>
                 </section>
 
                 <!-- Information We Collect -->
@@ -95,8 +100,9 @@
                         <div>
                             <h3 class="text-lg font-medium mb-3" style="color:#A30EB2;">Usage & Learning Data</h3>
                             <ul class="list-disc list-inside pl-4 space-y-2 text-gray-700">
-                                <li><strong>Learning Progress:</strong> Module enrollments, lesson completion, quiz attempts</li>
+                                <li><strong>Learning Progress:</strong> Module enrollments, lesson and topic completion, quiz attempts</li>
                                 <li><strong>Quiz Responses:</strong> Answers, scores, and timestamps</li>
+                                <li><strong>Contributions and transactions:</strong> Reviews, support requests, messages, community activity and purchase records when you use those features</li>
                                 <li><strong>Achievements:</strong> Earned certificates</li>
                                 <li><strong>Activity Logs:</strong> Login times, content views, and interactions</li>
                             </ul>
@@ -156,15 +162,14 @@
                         <p class="leading-relaxed">We DO NOT sell or rent personal information. We may share information only in these limited cases:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
                             <li><strong>With Guardians:</strong> Approved Guardians can view information permitted by the relationship and its settings</li>
-                            <li><strong>With Instructors:</strong> Instructors can view learner progress for courses they manage</li>
+                            <li><strong>With Instructors and Administrators:</strong> Authorized administrators and the instructor who owns a module can view enrollment details, lesson progress, and completed quiz attempts, including saved answers, for that module</li>
                             <li><strong>Service Providers:</strong> Email delivery, hosting, and identity verification providers when needed to operate the platform</li>
                             <li><strong>Legal Requirements:</strong> If required by law, court order, or government request</li>
                             <li><strong>Safety:</strong> To protect the safety of users or prevent harmful activity</li>
                         </ul>
                         <div class="rounded-xl p-4 mt-4" style="background:#fdf4ff; border:1px solid #c084fc;">
                             <p class="text-sm text-gray-700">
-                                Any third-party service providers we use are required to maintain the confidentiality and security 
-                                of personal information and are prohibited from using it for any other purpose.
+                                Service providers process information to provide their services, subject to their applicable terms and privacy notices.
                             </p>
                         </div>
                     </div>
@@ -174,13 +179,11 @@
                 <section>
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">6. Data Security</h2>
                     <div class="space-y-3 text-gray-700">
-                        <p class="leading-relaxed">We implement industry-standard security measures to protect your information:</p>
+                        <p class="leading-relaxed">The platform uses measures intended to protect your information, including:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
-                            <li><strong>Password Encryption:</strong> All passwords are hashed using bcrypt encryption</li>
-                            <li><strong>HTTPS/TLS:</strong> All data transmitted between your browser and our servers is encrypted</li>
+                            <li><strong>Password protection:</strong> Passwords are stored as hashes</li>
                             <li><strong>Email Verification:</strong> Ensures account ownership before granting access</li>
                             <li><strong>Access Controls:</strong> Role-based permissions limit who can view data</li>
-                            <li><strong>Regular Security Updates:</strong> Platform software is kept up-to-date</li>
                         </ul>
                         <p class="leading-relaxed mt-4">
                             However, no method of transmission over the internet is 100% secure. While we strive to protect your 
@@ -250,11 +253,11 @@
                     <div class="space-y-3 text-gray-700">
                         <p class="leading-relaxed">All users have the right to:</p>
                         <ul class="list-disc list-inside pl-4 space-y-2">
-                            <li><strong>Access:</strong> View all personal information we have about you</li>
+                            <li><strong>Access:</strong> Request access to personal information about you</li>
                             <li><strong>Correction:</strong> Update or correct your information</li>
                             <li><strong>Deletion:</strong> Request account deletion and data removal</li>
                             <li><strong>Data Portability:</strong> Request a copy of your data in a portable format</li>
-                            <li><strong>Withdraw Consent:</strong> Delete your account if you no longer want to use the platform</li>
+                            <li><strong>Object or withdraw consent:</strong> Ask about objecting to processing or withdrawing consent where applicable</li>
                         </ul>
                         <p class="leading-relaxed mt-4">
                             Use the <a class="underline" href="{{ route('help.index') }}">help page</a> to contact us about these rights.
@@ -318,12 +321,10 @@
                 <!-- Acceptance banner -->
                 <div class="rounded-xl p-6 mt-8" style="background: linear-gradient(135deg, #A30EB2, #730DB1, #3B0CB1);">
                     <p class="text-sm text-white leading-relaxed text-center">
-                        <strong>By creating an account or using {{ config('app.name') }}, you acknowledge that you have read
-                        and understood this Privacy Policy and agree to its terms.</strong>
+                        <strong>This notice explains how {{ config('app.name') }} handles personal information and how to contact support.</strong>
                     </p>
                     <p class="text-sm text-purple-200 leading-relaxed text-center mt-2">
-                        <strong>For Guardians:</strong> By creating a child account, you confirm that you have read this Privacy Policy
-                        and consent to the collection and use of your child's information as described.
+                        <strong>For Guardians:</strong> Please review the information and privacy settings with your dependent in a way they can understand.
                     </p>
                 </div>
         </div><!-- /card -->

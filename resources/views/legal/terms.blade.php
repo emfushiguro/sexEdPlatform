@@ -26,7 +26,7 @@
                         </div>
                         <h1 class="text-2xl font-bold text-white">Terms of Service</h1>
                     </div>
-                    <p class="text-purple-200 text-sm">Last Updated: November 14, 2026</p>
+                    <p class="text-purple-200 text-sm">Last Updated: November 17, 2026</p>
                 </div>
                 <x-legal-back-link class="bg-white/15 text-white hover:bg-white/25" />
             </div>
@@ -41,8 +41,8 @@
                 <section>
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">1. Introduction</h2>
                     <p class="text-gray-700 leading-relaxed">
-                        Welcome to Sex Education Learning Platform. By accessing or using our platform, you agree to be bound by these Terms of Service. 
-                        This platform is designed to provide age-appropriate sexual education and health information to learners of all ages.
+                        Welcome to Conscious Connections. By accessing or using the platform, you agree to these Terms of Service.
+                        The platform provides sexual education and health information, with access subject to age and eligibility requirements.
                     </p>
                 </section>
 
@@ -130,6 +130,14 @@
                 </section>
 
                 <!-- Privacy -->
+                <section>
+                    <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">Learning, feedback, and platform features</h2>
+                    <div class="space-y-3 text-gray-700">
+                        <p>Module access can depend on age, enrollment approval, payment, and other eligibility requirements. Completion, quiz attempts, and certificate eligibility depend on the requirements of each module. A completed lesson count does not necessarily mean that module completion has been recorded.</p>
+                        <p>Administrators and the instructor who owns a module may review enrolled learners' progress and completed quiz attempts, including saved answers. Learners may submit module and instructor reviews where available. Reviews, messages, community posts, and other contributions must follow the platform's conduct rules and may be moderated.</p>
+                        <p>Connector, seminar, and other features depend on account eligibility and availability. Prices and applicable payment terms are presented during purchase; access may change when an enrollment or entitlement ends.</p>
+                    </div>
+                </section>
                 <section>
                     <h2 class="text-xl font-semibold mb-4" style="color: #730DB1;">7. Privacy & Data Protection</h2>
                     <div class="space-y-3 text-gray-700">

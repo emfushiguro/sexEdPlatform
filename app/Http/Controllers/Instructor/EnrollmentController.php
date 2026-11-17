@@ -191,10 +191,10 @@ class EnrollmentController extends Controller
         $completedTopicIds = $completion->completedTopicIds($enrollment->user, $topics);
         $completionBlocker = $completion->completionBlockerReason($enrollment->user, $enrollment->module);
         $moduleQuizzes = Quiz::query()->where('module_id', $enrollment->module_id)
-            ->with('lesson:id,module_id,title')->orderBy('id')->get();
+            ->with(['lesson:id,module_id,title', 'questions.options'])->orderBy('id')->get();
         $quizAttempts = QuizAttempt::query()->where('user_id', $enrollment->user_id)
             ->whereIn('quiz_id', $moduleQuizzes->modelKeys())->whereNotNull('completed_at')
-            ->orderBy('completed_at')->orderBy('id')->get(['id', 'quiz_id', 'score', 'passed', 'completed_at'])
+            ->orderBy('completed_at')->orderBy('id')->get(['id', 'quiz_id', 'score', 'passed', 'completed_at', 'answers'])
             ->groupBy('quiz_id');
 
         $moduleProgressPercent = $moduleLessonCount > 0

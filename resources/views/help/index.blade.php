@@ -21,6 +21,15 @@
         </section>
 
         <div class="mt-10 space-y-12">
+        <section aria-labelledby="platform-basics" class="rounded-3xl border border-purple-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 id="platform-basics" class="text-xl font-bold">Using the platform</h2>
+            <div class="mt-4 grid gap-5 text-sm leading-6 text-gray-600 dark:text-gray-300 sm:grid-cols-2">
+                <div><h3 class="font-semibold text-gray-900 dark:text-white">Learning and certificates</h3><p>Open an enrolled module to follow its lessons and complete required topics and quizzes. Your lesson progress and recorded module completion are shown separately. When eligible, open the certificate from the module details page.</p></div>
+                <div><h3 class="font-semibold text-gray-900 dark:text-white">Reviews and quiz results</h3><p>Use Give Feedback to choose a module or instructor review when available. Administrators and the module's instructor can review learner progress and completed quiz attempts for that module, including saved answers.</p></div>
+                <div><h3 class="font-semibold text-gray-900 dark:text-white">Guardian and dependent accounts</h3><p>Guardian identity, relationship evidence, and learner identity are reviewed separately. Guardian access depends on the approved relationship and its permissions. Adult dependents manage optional sharing.</p></div>
+                <div><h3 class="font-semibold text-gray-900 dark:text-white">Connectors and support</h3><p>Access to connector features depends on your account and eligibility. If you cannot open a feature, or need help with your account or personal information, use the available support options below.</p></div>
+            </div>
+        </section>
         @if($search !== '' || $categorySlug !== '')
             <section aria-labelledby="search-results-heading" class="space-y-4">
                 <div class="flex flex-wrap items-end justify-between gap-3">
