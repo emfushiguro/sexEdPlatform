@@ -332,7 +332,7 @@ final class InstructorIdentityService
             }
 
             if ($toStatus === InstructorIdentityVerification::STATUS_APPROVED) {
-                $this->assertApprovalEligible($locked, $confirmations, $note);
+                $this->assertApprovalEligible($locked, $confirmations);
             }
 
             $from = $locked->status;
@@ -381,7 +381,6 @@ final class InstructorIdentityService
     private function assertApprovalEligible(
         InstructorIdentityVerification $case,
         array $confirmations,
-        ?string $rationale,
     ): void {
         if (! ($confirmations['declared'] ?? false) || ! ($confirmations['provider'] ?? false)) {
             throw new DomainException('Reviewer confirmations are required before approval.');
@@ -391,13 +390,6 @@ final class InstructorIdentityService
         if (! $applicant || $applicant->status !== User::STATUS_ACTIVE || ! $applicant->hasVerifiedEmail()
             || ($applicant->calculateAge() ?? 0) < (int) config('instructor_application.minimum_age', 18)) {
             throw new DomainException('The applicant is no longer eligible for identity approval.');
-        }
-
-        $comparison = (array) $case->comparison_summary;
-        $hasMismatch = collect((array) ($comparison['fields'] ?? []))
-            ->contains(fn (array $field): bool => ($field['outcome'] ?? null) === 'mismatch');
-        if ($hasMismatch && blank($rationale)) {
-            throw new DomainException('A rationale is required when approving a mismatched field.');
         }
 
         if (! $case->sandbox_manual_review) {
