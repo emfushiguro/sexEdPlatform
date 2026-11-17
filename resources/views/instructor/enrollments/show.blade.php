@@ -334,10 +334,34 @@
                                 <div class="rounded-xl border border-gray-200 p-4">
                                     <div class="flex flex-wrap items-center justify-between gap-2"><h4 class="font-semibold text-gray-900">{{ $quiz->title }}</h4><span class="text-xs font-semibold text-purple-700">{{ (int) $quiz->id === (int) $enrollment->module->final_quiz_id ? 'Final quiz' : ($quiz->lesson ? 'Lesson quiz · '.$quiz->lesson->title : 'Module quiz') }}{{ !$quiz->is_active ? ' · Inactive' : '' }}</span></div>
                                     @forelse($attempts as $attempt)
-                                        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-sm">
-                                            <span class="text-gray-600">Attempt {{ $loop->iteration }} · {{ $attempt->completed_at?->timezone(config('app.display_timezone'))->format('M d, Y g:i A') }}</span>
+                                        <details class="mt-3 border-t border-gray-100 pt-3 text-sm">
+                                          <summary class="flex cursor-pointer flex-wrap items-center justify-between gap-2">
+                                            <span class="text-gray-600">Attempt {{ $loop->iteration }} · {{ $attempt->completed_at?->timezone(config('app.display_timezone'))->format('M d, Y g:i A') }} · View answers</span>
                                             <span class="font-semibold {{ $attempt->passed ? 'text-emerald-700' : 'text-rose-700' }}">{{ $attempt->score }}% · {{ $attempt->passed ? 'Passed' : 'Not passed' }}</span>
-                                        </div>
+                                          </summary>
+                                          <p class="mt-3 text-xs text-gray-500">Question and option text reflects the current quiz and may have changed since this attempt.</p>
+                                          @forelse(($attempt->answers ?? []) as $questionId => $answer)
+                                            @php
+                                                $question = $quiz->questions->firstWhere('id', $questionId);
+                                                $answer = is_array($answer) ? $answer : [];
+                                                $optionType = in_array($answer['type'] ?? '', ['multiple_choice', 'multiple_select', 'true_false'], true);
+                                                $formatAnswer = function ($value) use ($question, $optionType) {
+                                                    if ($value === null || $value === '' || $value === []) return 'No answer recorded';
+                                                    return collect(is_array($value) ? $value : [$value])->map(function ($item) use ($question, $optionType) {
+                                                        if (!is_scalar($item)) return 'Answer unavailable';
+                                                        return $optionType ? ($question?->options->firstWhere('id', $item)?->option_text ?? 'Option unavailable') : (string) $item;
+                                                    })->implode(', ');
+                                                };
+                                            @endphp
+                                            <div class="mt-3 rounded-lg bg-gray-50 p-4">
+                                                <div class="flex flex-wrap justify-between gap-2"><p class="font-semibold text-gray-900">{{ $question?->question_text ?? 'Question unavailable' }}</p>@if(array_key_exists('is_correct', $answer))<span class="font-semibold {{ $answer['is_correct'] ? 'text-emerald-700' : 'text-rose-700' }}">{{ $answer['is_correct'] ? 'Correct' : 'Incorrect' }}</span>@endif</div>
+                                                <p class="mt-2 text-gray-700"><strong>Learner answer:</strong> {{ $formatAnswer($answer['selected'] ?? null) }}</p>
+                                                <p class="mt-1 text-gray-700"><strong>Correct answer:</strong> {{ array_key_exists('correct', $answer) ? $formatAnswer($answer['correct']) : 'Answer unavailable' }}</p>
+                                            </div>
+                                          @empty
+                                            <p class="mt-3 text-gray-500">Answer details are unavailable for this attempt.</p>
+                                          @endforelse
+                                        </details>
                                     @empty
                                         <p class="mt-2 text-sm text-gray-500">No completed attempts.</p>
                                     @endforelse
